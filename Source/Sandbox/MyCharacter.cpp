@@ -18,6 +18,8 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    GetCharacterMovement()->MaxWalkSpeed = this->move_speed;
+
     if (auto* pc{Cast<APlayerController>(this->Controller)}) {
         using EIPS = UEnhancedInputLocalPlayerSubsystem;
         auto local_player{pc->GetLocalPlayer()};
@@ -41,6 +43,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         // Bind Jump Actions
         eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
         eic->BindAction(jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+
+        // Bind looking
+        eic->BindAction(look_action, ETriggerEvent::Triggered, this, &AMyCharacter::look);
     }
 }
 
@@ -53,5 +58,13 @@ void AMyCharacter::move(FInputActionValue const& value) {
 
         auto const fwd{this->GetActorForwardVector()};
         AddMovementInput(fwd, movement_value.Y);
+    }
+}
+void AMyCharacter::look(FInputActionValue const& value) {
+    auto const look_axis_value{value.Get<FVector2D>()};
+
+    if (Controller) {
+        AddControllerYawInput(look_axis_value.X);
+        AddControllerPitchInput(look_axis_value.Y);
     }
 }
