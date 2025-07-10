@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "MyCharacter.h"
 
 // Sets default values
@@ -26,14 +24,8 @@ void AMyCharacter::BeginPlay() {
 
         if (auto* subsystem{ULocalPlayer::GetSubsystem<EIPS>(local_player)}) {
             subsystem->AddMappingContext(this->first_person_context, 0);
-        } else {
-            print_msg(TEXT("Failed to get LP."));
         }
-    } else {
-        print_msg(TEXT("Failed to get PC."));
     }
-
-    print_msg(TEXT("We are using MyCharacter."));
 }
 
 // Called every frame
@@ -45,8 +37,10 @@ void AMyCharacter::Tick(float DeltaTime) {
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
         eic->BindAction(this->move_action, ETriggerEvent::Triggered, this, &AMyCharacter::move);
-    } else {
-        print_msg(TEXT("Failed to get EIC."));
+
+        // Bind Jump Actions
+        eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
+        eic->BindAction(jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
     }
 }
 
@@ -59,7 +53,5 @@ void AMyCharacter::move(FInputActionValue const& value) {
 
         auto const fwd{this->GetActorForwardVector()};
         AddMovementInput(fwd, movement_value.Y);
-    } else {
-        print_msg(TEXT("Controller is null."));
     }
 }

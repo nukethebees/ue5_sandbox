@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -29,6 +31,8 @@ private:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> move_action;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jump_action;
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
