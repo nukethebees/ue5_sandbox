@@ -10,6 +10,9 @@ void AMyPlayerController::print_msg(FString const& msg) {
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
 
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = false;
+
     if (auto* local_player{GetLocalPlayer()}) {
         using SS = UEnhancedInputLocalPlayerSubsystem;
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
@@ -34,6 +37,10 @@ void AMyPlayerController::SetupInputComponent() {
                         ETriggerEvent::Triggered,
                         this,
                         &AMyPlayerController::look);
+        eic->BindAction(toggle_mouse_action.LoadSynchronous(),
+                        ETriggerEvent::Started,
+                        this,
+                        &AMyPlayerController::toggle_mouse);
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
@@ -43,4 +50,9 @@ void AMyPlayerController::look(FInputActionValue const& value) {
     if (controlled_character) {
         controlled_character->look(value);
     }
+}
+void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
+    auto const mouse_value{value.Get<bool>()};
+    print_msg(TEXT("Toggling mouse."));
+    bShowMouseCursor = !bShowMouseCursor;
 }

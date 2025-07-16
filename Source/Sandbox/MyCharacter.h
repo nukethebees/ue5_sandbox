@@ -55,4 +55,7 @@ class SANDBOX_API AMyCharacter : public ACharacter {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float move_speed{800.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float acceleration{100.0f};
 };
