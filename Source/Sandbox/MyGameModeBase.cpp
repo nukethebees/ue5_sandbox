@@ -1,5 +1,23 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "MyGameModeBase.h"
+
+void AMyGameModeBase::print_msg(FString const& msg) {
+    auto const fmsg{FString::Printf(TEXT("%s: %s"), *this->GetName(), *msg)};
+    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, fmsg);
+}
+
+void AMyGameModeBase::BeginPlay() {
+    Super::BeginPlay();
+
+    print_msg(TEXT("Game mode start"));
+    auto* pc{UGameplayStatics::GetPlayerController(this, 0)};
+    auto* my_char{
+        Cast<AMyCharacter>(UGameplayStatics::GetActorOfClass(this, AMyCharacter::StaticClass()))};
+
+    if (pc && my_char) {
+        print_msg("Possessing character");
+        pc->Possess(my_char);
+    }
+}
 

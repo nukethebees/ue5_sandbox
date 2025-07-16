@@ -17,6 +17,7 @@
 class UInputMappingContext;
 class UInputAction;
 class UInputComponent;
+class AMyPlayerController;
 
 UCLASS()
 class SANDBOX_API AMyCharacter : public ACharacter {
@@ -40,6 +41,9 @@ class SANDBOX_API AMyCharacter : public ACharacter {
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+    UPROPERTY()
+    AMyPlayerController* my_player_controller;
 
     UFUNCTION()
     void move(FInputActionValue const& value);
