@@ -17,6 +17,14 @@ void AMyPlayerController::BeginPlay() {
         }
     }
 }
+void AMyPlayerController::OnPossess(APawn* InPawn) {
+    Super::OnPossess(InPawn);
+
+    controlled_character = Cast<AMyCharacter>(InPawn);
+    if (controlled_character) {
+        controlled_character->my_player_controller = this;
+    }
+}
 
 void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();

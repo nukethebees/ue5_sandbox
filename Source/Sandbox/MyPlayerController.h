@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
+#include "MyCharacter.h"
 
 #include "MyPlayerController.generated.h"
 
@@ -23,8 +24,12 @@ class SANDBOX_API AMyPlayerController : public APlayerController {
     void print_msg(FString const& msg);
   protected:
     virtual void BeginPlay() override;
+    virtual void OnPossess(APawn* InPawn) override;
   public:
     virtual void SetupInputComponent() override;
+
+    UPROPERTY()
+    AMyCharacter* controlled_character;
 
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputMappingContext> default_mapping_context;
