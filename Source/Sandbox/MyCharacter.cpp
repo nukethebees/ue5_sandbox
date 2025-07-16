@@ -18,7 +18,9 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
-    GetCharacterMovement()->MaxWalkSpeed = this->move_speed;
+    auto& char_movement{*GetCharacterMovement()};
+    char_movement.MaxWalkSpeed = this->move_speed;
+    char_movement.MaxAcceleration = this->acceleration;
 
     if (auto* pc{Cast<APlayerController>(this->Controller)}) {
         using EIPS = UEnhancedInputLocalPlayerSubsystem;

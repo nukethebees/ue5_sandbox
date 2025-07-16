@@ -35,7 +35,11 @@ class SANDBOX_API AMyPlayerController : public APlayerController {
     TSoftObjectPtr<UInputMappingContext> default_mapping_context;
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputAction> look_action;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    TSoftObjectPtr<UInputAction> toggle_mouse_action;
 
     UFUNCTION()
     void look(FInputActionValue const& value);
+    UFUNCTION()
+    void toggle_mouse(FInputActionValue const & value);
 };
