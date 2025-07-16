@@ -43,9 +43,6 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         // Bind Jump Actions
         eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
         eic->BindAction(jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-
-        // Bind looking
-        eic->BindAction(look_action, ETriggerEvent::Triggered, this, &AMyCharacter::look);
     }
 }
 

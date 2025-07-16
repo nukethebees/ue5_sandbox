@@ -55,12 +55,4 @@ class SANDBOX_API AMyCharacter : public ACharacter {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float move_speed{800.0f};
-    UPROPERTY(EditAnywhere, Category = Camera)
-    FVector first_person_camera_offset{FVector(2.8f, 5.9f, 0.0f)};
-    UPROPERTY(EditAnywhere, Category = Camera)
-    float first_person_fov{70.0f};
-
-    // First-person primitives view scale
-    UPROPERTY(EditAnywhere, Category = Camera)
-    float first_person_scale{0.6f};
 };

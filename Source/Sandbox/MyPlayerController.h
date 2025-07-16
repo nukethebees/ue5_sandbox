@@ -33,12 +33,9 @@ class SANDBOX_API AMyPlayerController : public APlayerController {
 
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputMappingContext> default_mapping_context;
-
     UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> move_action;
+    TSoftObjectPtr<UInputAction> look_action;
 
-    UFUNCTION()
-    void move(FInputActionValue const& value);
     UFUNCTION()
     void look(FInputActionValue const& value);
 };
