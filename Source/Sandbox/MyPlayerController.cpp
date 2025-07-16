@@ -30,19 +30,17 @@ void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
 
     if (auto* eic = Cast<UEnhancedInputComponent>(InputComponent)) {
-        print_msg(TEXT("Got EIC."));
-        eic->BindAction(move_action.LoadSynchronous(),
+        eic->BindAction(look_action.LoadSynchronous(),
                         ETriggerEvent::Triggered,
                         this,
-                        &AMyPlayerController::move);
+                        &AMyPlayerController::look);
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
 }
 
-void AMyPlayerController::move(FInputActionValue const& value) {
-    print_msg(TEXT("move"));
-}
 void AMyPlayerController::look(FInputActionValue const& value) {
-    print_msg(TEXT("look"));
+    if (controlled_character) {
+        controlled_character->look(value);
+    }
 }
