@@ -57,6 +57,9 @@ void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
     bShowMouseCursor = !bShowMouseCursor;
 }
 void AMyPlayerController::mouse_click(FInputActionValue const& value) {
+    if (!bShowMouseCursor) {
+        return;
+    }
     print_msg("Shooting a ray.");
 
     FVector world_location;
