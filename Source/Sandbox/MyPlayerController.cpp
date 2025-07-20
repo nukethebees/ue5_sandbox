@@ -1,11 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "MyPlayerController.h"
-
-void AMyPlayerController::print_msg(FString const& msg) {
-    auto const fmsg{FString::Printf(TEXT("%s: %s"), *this->GetName(), *msg)};
-    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, fmsg);
-}
+#include "TalkingPillar.h"
 
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
@@ -32,7 +28,7 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
 void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
 
-    if (auto* eic = Cast<UEnhancedInputComponent>(InputComponent)) {
+    if (auto* eic{Cast<UEnhancedInputComponent>(InputComponent)}) {
         eic->BindAction(look_action.LoadSynchronous(),
                         ETriggerEvent::Triggered,
                         this,
@@ -41,6 +37,10 @@ void AMyPlayerController::SetupInputComponent() {
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::toggle_mouse);
+        eic->BindAction(mouse_click_action.LoadSynchronous(),
+                        ETriggerEvent::Started,
+                        this,
+                        &AMyPlayerController::mouse_click);
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
@@ -55,4 +55,21 @@ void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
     auto const mouse_value{value.Get<bool>()};
     print_msg(TEXT("Toggling mouse."));
     bShowMouseCursor = !bShowMouseCursor;
+}
+void AMyPlayerController::mouse_click(FInputActionValue const& value) {
+    print_msg("Shooting a ray.");
+
+    FVector world_location;
+    FVector world_direction;
+    if (DeprojectMousePositionToWorld(world_location, world_direction)) {
+        auto end{world_location + (world_direction * 10000)};
+        FHitResult hit_result;
+        GetWorld()->LineTraceSingleByChannel(hit_result, world_location, end, ECC_Visibility);
+
+        if (auto* actor_hit{hit_result.GetActor()}) {
+            if (auto* pillar{Cast<ATalkingPillar>(actor_hit)}) {
+                pillar->shout();
+            }
+        }
+    }
 }

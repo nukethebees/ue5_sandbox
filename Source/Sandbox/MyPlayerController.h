@@ -9,6 +9,7 @@
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "MyCharacter.h"
+#include "print_msg_mixin.hpp"
 
 #include "MyPlayerController.generated.h"
 
@@ -16,12 +17,10 @@
  *
  */
 UCLASS()
-class SANDBOX_API AMyPlayerController : public APlayerController {
+class SANDBOX_API AMyPlayerController : public APlayerController, public print_msg_mixin {
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
-  private:
-    void print_msg(FString const& msg);
   protected:
     virtual void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
@@ -37,9 +36,13 @@ class SANDBOX_API AMyPlayerController : public APlayerController {
     TSoftObjectPtr<UInputAction> look_action;
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputAction> toggle_mouse_action;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    TSoftObjectPtr<UInputAction> mouse_click_action;
 
     UFUNCTION()
     void look(FInputActionValue const& value);
     UFUNCTION()
     void toggle_mouse(FInputActionValue const & value);
+    UFUNCTION()
+    void mouse_click(FInputActionValue const & value);
 };
