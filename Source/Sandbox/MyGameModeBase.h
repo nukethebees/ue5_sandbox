@@ -6,17 +6,14 @@
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyCharacter.h"
+#include "print_msg_mixin.hpp"
 
 #include "MyGameModeBase.generated.h"
 
-/**
- *
- */
+
 UCLASS()
-class SANDBOX_API AMyGameModeBase : public AGameModeBase {
+class SANDBOX_API AMyGameModeBase : public AGameModeBase, public print_msg_mixin {
     GENERATED_BODY()
-private:
-    void print_msg(FString const & msg);
 protected:
     virtual void BeginPlay() override;
 };

@@ -2,11 +2,6 @@
 
 #include "MyGameModeBase.h"
 
-void AMyGameModeBase::print_msg(FString const& msg) {
-    auto const fmsg{FString::Printf(TEXT("%s: %s"), *this->GetName(), *msg)};
-    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, fmsg);
-}
-
 void AMyGameModeBase::BeginPlay() {
     Super::BeginPlay();
 
