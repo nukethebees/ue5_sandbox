@@ -10,10 +10,11 @@
 
 #include "MyGameModeBase.generated.h"
 
-
 UCLASS()
-class SANDBOX_API AMyGameModeBase : public AGameModeBase, public print_msg_mixin {
+class SANDBOX_API AMyGameModeBase
+    : public AGameModeBase
+    , public print_msg_mixin {
     GENERATED_BODY()
-protected:
+  protected:
     virtual void BeginPlay() override;
 };
