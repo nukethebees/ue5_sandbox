@@ -5,13 +5,15 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "print_msg_mixin.hpp"
+#include "Clickable.h"
 
 #include "TalkingPillar.generated.h"
 
 UCLASS()
 class SANDBOX_API ATalkingPillar
     : public AActor
-    , public print_msg_mixin {
+    , public print_msg_mixin
+    , public IClickable {
     GENERATED_BODY()
   public:
     // Sets default values for this actor's properties
@@ -22,7 +24,8 @@ class SANDBOX_API ATalkingPillar
   public:
     // Called every frame
     virtual void Tick(float DeltaTime) override;
-    void shout() { print_msg("Ahhhhh!"); }
+
+    virtual void OnClicked() override { print_msg("Ahhhhh!"); }
 
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* CubeMesh;

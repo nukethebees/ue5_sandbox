@@ -70,8 +70,11 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
         GetWorld()->LineTraceSingleByChannel(hit_result, world_location, end, ECC_Visibility);
 
         if (auto* actor_hit{hit_result.GetActor()}) {
-            if (auto* pillar{Cast<ATalkingPillar>(actor_hit)}) {
-                pillar->shout();
+            if (actor_hit->GetClass()->ImplementsInterface(UClickable::StaticClass())) {
+                auto* interface{Cast<IClickable>(actor_hit)};
+                if (interface) {
+                    interface->OnClicked();
+                }
             }
         }
     }
