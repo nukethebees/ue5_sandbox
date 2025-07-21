@@ -10,6 +10,7 @@
 #include "InputMappingContext.h"
 #include "MyCharacter.h"
 #include "print_msg_mixin.hpp"
+#include "Engine/GameViewportClient.h"
 
 #include "MyPlayerController.generated.h"
 

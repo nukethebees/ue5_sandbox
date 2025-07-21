@@ -53,8 +53,20 @@ void AMyPlayerController::look(FInputActionValue const& value) {
 }
 void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
     auto const mouse_value{value.Get<bool>()};
-    print_msg(TEXT("Toggling mouse."));
-    bShowMouseCursor = !bShowMouseCursor;
+
+    if (bShowMouseCursor) {
+        print_msg(TEXT("Disabling mouse cursor."));
+        
+        auto input_mode{FInputModeGameOnly()};
+        SetInputMode(input_mode);
+        bShowMouseCursor = false;
+    } else {
+        print_msg(TEXT("Enabling mouse cursor."));
+        
+        auto input_mode{FInputModeGameAndUI()};
+        SetInputMode(input_mode);
+        bShowMouseCursor = true;
+    }
 }
 void AMyPlayerController::mouse_click(FInputActionValue const& value) {
     if (!bShowMouseCursor) {
