@@ -19,9 +19,10 @@ void AMyCharacter::BeginPlay() {
     check(GEngine != nullptr);
 
     if (hud_widget_class) {
-        auto* hud_widget = CreateWidget<UUserWidget>(GetWorld(), hud_widget_class);
+        hud_widget = CreateWidget<UFuelWidget>(GetWorld(), hud_widget_class);
         if (hud_widget) {
             hud_widget->AddToViewport();
+            hud_widget->update_fuel(this->jetpack_fuel);
         }
     }
 
