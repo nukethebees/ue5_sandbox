@@ -12,6 +12,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
+#include "FuelWidget.h"
 
 #include "MyCharacter.generated.h"
 
@@ -41,7 +42,9 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     UInputAction* look_action;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-    TSubclassOf<UUserWidget> hud_widget_class;
+    TSubclassOf<UFuelWidget> hud_widget_class;
+    UPROPERTY()
+    UFuelWidget* hud_widget{nullptr};
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
