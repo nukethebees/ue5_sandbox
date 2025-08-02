@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
@@ -38,6 +39,9 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     TObjectPtr<UInputAction> jump_action;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     UInputAction* look_action;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    TSubclassOf<UUserWidget> hud_widget_class;
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -58,4 +62,7 @@ class SANDBOX_API AMyCharacter : public ACharacter {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float jetpack_fuel{100.0f};
 };

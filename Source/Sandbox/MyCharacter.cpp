@@ -18,6 +18,13 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    if (hud_widget_class) {
+        auto* hud_widget = CreateWidget<UUserWidget>(GetWorld(), hud_widget_class);
+        if (hud_widget) {
+            hud_widget->AddToViewport();
+        }
+    }
+
     auto& char_movement{*GetCharacterMovement()};
     char_movement.MaxWalkSpeed = this->move_speed;
     char_movement.MaxAcceleration = this->acceleration;
