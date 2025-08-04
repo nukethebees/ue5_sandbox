@@ -42,6 +42,8 @@ class SANDBOX_API AMyPlayerController
     TSoftObjectPtr<UInputAction> toggle_mouse_action;
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputAction> mouse_click_action;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    TSoftObjectPtr<UInputAction> toggle_torch_action;
 
     UFUNCTION()
     void look(FInputActionValue const& value);
@@ -49,4 +51,6 @@ class SANDBOX_API AMyPlayerController
     void toggle_mouse(FInputActionValue const& value);
     UFUNCTION()
     void mouse_click(FInputActionValue const& value);
+    UFUNCTION()
+    void toggle_torch(FInputActionValue const& value);
 };

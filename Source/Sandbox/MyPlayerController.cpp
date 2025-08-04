@@ -58,6 +58,11 @@ void AMyPlayerController::SetupInputComponent() {
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::mouse_click);
+
+        eic->BindAction(toggle_torch_action.LoadSynchronous(),
+                        ETriggerEvent::Started,
+                        this,
+                        &AMyPlayerController::toggle_torch);
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
@@ -107,5 +112,10 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
                 }
             }
         }
+    }
+}
+void AMyPlayerController::toggle_torch(FInputActionValue const& value) {
+    if (controlled_character) {
+        controlled_character->toggle_torch();
     }
 }
