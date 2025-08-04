@@ -140,3 +140,12 @@ void AMyCharacter::reset_torch() {
     auto const fwd_rot{GetActorForwardVector().Rotation()};
     torch_component->SetWorldRotation(fwd_rot);
 }
+void AMyCharacter::toggle_torch() {
+    if (!torch_component) {
+        print_msg("No torch");
+        return;
+    }
+
+    torch_on = !torch_on;
+    torch_component->SetVisibility(torch_on);
+}

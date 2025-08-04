@@ -94,8 +94,12 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     USpotLightComponent* torch_component;
     UFUNCTION()
     void aim_torch(FVector const& world_location);
+    UFUNCTION()
     void reset_torch();
+    UFUNCTION()
+    void toggle_torch();
   private:
     float jetpack_fuel_previous{0.0f};
     bool is_jetpacking{false};
+    bool torch_on{true};
 };
