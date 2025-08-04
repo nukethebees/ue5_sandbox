@@ -6,6 +6,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -66,6 +67,7 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     void look(FInputActionValue const& value);
     UFUNCTION()
     void start_jetpack(FInputActionValue const& value);
+    UFUNCTION()
     void stop_jetpack(FInputActionValue const& value);
 
     UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -86,6 +88,13 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     float jetpack_fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float jetpack_force{600.0f};
+
+    // Torch
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
+    USpotLightComponent* torch_component;
+    UFUNCTION()
+    void aim_torch(FVector const& world_location);
+    void reset_torch();
   private:
     float jetpack_fuel_previous{0.0f};
     bool is_jetpacking{false};
