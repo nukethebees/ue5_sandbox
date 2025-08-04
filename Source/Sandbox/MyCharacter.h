@@ -9,10 +9,11 @@
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "FuelWidget.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
-#include "FuelWidget.h"
+#include "JumpWidget.h"
 
 #include "MyCharacter.generated.h"
 
@@ -45,9 +46,13 @@ class SANDBOX_API AMyCharacter : public ACharacter {
 
     // UI
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-    TSubclassOf<UFuelWidget> hud_widget_class;
+    TSubclassOf<UFuelWidget> hud_fuel_widget_class;
     UPROPERTY()
-    UFuelWidget* hud_widget{nullptr};
+    UFuelWidget* hud_fuel_widget{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    TSubclassOf<UJumpWidget> hud_jump_widget_class;
+    UPROPERTY()
+    UJumpWidget* hud_jump_widget{nullptr};
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
