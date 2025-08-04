@@ -46,6 +46,8 @@ class SANDBOX_API AMyPlayerController
     TSoftObjectPtr<UInputAction> toggle_torch_action;
     UPROPERTY(EditAnywhere, Category = "Input")
     TSoftObjectPtr<UInputAction> scroll_torch_cone_action;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    TSoftObjectPtr<UInputAction> warp_to_cursor_action;
 
     UFUNCTION()
     void look(FInputActionValue const& value);
@@ -57,4 +59,6 @@ class SANDBOX_API AMyPlayerController
     void toggle_torch(FInputActionValue const& value);
     UFUNCTION()
     void scroll_torch_cone(FInputActionValue const & value);
+    UFUNCTION()
+    void warp_to_cursor(FInputActionValue const & value);
 };

@@ -149,3 +149,21 @@ void AMyCharacter::toggle_torch() {
     torch_on = !torch_on;
     torch_component->SetVisibility(torch_on);
 }
+void AMyCharacter::warp_to_location(FVector const target_location) {
+    auto const current_location{GetActorLocation()};
+    auto offset{target_location - current_location};
+
+    if (offset.Size() > max_warp_distance) {
+        // offset = offset.GetSafeNormal() * max_warp_distance;
+
+        static auto const fmt{FText::FromStringView(TEXT("Warp of {0} is beyond max of {1}."))};
+        auto const msg{
+            FText::Format(fmt, FText::AsNumber(offset.Size()), FText::AsNumber(max_warp_distance))};
+        print_msg(msg.ToString());
+
+        return;
+    }
+
+    auto const final_location{current_location + offset};
+    SetActorLocation(final_location);
+}

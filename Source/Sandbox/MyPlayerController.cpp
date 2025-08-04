@@ -69,6 +69,10 @@ void AMyPlayerController::SetupInputComponent() {
                         this,
                         &AMyPlayerController::scroll_torch_cone);
 
+        eic->BindAction(warp_to_cursor_action.LoadSynchronous(),
+                        ETriggerEvent::Completed,
+                        this,
+                        &AMyPlayerController::warp_to_cursor);
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
@@ -142,4 +146,29 @@ void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
 
     auto const new_inner{FMath::Clamp(new_outer * 0.7f, 2.0f, new_outer)};
     torch->SetInnerConeAngle(new_inner);
+}
+void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
+    if (!controlled_character) {
+        print_msg(TEXT("No char to warp"));
+        return;
+    }
+    if (!bShowMouseCursor) {
+        return;
+    }
+
+    FVector world_location;
+    FVector world_direction;
+
+    if (DeprojectMousePositionToWorld(world_location, world_direction)) {
+        auto const start{world_location};
+        auto const end{start + world_direction * 10000.0f};
+
+        FHitResult hit;
+        FCollisionQueryParams params;
+        params.AddIgnoredActor(controlled_character);
+
+        if (GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)) {
+            controlled_character->warp_to_location(hit.Location);
+        }
+    }
 }

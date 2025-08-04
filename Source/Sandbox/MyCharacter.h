@@ -88,6 +88,8 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     float jetpack_fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float jetpack_force{600.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float max_warp_distance{2000.0f};
 
     // Torch
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
@@ -98,6 +100,8 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     void reset_torch();
     UFUNCTION()
     void toggle_torch();
+    UFUNCTION()
+    void warp_to_location(FVector const target_location);
   private:
     float jetpack_fuel_previous{0.0f};
     bool is_jetpacking{false};
