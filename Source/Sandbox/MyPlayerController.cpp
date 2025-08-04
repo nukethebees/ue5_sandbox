@@ -168,7 +168,8 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
         params.AddIgnoredActor(controlled_character);
 
         if (GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)) {
-            controlled_character->warp_to_location(hit.Location);
+            controlled_character->warp_component->warp_to_location(controlled_character,
+                                                                   hit.Location);
         }
     }
 }
