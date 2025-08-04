@@ -63,6 +63,12 @@ void AMyPlayerController::SetupInputComponent() {
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::toggle_torch);
+
+        eic->BindAction(scroll_torch_cone_action.LoadSynchronous(),
+                        ETriggerEvent::Triggered,
+                        this,
+                        &AMyPlayerController::scroll_torch_cone);
+
     } else {
         print_msg(TEXT("Didn't get EIC."));
     }
@@ -118,4 +124,22 @@ void AMyPlayerController::toggle_torch(FInputActionValue const& value) {
     if (controlled_character) {
         controlled_character->toggle_torch();
     }
+}
+void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
+    if (!controlled_character || !controlled_character->torch_component) {
+        print_msg("No char or torch");
+    }
+
+    auto const scroll_delta{value.Get<float>()};
+    auto* const torch{controlled_character->torch_component};
+
+    static constexpr auto min_cone{5.0f};
+    static constexpr auto max_cone{15.0f};
+
+    auto const new_outer{
+        FMath::Clamp(torch->OuterConeAngle + scroll_delta * 2.0f, min_cone, max_cone)};
+    torch->SetOuterConeAngle(new_outer);
+
+    auto const new_inner{FMath::Clamp(new_outer * 0.7f, 2.0f, new_outer)};
+    torch->SetInnerConeAngle(new_inner);
 }
