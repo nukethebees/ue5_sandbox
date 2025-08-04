@@ -31,16 +31,19 @@ class SANDBOX_API AMyCharacter : public ACharacter {
   protected:
     virtual void BeginPlay() override;
 
+    // Input
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputMappingContext> first_person_context;
-
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> move_action;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> jump_action;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* look_action;
+    TObjectPtr<UInputAction> look_action;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jetpack_action;
 
+    // UI
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     TSubclassOf<UFuelWidget> hud_widget_class;
     UPROPERTY()
@@ -56,16 +59,29 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     void move(FInputActionValue const& value);
     UFUNCTION()
     void look(FInputActionValue const& value);
+    UFUNCTION()
+    void start_jetpack(FInputActionValue const& value);
+    void stop_jetpack(FInputActionValue const& value);
 
     UPROPERTY(VisibleAnywhere, Category = Camera)
     UCameraComponent* first_person_camera_component;
 
+    // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float move_speed{800.0f};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_fuel{100.0f};
+    float jetpack_fuel{0.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float jetpack_fuel_max{2.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float jetpack_fuel_recharge_rate{1.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float jetpack_fuel_consumption_rate{1.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float jetpack_force{600.0f};
+  private:
+    float jetpack_fuel_previous{0.0f};
+    bool is_jetpacking{false};
 };

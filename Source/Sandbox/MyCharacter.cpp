@@ -18,6 +18,9 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    jetpack_fuel = jetpack_fuel_max;
+    jetpack_fuel_previous = jetpack_fuel;
+
     if (hud_widget_class) {
         hud_widget = CreateWidget<UFuelWidget>(GetWorld(), hud_widget_class);
         if (hud_widget) {
@@ -32,7 +35,7 @@ void AMyCharacter::BeginPlay() {
 
     if (auto* pc{Cast<APlayerController>(this->Controller)}) {
         using EIPS = UEnhancedInputLocalPlayerSubsystem;
-        auto local_player{pc->GetLocalPlayer()};
+        auto const* local_player{pc->GetLocalPlayer()};
 
         if (auto* subsystem{ULocalPlayer::GetSubsystem<EIPS>(local_player)}) {
             subsystem->AddMappingContext(this->first_person_context, 0);
@@ -43,6 +46,23 @@ void AMyCharacter::BeginPlay() {
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
+
+    if (is_jetpacking) {
+        if (jetpack_fuel > 0.0f) {
+            auto const jp_launch{FVector(0, 0, jetpack_force)};
+            LaunchCharacter(jp_launch, false, true);
+            jetpack_fuel -= jetpack_fuel_consumption_rate * DeltaTime;
+            jetpack_fuel = FMath::Clamp(jetpack_fuel, 0.0f, jetpack_fuel_max);
+        }
+    } else {
+        jetpack_fuel += jetpack_fuel_recharge_rate * DeltaTime;
+        jetpack_fuel = FMath::Clamp(jetpack_fuel, 0.0f, jetpack_fuel_max);
+    }
+
+    if (!FMath::IsNearlyEqual(jetpack_fuel, jetpack_fuel_previous, 0.01f)) {
+        hud_widget->update_fuel(this->jetpack_fuel);
+        jetpack_fuel_previous = jetpack_fuel;
+    }
 }
 
 // Called to bind functionality to input
@@ -53,6 +73,11 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         // Bind Jump Actions
         eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
         eic->BindAction(jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+
+        eic->BindAction(
+            jetpack_action, ETriggerEvent::Triggered, this, &AMyCharacter::start_jetpack);
+        eic->BindAction(
+            jetpack_action, ETriggerEvent::Completed, this, &AMyCharacter::stop_jetpack);
     }
 }
 
@@ -74,4 +99,10 @@ void AMyCharacter::look(FInputActionValue const& value) {
         AddControllerYawInput(look_axis_value.X);
         AddControllerPitchInput(look_axis_value.Y);
     }
+}
+void AMyCharacter::start_jetpack(FInputActionValue const& value) {
+    is_jetpacking = true;
+}
+void AMyCharacter::stop_jetpack(FInputActionValue const& value) {
+    is_jetpacking = false;
 }
