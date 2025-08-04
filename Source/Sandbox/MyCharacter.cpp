@@ -18,6 +18,8 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    torch_component = Cast<USpotLightComponent>(GetDefaultSubobjectByName(TEXT("torch")));
+
     jetpack_fuel = jetpack_fuel_max;
     jetpack_fuel_previous = jetpack_fuel;
 
@@ -116,4 +118,25 @@ void AMyCharacter::start_jetpack(FInputActionValue const& value) {
 }
 void AMyCharacter::stop_jetpack(FInputActionValue const& value) {
     is_jetpacking = false;
+}
+
+void AMyCharacter::aim_torch(FVector const& world_location) {
+    if (!torch_component) {
+        print_msg("No torch");
+        return;
+    }
+
+    auto const location{torch_component->GetComponentLocation()};
+    auto const direction{(world_location - location).GetSafeNormal()};
+    auto const look_at_rotation{direction.Rotation()};
+    torch_component->SetWorldRotation(look_at_rotation);
+}
+void AMyCharacter::reset_torch() {
+    if (!torch_component) {
+        print_msg("No torch");
+        return;
+    }
+
+    auto const fwd_rot{GetActorForwardVector().Rotation()};
+    torch_component->SetWorldRotation(fwd_rot);
 }

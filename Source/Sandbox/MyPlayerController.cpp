@@ -24,6 +24,23 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
         controlled_character->my_player_controller = this;
     }
 }
+void AMyPlayerController::Tick(float DeltaSeconds) {
+    Super::Tick(DeltaSeconds);
+
+    if (!controlled_character) {
+        print_msg(TEXT("No controlled character"));
+        return;
+    }
+
+    if (bShowMouseCursor) {
+        FVector world_location;
+        FVector world_direction;
+        if (DeprojectMousePositionToWorld(world_location, world_direction)) {
+            auto const target_location{world_location + world_direction * 1000.0f};
+            controlled_character->aim_torch(target_location);
+        }
+    }
+}
 
 void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
@@ -56,13 +73,14 @@ void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
 
     if (bShowMouseCursor) {
         print_msg(TEXT("Disabling mouse cursor."));
-        
+
         auto input_mode{FInputModeGameOnly()};
         SetInputMode(input_mode);
         bShowMouseCursor = false;
+        controlled_character->reset_torch();
     } else {
         print_msg(TEXT("Enabling mouse cursor."));
-        
+
         auto input_mode{FInputModeGameAndUI()};
         SetInputMode(input_mode);
         bShowMouseCursor = true;

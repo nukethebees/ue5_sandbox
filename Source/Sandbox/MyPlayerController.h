@@ -18,13 +18,16 @@
  *
  */
 UCLASS()
-class SANDBOX_API AMyPlayerController : public APlayerController, public print_msg_mixin {
+class SANDBOX_API AMyPlayerController
+    : public APlayerController
+    , public print_msg_mixin {
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
   protected:
     virtual void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
+    virtual void Tick(float DeltaSeconds) override;
   public:
     virtual void SetupInputComponent() override;
 
@@ -43,7 +46,7 @@ class SANDBOX_API AMyPlayerController : public APlayerController, public print_m
     UFUNCTION()
     void look(FInputActionValue const& value);
     UFUNCTION()
-    void toggle_mouse(FInputActionValue const & value);
+    void toggle_mouse(FInputActionValue const& value);
     UFUNCTION()
-    void mouse_click(FInputActionValue const & value);
+    void mouse_click(FInputActionValue const& value);
 };
