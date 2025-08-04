@@ -13,10 +13,12 @@ class SANDBOX_API UJumpWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     UFUNCTION(BlueprintCallable)
-    void update_jump(int new_jump);
+    void update_jump(int32 new_jump);
   protected:
     virtual void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* jump_text;
+  private:
+    int32 previous_jump{-1};
 };
