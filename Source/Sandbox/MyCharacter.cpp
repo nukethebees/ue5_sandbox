@@ -13,6 +13,9 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    first_person_camera_component = FindComponentByClass<UCameraComponent>();
+    first_person_camera_component->bUsePawnControlRotation = true;
+
     torch_component = Cast<USpotLightComponent>(GetDefaultSubobjectByName(TEXT("torch")));
 
     jetpack_fuel = jetpack_fuel_max;

@@ -39,6 +39,13 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
             auto const target_location{world_location + world_direction * 1000.0f};
             controlled_character->aim_torch(target_location);
         }
+    } else {
+        auto const& cc{*controlled_character->first_person_camera_component};
+        auto const camera_location{cc.GetComponentLocation()};
+        auto const camera_rotation{cc.GetComponentRotation()};
+        auto const look_target{camera_location + camera_rotation.Vector() * 1000.0f};
+
+        controlled_character->aim_torch(look_target);
     }
 }
 
