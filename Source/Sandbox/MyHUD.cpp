@@ -9,33 +9,28 @@ using CFinder = ConstructorHelpers::FClassFinder<T>;
 void AMyHUD::BeginPlay() {
     Super::BeginPlay();
 
-    if (fuel_widget_class) {
-        fuel_widget = CreateWidget<UFuelWidget>(GetWorld(), fuel_widget_class);
-        if (fuel_widget) {
-            fuel_widget->AddToViewport();
+    if (main_widget_class) {
+        main_widget = CreateWidget<UMainHUDWidget>(GetWorld(), main_widget_class);
+        if (main_widget) {
+            main_widget->AddToViewport();
         }
     } else {
-        UE_LOG(LogTemp, Error, TEXT("MyHUD: No fuel widget class."));
-    }
-
-    if (jump_widget_class) {
-        jump_widget = CreateWidget<UJumpWidget>(GetWorld(), jump_widget_class);
-        if (jump_widget) {
-            jump_widget->AddToViewport();
-        }
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("MyHUD: No jump widget class."));
+        UE_LOG(LogTemp, Error, TEXT("MyHUD: No main_widget_class."));
     }
 }
 
 void AMyHUD::update_fuel(float new_fuel) {
-    if (fuel_widget) {
-        fuel_widget->update_fuel(new_fuel);
+    if (main_widget) {
+        main_widget->update_fuel(new_fuel);
+    } else {
+        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_fuel no main_widget_class."));
     }
 }
 
 void AMyHUD::update_jump(int32 new_jump) {
-    if (jump_widget) {
-        jump_widget->update_jump(new_jump);
+    if (main_widget) {
+        main_widget->update_jump(new_jump);
+    } else {
+        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_jump no main_widget_class."));
     }
 }
