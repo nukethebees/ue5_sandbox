@@ -1,14 +1,10 @@
 #include "MyCharacter.h"
+#include "Sandbox/MyHud.h"
 
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
     warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
-}
-
-void AMyCharacter::print_msg(FString const& msg) {
-    auto const fmsg{FString::Printf(TEXT("%s: %s"), *this->GetName(), *msg)};
-    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, fmsg);
 }
 
 // Called when the game starts or when spawned
@@ -21,21 +17,6 @@ void AMyCharacter::BeginPlay() {
 
     jetpack_fuel = jetpack_fuel_max;
     jetpack_fuel_previous = jetpack_fuel;
-
-    if (hud_fuel_widget_class) {
-        hud_fuel_widget = CreateWidget<UFuelWidget>(GetWorld(), hud_fuel_widget_class);
-        if (hud_fuel_widget) {
-            hud_fuel_widget->AddToViewport();
-            hud_fuel_widget->update_fuel(this->jetpack_fuel);
-        }
-    }
-    if (hud_jump_widget_class) {
-        hud_jump_widget = CreateWidget<UJumpWidget>(GetWorld(), hud_jump_widget_class);
-        if (hud_jump_widget) {
-            hud_jump_widget->AddToViewport();
-            hud_jump_widget->update_jump(this->JumpCurrentCount);
-        }
-    }
 
     auto& char_movement{*GetCharacterMovement()};
     char_movement.MaxWalkSpeed = this->move_speed;
@@ -57,8 +38,6 @@ void AMyCharacter::BeginPlay() {
 void AMyCharacter::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
-    hud_jump_widget->update_jump(this->JumpCurrentCount);
-
     if (is_jetpacking) {
         if (jetpack_fuel > 0.0f) {
             auto const jp_launch{FVector(0, 0, jetpack_force)};
@@ -71,9 +50,15 @@ void AMyCharacter::Tick(float DeltaTime) {
         jetpack_fuel = FMath::Clamp(jetpack_fuel, 0.0f, jetpack_fuel_max);
     }
 
-    if (!FMath::IsNearlyEqual(jetpack_fuel, jetpack_fuel_previous, 0.01f)) {
-        hud_fuel_widget->update_fuel(this->jetpack_fuel);
-        jetpack_fuel_previous = jetpack_fuel;
+    if (auto* pc{Cast<APlayerController>(GetController())}) {
+        if (auto* hud{Cast<AMyHUD>(pc->GetHUD())}) {
+            hud->update_fuel(jetpack_fuel);
+            hud->update_jump(JumpCurrentCount);
+        } else {
+            print_msg(TEXT("No HUD when updating HUD."));
+        }
+    } else {
+        print_msg(TEXT("No PC when updating HUD."));
     }
 }
 
