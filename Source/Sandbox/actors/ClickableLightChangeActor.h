@@ -4,7 +4,7 @@
 
 #include <array>
 
-#include "Clickable.h"
+#include "Sandbox/Clickable.h"
 #include "Components/PointLightComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
