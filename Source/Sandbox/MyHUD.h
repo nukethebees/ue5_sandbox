@@ -4,8 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
-#include "Sandbox/widgets/FuelWidget.h"
-#include "Sandbox/widgets/JumpWidget.h"
+#include "Sandbox/widgets/MainHUDWidget.h"
 
 #include "MyHUD.generated.h"
 
@@ -17,17 +16,11 @@ class SANDBOX_API AMyHUD : public AHUD {
   protected:
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")
-    TSubclassOf<UFuelWidget> fuel_widget_class;
-
-    UPROPERTY(EditDefaultsOnly, Category = "UI")
-    TSubclassOf<UJumpWidget> jump_widget_class;
+    TSubclassOf<UMainHUDWidget> main_widget_class;
 
     // Widget instances
     UPROPERTY()
-    UFuelWidget* fuel_widget;
-
-    UPROPERTY()
-    UJumpWidget* jump_widget;
+    UMainHUDWidget* main_widget;
   public:
     // Update methods
     void update_fuel(float new_fuel);
