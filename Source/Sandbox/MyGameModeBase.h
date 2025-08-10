@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MyCharacter.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/MyHud.h"
 
 #include "MyGameModeBase.generated.h"
 
@@ -15,6 +16,8 @@ class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
     , public print_msg_mixin {
     GENERATED_BODY()
+  public:
+    AMyGameModeBase();
   protected:
     virtual void BeginPlay() override;
 };

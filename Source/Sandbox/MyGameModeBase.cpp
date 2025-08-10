@@ -16,3 +16,6 @@ void AMyGameModeBase::BeginPlay() {
     }
 }
 
+AMyGameModeBase::AMyGameModeBase() {
+    HUDClass = AMyHUD::StaticClass();
+}
