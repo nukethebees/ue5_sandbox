@@ -6,7 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyCharacter.h"
-#include "print_msg_mixin.hpp"
+#include "Sandbox/mixins/print_msg_mixin.hpp"
 
 #include "MyGameModeBase.generated.h"
 

@@ -10,11 +10,11 @@
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "FuelWidget.h"
+#include "Sandbox/widgets/FuelWidget.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
-#include "JumpWidget.h"
+#include "Sandbox/widgets/JumpWidget.h"
 #include "WarpComponent.h"
 
 #include "MyCharacter.generated.h"

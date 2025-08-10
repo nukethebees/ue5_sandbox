@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "MyPlayerController.h"
-#include "TalkingPillar.h"
+#include "Sandbox/actors/TalkingPillar.h"
 
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
