@@ -13,8 +13,6 @@ UCLASS()
 class SANDBOX_API AMyHUD : public AHUD {
     GENERATED_BODY()
   public:
-    AMyHUD();
-
     virtual void BeginPlay() override;
   protected:
     // Widget classes
@@ -30,4 +28,8 @@ class SANDBOX_API AMyHUD : public AHUD {
 
     UPROPERTY()
     UJumpWidget* jump_widget;
+  public:
+    // Update methods
+    void update_fuel(float new_fuel);
+    void update_jump(int32 new_jump);
 };

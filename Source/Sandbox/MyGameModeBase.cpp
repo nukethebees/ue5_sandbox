@@ -15,7 +15,3 @@ void AMyGameModeBase::BeginPlay() {
         pc->Possess(my_char);
     }
 }
-
-AMyGameModeBase::AMyGameModeBase() {
-    HUDClass = AMyHUD::StaticClass();
-}

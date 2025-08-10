@@ -16,8 +16,6 @@ class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
     , public print_msg_mixin {
     GENERATED_BODY()
-  public:
-    AMyGameModeBase();
   protected:
     virtual void BeginPlay() override;
 };

@@ -10,10 +10,11 @@
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Sandbox/widgets/FuelWidget.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
+#include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
 #include "WarpComponent.h"
 
@@ -25,12 +26,12 @@ class UInputComponent;
 class AMyPlayerController;
 
 UCLASS()
-class SANDBOX_API AMyCharacter : public ACharacter {
+class SANDBOX_API AMyCharacter
+    : public ACharacter
+    , public print_msg_mixin {
     GENERATED_BODY()
   public:
     AMyCharacter();
-  private:
-    void print_msg(FString const& msg);
   protected:
     virtual void BeginPlay() override;
 
@@ -45,16 +46,6 @@ class SANDBOX_API AMyCharacter : public ACharacter {
     TObjectPtr<UInputAction> look_action;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> jetpack_action;
-
-    // UI
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-    TSubclassOf<UFuelWidget> hud_fuel_widget_class;
-    UPROPERTY()
-    UFuelWidget* hud_fuel_widget{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-    TSubclassOf<UJumpWidget> hud_jump_widget_class;
-    UPROPERTY()
-    UJumpWidget* hud_jump_widget{nullptr};
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
