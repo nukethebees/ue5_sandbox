@@ -1,8 +1,5 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Sandbox/actor_components/LoopingLiftComponent.h"
 
-// Sets default values for this component's properties
 ULoopingLiftComponent::ULoopingLiftComponent() {
     PrimaryComponentTick.bCanEverTick = true;
 }
