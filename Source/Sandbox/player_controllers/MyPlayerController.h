@@ -8,7 +8,7 @@
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
-#include "MyCharacter.h"
+#include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Engine/GameViewportClient.h"
 
