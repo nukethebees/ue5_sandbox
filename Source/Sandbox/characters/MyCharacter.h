@@ -16,7 +16,7 @@
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
-#include "WarpComponent.h"
+#include "Sandbox/WarpComponent.h"
 
 #include "MyCharacter.generated.h"
 

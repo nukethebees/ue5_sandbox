@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
-#include "MyCharacter.h"
+#include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/MyHud.h"
 
