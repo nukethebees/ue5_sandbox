@@ -41,6 +41,16 @@ class SANDBOX_API ULevelSelectWidget : public UUserWidget {
     UButton* Button_Level5;
     UPROPERTY(meta = (BindWidget))
     UButton* Button_Level6;
+    UPROPERTY(meta = (BindWidget))
+    UButton* Button_Level7;
+    UPROPERTY(meta = (BindWidget))
+    UButton* Button_Level8;
+    UPROPERTY(meta = (BindWidget))
+    UButton* Button_Level9;
+    UPROPERTY(meta = (BindWidget))
+    UButton* Button_Level10;
+    UPROPERTY(meta = (BindWidget))
+    UButton* Button_Level11;
   private:
     UFUNCTION()
     void open_level_1();
@@ -54,5 +64,15 @@ class SANDBOX_API ULevelSelectWidget : public UUserWidget {
     void open_level_5();
     UFUNCTION()
     void open_level_6();
+    UFUNCTION()
+    void open_level_7();
+    UFUNCTION()
+    void open_level_8();
+    UFUNCTION()
+    void open_level_9();
+    UFUNCTION()
+    void open_level_10();
+    UFUNCTION()
+    void open_level_11();
     void open_level_x(int32 number);
 };
