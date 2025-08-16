@@ -23,11 +23,11 @@ class SANDBOX_API AMovesWhenClickedActor
     virtual void Tick(float DeltaTime) override;
     virtual void OnClicked() override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float move_speed{300.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float acceleration{100.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float move_duration{2.0f};
   private:
     bool is_moving{false};
