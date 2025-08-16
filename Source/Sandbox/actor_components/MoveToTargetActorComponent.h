@@ -1,18 +1,20 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 #include "Sandbox/interfaces/clickable.h"
 
-#include "SlidingPlatformActorComponent.generated.h"
+#include "MoveToTargetActorComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API USlidingPlatformActorComponent
+class SANDBOX_API UMoveToTargetActorComponent
     : public UActorComponent
     , public IClickable {
     GENERATED_BODY()
   public:
-    USlidingPlatformActorComponent();
+    UMoveToTargetActorComponent();
   protected:
     virtual void BeginPlay() override;
     virtual void OnClicked() override;
@@ -26,6 +28,8 @@ class SANDBOX_API USlidingPlatformActorComponent
     float acceleration{100.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float move_distance{500.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    USceneComponent* target_component{nullptr};
   private:
     bool moving_forward{true};
     FVector start_location;
