@@ -117,9 +117,28 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
     FVector world_location;
     FVector world_direction;
     if (DeprojectMousePositionToWorld(world_location, world_direction)) {
-        auto end{world_location + (world_direction * 10000)};
+        auto const end{world_location + (world_direction * 10000)};
         FHitResult hit_result;
         GetWorld()->LineTraceSingleByChannel(hit_result, world_location, end, ECC_Visibility);
+
+        DrawDebugLine(GetWorld(),
+                      world_location - FVector(0.0f, 0.0f, 10.0f),
+                      end,
+                      FColor::Green,
+                      false, // Not persistent
+                      2.0f,  // Duration in seconds
+                      0,     // Depth priority
+                      1.0f   // Thickness
+        );
+        if (hit_result.bBlockingHit) {
+            DrawDebugSphere(GetWorld(),
+                            hit_result.ImpactPoint,
+                            10.0f, // Radius
+                            12,    // Segments
+                            FColor::Red,
+                            false,
+                            2.0f);
+        }
 
         if (auto* actor_hit{hit_result.GetActor()}) {
             IClickable::try_click(actor_hit);
