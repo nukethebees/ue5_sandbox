@@ -18,6 +18,9 @@ void AMyCharacter::BeginPlay() {
     first_person_camera_component->bUsePawnControlRotation = true;
 
     torch_component = Cast<USpotLightComponent>(GetDefaultSubobjectByName(TEXT("torch")));
+    torch_component->bCastVolumetricShadow = true;
+    torch_component->VolumetricScatteringIntensity = 1.0f;
+    torch_component->AttenuationRadius = 2000.0f;
 
     jetpack_fuel = jetpack_fuel_max;
     jetpack_fuel_previous = jetpack_fuel;
