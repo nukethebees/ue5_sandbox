@@ -1,5 +1,6 @@
 #include "MyCharacter.h"
-#include "Sandbox/MyHud.h"
+
+#include "Sandbox/huds/MyHud.h"
 
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;

@@ -6,8 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/huds/MyHud.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
-#include "Sandbox/MyHud.h"
 
 #include "MyGameModeBase.generated.h"
 

@@ -13,10 +13,10 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
+#include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
-#include "Sandbox/WarpComponent.h"
 
 #include "MyCharacter.generated.h"
 
