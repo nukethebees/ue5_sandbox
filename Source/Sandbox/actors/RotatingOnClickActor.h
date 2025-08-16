@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/Clickable.h"
+#include "Sandbox/interfaces/Clickable.h"
 
 #include "RotatingOnClickActor.generated.h"
 

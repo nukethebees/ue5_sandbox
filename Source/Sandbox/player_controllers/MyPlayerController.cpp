@@ -122,11 +122,9 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
         GetWorld()->LineTraceSingleByChannel(hit_result, world_location, end, ECC_Visibility);
 
         if (auto* actor_hit{hit_result.GetActor()}) {
-            if (actor_hit->GetClass()->ImplementsInterface(UClickable::StaticClass())) {
-                auto* interface{Cast<IClickable>(actor_hit)};
-                if (interface) {
-                    interface->OnClicked();
-                }
+            IClickable::try_click(actor_hit);
+            for (auto* component : actor_hit->GetComponents().Array()) {
+                IClickable::try_click(component);
             }
         }
     }
