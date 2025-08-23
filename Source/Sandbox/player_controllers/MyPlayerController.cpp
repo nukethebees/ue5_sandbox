@@ -99,7 +99,7 @@ void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
         auto input_mode{FInputModeGameOnly()};
         SetInputMode(input_mode);
         bShowMouseCursor = false;
-        controlled_character->reset_torch();
+        controlled_character->reset_torch_position();
     } else {
         print_msg(TEXT("Enabling mouse cursor."));
 
