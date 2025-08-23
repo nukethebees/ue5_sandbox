@@ -21,6 +21,7 @@ void AMyCharacter::BeginPlay() {
     torch_component->bCastVolumetricShadow = true;
     torch_component->VolumetricScatteringIntensity = 1.0f;
     torch_component->AttenuationRadius = 2000.0f;
+    set_torch(false);
 
     jetpack_fuel = jetpack_fuel_max;
     jetpack_fuel_previous = jetpack_fuel;
@@ -122,7 +123,7 @@ void AMyCharacter::aim_torch(FVector const& world_location) {
     auto const look_at_rotation{direction.Rotation()};
     torch_component->SetWorldRotation(look_at_rotation);
 }
-void AMyCharacter::reset_torch() {
+void AMyCharacter::reset_torch_position() {
     if (!torch_component) {
         print_msg("No torch");
         return;
@@ -132,11 +133,14 @@ void AMyCharacter::reset_torch() {
     torch_component->SetWorldRotation(fwd_rot);
 }
 void AMyCharacter::toggle_torch() {
+    set_torch(!torch_on);
+}
+void AMyCharacter::set_torch(bool on) {
     if (!torch_component) {
         print_msg("No torch");
         return;
     }
 
-    torch_on = !torch_on;
+    torch_on = on;
     torch_component->SetVisibility(torch_on);
 }

@@ -87,9 +87,11 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void aim_torch(FVector const& world_location);
     UFUNCTION()
-    void reset_torch();
+    void reset_torch_position();
     UFUNCTION()
     void toggle_torch();
+    UFUNCTION()
+    void set_torch(bool on);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
     UWarpComponent* warp_component{nullptr};
