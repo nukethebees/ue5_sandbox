@@ -8,10 +8,8 @@ void ADayNightCycle::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
     if (sun_light) {
-        auto const current_rotation{sun_light->GetActorRotation()};
-        auto const delta_pitch{rotation_speed_degrees_per_second * DeltaTime};
+        FRotator delta_rotation(0.0f, rotation_speed_degrees_per_second * DeltaTime, 0.0f);
+        sun_light->AddActorLocalRotation(delta_rotation);
 
-        sun_light->SetActorRotation(FRotator(
-            current_rotation.Pitch + delta_pitch, current_rotation.Yaw, current_rotation.Roll));
     }
 }
