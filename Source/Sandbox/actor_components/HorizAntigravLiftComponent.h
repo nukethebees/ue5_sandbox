@@ -2,30 +2,31 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "AntigravLiftActorComponent.generated.h"
+#include "HorizAntigravLiftComponent.generated.h"
 
 class UBoxComponent;
+class AMyCharacter;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UAntigravLiftActorComponent : public UActorComponent {
+class SANDBOX_API UHorizAntigravLiftComponent : public UActorComponent {
     GENERATED_BODY()
   public:
-    UAntigravLiftActorComponent();
+    UHorizAntigravLiftComponent();
   protected:
     virtual void BeginPlay() override;
+  public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Float")
+    UBoxComponent* float_zone{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Float")
+    float float_speed{150.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Float")
+    FVector float_direction = FVector{1.0f, 0.0f, 0.0f};
+
     virtual void TickComponent(float DeltaTime,
                                ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lift")
-    UBoxComponent* lift_zone{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lift")
-    float lift_speed{250.0f};
-
-    // Determines lift direction
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lift")
-    bool is_antigravity{true};
 
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
@@ -41,7 +42,5 @@ class SANDBOX_API UAntigravLiftActorComponent : public UActorComponent {
                       UPrimitiveComponent* OtherComp,
                       int32 OtherBodyIndex);
   private:
-    void display_n_floating();
-
-    TSet<ACharacter *> floating_characters;
+    TSet<AMyCharacter *> floating_characters;
 };
