@@ -34,3 +34,11 @@ void AMyHUD::update_jump(int32 new_jump) {
         UE_LOG(LogTemp, Error, TEXT("MyHUD: update_jump no main_widget_class."));
     }
 }
+
+void AMyHUD::update_coin(int32 new_coin_count) {
+    if (main_widget) {
+        main_widget->update_coin(new_coin_count);
+    } else {
+        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_coin no main_widget_class."));
+    }
+}

@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "Blueprint/UserWidget.h"
@@ -7,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
+#include "Sandbox/widgets/CoinWidget.h"
 
 #include "MainHUDWidget.generated.h"
 
@@ -21,9 +20,16 @@ class SANDBOX_API UMainHUDWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UJumpWidget* jump_widget;
+
+    UPROPERTY(meta = (BindWidget))
+    UCoinWidget* coin_widget;
   public:
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintCallable, Category = "UI")
     void update_fuel(float new_fuel);
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintCallable, Category = "UI")
     void update_jump(int32 new_jump);
+    UFUNCTION(BlueprintCallable, Category = "UI")
+    void update_coin(int32 new_coin_count);
+  private:
+    void missing_widget_error(FStringView method);
 };

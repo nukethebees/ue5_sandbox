@@ -4,6 +4,8 @@
 #include "Components/ActorComponent.h"
 #include "CoinCollectorActorComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCoinCountChangedSignature, int32, new_coin_count);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UCoinCollectorActorComponent : public UActorComponent {
     GENERATED_BODY()
@@ -11,7 +13,13 @@ class SANDBOX_API UCoinCollectorActorComponent : public UActorComponent {
     UCoinCollectorActorComponent();
 
     auto coin_count() const { return coin_count_; }
-    auto add_coins(int32 number = 1) { coin_count_ += number; }
+    auto add_coins(int32 number = 1) {
+        coin_count_ += number;
+        on_coin_count_changed.Broadcast(coin_count_);
+    }
+
+    UPROPERTY(BlueprintAssignable, Category = "Coin")
+    FCoinCountChangedSignature on_coin_count_changed;
   protected:
     virtual void BeginPlay() override;
   private:

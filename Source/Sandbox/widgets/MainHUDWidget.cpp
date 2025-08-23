@@ -1,19 +1,27 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Sandbox/widgets/MainHUDWidget.h"
 
 void UMainHUDWidget::update_fuel(float new_fuel) {
-    if (fuel_widget) {
-        fuel_widget->update_fuel(new_fuel);
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("UMainHUDWidget: update_fuel no fuel_widget."));
+    if (!fuel_widget) {
+        missing_widget_error(TEXT("update_fuel"));
+        return;
     }
+    fuel_widget->update_fuel(new_fuel);
 }
 
 void UMainHUDWidget::update_jump(int32 new_jump) {
-    if (jump_widget) {
-        jump_widget->update_jump(new_jump);
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("UMainHUDWidget: update_jump no jump_widget."));
+    if (!jump_widget) {
+        missing_widget_error(TEXT("update_jump"));
+        return;
     }
+    jump_widget->update_jump(new_jump);
+}
+void UMainHUDWidget::update_coin(int32 new_coin_count) {
+    if (!coin_widget) {
+        missing_widget_error(TEXT("update_coin"));
+        return;
+    }
+    coin_widget->update_coin(new_coin_count);
+}
+void UMainHUDWidget::missing_widget_error(FStringView method) {
+    UE_LOGFMT(LogTemp, Error, "UMainHUDWidget: {Method} no widget.", ("Method", method));
 }
