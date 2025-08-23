@@ -6,6 +6,14 @@
 template <typename T>
 using CFinder = ConstructorHelpers::FClassFinder<T>;
 
+#define MAIN_WIDGET_NULL_CHECK()                                          \
+    do {                                                                  \
+        if (!main_widget) {                                               \
+            UE_LOGFMT(LogTemp, Error, "AMyHUD: main_widget not present"); \
+            return;                                                       \
+        }                                                                 \
+    } while (0)
+
 void AMyHUD::BeginPlay() {
     Super::BeginPlay();
 
@@ -23,25 +31,16 @@ void AMyHUD::BeginPlay() {
 }
 
 void AMyHUD::update_fuel(float new_fuel) {
-    if (main_widget) {
-        main_widget->update_fuel(new_fuel);
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_fuel no main_widget_class."));
-    }
+    MAIN_WIDGET_NULL_CHECK();
+    main_widget->update_fuel(new_fuel);
 }
 
 void AMyHUD::update_jump(int32 new_jump) {
-    if (main_widget) {
-        main_widget->update_jump(new_jump);
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_jump no main_widget_class."));
-    }
+    MAIN_WIDGET_NULL_CHECK();
+    main_widget->update_jump(new_jump);
 }
 
 void AMyHUD::update_coin(int32 new_coin_count) {
-    if (main_widget) {
-        main_widget->update_coin(new_coin_count);
-    } else {
-        UE_LOG(LogTemp, Error, TEXT("MyHUD: update_coin no main_widget_class."));
-    }
+    MAIN_WIDGET_NULL_CHECK();
+    main_widget->update_coin(new_coin_count);
 }
