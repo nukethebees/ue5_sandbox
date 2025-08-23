@@ -52,6 +52,8 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY()
     AMyPlayerController* my_player_controller;
+    UPROPERTY()
+    bool is_forced_movement;
 
     UFUNCTION()
     void move(FInputActionValue const& value);

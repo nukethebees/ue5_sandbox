@@ -14,6 +14,8 @@ void AMyCharacter::BeginPlay() {
 
     check(GEngine != nullptr);
 
+    is_forced_movement = false;
+
     first_person_camera_component = FindComponentByClass<UCameraComponent>();
     first_person_camera_component->bUsePawnControlRotation = true;
 
@@ -87,6 +89,10 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 }
 
 void AMyCharacter::move(FInputActionValue const& value) {
+    if (is_forced_movement) {
+        return;
+    }
+
     auto const movement_value{value.Get<FVector2D>()};
 
     if (this->Controller) {
