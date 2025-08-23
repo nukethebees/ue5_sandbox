@@ -22,7 +22,10 @@ class SANDBOX_API AMyHUD : public AHUD {
     UPROPERTY()
     UMainHUDWidget* main_widget;
   public:
-    // Update methods
+    UFUNCTION()
     void update_fuel(float new_fuel);
+    UFUNCTION()
     void update_jump(int32 new_jump);
+    UFUNCTION()
+    void update_coin(int32 new_coin_count);
 };
