@@ -13,10 +13,7 @@ class SANDBOX_API UCoinCollectorActorComponent : public UActorComponent {
     UCoinCollectorActorComponent();
 
     auto coin_count() const { return coin_count_; }
-    auto add_coins(int32 number = 1) {
-        coin_count_ += number;
-        on_coin_count_changed.Broadcast(coin_count_);
-    }
+    void add_coins(int32 number = 1);
 
     UPROPERTY(BlueprintAssignable, Category = "Coin")
     FCoinCountChangedSignature on_coin_count_changed;

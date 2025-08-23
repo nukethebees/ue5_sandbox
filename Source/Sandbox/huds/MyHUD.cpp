@@ -1,6 +1,6 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "MyHUD.h"
+
+#include "Sandbox/game_states/PlatformerGameState.h"
 #include "UObject/ConstructorHelpers.h"
 
 template <typename T>
@@ -9,13 +9,16 @@ using CFinder = ConstructorHelpers::FClassFinder<T>;
 void AMyHUD::BeginPlay() {
     Super::BeginPlay();
 
-    if (main_widget_class) {
-        main_widget = CreateWidget<UMainHUDWidget>(GetWorld(), main_widget_class);
-        if (main_widget) {
-            main_widget->AddToViewport();
-        }
-    } else {
+    if (!main_widget_class) {
         UE_LOG(LogTemp, Error, TEXT("MyHUD: No main_widget_class."));
+    }
+    main_widget = CreateWidget<UMainHUDWidget>(GetWorld(), main_widget_class);
+    if (main_widget) {
+        main_widget->AddToViewport();
+    }
+
+    if (auto* game_state{GetWorld()->GetGameState<APlatformerGameState>()}) {
+        game_state->on_coin_count_changed.AddDynamic(this, &AMyHUD::update_coin);
     }
 }
 
