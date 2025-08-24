@@ -12,7 +12,7 @@ class UInteractable : public UInterface {
 class SANDBOX_API IInteractable {
     GENERATED_BODY()
   public:
-    virtual void interact(AActor* interactor) = 0;
+    virtual void interact(AActor* interactor = nullptr) = 0;
     virtual bool can_interact(AActor const* interactor) const { return true; }
 
     template <typename T, typename U>
