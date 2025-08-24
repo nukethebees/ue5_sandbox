@@ -25,8 +25,11 @@ class SANDBOX_API ULoopingLiftComponent : public UActorComponent {
     float distance{200.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float pause_after_completion{0.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    FVector direction{FVector::UpVector};
   private:
     FVector origin;
-    bool going_up{true};
+    FVector current_direction;
+    FVector original_direction;
     float pause_timer{std::numeric_limits<float>::infinity()};
 };
