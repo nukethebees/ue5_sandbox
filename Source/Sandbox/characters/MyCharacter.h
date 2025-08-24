@@ -45,6 +45,8 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> look_action;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> interact_action;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> jetpack_action;
   public:
     virtual void Tick(float DeltaTime) override;
@@ -59,6 +61,8 @@ class SANDBOX_API AMyCharacter
     void move(FInputActionValue const& value);
     UFUNCTION()
     void look(FInputActionValue const& value);
+    UFUNCTION()
+    void interact();
     UFUNCTION()
     void start_jetpack(FInputActionValue const& value);
     UFUNCTION()
@@ -82,6 +86,11 @@ class SANDBOX_API AMyCharacter
     float jetpack_fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float jetpack_force{600.0f};
+
+    // Interaction 
+  public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    float interaction_range{200.0f};
 
     // Torch
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
