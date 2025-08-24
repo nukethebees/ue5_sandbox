@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
+#include "Sandbox/interfaces/Activatable.h"
 #include "Sandbox/interfaces/Interactable.h"
 
 #include "InteractRotateComponent.generated.h"
@@ -9,7 +10,8 @@
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractRotateComponent
     : public UActorComponent
-    , public IInteractable {
+    , public IInteractable
+    , public IActivatable {
     GENERATED_BODY()
   public:
     UInteractRotateComponent();
@@ -20,8 +22,11 @@ class SANDBOX_API UInteractRotateComponent
                                ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
     UFUNCTION()
-    void interact(AActor* const interactor) override;
+    void interact(AActor* interactor) override;
+    UFUNCTION()
+    void trigger_activation(AActor* instigator) override;
   private:
+    void start_rotation(AActor * instigator);
     void stop_rotation();
 
     UPROPERTY(EditAnywhere, Category = "Rotation")
