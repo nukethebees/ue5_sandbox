@@ -169,7 +169,8 @@ void AMyCharacter::interact() {
         }
 
         if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
-            if (interactable_component->try_interact(this)) {
+            if (interactable_component->try_interact(this) !=
+                EInteractTriggered::none_triggered) {
                 break;
             }
         }

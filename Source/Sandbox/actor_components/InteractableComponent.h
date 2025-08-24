@@ -6,6 +6,12 @@
 
 #include "InteractableComponent.generated.h"
 
+UENUM()
+enum class EInteractReady : uint8 { none_ready, some_ready, all_ready };
+
+UENUM()
+enum class EInteractTriggered : uint8 { none_triggered, some_triggered, all_triggered };
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractableComponent : public UActorComponent {
     GENERATED_BODY()
@@ -17,9 +23,9 @@ class SANDBOX_API UInteractableComponent : public UActorComponent {
     UFUNCTION(BlueprintCallable)
     void interact(AActor* const interactor);
     UFUNCTION(BlueprintCallable)
-    bool can_interact(AActor* const interactor);
+    EInteractReady can_interact(AActor* const interactor) const;
     UFUNCTION(BlueprintCallable)
-    bool try_interact(AActor* const interactor);
+    EInteractTriggered try_interact(AActor* const interactor);
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     TArray<TScriptInterface<IInteractable>> linked_interactables;
 };

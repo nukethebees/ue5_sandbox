@@ -27,33 +27,43 @@ void UInteractableComponent::BeginPlay() {
 }
 
 void UInteractableComponent::interact(AActor* const interactor) {
-    auto const* const owner{GetOwner()};
-    if (!owner) {
-        return;
-    }
-
     for (auto& target : linked_interactables) {
         if (target) {
             target->interact(interactor);
         }
     }
 }
-bool UInteractableComponent::can_interact(AActor* const interactor) {
-    for (auto& target : linked_interactables) {
+auto UInteractableComponent::can_interact(AActor* const interactor) const -> EInteractReady {
+    using enum EInteractReady;
+
+    int32 const n_interactables{linked_interactables.Num()};
+    if (!n_interactables) {
+        return none_ready;
+    }
+
+    int32 ready_interactables{0};
+    for (auto const& target : linked_interactables) {
         if (target->can_interact(interactor)) {
-            return true;
+            ++ready_interactables;
         }
     }
-    return false;
-}
-bool UInteractableComponent::try_interact(AActor* const interactor) {
-    bool any_true{false};
 
-    for (auto& target : linked_interactables) {
+    return ready_interactables == n_interactables ? all_ready : some_ready;
+}
+auto UInteractableComponent::try_interact(AActor* const interactor) -> EInteractTriggered {
+    using enum EInteractTriggered;
+
+    int32 const n_interactables{linked_interactables.Num()};
+    if (!n_interactables) {
+        return none_triggered;
+    }
+
+    int32 triggered_interactables{0};
+    for (auto const& target : linked_interactables) {
         if (target->can_interact(interactor)) {
-            any_true = true;
+            ++triggered_interactables;
             target->interact(interactor);
         }
     }
-    return any_true;
+    return triggered_interactables == n_interactables ? all_triggered : some_triggered;
 }
