@@ -13,7 +13,7 @@ class UActivatable : public UInterface {
 class SANDBOX_API IActivatable {
     GENERATED_BODY()
   public:
-    virtual void activate(AActor* instigator = nullptr) = 0;
+    virtual void trigger_activation(AActor* instigator = nullptr) = 0;
     virtual bool can_activate(AActor const* instigator) const { return true; }
 
     template <typename T, typename U>
@@ -21,7 +21,7 @@ class SANDBOX_API IActivatable {
         if (target->GetClass()->ImplementsInterface(UActivatable::StaticClass())) {
             auto const activatable{TScriptInterface<IActivatable>(target)};
             if (activatable->can_activate(instigator)) {
-                activatable->activate(instigator);
+                activatable->trigger_activation(instigator);
                 return true;
             }
         }
