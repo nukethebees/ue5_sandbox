@@ -93,18 +93,19 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 }
 
 void AMyCharacter::move(FInputActionValue const& value) {
-    if (is_forced_movement) {
-        return;
-    }
 
-    auto const movement_value{value.Get<FVector2D>()};
+    auto const movement_value{value.Get<FVector>()};
 
     if (this->Controller) {
-        auto const right{this->GetActorRightVector()};
-        AddMovementInput(right, movement_value.X);
+        if (!is_forced_movement) {
+            AddMovementInput(GetActorRightVector(), movement_value.X);
+            AddMovementInput(GetActorForwardVector(), movement_value.Y);
+        }
 
-        auto const fwd{this->GetActorForwardVector()};
-        AddMovementInput(fwd, movement_value.Y);
+        // Allow slow vertical motion when in the forced movement state
+        // to allow the characters to get unstuck if needed
+        auto const z_scale{is_forced_movement ? 0.2f : 1.0f};
+        AddMovementInput(GetActorUpVector(), movement_value.Z * z_scale);
     }
 }
 void AMyCharacter::look(FInputActionValue const& value) {
