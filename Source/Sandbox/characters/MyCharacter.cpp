@@ -1,6 +1,10 @@
 #include "MyCharacter.h"
 
+#include "Components/CapsuleComponent.h"
 #include "Sandbox/huds/MyHud.h"
+#include "Sandbox/interfaces/Interactable.h"
+#include "Sandbox/actor_components/InteractableComponent.h"
+#include "UObject/ScriptInterface.h"
 
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
@@ -76,6 +80,8 @@ void AMyCharacter::Tick(float DeltaTime) {
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
         eic->BindAction(this->move_action, ETriggerEvent::Triggered, this, &AMyCharacter::move);
+        eic->BindAction(
+            this->interact_action, ETriggerEvent::Triggered, this, &AMyCharacter::interact);
 
         // Bind Jump Actions
         eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
@@ -109,6 +115,68 @@ void AMyCharacter::look(FInputActionValue const& value) {
     if (Controller) {
         AddControllerYawInput(look_axis_value.X);
         AddControllerPitchInput(look_axis_value.Y);
+    }
+}
+void AMyCharacter::interact() {
+    auto* const world{GetWorld()};
+    if (!world) {
+        return;
+    }
+
+    auto const forward{GetActorForwardVector()};
+    static constexpr auto forward_offset{100.0f};
+
+    auto const capsule_height_offset{GetCapsuleComponent()->GetScaledCapsuleHalfHeight()};
+    auto const start{GetActorLocation() + forward * forward_offset +
+                     FVector(0.0f, 0.0f, capsule_height_offset)};
+
+    auto const end{start + forward * interaction_range};
+
+    TArray<FHitResult> hit_results;
+    static constexpr auto capsule_radius{50.0f};
+    static constexpr auto capsule_half_height{100.0f};
+    static constexpr auto collision_channel{ECC_GameTraceChannel1};
+
+    bool const hit{world->SweepMultiByChannel(
+        hit_results,
+        start,
+        end,
+        FQuat::Identity,
+        collision_channel,
+        FCollisionShape::MakeCapsule(capsule_radius, capsule_half_height))};
+
+#if WITH_EDITOR
+    DrawDebugCapsule(world,
+                     (start + end) * 0.5f, // center point of the sweep
+                     capsule_half_height,
+                     capsule_radius,
+                     FRotationMatrix::MakeFromZ(end - start).ToQuat(),
+                     FColor::Green,
+                     false,
+                     2.0f // duration
+    );
+#endif
+
+    if (!hit) {
+        return;
+    }
+
+    // Only trigger the first valid one
+    for (auto& hit_result : hit_results) {
+        auto* const actor{hit_result.GetActor()};
+        if (actor == nullptr) {
+            continue;
+        }
+
+        if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
+            if (interactable_component->try_interact(this)) {
+                break;
+            }
+        }
+
+        if (IInteractable::try_interact(actor, this)) {
+            break;
+        }
     }
 }
 void AMyCharacter::start_jetpack(FInputActionValue const& value) {

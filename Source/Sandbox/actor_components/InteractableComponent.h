@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sandbox/interfaces/Interactable.h"
 
 #include "InteractableComponent.generated.h"
 
@@ -15,4 +16,10 @@ class SANDBOX_API UInteractableComponent : public UActorComponent {
   public:
     UFUNCTION(BlueprintCallable)
     void interact(AActor* const interactor);
+    UFUNCTION(BlueprintCallable)
+    bool can_interact(AActor* const interactor);
+    UFUNCTION(BlueprintCallable)
+    bool try_interact(AActor* const interactor);
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    TArray<TScriptInterface<IInteractable>> linked_interactables;
 };
