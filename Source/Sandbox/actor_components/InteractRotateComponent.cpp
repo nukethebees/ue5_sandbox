@@ -20,7 +20,13 @@ void UInteractRotateComponent::TickComponent(float DeltaTime,
         owner->SetActorRotation(new_rotation);
     }
 }
-void UInteractRotateComponent::interact(AActor* const interactor) {
+void UInteractRotateComponent::interact(AActor* interactor) {
+    start_rotation(interactor);
+}
+void UInteractRotateComponent::trigger_activation(AActor* interactor) {
+    start_rotation(interactor);
+}
+void UInteractRotateComponent::start_rotation(AActor* interactor) {
     auto const* const owner{GetOwner()};
     auto* const world{GetWorld()};
 
