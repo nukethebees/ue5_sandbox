@@ -36,7 +36,17 @@ void UHorizAntigravLiftComponent::TickComponent(float DeltaTime,
 
                 auto const current_location{character->GetActorLocation()};
                 auto const move_amount{float_speed * DeltaTime};
-                auto const new_location{current_location + float_direction * move_amount};
+
+                // Nudge character towards the centre so they're less likely to get
+                // their feet stuck on geometry
+                auto const zone_centre{float_zone->GetComponentLocation()};
+                auto const to_centre{zone_centre - current_location};
+                auto const centre_strength{10.0f};
+
+                auto const center_nudge{to_centre.GetSafeNormal() * centre_strength * DeltaTime};
+
+                auto const float_step{float_direction * move_amount};
+                auto const new_location{current_location + float_step + center_nudge};
 
                 character->SetActorLocation(new_location, true);
             }
