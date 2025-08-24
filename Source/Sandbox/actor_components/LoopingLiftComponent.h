@@ -7,6 +7,7 @@
 
 #include "LoopingLiftComponent.generated.h"
 
+// A lift that moves from its origin by distance X and then back again
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API ULoopingLiftComponent : public UActorComponent {
     GENERATED_BODY()
