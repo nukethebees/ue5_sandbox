@@ -1,6 +1,7 @@
 #include "MyHUD.h"
 
 #include "GameFramework/PlayerController.h"
+#include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/game_states/PlatformerGameState.h"
 #include "UObject/ConstructorHelpers.h"
 
