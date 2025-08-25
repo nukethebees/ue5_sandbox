@@ -19,10 +19,13 @@ void AMyHUD::BeginPlay() {
 
     if (!main_widget_class) {
         UE_LOG(LogTemp, Error, TEXT("MyHUD: No main_widget_class."));
+        return;
     }
-    main_widget = CreateWidget<UMainHUDWidget>(GetWorld(), main_widget_class);
-    if (main_widget) {
-        main_widget->AddToViewport();
+    if (!main_widget) {
+        main_widget = CreateWidget<UMainHUDWidget>(GetWorld(), main_widget_class);
+        if (main_widget) {
+            main_widget->AddToViewport();
+        }
     }
 
     if (auto* game_state{GetWorld()->GetGameState<APlatformerGameState>()}) {
