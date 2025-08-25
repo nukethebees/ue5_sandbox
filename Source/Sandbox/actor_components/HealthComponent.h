@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Sandbox/actor_components/HealthData.h"
+#include "Sandbox/actor_components/HealthChange.h"
 
 #include "HealthComponent.generated.h"
 
@@ -31,8 +32,32 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     FOnDeath on_death;
 
     auto health() const { return health_; }
-    void apply_damage(float damage) { set_health(health_ - damage); }
-    void apply_healing(float healing) { set_health(health_ + healing); }
+    UFUNCTION(BlueprintCallable, Category = "Health")
+    void modify_health(FHealthChange change) {
+        float new_health = health_;
+
+        switch (change.type) {
+            case EHealthChangeType::Damage:
+                new_health -= change.value;
+                break;
+            case EHealthChangeType::Healing:
+                new_health += change.value;
+                break;
+            default: {
+                auto const* const enum_ptr{StaticEnum<EHealthChangeType>()};
+                auto const display_text{
+                    enum_ptr ? enum_ptr->GetNameStringByValue(static_cast<int64>(change.type))
+                             : FString("Unknown")};
+                UE_LOGFMT(LogTemp,
+                          Warning,
+                          "UHealthComponent::modify_health: Unhandled EHealthChangeType: {type}",
+                          ("type", display_text));
+                return;
+            }
+        }
+
+        set_health(new_health);
+    }
     UFUNCTION(BlueprintCallable, Category = "Health")
     float health_percent() const { return (max_health > 0.0f) ? health_ / max_health : 0.0f; }
   protected:
