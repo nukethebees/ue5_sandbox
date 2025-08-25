@@ -8,6 +8,7 @@
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/actor_components/RemoveGhostsOnStartComponent.h"
 
 #include "MyGameModeBase.generated.h"
 
@@ -16,6 +17,11 @@ class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
     , public print_msg_mixin {
     GENERATED_BODY()
+public:
+    AMyGameModeBase();
   protected:
     virtual void BeginPlay() override;
+  private:
+    UPROPERTY()
+    URemoveGhostsOnStartComponent * ghost_cleanup_component{nullptr};
 };

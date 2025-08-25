@@ -2,6 +2,11 @@
 
 #include "MyGameModeBase.h"
 
+AMyGameModeBase::AMyGameModeBase() {
+    ghost_cleanup_component =
+        CreateDefaultSubobject<URemoveGhostsOnStartComponent>(TEXT("GhostCleanupComponent"));
+}
+
 void AMyGameModeBase::BeginPlay() {
     Super::BeginPlay();
 
