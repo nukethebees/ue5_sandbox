@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
-#include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/actor_components/HealthData.h"
 #include "Sandbox/widgets/MainHUDWidget.h"
 
 #include "MyHUD.generated.h"

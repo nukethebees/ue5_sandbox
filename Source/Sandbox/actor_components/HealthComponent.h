@@ -4,21 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sandbox/actor_components/HealthData.h"
+
 #include "HealthComponent.generated.h"
-
-USTRUCT(BlueprintType)
-struct FHealthData {
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadOnly)
-    float current{0.0f};
-
-    UPROPERTY(BlueprintReadOnly)
-    float max{100.0f};
-
-    UPROPERTY(BlueprintReadOnly)
-    float percent{0.0f};
-};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthPercentChanged, FHealthData, health_data);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
