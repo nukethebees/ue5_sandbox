@@ -10,13 +10,10 @@ AMyGameModeBase::AMyGameModeBase() {
 void AMyGameModeBase::BeginPlay() {
     Super::BeginPlay();
 
-    print_msg(TEXT("Game mode start"));
-    auto* pc{UGameplayStatics::GetPlayerController(this, 0)};
-    auto* my_char{
-        Cast<AMyCharacter>(UGameplayStatics::GetActorOfClass(this, AMyCharacter::StaticClass()))};
-
-    if (pc && my_char) {
-        print_msg("Possessing character");
-        pc->Possess(my_char);
+    if (auto* pc{UGameplayStatics::GetPlayerController(this, 0)}) {
+        if (auto* my_char{Cast<AMyCharacter>(
+                UGameplayStatics::GetActorOfClass(this, AMyCharacter::StaticClass()))}) {
+            pc->Possess(my_char);
+        }
     }
 }
