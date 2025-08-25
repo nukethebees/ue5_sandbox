@@ -6,7 +6,21 @@
 #include "Components/ActorComponent.h"
 #include "HealthComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChanged, float, new_health);
+USTRUCT(BlueprintType)
+struct FHealthData {
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    float current{0.0f};
+
+    UPROPERTY(BlueprintReadOnly)
+    float max{100.0f};
+
+    UPROPERTY(BlueprintReadOnly)
+    float percent{0.0f};
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthPercentChanged, FHealthData, health_data);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -24,7 +38,7 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, Category = "Health")
     float initial_health{NO_INITIAL_HEALTH};
     UPROPERTY(BlueprintAssignable, Category = "Health")
-    FOnHealthChanged on_health_changed;
+    FOnHealthPercentChanged on_health_percent_changed;
     UPROPERTY(BlueprintAssignable, Category = "Health")
     FOnDeath on_death;
 
@@ -47,7 +61,7 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
         }
 
         health_ = clamped_health;
-        on_health_changed.Broadcast(health_);
+        on_health_percent_changed.Broadcast({health_, max_health, health_percent()});
         if (is_dead()) {
             on_death.Broadcast();
         }
