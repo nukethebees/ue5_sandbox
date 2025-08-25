@@ -1,5 +1,6 @@
 #include "MyHUD.h"
 
+#include "GameFramework/PlayerController.h"
 #include "Sandbox/game_states/PlatformerGameState.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -31,6 +32,24 @@ void AMyHUD::BeginPlay() {
     if (auto* game_state{GetWorld()->GetGameState<APlatformerGameState>()}) {
         game_state->on_coin_count_changed.AddDynamic(this, &AMyHUD::update_coin);
     }
+
+    auto* player_controller{GetOwningPlayerController()};
+    if (!player_controller) {
+        return;
+    }
+
+    auto player_pawn{player_controller->GetPawn()};
+    if (!player_pawn) {
+        return;
+    }
+
+    auto* health_component{player_pawn->FindComponentByClass<UHealthComponent>()};
+    if (!health_component) {
+        UE_LOG(LogTemp, Warning, TEXT("AMyHUD: HealthComponent not found on player pawn."));
+        return;
+    }
+
+    health_component->on_health_percent_changed.AddDynamic(this, &AMyHUD::update_health);
 }
 
 void AMyHUD::update_fuel(float new_fuel) {
@@ -46,4 +65,9 @@ void AMyHUD::update_jump(int32 new_jump) {
 void AMyHUD::update_coin(int32 new_coin_count) {
     MAIN_WIDGET_NULL_CHECK();
     main_widget->update_coin(new_coin_count);
+}
+
+void AMyHUD::update_health(FHealthData health_data) {
+    MAIN_WIDGET_NULL_CHECK();
+    main_widget->update_health(health_data);
 }

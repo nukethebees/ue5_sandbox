@@ -21,9 +21,9 @@ void UMainHUDWidget::update_coin(int32 new_coin_count) {
     WIDGET_CHECK(coin_widget, "update_coin");
     coin_widget->update_coin(new_coin_count);
 }
-void UMainHUDWidget::update_health_percent(float health_pc) {
+void UMainHUDWidget::update_health(FHealthData health_data) {
     WIDGET_CHECK(health_widget, "update_health_percent");
-    health_widget->set_health_percent(health_pc);
+    health_widget->set_health(health_data);
 }
 void UMainHUDWidget::missing_widget_error(FStringView method) {
     UE_LOGFMT(LogTemp, Error, "UMainHUDWidget: {Method} no widget.", ("Method", method));

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/widgets/MainHUDWidget.h"
 
 #include "MyHUD.generated.h"
@@ -28,4 +29,6 @@ class SANDBOX_API AMyHUD : public AHUD {
     void update_jump(int32 new_jump);
     UFUNCTION()
     void update_coin(int32 new_coin_count);
+    UFUNCTION()
+    void update_health(FHealthData health_data);
 };

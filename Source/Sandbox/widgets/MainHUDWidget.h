@@ -35,7 +35,7 @@ class SANDBOX_API UMainHUDWidget : public UUserWidget {
     UFUNCTION(BlueprintCallable, Category = "UI")
     void update_coin(int32 new_coin_count);
     UFUNCTION(BlueprintCallable, Category = "UI")
-    void update_health_percent(float health);
+    void update_health(FHealthData health_data);
   private:
     void missing_widget_error(FStringView method);
 };
