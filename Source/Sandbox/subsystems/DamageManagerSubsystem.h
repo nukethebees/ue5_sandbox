@@ -26,7 +26,8 @@ class SANDBOX_API UDamageManagerSubsystem : public UTickableWorldSubsystem {
     void QueueDamage(UHealthComponent* receiver, FHealthChange const& change);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }
+    virtual TStatId GetStatId() const override;
   private:
-    TArray<FQueuedHealthChange> PendingChanges;
+    TArray<FQueuedHealthChange> pending_changes;
     bool tick_enabled{false};
 };
