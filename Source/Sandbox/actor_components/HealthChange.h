@@ -14,10 +14,10 @@ USTRUCT(BlueprintType)
 struct FHealthChange {
     GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float value{0.0f};
 
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     EHealthChangeType type{EHealthChangeType::Damage};
 
     FHealthChange() = default;

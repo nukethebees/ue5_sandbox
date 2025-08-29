@@ -1,6 +1,7 @@
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
-void UDamageManagerSubsystem::QueueDamage(UHealthComponent* receiver, FHealthChange const& change) {
+void UDamageManagerSubsystem::queue_damage(UHealthComponent* receiver,
+                                           FHealthChange const& change) {
     if (!receiver) {
         return;
     }
