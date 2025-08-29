@@ -32,6 +32,9 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     FOnDeath on_death;
 
     auto health() const { return health_; }
+    bool is_dead() const { return health_ <= 0.0f; }
+    bool is_alive() const { return health_ > 0.0f; }
+    bool at_max_health() const { return FMath::IsNearlyEqual(health_, max_health); }
     UFUNCTION(BlueprintCallable, Category = "Health")
     void modify_health(FHealthChange change) {
         float new_health = health_;
@@ -64,8 +67,6 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health")
     float health_{0.0f};
   private:
-    bool is_dead() const { return health_ <= 0.0f; }
-    bool is_alive() const { return health_ > 0.0f; }
     void kill() { set_health(0.0f); }
     void set_health(float new_health) {
         auto const clamped_health{FMath::Clamp(new_health, 0.0f, max_health)};
