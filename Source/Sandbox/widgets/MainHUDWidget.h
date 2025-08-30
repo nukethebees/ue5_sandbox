@@ -7,7 +7,7 @@
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/HealthWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
-#include "Sandbox/widgets/PlayerMaxSpeedWidget.h"
+#include "Sandbox/widgets/ValueWidget.h"
 
 #include "MainHUDWidget.generated.h"
 
@@ -29,7 +29,7 @@ class SANDBOX_API UMainHUDWidget : public UUserWidget {
     UHealthWidget* health_widget;
 
     UPROPERTY(meta = (BindWidget))
-    UPlayerMaxSpeedWidget* max_speed_widget;
+    UValueWidget* max_speed_widget;
   public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void update_fuel(float new_fuel);
