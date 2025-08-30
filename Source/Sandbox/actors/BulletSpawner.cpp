@@ -1,0 +1,36 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "Sandbox/actors/BulletSpawner.h"
+
+ABulletSpawner::ABulletSpawner() {
+    PrimaryActorTick.bCanEverTick = true;
+}
+void ABulletSpawner::BeginPlay() {
+    Super::BeginPlay();
+}
+void ABulletSpawner::Tick(float DeltaTime) {
+    Super::Tick(DeltaTime);
+
+    time_since_last_shot += DeltaTime;
+    auto const seconds_per_bullet{1.0f / bullets_per_second};
+
+    if (time_since_last_shot >= seconds_per_bullet) {
+        spawn_bullet();
+        time_since_last_shot = 0.0f;
+    }
+}
+
+void ABulletSpawner::spawn_bullet() {
+    if (!bullet_class || !fire_point) {
+        return;
+    }
+
+    auto const spawn_location{fire_point->GetComponentLocation()};
+    auto const spawn_rotation{fire_point->GetComponentRotation()};
+
+    FActorSpawnParameters spawn_params{};
+    spawn_params.Owner = this;
+
+    auto const bullet{
+        GetWorld()->SpawnActor<AActor>(bullet_class, spawn_location, spawn_rotation, spawn_params)};
+}
