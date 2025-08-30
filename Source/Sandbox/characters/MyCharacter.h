@@ -25,6 +25,8 @@ class UInputAction;
 class UInputComponent;
 class AMyPlayerController;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
+
 UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
@@ -82,6 +84,8 @@ class SANDBOX_API AMyCharacter
     float jetpack_fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float jetpack_force{600.0f};
+    UPROPERTY(BlueprintAssignable, Category = "Movement")
+    FOnMaxSpeedChanged OnMaxSpeedChanged;
 
     // Torch
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")

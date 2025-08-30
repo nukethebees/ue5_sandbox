@@ -1,7 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "MyPlayerController.h"
+
 #include "Sandbox/actors/TalkingPillar.h"
+#include "Sandbox/huds/MyHud.h"
 
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
@@ -13,6 +15,12 @@ void AMyPlayerController::BeginPlay() {
         using SS = UEnhancedInputLocalPlayerSubsystem;
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
             subsystem->AddMappingContext(default_mapping_context.LoadSynchronous(), 0);
+        }
+    }
+
+    if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
+        if (auto* hud{Cast<AMyHUD>(GetHUD())}) {
+            character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
         }
     }
 }

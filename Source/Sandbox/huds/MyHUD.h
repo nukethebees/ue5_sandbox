@@ -31,4 +31,10 @@ class SANDBOX_API AMyHUD : public AHUD {
     void update_coin(int32 new_coin_count);
     UFUNCTION()
     void update_health(FHealthData health_data);
+    UFUNCTION()
+    void update_max_speed(float data) {
+        if (main_widget && main_widget->max_speed_widget) {
+            main_widget->max_speed_widget->update(data);
+        }
+    }
 };
