@@ -35,6 +35,7 @@ void AMyCharacter::BeginPlay() {
     auto& char_movement{*GetCharacterMovement()};
     char_movement.MaxWalkSpeed = this->move_speed;
     char_movement.MaxAcceleration = this->acceleration;
+    OnMaxSpeedChanged.Broadcast(char_movement.MaxWalkSpeed);
 
     this->JumpMaxCount = 2;
 
