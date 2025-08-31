@@ -14,6 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
 #include "Sandbox/actor_components/WarpComponent.h"
+#include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
@@ -30,7 +31,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpe
 UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
-    , public print_msg_mixin {
+    , public print_msg_mixin
+    , public IDeathHandler {
     GENERATED_BODY()
   public:
     AMyCharacter();
@@ -105,4 +107,6 @@ class SANDBOX_API AMyCharacter
     float jetpack_fuel_previous{0.0f};
     bool is_jetpacking{false};
     bool torch_on{true};
+
+    virtual void handle_death();
 };
