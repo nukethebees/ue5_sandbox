@@ -1,19 +1,15 @@
-#include "Sandbox/actor_components/HealthChangeOnOverlapComponent.h"
+#include "Sandbox/actor_components/HealthChangeTriggerComponent.h"
 
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
-UHealthChangeOnOverlapComponent::UHealthChangeOnOverlapComponent() {
+UHealthChangeTriggerComponent::UHealthChangeTriggerComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }
-void UHealthChangeOnOverlapComponent::BeginPlay() {
+void UHealthChangeTriggerComponent::BeginPlay() {
     Super::BeginPlay();
-
-    if (auto* owner{GetOwner()}) {
-        owner->OnActorBeginOverlap.AddDynamic(this, &UHealthChangeOnOverlapComponent::on_overlap);
-    }
 }
-void UHealthChangeOnOverlapComponent::on_overlap(AActor* OverlappedActor, AActor* OtherActor) {
+void UHealthChangeTriggerComponent::change_health(AActor* OverlappedActor, AActor* OtherActor) {
     auto* owner{GetOwner()};
 
     if (!OtherActor || OtherActor == owner) {
@@ -31,6 +27,4 @@ void UHealthChangeOnOverlapComponent::on_overlap(AActor* OverlappedActor, AActor
 
         owner->Destroy();
     }
-
-    return;
 }
