@@ -1,16 +1,18 @@
 #include "Sandbox/widgets/HealthWidget.h"
 
+#include "Sandbox/utilities/math.h"
+
 void UHealthWidget::set_health(FHealthData health_data) {
     if (!health_bar) {
         return;
     }
 
-    health_bar->SetPercent(FMath::Clamp(health_data.percent, 0.0f, 1.0f));
+    health_bar->SetPercent(ml::clamp_normalised_percent(health_data.percent));
 
     if (!health_text) {
         return;
     }
 
-    auto const display_value{FMath::RoundToInt(health_data.percent * 100.0f)};
-    health_text->SetText(FText::FromString(FString::Printf(TEXT("%d%%"), display_value)));
+    health_text->SetText(FText::FromString(
+        FString::Printf(TEXT("%d%%"), ml::denormalise_percent_to_int(health_data.percent))));
 }
