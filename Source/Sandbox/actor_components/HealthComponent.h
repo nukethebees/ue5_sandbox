@@ -4,8 +4,8 @@
 
 #include "components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Sandbox/actor_components/HealthChange.h"
-#include "Sandbox/actor_components/HealthData.h"
+#include "Sandbox/data/HealthChange.h"
+#include "Sandbox/data/HealthData.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 
 #include "HealthComponent.generated.h"

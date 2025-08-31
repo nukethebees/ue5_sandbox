@@ -15,6 +15,7 @@
 #include "InputActionValue.h"
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/interfaces/DeathHandler.h"
+#include "Sandbox/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/widgets/FuelWidget.h"
 #include "Sandbox/widgets/JumpWidget.h"
@@ -32,7 +33,8 @@ UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
     , public print_msg_mixin
-    , public IDeathHandler {
+    , public IDeathHandler
+    , public IMaxSpeedChangeListener {
     GENERATED_BODY()
   public:
     AMyCharacter();
@@ -86,8 +88,12 @@ class SANDBOX_API AMyCharacter
     float jetpack_fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float jetpack_force{600.0f};
+
+    // Speed
     UPROPERTY(BlueprintAssignable, Category = "Movement")
     FOnMaxSpeedChanged OnMaxSpeedChanged;
+
+    virtual void on_speed_changed(float new_speed);
 
     // Torch
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")

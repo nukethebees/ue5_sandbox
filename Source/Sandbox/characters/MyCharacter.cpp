@@ -163,3 +163,7 @@ void AMyCharacter::handle_death() {
         UGameplayStatics::OpenLevel(world, "MainMenu");
     }
 }
+
+void AMyCharacter::on_speed_changed(float new_speed) {
+    OnMaxSpeedChanged.Broadcast(new_speed);
+}
