@@ -1,9 +1,10 @@
 #include "MyCharacter.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sandbox/actor_components/InteractorComponent.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/interfaces/Interactable.h"
-#include "Sandbox/actor_components/InteractorComponent.h"
 #include "UObject/ScriptInterface.h"
 
 AMyCharacter::AMyCharacter() {
@@ -155,4 +156,10 @@ void AMyCharacter::set_torch(bool on) {
 
     torch_on = on;
     torch_component->SetVisibility(torch_on);
+}
+
+void AMyCharacter::handle_death() {
+    if (auto const* world{GetWorld()}) {
+        UGameplayStatics::OpenLevel(world, "MainMenu");
+    }
 }

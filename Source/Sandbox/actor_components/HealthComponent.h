@@ -2,10 +2,11 @@
 
 #pragma once
 
+#include "components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-#include "Sandbox/actor_components/HealthData.h"
 #include "Sandbox/actor_components/HealthChange.h"
+#include "Sandbox/actor_components/HealthData.h"
+#include "Sandbox/interfaces/DeathHandler.h"
 
 #include "HealthComponent.generated.h"
 
@@ -78,6 +79,20 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
         on_health_percent_changed.Broadcast({health_, max_health, health_percent()});
         if (is_dead()) {
             on_death.Broadcast();
+
+            auto* owner{GetOwner()};
+            if (!owner) {
+                return;
+            }
+
+            // Trigger death handlers on components first then the actor itself
+            TArray<UActorComponent*> components;
+            owner->GetComponents(components);
+            for (auto* comp : components) {
+                IDeathHandler::try_kill(comp);
+            }
+
+            IDeathHandler::try_kill(owner);
         }
     }
 };
