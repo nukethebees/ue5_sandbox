@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/actor_components/HealthChange.h"
+#include "Sandbox/data/HealthChange.h"
 
 #include "HealthChangeTriggerComponent.generated.h"
 
