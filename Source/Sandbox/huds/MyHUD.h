@@ -28,7 +28,13 @@ class SANDBOX_API AMyHUD : public AHUD {
     UFUNCTION()
     void update_jump(int32 new_jump);
     UFUNCTION()
-    void update_coin(int32 new_coin_count);
+    void update_coin(int32 data) {
+        if (main_widget && main_widget->coin_widget) {
+            main_widget->coin_widget->update(data);
+        } else {
+            UE_LOGFMT(LogTemp, Warning, "No coin widget.");
+        }
+    }
     UFUNCTION()
     void update_health(FHealthData health_data);
     UFUNCTION()

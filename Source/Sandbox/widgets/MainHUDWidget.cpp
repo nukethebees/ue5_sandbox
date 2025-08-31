@@ -17,10 +17,6 @@ void UMainHUDWidget::update_jump(int32 new_jump) {
     WIDGET_CHECK(jump_widget, "update_jump");
     jump_widget->update_jump(new_jump);
 }
-void UMainHUDWidget::update_coin(int32 new_coin_count) {
-    WIDGET_CHECK(coin_widget, "update_coin");
-    coin_widget->update_coin(new_coin_count);
-}
 void UMainHUDWidget::update_health(FHealthData health_data) {
     WIDGET_CHECK(health_widget, "update_health_percent");
     health_widget->set_health(health_data);
