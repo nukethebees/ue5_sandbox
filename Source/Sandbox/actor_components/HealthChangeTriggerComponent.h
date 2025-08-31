@@ -6,19 +6,19 @@
 #include "Components/ActorComponent.h"
 #include "Sandbox/actor_components/HealthChange.h"
 
-#include "HealthChangeOnOverlapComponent.generated.h"
+#include "HealthChangeTriggerComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UHealthChangeOnOverlapComponent : public UActorComponent {
+class SANDBOX_API UHealthChangeTriggerComponent : public UActorComponent {
     GENERATED_BODY()
   public:
-    UHealthChangeOnOverlapComponent();
+    UHealthChangeTriggerComponent();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
     FHealthChange health_change;
   protected:
     virtual void BeginPlay() override;
-  private:
-    UFUNCTION()
-    void on_overlap(AActor* OverlappedActor, AActor* OtherActor);
+  public:
+    UFUNCTION(BlueprintCallable, Category = "Health")
+    void change_health(AActor* OverlappedActor, AActor* OtherActor);
 };
