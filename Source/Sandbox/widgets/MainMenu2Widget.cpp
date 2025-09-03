@@ -15,6 +15,8 @@ void UMainMenu2Widget::NativeConstruct() {
 
     if (level_select_menu) {
         level_select_menu->back_requested.AddDynamic(this, &UMainMenu2Widget::return_to_main_page);
+        TArray<FName> x{"MainMenu", "MainMenu2"};
+        level_select_menu->populate_level_buttons(x);
     }
 }
 void UMainMenu2Widget::handle_quit() {
