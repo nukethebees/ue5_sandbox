@@ -12,6 +12,10 @@ void ULoadLevelButtonWidget::NativeConstruct() {
     if (set_level_display_name_to_path_if_unset() == DisplayNameChanged::no) {
         update_display_name_text_box();
     }
+
+    if (level_text_block) {
+        level_text_block->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
 }
 void ULoadLevelButtonWidget::set_level_path(FName value) {
     level_path_ = value;
