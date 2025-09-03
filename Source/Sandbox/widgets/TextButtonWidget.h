@@ -20,12 +20,14 @@ class SANDBOX_API UTextButtonWidget : public UUserWidget {
     FOnTextButtonClicked on_clicked;
   protected:
     virtual void NativeConstruct() override;
+    virtual void SynchronizeProperties() override;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* button{nullptr};
+    UButton* button_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* text_block{nullptr};
   private:
     void handle_click();
+    void set_label();
 };
