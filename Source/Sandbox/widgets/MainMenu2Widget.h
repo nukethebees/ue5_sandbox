@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 #include "CoreMinimal.h"
+#include "Sandbox/widgets/LevelSelect2Widget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "MainMenu2Widget.generated.h"
@@ -24,10 +25,15 @@ class SANDBOX_API UMainMenu2Widget : public UUserWidget {
     UTextButtonWidget* play_button;
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* quit_button;
+
+    UPROPERTY(meta = (BindWidget))
+    ULevelSelect2Widget* level_select_menu;
   private:
     UFUNCTION()
     void handle_play();
     UFUNCTION()
     void handle_quit();
+    UFUNCTION()
+    void return_to_main_page();
     void set_active_page(EMainMenu2MenuPage page);
 };
