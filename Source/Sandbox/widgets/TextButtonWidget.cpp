@@ -10,6 +10,10 @@ void UTextButtonWidget::NativeConstruct() {
         button_widget->OnClicked.AddDynamic(this, &UTextButtonWidget::handle_click);
     }
 
+    if (text_block) {
+        text_block->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+
     set_label();
 }
 void UTextButtonWidget::SynchronizeProperties() {
