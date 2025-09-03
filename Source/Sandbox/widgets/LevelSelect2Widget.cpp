@@ -6,6 +6,10 @@ void ULevelSelect2Widget::NativeConstruct() {
     if (back_button) {
         back_button->on_clicked.AddDynamic(this, &ULevelSelect2Widget::handle_back);
     }
+
+    if (!level_select_grid) {
+        return;
+    }
 }
 void ULevelSelect2Widget::handle_back() {
     back_requested.Broadcast();
