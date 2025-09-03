@@ -8,9 +8,7 @@
 class UButton;
 class UTextBlock;
 
-enum class DisplayNameChanged : uint8 {
-    yes, no
-};
+enum class DisplayNameChanged : uint8 { yes, no };
 
 UCLASS()
 class SANDBOX_API ULoadLevelButtonWidget : public UUserWidget {
@@ -31,6 +29,7 @@ class SANDBOX_API ULoadLevelButtonWidget : public UUserWidget {
     UPROPERTY()
     FName level_path_{};
   private:
+    UFUNCTION()
     void load_level();
     DisplayNameChanged set_level_display_name_to_path_if_unset();
     void update_display_name_text_box();

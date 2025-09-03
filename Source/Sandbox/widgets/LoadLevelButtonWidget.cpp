@@ -24,6 +24,8 @@ void ULoadLevelButtonWidget::set_level_display_name(FText value) {
 void ULoadLevelButtonWidget::load_level() {
     if (!level_path_.IsNone()) {
         UGameplayStatics::OpenLevel(GetWorld(), level_path_);
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "Level path is empty.");
     }
 }
 DisplayNameChanged ULoadLevelButtonWidget::set_level_display_name_to_path_if_unset() {
