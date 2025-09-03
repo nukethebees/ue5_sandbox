@@ -28,6 +28,7 @@ class SANDBOX_API UTextButtonWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UTextBlock* text_block{nullptr};
   private:
+    UFUNCTION()
     void handle_click();
     void set_label();
 };
