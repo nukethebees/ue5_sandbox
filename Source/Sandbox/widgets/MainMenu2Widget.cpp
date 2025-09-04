@@ -1,6 +1,7 @@
 #include "Sandbox/widgets/MainMenu2Widget.h"
 
 #include "Kismet/KismetSystemLibrary.h"
+#include "Sandbox/utilities/levels.h"
 
 void UMainMenu2Widget::NativeConstruct() {
     Super::NativeConstruct();
@@ -15,8 +16,10 @@ void UMainMenu2Widget::NativeConstruct() {
 
     if (level_select_menu) {
         level_select_menu->back_requested.AddDynamic(this, &UMainMenu2Widget::return_to_main_page);
-        TArray<FName> x{"MainMenu", "MainMenu2"};
-        level_select_menu->populate_level_buttons(x);
+        static auto const level_directory{FName("/Game/Levels")};
+        auto level_names{ml::get_all_level_names(level_directory)};
+        level_names.Sort([](auto A, auto B) { return A.LexicalLess(B); });
+        level_select_menu->populate_level_buttons(level_names);
     }
 }
 void UMainMenu2Widget::handle_quit() {
