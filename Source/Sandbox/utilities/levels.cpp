@@ -28,6 +28,10 @@ auto get_all_level_names(FName level_directory) -> TArray<FName> {
 }
 
 auto format_level_display_name(FName level_name) -> FString {
+    if (level_name.IsNone()) {
+        return FString("");
+    }
+
     static constexpr auto SPACE{TCHAR(' ')};
     static constexpr auto UNDERSCORE{TCHAR('_')};
     static constexpr auto NULL_CHAR{TCHAR('\0')};
@@ -60,7 +64,17 @@ auto format_level_display_name(FName level_name) -> FString {
 
         // Convert underscores to spaces
         if (c == UNDERSCORE) {
-            out.AppendChar(SPACE);
+            auto const prev{get_prev()};
+
+            // Don't add leading spaces
+            if (prev == NULL_CHAR) {
+                continue;
+            }
+
+            if (prev != SPACE) {
+                out.AppendChar(SPACE);
+            }
+
             ready_for_word = true;
             continue;
         }
@@ -99,7 +113,7 @@ auto format_level_display_name(FName level_name) -> FString {
 
         if (FChar::IsDigit(c)) {
             auto const prev{get_prev()};
-            if ((prev != NULL_CHAR) && !FChar::IsDigit(prev)) {
+            if ((prev != NULL_CHAR) && !FChar::IsDigit(prev) && (prev != SPACE)) {
                 out.AppendChar(SPACE);
             }
         }
