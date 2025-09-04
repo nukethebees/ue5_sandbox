@@ -44,6 +44,7 @@ void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_name
         auto* slot{level_select_grid->AddChildToGrid(button, row, col)};
         slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
         slot->SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+        slot->SetPadding(FMargin(8.0f));
         ++row;
     }
 }
