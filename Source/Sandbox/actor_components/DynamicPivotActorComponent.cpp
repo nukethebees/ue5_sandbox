@@ -1,11 +1,11 @@
-#include "Sandbox/actor_components/DynamicPivotCameraComponent.h"
+#include "Sandbox/actor_components/DynamicPivotActorComponent.h"
 
 #include "Camera/CameraActor.h"
 
-UDynamicPivotCameraComponent::UDynamicPivotCameraComponent() {
+UDynamicPivotActorComponent::UDynamicPivotActorComponent() {
     PrimaryComponentTick.bCanEverTick = true;
 }
-void UDynamicPivotCameraComponent::BeginPlay() {
+void UDynamicPivotActorComponent::BeginPlay() {
     Super::BeginPlay();
 
     auto const* const owner{GetOwner()};
@@ -18,7 +18,7 @@ void UDynamicPivotCameraComponent::BeginPlay() {
     auto const start{owner->GetActorLocation()};
 
     TArray<UActorComponent*> components{owner->GetComponents().Array()};
-    auto const arrow_name{FName{"LookArrow"}};
+    auto const arrow_name{FName{"DynamicPivotArrow"}};
     for (auto* component : components) {
         if (component->ComponentHasTag(arrow_name)) {
             if (auto const* const scene_component{Cast<USceneComponent>(component)}) {
@@ -42,14 +42,14 @@ void UDynamicPivotCameraComponent::BeginPlay() {
 
     initial_offset = start - pivot_point;
 }
-void UDynamicPivotCameraComponent::TickComponent(float DeltaTime,
-                                                 ELevelTick TickType,
-                                                 FActorComponentTickFunction* ThisTickFunction) {
+void UDynamicPivotActorComponent::TickComponent(float DeltaTime,
+                                                ELevelTick TickType,
+                                                FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    update_camera_position(DeltaTime);
+    update_position(DeltaTime);
 }
 
-void UDynamicPivotCameraComponent::update_camera_position(float delta_time) {
+void UDynamicPivotActorComponent::update_position(float delta_time) {
     current_angle_deg += rotation_speed_deg_per_sec * delta_time;
     current_angle_deg += rotation_speed_deg_per_sec * delta_time;
 
