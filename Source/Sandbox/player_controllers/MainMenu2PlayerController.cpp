@@ -6,6 +6,14 @@ void AMainMenu2PlayerController::BeginPlay() {
     bShowMouseCursor = true;
 
     spawn_menu_widget();
+
+    // Set input mode to UI only
+    FInputModeUIOnly input_mode{};
+    if (main_menu_widget_instance) {
+        input_mode.SetWidgetToFocus(main_menu_widget_instance->TakeWidget());
+    }
+    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(input_mode);
 }
 
 void AMainMenu2PlayerController::spawn_menu_widget() {
