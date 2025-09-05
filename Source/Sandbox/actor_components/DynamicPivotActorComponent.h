@@ -2,13 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "DynamicPivotCameraComponent.generated.h"
+#include "DynamicPivotActorComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UDynamicPivotCameraComponent : public UActorComponent {
+class SANDBOX_API UDynamicPivotActorComponent : public UActorComponent {
     GENERATED_BODY()
   public:
-    UDynamicPivotCameraComponent();
+    UDynamicPivotActorComponent();
   protected:
     virtual void BeginPlay() override;
 
@@ -23,5 +23,5 @@ class SANDBOX_API UDynamicPivotCameraComponent : public UActorComponent {
     FVector initial_offset{};
     float current_angle_deg{0.0f};
 
-    void update_camera_position(float delta_time);
+    void update_position(float delta_time);
 };
