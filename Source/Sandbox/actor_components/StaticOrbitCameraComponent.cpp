@@ -1,11 +1,11 @@
-#include "Sandbox/actor_components/RotatingCameraComponent.h"
+#include "Sandbox/actor_components/StaticOrbitCameraComponent.h"
 
 #include "Camera/CameraActor.h"
 
-URotatingCameraComponent::URotatingCameraComponent() {
+UStaticOrbitCameraComponent::UStaticOrbitCameraComponent() {
     PrimaryComponentTick.bCanEverTick = true;
 }
-void URotatingCameraComponent::BeginPlay() {
+void UStaticOrbitCameraComponent::BeginPlay() {
     Super::BeginPlay();
 
     auto const* const owner{GetOwner()};
@@ -13,14 +13,14 @@ void URotatingCameraComponent::BeginPlay() {
         pivot_point = owner->GetActorLocation();
     }
 }
-void URotatingCameraComponent::TickComponent(float DeltaTime,
+void UStaticOrbitCameraComponent::TickComponent(float DeltaTime,
                                              ELevelTick TickType,
                                              FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     update_camera_position(DeltaTime);
 }
 
-void URotatingCameraComponent::update_camera_position(float delta_time) {
+void UStaticOrbitCameraComponent::update_camera_position(float delta_time) {
     current_angle_deg += rotation_speed_deg_per_sec * delta_time;
 
     auto const radians{FMath::DegreesToRadians(current_angle_deg)};
