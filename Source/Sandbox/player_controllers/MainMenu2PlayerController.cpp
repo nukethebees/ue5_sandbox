@@ -1,9 +1,27 @@
 #include "Sandbox/player_controllers/MainMenu2PlayerController.h"
 
+#include "Camera/CameraActor.h"
+#include "EngineUtils.h"
+
 void AMainMenu2PlayerController::BeginPlay() {
     Super::BeginPlay();
 
     bShowMouseCursor = true;
+
+    for (auto* actor : TActorRange<ACameraActor>(GetWorld())) {
+        static FName expected_camera_tag{TEXT("MainMenuCamera")};
+        if (actor->ActorHasTag(expected_camera_tag)) {
+            camera_actor = actor;
+            break;
+        }
+    }
+
+    if (camera_actor) {
+        constexpr float blend_time{0.0f}; // Smooth transition
+        SetViewTargetWithBlend(camera_actor, blend_time);
+    } else {
+        UE_LOG(LogTemp, Warning, TEXT("AMainMenu2PlayerController: No camera actor."));
+    }
 
     spawn_menu_widget();
 
