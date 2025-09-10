@@ -4,28 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sandbox/data/JetpackState.h"
 
 #include "JetpackComponent.generated.h"
-
-USTRUCT(BlueprintType)
-struct FJetpackState {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float fuel_remaining{0.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float fuel_capacity{0.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool is_jetpacking{false};
-
-    FJetpackState() = default;
-    FJetpackState(float fuel_remaining, float fuel_capacity, bool is_jetpacking)
-        : fuel_remaining{fuel_remaining}
-        , fuel_capacity{fuel_capacity}
-        , is_jetpacking{is_jetpacking} {}
-};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFuelChanged, FJetpackState const&, NewFuel);
 
@@ -38,9 +19,10 @@ class SANDBOX_API UJetpackComponent : public UActorComponent {
     void start_jetpack();
     void stop_jetpack();
     float get_fuel() const { return fuel; }
+    void broadcast_fuel_state() const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jetpack");
-    float fuel_max{2.0f};
+    float fuel_max{0.5f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jetpack");
     float fuel_recharge_rate{0.1f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jetpack");
@@ -57,8 +39,10 @@ class SANDBOX_API UJetpackComponent : public UActorComponent {
   private:
     void apply_jetpack_force(float delta_time);
     void recharge_fuel();
+    void end_timers();
 
     FTimerHandle fuel_recharge_timer;
+    FTimerHandle fuel_broadcast_timer;
 
     float fuel{0.0f};
     bool is_jetpacking{false};
