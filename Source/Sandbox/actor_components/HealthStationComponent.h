@@ -44,10 +44,10 @@ class SANDBOX_API UHealthStationComponent
     UPROPERTY(EditAnywhere, Category = "Health Station")
     float max_capacity{100.0f};
 
-    UPROPERTY(EditAnywhere, Category = "Health Station")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
     float heal_amount_per_use{25.0f};
 
-    UPROPERTY(EditAnywhere, Category = "Health Station")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
     float cooldown_duration{2.0f}; // seconds
 
     UPROPERTY(BlueprintAssignable, Category = "Health Station")
