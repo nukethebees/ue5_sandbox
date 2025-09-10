@@ -26,6 +26,7 @@ class UInputMappingContext;
 class UInputAction;
 class UInputComponent;
 class AMyPlayerController;
+class UJetpackComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
@@ -79,15 +80,7 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_fuel{0.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_fuel_max{2.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_fuel_recharge_rate{1.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_fuel_consumption_rate{1.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float jetpack_force{600.0f};
+    UJetpackComponent* jetpack_component;
 
     // Speed
     UPROPERTY(BlueprintAssignable, Category = "Movement")
@@ -110,8 +103,6 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
     UWarpComponent* warp_component{nullptr};
   private:
-    float jetpack_fuel_previous{0.0f};
-    bool is_jetpacking{false};
     bool torch_on{true};
 
     virtual void handle_death();
