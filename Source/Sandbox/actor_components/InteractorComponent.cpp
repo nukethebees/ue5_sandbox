@@ -63,7 +63,7 @@ void UInteractorComponent::try_interact() {
     // Only trigger the first valid one
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
-        if (actor == nullptr) {
+        if ((actor == owner) || (actor == nullptr)) {
             continue;
         }
 
