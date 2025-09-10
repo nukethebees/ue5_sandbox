@@ -38,6 +38,9 @@ class SANDBOX_API UHealthStationComponent
                                ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
 
+    UFUNCTION(BlueprintCallable, Category = "Health Station")
+    float get_current_capacity() const { return current_capacity; }
+
     UPROPERTY(EditAnywhere, Category = "Health Station")
     float max_capacity{100.0f};
 
