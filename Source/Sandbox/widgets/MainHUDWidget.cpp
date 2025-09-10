@@ -8,11 +8,6 @@
         }                                            \
     } while (0)
 
-void UMainHUDWidget::update_fuel(float new_fuel) {
-    WIDGET_CHECK(fuel_widget, "update_fuel");
-    fuel_widget->update_fuel(new_fuel);
-}
-
 void UMainHUDWidget::update_jump(int32 new_jump) {
     WIDGET_CHECK(jump_widget, "update_jump");
     jump_widget->update_jump(new_jump);
