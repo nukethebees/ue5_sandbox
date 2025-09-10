@@ -1,6 +1,7 @@
 #include "Sandbox/actor_components/JetpackComponent.h"
 
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UJetpackComponent::UJetpackComponent() {
     PrimaryComponentTick.bCanEverTick = true;
@@ -52,15 +53,11 @@ void UJetpackComponent::stop_jetpack() {
     SetComponentTickEnabled(false);
 
     if (fuel < fuel_max) {
-        constexpr float jetpack_timer_interval{0.2f};
-        constexpr bool jetpack_timer_loops{true};
-        constexpr float jetpack_timer_first_delay{1.0f};
-        GetWorld()->GetTimerManager().SetTimer(fuel_recharge_timer,
-                                               this,
-                                               &UJetpackComponent::recharge_fuel,
-                                               jetpack_timer_interval,
-                                               jetpack_timer_loops,
-                                               jetpack_timer_first_delay);
+        constexpr float poll_interval{0.2f};
+        constexpr bool loop{true};
+
+        GetWorld()->GetTimerManager().SetTimer(
+            recharge_poll_timer, this, &UJetpackComponent::try_start_recharge, poll_interval, loop);
     }
 }
 void UJetpackComponent::apply_jetpack_force(float delta_time) {
@@ -87,6 +84,24 @@ void UJetpackComponent::apply_jetpack_force(float delta_time) {
 
     fuel -= fuel_consumption_rate * delta_time;
     fuel = FMath::Clamp(fuel, 0.0f, fuel_max);
+}
+void UJetpackComponent::try_start_recharge() {
+    if (auto* character{Cast<ACharacter>(GetOwner())}) {
+        if (character->GetCharacterMovement()->IsMovingOnGround()) {
+            GetWorld()->GetTimerManager().ClearTimer(recharge_poll_timer);
+
+            constexpr float recharge_interval{0.2f};
+            constexpr float recharge_delay{1.0f};
+            constexpr bool loop{true};
+
+            GetWorld()->GetTimerManager().SetTimer(fuel_recharge_timer,
+                                                   this,
+                                                   &UJetpackComponent::recharge_fuel,
+                                                   recharge_interval,
+                                                   loop,
+                                                   recharge_delay);
+        }
+    }
 }
 void UJetpackComponent::recharge_fuel() {
     fuel += fuel_recharge_rate;

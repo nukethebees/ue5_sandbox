@@ -38,11 +38,13 @@ class SANDBOX_API UJetpackComponent : public UActorComponent {
                                FActorComponentTickFunction* this_tick_function) override;
   private:
     void apply_jetpack_force(float delta_time);
+    void try_start_recharge();
     void recharge_fuel();
     void end_timers();
 
     FTimerHandle fuel_recharge_timer;
     FTimerHandle fuel_broadcast_timer;
+    FTimerHandle recharge_poll_timer;
 
     float fuel{0.0f};
     bool is_jetpacking{false};
