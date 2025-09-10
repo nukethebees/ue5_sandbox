@@ -3,6 +3,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sandbox/actor_components/InteractorComponent.h"
+#include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/interfaces/Interactable.h"
 #include "UObject/ScriptInterface.h"
@@ -24,14 +25,13 @@ void AMyCharacter::BeginPlay() {
     first_person_camera_component = FindComponentByClass<UCameraComponent>();
     first_person_camera_component->bUsePawnControlRotation = true;
 
+    jetpack_component = FindComponentByClass<UJetpackComponent>();
+
     torch_component = Cast<USpotLightComponent>(GetDefaultSubobjectByName(TEXT("torch")));
     torch_component->bCastVolumetricShadow = true;
     torch_component->VolumetricScatteringIntensity = 1.0f;
     torch_component->AttenuationRadius = 2000.0f;
     set_torch(false);
-
-    jetpack_fuel = jetpack_fuel_max;
-    jetpack_fuel_previous = jetpack_fuel;
 
     auto& char_movement{*GetCharacterMovement()};
     char_movement.MaxWalkSpeed = this->move_speed;
@@ -54,21 +54,8 @@ void AMyCharacter::BeginPlay() {
 void AMyCharacter::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
-    if (is_jetpacking) {
-        if (jetpack_fuel > 0.0f) {
-            auto const jp_launch{FVector(0, 0, jetpack_force)};
-            LaunchCharacter(jp_launch, false, true);
-            jetpack_fuel -= jetpack_fuel_consumption_rate * DeltaTime;
-            jetpack_fuel = FMath::Clamp(jetpack_fuel, 0.0f, jetpack_fuel_max);
-        }
-    } else {
-        jetpack_fuel += jetpack_fuel_recharge_rate * DeltaTime;
-        jetpack_fuel = FMath::Clamp(jetpack_fuel, 0.0f, jetpack_fuel_max);
-    }
-
     if (auto* pc{Cast<APlayerController>(GetController())}) {
         if (auto* hud{Cast<AMyHUD>(pc->GetHUD())}) {
-            hud->update_fuel(jetpack_fuel);
             hud->update_jump(JumpCurrentCount);
         } else {
             print_msg(TEXT("No HUD when updating HUD."));
@@ -95,7 +82,6 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 }
 
 void AMyCharacter::move(FInputActionValue const& value) {
-
     auto const movement_value{value.Get<FVector>()};
 
     if (this->Controller) {
@@ -118,11 +104,15 @@ void AMyCharacter::look(FInputActionValue const& value) {
         AddControllerPitchInput(look_axis_value.Y);
     }
 }
-void AMyCharacter::start_jetpack(FInputActionValue const& value) {
-    is_jetpacking = true;
+void AMyCharacter::start_jetpack(FInputActionValue const&) {
+    if (jetpack_component != nullptr) {
+        jetpack_component->start_jetpack();
+    }
 }
-void AMyCharacter::stop_jetpack(FInputActionValue const& value) {
-    is_jetpacking = false;
+void AMyCharacter::stop_jetpack(FInputActionValue const&) {
+    if (jetpack_component != nullptr) {
+        jetpack_component->stop_jetpack();
+    }
 }
 
 void AMyCharacter::aim_torch(FVector const& world_location) {
