@@ -17,10 +17,15 @@ struct FStationStateData {
     float cooldown_remaining;
 
     UPROPERTY(BlueprintReadOnly)
+    float cooldown_total;
+
+    UPROPERTY(BlueprintReadOnly)
     bool is_ready;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged, FStationStateData, state_data);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
+                                            FStationStateData const&,
+                                            state_data);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UHealthStationComponent
@@ -32,6 +37,11 @@ class SANDBOX_API UHealthStationComponent
 
     virtual void interact(AActor* interactor = nullptr) override;
     virtual bool can_interact(AActor const* interactor) const override;
+
+    void broadcast_state() const;
+
+    UPROPERTY(BlueprintAssignable, Category = "Health Station")
+    FOnStationStateChanged on_station_state_changed;
   protected:
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime,
@@ -49,12 +59,8 @@ class SANDBOX_API UHealthStationComponent
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
     float cooldown_duration{2.0f}; // seconds
-
-    UPROPERTY(BlueprintAssignable, Category = "Health Station")
-    FOnStationStateChanged on_station_state_changed;
   private:
     void reset_current_capacity();
-    void broadcast_state() const;
     void start_cooldown();
 
     float current_capacity{0.0f};
