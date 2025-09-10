@@ -4,7 +4,8 @@
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
 UHealthStationComponent::UHealthStationComponent() {
-    PrimaryComponentTick.bCanEverTick = false;
+    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 void UHealthStationComponent::BeginPlay() {
     Super::BeginPlay();
@@ -44,7 +45,7 @@ void UHealthStationComponent::interact(AActor* interactor) {
     }
 }
 bool UHealthStationComponent::can_interact(AActor const* interactor) const {
-    return cooldown_remaining >= 0.0f;
+    return cooldown_remaining <= 0.0f;
 }
 void UHealthStationComponent::reset_current_capacity() {
     current_capacity = max_capacity;
