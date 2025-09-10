@@ -52,7 +52,7 @@ void UHealthStationComponent::reset_current_capacity() {
 }
 void UHealthStationComponent::broadcast_state() const {
     on_station_state_changed.Broadcast(
-        {current_capacity, cooldown_remaining, can_interact(nullptr)});
+        {current_capacity, cooldown_remaining, cooldown_duration, can_interact(nullptr)});
 }
 void UHealthStationComponent::start_cooldown() {
     cooldown_remaining = cooldown_duration;
