@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
 #include "Sandbox/data/HealthData.h"
+#include "Sandbox/data/JetpackState.h"
 #include "Sandbox/widgets/MainHUDWidget.h"
 
 #include "MyHUD.generated.h"
@@ -24,7 +25,7 @@ class SANDBOX_API AMyHUD : public AHUD {
     UMainHUDWidget* main_widget;
   public:
     UFUNCTION()
-    void update_fuel(float new_fuel);
+    void update_fuel(FJetpackState const& jetpack_state);
     UFUNCTION()
     void update_jump(int32 new_jump);
     UFUNCTION()

@@ -2,6 +2,7 @@
 
 #include "GameFramework/PlayerController.h"
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/game_states/PlatformerGameState.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -52,13 +53,20 @@ void AMyHUD::BeginPlay() {
         UE_LOG(LogTemp, Warning, TEXT("AMyHUD: HealthComponent not found on player pawn."));
         return;
     }
-
     health_component->on_health_percent_changed.AddDynamic(this, &AMyHUD::update_health);
+
+    auto* jetpack_component{player_pawn->FindComponentByClass<UJetpackComponent>()};
+    if (!jetpack_component) {
+        UE_LOG(LogTemp, Warning, TEXT("AMyHUD: UJetpackComponent not found on player pawn."));
+        return;
+    }
+    jetpack_component->on_fuel_changed.AddDynamic(this, &AMyHUD::update_fuel);
+    jetpack_component->broadcast_fuel_state();
 }
 
-void AMyHUD::update_fuel(float new_fuel) {
+void AMyHUD::update_fuel(FJetpackState const& jetpack_state) {
     MAIN_WIDGET_NULL_CHECK();
-    main_widget->update_fuel(new_fuel);
+    main_widget->update_fuel(jetpack_state.fuel_remaining);
 }
 void AMyHUD::update_jump(int32 new_jump) {
     MAIN_WIDGET_NULL_CHECK();
