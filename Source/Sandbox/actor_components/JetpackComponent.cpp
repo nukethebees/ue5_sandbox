@@ -54,23 +54,32 @@ void UJetpackComponent::stop_jetpack() {
     if (fuel < fuel_max) {
         constexpr float jetpack_timer_interval{0.2f};
         constexpr bool jetpack_timer_loops{true};
+        constexpr float jetpack_timer_first_delay{1.0f};
         GetWorld()->GetTimerManager().SetTimer(fuel_recharge_timer,
                                                this,
                                                &UJetpackComponent::recharge_fuel,
                                                jetpack_timer_interval,
-                                               jetpack_timer_loops);
+                                               jetpack_timer_loops,
+                                               jetpack_timer_first_delay);
     }
 }
 void UJetpackComponent::apply_jetpack_force(float delta_time) {
     if (fuel <= 0.0f) {
-        stop_jetpack();
         return;
     }
 
     if (auto* character{Cast<ACharacter>(GetOwner())}) {
         auto const fuel_needed{fuel_consumption_rate * delta_time};
         auto const fuel_ratio{FMath::Clamp(fuel / fuel_needed, 0.0f, 1.0f)};
+
+        if (fuel_ratio <= 0.01) {
+            return;
+        }
+
         auto const scaled_force{lift_force * delta_time * fuel_ratio};
+        if (scaled_force <= 100.0f) {
+            return;
+        }
 
         FVector const force{0.0f, 0.0f, scaled_force};
         character->LaunchCharacter(force, false, true);
