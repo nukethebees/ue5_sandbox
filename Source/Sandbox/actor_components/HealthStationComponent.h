@@ -11,16 +11,16 @@ struct FStationStateData {
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly)
-    float remaining_capacity;
+    float remaining_capacity{0.0f};
 
     UPROPERTY(BlueprintReadOnly)
-    float cooldown_remaining;
+    float cooldown_remaining{0.0f};
 
     UPROPERTY(BlueprintReadOnly)
-    float cooldown_total;
+    float cooldown_total{1.0f};
 
     UPROPERTY(BlueprintReadOnly)
-    bool is_ready;
+    bool is_ready{false};
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
