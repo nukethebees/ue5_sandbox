@@ -16,12 +16,16 @@ void AMyPlayerController::BeginPlay() {
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
             subsystem->AddMappingContext(default_mapping_context.LoadSynchronous(), 0);
         }
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not get local player.");
     }
 
     if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
         if (auto* hud{Cast<AMyHUD>(GetHUD())}) {
             character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
         }
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not cast to AMyCharacter.");
     }
 }
 void AMyPlayerController::OnPossess(APawn* InPawn) {
