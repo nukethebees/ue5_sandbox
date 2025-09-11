@@ -58,3 +58,8 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **Modular design**: Prefer actor components for reusable functionality
 - **Performance first**: Spend time upfront building scalable systems rather than accumulating technical debt
 - **Professional critique welcome**: Challenge ideas and suggest industry best practices
+
+## Code Writing Policy
+- **NEVER write or suggest code unless explicitly requested**: Only write, edit, or create code files when the user specifically asks for implementation
+- **Analysis and explanation only by default**: Provide code analysis, explanations, and guidance without writing code
+- **Wait for explicit requests**: The user will clearly state when they want code to be written or modified
