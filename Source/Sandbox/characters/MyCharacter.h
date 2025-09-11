@@ -17,7 +17,6 @@
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
-#include "Sandbox/widgets/JumpWidget.h"
 
 #include "MyCharacter.generated.h"
 

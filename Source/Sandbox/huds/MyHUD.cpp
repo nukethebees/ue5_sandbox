@@ -67,13 +67,16 @@ void AMyHUD::BeginPlay() {
 void AMyHUD::update_fuel(FJetpackState const& jetpack_state) {
     MAIN_WIDGET_NULL_CHECK();
 
-    if (main_widget && main_widget->fuel_widget) {
+    if (main_widget->fuel_widget) {
         main_widget->fuel_widget->update(jetpack_state.fuel_remaining);
     }
 }
 void AMyHUD::update_jump(int32 new_jump) {
     MAIN_WIDGET_NULL_CHECK();
-    main_widget->update_jump(new_jump);
+
+    if (main_widget->jump_widget) {
+        main_widget->jump_widget->update(new_jump);
+    }
 }
 void AMyHUD::update_health(FHealthData health_data) {
     MAIN_WIDGET_NULL_CHECK();
