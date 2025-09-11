@@ -82,11 +82,15 @@ void UInteractorComponent::try_interact() {
         if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
             log_verbose(TEXT("Found UInteractableComponent."));
             if (interactable_component->try_interact(owner) != EInteractTriggered::none_triggered) {
+                log_verbose(TEXT("Component successfully interacted with."));
                 break;
+            } else {
+                log_verbose(TEXT("Try interact triggered none."));
             }
         }
 
         if (IInteractable::try_interact(actor, owner)) {
+            log_verbose(TEXT("Interacted with the actor directly."));
             break;
         }
     }
