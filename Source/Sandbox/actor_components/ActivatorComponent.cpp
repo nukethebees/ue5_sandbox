@@ -14,6 +14,10 @@ void UActivatorComponent::BeginPlay() {
             continue;
         }
 
+        if (actor->GetClass()->ImplementsInterface(UActivatable::StaticClass())) {
+            linked_activatables.Add(TScriptInterface<IActivatable>(actor));
+        }
+
         for (auto* const component : actor->GetComponents()) {
             if (component &&
                 component->GetClass()->ImplementsInterface(UActivatable::StaticClass())) {
@@ -24,6 +28,10 @@ void UActivatorComponent::BeginPlay() {
 }
 
 void UActivatorComponent::trigger_activation(AActor* instigator) {
+    if (linked_activatables.IsEmpty()) {
+        log_warning(TEXT("No linked activatables."));
+    }
+
     for (auto& target : linked_activatables) {
         if (target) {
             target->trigger_activation(instigator);
