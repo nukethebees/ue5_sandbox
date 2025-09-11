@@ -27,6 +27,11 @@ APushZoneActor::APushZoneActor() {
     collision_box->SetCollisionResponseToAllChannels(ECR_Ignore);
     collision_box->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
     collision_box->SetGenerateOverlapEvents(true);
+
+    // Create outer visual mesh component
+    visual_mesh_outer = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshOuter"));
+    visual_mesh_outer->SetupAttachment(root_scene);
+    visual_mesh_outer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void APushZoneActor::BeginPlay() {
@@ -35,6 +40,32 @@ void APushZoneActor::BeginPlay() {
     // Bind overlap events
     collision_box->OnComponentBeginOverlap.AddDynamic(this, &APushZoneActor::on_overlap_begin);
     collision_box->OnComponentEndOverlap.AddDynamic(this, &APushZoneActor::on_overlap_end);
+
+    // Create inner visual shell dynamically
+    if (visual_mesh_outer && !visual_mesh_inner) {
+        visual_mesh_inner = NewObject<UStaticMeshComponent>(this, TEXT("VisualMeshInner"));
+        visual_mesh_inner->SetupAttachment(root_scene);
+        visual_mesh_inner->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+        // Copy mesh and base material from outer shell
+        visual_mesh_inner->SetStaticMesh(visual_mesh_outer->GetStaticMesh());
+
+        if (auto* base_material{visual_mesh_outer->GetMaterial(0)}) {
+            // Create dynamic material instance for inner shell
+            auto* dynamic_material{UMaterialInstanceDynamic::Create(base_material, this)};
+            dynamic_material->SetScalarParameterValue(TEXT("OpacityMultiplier"),
+                                                      inner_opacity_multiplier);
+            dynamic_material->SetVectorParameterValue(TEXT("ColorTint"), inner_color_tint);
+            visual_mesh_inner->SetMaterial(0, dynamic_material);
+        }
+
+        // Scale inner shell smaller than outer
+        visual_mesh_inner->SetRelativeScale3D(visual_mesh_outer->GetRelativeScale3D() *
+                                              inner_shell_scale_ratio);
+
+        // Register the component with the actor
+        visual_mesh_inner->RegisterComponent();
+    }
 }
 
 void APushZoneActor::Tick(float DeltaTime) {
@@ -66,7 +97,7 @@ void APushZoneActor::on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
         return;
     }
 
-    log_info(TEXT("Actor %s entered push zone"), *OtherActor->GetName());
+    log_verbose(TEXT("Actor %s entered push zone"), *OtherActor->GetName());
 
     // Add to our tracking list
     overlapping_actors.AddUnique(TWeakObjectPtr<AActor>(OtherActor));
@@ -195,14 +226,18 @@ void APushZoneActor::apply_force_to_actor(AActor* target_actor, FVector const& f
         if (auto* movement_component{character->GetCharacterMovement()}) {
             if (force_mode == EPushForceMode::InstantImpulse) {
                 movement_component->AddImpulse(force, true);
-                log_info(TEXT("Applied impulse %s to character %s"),
-                         *force.ToString(),
-                         *target_actor->GetName());
+#if UE_BUILD_DEBUG
+                log_log(TEXT("Applied impulse %s to character %s"),
+                        *force.ToString(),
+                        *target_actor->GetName());
+#endif
             } else {
                 movement_component->AddForce(force);
-                log_info(TEXT("Applied force %s to character %s"),
-                         *force.ToString(),
-                         *target_actor->GetName());
+#if UE_BUILD_DEBUG
+                log_log(TEXT("Applied force %s to character %s"),
+                        *force.ToString(),
+                        *target_actor->GetName());
+#endif
             }
             return;
         } else {
@@ -216,14 +251,14 @@ void APushZoneActor::apply_force_to_actor(AActor* target_actor, FVector const& f
             if (primitive->IsSimulatingPhysics()) {
                 if (force_mode == EPushForceMode::InstantImpulse) {
                     primitive->AddImpulse(force, NAME_None, true);
-                    log_info(TEXT("Applied physics impulse %s to actor %s"),
-                             *force.ToString(),
-                             *target_actor->GetName());
+                    log_log(TEXT("Applied physics impulse %s to actor %s"),
+                            *force.ToString(),
+                            *target_actor->GetName());
                 } else {
                     primitive->AddForce(force, NAME_None, true);
-                    log_info(TEXT("Applied physics force %s to actor %s"),
-                             *force.ToString(),
-                             *target_actor->GetName());
+                    log_log(TEXT("Applied physics force %s to actor %s"),
+                            *force.ToString(),
+                            *target_actor->GetName());
                 }
             } else {
                 log_warning(TEXT("Actor %s root component not simulating physics"),
