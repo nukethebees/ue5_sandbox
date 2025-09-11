@@ -3,11 +3,18 @@
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "InteractorComponent.generated.h"
 
+namespace ml {
+inline static constexpr wchar_t InteractorComponentLogTag[]{TEXT("InteractorComponent")};
+}
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UInteractorComponent : public UActorComponent {
+class SANDBOX_API UInteractorComponent
+    : public UActorComponent
+    , public ml::LogMsgMixin<ml::InteractorComponentLogTag> {
     GENERATED_BODY()
   public:
     UInteractorComponent();
@@ -20,6 +27,8 @@ class SANDBOX_API UInteractorComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     TObjectPtr<UInputAction> interact_action;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    float interaction_cooldown{0.1f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float interaction_range{200.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float forward_offset{50.0f};
@@ -31,4 +40,7 @@ class SANDBOX_API UInteractorComponent : public UActorComponent {
     float capsule_half_height{80.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     TEnumAsByte<ECollisionChannel> collision_channel{ECC_GameTraceChannel1};
+  private:
+    bool cooling_down{false};
+    FTimerHandle cooldown_handle;
 };
