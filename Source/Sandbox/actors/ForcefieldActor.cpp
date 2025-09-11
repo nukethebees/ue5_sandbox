@@ -11,18 +11,24 @@ AForcefieldActor::AForcefieldActor() {
 
     FVector const box_extent{FVector{100.0f, 100.0f, 100.0f}};
 
-    // Create collision volume as root
+    constexpr auto box_mobility{EComponentMobility::Static};
+
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
+    RootComponent->SetMobility(box_mobility);
+
     collision_volume = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionVolume"));
-    RootComponent = collision_volume;
+    collision_volume->SetupAttachment(RootComponent);
     collision_volume->SetBoxExtent(box_extent);
     collision_volume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     collision_volume->SetCollisionProfileName(TEXT("BlockAll"));
+    collision_volume->SetMobility(box_mobility);
 
     // Create barrier mesh
     barrier_mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BarrierMesh"));
     barrier_mesh->SetupAttachment(RootComponent);
     barrier_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     barrier_mesh->SetVisibility(true);
+    barrier_mesh->SetMobility(box_mobility);
 
     // Create particle system
     sparkle_particles = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("SparkleParticles"));
@@ -33,6 +39,23 @@ AForcefieldActor::AForcefieldActor() {
     distortion_effect = CreateDefaultSubobject<UPostProcessComponent>(TEXT("DistortionEffect"));
     distortion_effect->SetupAttachment(RootComponent);
     distortion_effect->bEnabled = false;
+}
+
+void AForcefieldActor::OnConstruction(FTransform const& Transform) {
+    Super::OnConstruction(Transform);
+
+    // Resize barrier mesh to match collision volume
+    if (barrier_mesh && barrier_mesh->GetStaticMesh()) {
+        // Get the size of the collision volume (extent is half-size)
+        FVector const collision_size{collision_volume->GetScaledBoxExtent() * 2.0f};
+        FVector const mesh_size{barrier_mesh->GetStaticMesh()->GetBoundingBox().GetSize()};
+
+        // Calculate the required scale and set it, avoiding division by zero
+        if (!mesh_size.IsNearlyZero()) {
+            FVector const desired_scale{collision_size / mesh_size};
+            barrier_mesh->SetWorldScale3D(desired_scale);
+        }
+    }
 }
 
 void AForcefieldActor::BeginPlay() {

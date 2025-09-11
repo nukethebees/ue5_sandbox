@@ -35,6 +35,7 @@ class SANDBOX_API AForcefieldActor
     AForcefieldActor();
   protected:
     virtual void BeginPlay() override;
+    virtual void OnConstruction(const FTransform& Transform) override;
 
     // IActivatable interface
     void trigger_activation(AActor* instigator = nullptr) override;
