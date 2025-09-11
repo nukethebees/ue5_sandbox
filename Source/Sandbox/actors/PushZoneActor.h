@@ -76,9 +76,6 @@ class SANDBOX_API APushZoneActor
                         int32 OtherBodyIndex);
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    USceneComponent* root_scene;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UBoxComponent* collision_box;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")

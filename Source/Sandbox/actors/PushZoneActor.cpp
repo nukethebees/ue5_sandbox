@@ -12,12 +12,11 @@ APushZoneActor::APushZoneActor() {
     PrimaryActorTick.bStartWithTickEnabled = false;
 
     // Create root scene component
-    root_scene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
-    RootComponent = root_scene;
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
 
     // Create and setup collision box as child of root
     collision_box = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-    collision_box->SetupAttachment(root_scene);
+    collision_box->SetupAttachment(RootComponent);
 
     // Set default box size (can be adjusted in Blueprint/editor)
     collision_box->SetBoxExtent(FVector{500.0f, 500.0f, 250.0f});
@@ -30,7 +29,7 @@ APushZoneActor::APushZoneActor() {
 
     // Create outer visual mesh component
     visual_mesh_outer = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshOuter"));
-    visual_mesh_outer->SetupAttachment(root_scene);
+    visual_mesh_outer->SetupAttachment(RootComponent);
     visual_mesh_outer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
@@ -44,7 +43,7 @@ void APushZoneActor::BeginPlay() {
     // Create inner visual shell dynamically
     if (visual_mesh_outer && !visual_mesh_inner) {
         visual_mesh_inner = NewObject<UStaticMeshComponent>(this, TEXT("VisualMeshInner"));
-        visual_mesh_inner->SetupAttachment(root_scene);
+        visual_mesh_inner->SetupAttachment(RootComponent);
         visual_mesh_inner->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
         // Copy mesh and base material from outer shell
