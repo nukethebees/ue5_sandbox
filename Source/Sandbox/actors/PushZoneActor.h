@@ -44,7 +44,7 @@ class SANDBOX_API APushZoneActor
     float min_distance_threshold{1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
-    float custom_tick_interval{0.1f};
+    float custom_tick_interval{0.05f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
     EPushForceMode force_mode{EPushForceMode::ContinuousForce};
