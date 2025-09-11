@@ -40,12 +40,22 @@ void AMyCharacter::BeginPlay() {
 
     this->JumpMaxCount = 2;
 
-    if (auto* pc{Cast<APlayerController>(this->Controller)}) {
+    using PC = std::remove_pointer<decltype(player_controller)>::type;
+    player_controller = Cast<PC>(this->Controller);
+
+    if (player_controller) {
         using EIPS = UEnhancedInputLocalPlayerSubsystem;
-        auto const* local_player{pc->GetLocalPlayer()};
+        auto const* local_player{player_controller->GetLocalPlayer()};
 
         if (auto* subsystem{ULocalPlayer::GetSubsystem<EIPS>(local_player)}) {
             subsystem->AddMappingContext(this->first_person_context, 0);
+        }
+
+        using HUD = std::remove_pointer<decltype(hud)>::type;
+        hud = Cast<HUD>(player_controller->GetHUD());
+
+        if (hud) {
+            hud->update_jump(JumpCurrentCount);
         }
     }
 }
@@ -54,14 +64,18 @@ void AMyCharacter::BeginPlay() {
 void AMyCharacter::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
-    if (auto* pc{Cast<APlayerController>(GetController())}) {
-        if (auto* hud{Cast<AMyHUD>(pc->GetHUD())}) {
-            hud->update_jump(JumpCurrentCount);
+    if (cached_jump_count != JumpCurrentCount) {
+        if (player_controller) {
+            if (hud) {
+                hud->update_jump(JumpCurrentCount);
+            } else {
+                print_msg(TEXT("No HUD when updating HUD."));
+            }
         } else {
-            print_msg(TEXT("No HUD when updating HUD."));
+            print_msg(TEXT("No PC when updating HUD."));
         }
-    } else {
-        print_msg(TEXT("No PC when updating HUD."));
+
+        cached_jump_count = JumpCurrentCount;
     }
 }
 
