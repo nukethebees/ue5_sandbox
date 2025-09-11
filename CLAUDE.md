@@ -50,6 +50,7 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **auto usage**: Use where type is obvious and improves readability
 - **const correctness**: Apply where appropriate, but don't force const on values that need to be mutable
 - **Always use braces**: Even for single-line blocks - `if (x) { return; }`
+- **Switch case braces**: Always use braces for switch case blocks - `case Foo: { statements; break; }`
 - **Follow `.clang-format`**: 100 character line limit, 4-space indentation
 
 ### Architecture Principles
