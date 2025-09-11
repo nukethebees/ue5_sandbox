@@ -23,15 +23,21 @@ void UInteractorComponent::BeginPlay() {
 }
 
 void UInteractorComponent::try_interact() {
+    if (cooling_down) {
+        log_verbose(TEXT("Cooling down. Cannot interact."));
+        return;
+    }
+
     auto* const world{GetWorld()};
     auto* const owner{GetOwner()};
     if (!world) {
+        log_warning(TEXT("Could not get world pointer."));
         return;
     }
 
     auto const forward{owner->GetActorForwardVector()};
-    auto const start{owner->GetActorLocation() + forward * forward_offset +
-                     FVector(0.0f, 0.0f, height_offset)};
+    FVector const vertical_offset{0.0f, 0.0f, height_offset};
+    auto const start{owner->GetActorLocation() + forward * forward_offset + vertical_offset};
     auto const end{start + forward * interaction_range};
 
     TArray<FHitResult> hit_results;
@@ -45,29 +51,36 @@ void UInteractorComponent::try_interact() {
         FCollisionShape::MakeCapsule(capsule_radius, capsule_half_height))};
 
 #if WITH_EDITOR
+    constexpr float debug_sweep_centre_point{0.5f};
+    constexpr float debug_capsule_duration{2.0f};
+    constexpr bool debug_capsule_persistent_lines{false};
     DrawDebugCapsule(world,
-                     (start + end) * 0.5f, // center point of the sweep
+                     (start + end) * debug_sweep_centre_point,
                      capsule_half_height,
                      capsule_radius,
                      FRotationMatrix::MakeFromZ(end - start).ToQuat(),
                      FColor::Green,
-                     false,
-                     2.0f // duration
-    );
+                     debug_capsule_persistent_lines,
+                     debug_capsule_duration);
 #endif
 
     if (!hit) {
+        log_verbose(TEXT("No hit."));
         return;
     }
 
     // Only trigger the first valid one
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
+
+        log_verbose(TEXT("Checking hit actor %s."), *actor->GetName());
+
         if ((actor == owner) || (actor == nullptr)) {
             continue;
         }
 
         if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
+            log_verbose(TEXT("Found UInteractableComponent."));
             if (interactable_component->try_interact(owner) != EInteractTriggered::none_triggered) {
                 break;
             }
@@ -77,4 +90,9 @@ void UInteractorComponent::try_interact() {
             break;
         }
     }
+
+    cooling_down = true;
+    constexpr bool loop_timer{false};
+    world->GetTimerManager().SetTimer(
+        cooldown_handle, [this]() { cooling_down = false; }, interaction_cooldown, loop_timer);
 }
