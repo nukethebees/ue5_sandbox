@@ -8,12 +8,20 @@
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 #include "PushZoneActor.generated.h"
 
 class UPrimitiveComponent;
 
+namespace ml {
+inline static constexpr wchar_t PushZoneActorLogTag[]{TEXT("PushZone")};
+}
+
 UCLASS()
-class SANDBOX_API APushZoneActor : public AActor {
+class SANDBOX_API APushZoneActor
+    : public AActor
+    , public ml::LogMsgMixin<ml::PushZoneActorLogTag> {
     GENERATED_BODY()
   public:
     APushZoneActor();
@@ -78,23 +86,4 @@ class SANDBOX_API APushZoneActor : public AActor {
 
     // Debug visualization
     void draw_debug_info() const;
-
-    // Logging helpers
-    template <typename... Args>
-    void log_warning(UE::Core::TCheckedFormatString<typename FString::FmtCharType, Args...>&& fmt,
-                     Args... args) const {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("PushZone: %s"),
-               *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
-    }
-
-    template <typename... Args>
-    void log_info(UE::Core::TCheckedFormatString<typename FString::FmtCharType, Args...>&& fmt,
-                  Args... args) const {
-        UE_LOG(LogTemp,
-               Log,
-               TEXT("PushZone: %s"),
-               *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
-    }
 };
