@@ -11,6 +11,8 @@ void AMyPlayerController::BeginPlay() {
     bEnableClickEvents = true;
     bEnableMouseOverEvents = false;
 
+    set_game_input_mode();
+
     if (auto* local_player{GetLocalPlayer()}) {
         using SS = UEnhancedInputLocalPlayerSubsystem;
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
@@ -34,6 +36,8 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
     controlled_character = Cast<AMyCharacter>(InPawn);
     if (controlled_character) {
         controlled_character->my_player_controller = this;
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not possess a AMyCharacter.");
     }
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
@@ -93,7 +97,7 @@ void AMyPlayerController::SetupInputComponent() {
                         this,
                         &AMyPlayerController::warp_to_cursor);
     } else {
-        print_msg(TEXT("Didn't get EIC."));
+        print_msg(TEXT("AMyPlayerController: Did not get the UEnhancedInputComponent."));
     }
 }
 
@@ -106,18 +110,9 @@ void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
     auto const mouse_value{value.Get<bool>()};
 
     if (bShowMouseCursor) {
-        print_msg(TEXT("Disabling mouse cursor."));
-
-        auto input_mode{FInputModeGameOnly()};
-        SetInputMode(input_mode);
-        bShowMouseCursor = false;
-        controlled_character->reset_torch_position();
+        set_game_input_mode();
     } else {
-        print_msg(TEXT("Enabling mouse cursor."));
-
-        auto input_mode{FInputModeGameAndUI()};
-        SetInputMode(input_mode);
-        bShowMouseCursor = true;
+        set_mouse_input_mode();
     }
 }
 void AMyPlayerController::mouse_click(FInputActionValue const& value) {
@@ -208,4 +203,16 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
                                                                    hit.Location);
         }
     }
+}
+
+void AMyPlayerController::set_game_input_mode() {
+    auto input_mode{FInputModeGameOnly()};
+    SetInputMode(input_mode);
+    bShowMouseCursor = false;
+    controlled_character->reset_torch_position();
+}
+void AMyPlayerController::set_mouse_input_mode() {
+    auto input_mode{FInputModeGameAndUI()};
+    SetInputMode(input_mode);
+    bShowMouseCursor = true;
 }

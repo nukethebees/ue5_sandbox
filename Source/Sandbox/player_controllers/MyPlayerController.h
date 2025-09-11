@@ -58,7 +58,10 @@ class SANDBOX_API AMyPlayerController
     UFUNCTION()
     void toggle_torch(FInputActionValue const& value);
     UFUNCTION()
-    void scroll_torch_cone(FInputActionValue const & value);
+    void scroll_torch_cone(FInputActionValue const& value);
     UFUNCTION()
-    void warp_to_cursor(FInputActionValue const & value);
+    void warp_to_cursor(FInputActionValue const& value);
+  private:
+    void set_game_input_mode();
+    void set_mouse_input_mode();
 };
