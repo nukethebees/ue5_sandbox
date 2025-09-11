@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 #include "CoreMinimal.h"
+#include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/options_menu/AudioOptionsWidget.h"
 #include "Sandbox/widgets/options_menu/ControlsOptionsWidget.h"
 #include "Sandbox/widgets/options_menu/GameplayOptionsWidget.h"
@@ -35,6 +36,10 @@ class SANDBOX_API UOptionsWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* controls_tab_button{nullptr};
 
+    // Back button
+    UPROPERTY(meta = (BindWidget))
+    UTextButtonWidget* back_button{nullptr};
+
     // Tab content widgets
     UPROPERTY(meta = (BindWidget))
     UGameplayOptionsWidget* gameplay_tab{nullptr};
@@ -44,6 +49,10 @@ class SANDBOX_API UOptionsWidget : public UUserWidget {
     UAudioOptionsWidget* audio_tab{nullptr};
     UPROPERTY(meta = (BindWidget))
     UControlsOptionsWidget* controls_tab{nullptr};
+  public:
+    // Back navigation event
+    UPROPERTY(BlueprintAssignable)
+    FBackRequested back_requested;
   private:
     UFUNCTION()
     void handle_gameplay_tab();
@@ -53,6 +62,8 @@ class SANDBOX_API UOptionsWidget : public UUserWidget {
     void handle_audio_tab();
     UFUNCTION()
     void handle_controls_tab();
+    UFUNCTION()
+    void handle_back();
 
     void set_active_tab(EOptionsTab tab);
     void update_tab_button_states(EOptionsTab active_tab);

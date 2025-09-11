@@ -17,6 +17,11 @@ void UOptionsWidget::NativeConstruct() {
         controls_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_controls_tab);
     }
 
+    // Bind back button click
+    if (back_button) {
+        back_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_back);
+    }
+
     // Set initial tab
     set_active_tab(EOptionsTab::Gameplay);
 }
@@ -37,9 +42,13 @@ void UOptionsWidget::handle_controls_tab() {
     set_active_tab(EOptionsTab::Controls);
 }
 
+void UOptionsWidget::handle_back() {
+    back_requested.Broadcast();
+}
+
 void UOptionsWidget::set_active_tab(EOptionsTab tab) {
     current_tab = tab;
-    
+
     if (tab_switcher) {
         tab_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
     } else {
