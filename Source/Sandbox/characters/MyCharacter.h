@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <utility>
 
 #include "Blueprint/UserWidget.h"
@@ -25,6 +26,7 @@ class UInputAction;
 class UInputComponent;
 class AMyPlayerController;
 class UJetpackComponent;
+class AMyHUD;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
@@ -102,6 +104,9 @@ class SANDBOX_API AMyCharacter
     UWarpComponent* warp_component{nullptr};
   private:
     bool torch_on{true};
+    int32 cached_jump_count{0};
+    APlayerController* player_controller{nullptr};
+    AMyHUD* hud{nullptr};
 
     virtual void handle_death();
 };
