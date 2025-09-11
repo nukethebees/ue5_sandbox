@@ -10,6 +10,10 @@ void UMainMenu2Widget::NativeConstruct() {
         play_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_play);
     }
 
+    if (options_button) {
+        options_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_options);
+    }
+
     if (quit_button) {
         quit_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_quit);
     }
@@ -27,6 +31,9 @@ void UMainMenu2Widget::handle_quit() {
 }
 void UMainMenu2Widget::handle_play() {
     set_active_page(EMainMenu2MenuPage::LevelSelect);
+}
+void UMainMenu2Widget::handle_options() {
+    set_active_page(EMainMenu2MenuPage::Options);
 }
 void UMainMenu2Widget::return_to_main_page() {
     set_active_page(EMainMenu2MenuPage::Main);
