@@ -8,6 +8,8 @@
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "PushZoneActor.generated.h"
@@ -78,7 +80,23 @@ class SANDBOX_API APushZoneActor
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UBoxComponent* collision_box;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UStaticMeshComponent* visual_mesh_outer;
   private:
+    // Visual mesh components
+    UStaticMeshComponent* visual_mesh_inner{nullptr};
+
+    // Visual properties
+    UPROPERTY(EditAnywhere, Category = "Visual")
+    float inner_shell_scale_ratio{0.98f};
+
+    UPROPERTY(EditAnywhere, Category = "Visual")
+    float inner_opacity_multiplier{0.8f};
+
+    UPROPERTY(EditAnywhere, Category = "Visual")
+    FLinearColor inner_color_tint{1.0f, 0.9f, 0.9f, 1.0f};
+
     // Actor tracking
     TArray<TWeakObjectPtr<AActor>> overlapping_actors;
 
