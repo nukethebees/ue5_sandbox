@@ -25,6 +25,10 @@ void UMainMenu2Widget::NativeConstruct() {
         level_names.Sort([](auto A, auto B) { return A.LexicalLess(B); });
         level_select_menu->populate_level_buttons(level_names);
     }
+
+    if (options_menu) {
+        options_menu->back_requested.AddDynamic(this, &UMainMenu2Widget::return_to_main_page);
+    }
 }
 void UMainMenu2Widget::handle_quit() {
     UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
