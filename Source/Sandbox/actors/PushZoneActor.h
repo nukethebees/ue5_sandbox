@@ -14,6 +14,12 @@
 
 class UPrimitiveComponent;
 
+UENUM(BlueprintType)
+enum class EPushForceMode : uint8 {
+    ContinuousForce UMETA(DisplayName = "Continuous Push"),
+    InstantImpulse UMETA(DisplayName = "Instant Burst")
+};
+
 namespace ml {
 inline static constexpr wchar_t PushZoneActorLogTag[]{TEXT("PushZone")};
 }
@@ -35,13 +41,19 @@ class SANDBOX_API APushZoneActor
     float max_force_strength{1000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
-    float min_distance_threshold{10.0f};
+    float min_distance_threshold{1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
     float custom_tick_interval{0.1f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
-    bool use_impulse_force{false};
+    EPushForceMode force_mode{EPushForceMode::ContinuousForce};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
+    float force_multiplier{5000000.0};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Push Zone")
+    float impulse_multiplier{500.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
     bool show_debug_visualization{false};

@@ -132,8 +132,26 @@ void APushZoneActor::apply_push_forces() {
 
     for (auto const& weak_actor : overlapping_actors) {
         if (auto* actor{weak_actor.Get()}) {
-            auto const force{1'000'000.0f * calculate_push_force(actor)};
-            apply_force_to_actor(actor, force);
+            auto const base_force{calculate_push_force(actor)};
+
+            float multiplier{0.0f};
+            switch (force_mode) {
+                case EPushForceMode::ContinuousForce: {
+                    multiplier = force_multiplier;
+                    break;
+                }
+                case EPushForceMode::InstantImpulse: {
+                    multiplier = impulse_multiplier;
+                    break;
+                }
+                default: {
+                    log_error(TEXT("Unhandled force mode: %d"), static_cast<int32>(force_mode));
+                    return;
+                }
+            }
+
+            auto const final_force{multiplier * base_force};
+            apply_force_to_actor(actor, final_force);
         }
     }
 }
@@ -175,7 +193,7 @@ void APushZoneActor::apply_force_to_actor(AActor* target_actor, FVector const& f
     // Try to apply force to character movement component first
     if (auto* character{Cast<ACharacter>(target_actor)}) {
         if (auto* movement_component{character->GetCharacterMovement()}) {
-            if (use_impulse_force) {
+            if (force_mode == EPushForceMode::InstantImpulse) {
                 movement_component->AddImpulse(force, true);
                 log_info(TEXT("Applied impulse %s to character %s"),
                          *force.ToString(),
@@ -196,7 +214,7 @@ void APushZoneActor::apply_force_to_actor(AActor* target_actor, FVector const& f
     if (auto* primitive_component{target_actor->GetRootComponent()}) {
         if (auto* primitive{Cast<UPrimitiveComponent>(primitive_component)}) {
             if (primitive->IsSimulatingPhysics()) {
-                if (use_impulse_force) {
+                if (force_mode == EPushForceMode::InstantImpulse) {
                     primitive->AddImpulse(force, NAME_None, true);
                     log_info(TEXT("Applied physics impulse %s to actor %s"),
                              *force.ToString(),
