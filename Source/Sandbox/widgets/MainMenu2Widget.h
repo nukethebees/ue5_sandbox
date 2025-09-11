@@ -7,11 +7,12 @@
 #include "CoreMinimal.h"
 #include "Sandbox/widgets/LevelSelect2Widget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
+#include "Sandbox/widgets/options_menu/OptionsWidget.h"
 
 #include "MainMenu2Widget.generated.h"
 
 UENUM(BlueprintType)
-enum class EMainMenu2MenuPage : uint8 { Main = 0, LevelSelect = 1 };
+enum class EMainMenu2MenuPage : uint8 { Main = 0, LevelSelect = 1, Options = 2 };
 
 UCLASS()
 class SANDBOX_API UMainMenu2Widget : public UUserWidget {
@@ -24,13 +25,19 @@ class SANDBOX_API UMainMenu2Widget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* play_button;
     UPROPERTY(meta = (BindWidget))
+    UTextButtonWidget* options_button;
+    UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* quit_button;
 
     UPROPERTY(meta = (BindWidget))
     ULevelSelect2Widget* level_select_menu;
+    UPROPERTY(meta = (BindWidget))
+    UOptionsWidget* options_menu;
   private:
     UFUNCTION()
     void handle_play();
+    UFUNCTION()
+    void handle_options();
     UFUNCTION()
     void handle_quit();
     UFUNCTION()

@@ -63,3 +63,4 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **NEVER write or suggest code unless explicitly requested**: Only write, edit, or create code files when the user specifically asks for implementation
 - **Analysis and explanation only by default**: Provide code analysis, explanations, and guidance without writing code
 - **Wait for explicit requests**: The user will clearly state when they want code to be written or modified
+- **Always run clang-format after code changes**: When making any code modifications, run `clang-format` on all modified files to ensure consistent formatting
