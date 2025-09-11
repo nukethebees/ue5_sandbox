@@ -64,3 +64,4 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **Analysis and explanation only by default**: Provide code analysis, explanations, and guidance without writing code
 - **Wait for explicit requests**: The user will clearly state when they want code to be written or modified
 - **Always run clang-format after code changes**: When making any code modifications, run `clang-format` on all modified files to ensure consistent formatting
+- **DO NOT attempt to test Unreal Engine code**: Testing UE5 C++ code requires the engine and project compilation which is not available in this environment
