@@ -13,7 +13,7 @@ auto get_all_level_names(FName level_directory) -> TArray<FName> {
     auto& asset_registry{asset_registry_module.Get()};
 
     FARFilter filter;
-    filter.ClassPaths.Add(FTopLevelAssetPath(FName("/Script/Engine.World")));
+    filter.ClassPaths.Add(FTopLevelAssetPath(FName("/Script/Engine"), FName("World")));
     filter.bRecursivePaths = true;
     filter.PackagePaths.Add(level_directory);
 
