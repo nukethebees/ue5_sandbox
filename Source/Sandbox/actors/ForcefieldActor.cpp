@@ -86,10 +86,29 @@ void AForcefieldActor::BeginPlay() {
             UMaterialInstanceDynamic::Create(barrier_mesh->GetMaterial(0), this);
         if (barrier_material_instance) {
             barrier_mesh->SetMaterial(0, barrier_material_instance);
+
+            // Initialize resolved peak opacity
+            if (peak_opacity < 0.0f) {
+                // Use material's default opacity value
+                float material_opacity{default_opacity}; // fallback
+                if (barrier_material_instance->GetScalarParameterValue(Constants::Opacity(),
+                                                                       material_opacity)) {
+                    resolved_peak_opacity = material_opacity;
+                    log_verbose(TEXT("Using material default opacity: %f"), resolved_peak_opacity);
+                } else {
+                    resolved_peak_opacity = default_opacity;
+                    log_verbose(TEXT("Material has no opacity parameter, using fallback: %f"),
+                                resolved_peak_opacity);
+                }
+            } else {
+                // Use override value
+                resolved_peak_opacity = peak_opacity;
+                log_verbose(TEXT("Using override opacity: %f"), resolved_peak_opacity);
+            }
         }
     }
 
-    current_state = EForcefieldState::Active;
+    change_state(EForcefieldState::Active);
     if (current_state == EForcefieldState::Active) {
         set_emissive_strength(get_curve_end_value());
         transition_pulse_timeline->SetPlaybackPosition(
@@ -144,7 +163,7 @@ bool AForcefieldActor::can_activate(AActor const* instigator) const {
 }
 
 void AForcefieldActor::start_activation() {
-    current_state = EForcefieldState::Activating;
+    change_state(EForcefieldState::Activating);
 
     // Clear any existing timers
     GetWorldTimerManager().ClearTimer(state_timer_handle);
@@ -162,7 +181,7 @@ void AForcefieldActor::start_activation() {
 }
 
 void AForcefieldActor::start_deactivation() {
-    current_state = EForcefieldState::Deactivating;
+    change_state(EForcefieldState::Deactivating);
 
     GetWorldTimerManager().ClearTimer(state_timer_handle);
     GetWorldTimerManager().ClearTimer(cooldown_timer_handle);
@@ -177,7 +196,7 @@ void AForcefieldActor::start_deactivation() {
 }
 
 void AForcefieldActor::start_cooldown() {
-    current_state = EForcefieldState::Cooldown;
+    change_state(EForcefieldState::Cooldown);
 
     // Set timer to complete cooldown
     GetWorldTimerManager().SetTimer(cooldown_timer_handle,
@@ -190,11 +209,14 @@ void AForcefieldActor::start_cooldown() {
 }
 
 void AForcefieldActor::complete_cooldown() {
-    current_state = EForcefieldState::Inactive;
+    change_state(EForcefieldState::Inactive);
 
     log_verbose(TEXT("Cooldown completed - forcefield ready for activation"));
 }
-
+void AForcefieldActor::change_state(EForcefieldState state) {
+    current_state = state;
+    log_verbose(TEXT("Changing state to %s"), *to_fstring(state));
+}
 void AForcefieldActor::update_visual_effects() {
     bool const should_be_visible{is_visible()};
 
@@ -219,8 +241,11 @@ void AForcefieldActor::update_visual_effects() {
 
     // Update material parameters
     if (barrier_material_instance) {
-        float const opacity{should_be_visible ? 0.3f : 0.0f};
-        barrier_material_instance->SetScalarParameterValue(Constants::Opacity(), opacity);
+        // Set base noise parameters (will be scaled by set_emissive_strength)
+        barrier_material_instance->SetScalarParameterValue(Constants::NoiseSpeed(),
+                                                           noise_animation_speed);
+        barrier_material_instance->SetScalarParameterValue(Constants::NoiseIntensity(),
+                                                           noise_intensity);
     }
 }
 
@@ -241,11 +266,12 @@ void AForcefieldActor::on_pulse_update(float value) {
 void AForcefieldActor::on_pulse_end() {
     if (current_state == EForcefieldState::Activating) {
         set_emissive_strength(get_curve_end_value());
-        current_state = EForcefieldState::Active;
+        change_state(EForcefieldState::Active);
         update_collision_blocking();
         log_verbose(TEXT("Forcefield activation completed - now blocking"));
     } else if (current_state == EForcefieldState::Deactivating) {
         set_emissive_strength(get_curve_start_value());
+        change_state(EForcefieldState::Inactive);
         update_visual_effects();
         start_cooldown();
         log_verbose(TEXT("Forcefield deactivation completed - starting cooldown"));
@@ -334,5 +360,26 @@ bool AForcefieldActor::can_change_state() const {
     return current_state == EForcefieldState::Inactive || current_state == EForcefieldState::Active;
 }
 void AForcefieldActor::set_emissive_strength(float es) {
-    barrier_material_instance->SetScalarParameterValue(Constants::EmissiveStrength(), es);
+    if (barrier_material_instance) {
+        log_verbose(TEXT("Setting EmissiveStrength to %f."), es);
+        barrier_material_instance->SetScalarParameterValue(Constants::EmissiveStrength(), es);
+
+        // Scale opacity with timeline value (0.0 → resolved_peak_opacity)
+        float const scaled_opacity{es * resolved_peak_opacity};
+        barrier_material_instance->SetScalarParameterValue(Constants::Opacity(), scaled_opacity);
+
+        // Scale noise animation with activation state
+        float const scaled_noise_speed{noise_animation_speed * es};
+        barrier_material_instance->SetScalarParameterValue(Constants::NoiseSpeed(),
+                                                           scaled_noise_speed);
+
+        // Scale noise intensity with activation state
+        float const scaled_noise_intensity{noise_intensity * es};
+        barrier_material_instance->SetScalarParameterValue(Constants::NoiseIntensity(),
+                                                           scaled_noise_intensity);
+    }
+}
+void AForcefieldActor::set_opacity(float opacity) {
+    log_verbose(TEXT("Setting opacity to %f."), opacity);
+    barrier_material_instance->SetScalarParameterValue(Constants::Opacity(), opacity);
 }
