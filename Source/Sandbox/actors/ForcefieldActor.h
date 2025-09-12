@@ -50,6 +50,16 @@ class SANDBOX_API AForcefieldActor
             static auto const tag{FName(TEXT("Opacity"))};
             return tag;
         }
+
+        static auto const& NoiseSpeed() {
+            static auto const tag{FName(TEXT("NoiseSpeed"))};
+            return tag;
+        }
+
+        static auto const& NoiseIntensity() {
+            static auto const tag{FName(TEXT("NoiseIntensity"))};
+            return tag;
+        }
     };
   protected:
     virtual void BeginPlay() override;
@@ -71,6 +81,18 @@ class SANDBOX_API AForcefieldActor
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
     float distortion_strength{0.5f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
+    float noise_animation_speed{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
+    float noise_intensity{0.3f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Forcefield Settings",
+              meta = (ClampMin = "-1.0", ClampMax = "1.0"))
+    float peak_opacity{-1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
     bool show_debug_visualization{false};
@@ -102,6 +124,9 @@ class SANDBOX_API AForcefieldActor
     static constexpr float debug_line_thickness{2.0f};
     static constexpr float debug_update_interval{1.0f};
 
+    // Default opacity constants
+    static constexpr float default_opacity{0.3f};
+
     // State management
     EForcefieldState current_state{EForcefieldState::Inactive};
     FTimerHandle state_timer_handle;
@@ -112,11 +137,15 @@ class SANDBOX_API AForcefieldActor
     UPROPERTY()
     class UMaterialInstanceDynamic* barrier_material_instance{nullptr};
 
+    // Resolved opacity value (from material or override)
+    float resolved_peak_opacity{default_opacity};
+
     // State transition methods
     void start_activation();
     void start_deactivation();
     void start_cooldown();
     void complete_cooldown();
+    void change_state(EForcefieldState state);
 
     // Visual management
     void update_visual_effects();
@@ -134,6 +163,7 @@ class SANDBOX_API AForcefieldActor
     bool is_in_transition_state() const;
     bool can_change_state() const;
     void set_emissive_strength(float es);
+    void set_opacity(float opacity);
 
     // Timeline curve helpers
     float get_curve_start_value() const;
