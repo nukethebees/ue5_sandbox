@@ -1,10 +1,12 @@
 #include "ForcefieldActor.h"
-#include "Engine/Engine.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "Engine/World.h"
-#include "TimerManager.h"
-#include "DrawDebugHelpers.h"
+
 #include "Components/PrimitiveComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "TimerManager.h"
 
 AForcefieldActor::AForcefieldActor() {
     PrimaryActorTick.bCanEverTick = false;
@@ -39,6 +41,8 @@ AForcefieldActor::AForcefieldActor() {
     distortion_effect = CreateDefaultSubobject<UPostProcessComponent>(TEXT("DistortionEffect"));
     distortion_effect->SetupAttachment(RootComponent);
     distortion_effect->bEnabled = false;
+
+    transition_pulse_timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PulseTimeline"));
 }
 
 void AForcefieldActor::OnConstruction(FTransform const& Transform) {
@@ -61,6 +65,21 @@ void AForcefieldActor::OnConstruction(FTransform const& Transform) {
 void AForcefieldActor::BeginPlay() {
     Super::BeginPlay();
 
+    if (transition_pulse_timeline && transition_pulse_curve) {
+        FOnTimelineFloat timeline_callback;
+        timeline_callback.BindUFunction(this, FName("on_pulse_update"));
+        transition_pulse_timeline->AddInterpFloat(transition_pulse_curve, timeline_callback);
+
+        FOnTimelineEvent timeline_finished;
+        timeline_finished.BindUFunction(this, FName("on_pulse_end"));
+        transition_pulse_timeline->SetTimelineFinishedFunc(timeline_finished);
+
+        transition_pulse_timeline->SetLooping(false);
+        transition_pulse_timeline->SetIgnoreTimeDilation(true);
+    } else {
+        log_warning(TEXT("Transition pulse timeline or curve missing"));
+    }
+
     // Create dynamic material instance for the barrier
     if (barrier_mesh->GetMaterial(0)) {
         barrier_material_instance =
@@ -70,8 +89,16 @@ void AForcefieldActor::BeginPlay() {
         }
     }
 
-    // Initialize in inactive state
     current_state = EForcefieldState::Active;
+    if (current_state == EForcefieldState::Active) {
+        set_emissive_strength(get_curve_end_value());
+        transition_pulse_timeline->SetPlaybackPosition(
+            transition_pulse_timeline->GetTimelineLength(), false);
+    } else if (current_state == EForcefieldState::Inactive) {
+        set_emissive_strength(get_curve_start_value());
+        transition_pulse_timeline->SetPlaybackPosition(0, false);
+    }
+
     update_visual_effects();
     update_collision_blocking();
 
@@ -105,15 +132,14 @@ void AForcefieldActor::trigger_activation(AActor* instigator) {
             break;
         }
         default: {
-            log_verbose(TEXT("Ignoring activation - currently in state: %d"),
-                        static_cast<int32>(current_state));
+            log_verbose(TEXT("Ignoring activation - currently in state: %s"),
+                        *to_fstring(current_state));
             break;
         }
     }
 }
 
 bool AForcefieldActor::can_activate(AActor const* instigator) const {
-    // Can only be activated when inactive or active (for deactivation)
     return current_state == EForcefieldState::Inactive || current_state == EForcefieldState::Active;
 }
 
@@ -127,48 +153,27 @@ void AForcefieldActor::start_activation() {
     // Start visual effects immediately
     update_visual_effects();
 
-    // Set timer to complete activation
-    GetWorldTimerManager().SetTimer(state_timer_handle,
-                                    this,
-                                    &AForcefieldActor::complete_activation,
-                                    transition_duration,
-                                    false);
+    // Start timeline from beginning
+    if (transition_pulse_timeline) {
+        transition_pulse_timeline->PlayFromStart();
+    }
 
-    log_verbose(TEXT("Activation started - will complete in %.1f seconds"), transition_duration);
-}
-
-void AForcefieldActor::complete_activation() {
-    current_state = EForcefieldState::Active;
-    update_collision_blocking();
-
-    log_verbose(TEXT("Forcefield activation completed - now blocking"));
+    log_verbose(TEXT("Activation started - timeline will handle completion"));
 }
 
 void AForcefieldActor::start_deactivation() {
     current_state = EForcefieldState::Deactivating;
 
-    // Clear any existing timers
     GetWorldTimerManager().ClearTimer(state_timer_handle);
     GetWorldTimerManager().ClearTimer(cooldown_timer_handle);
 
-    // Stop blocking immediately for safety
     update_collision_blocking();
 
-    // Set timer to complete deactivation
-    GetWorldTimerManager().SetTimer(state_timer_handle,
-                                    this,
-                                    &AForcefieldActor::complete_deactivation,
-                                    transition_duration,
-                                    false);
+    if (transition_pulse_timeline) {
+        transition_pulse_timeline->Reverse();
+    }
 
-    log_verbose(TEXT("Deactivation started - will complete in %.1f seconds"), transition_duration);
-}
-
-void AForcefieldActor::complete_deactivation() {
-    update_visual_effects();
-    start_cooldown();
-
-    log_verbose(TEXT("Forcefield deactivation completed - starting cooldown"));
+    log_verbose(TEXT("Deactivation started - timeline will handle completion"));
 }
 
 void AForcefieldActor::start_cooldown() {
@@ -191,9 +196,7 @@ void AForcefieldActor::complete_cooldown() {
 }
 
 void AForcefieldActor::update_visual_effects() {
-    bool const should_be_visible{current_state == EForcefieldState::Activating ||
-                                 current_state == EForcefieldState::Active ||
-                                 current_state == EForcefieldState::Deactivating};
+    bool const should_be_visible{is_visible()};
 
     // Update barrier mesh visibility
     barrier_mesh->SetVisibility(should_be_visible);
@@ -206,7 +209,7 @@ void AForcefieldActor::update_visual_effects() {
     }
 
     // Update distortion effect
-    if (distortion_effect && enable_distortion_effect) {
+    if (distortion_effect) {
         distortion_effect->bEnabled = should_be_visible;
         if (distortion_effect->Settings.WeightedBlendables.Array.Num() > 0) {
             distortion_effect->Settings.WeightedBlendables.Array[0].Weight =
@@ -217,18 +220,7 @@ void AForcefieldActor::update_visual_effects() {
     // Update material parameters
     if (barrier_material_instance) {
         float const opacity{should_be_visible ? 0.3f : 0.0f};
-        barrier_material_instance->SetScalarParameterValue(TEXT("Opacity"), opacity);
-
-        // Add pulsing effect during transitions
-        if (current_state == EForcefieldState::Activating ||
-            current_state == EForcefieldState::Deactivating) {
-            auto const pulse_time{static_cast<float>(GetWorld()->GetTimeSeconds())};
-            auto const pulse_value{FMath::Sin(pulse_time * 5.0f) * 0.5f + 0.5f};
-            barrier_material_instance->SetScalarParameterValue(TEXT("EmissiveStrength"),
-                                                               pulse_value * 2.0f);
-        } else {
-            barrier_material_instance->SetScalarParameterValue(TEXT("EmissiveStrength"), 1.0f);
-        }
+        barrier_material_instance->SetScalarParameterValue(Constants::Opacity(), opacity);
     }
 }
 
@@ -241,6 +233,41 @@ void AForcefieldActor::update_collision_blocking() {
     } else {
         collision_volume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
+}
+void AForcefieldActor::on_pulse_update(float value) {
+    set_emissive_strength(value);
+}
+
+void AForcefieldActor::on_pulse_end() {
+    if (current_state == EForcefieldState::Activating) {
+        set_emissive_strength(get_curve_end_value());
+        current_state = EForcefieldState::Active;
+        update_collision_blocking();
+        log_verbose(TEXT("Forcefield activation completed - now blocking"));
+    } else if (current_state == EForcefieldState::Deactivating) {
+        set_emissive_strength(get_curve_start_value());
+        update_visual_effects();
+        start_cooldown();
+        log_verbose(TEXT("Forcefield deactivation completed - starting cooldown"));
+    }
+}
+
+float AForcefieldActor::get_curve_start_value() const {
+    if (transition_pulse_curve) {
+        float min_time, max_time;
+        transition_pulse_curve->GetTimeRange(min_time, max_time);
+        return transition_pulse_curve->GetFloatValue(min_time);
+    }
+    return 0.0f;
+}
+
+float AForcefieldActor::get_curve_end_value() const {
+    if (transition_pulse_curve) {
+        float min_time, max_time;
+        transition_pulse_curve->GetTimeRange(min_time, max_time);
+        return transition_pulse_curve->GetFloatValue(max_time);
+    }
+    return 1.0f;
 }
 
 void AForcefieldActor::draw_debug_info() const {
@@ -284,8 +311,7 @@ void AForcefieldActor::draw_debug_info() const {
                  debug_line_thickness);
 
     // Draw state text
-    FString const state_text{
-        FString::Printf(TEXT("Forcefield: %s"), *UEnum::GetValueAsString(current_state))};
+    FString const state_text{FString::Printf(TEXT("Forcefield: %s"), *to_fstring(current_state))};
     DrawDebugString(GetWorld(),
                     center + FVector{0, 0, extent.Z + 50.0f},
                     state_text,
@@ -294,6 +320,11 @@ void AForcefieldActor::draw_debug_info() const {
                     debug_lifetime);
 }
 
+bool AForcefieldActor::is_visible() const {
+    return current_state == EForcefieldState::Activating ||
+           current_state == EForcefieldState::Active ||
+           current_state == EForcefieldState::Deactivating;
+}
 bool AForcefieldActor::is_in_transition_state() const {
     return current_state == EForcefieldState::Activating ||
            current_state == EForcefieldState::Deactivating;
@@ -301,4 +332,7 @@ bool AForcefieldActor::is_in_transition_state() const {
 
 bool AForcefieldActor::can_change_state() const {
     return current_state == EForcefieldState::Inactive || current_state == EForcefieldState::Active;
+}
+void AForcefieldActor::set_emissive_strength(float es) {
+    barrier_material_instance->SetScalarParameterValue(Constants::EmissiveStrength(), es);
 }
