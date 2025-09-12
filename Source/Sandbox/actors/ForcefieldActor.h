@@ -3,7 +3,9 @@
 #include "Components/BoxComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
+#include "Curves/CurveFloat.h"
 #include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"
 #include "Particles/ParticleSystemComponent.h"
@@ -21,6 +23,10 @@ enum class EForcefieldState : uint8 {
     Cooldown UMETA(DisplayName = "Cooldown")
 };
 
+inline FString to_fstring(EForcefieldState state) {
+    return UEnum::GetValueAsString(state);
+}
+
 namespace ml {
 inline static constexpr wchar_t ForcefieldActorLogTag[]{TEXT("Forcefield")};
 }
@@ -33,9 +39,21 @@ class SANDBOX_API AForcefieldActor
     GENERATED_BODY()
   public:
     AForcefieldActor();
+
+    struct Constants {
+        static auto const& EmissiveStrength() {
+            static auto const tag{FName(TEXT("EmissiveStrength"))};
+            return tag;
+        }
+
+        static auto const& Opacity() {
+            static auto const tag{FName(TEXT("Opacity"))};
+            return tag;
+        }
+    };
   protected:
     virtual void BeginPlay() override;
-    virtual void OnConstruction(const FTransform& Transform) override;
+    virtual void OnConstruction(FTransform const& Transform) override;
 
     // IActivatable interface
     void trigger_activation(AActor* instigator = nullptr) override;
@@ -43,16 +61,16 @@ class SANDBOX_API AForcefieldActor
 
     // Configuration properties
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
-    float transition_duration{1.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
     float cooldown_duration{3.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
-    float distortion_strength{0.5f};
+    UTimelineComponent* transition_pulse_timeline;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
-    bool enable_distortion_effect{true};
+    UCurveFloat* transition_pulse_curve;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
+    float distortion_strength{0.5f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
     bool show_debug_visualization{false};
@@ -96,20 +114,28 @@ class SANDBOX_API AForcefieldActor
 
     // State transition methods
     void start_activation();
-    void complete_activation();
     void start_deactivation();
-    void complete_deactivation();
     void start_cooldown();
     void complete_cooldown();
 
     // Visual management
     void update_visual_effects();
     void update_collision_blocking();
+    UFUNCTION()
+    void on_pulse_update(float value);
+    UFUNCTION()
+    void on_pulse_end();
 
     // Debug visualization
     void draw_debug_info() const;
 
     // Validation helpers
+    bool is_visible() const;
     bool is_in_transition_state() const;
     bool can_change_state() const;
+    void set_emissive_strength(float es);
+
+    // Timeline curve helpers
+    float get_curve_start_value() const;
+    float get_curve_end_value() const;
 };
