@@ -18,7 +18,7 @@ void set_input(UMaterialExpressionUSFLoader* loader, FExpressionInput& input_to_
     auto* expr = NewObject<ExprT>(loader);
 
     if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant>) {
-        expr->R = 0.0f;
+        expr->R = loader->dummy_value;
     } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant2Vector>) {
         expr->R = 0.0f;
         expr->G = 0.0f;
@@ -44,10 +44,7 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
     // 3. Create a dummy function
     // 4. Return the dummy value
 
-    auto const output_type_hlsl{get_output_type_hlsl()};
-    auto const dummy_return{get_dummy_return_value()};
-
-    auto input_name{FName(TEXT("previous_block"))};
+    static auto const input_name{FName(TEXT("previous_block"))};
     previous_block.InputName = input_name;
 
     // Always provide an input - either connected or default constant expression
@@ -56,24 +53,29 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
     if (!previous_block.IsConnected()) {
         // Create a default constant expression based on output type
         switch (output_type) {
-            case EUSFLoaderOutputType::Float1: {
+            using enum ECustomMaterialOutputType;
+            case CMOT_Float1: {
                 set_input<UMaterialExpressionConstant>(this, input_to_use);
                 break;
             }
-            case EUSFLoaderOutputType::Float2: {
+            case CMOT_Float2: {
                 set_input<UMaterialExpressionConstant2Vector>(this, input_to_use);
                 break;
             }
-            case EUSFLoaderOutputType::Float3: {
+            case CMOT_Float3: {
                 set_input<UMaterialExpressionConstant3Vector>(this, input_to_use);
                 break;
             }
-            case EUSFLoaderOutputType::Float4: {
+            case CMOT_Float4: {
                 set_input<UMaterialExpressionConstant4Vector>(this, input_to_use);
                 break;
             }
+            default: {
+                // Fallback to Float1 for any other types
+                set_input<UMaterialExpressionConstant>(this, input_to_use);
+                break;
+            }
         }
-        input_to_use.InputName = input_name;
     }
 
     TArray<struct FCustomInput> named_inputs;
@@ -94,10 +96,8 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
                 continue;
             }
 
-            // Combine prefix with file path
-            FString full_path = path_prefix + file_path;
+            FString full_path{path_prefix + file_path};
 
-            // Basic validation - check if combined path looks reasonable
             if (is_valid_include_path(full_path)) {
                 shader_code += FString::Printf(TEXT("#include \"%s\"\n"), *full_path);
             } else {
@@ -114,12 +114,11 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
 
     auto* custom_expression{NewObject<UMaterialExpressionCustom>(this)};
     custom_expression->Code = shader_code;
-    // custom_expression->OutputType = TEnumAsByte<EUSFLoaderOutputType>(output_type);
+    custom_expression->OutputType = output_type;
     custom_expression->Inputs = std::move(named_inputs);
 
     debug_code = shader_code;
 
-    // return compiler->CustomExpression(custom_expression, output_index, compiled_inputs);
     return custom_expression->Compile(compiler, output_index);
 }
 
@@ -145,36 +144,6 @@ bool UMaterialExpressionUSFLoader::CanRenameNode() const {
 }
 FString UMaterialExpressionUSFLoader::GetEditableName() const {
     return instance_name;
-}
-
-FString UMaterialExpressionUSFLoader::get_output_type_hlsl() const {
-    switch (output_type) {
-        case EUSFLoaderOutputType::Float1:
-            return TEXT("float");
-        case EUSFLoaderOutputType::Float2:
-            return TEXT("float2");
-        case EUSFLoaderOutputType::Float3:
-            return TEXT("float3");
-        case EUSFLoaderOutputType::Float4:
-            return TEXT("float4");
-        default:
-            return TEXT("float");
-    }
-}
-
-FString UMaterialExpressionUSFLoader::get_dummy_return_value() const {
-    switch (output_type) {
-        case EUSFLoaderOutputType::Float1:
-            return FString::Printf(TEXT("%.6f"), dummy_value);
-        case EUSFLoaderOutputType::Float2:
-            return TEXT("float2(0.0, 0.0)");
-        case EUSFLoaderOutputType::Float3:
-            return TEXT("float3(0.0, 0.0, 0.0)");
-        case EUSFLoaderOutputType::Float4:
-            return TEXT("float4(0.0, 0.0, 0.0, 1.0)");
-        default:
-            return TEXT("0.0");
-    }
 }
 
 bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) const {
