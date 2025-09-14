@@ -38,9 +38,14 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
         }
     };
 
-    /** Path to the USF file to include (relative to project shader directory) */
-    UPROPERTY(EditAnywhere, Category = "USF Loader")
-    FString usf_file_path{};
+    /** Optional prefix to add to all file paths (e.g., "/Project/", "/Engine/",
+     * "/Plugin/MyPlugin/") */
+    UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Path Prefix"))
+    FString path_prefix{};
+
+    /** Paths to USF files to include (combined with prefix to form full include paths) */
+    UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "USF File Paths"))
+    TArray<FString> usf_file_paths{};
 
     /** The type of dummy output to generate */
     UPROPERTY(EditAnywhere, Category = "USF Loader")
@@ -49,6 +54,12 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     /** Dummy value to return (only used for Float1 output type) */
     UPROPERTY(EditAnywhere, Category = "USF Loader")
     float dummy_value{0.0f};
+
+    UPROPERTY(VisibleAnywhere, Category = "USF Loader", meta = (MultiLine = "true"))
+    FString debug_code;
+
+    UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Optional input to chain USF blocks"))
+    FExpressionInput previous_block;
 
     virtual int32 Compile(class FMaterialCompiler* compiler, int32 output_index) override;
     virtual void GetCaption(TArray<FString>& out_captions) const override;
@@ -59,7 +70,7 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
   private:
     FString get_output_type_hlsl() const;
     FString get_dummy_return_value() const;
-    //UMaterialExpressionCustom* custom_expression;
+    bool is_valid_include_path(FString const& path) const;
 
     UPROPERTY(EditAnywhere, Category = "USF Loader")
     FString instance_name{};
