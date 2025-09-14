@@ -1,5 +1,7 @@
 #include "Sandbox/MaterialExpressionUSFLoader.h"
 
+#include <type_traits>
+
 #include "Materials/MaterialExpressionCustom.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant2Vector.h"
@@ -7,12 +9,28 @@
 #include "Materials/MaterialExpressionConstant4Vector.h"
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
-    // Set up the material expression properties
     bShaderInputData = false; // This is a utility node, not shader input data
     bCollapsed = false;
+}
 
-    //// Set default USF file path
-    // usf_file_path = TEXT("foo.usf");
+template <typename ExprT>
+void set_input(UMaterialExpressionUSFLoader* loader, FExpressionInput& input_to_use) {
+    auto* expr = NewObject<ExprT>(loader);
+
+    if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant>) {
+        expr->R = 0.0f;
+    } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant2Vector>) {
+        expr->R = 0.0f;
+        expr->G = 0.0f;
+    } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant3Vector> ||
+                         std::is_same_v<ExprT, UMaterialExpressionConstant4Vector>) {
+        expr->Constant = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    } else {
+        static_assert(!sizeof(ExprT), "Unhandled branch.");
+    }
+
+    input_to_use.Expression = expr;
+    input_to_use.OutputIndex = 0;
 }
 
 int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 output_index) {
@@ -39,32 +57,19 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
         // Create a default constant expression based on output type
         switch (output_type) {
             case EUSFLoaderOutputType::Float1: {
-                auto* constant_expr = NewObject<UMaterialExpressionConstant>(this);
-                constant_expr->R = dummy_value;
-                input_to_use.Expression = constant_expr;
-                input_to_use.OutputIndex = 0;
+                set_input<UMaterialExpressionConstant>(this, input_to_use);
                 break;
             }
             case EUSFLoaderOutputType::Float2: {
-                auto* vector_expr = NewObject<UMaterialExpressionConstant2Vector>(this);
-                vector_expr->R = 0.0f;
-                vector_expr->G = 0.0f;
-                input_to_use.Expression = vector_expr;
-                input_to_use.OutputIndex = 0;
+                set_input<UMaterialExpressionConstant2Vector>(this, input_to_use);
                 break;
             }
             case EUSFLoaderOutputType::Float3: {
-                auto* vector_expr = NewObject<UMaterialExpressionConstant3Vector>(this);
-                vector_expr->Constant = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                input_to_use.Expression = vector_expr;
-                input_to_use.OutputIndex = 0;
+                set_input<UMaterialExpressionConstant3Vector>(this, input_to_use);
                 break;
             }
             case EUSFLoaderOutputType::Float4: {
-                auto* vector_expr = NewObject<UMaterialExpressionConstant4Vector>(this);
-                vector_expr->Constant = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                input_to_use.Expression = vector_expr;
-                input_to_use.OutputIndex = 0;
+                set_input<UMaterialExpressionConstant4Vector>(this, input_to_use);
                 break;
             }
         }
