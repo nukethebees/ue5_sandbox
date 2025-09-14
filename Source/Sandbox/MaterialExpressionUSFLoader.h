@@ -3,16 +3,9 @@
 #include "CoreMinimal.h"
 #include "MaterialCompiler.h"
 #include "Materials/MaterialExpression.h"
+#include "Materials/MaterialExpressionCustom.h"
 
 #include "MaterialExpressionUSFLoader.generated.h"
-
-UENUM(BlueprintType)
-enum class EUSFLoaderOutputType : uint8 {
-    Float1 UMETA(DisplayName = "Float (1)"),
-    Float2 UMETA(DisplayName = "Float2 (2)"),
-    Float3 UMETA(DisplayName = "Float3 (3)"),
-    Float4 UMETA(DisplayName = "Float4 (4)")
-};
 
 /**
  * Material expression that loads a USF file and makes its functions available to subsequent nodes.
@@ -47,9 +40,9 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "USF File Paths"))
     TArray<FString> usf_file_paths{};
 
-    /** The type of dummy output to generate */
-    UPROPERTY(EditAnywhere, Category = "USF Loader")
-    EUSFLoaderOutputType output_type{EUSFLoaderOutputType::Float1};
+    /** The type of output to generate */
+    UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Output Type"))
+    TEnumAsByte<enum ECustomMaterialOutputType> output_type{ECustomMaterialOutputType::CMOT_Float1};
 
     /** Dummy value to return (only used for Float1 output type) */
     UPROPERTY(EditAnywhere, Category = "USF Loader")
@@ -68,8 +61,6 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
   private:
-    FString get_output_type_hlsl() const;
-    FString get_dummy_return_value() const;
     bool is_valid_include_path(FString const& path) const;
 
     UPROPERTY(EditAnywhere, Category = "USF Loader")
