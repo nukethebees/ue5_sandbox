@@ -75,12 +75,14 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Optional input to chain USF blocks"))
     FExpressionInput previous_block;
 
+    //~ Begin UMaterialExpression Interface
     virtual int32 Compile(class FMaterialCompiler* compiler, int32 output_index) override;
     virtual void GetCaption(TArray<FString>& out_captions) const override;
     virtual FText GetCreationDescription() const override;
     virtual FText GetCreationName() const override;
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
+    //~ End UMaterialExpression Interface
   private:
     bool is_valid_include_path(FString const& path) const;
 
