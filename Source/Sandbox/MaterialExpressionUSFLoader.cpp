@@ -100,7 +100,7 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
                 continue;
             }
 
-            FString full_path{path_prefix + file_path};
+            FString const full_path{path_prefix + file_path};
 
             if (is_valid_include_path(full_path)) {
                 shader_code += FString::Printf(TEXT("#include \"%s\"\n"), *full_path);
