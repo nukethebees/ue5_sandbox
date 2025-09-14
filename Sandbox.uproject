@@ -12,6 +12,14 @@
 				"Engine",
 				"UMG"
 			]
+		},
+		{
+			"Name": "SandboxEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				
+			]
 		}
 	],
 	"Plugins": [

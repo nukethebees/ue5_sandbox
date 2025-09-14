@@ -2,11 +2,16 @@
 
 #include <type_traits>
 
-#include "Materials/MaterialExpressionCustom.h"
+// #include "MaterialGraph/MaterialGraphNode.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant2Vector.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
+#include "Materials/MaterialExpressionCustom.h"
+
+#if WITH_EDITOR
+#include "SandboxEditor/SGraphNodeMaterialUSFLoader.h"
+#endif
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
@@ -173,3 +178,18 @@ bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) co
 
     return true;
 }
+
+#if WITH_EDITOR
+TSharedPtr<class SGraphNodeMaterialBase>
+    UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
+    // Cast GraphNode to UMaterialGraphNode - it should always be this type for material expressions
+    //if (auto* MaterialGraphNode{Cast<UMaterialGraphNode>(GraphNode)}) {
+    //    return SNew(SGraphNodeMaterialUSFLoader, MaterialGraphNode);
+    //}
+
+    UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget");
+
+    // Fallback to nullptr if cast fails
+    return nullptr;
+}
+#endif
