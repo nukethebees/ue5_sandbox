@@ -47,9 +47,7 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     EUSFLoaderOutputType output_type{EUSFLoaderOutputType::Float1};
 
     /** Dummy value to return (only used for Float1 output type) */
-    UPROPERTY(EditAnywhere,
-              Category = "USF Loader",
-              meta = (EditCondition = "output_type == EUSFLoaderOutputType::Float1"))
+    UPROPERTY(EditAnywhere, Category = "USF Loader")
     float dummy_value{0.0f};
 
     virtual int32 Compile(class FMaterialCompiler* compiler, int32 output_index) override;
@@ -57,8 +55,12 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     virtual FText GetCreationDescription() const override;
     virtual FText GetCreationName() const override;
     virtual bool CanRenameNode() const override;
+    virtual FString GetEditableName() const override;
   private:
     FString get_output_type_hlsl() const;
     FString get_dummy_return_value() const;
-    UMaterialExpressionCustom * custom_expression;
+    //UMaterialExpressionCustom* custom_expression;
+
+    UPROPERTY(EditAnywhere, Category = "USF Loader")
+    FString instance_name{};
 };
