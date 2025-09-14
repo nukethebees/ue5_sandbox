@@ -7,6 +7,27 @@
 
 #include "MaterialExpressionUSFLoader.generated.h"
 
+USTRUCT(BlueprintType)
+struct FUSFLoaderDefaults {
+    GENERATED_BODY()
+
+    /** Default value for Float1 output type */
+    UPROPERTY(EditAnywhere, meta = (DisplayName = "Float1 Default"))
+    float float1_value{0.0f};
+
+    /** Default value for Float2 output type */
+    UPROPERTY(EditAnywhere, meta = (DisplayName = "Float2 Default"))
+    FVector2D float2_value{0.0f, 0.0f};
+
+    /** Default value for Float3 output type */
+    UPROPERTY(EditAnywhere, meta = (DisplayName = "Float3 Default"))
+    FVector float3_value{0.0f, 0.0f, 0.0f};
+
+    /** Default value for Float4 output type */
+    UPROPERTY(EditAnywhere, meta = (DisplayName = "Float4 Default"))
+    FLinearColor float4_value{0.0f, 0.0f, 0.0f, 1.0f};
+};
+
 /**
  * Material expression that loads a USF file and makes its functions available to subsequent nodes.
  * This automates the pattern of terminating a function, including a USF file, and creating a dummy
@@ -44,9 +65,9 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Output Type"))
     TEnumAsByte<enum ECustomMaterialOutputType> output_type{ECustomMaterialOutputType::CMOT_Float1};
 
-    /** Dummy value to return (only used for Float1 output type) */
-    UPROPERTY(EditAnywhere, Category = "USF Loader")
-    float dummy_value{0.0f};
+    /** Default values for different output types when no input is connected */
+    UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Default Values"))
+    FUSFLoaderDefaults default_values;
 
     UPROPERTY(VisibleAnywhere, Category = "USF Loader", meta = (MultiLine = "true"))
     FString debug_code;

@@ -14,17 +14,21 @@ UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
 }
 
 template <typename ExprT>
-void set_input(UMaterialExpressionUSFLoader* loader, FExpressionInput& input_to_use) {
+void set_input(UMaterialExpressionUSFLoader* loader,
+               FExpressionInput& input_to_use,
+               FUSFLoaderDefaults const& defaults) {
     auto* expr = NewObject<ExprT>(loader);
 
     if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant>) {
-        expr->R = loader->dummy_value;
+        expr->R = defaults.float1_value;
     } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant2Vector>) {
-        expr->R = 0.0f;
-        expr->G = 0.0f;
-    } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant3Vector> ||
-                         std::is_same_v<ExprT, UMaterialExpressionConstant4Vector>) {
-        expr->Constant = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        expr->R = defaults.float2_value.X;
+        expr->G = defaults.float2_value.Y;
+    } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant3Vector>) {
+        expr->Constant = FLinearColor(
+            defaults.float3_value.X, defaults.float3_value.Y, defaults.float3_value.Z, 1.0f);
+    } else if constexpr (std::is_same_v<ExprT, UMaterialExpressionConstant4Vector>) {
+        expr->Constant = defaults.float4_value;
     } else {
         static_assert(!sizeof(ExprT), "Unhandled branch.");
     }
@@ -55,24 +59,24 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
         switch (output_type) {
             using enum ECustomMaterialOutputType;
             case CMOT_Float1: {
-                set_input<UMaterialExpressionConstant>(this, input_to_use);
+                set_input<UMaterialExpressionConstant>(this, input_to_use, default_values);
                 break;
             }
             case CMOT_Float2: {
-                set_input<UMaterialExpressionConstant2Vector>(this, input_to_use);
+                set_input<UMaterialExpressionConstant2Vector>(this, input_to_use, default_values);
                 break;
             }
             case CMOT_Float3: {
-                set_input<UMaterialExpressionConstant3Vector>(this, input_to_use);
+                set_input<UMaterialExpressionConstant3Vector>(this, input_to_use, default_values);
                 break;
             }
             case CMOT_Float4: {
-                set_input<UMaterialExpressionConstant4Vector>(this, input_to_use);
+                set_input<UMaterialExpressionConstant4Vector>(this, input_to_use, default_values);
                 break;
             }
             default: {
                 // Fallback to Float1 for any other types
-                set_input<UMaterialExpressionConstant>(this, input_to_use);
+                set_input<UMaterialExpressionConstant>(this, input_to_use, default_values);
                 break;
             }
         }
