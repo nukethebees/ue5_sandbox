@@ -7,8 +7,8 @@ UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
     bCollapsed = false;
 
-    // Set default USF file path
-    usf_file_path = TEXT("foo.usf");
+    //// Set default USF file path
+    // usf_file_path = TEXT("foo.usf");
 }
 
 int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 output_index) {
@@ -25,25 +25,29 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
     auto const output_type_hlsl{get_output_type_hlsl()};
     auto const dummy_return{get_dummy_return_value()};
 
-    auto const shader_code{FString::Printf(TEXT("// USF Loader: End current function\n"
-                                                "return %s;\n"
-                                                "}\n\n"
-                                                "#include \"/Project/%s\"\n\n"
-                                                "void DummyUSFLoaderFn_%p() {\n"
-                                                "    return;\n"),
-                                           *dummy_return,
-                                           *usf_file_path,
-                                           this)};
+    auto shader_code{FString::Printf(TEXT("// USF Loader: End current function\n"
+                                          "return %s;\n"
+                                          "}\n\n"),
+                                     *dummy_return)};
 
-    //auto* custom_expression{NewObject<UMaterialExpressionCustom>(this)};
-    if (!custom_expression) {
-        custom_expression = NewObject<UMaterialExpressionCustom>(this);
+    if (!usf_file_path.IsEmpty()) {
+        shader_code += FString::Printf(TEXT("#include \"/Project/%s\"\n\n"), *usf_file_path);
     }
+
+    shader_code += FString::Printf(TEXT("void DummyUSFLoaderFn_%p() {\n"
+                                        "    return;\n"),
+                                   this);
+
+    auto* custom_expression{NewObject<UMaterialExpressionCustom>(this)};
+    // if (!custom_expression) {
+    //     custom_expression = NewObject<UMaterialExpressionCustom>(this);
+    // }
     custom_expression->Code = shader_code;
 
-    TArray<int32> dummy_inputs{};
+    TArray<int32> compiled_inputs{};
+    compiled_inputs.Add(INDEX_NONE);
 
-    return compiler->CustomExpression(custom_expression, output_index, dummy_inputs);
+    return compiler->CustomExpression(custom_expression, output_index, compiled_inputs);
 }
 
 void UMaterialExpressionUSFLoader::GetCaption(TArray<FString>& out_captions) const {
@@ -63,6 +67,9 @@ FText UMaterialExpressionUSFLoader::GetCreationName() const {
 }
 bool UMaterialExpressionUSFLoader::CanRenameNode() const {
     return true;
+}
+FString UMaterialExpressionUSFLoader::GetEditableName() const {
+    return instance_name;
 }
 
 FString UMaterialExpressionUSFLoader::get_output_type_hlsl() const {
