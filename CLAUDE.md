@@ -34,6 +34,7 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **Core modules**: Core, CoreUObject, Engine, InputCore, EnhancedInput, UMG
 - **C++ Standard**: Latest C++ standard enabled
 - **Engine version**: Unreal Engine 5.6
+- **IMPORTANT**: ShaderCore and Renderer modules do not exist in UE 5.6 - do not add them to build dependencies
 
 ## Coding Standards
 

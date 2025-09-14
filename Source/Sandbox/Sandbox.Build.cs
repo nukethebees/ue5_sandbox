@@ -13,13 +13,7 @@ public class Sandbox : ModuleRules
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
-            "UnrealEd",           // For UMaterialGraphNode_Base
-            "MaterialEditor",     // For SGraphNodeMaterialBase
-            "ToolWidgets",        // For FHLSLSyntaxHighlighterMarshaller
-            "EditorWidgets",      // For FEdGraphUtilities
-            "Slate", "SlateCore",
-            "EditorFramework",
-            "GraphEditor"
+            // Runtime dependencies only - editor dependencies moved to SandboxEditor module
         });
 
 

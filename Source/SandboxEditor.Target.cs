@@ -10,6 +10,7 @@ public class SandboxEditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_6;
-		ExtraModuleNames.Add("Sandbox");
+		ExtraModuleNames.AddRange(new string[] { "Sandbox", "SandboxEditor" });
+        bCompileAgainstEditor = true;
 	}
 }

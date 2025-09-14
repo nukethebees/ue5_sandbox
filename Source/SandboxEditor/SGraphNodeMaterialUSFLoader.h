@@ -2,12 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "MaterialEditor/MaterialNodes/SGraphNodeMaterialBase.h"
-#include "Text/HLSLSyntaxHighlighterMarshaller.h"
-#include "Widgets/Input/SMultiLineEditableTextBox.h"
 
-class UMaterialGraphNode_USFLoader;
+class UMaterialExpressionUSFLoader;
+class UMaterialGraphNode;
+class FHLSLSyntaxHighlighterMarshaller;
+class SMultiLineEditableTextBox;
 
-class SANDBOX_API SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
+class SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
   public:
     SLATE_BEGIN_ARGS(SGraphNodeMaterialUSFLoader) {}
     SLATE_END_ARGS()
@@ -37,6 +38,6 @@ class SANDBOX_API SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
     /** The read-only text box showing generated shader code */
     TSharedPtr<SMultiLineEditableTextBox> GeneratedCodeTextBox;
 
-    /** Reference to our specific USF Loader graph node */
-    UMaterialGraphNode_USFLoader* USFLoaderGraphNode;
+    /** Get the USF Loader expression from this node */
+    UMaterialExpressionUSFLoader* GetUSFLoaderExpression() const;
 };
