@@ -117,6 +117,7 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
 #endif
     //~ End UMaterialExpression Interface
+
   private:
     bool is_valid_include_path(FString const& path) const;
 
