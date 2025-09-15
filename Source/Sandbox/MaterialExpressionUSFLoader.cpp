@@ -182,14 +182,15 @@ bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) co
 #if WITH_EDITOR
 TSharedPtr<class SGraphNodeMaterialBase>
     UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
-    // Cast GraphNode to UMaterialGraphNode - it should always be this type for material expressions
-    //if (auto* MaterialGraphNode{Cast<UMaterialGraphNode>(GraphNode)}) {
-    //    return SNew(SGraphNodeMaterialUSFLoader, MaterialGraphNode);
-    //}
+    UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget called");
 
-    UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget");
-
-    // Fallback to nullptr if cast fails
-    return nullptr;
+    // Pass GraphNode directly to widget - it will handle the cast internally
+    if (GraphNode) {
+        UE_LOGFMT(LogTemp, Display, "GraphNode exists, creating custom widget");
+        return SNew(SGraphNodeMaterialUSFLoader, GraphNode);
+    } else {
+        UE_LOGFMT(LogTemp, Display, "GraphNode is null, cannot create widget");
+        return nullptr;
+    }
 }
 #endif
