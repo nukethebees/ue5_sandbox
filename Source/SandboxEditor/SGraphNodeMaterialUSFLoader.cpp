@@ -8,9 +8,16 @@
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 
-void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UMaterialGraphNode* InNode) {
-    this->GraphNode = InNode;
-    this->MaterialNode = InNode;
+void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNode* InNode) {
+    // Cast UEdGraphNode to UMaterialGraphNode - should succeed for material expressions
+    UMaterialGraphNode* MaterialGraphNode = Cast<UMaterialGraphNode>(InNode);
+    if (!MaterialGraphNode) {
+        UE_LOG(LogTemp, Error, TEXT("SGraphNodeMaterialUSFLoader: Failed to cast UEdGraphNode to UMaterialGraphNode"));
+        return;
+    }
+
+    this->GraphNode = MaterialGraphNode;
+    this->MaterialNode = MaterialGraphNode;
 
     // Create HLSL syntax highlighter
     FHLSLSyntaxHighlighterMarshaller::FSyntaxTextStyle CodeStyle(

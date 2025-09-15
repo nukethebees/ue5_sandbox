@@ -13,7 +13,7 @@ class SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
     SLATE_BEGIN_ARGS(SGraphNodeMaterialUSFLoader) {}
     SLATE_END_ARGS()
 
-    void Construct(FArguments const& InArgs, UMaterialGraphNode* InNode);
+    void Construct(FArguments const& InArgs, UEdGraphNode* InNode);
 
     UMaterialGraphNode* GetMaterialGraphNode() const { return MaterialNode; }
   protected:
