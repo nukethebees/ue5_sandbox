@@ -113,6 +113,7 @@ class SANDBOXEDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpressio
     virtual FText GetCreationName() const override;
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
+    virtual void SetEditableName(const FString& NewName) override;
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
     //~ End UMaterialExpression Interface
   private:
