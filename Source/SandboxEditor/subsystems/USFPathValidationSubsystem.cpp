@@ -8,27 +8,27 @@
 // Static convenience methods - handle subsystem access automatically
 
 bool UUSFPathValidationSubsystem::ValidateUSFPath(FString const& VirtualPath) {
-    if (UUSFPathValidationSubsystem* Subsystem = GetSubsystem()) {
+    if (auto* Subsystem = GetSubsystem()) {
         return Subsystem->ValidateUSFPath_Internal(VirtualPath);
     }
-    return false; // Subsystem not available
+    return false;
 }
 
 TOptional<FString> UUSFPathValidationSubsystem::ResolveUSFPath(FString const& VirtualPath) {
-    if (UUSFPathValidationSubsystem* Subsystem = GetSubsystem()) {
+    if (auto* Subsystem = GetSubsystem()) {
         return Subsystem->ResolveUSFPath_Internal(VirtualPath);
     }
-    return {}; // Subsystem not available
+    return {};
 }
 
 void UUSFPathValidationSubsystem::ClearCache() {
-    if (UUSFPathValidationSubsystem* Subsystem = GetSubsystem()) {
+    if (auto* Subsystem = GetSubsystem()) {
         Subsystem->ClearCache_Internal();
     }
 }
 
 int32 UUSFPathValidationSubsystem::GetCacheSize() {
-    if (UUSFPathValidationSubsystem* Subsystem = GetSubsystem()) {
+    if (auto* Subsystem = GetSubsystem()) {
         return Subsystem->GetCacheSize_Internal();
     }
     return 0;
@@ -37,23 +37,19 @@ int32 UUSFPathValidationSubsystem::GetCacheSize() {
 // Instance implementation methods
 
 bool UUSFPathValidationSubsystem::ValidateUSFPath_Internal(FString const& VirtualPath) {
-    // Check cache first - O(1) lookup
-    if (int32* IndexPtr = PathToIndex.Find(VirtualPath)) {
-        FCachedPathResult const& Cached = CacheEntries[*IndexPtr];
+    if (auto* IndexPtr = PathToIndex.Find(VirtualPath)) {
+        auto const& Cached = CacheEntries[*IndexPtr];
         return Cached.bExists;
     }
 
-    // Not cached - resolve and cache the result
-    FString ResolvedPath = ResolveVirtualPath(VirtualPath);
-    bool bExists = false;
+    auto ResolvedPath{ResolveVirtualPath(VirtualPath)};
+    bool bExists{false};
 
     if (!ResolvedPath.IsEmpty()) {
-        // Check if the resolved file actually exists
         bExists = FPaths::FileExists(ResolvedPath);
     }
 
-    // Add to cache - permanent storage since USF files don't appear/disappear at runtime
-    int32 NewIndex = CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists));
+    auto NewIndex{CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists))};
     PathToIndex.Add(VirtualPath, NewIndex);
 
     return bExists;
@@ -61,28 +57,24 @@ bool UUSFPathValidationSubsystem::ValidateUSFPath_Internal(FString const& Virtua
 
 TOptional<FString>
     UUSFPathValidationSubsystem::ResolveUSFPath_Internal(FString const& VirtualPath) {
-    // Check cache first
-    if (int32* IndexPtr = PathToIndex.Find(VirtualPath)) {
-        FCachedPathResult const& Cached = CacheEntries[*IndexPtr];
+    if (auto* IndexPtr = PathToIndex.Find(VirtualPath)) {
+        auto const& Cached = CacheEntries[*IndexPtr];
         if (Cached.bExists) {
             return Cached.ResolvedPath;
         }
-        return {}; // Cached as not existing
+        return {};
     }
 
-    // Not cached - resolve path
-    FString ResolvedPath = ResolveVirtualPath(VirtualPath);
-    bool bExists = false;
+    auto ResolvedPath{ResolveVirtualPath(VirtualPath)};
+    bool bExists{false};
 
     if (!ResolvedPath.IsEmpty()) {
         bExists = FPaths::FileExists(ResolvedPath);
     }
 
-    // Cache the result
-    int32 NewIndex = CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists));
+    auto NewIndex{CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists))};
     PathToIndex.Add(VirtualPath, NewIndex);
 
-    // Return resolved path only if file exists
     return bExists ? TOptional<FString>(ResolvedPath) : TOptional<FString>{};
 }
 
@@ -102,36 +94,27 @@ FString UUSFPathValidationSubsystem::ResolveVirtualPath(FString const& VirtualPa
         return VirtualPath; // Assume it's already a real path
     }
 
-    // Get all shader source directory mappings from UE5
-    TMap<FString, FString> const& ShaderDirectoryMappings = AllShaderSourceDirectoryMappings();
+    auto const& ShaderDirectoryMappings = AllShaderSourceDirectoryMappings();
 
-    // Iterate through mappings to find matching prefix
     for (auto const& Mapping : ShaderDirectoryMappings) {
-        FString const& VirtualPrefix = Mapping.Key;   // e.g., "/Engine/Private"
-        FString const& RealDirectory = Mapping.Value; // e.g., "C:/UE5/Engine/Shaders/Private"
+        auto const& VirtualPrefix = Mapping.Key;
+        auto const& RealDirectory = Mapping.Value;
 
-        // Check if virtual path starts with this prefix
         if (VirtualPath.StartsWith(VirtualPrefix)) {
-            // Calculate remaining path after prefix
-            FString RemainingPath = VirtualPath.Mid(VirtualPrefix.Len());
+            auto RemainingPath{VirtualPath.Mid(VirtualPrefix.Len())};
 
-            // Ensure we don't have double slashes
             if (!RemainingPath.StartsWith(TEXT("/")) && !RealDirectory.EndsWith(TEXT("/")) &&
                 !RealDirectory.EndsWith(TEXT("\\"))) {
                 RemainingPath = TEXT("/") + RemainingPath;
             }
 
-            // Build full resolved path
-            FString ResolvedPath = RealDirectory + RemainingPath;
+            auto ResolvedPath{RealDirectory + RemainingPath};
 
-            // Normalize path separators for current platform
             FPaths::NormalizeFilename(ResolvedPath);
-
             return ResolvedPath;
         }
     }
 
-    // No mapping found
     UE_LOG(LogTemp,
            Warning,
            TEXT("USF path validation: No directory mapping found for virtual path: %s"),
