@@ -16,10 +16,7 @@
 		{
 			"Name": "SandboxEditor",
 			"Type": "Editor",
-			"LoadingPhase": "Default",
-			"AdditionalDependencies": [
-				
-			]
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
@@ -41,6 +38,10 @@
 		},
 		{
 			"Name": "Landmass",
+			"Enabled": true
+		},
+		{
+			"Name": "FunctionalTestingEditor",
 			"Enabled": true
 		}
 	]

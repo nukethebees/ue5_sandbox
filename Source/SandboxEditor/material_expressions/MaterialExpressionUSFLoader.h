@@ -36,7 +36,7 @@ struct FUSFLoaderDefaults {
  * function.
  */
 UCLASS(meta = (DisplayName = "USF Loader", Category = "Custom|Shader"))
-class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
+class SANDBOXEDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     GENERATED_BODY()
   public:
     UMaterialExpressionUSFLoader();
@@ -113,11 +113,8 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     virtual FText GetCreationName() const override;
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
-#if WITH_EDITOR
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
-#endif
     //~ End UMaterialExpression Interface
-
   private:
     bool is_valid_include_path(FString const& path) const;
 

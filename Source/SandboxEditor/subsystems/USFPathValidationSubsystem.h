@@ -12,7 +12,7 @@
  * Cache never expires since UE5 requires project regeneration to recognize new USF files.
  */
 UCLASS()
-class UUSFPathValidationSubsystem : public UEditorSubsystem {
+class SANDBOXEDITOR_API UUSFPathValidationSubsystem : public UEditorSubsystem {
     GENERATED_BODY()
   public:
     // Static convenience API - handles subsystem access automatically
