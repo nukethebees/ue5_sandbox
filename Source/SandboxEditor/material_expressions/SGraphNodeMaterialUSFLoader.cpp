@@ -9,8 +9,8 @@
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 
 void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNode* InNode) {
-    auto* MaterialGraphNode = Cast<UMaterialGraphNode>(InNode);
-    if (!MaterialGraphNode) {
+    auto* material_graph_node{Cast<UMaterialGraphNode>(InNode)};
+    if (!material_graph_node) {
         UE_LOG(
             LogTemp,
             Error,
@@ -18,21 +18,24 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
         return;
     }
 
-    this->GraphNode = MaterialGraphNode;
-    this->MaterialNode = MaterialGraphNode;
+    this->GraphNode = material_graph_node;
+    this->MaterialNode = material_graph_node;
 
-    auto CodeStyle = FHLSLSyntaxHighlighterMarshaller::FSyntaxTextStyle{
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Normal"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Operator"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Keyword"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.String"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Number"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Comment"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>(
-            "SyntaxHighlight.SourceCode.PreProcessorKeyword"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Error")};
+    auto get_style{[&app_style = FAppStyle::Get()](auto* style) {
+        return app_style.GetWidgetStyle<FTextBlockStyle>(style);
+    }};
 
-    SyntaxHighlighter = FHLSLSyntaxHighlighterMarshaller::Create(CodeStyle);
+    auto code_style{FHLSLSyntaxHighlighterMarshaller::FSyntaxTextStyle{
+        get_style("SyntaxHighlight.SourceCode.Normal"),
+        get_style("SyntaxHighlight.SourceCode.Operator"),
+        get_style("SyntaxHighlight.SourceCode.Keyword"),
+        get_style("SyntaxHighlight.SourceCode.String"),
+        get_style("SyntaxHighlight.SourceCode.Number"),
+        get_style("SyntaxHighlight.SourceCode.Comment"),
+        get_style("SyntaxHighlight.SourceCode.PreProcessorKeyword"),
+        get_style("SyntaxHighlight.SourceCode.Error")}};
+
+    SyntaxHighlighter = FHLSLSyntaxHighlighterMarshaller::Create(code_style);
 
     this->SetCursor(EMouseCursor::CardinalCross);
     this->UpdateGraphNode();
@@ -43,13 +46,11 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
     GetText.Bind(this, &SGraphNodeMaterialUSFLoader::GetGeneratedCodeText);
 
     // Create read-only text box for generated code
+    constexpr auto padding{UMaterialExpressionUSFLoader::Constants::UI_PADDING};
     SAssignNew(GeneratedCodeTextBox, SMultiLineEditableTextBox)
         .AutoWrapText(false)
         .IsReadOnly(true) // Read-only unlike Custom expression
-        .Margin(FMargin(UMaterialExpressionUSFLoader::Constants::UI_PADDING,
-                        UMaterialExpressionUSFLoader::Constants::UI_PADDING,
-                        UMaterialExpressionUSFLoader::Constants::UI_PADDING,
-                        UMaterialExpressionUSFLoader::Constants::UI_PADDING))
+        .Margin(FMargin(padding, padding, padding, padding))
         .Text(GetText)
         .Visibility(this, &SGraphNodeMaterialUSFLoader::CodeVisibility)
         .Marshaller(SyntaxHighlighter)
@@ -60,15 +61,12 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
 
     SGraphNodeMaterialBase::CreateBelowPinControls(PreviewBox);
 
+    constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN};
     MainBox->AddSlot()
         .Padding(Settings->GetNonPinNodeBodyPadding())
         .AutoHeight()[SNew(SHorizontalBox) +
                       SHorizontalBox::Slot().AutoWidth().Padding(FMargin(
-                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN,
-                          UMaterialExpressionUSFLoader::Constants::UI_PADDING,
-                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN,
-                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN))[GeneratedCodeTextBox
-                                                                                   .ToSharedRef()] +
+                          margin, padding, margin, margin))[GeneratedCodeTextBox.ToSharedRef()] +
                       SHorizontalBox::Slot().AutoWidth()[PreviewBox.ToSharedRef()]];
 }
 
@@ -78,8 +76,8 @@ EVisibility SGraphNodeMaterialUSFLoader::CodeVisibility() const {
 }
 
 FText SGraphNodeMaterialUSFLoader::GetGeneratedCodeText() const {
-    if (auto* USFExpression = GetUSFLoaderExpression()) {
-        return FText::FromString(USFExpression->debug_code);
+    if (auto* usf_expression{GetUSFLoaderExpression()}) {
+        return FText::FromString(usf_expression->debug_code);
     }
     return FText::FromString(TEXT("// No code generated"));
 }
@@ -96,25 +94,27 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
         return;
     }
 
+    using My = SGraphNodeMaterialUSFLoader;
+
+    constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL};
     MainBox->AddSlot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
         .VAlign(VAlign_Top)
-        .Padding(UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL,
-                 0,
-                 UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL,
-                 UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL)
-            [SNew(SCheckBox)
-                 .Visibility(this, &SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility)
-                 .OnCheckStateChanged(this, &SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged)
-                 .IsChecked(this, &SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked)
-                 .Cursor(EMouseCursor::Default)
-                 .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
-                     [SNew(SHorizontalBox) +
-                      SHorizontalBox::Slot()
-                          .VAlign(VAlign_Center)
-                          .HAlign(HAlign_Center)[SNew(SImage).Image(
-                              this, &SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow)]]];
+        .Padding(
+            margin,
+            0,
+            margin,
+            margin)[SNew(SCheckBox)
+                        .Visibility(this, &My::AdvancedViewArrowVisibility)
+                        .OnCheckStateChanged(this, &My::OnAdvancedViewChanged)
+                        .IsChecked(this, &My::IsAdvancedViewChecked)
+                        .Cursor(EMouseCursor::Default)
+                        .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
+                            [SNew(SHorizontalBox) + SHorizontalBox::Slot()
+                                                        .VAlign(VAlign_Center)
+                                                        .HAlign(HAlign_Center)[SNew(SImage).Image(
+                                                            this, &My::GetAdvancedViewArrow)]]];
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
@@ -123,28 +123,29 @@ EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
 }
 
 void SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged(ECheckBoxState const NewCheckedState) {
-    if (auto* USFExpression = GetUSFLoaderExpression()) {
-        USFExpression->bShowCodePreview = (NewCheckedState == ECheckBoxState::Checked);
-        USFExpression->MarkPackageDirty();
+    if (auto* usf_expression{GetUSFLoaderExpression()}) {
+        usf_expression->bShowCodePreview = (NewCheckedState == ECheckBoxState::Checked);
+        usf_expression->MarkPackageDirty();
     }
 }
 
 ECheckBoxState SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked() const {
-    if (auto* USFExpression = GetUSFLoaderExpression()) {
-        return USFExpression->bShowCodePreview ? ECheckBoxState::Checked
-                                               : ECheckBoxState::Unchecked;
+    using enum ECheckBoxState;
+
+    if (auto* usf_expression{GetUSFLoaderExpression()}) {
+        return usf_expression->bShowCodePreview ? Checked : Unchecked;
     }
-    return ECheckBoxState::Unchecked;
+    return Unchecked;
 }
 
-#define CHEVRON_UP TEXT("Icons.ChevronUp")
-#define CHEVRON_DOWN TEXT("Icons.ChevronDown")
+FSlateBrush const* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
+    static auto const CHEVRON_UP{TEXT("Icons.ChevronUp")};
+    static auto const CHEVRON_DOWN{TEXT("Icons.ChevronDown")};
 
-const FSlateBrush* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
     if (!GetUSFLoaderExpression()) {
         return FAppStyle::GetBrush(CHEVRON_DOWN);
     }
 
-    auto State{IsAdvancedViewChecked()};
-    return FAppStyle::GetBrush((State == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);
+    auto const state{IsAdvancedViewChecked()};
+    return FAppStyle::GetBrush((state == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);
 }
