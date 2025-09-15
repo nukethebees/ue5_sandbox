@@ -1,0 +1,4 @@
+float3 example_fn()
+{
+    return float3(0.5, 0.5, 0.5);
+}

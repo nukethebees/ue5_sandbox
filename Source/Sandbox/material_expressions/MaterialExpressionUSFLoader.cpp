@@ -2,12 +2,12 @@
 
 #include <type_traits>
 
-// #include "MaterialGraph/MaterialGraphNode.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant2Vector.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
+#include "SandboxEditor/USFPathValidationSubsystem.h"
 
 #if WITH_EDITOR
 #include "SGraphNodeMaterialUSFLoader.h"
@@ -16,6 +16,7 @@
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
     bCollapsed = false;
+    bHidePreviewWindow = true;
 }
 
 template <typename ExprT>
@@ -157,27 +158,7 @@ FString UMaterialExpressionUSFLoader::GetEditableName() const {
 }
 
 bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) const {
-    // Basic validation for include paths
-    if (path.IsEmpty()) {
-        return false;
-    }
-
-    // Check if it starts with a forward slash (absolute include path)
-    if (!path.StartsWith(TEXT("/"))) {
-        return false;
-    }
-
-    // Check if it has a reasonable file extension
-    if (!path.EndsWith(TEXT(".usf")) && !path.EndsWith(TEXT(".ush"))) {
-        return false;
-    }
-
-    // Check for invalid characters that could cause compilation issues
-    if (path.Contains(TEXT("\"")) || path.Contains(TEXT("\n")) || path.Contains(TEXT("\r"))) {
-        return false;
-    }
-
-    return true;
+    return UUSFPathValidationSubsystem::ValidateUSFPath(path);
 }
 
 #if WITH_EDITOR
