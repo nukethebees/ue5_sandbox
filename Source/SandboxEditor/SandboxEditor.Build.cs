@@ -18,7 +18,8 @@ public class SandboxEditor : ModuleRules
             "Slate",
             "SlateCore",
             "BlueprintGraph", // Required by UnrealEd
-            "MaterialEditor"
+            "MaterialEditor",
+            "EditorSubsystem"
         });
 
         // Editor-specific dependencies

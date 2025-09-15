@@ -7,11 +7,8 @@
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
-#include "SandboxEditor/USFPathValidationSubsystem.h"
-
-#if WITH_EDITOR
+#include "SandboxEditor/subsystems/USFPathValidationSubsystem.h"
 #include "SGraphNodeMaterialUSFLoader.h"
-#endif
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
@@ -161,7 +158,6 @@ bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) co
     return UUSFPathValidationSubsystem::ValidateUSFPath(path);
 }
 
-#if WITH_EDITOR
 TSharedPtr<class SGraphNodeMaterialBase>
     UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
     UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget called");
@@ -175,4 +171,3 @@ TSharedPtr<class SGraphNodeMaterialBase>
         return nullptr;
     }
 }
-#endif
