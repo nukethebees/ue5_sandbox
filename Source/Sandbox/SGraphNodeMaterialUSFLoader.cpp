@@ -1,8 +1,8 @@
-#include "SandboxEditor/SGraphNodeMaterialUSFLoader.h"
+#include "SGraphNodeMaterialUSFLoader.h"
 
 #include "GraphEditorSettings.h"
 #include "MaterialGraph/MaterialGraphNode.h"
-#include "Sandbox/MaterialExpressionUSFLoader.h"
+#include "MaterialExpressionUSFLoader.h"
 #include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SCheckBox.h"
