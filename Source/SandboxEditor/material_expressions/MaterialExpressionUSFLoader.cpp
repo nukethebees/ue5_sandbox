@@ -155,7 +155,7 @@ FString UMaterialExpressionUSFLoader::GetEditableName() const {
     return instance_name;
 }
 
-void UMaterialExpressionUSFLoader::SetEditableName(const FString& NewName) {
+void UMaterialExpressionUSFLoader::SetEditableName(FString const& NewName) {
     instance_name = NewName;
 }
 
@@ -167,7 +167,7 @@ TSharedPtr<class SGraphNodeMaterialBase>
     UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
     UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget called");
 
-    // Pass GraphNode directly to widget - it will handle the cast internally
+    // Pass GraphNode directly to widget - it will handle the cast to UMaterialGraphNode internally
     if (GraphNode) {
         UE_LOGFMT(LogTemp, Display, "GraphNode exists, creating custom widget");
         return SNew(SGraphNodeMaterialUSFLoader, GraphNode);
