@@ -7,6 +7,8 @@
 
 #include "MaterialExpressionUSFLoader.generated.h"
 
+class SGraphNodeMaterialBase;
+
 USTRUCT(BlueprintType)
 struct FUSFLoaderDefaults {
     GENERATED_BODY()

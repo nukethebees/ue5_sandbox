@@ -9,9 +9,7 @@
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
 
-#if WITH_EDITOR
-#include "SandboxEditor/SGraphNodeMaterialUSFLoader.h"
-#endif
+// SGraphNodeMaterialUSFLoader include moved to SandboxEditor module
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
@@ -179,7 +177,14 @@ bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) co
     return true;
 }
 
+// CreateCustomGraphNodeWidget implementation moved to SandboxEditor module
+// to avoid Slate dependencies in runtime module
+
+// #include "Sandbox/MaterialExpressionUSFLoader.h"
+
 #if WITH_EDITOR
+#include "SandboxEditor/SGraphNodeMaterialUSFLoader.h"
+
 TSharedPtr<class SGraphNodeMaterialBase>
     UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
     UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget called");
