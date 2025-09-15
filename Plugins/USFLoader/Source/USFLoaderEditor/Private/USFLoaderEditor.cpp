@@ -1,10 +1,15 @@
 #include "USFLoaderEditor.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
 
 #define LOCTEXT_NAMESPACE "FUSFLoaderEditorModule"
 
 void FUSFLoaderEditorModule::StartupModule()
 {
-    // This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file
+    // Register virtual shader directory mapping for the plugin
+    FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("USFLoader"))->GetBaseDir(), TEXT("Shaders"));
+    AddShaderSourceDirectoryMapping(TEXT("/Plugin/USFLoader"), PluginShaderDir);
 }
 
 void FUSFLoaderEditorModule::ShutdownModule()

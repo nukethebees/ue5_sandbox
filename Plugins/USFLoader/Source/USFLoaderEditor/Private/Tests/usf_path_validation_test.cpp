@@ -12,8 +12,8 @@ void FUSFPathValidationSpec::Define() {
         TestNotNull("USF validation subsystem", Subsystem);
     });
 
-    It("should validate project test shader", [this]() {
-        FString const path = TEXT("/Project/TestDummy.usf");
+    It("should validate plugin test shader", [this]() {
+        FString const path = TEXT("/Plugin/USFLoader/TestDummy.usf");
         bool const valid = UUSFPathValidationSubsystem::ValidateUSFPath(path);
         TestTrue(*FString::Printf(TEXT("'%s' should be valid"), *path), valid);
     });
