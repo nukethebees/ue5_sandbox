@@ -15,7 +15,7 @@ class SANDBOX_API UHealthStationWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     UFUNCTION(BlueprintCallable, Category = "Health Station")
-    void update(FStationStateData const & state_data);
+    void update(FStationStateData const& state_data);
   protected:
     UPROPERTY(meta = (BindWidget))
     UTextBlock* capacity_text;

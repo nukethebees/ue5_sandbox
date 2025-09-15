@@ -5,15 +5,14 @@
 
 #define LOCTEXT_NAMESPACE "FUSFLoaderEditorModule"
 
-void FUSFLoaderEditorModule::StartupModule()
-{
+void FUSFLoaderEditorModule::StartupModule() {
     // Register virtual shader directory mapping for the plugin
-    FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("USFLoader"))->GetBaseDir(), TEXT("Shaders"));
+    FString PluginShaderDir = FPaths::Combine(
+        IPluginManager::Get().FindPlugin(TEXT("USFLoader"))->GetBaseDir(), TEXT("Shaders"));
     AddShaderSourceDirectoryMapping(TEXT("/Plugin/USFLoader"), PluginShaderDir);
 }
 
-void FUSFLoaderEditorModule::ShutdownModule()
-{
+void FUSFLoaderEditorModule::ShutdownModule() {
     // This function may be called during shutdown to clean up your module
 }
 

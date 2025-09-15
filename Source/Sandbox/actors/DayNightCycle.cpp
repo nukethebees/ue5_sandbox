@@ -10,6 +10,5 @@ void ADayNightCycle::Tick(float DeltaTime) {
     if (sun_light) {
         FRotator delta_rotation(0.0f, rotation_speed_degrees_per_second * DeltaTime, 0.0f);
         sun_light->AddActorLocalRotation(delta_rotation);
-
     }
 }

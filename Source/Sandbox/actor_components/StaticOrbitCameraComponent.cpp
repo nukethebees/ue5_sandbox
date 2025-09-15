@@ -14,8 +14,8 @@ void UStaticOrbitCameraComponent::BeginPlay() {
     }
 }
 void UStaticOrbitCameraComponent::TickComponent(float DeltaTime,
-                                             ELevelTick TickType,
-                                             FActorComponentTickFunction* ThisTickFunction) {
+                                                ELevelTick TickType,
+                                                FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     update_camera_position(DeltaTime);
 }

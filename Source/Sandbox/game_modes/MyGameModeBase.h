@@ -17,11 +17,11 @@ class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
     , public print_msg_mixin {
     GENERATED_BODY()
-public:
+  public:
     AMyGameModeBase();
   protected:
     virtual void BeginPlay() override;
   private:
     UPROPERTY()
-    URemoveGhostsOnStartComponent * ghost_cleanup_component{nullptr};
+    URemoveGhostsOnStartComponent* ghost_cleanup_component{nullptr};
 };

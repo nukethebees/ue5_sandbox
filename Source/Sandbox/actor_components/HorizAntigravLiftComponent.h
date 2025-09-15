@@ -42,5 +42,5 @@ class SANDBOX_API UHorizAntigravLiftComponent : public UActorComponent {
                       UPrimitiveComponent* OtherComp,
                       int32 OtherBodyIndex);
   private:
-    TSet<AMyCharacter *> floating_characters;
+    TSet<AMyCharacter*> floating_characters;
 };
