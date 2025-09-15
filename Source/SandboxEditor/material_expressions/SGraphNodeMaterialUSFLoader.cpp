@@ -9,8 +9,7 @@
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 
 void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNode* InNode) {
-    // Cast UEdGraphNode to UMaterialGraphNode - should succeed for material expressions
-    UMaterialGraphNode* MaterialGraphNode = Cast<UMaterialGraphNode>(InNode);
+    auto* MaterialGraphNode = Cast<UMaterialGraphNode>(InNode);
     if (!MaterialGraphNode) {
         UE_LOG(
             LogTemp,
@@ -22,8 +21,7 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
     this->GraphNode = MaterialGraphNode;
     this->MaterialNode = MaterialGraphNode;
 
-    // Create HLSL syntax highlighter
-    FHLSLSyntaxHighlighterMarshaller::FSyntaxTextStyle CodeStyle(
+    auto CodeStyle = FHLSLSyntaxHighlighterMarshaller::FSyntaxTextStyle{
         FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Normal"),
         FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Operator"),
         FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Keyword"),
@@ -32,7 +30,7 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
         FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Comment"),
         FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>(
             "SyntaxHighlight.SourceCode.PreProcessorKeyword"),
-        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Error"));
+        FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("SyntaxHighlight.SourceCode.Error")};
 
     SyntaxHighlighter = FHLSLSyntaxHighlighterMarshaller::Create(CodeStyle);
 
@@ -41,8 +39,7 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
 }
 
 void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox> MainBox) {
-    // Bind text to our getter method using Slate widget binding
-    TAttribute<FText> GetText;
+    TAttribute<FText> GetText{};
     GetText.Bind(this, &SGraphNodeMaterialUSFLoader::GetGeneratedCodeText);
 
     // Create read-only text box for generated code
@@ -58,7 +55,7 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
         .Marshaller(SyntaxHighlighter)
         .ToolTipText(FText::FromString(TEXT("Generated shader code from USF Loader (read-only)")));
 
-    TSharedPtr<SVerticalBox> PreviewBox;
+    TSharedPtr<SVerticalBox> PreviewBox{};
     SAssignNew(PreviewBox, SVerticalBox);
 
     SGraphNodeMaterialBase::CreateBelowPinControls(PreviewBox);
@@ -76,12 +73,12 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::CodeVisibility() const {
-    ECheckBoxState State = IsAdvancedViewChecked();
+    auto State{IsAdvancedViewChecked()};
     return (State == ECheckBoxState::Checked) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 FText SGraphNodeMaterialUSFLoader::GetGeneratedCodeText() const {
-    if (UMaterialExpressionUSFLoader* USFExpression = GetUSFLoaderExpression()) {
+    if (auto* USFExpression = GetUSFLoaderExpression()) {
         return FText::FromString(USFExpression->debug_code);
     }
     return FText::FromString(TEXT("// No code generated"));
@@ -126,18 +123,14 @@ EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
 }
 
 void SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged(ECheckBoxState const NewCheckedState) {
-    // Update the bShowCodePreview property in the USF Loader expression
-    if (UMaterialExpressionUSFLoader* USFExpression = GetUSFLoaderExpression()) {
+    if (auto* USFExpression = GetUSFLoaderExpression()) {
         USFExpression->bShowCodePreview = (NewCheckedState == ECheckBoxState::Checked);
-
-        // Mark the expression as modified for proper saving
         USFExpression->MarkPackageDirty();
     }
 }
 
 ECheckBoxState SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked() const {
-    // Use the bShowCodePreview property from Details Panel
-    if (UMaterialExpressionUSFLoader* USFExpression = GetUSFLoaderExpression()) {
+    if (auto* USFExpression = GetUSFLoaderExpression()) {
         return USFExpression->bShowCodePreview ? ECheckBoxState::Checked
                                                : ECheckBoxState::Unchecked;
     }
@@ -152,6 +145,6 @@ const FSlateBrush* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
         return FAppStyle::GetBrush(CHEVRON_DOWN);
     }
 
-    ECheckBoxState State = IsAdvancedViewChecked();
+    auto State{IsAdvancedViewChecked()};
     return FAppStyle::GetBrush((State == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);
 }
