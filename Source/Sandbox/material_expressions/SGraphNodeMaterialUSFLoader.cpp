@@ -12,7 +12,10 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
     // Cast UEdGraphNode to UMaterialGraphNode - should succeed for material expressions
     UMaterialGraphNode* MaterialGraphNode = Cast<UMaterialGraphNode>(InNode);
     if (!MaterialGraphNode) {
-        UE_LOG(LogTemp, Error, TEXT("SGraphNodeMaterialUSFLoader: Failed to cast UEdGraphNode to UMaterialGraphNode"));
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("SGraphNodeMaterialUSFLoader: Failed to cast UEdGraphNode to UMaterialGraphNode"));
         return;
     }
 
@@ -46,7 +49,10 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
     SAssignNew(GeneratedCodeTextBox, SMultiLineEditableTextBox)
         .AutoWrapText(false)
         .IsReadOnly(true) // Read-only unlike Custom expression
-        .Margin(FMargin(5, 5, 5, 5))
+        .Margin(FMargin(UMaterialExpressionUSFLoader::Constants::UI_PADDING,
+                        UMaterialExpressionUSFLoader::Constants::UI_PADDING,
+                        UMaterialExpressionUSFLoader::Constants::UI_PADDING,
+                        UMaterialExpressionUSFLoader::Constants::UI_PADDING))
         .Text(GetText)
         .Visibility(this, &SGraphNodeMaterialUSFLoader::CodeVisibility)
         .Marshaller(SyntaxHighlighter)
@@ -60,8 +66,12 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
     MainBox->AddSlot()
         .Padding(Settings->GetNonPinNodeBodyPadding())
         .AutoHeight()[SNew(SHorizontalBox) +
-                      SHorizontalBox::Slot().AutoWidth().Padding(
-                          FMargin(10.f, 5.f, 10.f, 10.f))[GeneratedCodeTextBox.ToSharedRef()] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(FMargin(
+                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN,
+                          UMaterialExpressionUSFLoader::Constants::UI_PADDING,
+                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN,
+                          UMaterialExpressionUSFLoader::Constants::UI_MARGIN))[GeneratedCodeTextBox
+                                                                                   .ToSharedRef()] +
                       SHorizontalBox::Slot().AutoWidth()[PreviewBox.ToSharedRef()]];
 }
 
@@ -93,21 +103,21 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
         .AutoHeight()
         .HAlign(HAlign_Fill)
         .VAlign(VAlign_Top)
-        .Padding(
-            3,
-            0,
-            3,
-            3)[SNew(SCheckBox)
-                   .Visibility(this, &SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility)
-                   .OnCheckStateChanged(this, &SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged)
-                   .IsChecked(this, &SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked)
-                   .Cursor(EMouseCursor::Default)
-                   .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
-                       [SNew(SHorizontalBox) +
-                        SHorizontalBox::Slot()
-                            .VAlign(VAlign_Center)
-                            .HAlign(HAlign_Center)[SNew(SImage).Image(
-                                this, &SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow)]]];
+        .Padding(UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL,
+                 0,
+                 UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL,
+                 UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL)
+            [SNew(SCheckBox)
+                 .Visibility(this, &SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility)
+                 .OnCheckStateChanged(this, &SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged)
+                 .IsChecked(this, &SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked)
+                 .Cursor(EMouseCursor::Default)
+                 .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot()
+                          .VAlign(VAlign_Center)
+                          .HAlign(HAlign_Center)[SNew(SImage).Image(
+                              this, &SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow)]]];
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
@@ -116,13 +126,22 @@ EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
 }
 
 void SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged(ECheckBoxState const NewCheckedState) {
-    // Code view state is now handled locally in this widget
-    // Could store state in UMaterialExpressionUSFLoader if needed
+    // Update the bShowCodePreview property in the USF Loader expression
+    if (UMaterialExpressionUSFLoader* USFExpression = GetUSFLoaderExpression()) {
+        USFExpression->bShowCodePreview = (NewCheckedState == ECheckBoxState::Checked);
+
+        // Mark the expression as modified for proper saving
+        USFExpression->MarkPackageDirty();
+    }
 }
 
 ECheckBoxState SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked() const {
-    // Default to showing code for USF Loader
-    return GetUSFLoaderExpression() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+    // Use the bShowCodePreview property from Details Panel
+    if (UMaterialExpressionUSFLoader* USFExpression = GetUSFLoaderExpression()) {
+        return USFExpression->bShowCodePreview ? ECheckBoxState::Checked
+                                               : ECheckBoxState::Unchecked;
+    }
+    return ECheckBoxState::Unchecked;
 }
 
 #define CHEVRON_UP TEXT("Icons.ChevronUp")

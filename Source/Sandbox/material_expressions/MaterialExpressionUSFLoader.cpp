@@ -1,4 +1,4 @@
-#include "Sandbox/MaterialExpressionUSFLoader.h"
+#include "MaterialExpressionUSFLoader.h"
 
 #include <type_traits>
 
@@ -57,7 +57,7 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
     previous_block.InputName = input_name;
 
     // Always provide an input - either connected or default constant expression
-    FExpressionInput input_to_use = previous_block;
+    FExpressionInput input_to_use{previous_block};
 
     if (!previous_block.IsConnected()) {
         // Create a default constant expression based on output type
@@ -91,17 +91,15 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
     named_inputs.Add(FCustomInput(input_to_use.InputName, input_to_use));
 
     // Always use the input name in shader code - it's guaranteed to exist now
-    FString shader_code{TEXT("// USF Loader: End current function\n"
-                             "return previous_block;\n"
-                             "}\n\n")};
+    FString shader_code{Constants::ShaderHeaderTemplate()};
 
     // Handle USF file includes
     if (usf_file_paths.Num() == 0) {
-        shader_code += TEXT("// No USF files specified\n\n");
+        shader_code += Constants::NoFilesComment();
     } else {
         for (FString const& file_path : usf_file_paths) {
             if (file_path.IsEmpty()) {
-                shader_code += TEXT("// Empty file path - include skipped\n");
+                shader_code += Constants::EmptyPathComment();
                 continue;
             }
 
@@ -135,7 +133,10 @@ void UMaterialExpressionUSFLoader::GetCaption(TArray<FString>& out_captions) con
     if (usf_file_paths.Num() == 0) {
         out_captions.Add(TEXT("USF Loader: <No files>"));
     } else if (usf_file_paths.Num() == 1) {
-        out_captions.Add(FString::Printf(TEXT("USF Loader: %s"), *usf_file_paths[0]));
+        FString const display_path{usf_file_paths[0].Len() > 30
+                                       ? usf_file_paths[0].Right(27) + TEXT("...")
+                                       : usf_file_paths[0]};
+        out_captions.Add(FString::Printf(TEXT("USF Loader: %s"), *display_path));
     } else {
         out_captions.Add(FString::Printf(TEXT("USF Loader: %d files"), usf_file_paths.Num()));
     }

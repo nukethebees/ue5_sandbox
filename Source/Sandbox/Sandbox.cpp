@@ -1,5 +1,5 @@
 // Sandbox.cpp
-#include "Sandbox.h"
+#include "Sandbox/Sandbox.h"
 
 #define LOCTEXT_NAMESPACE "FSandboxModule"
 

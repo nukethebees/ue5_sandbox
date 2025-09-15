@@ -13,7 +13,7 @@ public class Sandbox : ModuleRules
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
-            // Runtime dependencies only - editor dependencies moved to SandboxEditor module
+            // Additional private dependencies
         });
 
 
