@@ -52,6 +52,29 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
                                        "subsequent material nodes"))};
             return text;
         }
+
+        // UI Layout Constants
+        static constexpr float UI_PADDING{5.0f};
+        static constexpr float UI_MARGIN{10.0f};
+        static constexpr float UI_MARGIN_SMALL{3.0f};
+
+        // Shader Code Templates
+        static FString const& ShaderHeaderTemplate() {
+            static FString const text{TEXT("// USF Loader: End current function\n"
+                                           "return previous_block;\n"
+                                           "}\n\n")};
+            return text;
+        }
+
+        static FString const& NoFilesComment() {
+            static FString const text{TEXT("// No USF files specified\n\n")};
+            return text;
+        }
+
+        static FString const& EmptyPathComment() {
+            static FString const text{TEXT("// Empty file path - include skipped\n")};
+            return text;
+        }
     };
 
     /** Optional prefix to add to all file paths (e.g., "/Project/", "/Engine/",
@@ -71,7 +94,13 @@ class SANDBOX_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Default Values"))
     FUSFLoaderDefaults default_values;
 
-    UPROPERTY(VisibleAnywhere, Category = "USF Loader", meta = (MultiLine = "true"))
+    /** Whether to show generated code preview in Material Editor */
+    UPROPERTY(EditAnywhere, Category = "USF Loader", meta = (DisplayName = "Show Code Preview"))
+    bool bShowCodePreview{false};
+
+    UPROPERTY(VisibleAnywhere,
+              Category = "USF Loader",
+              meta = (MultiLine = "true", DisplayName = "Generated Code"))
     FString debug_code;
 
     UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Optional input to chain USF blocks"))
