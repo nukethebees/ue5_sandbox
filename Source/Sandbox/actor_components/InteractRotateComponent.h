@@ -26,7 +26,7 @@ class SANDBOX_API UInteractRotateComponent
     UFUNCTION()
     void trigger_activation(AActor* instigator) override;
   private:
-    void start_rotation(AActor * instigator);
+    void start_rotation(AActor* instigator);
     void stop_rotation();
 
     UPROPERTY(EditAnywhere, Category = "Rotation")

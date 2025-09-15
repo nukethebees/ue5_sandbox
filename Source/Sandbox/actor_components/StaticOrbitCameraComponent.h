@@ -5,7 +5,7 @@
 #include "StaticOrbitCameraComponent.generated.h"
 
 // Make a camera actor rotate around a point
-// The point is either set with an arrow component or via a raycast from the camera 
+// The point is either set with an arrow component or via a raycast from the camera
 // to the first object hit
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))

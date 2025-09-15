@@ -43,5 +43,5 @@ class SANDBOX_API UAntigravLiftActorComponent : public UActorComponent {
   private:
     void display_n_floating();
 
-    TSet<ACharacter *> floating_characters;
+    TSet<ACharacter*> floating_characters;
 };

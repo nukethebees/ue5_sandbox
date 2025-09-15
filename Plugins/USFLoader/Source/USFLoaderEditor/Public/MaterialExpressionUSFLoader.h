@@ -113,7 +113,7 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     virtual FText GetCreationName() const override;
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
-    virtual void SetEditableName(const FString& NewName) override;
+    virtual void SetEditableName(FString const& NewName) override;
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
     //~ End UMaterialExpression Interface
   private:
