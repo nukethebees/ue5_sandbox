@@ -14,6 +14,7 @@ UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
     bCollapsed = false;
     bHidePreviewWindow = true;
+    instance_name = TEXT("USF Loader");
 }
 
 template <typename ExprT>
@@ -152,6 +153,10 @@ bool UMaterialExpressionUSFLoader::CanRenameNode() const {
 }
 FString UMaterialExpressionUSFLoader::GetEditableName() const {
     return instance_name;
+}
+
+void UMaterialExpressionUSFLoader::SetEditableName(const FString& NewName) {
+    instance_name = NewName;
 }
 
 bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) const {
