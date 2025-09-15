@@ -31,7 +31,8 @@ public class USFLoaderEditor : ModuleRules
                 "EditorSubsystem",
                 "RenderCore",
                 "RHI",
-                "Projects"
+                "Projects",
+                "ShaderCompilerCommon"
             }
         );
     }
