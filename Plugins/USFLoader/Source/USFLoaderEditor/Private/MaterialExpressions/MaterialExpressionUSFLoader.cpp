@@ -7,7 +7,7 @@
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
-#include "SandboxEditor/subsystems/USFPathValidationSubsystem.h"
+#include "USFPathValidationSubsystem.h"
 #include "SGraphNodeMaterialUSFLoader.h"
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {

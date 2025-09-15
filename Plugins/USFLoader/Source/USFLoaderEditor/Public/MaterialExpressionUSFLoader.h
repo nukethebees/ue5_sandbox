@@ -36,7 +36,7 @@ struct FUSFLoaderDefaults {
  * function.
  */
 UCLASS(meta = (DisplayName = "USF Loader", Category = "Custom|Shader"))
-class SANDBOXEDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpression {
+class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpression {
     GENERATED_BODY()
   public:
     UMaterialExpressionUSFLoader();

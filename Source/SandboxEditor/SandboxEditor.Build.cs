@@ -31,7 +31,8 @@ public class SandboxEditor : ModuleRules
             "EditorStyle",
             "GraphEditor",
             "RenderCore", // Often needed for material nodes
-            "EngineSettings" // Engine configuration access
+            "EngineSettings", // Engine configuration access
+            "USFLoaderEditor" // USF Loader plugin dependency
         });
     }
 }

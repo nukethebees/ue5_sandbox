@@ -1,4 +1,4 @@
-#include "SandboxEditor/subsystems/USFPathValidationSubsystem.h"
+#include "USFPathValidationSubsystem.h"
 
 BEGIN_DEFINE_SPEC(FUSFPathValidationSpec,
                   "Sandbox.USFPathValidation",
