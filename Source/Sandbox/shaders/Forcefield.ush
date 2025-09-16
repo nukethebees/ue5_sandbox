@@ -1,0 +1,87 @@
+#ifndef SANDBOX_FORCEFIELD_USH
+#define SANDBOX_FORCEFIELD_USH
+
+#if defined(__INTELLISENSE__)
+#include "C:\Program Files\Epic Games\UE_5.6\Engine\Shaders\Private\Common.ush"
+
+#include "E:\UE5\Projects\Sandbox\Source\Sandbox\shaders\utilities.ush"
+#else
+#include "/Engine/Private/Common.ush"
+
+#include "/Project/utilities.ush"
+#endif
+
+
+
+float3 GetForcefieldEmissive(
+    float NoiseSpeed,
+    float NoiseIntensity,
+    float EmissiveStrength,
+    float3 MyBaseColor,
+    float3 TranslatedWorldPosition
+)
+{
+    float3 scaled_speed = NoiseSpeed * GetGameTime();
+    float3 shifted_camera = TranslatedWorldPosition + scaled_speed;
+        
+    //float3 noise = float3(0, 0, 0);
+    float noise = MaterialExpressionNoise(
+        shifted_camera,   // Position
+        1.00000000f,      // Scale
+        int(1),           // Quality
+        int(1),           // Function
+        true,             // bTurbulence
+        uint(6),          // Levels
+        -1.00000000f,     // OutputMin
+        1.00000000f,      // OutputMax
+        2.00000000f,      // LevelScale
+        0.00000000f,      // FilterWidth
+        false,            // bTiling
+        512.00000000f     // RepeatSize
+    );
+    
+    
+    float3 scaled_noise = noise * NoiseIntensity;
+    float3 sparkles = scaled_noise * MyBaseColor;
+    
+    float3 base_emissive = EmissiveStrength * MyBaseColor;
+    float3 final_emissive = base_emissive + sparkles;
+    
+    return final_emissive;
+}
+
+float3 GetForcefieldWave(
+    float2 UV,
+    float WaveSpeed,
+    float WaveWidth,
+    float WaveBrightness,
+    float BaseDimming,
+    float3 MyBaseColor
+)
+{
+    // Get current time for animation
+    float time = GetGameTime();
+
+    // Create horizontal movement based on time and speed
+    // fmod get the remainder after dividing by 1
+    // e.g. fmod(1.2) == 0.2
+    // This maps with UV coordinates which go from 0 to 1
+    float wave_position = fmod(time * WaveSpeed, 1.0f);
+
+    // Calculate distance from current wave position
+    float distance_from_wave = abs(UV.x - wave_position);
+
+    // Handle wrapping (wave can appear on both sides due to modulo)
+    float wrapped_distance = min(distance_from_wave, 1.0f - distance_from_wave);
+
+    // Create the wave line using smoothstep for anti-aliased edges
+    float wave_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
+
+    // Calculate brightness multiplier
+    float brightness_multiplier = lerp(BaseDimming, WaveBrightness, wave_intensity);
+
+    // Apply the brightness multiplier to the base color
+    return MyBaseColor * brightness_multiplier;
+}
+
+#endif
