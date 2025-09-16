@@ -1,0 +1,9 @@
+#ifndef SANDBOX_EXAMPLE_USH
+#define SANDBOX_EXAMPLE_USH
+
+float3 example_fn()
+{
+    return float3(0.5, 0.5, 0.5);
+}
+
+#endif

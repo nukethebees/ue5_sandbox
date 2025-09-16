@@ -37,45 +37,45 @@ int32 UUSFPathValidationSubsystem::GetCacheSize() {
 // Instance implementation methods
 
 bool UUSFPathValidationSubsystem::ValidateUSFPath_Internal(FString const& VirtualPath) {
-    if (auto* IndexPtr = PathToIndex.Find(VirtualPath)) {
-        auto const& Cached = CacheEntries[*IndexPtr];
-        return Cached.bExists;
+    if (auto* index_ptr = PathToIndex.Find(VirtualPath)) {
+        auto const& cached_entry = CacheEntries[*index_ptr];
+        return cached_entry.bExists;
     }
 
-    auto ResolvedPath{ResolveVirtualPath(VirtualPath)};
-    bool bExists{false};
+    auto resolved_path{ResolveVirtualPath(VirtualPath)};
+    bool file_exists{false};
 
-    if (!ResolvedPath.IsEmpty()) {
-        bExists = FPaths::FileExists(ResolvedPath);
+    if (!resolved_path.IsEmpty()) {
+        file_exists = FPaths::FileExists(resolved_path);
     }
 
-    auto NewIndex{CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists))};
-    PathToIndex.Add(VirtualPath, NewIndex);
+    auto new_index{CacheEntries.Add(FCachedPathResult(VirtualPath, resolved_path, file_exists))};
+    PathToIndex.Add(VirtualPath, new_index);
 
-    return bExists;
+    return file_exists;
 }
 
 TOptional<FString>
     UUSFPathValidationSubsystem::ResolveUSFPath_Internal(FString const& VirtualPath) {
-    if (auto* IndexPtr = PathToIndex.Find(VirtualPath)) {
-        auto const& Cached = CacheEntries[*IndexPtr];
-        if (Cached.bExists) {
-            return Cached.ResolvedPath;
+    if (auto* index_ptr{PathToIndex.Find(VirtualPath)}) {
+        auto const& cached_entry{CacheEntries[*index_ptr]};
+        if (cached_entry.bExists) {
+            return cached_entry.ResolvedPath;
         }
         return {};
     }
 
-    auto ResolvedPath{ResolveVirtualPath(VirtualPath)};
-    bool bExists{false};
+    auto resolved_path{ResolveVirtualPath(VirtualPath)};
+    bool file_exists{false};
 
-    if (!ResolvedPath.IsEmpty()) {
-        bExists = FPaths::FileExists(ResolvedPath);
+    if (!resolved_path.IsEmpty()) {
+        file_exists = FPaths::FileExists(resolved_path);
     }
 
-    auto NewIndex{CacheEntries.Add(FCachedPathResult(VirtualPath, ResolvedPath, bExists))};
-    PathToIndex.Add(VirtualPath, NewIndex);
+    auto new_index{CacheEntries.Add(FCachedPathResult(VirtualPath, resolved_path, file_exists))};
+    PathToIndex.Add(VirtualPath, new_index);
 
-    return bExists ? TOptional<FString>(ResolvedPath) : TOptional<FString>{};
+    return file_exists ? TOptional<FString>(resolved_path) : TOptional<FString>{};
 }
 
 void UUSFPathValidationSubsystem::ClearCache_Internal() {
@@ -94,24 +94,24 @@ FString UUSFPathValidationSubsystem::ResolveVirtualPath(FString const& VirtualPa
         return VirtualPath; // Assume it's already a real path
     }
 
-    auto const& ShaderDirectoryMappings = AllShaderSourceDirectoryMappings();
+    auto const& shader_directory_mappings{AllShaderSourceDirectoryMappings()};
 
-    for (auto const& Mapping : ShaderDirectoryMappings) {
-        auto const& VirtualPrefix = Mapping.Key;
-        auto const& RealDirectory = Mapping.Value;
+    for (auto const& mapping : shader_directory_mappings) {
+        auto const& virtual_prefix{mapping.Key};
+        auto const& real_directory{mapping.Value};
 
-        if (VirtualPath.StartsWith(VirtualPrefix)) {
-            auto RemainingPath{VirtualPath.Mid(VirtualPrefix.Len())};
+        if (VirtualPath.StartsWith(virtual_prefix)) {
+            auto remaining_path{VirtualPath.Mid(virtual_prefix.Len())};
 
-            if (!RemainingPath.StartsWith(TEXT("/")) && !RealDirectory.EndsWith(TEXT("/")) &&
-                !RealDirectory.EndsWith(TEXT("\\"))) {
-                RemainingPath = TEXT("/") + RemainingPath;
+            if (!remaining_path.StartsWith(TEXT("/")) && !real_directory.EndsWith(TEXT("/")) &&
+                !real_directory.EndsWith(TEXT("\\"))) {
+                remaining_path = TEXT("/") + remaining_path;
             }
 
-            auto ResolvedPath{RealDirectory + RemainingPath};
+            auto resolved_path{real_directory + remaining_path};
 
-            FPaths::NormalizeFilename(ResolvedPath);
-            return ResolvedPath;
+            FPaths::NormalizeFilename(resolved_path);
+            return resolved_path;
         }
     }
 
