@@ -44,7 +44,8 @@ float3 GetForcefieldNoisyEmissive(float NoiseSpeed,
     return final_emissive;
 }
 
-float GetForcefieldWaveIntensity(float2 UV, float WaveSpeed, float WaveWidth) {
+// Returns {colour intensity, depth intensity}
+float2 GetForcefieldWaveIntensity(float2 UV, float WaveSpeed, float WaveWidth) {
     // Get current time for animation
     // We use this to calculate the distance the wave has travelled
     float time = GetGameTime();
@@ -75,7 +76,10 @@ float GetForcefieldWaveIntensity(float2 UV, float WaveSpeed, float WaveWidth) {
     // wrapped_distance = 0, WaveIntensity = 1
     // wrapped_distance = 1, WaveIntensity = 0
     // wrapped_distance = Wave/2, WaveIntensity = 0
-    return 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
+    float visual_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
+    float depth_intensity = visual_intensity;
+    
+    return float2(visual_intensity, depth_intensity);
 }
 
 
@@ -93,13 +97,12 @@ float3 GetForcefieldWave(float WaveIntensity,
 }
 
 float3 GetForcefieldWaveDepth(float WaveIntensity,
-                              float WaveHeight) {
-    // Calculate depth displacement based on wave intensity
-    float final_depth = lerp(0.0f, WaveHeight, WaveIntensity);
-
-    float width_deformation = 0;
-    float height_deformation = 0;
-    return float3(width_deformation, final_depth, height_deformation);
+                              float WaveHeight,
+                              float3 FaceNormalWS,
+                              float3 ActorDirectionWS) {
+   
+    float depth_amount = lerp(0.0f, WaveHeight, WaveIntensity);
+    return normalize(ActorDirectionWS) * depth_amount;
 }
 
 /*

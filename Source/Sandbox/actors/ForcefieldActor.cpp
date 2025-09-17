@@ -80,33 +80,7 @@ void AForcefieldActor::BeginPlay() {
         log_warning(TEXT("Transition pulse timeline or curve missing"));
     }
 
-    // Create dynamic material instance for the barrier
-    if (barrier_mesh->GetMaterial(0)) {
-        barrier_material_instance =
-            UMaterialInstanceDynamic::Create(barrier_mesh->GetMaterial(0), this);
-        if (barrier_material_instance) {
-            barrier_mesh->SetMaterial(0, barrier_material_instance);
-
-            // Initialize resolved peak opacity
-            if (peak_opacity < 0.0f) {
-                // Use material's default opacity value
-                float material_opacity{default_opacity}; // fallback
-                if (barrier_material_instance->GetScalarParameterValue(Constants::Opacity(),
-                                                                       material_opacity)) {
-                    resolved_peak_opacity = material_opacity;
-                    log_verbose(TEXT("Using material default opacity: %f"), resolved_peak_opacity);
-                } else {
-                    resolved_peak_opacity = default_opacity;
-                    log_verbose(TEXT("Material has no opacity parameter, using fallback: %f"),
-                                resolved_peak_opacity);
-                }
-            } else {
-                // Use override value
-                resolved_peak_opacity = peak_opacity;
-                log_verbose(TEXT("Using override opacity: %f"), resolved_peak_opacity);
-            }
-        }
-    }
+    initialise_barrier_material();
 
     change_state(EForcefieldState::Active);
     if (current_state == EForcefieldState::Active) {
@@ -277,7 +251,42 @@ void AForcefieldActor::on_pulse_end() {
         log_verbose(TEXT("Forcefield deactivation completed - starting cooldown"));
     }
 }
+void AForcefieldActor::initialise_barrier_material() {
+    if (!barrier_mesh) {
+        return;
+    }
 
+    // Create dynamic material instance for the barrier
+    if (auto* current_material{barrier_mesh->GetMaterial(0)}) {
+        barrier_material_instance =
+            UMaterialInstanceDynamic::Create(barrier_mesh->GetMaterial(0), this);
+        if (barrier_material_instance) {
+            barrier_mesh->SetMaterial(0, barrier_material_instance);
+
+            barrier_material_instance->SetVectorParameterValue(Constants::ForwardVector(),
+                                                               barrier_mesh->GetRightVector());
+
+            // Initialize resolved peak opacity
+            if (peak_opacity < 0.0f) {
+                // Use material's default opacity value
+                float material_opacity{default_opacity}; // fallback
+                if (barrier_material_instance->GetScalarParameterValue(Constants::Opacity(),
+                                                                       material_opacity)) {
+                    resolved_peak_opacity = material_opacity;
+                    log_verbose(TEXT("Using material default opacity: %f"), resolved_peak_opacity);
+                } else {
+                    resolved_peak_opacity = default_opacity;
+                    log_verbose(TEXT("Material has no opacity parameter, using fallback: %f"),
+                                resolved_peak_opacity);
+                }
+            } else {
+                // Use override value
+                resolved_peak_opacity = peak_opacity;
+                log_verbose(TEXT("Using override opacity: %f"), resolved_peak_opacity);
+            }
+        }
+    }
+}
 float AForcefieldActor::get_curve_start_value() const {
     if (transition_pulse_curve) {
         float min_time, max_time;
