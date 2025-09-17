@@ -21,6 +21,7 @@ class SANDBOX_API URotationManagerSubsystem : public UTickableWorldSubsystem {
     void register_rotating_actor(URotatingActorComponent* component,
                                  AActor* actor,
                                  ERotationType rotation_type);
+    void register_static_rotating_actor(float speed, AActor* actor);
     void unregister_rotating_actor(URotatingActorComponent* component);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }

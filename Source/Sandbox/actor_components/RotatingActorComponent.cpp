@@ -1,4 +1,5 @@
 #include "Sandbox/actor_components/RotatingActorComponent.h"
+
 #include "Sandbox/subsystems/RotationManagerSubsystem.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
