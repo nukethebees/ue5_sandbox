@@ -91,15 +91,11 @@ float3 GetForcefieldWave(float2 UV,
     return lerp(base_result, wave_result, wave_intensity);
 }
 
-float4 GetForcefieldWaveWithDepth(float2 UV,
-                                  float WaveSpeed,
-                                  float WaveWidth,
-                                  float WaveBrightness,
-                                  float BaseDimming,
-                                  float WaveHeight,
-                                  float WaveDecay,
-                                  float3 BaseColor,
-                                  float3 WaveColor) {
+float3 GetForcefieldWaveDepth(float2 UV,
+                              float WaveSpeed,
+                              float WaveWidth,
+                              float WaveBrightness,
+                              float WaveHeight) {
     // Get current time for animation
     float time = GetGameTime();
 
@@ -116,15 +112,11 @@ float4 GetForcefieldWaveWithDepth(float2 UV,
     float wave_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
 
     // Calculate depth displacement based on wave intensity
-    float final_height = lerp(0.0f, WaveHeight, wave_intensity);
+    float final_depth = lerp(0.0f, WaveHeight, wave_intensity);
 
-    // Use pure wave replacement for completely independent colors
-    float3 base_result = BaseColor * BaseDimming;
-    float3 wave_result = WaveColor * WaveBrightness;
-    float3 final_color = lerp(base_result, wave_result, wave_intensity);
-
-    // Return color in RGB and depth displacement magnitude in A
-    return float4(final_color, final_height);
+    float width_deformation = 0;
+    float height_deformation = 0;
+    return float3(width_deformation, final_depth, height_deformation);
 }
 
 /*
