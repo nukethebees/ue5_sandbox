@@ -17,6 +17,10 @@ using CFinder = ConstructorHelpers::FClassFinder<T>;
         }                                                                 \
     } while (0)
 
+AMyHUD::AMyHUD() {
+    PrimaryActorTick.bCanEverTick = false;
+}
+
 void AMyHUD::BeginPlay() {
     Super::BeginPlay();
 
