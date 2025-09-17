@@ -14,6 +14,8 @@ UCLASS()
 class SANDBOX_API AMyHUD : public AHUD {
     GENERATED_BODY()
   public:
+      AMyHUD();
+
     virtual void BeginPlay() override;
   protected:
     // Widget classes
