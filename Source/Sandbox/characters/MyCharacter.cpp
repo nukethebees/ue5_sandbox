@@ -11,6 +11,10 @@
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
+    first_person_camera_component = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+    first_person_camera_component->bUsePawnControlRotation = true;
+    first_person_camera_component->SetupAttachment(GetRootComponent());
+
     warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
 }
 
@@ -21,9 +25,6 @@ void AMyCharacter::BeginPlay() {
     check(GEngine != nullptr);
 
     is_forced_movement = false;
-
-    first_person_camera_component = FindComponentByClass<UCameraComponent>();
-    first_person_camera_component->bUsePawnControlRotation = true;
 
     jetpack_component = FindComponentByClass<UJetpackComponent>();
 

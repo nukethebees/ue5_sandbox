@@ -13,6 +13,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/interfaces/DeathHandler.h"
@@ -71,8 +72,8 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void stop_jetpack(FInputActionValue const& value);
 
-    UPROPERTY(VisibleAnywhere, Category = Camera)
-    UCameraComponent* first_person_camera_component;
+    UPROPERTY(VisibleAnywhere, Category = "Camera")
+    UCameraComponent* first_person_camera_component{nullptr};
 
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
