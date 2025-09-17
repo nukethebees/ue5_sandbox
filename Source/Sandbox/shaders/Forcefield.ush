@@ -44,13 +44,7 @@ float3 GetForcefieldNoisyEmissive(float NoiseSpeed,
     return final_emissive;
 }
 
-float3 GetForcefieldWave(float2 UV,
-                         float WaveSpeed,
-                         float WaveWidth,
-                         float WaveBrightness,
-                         float BaseDimming,
-                         float3 BaseColor,
-                         float3 WaveColor) {
+float GetForcefieldWaveIntensity(float2 UV, float WaveSpeed, float WaveWidth) {
     // Get current time for animation
     // We use this to calculate the distance the wave has travelled
     float time = GetGameTime();
@@ -78,41 +72,30 @@ float3 GetForcefieldWave(float2 UV,
     // Smoothstep interpolates between 0 and the Width/2
     // The peak brightness will be in the centre of the wave
     //
-    // wrapped_distance = 0, wave_intensity = 1
-    // wrapped_distance = 1, wave_intensity = 0
-    // wrapped_distance = Wave/2, wave_intensity = 0
-    float wave_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
+    // wrapped_distance = 0, WaveIntensity = 1
+    // wrapped_distance = 1, WaveIntensity = 0
+    // wrapped_distance = Wave/2, WaveIntensity = 0
+    return 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
+}
 
+
+float3 GetForcefieldWave(float WaveIntensity,
+                         float BaseDimming,
+                         float WaveBrightness,
+                         float3 BaseColor,
+                         float3 WaveColor) {
     // Use pure wave replacement for completely independent colors
     // Direct interpolation between base and wave - no color mixing
     float3 base_result = BaseColor * BaseDimming;
     float3 wave_result = WaveColor * WaveBrightness;
 
-    return lerp(base_result, wave_result, wave_intensity);
+    return lerp(base_result, wave_result, WaveIntensity);
 }
 
-float3 GetForcefieldWaveDepth(float2 UV,
-                              float WaveSpeed,
-                              float WaveWidth,
-                              float WaveBrightness,
+float3 GetForcefieldWaveDepth(float WaveIntensity,
                               float WaveHeight) {
-    // Get current time for animation
-    float time = GetGameTime();
-
-    // Create horizontal movement based on time and speed
-    float wave_position = fmod(time * WaveSpeed, 1.0f);
-
-    // Calculate distance from current wave position
-    float distance_from_wave = abs(UV.x - wave_position);
-
-    // Handle wrapping (wave can appear on both sides due to modulo)
-    float wrapped_distance = min(distance_from_wave, 1.0f - distance_from_wave);
-
-    // Create the wave line using smoothstep for anti-aliased edges
-    float wave_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
-
     // Calculate depth displacement based on wave intensity
-    float final_depth = lerp(0.0f, WaveHeight, wave_intensity);
+    float final_depth = lerp(0.0f, WaveHeight, WaveIntensity);
 
     float width_deformation = 0;
     float height_deformation = 0;
