@@ -60,6 +60,11 @@ class SANDBOX_API AForcefieldActor
             static auto const tag{FName(TEXT("NoiseIntensity"))};
             return tag;
         }
+
+        static auto const& ForwardVector() {
+            static auto const tag{FName(TEXT("ForwardVector"))};
+            return tag;
+        }
     };
   protected:
     virtual void BeginPlay() override;
@@ -154,6 +159,8 @@ class SANDBOX_API AForcefieldActor
     void on_pulse_update(float value);
     UFUNCTION()
     void on_pulse_end();
+    UFUNCTION()
+    void initialise_barrier_material();
 
     // Debug visualization
     void draw_debug_info() const;
