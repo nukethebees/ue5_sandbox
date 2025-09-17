@@ -3,6 +3,7 @@
 
 #if defined(__INTELLISENSE__)
 #include "C:\Program Files\Epic Games\UE_5.6\Engine\Shaders\Private\Common.ush"
+//#include "C:\Program Files\Epic Games\UE_5.6\Engine\Shaders\Private\MaterialTemplate.ush"
 
 #include "E:\UE5\Projects\Sandbox\Source\Sandbox\shaders\utilities.ush"
 #else
@@ -60,24 +61,40 @@ float3 GetForcefieldWave(
 )
 {
     // Get current time for animation
+    // We use this to calculate the distance the wave has travelled
     float time = GetGameTime();
 
     // Create horizontal movement based on time and speed
-    // fmod get the remainder after dividing by 1
+    // distance = speed * time
+    // fmod gets the remainder after dividing by 1
     // e.g. fmod(1.2) == 0.2
     // This maps with UV coordinates which go from 0 to 1
     float wave_position = fmod(time * WaveSpeed, 1.0f);
 
     // Calculate distance from current wave position
+    // If behind the wave the value will be negative
+    // Distance can go from -1 to +1
     float distance_from_wave = abs(UV.x - wave_position);
 
     // Handle wrapping (wave can appear on both sides due to modulo)
+    // If the wave is at 0.9 and x=0.1, the distance will be 0.8 to the wave's left side
+    // We want our wave to wrap around so the distance is really 0.2 from the wave's right side
+    // Use min() to take the minimum distance
     float wrapped_distance = min(distance_from_wave, 1.0f - distance_from_wave);
 
     // Create the wave line using smoothstep for anti-aliased edges
+    // args (min, max, x)
+    // Smoothstep interpolates between 0 and the Width/2
+    // The peak brightness will be in the centre of the wave
+    //
+    // wrapped_distance = 0, wave_intensity = 1
+    // wrapped_distance = 1, wave_intensity = 0
+    // wrapped_distance = Wave/2, wave_intensity = 0
     float wave_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
 
     // Calculate brightness multiplier
+    // (from, to, value to interpolate)
+    // Brightness goes from 0-1x between base dimming to wave brightness
     float brightness_multiplier = lerp(BaseDimming, WaveBrightness, wave_intensity);
 
     // Apply the brightness multiplier to the base color
