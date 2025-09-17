@@ -101,3 +101,53 @@ GetForcefieldWave(
 - Wave repeats continuously with seamless wrapping
 - Anti-aliased edges due to smoothstep function
 - Fully time-based animation using game time
+
+## 3D Depth Wave Functions
+
+### GetForcefieldWavePositionOffset
+Creates world position displacement for 3D depth effects:
+```hlsl
+float3 GetForcefieldWavePositionOffset(
+    float2 UV,              // Texture coordinates (0.0-1.0)
+    float3 WorldPosition,   // Current vertex world position
+    float3 WorldNormal,     // Surface normal for displacement direction
+    float WaveSpeed,        // How fast the wave moves horizontally
+    float WaveWidth,        // Thickness of the wave line (as fraction)
+    float WaveHeight,       // Maximum displacement distance outward
+    float WaveDecay         // Falloff exponent (higher = sharper peaks)
+)
+```
+
+**Key Features:**
+- Uses same wave timing and positioning as 2D version
+- Displaces vertices along surface normal direction
+- `WaveDecay` parameter controls height falloff curve using `pow(intensity, decay)`
+- Returns 3D displacement vector for World Position Offset input
+
+### GetForcefieldWaveWithDepth
+Combines color and depth effects in a single function:
+```hlsl
+float4 GetForcefieldWaveWithDepth(
+    // All original parameters plus:
+    float3 WorldPosition,   // Current vertex world position
+    float3 WorldNormal,     // Surface normal
+    float WaveHeight,       // Maximum displacement distance
+    float WaveDecay,        // Height falloff exponent
+    // ... other parameters same as GetForcefieldWave
+)
+```
+
+**Returns:**
+- `RGB`: Wave color effect (same as original function)
+- `A`: Displacement magnitude for reference/debugging
+
+**Usage in Materials:**
+1. **World Position Offset**: Connect `GetForcefieldWavePositionOffset()` to WPO input
+2. **Emissive Color**: Connect `GetForcefieldWaveWithDepth().rgb` to emissive input
+3. **Required Inputs**: Use `Parameters.WorldPosition` and `Parameters.WorldNormal` from material
+
+**Effect:**
+- Wave physically emerges from the surface creating 3D geometry displacement
+- Color and displacement are perfectly synchronized
+- Maintains seamless looping and anti-aliased edges
+- `WaveDecay` allows fine-tuning of peak sharpness (1.0 = linear, 2.0 = quadratic, etc.)
