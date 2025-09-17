@@ -8,6 +8,8 @@ void URotationManagerSubsystem::register_rotating_actor(URotatingActorComponent*
         return;
     }
 
+    UE_LOGFMT(LogTemp, Verbose, "Registering rotating actor.");
+
     if (rotation_type == ERotationType::DYNAMIC) {
         dynamic_components.Add(component);
         dynamic_actors.Add(actor);

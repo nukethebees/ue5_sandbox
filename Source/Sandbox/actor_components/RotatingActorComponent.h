@@ -22,4 +22,6 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     bool destroy_component_after_static_registration{true};
+private:
+    void unregister_from_subsystem();
 };

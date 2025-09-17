@@ -78,10 +78,9 @@ float2 GetForcefieldWaveIntensity(float2 UV, float WaveSpeed, float WaveWidth) {
     // wrapped_distance = Wave/2, WaveIntensity = 0
     float visual_intensity = 1.0f - smoothstep(0.0f, WaveWidth * 0.5f, wrapped_distance);
     float depth_intensity = visual_intensity;
-    
+
     return float2(visual_intensity, depth_intensity);
 }
-
 
 float3 GetForcefieldWave(float WaveIntensity,
                          float BaseDimming,
@@ -100,7 +99,7 @@ float3 GetForcefieldWaveDepth(float WaveIntensity,
                               float WaveHeight,
                               float3 FaceNormalWS,
                               float3 ActorDirectionWS) {
-   
+
     float depth_amount = lerp(0.0f, WaveHeight, WaveIntensity);
     return normalize(ActorDirectionWS) * depth_amount;
 }
