@@ -11,7 +11,9 @@ void AMovingBox::BeginPlay() {
 void AMovingBox::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
+    // Stop ticking if you've mved far enough
     if (move_distance <= 0.0) {
+        this->SetActorTickEnabled(false);
         return;
     }
 
