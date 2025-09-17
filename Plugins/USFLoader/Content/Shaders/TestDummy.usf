@@ -1,12 +1,10 @@
 // Test dummy shader for USF Path Validation testing
 // This file should be found by the validation system when using "/Project/Shaders/TestDummy.usf"
 
-float TestDummyFunction()
-{
+float TestDummyFunction() {
     return 1.0f;
 }
 
-float3 TestDummyVector()
-{
+float3 TestDummyVector() {
     return float3(1.0f, 0.0f, 0.0f);
 }
