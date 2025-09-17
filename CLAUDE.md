@@ -69,6 +69,6 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **NEVER write or suggest code unless explicitly requested**: Only write, edit, or create code files when the user specifically asks for implementation
 - **Analysis and explanation only by default**: Provide code analysis, explanations, and guidance without writing code
 - **Wait for explicit requests**: The user will clearly state when they want code to be written or modified
-- **Always run clang-format after code changes**: When making any code modifications, run `clang-format` on all modified files to ensure consistent formatting
+- **Always run format-cpp.py after code changes**: When making any code modifications, run `python format-cpp.py` at the end of a set of edits to format all C++ files instead of running clang-format individually per file
 - **DO NOT attempt to test Unreal Engine code**: Testing UE5 C++ code requires the engine and project compilation which is not available in this environment
 - **Cannot edit Blueprint files**: Blueprint assets (.uasset files) are binary and cannot be modified directly - provide instructions for user to implement in UE5 Editor

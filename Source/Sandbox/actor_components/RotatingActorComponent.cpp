@@ -1,18 +1,30 @@
 #include "Sandbox/actor_components/RotatingActorComponent.h"
+#include "Sandbox/subsystems/RotationManagerSubsystem.h"
 
 URotatingActorComponent::URotatingActorComponent() {
-    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void URotatingActorComponent::BeginPlay() {
     Super::BeginPlay();
+
+    if (auto* world{GetWorld()}) {
+        if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
+            rotation_manager->register_rotating_actor(this, GetOwner(), rotation_type);
+        }
+    }
+
+    if (destroy_component_after_static_registration) {
+        DestroyComponent();
+    }
 }
 
-void URotatingActorComponent::TickComponent(float DeltaTime,
-                                            ELevelTick TickType,
-                                            FActorComponentTickFunction* ThisTickFunction) {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+void URotatingActorComponent::EndPlay(EEndPlayReason::Type EndPlayReason) {
+    if (auto* world{GetWorld()}) {
+        if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
+            rotation_manager->unregister_rotating_actor(this);
+        }
+    }
 
-    auto const delta_rotation{FRotator(0.0f, speed * DeltaTime, 0.0f)};
-    GetOwner()->AddActorLocalRotation(delta_rotation);
+    Super::EndPlay(EndPlayReason);
 }
