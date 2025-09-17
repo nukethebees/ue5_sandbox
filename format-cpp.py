@@ -27,7 +27,7 @@ def check_clang_format():
 
 def find_cpp_files(directory):
     """Find all C++ files recursively in the given directory."""
-    cpp_extensions = {'.cpp', '.h', '.hpp', '.cc', '.cxx'}
+    cpp_extensions = {'.cpp', '.h', '.hpp', '.cc', '.cxx', '.usf', '.ush', '.hlsl'}
     cpp_files = []
 
     if not directory.exists():
