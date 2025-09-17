@@ -11,7 +11,6 @@ class SANDBOX_API ACoin : public AActor {
     ACoin();
   protected:
     virtual void BeginPlay() override;
-    virtual void Tick(float DeltaTime) override;
     virtual void NotifyActorBeginOverlap(AActor* other_actor) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Coin")

@@ -2,21 +2,26 @@
 
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/subsystems/RotationManagerSubsystem.h"
 
 ACoin::ACoin() {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
     SetActorEnableCollision(true);
 }
 
 void ACoin::BeginPlay() {
     Super::BeginPlay();
-}
 
-void ACoin::Tick(float DeltaTime) {
-    Super::Tick(DeltaTime);
+    auto* world{GetWorld()};
+    if (!world) {
+        return;
+    }
 
-    auto const rotation = FRotator(0.0f, rotation_speed * DeltaTime, 0.0f);
-    AddActorLocalRotation(rotation);
+    if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
+        rotation_manager->register_static_rotating_actor(rotation_speed, this);
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
+    }
 }
 void ACoin::NotifyActorBeginOverlap(AActor* other_actor) {
     if (auto* const player{Cast<AMyCharacter>(other_actor)}) {
