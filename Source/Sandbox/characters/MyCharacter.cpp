@@ -13,9 +13,12 @@ AMyCharacter::AMyCharacter() {
 
     first_person_camera_component = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     first_person_camera_component->bUsePawnControlRotation = true;
-    first_person_camera_component->SetupAttachment(GetRootComponent());
+    first_person_camera_component->SetupAttachment(RootComponent);
 
     warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
+
+    torch_component = CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch"));
+    torch_component->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned
@@ -28,11 +31,12 @@ void AMyCharacter::BeginPlay() {
 
     jetpack_component = FindComponentByClass<UJetpackComponent>();
 
-    torch_component = Cast<USpotLightComponent>(GetDefaultSubobjectByName(TEXT("torch")));
-    torch_component->bCastVolumetricShadow = true;
-    torch_component->VolumetricScatteringIntensity = 1.0f;
-    torch_component->AttenuationRadius = 2000.0f;
-    set_torch(false);
+    if (torch_component) {
+        torch_component->bCastVolumetricShadow = true;
+        torch_component->VolumetricScatteringIntensity = 1.0f;
+        torch_component->AttenuationRadius = 2000.0f;
+        set_torch(false);
+    }
 
     auto& char_movement{*GetCharacterMovement()};
     char_movement.MaxWalkSpeed = this->move_speed;
