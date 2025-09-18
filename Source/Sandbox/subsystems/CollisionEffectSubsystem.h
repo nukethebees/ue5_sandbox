@@ -43,7 +43,6 @@ class SANDBOX_API UCollisionEffectSubsystem
     void unregister_entity(UActorComponent* component);
 
     static UWorld* get_world_from_component(UActorComponent* component);
-    static UWorld* get_world_from_actor(AActor* actor);
   private:
     TMap<TWeakObjectPtr<UPrimitiveComponent>, int32> collision_to_index{};
     TArray<TWeakObjectPtr<AActor>> collision_owners{};
@@ -65,6 +64,5 @@ class SANDBOX_API UCollisionEffectSubsystem
                                        AActor* other_actor);
 
     // Cleanup helpers
-    void cleanup_invalid_entries();
     bool is_valid_collision_entry(int32 index) const;
 };
