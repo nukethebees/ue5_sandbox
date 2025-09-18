@@ -36,9 +36,7 @@ class SANDBOX_API UCollisionEffectSubsystem
     , public ml::LogMsgMixin<ml::UCollisionEffectSubsystemLogTag> {
     GENERATED_BODY()
   public:
-    void register_entity(AActor* component);
     static void try_register_entity(AActor* actor);
-    void register_entity(UActorComponent* actor);
     static void try_register_entity(UActorComponent* component);
     void unregister_entity(UActorComponent* component);
 
@@ -47,6 +45,9 @@ class SANDBOX_API UCollisionEffectSubsystem
     TMap<TWeakObjectPtr<UPrimitiveComponent>, int32> collision_to_index{};
     TArray<TWeakObjectPtr<AActor>> collision_owners{};
     TArray<TArray<FEffectEntry>> effect_components{};
+
+    void register_entity(AActor& actor);
+    void register_entity(UActorComponent& actor);
 
     UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
@@ -57,11 +58,11 @@ class SANDBOX_API UCollisionEffectSubsystem
                                 FHitResult const& SweepResult);
 
     // Internal registration helpers
-    void ensure_collision_registered(UPrimitiveComponent* collision_comp, AActor* owner);
-    void add_effect_to_collision(UPrimitiveComponent* collision_comp, UActorComponent* component);
-    void execute_effects_for_collision(AActor* owner,
+    int32 register_collision_box(UPrimitiveComponent& collision_comp, AActor& owner);
+    void add_effect_to_collision(int32 i, UActorComponent& component);
+    void execute_effects_for_collision(ICollisionOwner& collision_owner,
                                        TArray<FEffectEntry> const& effects,
-                                       AActor* other_actor);
+                                       AActor& other_actor);
 
     // Cleanup helpers
     bool is_valid_collision_entry(int32 index) const;
