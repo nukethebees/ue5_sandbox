@@ -104,16 +104,12 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
         return;
     }
 
-    auto* collision_owner{Cast<ICollisionOwner>(owner)};
-    if (!collision_owner) {
-        log_warning(TEXT("Owner doesn't implement ICollisionOwner.\n"));
-        return;
-    }
+    // Should have already been validated
+    auto& collision_owner{*Cast<ICollisionOwner>(owner)};
 
-    // Check cooldown
     static TMap<AActor*, double> cooldown_timers{};
     auto const current_time{GetWorld()->GetTimeSeconds()};
-    auto const cooldown{collision_owner->get_collision_cooldown()};
+    auto const cooldown{collision_owner.get_collision_cooldown()};
 
     if (cooldown > 0.0f) {
         auto const last_collision{cooldown_timers.FindRef(owner)};
@@ -123,9 +119,9 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
         cooldown_timers.Add(owner, current_time);
     }
 
-    execute_effects_for_collision(*collision_owner, effect_components[index], *OtherActor);
+    execute_effects_for_collision(collision_owner, effect_components[index], *OtherActor);
 
-    if (collision_owner->should_destroy_after_collision()) {
+    if (collision_owner.should_destroy_after_collision()) {
         if (auto* destruction_manager{GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
             destruction_manager->queue_actor_destruction(owner);
         }
