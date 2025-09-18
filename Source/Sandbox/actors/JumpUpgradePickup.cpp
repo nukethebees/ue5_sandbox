@@ -13,12 +13,12 @@ AJumpUpgradePickup::AJumpUpgradePickup() {
     rotating_component = CreateDefaultSubobject<URotatingActorComponent>(TEXT("RotatingComponent"));
 }
 
-void AJumpUpgradePickup::on_pickup_effect(AActor* collector) {
-    if (!collector) {
+void AJumpUpgradePickup::on_collision_effect(AActor* other_actor) {
+    if (!other_actor) {
         return;
     }
 
-    if (auto* character{Cast<AMyCharacter>(collector)}) {
+    if (auto* character{Cast<AMyCharacter>(other_actor)}) {
         character->increase_max_jump_count(jump_count_increase);
     }
 }

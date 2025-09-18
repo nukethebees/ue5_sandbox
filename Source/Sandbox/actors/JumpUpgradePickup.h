@@ -14,9 +14,7 @@ class SANDBOX_API AJumpUpgradePickup : public APickupActor {
   public:
     AJumpUpgradePickup();
 
-    // IPickupOwner implementation
-    virtual void on_pickup_effect(AActor* collector) override;
-    virtual bool should_destroy_after_pickup() const { return true; }
+    virtual void on_collision_effect(AActor* other_actor) override;
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
     UStaticMeshComponent* mesh_component{};

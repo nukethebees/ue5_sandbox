@@ -1,9 +1,9 @@
 #include "Sandbox/actors/PickupActor.h"
 
+#include "Sandbox/utilities/CollisionEffectHelpers.h"
+
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;
-
-    pickup_component = CreateDefaultSubobject<UPickupComponent>(TEXT("PickupComponent"));
 
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
     RootComponent = collision_component;
@@ -12,15 +12,8 @@ APickupActor::APickupActor() {
     collision_component->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
     collision_component->SetBoxExtent(FVector{50.0f, 50.0f, 50.0f});
 }
+void APickupActor::BeginPlay() {
+    Super::BeginPlay();
 
-UPrimitiveComponent* APickupActor::get_pickup_collision_component() {
-    return collision_component;
-}
-
-bool APickupActor::should_destroy_after_pickup() const {
-    return destroy_after_pickup;
-}
-
-float APickupActor::get_pickup_cooldown() const {
-    return pickup_cooldown;
+    CollisionEffectHelpers::register_with_collision_system(this);
 }
