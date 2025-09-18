@@ -11,9 +11,18 @@
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
-    first_person_camera_component = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+    first_person_camera_component =
+        CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     first_person_camera_component->bUsePawnControlRotation = true;
     first_person_camera_component->SetupAttachment(RootComponent);
+
+    spring_arm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+    spring_arm->SetupAttachment(RootComponent);
+
+    third_person_camera_component =
+        CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
+    third_person_camera_component->bUsePawnControlRotation = true;
+    third_person_camera_component->SetupAttachment(spring_arm);
 
     warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
 
@@ -21,7 +30,6 @@ AMyCharacter::AMyCharacter() {
     torch_component->SetupAttachment(RootComponent);
 }
 
-// Called when the game starts or when spawned
 void AMyCharacter::BeginPlay() {
     Super::BeginPlay();
 
@@ -65,7 +73,6 @@ void AMyCharacter::BeginPlay() {
     }
 }
 
-// Called every frame
 void AMyCharacter::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
@@ -84,7 +91,6 @@ void AMyCharacter::Tick(float DeltaTime) {
     }
 }
 
-// Called to bind functionality to input
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
         eic->BindAction(this->move_action, ETriggerEvent::Triggered, this, &AMyCharacter::move);
@@ -97,6 +103,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
             jetpack_action, ETriggerEvent::Triggered, this, &AMyCharacter::start_jetpack);
         eic->BindAction(
             jetpack_action, ETriggerEvent::Completed, this, &AMyCharacter::stop_jetpack);
+
+        eic->BindAction(
+            cycle_camera_action, ETriggerEvent::Started, this, &AMyCharacter::cycle_camera);
     }
 }
 
@@ -132,6 +141,10 @@ void AMyCharacter::stop_jetpack(FInputActionValue const&) {
     if (jetpack_component != nullptr) {
         jetpack_component->stop_jetpack();
     }
+}
+void AMyCharacter::cycle_camera(FInputActionValue const&) {
+    camera_mode = get_next(camera_mode);
+    change_camera_to(camera_mode);
 }
 
 void AMyCharacter::aim_torch(FVector const& world_location) {
@@ -175,4 +188,29 @@ void AMyCharacter::handle_death() {
 
 void AMyCharacter::on_speed_changed(float new_speed) {
     OnMaxSpeedChanged.Broadcast(new_speed);
+}
+void AMyCharacter::disable_all_cameras() {
+    first_person_camera_component->SetActive(false);
+    third_person_camera_component->SetActive(false);
+}
+void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
+    log_verbose(TEXT("Changing camera mode to %s."), *UEnum::GetValueAsString(camera_mode));
+
+    disable_all_cameras();
+    switch (camera_mode) {
+        using enum ECharacterCameraMode;
+
+        case FirstPerson: {
+            first_person_camera_component->SetActive(true);
+            break;
+        }
+        case ThirdPerson: {
+            third_person_camera_component->SetActive(true);
+            break;
+        }
+        default: {
+            log_warning(TEXT("Unhandled camera mode. Switching to first person."));
+            first_person_camera_component->SetActive(true);
+        }
+    }
 }
