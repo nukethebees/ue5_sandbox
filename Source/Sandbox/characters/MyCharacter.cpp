@@ -50,7 +50,7 @@ void AMyCharacter::BeginPlay() {
     char_movement.MaxAcceleration = this->acceleration;
     OnMaxSpeedChanged.Broadcast(char_movement.MaxWalkSpeed);
 
-    this->JumpMaxCount = 2;
+    reset_max_jump_count();
 
     using PC = std::remove_pointer<decltype(player_controller)>::type;
     player_controller = Cast<PC>(this->Controller);
@@ -238,4 +238,10 @@ void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
             first_person_camera_component->SetActive(true);
         }
     }
+}
+void AMyCharacter::reset_max_jump_count() {
+    this->JumpMaxCount = default_max_jump_count;
+}
+void AMyCharacter::increase_max_jump_count(int32 jumps) {
+    this->JumpMaxCount += jumps;
 }

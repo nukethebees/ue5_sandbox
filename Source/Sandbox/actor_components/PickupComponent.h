@@ -4,12 +4,19 @@
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "Sandbox/interfaces/PickupOwner.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
 #include "PickupComponent.generated.h"
 
-UCLASS(Abstract)
-class SANDBOX_API UPickupComponent : public UActorComponent {
+namespace ml {
+inline static constexpr wchar_t UPickupComponentLogTag[]{TEXT("UPickupComponent")};
+}
+
+UCLASS()
+class SANDBOX_API UPickupComponent
+    : public UActorComponent
+    , public ml::LogMsgMixin<ml::UPickupComponentLogTag> {
     GENERATED_BODY()
   public:
     UPickupComponent();

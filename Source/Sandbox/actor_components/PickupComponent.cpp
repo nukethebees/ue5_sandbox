@@ -35,6 +35,8 @@ void UPickupComponent::on_overlap(UPrimitiveComponent* OverlappedComponent,
                                   int32 OtherBodyIndex,
                                   bool bFromSweep,
                                   FHitResult const& SweepResult) {
+    log_verbose(TEXT("on_overlap."));
+
     if (is_on_cooldown || !OtherActor) {
         return;
     }

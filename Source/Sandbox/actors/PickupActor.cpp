@@ -3,6 +3,8 @@
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;
 
+    pickup_component = CreateDefaultSubobject<UPickupComponent>(TEXT("PickupComponent"));
+
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
     RootComponent = collision_component;
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
