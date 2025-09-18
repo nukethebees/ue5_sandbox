@@ -43,6 +43,7 @@ void UPickupComponent::on_overlap(UPrimitiveComponent* OverlappedComponent,
         pickup_owner->on_pre_pickup_effect(OtherActor);
 
         execute_pickup_effect(OtherActor);
+        pickup_owner->on_pickup_effect(OtherActor);
 
         pickup_owner->on_post_pickup_effect(OtherActor);
 

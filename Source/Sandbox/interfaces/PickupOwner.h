@@ -19,5 +19,6 @@ class IPickupOwner {
     virtual float get_pickup_cooldown() const { return 0.0f; }
 
     virtual void on_pre_pickup_effect(AActor* collector) {}
+    virtual void on_pickup_effect(AActor* collector) {}
     virtual void on_post_pickup_effect(AActor* collector) {}
 };
