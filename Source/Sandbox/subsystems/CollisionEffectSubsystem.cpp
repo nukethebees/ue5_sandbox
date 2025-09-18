@@ -5,10 +5,10 @@
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
-void UCollisionEffectSubsystem::register_entity(AActor* actor) {
+void UCollisionEffectSubsystem::register_entity(AActor& actor) {
     log_very_verbose(TEXT("Registering actor.\n"));
 
-    auto* collision_owner{Cast<ICollisionOwner>(actor)};
+    auto* collision_owner{Cast<ICollisionOwner>(&actor)};
     if (!collision_owner) {
         log_warning(TEXT("Actor doesn't implement ICollisionOwner.\n"));
         return;
@@ -20,7 +20,7 @@ void UCollisionEffectSubsystem::register_entity(AActor* actor) {
         return;
     }
 
-    ensure_collision_registered(collision_comp, actor);
+    register_collision_box(*collision_comp, actor);
 }
 void UCollisionEffectSubsystem::try_register_entity(AActor* actor) {
     if (!actor) {
@@ -29,18 +29,14 @@ void UCollisionEffectSubsystem::try_register_entity(AActor* actor) {
 
     if (auto* world{actor->GetWorld()}) {
         if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-            subsystem->register_entity(actor);
+            subsystem->register_entity(*actor);
         }
     }
 }
-void UCollisionEffectSubsystem::register_entity(UActorComponent* component) {
+void UCollisionEffectSubsystem::register_entity(UActorComponent& component) {
     log_very_verbose(TEXT("Registering effect component.\n"));
 
-    if (!component) {
-        return;
-    }
-
-    auto* owner{component->GetOwner()};
+    auto* owner{component.GetOwner()};
     if (!owner) {
         return;
     }
@@ -57,14 +53,8 @@ void UCollisionEffectSubsystem::register_entity(UActorComponent* component) {
         return;
     }
 
-    ensure_collision_registered(collision_comp, owner);
-
-    auto* effect_interface{Cast<ICollisionEffectComponent>(component)};
-    if (!effect_interface) {
-        return;
-    }
-
-    add_effect_to_collision(collision_comp, component);
+    auto const i{register_collision_box(*collision_comp, *owner)};
+    add_effect_to_collision(i, component);
 }
 void UCollisionEffectSubsystem::try_register_entity(UActorComponent* component) {
     if (!component) {
@@ -73,7 +63,7 @@ void UCollisionEffectSubsystem::try_register_entity(UActorComponent* component) 
 
     if (auto* world{get_world_from_component(component)}) {
         if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-            subsystem->register_entity(component);
+            subsystem->register_entity(*component);
         }
     }
 }
@@ -133,9 +123,8 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
         cooldown_timers.Add(owner, current_time);
     }
 
-    execute_effects_for_collision(owner, effect_components[index], OtherActor);
+    execute_effects_for_collision(*collision_owner, effect_components[index], *OtherActor);
 
-    // Handle destruction
     if (collision_owner->should_destroy_after_collision()) {
         if (auto* destruction_manager{GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
             destruction_manager->queue_actor_destruction(owner);
@@ -143,64 +132,46 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
     }
 }
 
-void UCollisionEffectSubsystem::ensure_collision_registered(UPrimitiveComponent* collision_comp,
-                                                            AActor* owner) {
-    if (collision_to_index.Contains(collision_comp)) {
-        return;
+int32 UCollisionEffectSubsystem::register_collision_box(UPrimitiveComponent& collision_comp,
+                                                        AActor& owner) {
+    if (auto idx{collision_to_index.Find(&collision_comp)}) {
+        return *idx;
     }
 
-    auto const index{collision_owners.Add(owner)};
+    auto const index{collision_owners.Add(&owner)};
     effect_components.AddDefaulted();
-    collision_to_index.Add(collision_comp, index);
+    collision_to_index.Add(&collision_comp, index);
 
-    collision_comp->OnComponentBeginOverlap.AddDynamic(
+    collision_comp.OnComponentBeginOverlap.AddDynamic(
         this, &UCollisionEffectSubsystem::handle_collision_event);
+
+    return index;
 }
 
-void UCollisionEffectSubsystem::add_effect_to_collision(UPrimitiveComponent* collision_comp,
-                                                        UActorComponent* component) {
-    auto const* index_ptr{collision_to_index.Find(collision_comp)};
-    if (!index_ptr) {
-        return;
-    }
-
-    auto* effect_interface{Cast<ICollisionEffectComponent>(component)};
+void UCollisionEffectSubsystem::add_effect_to_collision(int32 i, UActorComponent& component) {
+    auto* effect_interface{Cast<ICollisionEffectComponent>(&component)};
     if (!effect_interface) {
         return;
     }
 
-    auto& effects{effect_components[*index_ptr]};
-    effects.Emplace(component, effect_interface, effect_interface->get_execution_priority());
+    auto& effects{effect_components[i]};
+    effects.Emplace(&component, effect_interface, effect_interface->get_execution_priority());
     effects.Sort();
 }
 
-void UCollisionEffectSubsystem::execute_effects_for_collision(AActor* owner,
+void UCollisionEffectSubsystem::execute_effects_for_collision(ICollisionOwner& collision_owner,
                                                               TArray<FEffectEntry> const& effects,
-                                                              AActor* other_actor) {
-    if (!owner) {
-        return;
-    }
+                                                              AActor& other_actor) {
+    collision_owner.on_pre_collision_effect(&other_actor);
 
-    auto* collision_owner{Cast<ICollisionOwner>(owner)};
-    if (!collision_owner) {
-        return;
-    }
-
-    // Pre-collision effect
-    collision_owner->on_pre_collision_effect(other_actor);
-
-    // Execute components in priority order (array is pre-sorted)
     for (auto const& entry : effects) {
         if (entry.component.IsValid() && entry.effect_interface) {
-            entry.effect_interface->execute_effect(other_actor);
+            entry.effect_interface->execute_effect(&other_actor);
         }
     }
 
-    // Main collision effect
-    collision_owner->on_collision_effect(other_actor);
-
-    // Post-collision effect
-    collision_owner->on_post_collision_effect(other_actor);
+    collision_owner.on_collision_effect(&other_actor);
+    collision_owner.on_post_collision_effect(&other_actor);
 }
 
 bool UCollisionEffectSubsystem::is_valid_collision_entry(int32 index) const {
