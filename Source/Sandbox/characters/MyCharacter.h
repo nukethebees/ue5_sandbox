@@ -18,8 +18,9 @@
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
-#include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/utilities/enums.h"
 
 #include "MyCharacter.generated.h"
 
@@ -39,21 +40,29 @@ enum class ECharacterCameraMode : uint8 {
     MAX UMETA(Hidden)
 };
 
-template <typename Enum>
-concept HasMaxEnumValue = requires { Enum::MAX; };
-
-template <typename Enum, auto MAX_VALUE = Enum::MAX>
-Enum get_next(Enum current) {
-    auto const next{std::to_underlying(current) + 1};
-    static constexpr auto MAX{std::to_underlying(MAX_VALUE)};
-
-    using Underlying = std::underlying_type_t<Enum>;
-    return (next >= MAX) ? static_cast<Enum>(Underlying{0}) : static_cast<Enum>(next);
-}
-
 namespace ml {
 inline static constexpr wchar_t MyCharacterLogTag[]{TEXT("MyCharacter")};
 }
+
+USTRUCT(BlueprintType)
+struct FCharacterInputActions {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputMappingContext> first_person_context{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> move_action{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jump_action{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jetpack_action{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> cycle_camera_action{};
+};
 
 UCLASS()
 class SANDBOX_API AMyCharacter
@@ -70,15 +79,7 @@ class SANDBOX_API AMyCharacter
 
     // Input
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputMappingContext> first_person_context;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> move_action;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jump_action;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jetpack_action;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> cycle_camera_action;
+    FCharacterInputActions input_actions{};
   public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -60,7 +60,7 @@ void AMyCharacter::BeginPlay() {
         auto const* local_player{player_controller->GetLocalPlayer()};
 
         if (auto* subsystem{ULocalPlayer::GetSubsystem<EIPS>(local_player)}) {
-            subsystem->AddMappingContext(this->first_person_context, 0);
+            subsystem->AddMappingContext(this->input_actions.first_person_context, 0);
         }
 
         using HUD = std::remove_pointer<decltype(hud)>::type;
@@ -92,19 +92,27 @@ void AMyCharacter::Tick(float DeltaTime) {
 
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
-        eic->BindAction(this->move_action, ETriggerEvent::Triggered, this, &AMyCharacter::move);
+        eic->BindAction(
+            this->input_actions.move_action, ETriggerEvent::Triggered, this, &AMyCharacter::move);
 
         // Bind Jump Actions
-        eic->BindAction(jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
-        eic->BindAction(jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+        eic->BindAction(input_actions.jump_action, ETriggerEvent::Started, this, &ACharacter::Jump);
+        eic->BindAction(
+            input_actions.jump_action, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
-        eic->BindAction(
-            jetpack_action, ETriggerEvent::Triggered, this, &AMyCharacter::start_jetpack);
-        eic->BindAction(
-            jetpack_action, ETriggerEvent::Completed, this, &AMyCharacter::stop_jetpack);
+        eic->BindAction(input_actions.jetpack_action,
+                        ETriggerEvent::Triggered,
+                        this,
+                        &AMyCharacter::start_jetpack);
+        eic->BindAction(input_actions.jetpack_action,
+                        ETriggerEvent::Completed,
+                        this,
+                        &AMyCharacter::stop_jetpack);
 
-        eic->BindAction(
-            cycle_camera_action, ETriggerEvent::Started, this, &AMyCharacter::cycle_camera);
+        eic->BindAction(input_actions.cycle_camera_action,
+                        ETriggerEvent::Started,
+                        this,
+                        &AMyCharacter::cycle_camera);
     }
 }
 
