@@ -109,6 +109,7 @@ class SANDBOX_API AMyCharacter
     USpringArmComponent* spring_arm{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Camera")
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
+    UCameraComponent const* get_active_camera() const;
 
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
