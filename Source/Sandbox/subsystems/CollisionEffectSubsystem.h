@@ -36,24 +36,19 @@ class SANDBOX_API UCollisionEffectSubsystem
     , public ml::LogMsgMixin<ml::UCollisionEffectSubsystemLogTag> {
     GENERATED_BODY()
   public:
-    void register_actor(AActor* component);
-    void register_effect_component(UActorComponent* actor);
-    void unregister_effect_component(UActorComponent* component);
+    void register_entity(AActor* component);
+    static void try_register_entity(AActor* actor);
+    void register_entity(UActorComponent* actor);
+    static void try_register_entity(UActorComponent* component);
+    void unregister_entity(UActorComponent* component);
 
-    // Utility functions ported from CollisionEffectHelpers
     static UWorld* get_world_from_component(UActorComponent* component);
     static UWorld* get_world_from_actor(AActor* actor);
-
-    // Convenience registration functions
-    static void register_entity(UActorComponent* component);
-    static void register_entity(AActor* actor);
   private:
-    // Optimized storage for fast collision event processing
     TMap<TWeakObjectPtr<UPrimitiveComponent>, int32> collision_to_index{};
     TArray<TWeakObjectPtr<AActor>> collision_owners{};
     TArray<TArray<FEffectEntry>> effect_components{};
 
-    // Collision event handler
     UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
                                 AActor* OtherActor,

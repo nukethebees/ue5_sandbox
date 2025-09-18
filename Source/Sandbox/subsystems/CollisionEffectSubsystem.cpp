@@ -5,7 +5,7 @@
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
-void UCollisionEffectSubsystem::register_actor(AActor* actor) {
+void UCollisionEffectSubsystem::register_entity(AActor* actor) {
     log_very_verbose(TEXT("Registering actor.\n"));
 
     auto* collision_owner{Cast<ICollisionOwner>(actor)};
@@ -22,7 +22,18 @@ void UCollisionEffectSubsystem::register_actor(AActor* actor) {
 
     ensure_collision_registered(collision_comp, actor);
 }
-void UCollisionEffectSubsystem::register_effect_component(UActorComponent* component) {
+void UCollisionEffectSubsystem::try_register_entity(AActor* actor) {
+    if (!actor) {
+        return;
+    }
+
+    if (auto* world{actor->GetWorld()}) {
+        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
+            subsystem->register_entity(actor);
+        }
+    }
+}
+void UCollisionEffectSubsystem::register_entity(UActorComponent* component) {
     log_very_verbose(TEXT("Registering effect component.\n"));
 
     if (!component) {
@@ -55,8 +66,19 @@ void UCollisionEffectSubsystem::register_effect_component(UActorComponent* compo
 
     add_effect_to_collision(collision_comp, component);
 }
+void UCollisionEffectSubsystem::try_register_entity(UActorComponent* component) {
+    if (!component) {
+        return;
+    }
 
-void UCollisionEffectSubsystem::unregister_effect_component(UActorComponent* component) {
+    if (auto* world{get_world_from_component(component)}) {
+        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
+            subsystem->register_entity(component);
+        }
+    }
+}
+
+void UCollisionEffectSubsystem::unregister_entity(UActorComponent* component) {
     if (!component) {
         return;
     }
@@ -217,30 +239,4 @@ UWorld* UCollisionEffectSubsystem::get_world_from_component(UActorComponent* com
 
 UWorld* UCollisionEffectSubsystem::get_world_from_actor(AActor* actor) {
     return actor ? actor->GetWorld() : nullptr;
-}
-
-// Convenience registration functions
-void UCollisionEffectSubsystem::register_entity(
-    UActorComponent* component) {
-    if (!component) {
-        return;
-    }
-
-    if (auto* world{get_world_from_component(component)}) {
-        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-            subsystem->register_effect_component(component);
-        }
-    }
-}
-
-void UCollisionEffectSubsystem::register_entity(AActor* actor) {
-    if (!actor) {
-        return;
-    }
-
-    if (auto* world{actor->GetWorld()}) {
-        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-            subsystem->register_actor(actor);
-        }
-    }
 }
