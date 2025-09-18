@@ -149,12 +149,10 @@ void UCollisionEffectSubsystem::ensure_collision_registered(UPrimitiveComponent*
         return;
     }
 
-    // Add new collision entry
     auto const index{collision_owners.Add(owner)};
     effect_components.AddDefaulted();
     collision_to_index.Add(collision_comp, index);
 
-    // Bind overlap event
     collision_comp->OnComponentBeginOverlap.AddDynamic(
         this, &UCollisionEffectSubsystem::handle_collision_event);
 }
@@ -166,17 +164,13 @@ void UCollisionEffectSubsystem::add_effect_to_collision(UPrimitiveComponent* col
         return;
     }
 
-    auto const index{*index_ptr};
     auto* effect_interface{Cast<ICollisionEffectComponent>(component)};
     if (!effect_interface) {
         return;
     }
-    auto const priority{effect_interface->get_execution_priority()};
 
-    auto& effects{effect_components[index]};
-    effects.Emplace(component, effect_interface, priority);
-
-    // Keep array sorted by priority
+    auto& effects{effect_components[*index_ptr]};
+    effects.Emplace(component, effect_interface, effect_interface->get_execution_priority());
     effects.Sort();
 }
 
@@ -209,25 +203,10 @@ void UCollisionEffectSubsystem::execute_effects_for_collision(AActor* owner,
     collision_owner->on_post_collision_effect(other_actor);
 }
 
-void UCollisionEffectSubsystem::cleanup_invalid_entries() {
-    // Remove invalid entries (called periodically or on demand)
-    for (auto it{collision_to_index.CreateIterator()}; it; ++it) {
-        if (!it->Key.IsValid()) {
-            int32 const index{it->Value};
-            if (index < collision_owners.Num()) {
-                collision_owners[index] = nullptr;
-                effect_components[index].Empty();
-            }
-            it.RemoveCurrent();
-        }
-    }
-}
-
 bool UCollisionEffectSubsystem::is_valid_collision_entry(int32 index) const {
     return index >= 0 && index < collision_owners.Num() && collision_owners[index].IsValid();
 }
 
-// Utility functions ported from CollisionEffectHelpers
 UWorld* UCollisionEffectSubsystem::get_world_from_component(UActorComponent* component) {
     if (component) {
         if (auto* owner{component->GetOwner()}) {
@@ -235,8 +214,4 @@ UWorld* UCollisionEffectSubsystem::get_world_from_component(UActorComponent* com
         }
     }
     return nullptr;
-}
-
-UWorld* UCollisionEffectSubsystem::get_world_from_actor(AActor* actor) {
-    return actor ? actor->GetWorld() : nullptr;
 }
