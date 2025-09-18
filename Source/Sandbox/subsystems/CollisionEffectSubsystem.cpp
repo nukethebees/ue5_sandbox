@@ -120,7 +120,15 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
         cooldown_timers.Add(owner, current_time);
     }
 
-    execute_effects_for_collision(collision_owner, effect_components[index], *OtherActor);
+    // Execute the effects
+    collision_owner.on_pre_collision_effect(OtherActor);
+    for (auto const& entry : effect_components[index]) {
+        if (entry.component.IsValid() && entry.effect_interface) {
+            entry.effect_interface->execute_effect(OtherActor);
+        }
+    }
+    collision_owner.on_collision_effect(OtherActor);
+    collision_owner.on_post_collision_effect(OtherActor);
 
     if (collision_owner.should_destroy_after_collision()) {
         if (auto* destruction_manager{GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
@@ -154,21 +162,6 @@ void UCollisionEffectSubsystem::add_effect_to_collision(int32 i, UActorComponent
     auto& effects{effect_components[i]};
     effects.Emplace(&component, effect_interface, effect_interface->get_execution_priority());
     effects.Sort();
-}
-
-void UCollisionEffectSubsystem::execute_effects_for_collision(ICollisionOwner& collision_owner,
-                                                              TArray<FEffectEntry> const& effects,
-                                                              AActor& other_actor) {
-    collision_owner.on_pre_collision_effect(&other_actor);
-
-    for (auto const& entry : effects) {
-        if (entry.component.IsValid() && entry.effect_interface) {
-            entry.effect_interface->execute_effect(&other_actor);
-        }
-    }
-
-    collision_owner.on_collision_effect(&other_actor);
-    collision_owner.on_post_collision_effect(&other_actor);
 }
 
 bool UCollisionEffectSubsystem::is_valid_collision_entry(int32 index) const {
