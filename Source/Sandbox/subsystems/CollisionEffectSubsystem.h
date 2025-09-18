@@ -56,14 +56,7 @@ class SANDBOX_API UCollisionEffectSubsystem
                                 int32 OtherBodyIndex,
                                 bool bFromSweep,
                                 FHitResult const& SweepResult);
-
-    // Internal registration helpers
     int32 register_collision_box(UPrimitiveComponent& collision_comp, AActor& owner);
     void add_effect_to_collision(int32 i, UActorComponent& component);
-    void execute_effects_for_collision(ICollisionOwner& collision_owner,
-                                       TArray<FEffectEntry> const& effects,
-                                       AActor& other_actor);
-
-    // Cleanup helpers
     bool is_valid_collision_entry(int32 index) const;
 };
