@@ -74,6 +74,8 @@ class SANDBOX_API AMyCharacter
     GENERATED_BODY()
   public:
     AMyCharacter();
+
+    static constexpr int32 default_max_jump_count{2};
   protected:
     virtual void BeginPlay() override;
 
@@ -86,8 +88,6 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY()
     AMyPlayerController* my_player_controller;
-    UPROPERTY()
-    bool is_forced_movement;
 
     // Input
     UFUNCTION()
@@ -113,12 +113,17 @@ class SANDBOX_API AMyCharacter
     UCameraComponent const* get_active_camera() const;
 
     // Movement
+    UPROPERTY()
+    bool is_forced_movement{false};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float move_speed{800.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     UJetpackComponent* jetpack_component;
+
+    void reset_max_jump_count();
+    void increase_max_jump_count(int32 jumps);
 
     // Speed
     UPROPERTY(BlueprintAssignable, Category = "Movement")
@@ -129,6 +134,7 @@ class SANDBOX_API AMyCharacter
     // Torch
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
     USpotLightComponent* torch_component;
+
     UFUNCTION()
     void aim_torch(FVector const& world_location);
     UFUNCTION()
@@ -138,11 +144,12 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void set_torch(bool on);
 
+    // Abilities
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
     UWarpComponent* warp_component{nullptr};
   private:
-    bool torch_on{true};
     int32 cached_jump_count{0};
+    bool torch_on{true};
     APlayerController* player_controller{nullptr};
     AMyHUD* hud{nullptr};
 
