@@ -15,5 +15,5 @@ APickupActor::APickupActor() {
 void APickupActor::BeginPlay() {
     Super::BeginPlay();
 
-    UCollisionEffectSubsystem::register_entity(this);
+    UCollisionEffectSubsystem::try_register_entity(this);
 }

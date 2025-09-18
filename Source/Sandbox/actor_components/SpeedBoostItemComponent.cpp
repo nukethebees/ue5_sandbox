@@ -9,7 +9,7 @@ USpeedBoostItemComponent::USpeedBoostItemComponent() {
 
 void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
-    UCollisionEffectSubsystem::register_entity(this);
+    UCollisionEffectSubsystem::try_register_entity(this);
 }
 
 void USpeedBoostItemComponent::execute_effect(AActor* other_actor) {
