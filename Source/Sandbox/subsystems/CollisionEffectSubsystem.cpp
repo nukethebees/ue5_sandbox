@@ -113,7 +113,8 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
 
     if (cooldown > 0.0f) {
         auto const last_collision{cooldown_timers.FindRef(owner)};
-        if (current_time - last_collision < cooldown) {
+        auto const time_since_last_collision{current_time - last_collision};
+        if (time_since_last_collision < cooldown) {
             return;
         }
         cooldown_timers.Add(owner, current_time);
