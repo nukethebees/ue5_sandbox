@@ -16,7 +16,7 @@ void UInteractorComponent::BeginPlay() {
 
     if (auto* const eic{Cast<UEnhancedInputComponent>(pawn->InputComponent)}) {
         eic->BindAction(this->interact_action,
-                        ETriggerEvent::Triggered,
+                        ETriggerEvent::Started,
                         this,
                         &UInteractorComponent::try_interact);
     }
