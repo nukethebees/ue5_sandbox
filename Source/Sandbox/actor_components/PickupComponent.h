@@ -3,7 +3,7 @@
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
-#include "Sandbox/interfaces/PickupOwner.h"
+#include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 

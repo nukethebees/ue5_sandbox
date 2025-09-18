@@ -7,8 +7,8 @@ UPickupComponent::UPickupComponent() {
 void UPickupComponent::BeginPlay() {
     Super::BeginPlay();
 
-    if (auto* pickup_owner{Cast<IPickupOwner>(GetOwner())}) {
-        collision_component = pickup_owner->get_pickup_collision_component();
+    if (auto* pickup_owner{Cast<ICollisionOwner>(GetOwner())}) {
+        collision_component = pickup_owner->get_collision_component();
         if (collision_component.IsValid()) {
             collision_component->OnComponentBeginOverlap.AddDynamic(this,
                                                                     &UPickupComponent::on_overlap);
@@ -41,21 +41,21 @@ void UPickupComponent::on_overlap(UPrimitiveComponent* OverlappedComponent,
         return;
     }
 
-    if (auto* pickup_owner{Cast<IPickupOwner>(GetOwner())}) {
-        pickup_owner->on_pre_pickup_effect(OtherActor);
+    if (auto* pickup_owner{Cast<ICollisionOwner>(GetOwner())}) {
+        pickup_owner->on_pre_collision_effect(OtherActor);
 
         execute_pickup_effect(OtherActor);
-        pickup_owner->on_pickup_effect(OtherActor);
+        pickup_owner->on_collision_effect(OtherActor);
 
-        pickup_owner->on_post_pickup_effect(OtherActor);
+        pickup_owner->on_post_collision_effect(OtherActor);
 
-        if (pickup_owner->should_destroy_after_pickup()) {
+        if (pickup_owner->should_destroy_after_collision()) {
             if (auto* destruction_manager{
                     GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
                 destruction_manager->queue_actor_destruction(GetOwner());
             }
         } else {
-            auto const cooldown_time{pickup_owner->get_pickup_cooldown()};
+            auto const cooldown_time{pickup_owner->get_collision_cooldown()};
             if (cooldown_time > 0.0f) {
                 is_on_cooldown = true;
                 GetWorld()->GetTimerManager().SetTimer(cooldown_timer_handle,
