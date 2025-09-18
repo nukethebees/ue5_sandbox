@@ -11,8 +11,7 @@
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
-    first_person_camera_component =
-        CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+    first_person_camera_component = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     first_person_camera_component->bUsePawnControlRotation = true;
     first_person_camera_component->SetupAttachment(RootComponent);
 
@@ -145,6 +144,24 @@ void AMyCharacter::stop_jetpack(FInputActionValue const&) {
 void AMyCharacter::cycle_camera(FInputActionValue const&) {
     camera_mode = get_next(camera_mode);
     change_camera_to(camera_mode);
+}
+UCameraComponent const* AMyCharacter::get_active_camera() const {
+    switch (camera_mode) {
+        using enum ECharacterCameraMode;
+
+        case FirstPerson: {
+            return first_person_camera_component;
+        }
+        case ThirdPerson: {
+            return third_person_camera_component;
+        }
+        default: {
+            break;
+        }
+    }
+
+    log_warning(TEXT("Unhandled camera mode. Returning first person."));
+    return first_person_camera_component;
 }
 
 void AMyCharacter::aim_torch(FVector const& world_location) {

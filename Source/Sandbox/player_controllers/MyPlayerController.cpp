@@ -48,19 +48,20 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
         return;
     }
 
+    constexpr float torch_target_scale{1000.0f};
+
     if (bShowMouseCursor) {
         FVector world_location;
         FVector world_direction;
         if (DeprojectMousePositionToWorld(world_location, world_direction)) {
-            auto const target_location{world_location + world_direction * 1000.0f};
+            auto const target_location{world_location + world_direction * torch_target_scale};
             controlled_character->aim_torch(target_location);
         }
     } else {
-        if (controlled_character->first_person_camera_component) {
-            auto const& cc{*controlled_character->first_person_camera_component};
-            auto const camera_location{cc.GetComponentLocation()};
-            auto const camera_rotation{cc.GetComponentRotation()};
-            auto const look_target{camera_location + camera_rotation.Vector() * 1000.0f};
+        if (auto const* camera{controlled_character->get_active_camera()}) {
+            auto const camera_location{camera->GetComponentLocation()};
+            auto const camera_rotation{camera->GetComponentRotation()};
+            auto const look_target{camera_location + camera_rotation.Vector() * torch_target_scale};
 
             controlled_character->aim_torch(look_target);
         }
