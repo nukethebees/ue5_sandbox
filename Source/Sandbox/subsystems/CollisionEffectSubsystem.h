@@ -39,6 +39,14 @@ class SANDBOX_API UCollisionEffectSubsystem
     void register_actor(AActor* component);
     void register_effect_component(UActorComponent* actor);
     void unregister_effect_component(UActorComponent* component);
+
+    // Utility functions ported from CollisionEffectHelpers
+    static UWorld* get_world_from_component(UActorComponent* component);
+    static UWorld* get_world_from_actor(AActor* actor);
+
+    // Convenience registration functions
+    static void register_entity(UActorComponent* component);
+    static void register_entity(AActor* actor);
   private:
     // Optimized storage for fast collision event processing
     TMap<TWeakObjectPtr<UPrimitiveComponent>, int32> collision_to_index{};
