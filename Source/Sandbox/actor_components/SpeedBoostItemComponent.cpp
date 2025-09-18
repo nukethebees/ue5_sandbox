@@ -1,7 +1,7 @@
 #include "Sandbox/actor_components/SpeedBoostItemComponent.h"
 
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/utilities/CollisionEffectHelpers.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
 
 USpeedBoostItemComponent::USpeedBoostItemComponent() {
     PrimaryComponentTick.bCanEverTick = false;
@@ -9,7 +9,7 @@ USpeedBoostItemComponent::USpeedBoostItemComponent() {
 
 void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
-    CollisionEffectHelpers::register_with_collision_system(this);
+    UCollisionEffectSubsystem::register_entity(this);
 }
 
 void USpeedBoostItemComponent::execute_effect(AActor* other_actor) {

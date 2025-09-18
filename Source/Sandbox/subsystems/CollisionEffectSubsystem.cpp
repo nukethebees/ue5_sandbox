@@ -204,3 +204,43 @@ void UCollisionEffectSubsystem::cleanup_invalid_entries() {
 bool UCollisionEffectSubsystem::is_valid_collision_entry(int32 index) const {
     return index >= 0 && index < collision_owners.Num() && collision_owners[index].IsValid();
 }
+
+// Utility functions ported from CollisionEffectHelpers
+UWorld* UCollisionEffectSubsystem::get_world_from_component(UActorComponent* component) {
+    if (component) {
+        if (auto* owner{component->GetOwner()}) {
+            return owner->GetWorld();
+        }
+    }
+    return nullptr;
+}
+
+UWorld* UCollisionEffectSubsystem::get_world_from_actor(AActor* actor) {
+    return actor ? actor->GetWorld() : nullptr;
+}
+
+// Convenience registration functions
+void UCollisionEffectSubsystem::register_entity(
+    UActorComponent* component) {
+    if (!component) {
+        return;
+    }
+
+    if (auto* world{get_world_from_component(component)}) {
+        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
+            subsystem->register_effect_component(component);
+        }
+    }
+}
+
+void UCollisionEffectSubsystem::register_entity(AActor* actor) {
+    if (!actor) {
+        return;
+    }
+
+    if (auto* world{actor->GetWorld()}) {
+        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
+            subsystem->register_actor(actor);
+        }
+    }
+}
