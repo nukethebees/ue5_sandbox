@@ -49,7 +49,11 @@ struct FSpeedBoostPayload {
 USTRUCT(BlueprintType)
 struct FJumpIncreasePayload {
     GENERATED_BODY()
-  public:
+
+    FJumpIncreasePayload() = default;
+    FJumpIncreasePayload(int32 inc)
+        : jump_increase(inc) {}
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 jump_increase{1};
 };
@@ -138,6 +142,7 @@ class SANDBOX_API UCollisionEffectSubsystem2
   public:
     using PayloadsT = ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload>;
 
+    UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
                                 AActor* OtherActor,
                                 UPrimitiveComponent* OtherComp,

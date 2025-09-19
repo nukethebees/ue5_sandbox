@@ -11,15 +11,6 @@ USpeedBoostItemComponent::USpeedBoostItemComponent() {
 void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
     UCollisionEffectSubsystem::try_register_entity(this);
-
-    // Register with the new subsystem
-    if (auto* owner{GetOwner()}) {
-        if (auto* world{owner->GetWorld()}) {
-            if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
-                subsystem->add_payload(owner, FSpeedBoostPayload(speed_boost));
-            }
-        }
-    }
 }
 
 void USpeedBoostItemComponent::execute_effect(AActor* other_actor) {

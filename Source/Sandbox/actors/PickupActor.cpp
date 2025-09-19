@@ -1,6 +1,7 @@
 #include "Sandbox/actors/PickupActor.h"
 
 #include "Sandbox/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystem2.h"
 
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;
@@ -15,5 +16,5 @@ APickupActor::APickupActor() {
 void APickupActor::BeginPlay() {
     Super::BeginPlay();
 
-    UCollisionEffectSubsystem::try_register_entity(this);
+    // UCollisionEffectSubsystem::try_register_entity(this);
 }
