@@ -7,6 +7,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
 #include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -100,6 +101,19 @@ class UCollisionEffectSubsystem2Mixins {
             return *i;
         }
 
+        auto* collision_owner{Cast<ICollisionOwner>(actor)};
+        if (!collision_owner) {
+            return std::nullopt;
+        }
+
+        auto* collision_comp{collision_owner->get_collision_component()};
+        if (!collision_comp) {
+            return std::nullopt;
+        }
+
+        collision_comp->OnComponentBeginOverlap.AddDynamic(
+            &self, &std::remove_cvref_t<Self>::handle_collision_event);
+
         auto const i{self.actor_ids.Add(actor)};
         std::forward<Self>(self).actor_payload_indexes.AddDefaulted();
         return i;
@@ -115,6 +129,13 @@ class SANDBOX_API UCollisionEffectSubsystem2
     friend class UCollisionEffectSubsystem2Mixins;
   public:
     using PayloadsT = ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload>;
+
+    void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
+                                AActor* OtherActor,
+                                UPrimitiveComponent* OtherComp,
+                                int32 OtherBodyIndex,
+                                bool bFromSweep,
+                                FHitResult const& SweepResult);
   private:
     PayloadsT payloads;
     TMap<AActor*, int32> actor_ids;
