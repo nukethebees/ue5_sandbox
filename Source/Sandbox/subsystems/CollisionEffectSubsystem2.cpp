@@ -8,6 +8,8 @@ void UCollisionEffectSubsystem2::handle_collision_event(UPrimitiveComponent* Ove
                                                         int32 OtherBodyIndex,
                                                         bool bFromSweep,
                                                         FHitResult const& SweepResult) {
+    log_verbose(TEXT("handle_collision_event"));
+
     if (!OtherActor || !OverlappedComponent) {
         log_warning(TEXT("No OtherActor or OverlappedComponent."));
         return;
@@ -31,11 +33,28 @@ void UCollisionEffectSubsystem2::handle_collision_event(UPrimitiveComponent* Ove
 
     // Execute the effects
     collision_owner.on_pre_collision_effect(OtherActor);
-    // for (auto const& entry : effect_components[index]) {
-    //     if (entry.component.IsValid() && entry.effect_interface) {
-    //         entry.effect_interface->execute_effect(OtherActor);
-    //     }
-    // }
+
+    auto& payload_indexes{actor_payload_indexes[index]};
+
+    log_verbose(TEXT("Handling %d indexes"), payload_indexes.indexes.Num());
+
+    for (auto const& payload_index : payload_indexes.indexes) {
+        switch (payload_index.type_tag) {
+            case 0: {
+                std::get<0>(payloads)[payload_index.array_index].execute(OtherActor);
+                break;
+            }
+            case 1: {
+                std::get<1>(payloads)[payload_index.array_index].execute(OtherActor);
+                break;
+            }
+            default: {
+                log_warning(TEXT("Unhandled tag type: %d."), payload_index.type_tag);
+                break;
+            }
+        }
+    }
+
     collision_owner.on_collision_effect(OtherActor);
     collision_owner.on_post_collision_effect(OtherActor);
 
