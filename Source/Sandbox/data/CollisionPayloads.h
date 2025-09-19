@@ -1,8 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/data/SpeedBoost.h"
 
 #include "CollisionPayloads.generated.h"
 
@@ -14,7 +15,15 @@ struct FSpeedBoostPayload {
     FSpeedBoostPayload(FSpeedBoost boost)
         : speed_boost(boost) {}
 
-    void execute(AActor* actor) {}
+    void execute(AActor* actor) {
+        if (!actor) {
+            return;
+        }
+
+        if (auto* boost_component{actor->FindComponentByClass<USpeedBoostComponent>()}) {
+            boost_component->apply_speed_boost(speed_boost);
+        }
+    }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FSpeedBoost speed_boost{};

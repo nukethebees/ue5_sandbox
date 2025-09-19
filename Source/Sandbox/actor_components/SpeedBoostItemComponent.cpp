@@ -1,7 +1,7 @@
 #include "Sandbox/actor_components/SpeedBoostItemComponent.h"
 
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/data/CollisionPayloads.h"
 #include "Sandbox/subsystems/CollisionEffectSubsystem2.h"
 
 USpeedBoostItemComponent::USpeedBoostItemComponent() {
@@ -10,15 +10,12 @@ USpeedBoostItemComponent::USpeedBoostItemComponent() {
 
 void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
-    UCollisionEffectSubsystem::try_register_entity(this);
-}
 
-void USpeedBoostItemComponent::execute_effect(AActor* other_actor) {
-    if (!other_actor) {
-        return;
-    }
-
-    if (auto* boost_component{other_actor->FindComponentByClass<USpeedBoostComponent>()}) {
-        boost_component->apply_speed_boost(speed_boost);
+    if (auto* owner{GetOwner()}) {
+        if (auto* world{GetWorld()}) {
+            if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
+                subsystem->add_payload(owner, FSpeedBoostPayload(speed_boost));
+            }
+        }
     }
 }
