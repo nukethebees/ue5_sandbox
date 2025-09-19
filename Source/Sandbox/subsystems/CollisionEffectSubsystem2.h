@@ -14,16 +14,47 @@
 
 #include "CollisionEffectSubsystem2.generated.h"
 
+template <typename... Types>
+class UCollisionEffectSubsystemData
+    : public UCollisionEffectSubsystemDataMixins
+    , public ml::LogMsgMixin<ml::UCollisionEffectSubsystem2LogTag> {
+    friend class UCollisionEffectSubsystemDataMixins;
+  public:
+    using PayloadsT = ml::ArrayTuple<Types...>;
+    static constexpr std::size_t N_TYPES = sizeof...(Types);
+  private:
+    PayloadsT payloads;
+    TArray<FActorPayloadIndexes> actor_payload_indexes;
+    TArray<TWeakObjectPtr<AActor>> actors;
+    TArray<TWeakObjectPtr<UPrimitiveComponent>> collision_boxes;
+
+    TMap<AActor*, int32> actor_ids;
+    TMap<UPrimitiveComponent*, int32> collision_ids{};
+};
+
+class UCollisionEffectSubsystemMixins {
+    // Create forwarding functions
+#define FORWARDING_FN(FN_NAME, ...)                                                              \
+    template <typename Self, typename... Args>                                                   \
+    decltype(auto) FN_NAME(this Self&& self, Args... args) {                                     \
+        return std::forward<Self>(self).data_.FN_NAME(std::forward<Args>(args)... __VA_OPT__(, ) \
+                                                          __VA_ARGS__);                          \
+    }
+  public:
+    FORWARDING_FN(add_payload, &self);
+    FORWARDING_FN(register_actor, &self)
+  protected:
+    FORWARDING_FN(handle_collision_event_)
+
+#undef FORWARDING_FN
+};
+
 UCLASS()
 class SANDBOX_API UCollisionEffectSubsystem2
     : public UWorldSubsystem
-    , public UCollisionEffectSubsystem2Mixins
-    , public ml::LogMsgMixin<ml::UCollisionEffectSubsystem2LogTag> {
+    , public UCollisionEffectSubsystemMixins {
     GENERATED_BODY()
-    friend class UCollisionEffectSubsystem2Mixins;
-  public:
-    using PayloadsT = ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload>;
-    static constexpr std::size_t N_TYPES = std::tuple_size_v<PayloadsT>;
+    friend class UCollisionEffectSubsystemMixins;
   public:
     UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
@@ -36,11 +67,5 @@ class SANDBOX_API UCollisionEffectSubsystem2
             OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
     }
   private:
-    PayloadsT payloads;
-    TArray<FActorPayloadIndexes> actor_payload_indexes;
-    TArray<TWeakObjectPtr<AActor>> actors;
-    TArray<TWeakObjectPtr<UPrimitiveComponent>> collision_boxes;
-
-    TMap<AActor*, int32> actor_ids;
-    TMap<UPrimitiveComponent*, int32> collision_ids{};
+    UCollisionEffectSubsystemData<FSpeedBoostPayload, FJumpIncreasePayload> data_{};
 };

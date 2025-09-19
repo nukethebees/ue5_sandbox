@@ -87,11 +87,11 @@ constexpr auto tuple_array_index_v =
 
 #define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(COLLISION_STAMP##N_CASES, N_CASES)
 
-class UCollisionEffectSubsystem2Mixins {
+class UCollisionEffectSubsystemDataMixins {
   public:
     template <typename Self, typename Payload>
-    void add_payload(this Self&& self, AActor* actor, Payload&& payload) {
-        auto const actor_index{self.register_actor(actor)};
+    void add_payload(this Self&& self, AActor* actor, Payload&& payload, auto* top_subsystem) {
+        auto const actor_index{self.register_actor(actor, top_subsystem)};
         if (!actor_index) {
             return;
         }
@@ -107,7 +107,7 @@ class UCollisionEffectSubsystem2Mixins {
     }
 
     template <typename Self>
-    std::optional<int32> register_actor(this Self&& self, AActor* actor) {
+    std::optional<int32> register_actor(this Self&& self, AActor* actor, auto* top_subsystem) {
         if (!actor) {
             return std::nullopt;
         }
@@ -126,8 +126,10 @@ class UCollisionEffectSubsystem2Mixins {
             return std::nullopt;
         }
 
+        // collision_comp->OnComponentBeginOverlap.AddDynamic(&self,
+        // &std::remove_cvref_t<Self>::handle_collision_event);
         collision_comp->OnComponentBeginOverlap.AddDynamic(
-            &self, &std::remove_cvref_t<Self>::handle_collision_event);
+            top_subsystem, &std::remove_cvref_t<decltype(*top_subsystem)>::handle_collision_event);
 
         auto const actor_i{self.actors.Add(actor)};
         auto const collision_i{self.collision_boxes.Add(collision_comp)};
@@ -141,7 +143,7 @@ class UCollisionEffectSubsystem2Mixins {
 
         return actor_i;
     }
-  protected:
+
     template <typename Self>
     void handle_collision_event_(this Self&& self,
                                  UPrimitiveComponent* OverlappedComponent,
