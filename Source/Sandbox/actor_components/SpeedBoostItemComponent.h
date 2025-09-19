@@ -18,7 +18,6 @@ class SANDBOX_API USpeedBoostItemComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
     FSpeedBoost speed_boost{};
 
-    // ICollisionEffectComponent implementation
     virtual void execute_effect(AActor* other_actor) override;
   protected:
     virtual void BeginPlay() override;
