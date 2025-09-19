@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/characters/MyCharacter.h"
 
 #include "CollisionPayloads.generated.h"
 
