@@ -7,12 +7,13 @@
 
 #include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
+#include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "Sandbox/characters/MyCharacter.h"
 
 #include "CollisionEffectSubsystem2.generated.h"
 
@@ -166,14 +167,27 @@ class SANDBOX_API UCollisionEffectSubsystem2
     friend class UCollisionEffectSubsystem2Mixins;
   public:
     using PayloadsT = ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload>;
-
+    static constexpr std::size_t N_TYPES = std::tuple_size_v<PayloadsT>;
+  private:
+    template <typename Self>
+    void handle_collision_event_(this Self&& self,
+                                 UPrimitiveComponent* OverlappedComponent,
+                                 AActor* OtherActor,
+                                 UPrimitiveComponent* OtherComp,
+                                 int32 OtherBodyIndex,
+                                 bool bFromSweep,
+                                 FHitResult const& SweepResult);
+  public:
     UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* OverlappedComponent,
                                 AActor* OtherActor,
                                 UPrimitiveComponent* OtherComp,
                                 int32 OtherBodyIndex,
                                 bool bFromSweep,
-                                FHitResult const& SweepResult);
+                                FHitResult const& SweepResult) {
+        return handle_collision_event_(
+            OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
+    }
   private:
     PayloadsT payloads;
     TArray<FActorPayloadIndexes> actor_payload_indexes;
@@ -183,3 +197,124 @@ class SANDBOX_API UCollisionEffectSubsystem2
     TMap<AActor*, int32> actor_ids;
     TMap<UPrimitiveComponent*, int32> collision_ids{};
 };
+
+// Macros used to generate the switch statement
+// Adapted from MSVC's STL variant visitor
+// ----------------------------------------------
+#define COLLISION_STAMP4(n) \
+    COLLISION_CASE(n);      \
+    COLLISION_CASE(n + 1);  \
+    COLLISION_CASE(n + 2);  \
+    COLLISION_CASE(n + 3)
+
+#define COLLISION_STAMP16(n) \
+    COLLISION_STAMP4(n);     \
+    COLLISION_STAMP4(n + 4); \
+    COLLISION_STAMP4(n + 8); \
+    COLLISION_STAMP4(n + 12)
+
+#define COLLISION_STAMP64(n)   \
+    COLLISION_STAMP16(n);      \
+    COLLISION_STAMP16(n + 16); \
+    COLLISION_STAMP16(n + 32); \
+    COLLISION_STAMP16(n + 48)
+
+#define COLLISION_STAMP256(n)   \
+    COLLISION_STAMP64(n);       \
+    COLLISION_STAMP64(n + 64);  \
+    COLLISION_STAMP64(n + 128); \
+    COLLISION_STAMP64(n + 192)
+
+#define COLLISION_CASE(i)                                                              \
+    case i: {                                                                          \
+        if constexpr (i < N_TYPES) {                                                   \
+            std::get<i>(self.payloads)[payload_index.array_index].execute(OtherActor); \
+        }                                                                              \
+        break;                                                                         \
+    }
+
+#define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
+    do {                                                                                   \
+        static_assert(self.N_TYPES < (N_CASES), "n is too large for this expansion.");     \
+        switch (payload_index.type_tag) {                                                  \
+            stamper(0);                                                                    \
+            default: {                                                                     \
+                self.log_warning(TEXT("Unhandled tag type: %d."), payload_index.type_tag); \
+                break;                                                                     \
+            }                                                                              \
+        }                                                                                  \
+    } while (0)
+
+#define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(COLLISION_STAMP##N_CASES, N_CASES)
+
+template <typename Self>
+void UCollisionEffectSubsystem2::handle_collision_event_(this Self&& self,
+                                                         UPrimitiveComponent* OverlappedComponent,
+                                                         AActor* OtherActor,
+                                                         UPrimitiveComponent* OtherComp,
+                                                         int32 OtherBodyIndex,
+                                                         bool bFromSweep,
+                                                         FHitResult const& SweepResult) {
+    self.log_verbose(TEXT("handle_collision_event"));
+
+    if (!OtherActor || !OverlappedComponent) {
+        self.log_warning(TEXT("No OtherActor or OverlappedComponent."));
+        return;
+    }
+
+    auto const* index_ptr{self.collision_ids.Find(OverlappedComponent)};
+    if (!index_ptr) {
+        self.log_warning(TEXT("No collision entry."));
+        return;
+    }
+
+    int32 const index{*index_ptr};
+    auto* owner{self.actors[index].Get()};
+    if (!owner) {
+        self.log_warning(TEXT("No owner."));
+        return;
+    }
+
+    // Should have already been validated
+    auto& collision_owner{*Cast<ICollisionOwner>(owner)};
+
+    // Execute the effects
+    collision_owner.on_pre_collision_effect(OtherActor);
+
+    auto& payload_indexes{self.actor_payload_indexes[index]};
+
+    self.log_verbose(TEXT("Handling %d indexes"), payload_indexes.indexes.Num());
+
+    for (auto const& payload_index : payload_indexes.indexes) {
+        if constexpr (self.N_TYPES <= 4) {
+            COLLISION_STAMP(4);
+        } else if constexpr (self.N_TYPES <= 16) {
+            COLLISION_STAMP(16);
+        } else if constexpr (self.N_TYPES <= 64) {
+            COLLISION_STAMP(64);
+        } else if constexpr (self.N_TYPES <= 256) {
+            COLLISION_STAMP(256);
+        } else {
+            static_assert(self.N_TYPES > 256,
+                          "Cannot support this many collision types. The macros must be extended.");
+        }
+    }
+
+    collision_owner.on_collision_effect(OtherActor);
+    collision_owner.on_post_collision_effect(OtherActor);
+
+    if (collision_owner.should_destroy_after_collision()) {
+        if (auto* destruction_manager{
+                owner->GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
+            destruction_manager->queue_actor_destruction(owner);
+        }
+    }
+}
+
+#undef COLLISION_STAMP4
+#undef COLLISION_STAMP16
+#undef COLLISION_STAMP64
+#undef COLLISION_STAMP256
+#undef COLLISION_CASE
+#undef COLLISION_VISIT_STAMP
+#undef COLLISION_STAMP
