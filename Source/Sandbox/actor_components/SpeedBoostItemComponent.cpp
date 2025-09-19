@@ -16,7 +16,7 @@ void USpeedBoostItemComponent::BeginPlay() {
     if (auto* owner{GetOwner()}) {
         if (auto* world{owner->GetWorld()}) {
             if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
-                subsystem->add_payload(FSpeedBoostPayload(speed_boost));
+                subsystem->add_payload(owner, FSpeedBoostPayload(speed_boost));
             }
         }
     }
