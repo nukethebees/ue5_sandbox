@@ -107,19 +107,6 @@ void UCollisionEffectSubsystem::handle_collision_event(UPrimitiveComponent* Over
     // Should have already been validated
     auto& collision_owner{*Cast<ICollisionOwner>(owner)};
 
-    static TMap<AActor*, double> cooldown_timers{};
-    auto const current_time{GetWorld()->GetTimeSeconds()};
-    auto const cooldown{collision_owner.get_collision_cooldown()};
-
-    if (cooldown > 0.0f) {
-        auto const last_collision{cooldown_timers.FindRef(owner)};
-        auto const time_since_last_collision{current_time - last_collision};
-        if (time_since_last_collision < cooldown) {
-            return;
-        }
-        cooldown_timers.Add(owner, current_time);
-    }
-
     // Execute the effects
     collision_owner.on_pre_collision_effect(OtherActor);
     for (auto const& entry : effect_components[index]) {
