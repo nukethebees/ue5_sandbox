@@ -13,8 +13,6 @@ class SANDBOX_API AJumpUpgradePickup : public APickupActor {
     GENERATED_BODY()
   public:
     AJumpUpgradePickup();
-
-    virtual void on_collision_effect(AActor* other_actor) override;
   protected:
     virtual void BeginPlay() override;
 

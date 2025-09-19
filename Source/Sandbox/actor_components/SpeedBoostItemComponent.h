@@ -8,17 +8,13 @@
 #include "SpeedBoostItemComponent.generated.h"
 
 UCLASS(meta = (BlueprintSpawnableComponent))
-class SANDBOX_API USpeedBoostItemComponent
-    : public UActorComponent
-    , public ICollisionEffectComponent {
+class SANDBOX_API USpeedBoostItemComponent : public UActorComponent {
     GENERATED_BODY()
   public:
     USpeedBoostItemComponent();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
     FSpeedBoost speed_boost{};
-
-    virtual void execute_effect(AActor* other_actor) override;
   protected:
     virtual void BeginPlay() override;
 };
