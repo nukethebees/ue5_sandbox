@@ -14,10 +14,18 @@
 namespace ml {
 inline static constexpr wchar_t UCollisionEffectSubsystem2LogTag[]{
     TEXT("UCollisionEffectSubsystem2")};
-}
+
+template <typename T>
+using CollisionArray = TArray<T>;
 
 template <typename... Args>
-using ArrayTuple = std::tuple<TArray<Args>...>;
+using ArrayTuple = std::tuple<CollisionArray<Args>...>;
+
+template <typename T, typename Tuple>
+decltype(auto) ArrayGet(Tuple&& tup) {
+    return std::get<CollisionArray<T>>(std::forward<Tuple>(tup));
+}
+}
 
 USTRUCT(BlueprintType)
 struct FSpeedBoostPayload {
@@ -40,9 +48,11 @@ struct FJumpIncreasePayload {
 };
 
 class UCollisionEffectSubsystem2Mixins {
+  public:
     template <typename Self, typename Payload>
     void add_payload(this Self&& self, Payload&& payload) {
-        std::forward<Self>(self).payloads.Add(std::forward<Payload>(payload));
+        auto& payload_array{ml::ArrayGet<Payload>(std::forward<Self>(self).payloads)};
+        payload_array.Add(std::forward<Payload>(payload));
     }
 };
 
@@ -53,5 +63,5 @@ class SANDBOX_API UCollisionEffectSubsystem2
     , public ml::LogMsgMixin<ml::UCollisionEffectSubsystem2LogTag> {
     GENERATED_BODY()
   public:
-    ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload> payloads;
+    ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload> payloads;
 };
