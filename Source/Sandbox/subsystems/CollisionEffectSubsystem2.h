@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/utilities/tuple.h"
 #include "Subsystems/WorldSubsystem.h"
 
 #include "CollisionEffectSubsystem2.generated.h"
@@ -26,6 +27,10 @@ template <typename T, typename Tuple>
 decltype(auto) ArrayGet(Tuple&& tup) {
     return std::get<CollisionArray<T>>(std::forward<Tuple>(tup));
 }
+
+template <typename T, typename Subsystem>
+constexpr auto tuple_array_index_v =
+    tuple_type_index<CollisionArray<T>, typename std::remove_cvref_t<Subsystem>::PayloadsT>::value;
 }
 
 USTRUCT(BlueprintType)
@@ -49,10 +54,25 @@ struct FJumpIncreasePayload {
 };
 
 USTRUCT(BlueprintType)
+struct FPayloadIndex {
+    GENERATED_BODY()
+
+    FPayloadIndex() = default;
+    FPayloadIndex(uint8 tag, uint8 i)
+        : type_tag(tag)
+        , array_index(i) {}
+
+    uint8 type_tag{0};
+    uint8 array_index{0};
+};
+
+USTRUCT(BlueprintType)
 struct FActorPayloadIndexes {
     GENERATED_BODY()
-  public:
+
     FActorPayloadIndexes() = default;
+
+    TArray<FPayloadIndex> indexes;
 };
 
 class UCollisionEffectSubsystem2Mixins {
@@ -66,6 +86,8 @@ class UCollisionEffectSubsystem2Mixins {
 
         auto& payload_array{ml::ArrayGet<Payload>(std::forward<Self>(self).payloads)};
         payload_array.Add(std::forward<Payload>(payload));
+
+        constexpr auto array_index{ml::tuple_array_index_v<Payload, Self>};
     }
 
     template <typename Self>
@@ -91,8 +113,10 @@ class SANDBOX_API UCollisionEffectSubsystem2
     , public ml::LogMsgMixin<ml::UCollisionEffectSubsystem2LogTag> {
     GENERATED_BODY()
     friend class UCollisionEffectSubsystem2Mixins;
+  public:
+    using PayloadsT = ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload>;
   private:
-    ml::ArrayTuple<FSpeedBoostPayload, FJumpIncreasePayload> payloads;
+    PayloadsT payloads;
     TMap<AActor*, int32> actor_ids;
     TArray<FActorPayloadIndexes> actor_payload_indexes;
 };
