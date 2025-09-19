@@ -2,6 +2,7 @@
 
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystem2.h"
 
 USpeedBoostItemComponent::USpeedBoostItemComponent() {
     PrimaryComponentTick.bCanEverTick = false;
@@ -10,6 +11,15 @@ USpeedBoostItemComponent::USpeedBoostItemComponent() {
 void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
     UCollisionEffectSubsystem::try_register_entity(this);
+
+    // Register with the new subsystem
+    if (auto* owner{GetOwner()}) {
+        if (auto* world{owner->GetWorld()}) {
+            if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
+                subsystem->add_payload(FSpeedBoostPayload(speed_boost));
+            }
+        }
+    }
 }
 
 void USpeedBoostItemComponent::execute_effect(AActor* other_actor) {
