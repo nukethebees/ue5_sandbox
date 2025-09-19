@@ -114,9 +114,17 @@ class UCollisionEffectSubsystem2Mixins {
         collision_comp->OnComponentBeginOverlap.AddDynamic(
             &self, &std::remove_cvref_t<Self>::handle_collision_event);
 
-        auto const i{self.actor_ids.Add(actor)};
+        auto const actor_i{self.actors.Add(actor)};
+        auto const collision_i{self.collision_boxes.Add(collision_comp)};
+
+        check(actor_i == collision_i);
+
+        self.actor_ids.Add(actor, actor_i);
+        self.collision_ids.Add(collision_comp, actor_i);
+
         std::forward<Self>(self).actor_payload_indexes.AddDefaulted();
-        return i;
+
+        return actor_i;
     }
 };
 
@@ -138,6 +146,10 @@ class SANDBOX_API UCollisionEffectSubsystem2
                                 FHitResult const& SweepResult);
   private:
     PayloadsT payloads;
-    TMap<AActor*, int32> actor_ids;
     TArray<FActorPayloadIndexes> actor_payload_indexes;
+    TArray<TWeakObjectPtr<AActor>> actors;
+    TArray<TWeakObjectPtr<UPrimitiveComponent>> collision_boxes;
+
+    TMap<AActor*, int32> actor_ids;
+    TMap<UPrimitiveComponent*, int32> collision_ids{};
 };
