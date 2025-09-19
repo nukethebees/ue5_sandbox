@@ -2,6 +2,8 @@
 
 #include "Sandbox/macros/create_forwarding_fn.hpp"
 
+#include "GameFramework/Actor.h"
+
 class UCollisionEffectSubsystemMixins {
   public:
     FORWARDING_FN(add_payload, &self);
@@ -10,3 +12,14 @@ class UCollisionEffectSubsystemMixins {
     FORWARDING_FN(handle_collision_event_)
 };
 #undef FORWARDING_FN
+
+template <typename SubsystemT, typename PayloadT>
+inline void try_add_subsystem_payload(AActor* actor, PayloadT&& payload) {
+    if (actor) {
+        if (auto* world{actor->GetWorld()}) {
+            if (auto* subsystem{world->GetSubsystem<SubsystemT>()}) {
+                subsystem->add_payload(actor, std::forward<PayloadT>(payload));
+            }
+        }
+    }
+}
