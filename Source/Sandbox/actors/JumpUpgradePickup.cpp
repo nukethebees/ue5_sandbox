@@ -30,8 +30,7 @@ void AJumpUpgradePickup::BeginPlay() {
     // Register with the new subsystem
     if (auto* world{GetWorld()}) {
         if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
-            // subsystem->add_payload(this, FJumpIncreasePayload(jump_count_increase));
-            subsystem->register_actor(this);
+            subsystem->add_payload(this, FJumpIncreasePayload(jump_count_increase));
         }
     }
 }

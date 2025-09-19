@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -11,6 +12,7 @@
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "Sandbox/characters/MyCharacter.h"
 
 #include "CollisionEffectSubsystem2.generated.h"
 
@@ -19,9 +21,15 @@ inline static constexpr wchar_t UCollisionEffectSubsystem2LogTag[]{
     TEXT("UCollisionEffectSubsystem2")};
 
 template <typename T>
+concept IsCollisionPayload = requires(T t, AActor* actor) {
+    { t.execute(actor) } -> std::same_as<void>;
+};
+
+template <typename T>
 using CollisionArray = TArray<T>;
 
 template <typename... Args>
+    requires (IsCollisionPayload<Args> && ...)
 using ArrayTuple = std::tuple<CollisionArray<Args>...>;
 
 template <typename T, typename Tuple>
@@ -32,18 +40,21 @@ decltype(auto) ArrayGet(Tuple&& tup) {
 template <typename T, typename Subsystem>
 constexpr auto tuple_array_index_v =
     tuple_type_index<CollisionArray<T>, typename std::remove_cvref_t<Subsystem>::PayloadsT>::value;
+
 }
 
 USTRUCT(BlueprintType)
 struct FSpeedBoostPayload {
     GENERATED_BODY()
-  public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FSpeedBoost speed_boost{};
 
     FSpeedBoostPayload() = default;
     FSpeedBoostPayload(FSpeedBoost boost)
         : speed_boost(boost) {}
+
+    void execute(AActor* actor) {}
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FSpeedBoost speed_boost{};
 };
 
 USTRUCT(BlueprintType)
@@ -52,10 +63,20 @@ struct FJumpIncreasePayload {
 
     FJumpIncreasePayload() = default;
     FJumpIncreasePayload(int32 inc)
-        : jump_increase(inc) {}
+        : jump_count_increase(inc) {}
+
+    void execute(AActor* actor) {
+        UE_LOGFMT(LogTemp, Verbose, "FJumpIncreasePayload::execute");
+        if (auto* character{Cast<AMyCharacter>(actor)}) {
+            character->increase_max_jump_count(jump_count_increase);
+        } else {
+            UE_LOGFMT(
+                LogTemp, Warning, "FJumpIncreasePayload: Could not cast the actor to character.");
+        }
+    }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 jump_increase{1};
+    int32 jump_count_increase{1};
 };
 
 USTRUCT(BlueprintType)
@@ -89,10 +110,14 @@ class UCollisionEffectSubsystem2Mixins {
             return;
         }
 
-        auto& payload_array{ml::ArrayGet<Payload>(std::forward<Self>(self).payloads)};
-        payload_array.Add(std::forward<Payload>(payload));
+        // auto& payload_array{ml::ArrayGet<Payload>(std::forward<Self>(self).payloads)};
+        auto& payload_array{ml::ArrayGet<Payload>(self.payloads)};
+        auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
+        constexpr auto payload_array_index{ml::tuple_array_index_v<Payload, Self>};
 
-        constexpr auto array_index{ml::tuple_array_index_v<Payload, Self>};
+        auto& payload_indexes{std::forward<Self>(self).actor_payload_indexes[*actor_index].indexes};
+        payload_indexes.Add(FPayloadIndex(static_cast<uint8>(payload_array_index),
+                                          static_cast<uint8>(payload_element_index)));
     }
 
     template <typename Self>
