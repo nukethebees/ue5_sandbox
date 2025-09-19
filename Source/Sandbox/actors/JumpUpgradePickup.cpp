@@ -2,7 +2,7 @@
 
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/subsystems/CollisionEffectSubsystem2.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
 
 AJumpUpgradePickup::AJumpUpgradePickup() {
     // Create mesh component for visual representation
@@ -17,9 +17,6 @@ AJumpUpgradePickup::AJumpUpgradePickup() {
 void AJumpUpgradePickup::BeginPlay() {
     Super::BeginPlay();
 
-    if (auto* world{GetWorld()}) {
-        if (auto* subsystem{world->GetSubsystem<UCollisionEffectSubsystem2>()}) {
-            subsystem->add_payload(this, FJumpIncreasePayload(jump_count_increase));
-        }
-    }
+    try_add_subsystem_payload<UCollisionEffectSubsystem>(
+        this, FJumpIncreasePayload(jump_count_increase));
 }

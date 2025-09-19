@@ -8,10 +8,10 @@
 #include "Sandbox/mixins/CollisionEffectSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "CollisionEffectSubsystem2.generated.h"
+#include "CollisionEffectSubsystem.generated.h"
 
 UCLASS()
-class SANDBOX_API UCollisionEffectSubsystem2
+class SANDBOX_API UCollisionEffectSubsystem
     : public UWorldSubsystem
     , public UCollisionEffectSubsystemMixins {
     GENERATED_BODY()
