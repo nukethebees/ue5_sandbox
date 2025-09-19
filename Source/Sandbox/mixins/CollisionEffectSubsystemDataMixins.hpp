@@ -7,13 +7,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
 
 namespace ml {
-inline static constexpr wchar_t UCollisionEffectSubsystem2LogTag[]{
-    TEXT("UCollisionEffectSubsystem2")};
-
 template <typename T>
 concept IsCollisionPayload = requires(T t, AActor* actor) {
     { t.execute(actor) } -> std::same_as<void>;
