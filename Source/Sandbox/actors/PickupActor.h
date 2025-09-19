@@ -24,7 +24,6 @@ class SANDBOX_API APickupActor
     // ICollisionOwner implementation
     virtual UPrimitiveComponent* get_collision_component() override { return collision_component; }
     virtual bool should_destroy_after_collision() const override { return destroy_after_collision; }
-    virtual float get_collision_cooldown() const override { return collision_cooldown; }
   protected:
     virtual void BeginPlay() override;
 
