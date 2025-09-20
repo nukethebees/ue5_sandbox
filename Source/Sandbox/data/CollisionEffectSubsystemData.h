@@ -179,6 +179,12 @@ class UCollisionEffectSubsystemData
             return;
         }
 
+        auto* world{owner->GetWorld()};
+        if (!world) {
+            self.log_warning(TEXT("No world."));
+            return;
+        }
+
         // Should have already been validated
         auto& collision_owner{*Cast<ICollisionOwner>(owner)};
 
@@ -209,8 +215,7 @@ class UCollisionEffectSubsystemData
         collision_owner.on_post_collision_effect(*OtherActor);
 
         if (collision_owner.should_destroy_after_collision()) {
-            if (auto* destruction_manager{
-                    owner->GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
+            if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {
                 destruction_manager->queue_destruction(owner);
             }
         }
