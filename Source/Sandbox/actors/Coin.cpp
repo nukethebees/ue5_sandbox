@@ -32,7 +32,7 @@ void ACoin::BeginPlay() {
     }
 
     if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-        manager->register_static_rotating_actor(rotation_speed, this);
+        manager->add_static(rotation_speed, this);
     } else {
         UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
     }

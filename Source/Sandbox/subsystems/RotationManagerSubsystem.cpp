@@ -1,9 +1,9 @@
 #include "Sandbox/subsystems/RotationManagerSubsystem.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 
-void URotationManagerSubsystem::register_rotating_actor(URotatingActorComponent* component,
-                                                        AActor* actor,
-                                                        ERotationType rotation_type) {
+void URotationManagerSubsystem::add_dynamic(URotatingActorComponent* component,
+                                            AActor* actor,
+                                            ERotationType rotation_type) {
     if (!component || !actor) {
         return;
     }
@@ -14,14 +14,14 @@ void URotationManagerSubsystem::register_rotating_actor(URotatingActorComponent*
         dynamic_components.Add(component);
         dynamic_actors.Add(actor);
     } else {
-        register_static_rotating_actor(component->speed, actor);
+        add_static(component->speed, actor);
         return;
     }
 
     tick_enabled = true;
 }
 
-void URotationManagerSubsystem::unregister_rotating_actor(URotatingActorComponent* component) {
+void URotationManagerSubsystem::remove(URotatingActorComponent* component) {
     if (!component) {
         return;
     }
@@ -38,7 +38,7 @@ void URotationManagerSubsystem::unregister_rotating_actor(URotatingActorComponen
     // Check if we should disable ticking
     tick_enabled = dynamic_components.IsEmpty() && static_actors.IsEmpty();
 }
-void URotationManagerSubsystem::register_static_rotating_actor(float speed, AActor* actor) {
+void URotationManagerSubsystem::add_static(float speed, AActor* actor) {
     static_actors.Add(actor);
     static_speeds.Add(speed);
     tick_enabled = true;
