@@ -3,6 +3,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/HealthChange.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
@@ -80,25 +82,50 @@ void FLandMinePayload::execute(FCollisionContext context) {
             }
         }
 
+        constexpr auto is_movable{[](auto& component) -> bool {
+            return component.IsSimulatingPhysics() &&
+                   (component.Mobility == EComponentMobility::Movable);
+        }};
+
         // Apply explosion force
-        if (auto* root_component{target_actor->GetRootComponent()}) {
+        using CharMvmt = UCharacterMovementComponent;
+        if (auto* movement_component{target_actor->FindComponentByClass<CharMvmt>()}) {
+            logger.log_verbose(TEXT("Actor has UCharacterMovementComponent."));
+
+            FVector const impulse{calculate_impulse(target_actor->GetActorLocation(), distance)};
+            movement_component->AddImpulse(impulse, true);
+        } else if (auto* root_component{target_actor->GetRootComponent()}) {
+            logger.log_verbose(TEXT("Got root component."));
+
             if (auto* primitive_component{Cast<UPrimitiveComponent>(root_component)}) {
-                // Check if component can receive impulse
-                if (primitive_component->IsSimulatingPhysics() &&
-                    primitive_component->Mobility == EComponentMobility::Movable) {
+                logger.log_verbose(TEXT("Got UPrimitiveComponent."));
 
-                    // Calculate direction from mine to target
-                    FVector direction{target_actor->GetActorLocation() - mine_location};
-                    direction.Z = FMath::Abs(direction.Z); // Force upward component
-                    direction.Normalize();
+                if (is_movable(*primitive_component)) {
+                    logger.log_verbose(TEXT("Component is movable"));
 
-                    // Scale force by distance (closer = more force)
-                    float const force_scale{1.0f - (distance / explosion_radius)};
-                    FVector const impulse{direction * explosion_force * force_scale};
+                    FVector const impulse{
+                        calculate_impulse(target_actor->GetActorLocation(), distance)};
 
                     primitive_component->AddImpulse(impulse, NAME_None, true);
+                } else {
+                    logger.log_verbose(TEXT("Component is not movable"));
                 }
             }
+        } else {
+            logger.log_verbose(TEXT("Component is not movable"));
         }
     }
+}
+
+FVector FLandMinePayload::calculate_impulse(FVector target_location, float target_distance) {
+    // Calculate direction from mine to target
+    FVector direction{target_location - mine_location};
+    direction.Z = FMath::Abs(direction.Z); // Force upward component
+    direction.Normalize();
+
+    // Scale force by distance (closer = more force)
+    float const force_scale{1.0f - (target_distance / explosion_radius)};
+    FVector const impulse{direction * explosion_force * force_scale};
+
+    return impulse;
 }
