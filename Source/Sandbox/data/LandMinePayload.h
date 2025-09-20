@@ -15,9 +15,10 @@ struct FLandMinePayload : public ml::LogMsgMixin<"FLandMinePayload"> {
         , mine_location(location) {}
 
     void execute(FCollisionContext context);
+    FVector calculate_impulse(FVector target_location, float target_distance);
 
     float damage{25.0f};
     float explosion_radius{100.0f};
-    float explosion_force{1000.0f};
+    float explosion_force{5000.0f};
     FVector mine_location{FVector::ZeroVector};
 };
