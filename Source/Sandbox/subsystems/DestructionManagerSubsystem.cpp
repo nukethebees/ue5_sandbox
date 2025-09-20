@@ -1,10 +1,10 @@
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
-void UDestructionManagerSubsystem::queue_actor_destruction(AActor* actor) {
+void UDestructionManagerSubsystem::queue_destruction(AActor* actor) {
     queue_destruction(actor, queued_actors);
 }
 
-void UDestructionManagerSubsystem::queue_component_destruction(UActorComponent* component) {
+void UDestructionManagerSubsystem::queue_destruction(UActorComponent* component) {
     queue_destruction(component, queued_components);
 }
 

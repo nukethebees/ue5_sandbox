@@ -4,6 +4,8 @@
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
+#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
 #include "CollisionPayloads.generated.h"
 
@@ -15,15 +17,7 @@ struct FSpeedBoostPayload {
     FSpeedBoostPayload(FSpeedBoost boost)
         : speed_boost(boost) {}
 
-    void execute(AActor* actor) {
-        if (!actor) {
-            return;
-        }
-
-        if (auto* boost_component{actor->FindComponentByClass<USpeedBoostComponent>()}) {
-            boost_component->apply_speed_boost(speed_boost);
-        }
-    }
+    void execute(AActor* actor);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FSpeedBoost speed_boost{};
@@ -37,16 +31,22 @@ struct FJumpIncreasePayload {
     FJumpIncreasePayload(int32 inc)
         : jump_count_increase(inc) {}
 
-    void execute(AActor* actor) {
-        UE_LOGFMT(LogTemp, Verbose, "FJumpIncreasePayload::execute");
-        if (auto* character{Cast<AMyCharacter>(actor)}) {
-            character->increase_max_jump_count(jump_count_increase);
-        } else {
-            UE_LOGFMT(
-                LogTemp, Warning, "FJumpIncreasePayload: Could not cast the actor to character.");
-        }
-    }
+    void execute(AActor* actor);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 jump_count_increase{1};
+};
+
+USTRUCT(BlueprintType)
+struct FCoinPayload {
+    GENERATED_BODY()
+
+    FCoinPayload() = default;
+    FCoinPayload(int32 x)
+        : value(x) {}
+
+    void execute(AActor* actor);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 value{1};
 };

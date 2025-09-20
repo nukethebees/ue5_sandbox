@@ -3,10 +3,24 @@
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
 
 ACoin::ACoin() {
     PrimaryActorTick.bCanEverTick = false;
-    SetActorEnableCollision(true);
+
+    constexpr auto mobility{EComponentMobility::Movable};
+
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    RootComponent->SetMobility(mobility);
+
+    mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+    mesh_component->SetupAttachment(RootComponent);
+    mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    mesh_component->SetMobility(mobility);
+
+    collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComponent"));
+    collision_component->SetupAttachment(RootComponent);
+    mesh_component->SetMobility(mobility);
 }
 
 void ACoin::BeginPlay() {
@@ -17,18 +31,13 @@ void ACoin::BeginPlay() {
         return;
     }
 
-    if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-        rotation_manager->register_static_rotating_actor(rotation_speed, this);
+    if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
+        manager->register_static_rotating_actor(rotation_speed, this);
     } else {
         UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
     }
-}
-void ACoin::NotifyActorBeginOverlap(AActor* other_actor) {
-    if (auto* const player{Cast<AMyCharacter>(other_actor)}) {
-        if (auto* const coin_collector{
-                player->FindComponentByClass<UCoinCollectorActorComponent>()}) {
-            coin_collector->add_coins(coin_value);
-            Destroy();
-        }
+
+    if (auto* manager{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
+        manager->add_payload(this, FCoinPayload(coin_value));
     }
 }
