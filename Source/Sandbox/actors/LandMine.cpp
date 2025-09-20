@@ -24,7 +24,7 @@ ALandMine::ALandMine() {
     // Create light component
     light_component = CreateDefaultSubobject<UPointLightComponent>(TEXT("LightComponent"));
     light_component->SetupAttachment(RootComponent);
-    light_component->SetLightColor(active_light_color);
+    light_component->SetLightColor(colours.active);
     light_component->SetIntensity(100.0f);
     light_component->SetAttenuationRadius(200.0f);
 
@@ -47,23 +47,17 @@ void ALandMine::BeginPlay() {
     Super::BeginPlay();
 
     // Set light to active color
-    light_component->SetLightColor(active_light_color);
+    light_component->SetLightColor(colours.active);
 
-    // Register with collision effect subsystem
-    if (auto* world{GetWorld()}) {
-        if (auto* collision_subsystem{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-            FLandMinePayload payload{
-                max_damage, explosion_radius, explosion_force, GetActorLocation()};
-            collision_subsystem->add_payload(this, payload);
-        }
-    }
+    try_emplace_subsystem_payload<UCollisionEffectSubsystem, FLandMinePayload>(
+        *this, max_damage, explosion_radius, explosion_force, GetActorLocation());
 }
 
 void ALandMine::on_pre_collision_effect(AActor& other_actor) {
     log_verbose(TEXT("Landmine triggered by actor: %s"), *other_actor.GetName());
 
     // Change light to disabled color to indicate detonation
-    light_component->SetLightColor(disabled_light_color);
+    light_component->SetLightColor(colours.disabled);
 
     // Spawn explosion particle effect if configured
     if (explosion_effect) {
