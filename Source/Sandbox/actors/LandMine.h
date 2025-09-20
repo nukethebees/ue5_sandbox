@@ -12,6 +12,17 @@
 
 #include "LandMine.generated.h"
 
+USTRUCT(BlueprintType)
+struct FLandMineColours {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    FLinearColor active{FLinearColor::Red};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    FLinearColor disabled{FLinearColor::Blue};
+};
+
 UCLASS()
 class SANDBOX_API ALandMine
     : public AActor
@@ -56,10 +67,7 @@ class SANDBOX_API ALandMine
     float explosion_force{1000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    FLinearColor active_light_color{FLinearColor::Red};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    FLinearColor disabled_light_color{FLinearColor::Blue};
+    FLandMineColours colours;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     class UParticleSystem* explosion_effect{};

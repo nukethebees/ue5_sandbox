@@ -17,6 +17,6 @@ AJumpUpgradePickup::AJumpUpgradePickup() {
 void AJumpUpgradePickup::BeginPlay() {
     Super::BeginPlay();
 
-    try_add_subsystem_payload<UCollisionEffectSubsystem>(this,
+    try_add_subsystem_payload<UCollisionEffectSubsystem>(*this,
                                                          FJumpIncreasePayload(jump_count_increase));
 }
