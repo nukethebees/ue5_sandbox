@@ -164,12 +164,12 @@ void AMyPlayerController::toggle_torch(FInputActionValue const& value) {
     }
 }
 void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
-    if (!controlled_character || !controlled_character->torch_component) {
+    if (!controlled_character || !controlled_character->torch) {
         print_msg("No char or torch");
     }
 
     auto const scroll_delta{value.Get<float>()};
-    auto* const torch{controlled_character->torch_component};
+    auto* const torch{controlled_character->torch};
 
     static constexpr auto min_cone{5.0f};
     static constexpr auto max_cone{15.0f};
@@ -202,8 +202,7 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
         params.AddIgnoredActor(controlled_character);
 
         if (GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)) {
-            controlled_character->warp_component->warp_to_location(controlled_character,
-                                                                   hit.Location);
+            controlled_character->warp->warp_to_location(controlled_character, hit.Location);
         }
     }
 }

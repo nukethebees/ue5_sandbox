@@ -31,6 +31,14 @@ class AMyPlayerController;
 class UJetpackComponent;
 class AMyHUD;
 
+class USpeedBoostComponent;
+class UInteractorComponent;
+class USpeedBoostComponent;
+class UJetpackComponent;
+class UHealthComponent;
+class UInteractorComponent;
+class UCoinCollectorActorComponent;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
 UENUM(BlueprintType)
@@ -44,52 +52,28 @@ struct FCameraConfig {
     constexpr FCameraConfig(ECharacterCameraMode camera_mode,
                             char const* component_name,
                             bool needs_spring_arm,
-                            bool use_pawn_control_rotation,
-                            bool attach_to_spring_arm)
+                            bool use_pawn_control_rotation)
         : camera_mode(camera_mode)
         , camera_index(std::to_underlying(camera_mode))
         , component_name(component_name)
         , needs_spring_arm(needs_spring_arm)
-        , use_pawn_control_rotation(use_pawn_control_rotation)
-        , attach_to_spring_arm(attach_to_spring_arm) {}
+        , use_pawn_control_rotation(use_pawn_control_rotation) {}
 
     ECharacterCameraMode camera_mode;
     std::underlying_type_t<ECharacterCameraMode> camera_index;
     char const* component_name;
     bool needs_spring_arm;
     bool use_pawn_control_rotation;
-    bool attach_to_spring_arm;
 };
 
 namespace ml {
 inline static constexpr wchar_t MyCharacterLogTag[]{TEXT("MyCharacter")};
-}
 
-USTRUCT(BlueprintType)
-struct FCharacterInputActions {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputMappingContext> first_person_context{};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> move_action{};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jump_action{};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jetpack_action{};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> cycle_camera_action{};
-};
-
-namespace ml::AMyCharacter {
+namespace AMyCharacter {
 inline static constexpr int32 camera_count{static_cast<int32>(ECharacterCameraMode::MAX)};
 inline static constexpr FCameraConfig camera_configs[camera_count] = {
-    {ECharacterCameraMode::FirstPerson, "Camera", false, true, false},
-    {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true, true}};
+    {ECharacterCameraMode::FirstPerson, "Camera", false, true},
+    {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true}};
 
 consteval int32 count_required_spring_arms() {
     int32 count{0};
@@ -101,6 +85,29 @@ consteval int32 count_required_spring_arms() {
     return count;
 }
 }
+}
+
+USTRUCT(BlueprintType)
+struct FCharacterInputActions {
+    GENERATED_BODY()
+
+    FCharacterInputActions() = default;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputMappingContext> first_person_context{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> move_action{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jump_action{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> jetpack_action{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> cycle_camera_action{nullptr};
+};
 
 UCLASS()
 class SANDBOX_API AMyCharacter
@@ -112,8 +119,6 @@ class SANDBOX_API AMyCharacter
     GENERATED_BODY()
   public:
     static constexpr int32 default_max_jump_count{2};
-    static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
-    static constexpr int32 spring_arm_count{ml::AMyCharacter::count_required_spring_arms()};
 
     AMyCharacter();
 
@@ -161,13 +166,38 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(BlueprintAssignable, Category = "Movement")
     FOnMaxSpeedChanged OnMaxSpeedChanged;
 
-    // Torch
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
-    USpotLightComponent* torch_component;
+    // Components
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UCoinCollectorActorComponent* coins{nullptr};
 
-    // Abilities
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
-    UWarpComponent* warp_component{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UInteractorComponent* interactor{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UHealthComponent* health{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    USpeedBoostComponent* speed_boost{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    UJetpackComponent* jetpack{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Torch")
+    USpotLightComponent* torch{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities")
+    UWarpComponent* warp{nullptr};
+
+    // Camera components
+    static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
+    static constexpr int32 spring_arm_count{ml::AMyCharacter::count_required_spring_arms()};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    TArray<UCameraComponent*> cameras{};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    TArray<USpringArmComponent*> spring_arms{};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
   protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
@@ -183,23 +213,11 @@ class SANDBOX_API AMyCharacter
     UPROPERTY()
     AMyPlayerController* my_player_controller;
 
-    // Camera
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    // TArray<UCameraComponent*, TFixedAllocator<camera_count>> camera_components{};
-    TArray<UCameraComponent*> camera_components{};
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    // TArray<USpringArmComponent*, TFixedAllocator<spring_arm_count>> spring_arm_components{};
-    TArray<USpringArmComponent*> spring_arm_components{};
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
-
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float move_speed{800.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    UJetpackComponent* jetpack_component;
   private:
     virtual void handle_death();
     void disable_all_cameras();
