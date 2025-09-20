@@ -104,12 +104,10 @@ void FLandMinePayload::explode(FCollisionContext context) {
         if (auto* movement_component{target_actor->FindComponentByClass<CharMvmt>()}) {
             logger.log_verbose(TEXT("Actor has UCharacterMovementComponent."));
 
-            FVector impulse{calculate_impulse(target_actor->GetActorLocation(), distance)};
+            // Set to falling mode to eliminate ground friction
+            movement_component->SetMovementMode(MOVE_Falling);
 
-            constexpr float ground_impulse_scale{3.5f};
-            if (movement_component->IsMovingOnGround()) {
-                impulse *= ground_impulse_scale;
-            }
+            FVector impulse{calculate_impulse(target_actor->GetActorLocation(), distance)};
             movement_component->AddImpulse(impulse, true);
         } else if (auto* root_component{target_actor->GetRootComponent()}) {
             logger.log_verbose(TEXT("Got root component."));

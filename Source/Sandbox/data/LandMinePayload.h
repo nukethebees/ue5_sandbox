@@ -25,7 +25,7 @@ struct FLandMinePayload {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float damage{25.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float explosion_radius{100.0f};
+    float explosion_radius{300.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float explosion_force{5000.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
