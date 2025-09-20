@@ -24,7 +24,7 @@ void URotatingActorComponent::BeginPlay() {
 
     if (destroy_component_after_static_registration) {
         if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {
-            destruction_manager->queue_component_destruction(this);
+            destruction_manager->queue_destruction(this);
         } else {
             UE_LOGFMT(LogTemp, Warning, "Couldn't get UDestructionManagerSubsystem in BeginPlay.");
         }

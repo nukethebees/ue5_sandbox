@@ -14,8 +14,8 @@ UCLASS()
 class SANDBOX_API UDestructionManagerSubsystem : public UTickableWorldSubsystem {
     GENERATED_BODY()
   public:
-    void queue_actor_destruction(AActor* actor);
-    void queue_component_destruction(UActorComponent* component);
+    void queue_destruction(AActor* actor);
+    void queue_destruction(UActorComponent* component);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;

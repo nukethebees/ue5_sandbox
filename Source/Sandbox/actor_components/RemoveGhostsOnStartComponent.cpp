@@ -28,12 +28,12 @@ void URemoveGhostsOnStartComponent::TickComponent(float DeltaTime,
             auto components{actor->GetComponents()};
             for (auto* component : components) {
                 if (component->ComponentHasTag(cleanup_tag)) {
-                    destruction_manager->queue_component_destruction(component);
+                    destruction_manager->queue_destruction(component);
                 }
             }
         }
 
         // Clean itself up
-        destruction_manager->queue_component_destruction(this);
+        destruction_manager->queue_destruction(this);
     }
 }

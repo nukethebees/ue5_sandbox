@@ -212,7 +212,7 @@ class UCollisionEffectSubsystemData
         if (collision_owner.should_destroy_after_collision()) {
             if (auto* destruction_manager{
                     owner->GetWorld()->GetSubsystem<UDestructionManagerSubsystem>()}) {
-                destruction_manager->queue_actor_destruction(owner);
+                destruction_manager->queue_destruction(owner);
             }
         }
     }
