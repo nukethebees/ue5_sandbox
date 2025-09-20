@@ -155,29 +155,31 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
                                  int32 OtherBodyIndex,
                                  bool bFromSweep,
                                  FHitResult const& SweepResult) {
-        self.log_verbose(TEXT("handle_collision_event"));
+        static constexpr auto logger{NestedLogger<"handle_collision_event_">()};
+
+        logger.log_verbose(TEXT("handle_collision_event"));
 
         if (!OtherActor || !OverlappedComponent) {
-            self.log_warning(TEXT("No OtherActor or OverlappedComponent in collision event."));
+            logger.log_warning(TEXT("No OtherActor or OverlappedComponent in collision event."));
             return;
         }
 
         auto const* index_ptr{self.collision_ids.Find(OverlappedComponent)};
         if (!index_ptr) {
-            self.log_warning(TEXT("No collision entry in collision event."));
+            logger.log_warning(TEXT("No collision entry in collision event."));
             return;
         }
 
         int32 const index{*index_ptr};
         auto* owner{self.actors[index].Get()};
         if (!owner) {
-            self.log_warning(TEXT("No owner in collision event."));
+            logger.log_warning(TEXT("No owner in collision event."));
             return;
         }
 
         auto* world{owner->GetWorld()};
         if (!world) {
-            self.log_warning(TEXT("No world in collision event."));
+            logger.log_warning(TEXT("No world in collision event."));
             return;
         }
 
@@ -191,7 +193,7 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
 
         auto& payload_indexes{self.actor_payload_indexes[index]};
 
-        self.log_verbose(TEXT("Handling %d indexes"), payload_indexes.indexes.Num());
+        logger.log_verbose(TEXT("Handling %d indexes"), payload_indexes.indexes.Num());
 
         static_assert(N_TYPES <= 256,
                       "Cannot support this many collision types. The macros must be extended.");
