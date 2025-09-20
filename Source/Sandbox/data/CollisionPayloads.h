@@ -5,11 +5,10 @@
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/data/CollisionContext.h"
+#include "Sandbox/data/LandMinePayload.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
-
-// #include "CollisionPayloads.generated.h"
 
 struct FSpeedBoostPayload {
     FSpeedBoostPayload() = default;

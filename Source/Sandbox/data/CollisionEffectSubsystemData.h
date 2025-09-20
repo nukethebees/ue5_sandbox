@@ -79,7 +79,7 @@ constexpr auto tuple_array_index_v =
 
 #define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
     do {                                                                                   \
-        static_assert(N_TYPES < (N_CASES), "n is too large for this expansion.");          \
+        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");          \
         switch (payload_index.type_tag) {                                                  \
             stamper(0);                                                                    \
             default: {                                                                     \
@@ -135,8 +135,6 @@ class UCollisionEffectSubsystemData
             return std::nullopt;
         }
 
-        // collision_comp->OnComponentBeginOverlap.AddDynamic(&self,
-        // &std::remove_cvref_t<Self>::handle_collision_event);
         collision_comp->OnComponentBeginOverlap.AddDynamic(
             top_subsystem, &std::remove_cvref_t<decltype(*top_subsystem)>::handle_collision_event);
 
