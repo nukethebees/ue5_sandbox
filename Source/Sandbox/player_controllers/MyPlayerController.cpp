@@ -35,7 +35,7 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
 
     controlled_character = Cast<AMyCharacter>(InPawn);
     if (controlled_character) {
-        controlled_character->my_player_controller = this;
+        controlled_character->set_player_controller(this);
     } else {
         UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not possess a AMyCharacter.");
     }
