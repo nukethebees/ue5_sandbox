@@ -50,7 +50,7 @@ class SANDBOX_API ALandMine
     virtual UPrimitiveComponent* get_collision_component() override {
         return trigger_collision_component;
     }
-    virtual bool should_destroy_after_collision() const override { return true; }
+    virtual bool should_destroy_after_collision() const override { return false; }
     virtual void on_pre_collision_effect(AActor& other_actor) override;
 
 #if WITH_EDITOR
@@ -93,6 +93,9 @@ class SANDBOX_API ALandMine
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     ELandMineState current_state{ELandMineState::Active};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    float detonation_delay{2.0f};
   public:
     void change_state(ELandMineState new_state);
 
