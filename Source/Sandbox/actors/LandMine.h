@@ -50,7 +50,8 @@ class SANDBOX_API ALandMine
     virtual UPrimitiveComponent* get_collision_component() override {
         return trigger_collision_component;
     }
-    virtual bool should_destroy_after_collision() const override { return false; }
+    virtual bool should_destroy_after_collision() const override { return true; }
+    virtual float get_destruction_delay() const override { return payload_config.detonation_delay; }
     virtual void on_pre_collision_effect(AActor& other_actor) override;
 
 #if WITH_EDITOR

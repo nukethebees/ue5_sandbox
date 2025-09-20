@@ -16,6 +16,7 @@ class ICollisionOwner {
   public:
     virtual UPrimitiveComponent* get_collision_component() = 0;
     virtual bool should_destroy_after_collision() const = 0;
+    virtual float get_destruction_delay() const { return 0.0f; }
 
     virtual void on_pre_collision_effect(AActor& other_actor) {}
     virtual void on_post_collision_effect(AActor& other_actor) {}

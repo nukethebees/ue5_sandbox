@@ -216,8 +216,15 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
 
         if (collision_owner.should_destroy_after_collision()) {
             if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {
-                destruction_manager->queue_destruction(owner);
+                auto const delay{collision_owner.get_destruction_delay()};
+                if (delay > 0.0f) {
+                    destruction_manager->queue_destruction_with_delay(owner, delay);
+                } else {
+                    destruction_manager->queue_destruction(owner);
+                }
             }
+        } else {
+            logger.log_warning(TEXT("Couldn't get UDestructionManagerSubsystem"));
         }
     }
   private:
