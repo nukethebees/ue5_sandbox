@@ -17,7 +17,16 @@ void URotatingActorComponent::BeginPlay() {
     }
 
     if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-        rotation_manager->add_dynamic(this, GetOwner(), rotation_type);
+        if (auto* owner{GetOwner()}) {
+            if (auto* root{owner->GetRootComponent()}) {
+                if (rotation_type == ERotationType::STATIC) {
+                    rotation_manager->add_static(speed, *root);
+                } else {
+                    rotation_manager->add_dynamic(*this, *root);
+                }
+            }
+        }
+
     } else {
         UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
     }
@@ -42,7 +51,7 @@ void URotatingActorComponent::EndPlay(EEndPlayReason::Type EndPlayReason) {
 void URotatingActorComponent::unregister_from_subsystem() {
     if (auto* world{GetWorld()}) {
         if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-            rotation_manager->remove(this);
+            rotation_manager->remove(*this);
         } else {
             UE_LOGFMT(LogTemp, Warning, "Couldn't get UDestructionManagerSubsystem in EndPlay.");
         }

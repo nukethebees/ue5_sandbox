@@ -20,7 +20,7 @@ ACoin::ACoin() {
 
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComponent"));
     collision_component->SetupAttachment(RootComponent);
-    mesh_component->SetMobility(mobility);
+    collision_component->SetMobility(mobility);
 }
 
 void ACoin::BeginPlay() {
@@ -31,8 +31,9 @@ void ACoin::BeginPlay() {
         return;
     }
 
-    if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-        manager->add_static(rotation_speed, this);
+    if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()};
+        manager && mesh_component) {
+        manager->add_static(rotation_speed, *mesh_component);
     } else {
         UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
     }
