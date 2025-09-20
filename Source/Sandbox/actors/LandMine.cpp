@@ -58,6 +58,8 @@ ALandMine::ALandMine() {
 void ALandMine::BeginPlay() {
     Super::BeginPlay();
 
+    change_state(current_state);
+
     // Bind warning collision events
     if (warning_collision_component) {
         warning_collision_component->OnComponentBeginOverlap.AddDynamic(
@@ -90,10 +92,6 @@ void ALandMine::on_pre_collision_effect(AActor& other_actor) {
 }
 
 void ALandMine::change_state(ELandMineState new_state) {
-    if (current_state == new_state) {
-        return;
-    }
-
     current_state = new_state;
 
     // Update light color based on state
