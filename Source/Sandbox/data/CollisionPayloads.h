@@ -30,7 +30,7 @@ struct FJumpIncreasePayload {
     int32 jump_count_increase{1};
 };
 
-struct FCoinPayload : public ml::LogMsgMixin<TEXT("FCoinPayload")> {
+struct FCoinPayload : public ml::LogMsgMixin<"FCoinPayload"> {
     FCoinPayload() = default;
     FCoinPayload(int32 x)
         : value(x) {}

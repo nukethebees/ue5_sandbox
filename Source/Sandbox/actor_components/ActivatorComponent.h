@@ -12,7 +12,7 @@ class AActor;
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UActivatorComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<TEXT("ActivatorComponent")> {
+    , public ml::LogMsgMixin<"ActivatorComponent"> {
     GENERATED_BODY()
   public:
     UActivatorComponent();

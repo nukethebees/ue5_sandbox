@@ -25,7 +25,7 @@ enum class EPushForceMode : uint8 {
 UCLASS()
 class SANDBOX_API APushZoneActor
     : public AActor
-    , public ml::LogMsgMixin<TEXT("PushZone")> {
+    , public ml::LogMsgMixin<"PushZone"> {
     GENERATED_BODY()
   public:
     APushZoneActor();

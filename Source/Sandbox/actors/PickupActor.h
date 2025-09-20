@@ -12,7 +12,7 @@ UCLASS()
 class SANDBOX_API APickupActor
     : public AActor
     , public ICollisionOwner
-    , public ml::LogMsgMixin<TEXT("APickupActor")> {
+    , public ml::LogMsgMixin<"APickupActor"> {
     GENERATED_BODY()
   public:
     APickupActor();

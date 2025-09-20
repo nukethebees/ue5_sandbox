@@ -9,7 +9,7 @@
 namespace ml {
 template <StaticTCharString tag>
 struct LogMsgMixin {
-    static constexpr auto* get_tag() { return tag.data.data(); }
+    static constexpr auto* get_tag() { return tag.data(); }
 
     // Strip references because the format string requires value types
     template <typename... Args>

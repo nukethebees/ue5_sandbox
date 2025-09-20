@@ -31,7 +31,7 @@ UCLASS()
 class SANDBOX_API AForcefieldActor
     : public AActor
     , public IActivatable
-    , public ml::LogMsgMixin<TEXT("Forcefield")> {
+    , public ml::LogMsgMixin<"Forcefield"> {
     GENERATED_BODY()
   public:
     AForcefieldActor();
