@@ -18,7 +18,7 @@ inline static constexpr wchar_t UCollisionEffectSubsystemDataLogTag[]{
     TEXT("UCollisionEffectSubsystemData")};
 
 template <typename T>
-concept IsCollisionPayload = requires(T t, AActor* actor) {
+concept IsCollisionPayload = requires(T t, AActor& actor) {
     { t.execute(actor) } -> std::same_as<void>;
 };
 
@@ -67,12 +67,12 @@ constexpr auto tuple_array_index_v =
     COLLISION_STAMP64(n + 128); \
     COLLISION_STAMP64(n + 192)
 
-#define COLLISION_CASE(i)                                                              \
-    case i: {                                                                          \
-        if constexpr (i < N_TYPES) {                                                   \
-            std::get<i>(self.payloads)[payload_index.array_index].execute(OtherActor); \
-        }                                                                              \
-        break;                                                                         \
+#define COLLISION_CASE(i)                                                               \
+    case i: {                                                                           \
+        if constexpr (i < N_TYPES) {                                                    \
+            std::get<i>(self.payloads)[payload_index.array_index].execute(*OtherActor); \
+        }                                                                               \
+        break;                                                                          \
     }
 
 #define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
@@ -183,7 +183,7 @@ class UCollisionEffectSubsystemData
         auto& collision_owner{*Cast<ICollisionOwner>(owner)};
 
         // Execute the effects
-        collision_owner.on_pre_collision_effect(OtherActor);
+        collision_owner.on_pre_collision_effect(*OtherActor);
 
         auto& payload_indexes{self.actor_payload_indexes[index]};
 
@@ -206,8 +206,8 @@ class UCollisionEffectSubsystemData
             }
         }
 
-        collision_owner.on_collision_effect(OtherActor);
-        collision_owner.on_post_collision_effect(OtherActor);
+        collision_owner.on_collision_effect(*OtherActor);
+        collision_owner.on_post_collision_effect(*OtherActor);
 
         if (collision_owner.should_destroy_after_collision()) {
             if (auto* destruction_manager{
