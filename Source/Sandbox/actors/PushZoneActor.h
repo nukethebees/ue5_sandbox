@@ -22,14 +22,10 @@ enum class EPushForceMode : uint8 {
     InstantImpulse UMETA(DisplayName = "Instant Burst")
 };
 
-namespace ml {
-inline static constexpr wchar_t PushZoneActorLogTag[]{TEXT("PushZone")};
-}
-
 UCLASS()
 class SANDBOX_API APushZoneActor
     : public AActor
-    , public ml::LogMsgMixin<ml::PushZoneActorLogTag> {
+    , public ml::LogMsgMixin<TEXT("PushZone")> {
     GENERATED_BODY()
   public:
     APushZoneActor();

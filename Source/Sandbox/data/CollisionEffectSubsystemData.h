@@ -15,9 +15,6 @@
 #include "Sandbox/utilities/tuple.h"
 
 namespace ml {
-inline static constexpr wchar_t UCollisionEffectSubsystemDataLogTag[]{
-    TEXT("UCollisionEffectSubsystemData")};
-
 template <typename T>
 concept IsCollisionPayload = requires(T t, FCollisionContext context) {
     { t.execute(context) } -> std::same_as<void>;
@@ -79,7 +76,7 @@ constexpr auto tuple_array_index_v =
 
 #define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
     do {                                                                                   \
-        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");          \
+        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");         \
         switch (payload_index.type_tag) {                                                  \
             stamper(0);                                                                    \
             default: {                                                                     \
@@ -93,7 +90,7 @@ constexpr auto tuple_array_index_v =
 
 template <typename... Types>
 class UCollisionEffectSubsystemData
-    : public ml::LogMsgMixin<ml::UCollisionEffectSubsystemDataLogTag> {
+    : public ml::LogMsgMixin<TEXT("UCollisionEffectSubsystemData")> {
   public:
     using PayloadsT = ml::ArrayTuple<Types...>;
     static constexpr std::size_t N_TYPES = sizeof...(Types);

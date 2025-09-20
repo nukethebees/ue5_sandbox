@@ -27,15 +27,11 @@ inline FString to_fstring(EForcefieldState state) {
     return UEnum::GetValueAsString(state);
 }
 
-namespace ml {
-inline static constexpr wchar_t ForcefieldActorLogTag[]{TEXT("Forcefield")};
-}
-
 UCLASS()
 class SANDBOX_API AForcefieldActor
     : public AActor
     , public IActivatable
-    , public ml::LogMsgMixin<ml::ForcefieldActorLogTag> {
+    , public ml::LogMsgMixin<TEXT("Forcefield")> {
     GENERATED_BODY()
   public:
     AForcefieldActor();
