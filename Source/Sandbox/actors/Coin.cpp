@@ -33,7 +33,7 @@ void ACoin::BeginPlay() {
 
     if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()};
         manager && mesh_component) {
-        manager->add_static(rotation_speed, *mesh_component);
+        manager->add(*mesh_component, rotation_speed);
     } else {
         UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
     }
