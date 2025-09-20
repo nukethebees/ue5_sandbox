@@ -1,8 +1,8 @@
 #include "Sandbox/subsystems/RotationManagerSubsystem.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 
-void URotationManagerSubsystem::add_dynamic(URotatingActorComponent& component,
-                                            USceneComponent& scene_component) {
+void URotationManagerSubsystem::add(USceneComponent& scene_component,
+                                    URotatingActorComponent& component) {
     UE_LOGFMT(LogTemp, Verbose, "Registering rotating actor.");
 
     dynamic_components.Add(&component);
@@ -24,7 +24,7 @@ void URotationManagerSubsystem::remove(URotatingActorComponent& rotating_compone
     // Check if we should disable ticking
     tick_enabled = dynamic_components.IsEmpty() && static_scene_components.IsEmpty();
 }
-void URotationManagerSubsystem::add_static(float speed, USceneComponent& scene_component) {
+void URotationManagerSubsystem::add(USceneComponent& scene_component, float speed) {
     static_scene_components.Add(&scene_component);
     static_speeds.Add(speed);
     tick_enabled = true;

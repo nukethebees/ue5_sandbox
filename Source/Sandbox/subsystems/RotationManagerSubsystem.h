@@ -18,8 +18,8 @@ UCLASS()
 class SANDBOX_API URotationManagerSubsystem : public UTickableWorldSubsystem {
     GENERATED_BODY()
   public:
-    void add_dynamic(URotatingActorComponent& component, USceneComponent& scene_component);
-    void add_static(float speed, USceneComponent& scene_component);
+    void add(USceneComponent& scene_component, URotatingActorComponent& component);
+    void add(USceneComponent& scene_component, float speed);
     void remove(URotatingActorComponent& component);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }

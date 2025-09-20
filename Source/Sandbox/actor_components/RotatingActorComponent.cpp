@@ -20,9 +20,9 @@ void URotatingActorComponent::BeginPlay() {
         if (auto* owner{GetOwner()}) {
             if (auto* root{owner->GetRootComponent()}) {
                 if (rotation_type == ERotationType::STATIC) {
-                    rotation_manager->add_static(speed, *root);
+                    rotation_manager->add(*root, speed);
                 } else {
-                    rotation_manager->add_dynamic(*this, *root);
+                    rotation_manager->add(*root, *this);
                 }
             }
         }

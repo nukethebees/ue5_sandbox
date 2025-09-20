@@ -21,11 +21,10 @@ void FCoinPayload::execute(FCollisionContext context) {
         if (auto* const coin_collector{
                 player->FindComponentByClass<UCoinCollectorActorComponent>()}) {
             coin_collector->add_coins(value);
+        } else {
+            log_warning(TEXT("Collided actor has no UCoinCollectorActorComponent."));
         }
-
-        auto* destruction_manager{context.world.GetSubsystem<UDestructionManagerSubsystem>()};
-        if (!destruction_manager) {
-            return;
-        }
+    } else {
+        log_warning(TEXT("Couldn't cast the collided actor to AMyCharacter."));
     }
 }
