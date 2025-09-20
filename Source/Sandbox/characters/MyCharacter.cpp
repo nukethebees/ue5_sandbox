@@ -11,17 +11,38 @@
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
-    first_person_camera_component = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-    first_person_camera_component->bUsePawnControlRotation = true;
-    first_person_camera_component->SetupAttachment(RootComponent);
+    // Initialize arrays
+    camera_components.SetNum(camera_count);
+    spring_arm_components.SetNum(spring_arm_count);
 
-    spring_arm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-    spring_arm->SetupAttachment(RootComponent);
+    // Create spring arms first
+    int32 spring_arm_index{0};
+    for (auto const& config : ml::AMyCharacter::camera_configs) {
+        if (config.needs_spring_arm) {
+            auto spring_arm_name{FString::Printf(TEXT("SpringArm%d"), spring_arm_index)};
+            spring_arm_components[spring_arm_index] = CreateDefaultSubobject<USpringArmComponent>(
+                ANSI_TO_TCHAR(TCHAR_TO_ANSI(*spring_arm_name)));
+            spring_arm_components[spring_arm_index]->SetupAttachment(RootComponent);
+            ++spring_arm_index;
+        }
+    }
 
-    third_person_camera_component =
-        CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
-    third_person_camera_component->bUsePawnControlRotation = true;
-    third_person_camera_component->SetupAttachment(spring_arm);
+    // Create cameras using configurations
+    spring_arm_index = 0;
+    for (auto const& config : ml::AMyCharacter::camera_configs) {
+        camera_components[config.camera_index] =
+            CreateDefaultSubobject<UCameraComponent>(ANSI_TO_TCHAR(config.component_name));
+        auto& cc{*camera_components[config.camera_index]};
+
+        cc.bUsePawnControlRotation = config.use_pawn_control_rotation;
+
+        if (config.attach_to_spring_arm && config.needs_spring_arm) {
+            cc.SetupAttachment(spring_arm_components[spring_arm_index]);
+            ++spring_arm_index;
+        } else {
+            cc.SetupAttachment(RootComponent);
+        }
+    }
 
     warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
 
@@ -154,22 +175,13 @@ void AMyCharacter::cycle_camera(FInputActionValue const&) {
     change_camera_to(camera_mode);
 }
 UCameraComponent const* AMyCharacter::get_active_camera() const {
-    switch (camera_mode) {
-        using enum ECharacterCameraMode;
-
-        case FirstPerson: {
-            return first_person_camera_component;
-        }
-        case ThirdPerson: {
-            return third_person_camera_component;
-        }
-        default: {
-            break;
-        }
+    auto const camera_index{static_cast<int32>(camera_mode)};
+    if (camera_components.IsValidIndex(camera_index)) {
+        return camera_components[camera_index];
     }
 
-    log_warning(TEXT("Unhandled camera mode. Returning first person."));
-    return first_person_camera_component;
+    log_warning(TEXT("Invalid camera mode. Returning first person."));
+    return camera_components[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
 }
 
 void AMyCharacter::aim_torch(FVector const& world_location) {
@@ -215,27 +227,26 @@ void AMyCharacter::on_speed_changed(float new_speed) {
     OnMaxSpeedChanged.Broadcast(new_speed);
 }
 void AMyCharacter::disable_all_cameras() {
-    first_person_camera_component->SetActive(false);
-    third_person_camera_component->SetActive(false);
+    for (auto* camera : camera_components) {
+        if (camera) {
+            camera->SetActive(false);
+        }
+    }
 }
 void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
     log_verbose(TEXT("Changing camera mode to %s."), *UEnum::GetValueAsString(camera_mode));
 
     disable_all_cameras();
-    switch (camera_mode) {
-        using enum ECharacterCameraMode;
 
-        case FirstPerson: {
-            first_person_camera_component->SetActive(true);
-            break;
-        }
-        case ThirdPerson: {
-            third_person_camera_component->SetActive(true);
-            break;
-        }
-        default: {
-            log_warning(TEXT("Unhandled camera mode. Switching to first person."));
-            first_person_camera_component->SetActive(true);
+    constexpr auto default_index{std::to_underlying(ECharacterCameraMode::FirstPerson)};
+    auto const camera_index{std::to_underlying(camera_mode)};
+
+    if (camera_components.IsValidIndex(camera_index) && camera_components[camera_index]) {
+        camera_components[camera_index]->SetActive(true);
+    } else {
+        log_warning(TEXT("Invalid camera mode. Switching to first person."));
+        if (camera_components.IsValidIndex(default_index)) {
+            camera_components[default_index]->SetActive(true);
         }
     }
 }
