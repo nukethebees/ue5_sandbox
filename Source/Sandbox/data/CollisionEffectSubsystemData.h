@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/data/PayloadIndex.h"
+#include "Sandbox/data/CollisionContext.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
@@ -18,8 +19,8 @@ inline static constexpr wchar_t UCollisionEffectSubsystemDataLogTag[]{
     TEXT("UCollisionEffectSubsystemData")};
 
 template <typename T>
-concept IsCollisionPayload = requires(T t, AActor& actor) {
-    { t.execute(actor) } -> std::same_as<void>;
+concept IsCollisionPayload = requires(T t, FCollisionContext context) {
+    { t.execute(context) } -> std::same_as<void>;
 };
 
 template <typename T>
@@ -67,12 +68,12 @@ constexpr auto tuple_array_index_v =
     COLLISION_STAMP64(n + 128); \
     COLLISION_STAMP64(n + 192)
 
-#define COLLISION_CASE(i)                                                               \
-    case i: {                                                                           \
-        if constexpr (i < N_TYPES) {                                                    \
-            std::get<i>(self.payloads)[payload_index.array_index].execute(*OtherActor); \
-        }                                                                               \
-        break;                                                                          \
+#define COLLISION_CASE(i)                                                                     \
+    case i: {                                                                                 \
+        if constexpr (i < N_TYPES) {                                                          \
+            std::get<i>(self.payloads)[payload_index.array_index].execute(collision_context); \
+        }                                                                                     \
+        break;                                                                                \
     }
 
 #define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
@@ -184,6 +185,8 @@ class UCollisionEffectSubsystemData
             self.log_warning(TEXT("No world."));
             return;
         }
+
+        auto collision_context{FCollisionContext(*world, *owner)};
 
         // Should have already been validated
         auto& collision_owner{*Cast<ICollisionOwner>(owner)};

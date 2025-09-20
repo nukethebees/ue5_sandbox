@@ -1,10 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/data/CollisionContext.h"
 #include "Sandbox/data/SpeedBoost.h"
-#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
 #include "CollisionPayloads.generated.h"
@@ -17,7 +18,7 @@ struct FSpeedBoostPayload {
     FSpeedBoostPayload(FSpeedBoost boost)
         : speed_boost(boost) {}
 
-    void execute(AActor& actor);
+    void execute(FCollisionContext context);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FSpeedBoost speed_boost{};
@@ -31,7 +32,7 @@ struct FJumpIncreasePayload {
     FJumpIncreasePayload(int32 inc)
         : jump_count_increase(inc) {}
 
-    void execute(AActor& actor);
+    void execute(FCollisionContext context);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 jump_count_increase{1};
@@ -45,7 +46,7 @@ struct FCoinPayload {
     FCoinPayload(int32 x)
         : value(x) {}
 
-    void execute(AActor& actor);
+    void execute(FCollisionContext context);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 value{1};
