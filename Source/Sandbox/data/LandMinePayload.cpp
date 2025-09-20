@@ -12,7 +12,7 @@
 #include "Sandbox/utilities/math.h"
 
 void FLandMinePayload::execute(FCollisionContext context) {
-    // Start timer to trigger explosion after delay
+    // Start timer to trigger explosion after delay to synchronize with destruction
     if (detonation_delay > 0.0f) {
         context.world.GetTimerManager().SetTimer(
             timer_handle, [this, context]() { explode(context); }, detonation_delay, false);
