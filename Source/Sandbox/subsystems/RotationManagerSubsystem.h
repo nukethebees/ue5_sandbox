@@ -18,20 +18,19 @@ UCLASS()
 class SANDBOX_API URotationManagerSubsystem : public UTickableWorldSubsystem {
     GENERATED_BODY()
   public:
-    void
-        add_dynamic(URotatingActorComponent* component, AActor* actor, ERotationType rotation_type);
-    void add_static(float speed, AActor* actor);
-    void remove(URotatingActorComponent* component);
+    void add_dynamic(URotatingActorComponent& component, USceneComponent& scene_component);
+    void add_static(float speed, USceneComponent& scene_component);
+    void remove(URotatingActorComponent& component);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;
   private:
     // Dynamic rotation arrays - components can change speed
+    TArray<TWeakObjectPtr<USceneComponent>> dynamic_scene_components;
     TArray<URotatingActorComponent*> dynamic_components;
-    TArray<TWeakObjectPtr<AActor>> dynamic_actors;
 
     // Static rotation arrays - fixed speed, components may be destroyed
-    TArray<TWeakObjectPtr<AActor>> static_actors;
+    TArray<TWeakObjectPtr<USceneComponent>> static_scene_components;
     TArray<float> static_speeds;
 
     bool tick_enabled{false};
