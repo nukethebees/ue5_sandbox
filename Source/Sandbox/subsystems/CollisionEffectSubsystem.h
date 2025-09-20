@@ -28,5 +28,9 @@ class SANDBOX_API UCollisionEffectSubsystem
             OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
     }
   private:
-    UCollisionEffectSubsystemData<FSpeedBoostPayload, FJumpIncreasePayload, FCoinPayload> data_{};
+    UCollisionEffectSubsystemData<FSpeedBoostPayload,
+                                  FJumpIncreasePayload,
+                                  FCoinPayload,
+                                  FLandMinePayload>
+        data_{};
 };
