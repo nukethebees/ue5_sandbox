@@ -12,5 +12,5 @@ void USpeedBoostItemComponent::BeginPlay() {
     Super::BeginPlay();
 
     try_add_subsystem_payload<UCollisionEffectSubsystem>(GetOwner(),
-                                                          FSpeedBoostPayload(speed_boost));
+                                                         FSpeedBoostPayload(speed_boost));
 }
