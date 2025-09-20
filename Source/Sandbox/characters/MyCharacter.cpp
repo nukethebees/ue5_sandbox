@@ -2,8 +2,11 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/actor_components/InteractorComponent.h"
 #include "Sandbox/actor_components/JetpackComponent.h"
+#include "Sandbox/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/interfaces/Interactable.h"
 #include "UObject/ScriptInterface.h"
@@ -12,42 +15,37 @@ AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
     // Initialize arrays
-    camera_components.SetNum(camera_count);
-    spring_arm_components.SetNum(spring_arm_count);
-
-    // Create spring arms first
-    int32 spring_arm_index{0};
-    for (auto const& config : ml::AMyCharacter::camera_configs) {
-        if (config.needs_spring_arm) {
-            auto spring_arm_name{FString::Printf(TEXT("SpringArm%d"), spring_arm_index)};
-            spring_arm_components[spring_arm_index] = CreateDefaultSubobject<USpringArmComponent>(
-                ANSI_TO_TCHAR(TCHAR_TO_ANSI(*spring_arm_name)));
-            spring_arm_components[spring_arm_index]->SetupAttachment(RootComponent);
-            ++spring_arm_index;
-        }
-    }
+    cameras.Init(nullptr, camera_count);
+    spring_arms.Init(nullptr, spring_arm_count);
 
     // Create cameras using configurations
-    spring_arm_index = 0;
+    int32 spring_arm_index{0};
     for (auto const& config : ml::AMyCharacter::camera_configs) {
-        camera_components[config.camera_index] =
-            CreateDefaultSubobject<UCameraComponent>(ANSI_TO_TCHAR(config.component_name));
-        auto& cc{*camera_components[config.camera_index]};
+        auto& cc{cameras[config.camera_index]};
+        cc = CreateDefaultSubobject<UCameraComponent>(ANSI_TO_TCHAR(config.component_name));
+        cc->bUsePawnControlRotation = config.use_pawn_control_rotation;
 
-        cc.bUsePawnControlRotation = config.use_pawn_control_rotation;
+        if (config.needs_spring_arm) {
+            auto& arm{spring_arms[spring_arm_index]};
+            arm = CreateDefaultSubobject<USpringArmComponent>(
+                *FString::Printf(TEXT("SpringArm_%s"), *cc->GetName()));
+            arm->SetupAttachment(RootComponent);
+            cc->SetupAttachment(arm);
 
-        if (config.attach_to_spring_arm && config.needs_spring_arm) {
-            cc.SetupAttachment(spring_arm_components[spring_arm_index]);
             ++spring_arm_index;
         } else {
-            cc.SetupAttachment(RootComponent);
+            cc->SetupAttachment(RootComponent);
         }
     }
 
-    warp_component = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
-
-    torch_component = CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch"));
-    torch_component->SetupAttachment(RootComponent);
+    coins = CreateDefaultSubobject<UCoinCollectorActorComponent>(TEXT("Coins"));
+    interactor = CreateDefaultSubobject<UInteractorComponent>(TEXT("Interactor"));
+    health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
+    speed_boost = CreateDefaultSubobject<USpeedBoostComponent>(TEXT("SpeedBoost"));
+    jetpack = CreateDefaultSubobject<UJetpackComponent>(TEXT("Jetpack"));
+    torch = CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch"));
+    torch->SetupAttachment(RootComponent);
+    warp = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
 }
 
 void AMyCharacter::BeginPlay() {
@@ -57,12 +55,10 @@ void AMyCharacter::BeginPlay() {
 
     is_forced_movement = false;
 
-    jetpack_component = FindComponentByClass<UJetpackComponent>();
-
-    if (torch_component) {
-        torch_component->bCastVolumetricShadow = true;
-        torch_component->VolumetricScatteringIntensity = 1.0f;
-        torch_component->AttenuationRadius = 2000.0f;
+    if (torch) {
+        torch->bCastVolumetricShadow = true;
+        torch->VolumetricScatteringIntensity = 1.0f;
+        torch->AttenuationRadius = 2000.0f;
         set_torch(false);
     }
 
@@ -161,13 +157,13 @@ void AMyCharacter::look(FInputActionValue const& value) {
     }
 }
 void AMyCharacter::start_jetpack(FInputActionValue const&) {
-    if (jetpack_component != nullptr) {
-        jetpack_component->start_jetpack();
+    if (jetpack != nullptr) {
+        jetpack->start_jetpack();
     }
 }
 void AMyCharacter::stop_jetpack(FInputActionValue const&) {
-    if (jetpack_component != nullptr) {
-        jetpack_component->stop_jetpack();
+    if (jetpack != nullptr) {
+        jetpack->stop_jetpack();
     }
 }
 void AMyCharacter::cycle_camera(FInputActionValue const&) {
@@ -176,45 +172,45 @@ void AMyCharacter::cycle_camera(FInputActionValue const&) {
 }
 UCameraComponent const* AMyCharacter::get_active_camera() const {
     auto const camera_index{static_cast<int32>(camera_mode)};
-    if (camera_components.IsValidIndex(camera_index)) {
-        return camera_components[camera_index];
+    if (cameras.IsValidIndex(camera_index)) {
+        return cameras[camera_index];
     }
 
     log_warning(TEXT("Invalid camera mode. Returning first person."));
-    return camera_components[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
+    return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
 }
 
 void AMyCharacter::aim_torch(FVector const& world_location) {
-    if (!torch_component) {
+    if (!torch) {
         print_msg("No torch");
         return;
     }
 
-    auto const location{torch_component->GetComponentLocation()};
+    auto const location{torch->GetComponentLocation()};
     auto const direction{(world_location - location).GetSafeNormal()};
     auto const look_at_rotation{direction.Rotation()};
-    torch_component->SetWorldRotation(look_at_rotation);
+    torch->SetWorldRotation(look_at_rotation);
 }
 void AMyCharacter::reset_torch_position() {
-    if (!torch_component) {
+    if (!torch) {
         print_msg("No torch");
         return;
     }
 
     auto const fwd_rot{GetActorForwardVector().Rotation()};
-    torch_component->SetWorldRotation(fwd_rot);
+    torch->SetWorldRotation(fwd_rot);
 }
 void AMyCharacter::toggle_torch() {
     set_torch(!torch_on);
 }
 void AMyCharacter::set_torch(bool on) {
-    if (!torch_component) {
+    if (!torch) {
         print_msg("No torch");
         return;
     }
 
     torch_on = on;
-    torch_component->SetVisibility(torch_on);
+    torch->SetVisibility(torch_on);
 }
 
 void AMyCharacter::handle_death() {
@@ -227,7 +223,7 @@ void AMyCharacter::on_speed_changed(float new_speed) {
     OnMaxSpeedChanged.Broadcast(new_speed);
 }
 void AMyCharacter::disable_all_cameras() {
-    for (auto* camera : camera_components) {
+    for (auto* camera : cameras) {
         if (camera) {
             camera->SetActive(false);
         }
@@ -241,12 +237,12 @@ void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
     constexpr auto default_index{std::to_underlying(ECharacterCameraMode::FirstPerson)};
     auto const camera_index{std::to_underlying(camera_mode)};
 
-    if (camera_components.IsValidIndex(camera_index) && camera_components[camera_index]) {
-        camera_components[camera_index]->SetActive(true);
+    if (cameras.IsValidIndex(camera_index) && cameras[camera_index]) {
+        cameras[camera_index]->SetActive(true);
     } else {
         log_warning(TEXT("Invalid camera mode. Switching to first person."));
-        if (camera_components.IsValidIndex(default_index)) {
-            camera_components[default_index]->SetActive(true);
+        if (cameras.IsValidIndex(default_index)) {
+            cameras[default_index]->SetActive(true);
         }
     }
 }
