@@ -167,8 +167,7 @@ void AMyCharacter::stop_jetpack(FInputActionValue const&) {
     }
 }
 void AMyCharacter::cycle_camera(FInputActionValue const&) {
-    camera_mode = get_next(camera_mode);
-    change_camera_to(camera_mode);
+    change_camera_to(get_next(camera_mode));
 }
 UCameraComponent const* AMyCharacter::get_active_camera() const {
     auto const camera_index{static_cast<int32>(camera_mode)};
@@ -230,6 +229,8 @@ void AMyCharacter::disable_all_cameras() {
     }
 }
 void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
+    camera_mode = mode;
+
     log_verbose(TEXT("Changing camera mode to %s."), *UEnum::GetValueAsString(camera_mode));
 
     disable_all_cameras();
