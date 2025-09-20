@@ -11,6 +11,14 @@ template <StaticTCharString tag>
 struct LogMsgMixin {
     static constexpr auto* get_tag() { return tag.data(); }
 
+    template <StaticTCharString inner_tag>
+    static consteval auto NestedLogger() {
+        constexpr StaticTCharString<3> sep{": "};
+
+        constexpr auto combined{tag.concatenate(sep).concatenate(inner_tag)};
+        return LogMsgMixin<combined>{};
+    }
+
     // Strip references because the format string requires value types
     template <typename... Args>
     using DecayedFormatString =
