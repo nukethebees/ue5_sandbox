@@ -48,13 +48,40 @@ struct StringLiteralWrapper {
         return result;
     }
 
-    template <auto First, auto Second, auto... Rest>
-    static constexpr auto concatenate_all() {
-        if constexpr (sizeof...(Rest)) {
-            return concatenate_all<First.concatenate(Second), Rest...>();
-        } else {
-            return First.concatenate(Second);
+    template <auto First, auto... Rest>
+    static consteval auto concatenate_all() {
+        constexpr auto n_rest{sizeof...(Rest)};
+
+        // Subtract to remove size from extra null terminators
+        constexpr std::size_t total_size{(First.size() + ... + Rest.size()) - n_rest};
+
+        using OutChar = decltype(First)::CharType;
+        StringLiteralWrapper<OutChar, total_size> result{};
+
+        std::size_t offset{0};
+
+        // Copy first string (including null terminator)
+        for (std::size_t i{0}; i < First.size(); ++i) {
+            result.data_[offset + i] = First.data()[i];
         }
+        offset += First.size() - 1; // Skip the null terminator for next strings
+
+        // Copy remaining strings
+        // Create and immediately call n_rest lambdas to add the characters from each Rest...
+        (([&]() {
+             using RestChar = decltype(Rest)::CharType;
+             for (std::size_t i{0}; i < Rest.size(); ++i) {
+                 if constexpr (std::is_same_v<RestChar, OutChar>) {
+                     result.data_[offset + i] = Rest.data()[i];
+                 } else {
+                     result.data_[offset + i] = static_cast<OutChar>(Rest.data()[i]);
+                 }
+             }
+             offset += Rest.size() - 1; // Skip null terminator except for the last one
+         }()),
+         ...);
+
+        return result;
     }
 
     constexpr bool operator==(StringLiteralWrapper const&) const = default;
