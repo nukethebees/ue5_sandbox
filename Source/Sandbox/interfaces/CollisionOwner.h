@@ -18,6 +18,5 @@ class ICollisionOwner {
     virtual bool should_destroy_after_collision() const = 0;
 
     virtual void on_pre_collision_effect(AActor& other_actor) {}
-    virtual void on_collision_effect(AActor& other_actor) {}
     virtual void on_post_collision_effect(AActor& other_actor) {}
 };
