@@ -111,7 +111,7 @@ UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
     , public print_msg_mixin
-    , public ml::LogMsgMixin<TEXT("MyCharacter")>
+    , public ml::LogMsgMixin<"MyCharacter">
     , public IDeathHandler
     , public IMaxSpeedChangeListener {
     GENERATED_BODY()

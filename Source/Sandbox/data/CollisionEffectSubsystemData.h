@@ -89,8 +89,7 @@ constexpr auto tuple_array_index_v =
 #define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(COLLISION_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
-class UCollisionEffectSubsystemData
-    : public ml::LogMsgMixin<TEXT("UCollisionEffectSubsystemData")> {
+class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSubsystemData"> {
   public:
     using PayloadsT = ml::ArrayTuple<Types...>;
     static constexpr std::size_t N_TYPES = sizeof...(Types);

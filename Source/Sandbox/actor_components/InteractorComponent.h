@@ -10,7 +10,7 @@
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractorComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<TEXT("InteractorComponent")> {
+    , public ml::LogMsgMixin<"InteractorComponent"> {
     GENERATED_BODY()
   public:
     UInteractorComponent();
