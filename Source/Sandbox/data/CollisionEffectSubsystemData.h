@@ -206,7 +206,6 @@ class UCollisionEffectSubsystemData
             }
         }
 
-        collision_owner.on_collision_effect(*OtherActor);
         collision_owner.on_post_collision_effect(*OtherActor);
 
         if (collision_owner.should_destroy_after_collision()) {
