@@ -14,7 +14,7 @@
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = true;
 
-    // Initialize arrays
+    // Initialise arrays
     cameras.Init(nullptr, camera_count);
     spring_arms.Init(nullptr, spring_arm_count);
 
