@@ -40,6 +40,27 @@ enum class ECharacterCameraMode : uint8 {
     MAX UMETA(Hidden)
 };
 
+struct FCameraConfig {
+    constexpr FCameraConfig(ECharacterCameraMode camera_mode,
+                            char const* component_name,
+                            bool needs_spring_arm,
+                            bool use_pawn_control_rotation,
+                            bool attach_to_spring_arm)
+        : camera_mode(camera_mode)
+        , camera_index(std::to_underlying(camera_mode))
+        , component_name(component_name)
+        , needs_spring_arm(needs_spring_arm)
+        , use_pawn_control_rotation(use_pawn_control_rotation)
+        , attach_to_spring_arm(attach_to_spring_arm) {}
+
+    ECharacterCameraMode camera_mode;
+    std::underlying_type_t<ECharacterCameraMode> camera_index;
+    char const* component_name;
+    bool needs_spring_arm;
+    bool use_pawn_control_rotation;
+    bool attach_to_spring_arm;
+};
+
 namespace ml {
 inline static constexpr wchar_t MyCharacterLogTag[]{TEXT("MyCharacter")};
 }
@@ -64,6 +85,23 @@ struct FCharacterInputActions {
     TObjectPtr<UInputAction> cycle_camera_action{};
 };
 
+namespace ml::AMyCharacter {
+inline static constexpr int32 camera_count{static_cast<int32>(ECharacterCameraMode::MAX)};
+inline static constexpr FCameraConfig camera_configs[camera_count] = {
+    {ECharacterCameraMode::FirstPerson, "Camera", false, true, false},
+    {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true, true}};
+
+consteval int32 count_required_spring_arms() {
+    int32 count{0};
+    for (auto const& config : camera_configs) {
+        if (config.needs_spring_arm) {
+            ++count;
+        }
+    }
+    return count;
+}
+}
+
 UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
@@ -74,6 +112,8 @@ class SANDBOX_API AMyCharacter
     GENERATED_BODY()
   public:
     static constexpr int32 default_max_jump_count{2};
+    static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
+    static constexpr int32 spring_arm_count{ml::AMyCharacter::count_required_spring_arms()};
 
     AMyCharacter();
 
@@ -145,11 +185,11 @@ class SANDBOX_API AMyCharacter
 
     // Camera
     UPROPERTY(VisibleAnywhere, Category = "Camera")
-    UCameraComponent* first_person_camera_component{nullptr};
+    // TArray<UCameraComponent*, TFixedAllocator<camera_count>> camera_components{};
+    TArray<UCameraComponent*> camera_components{};
     UPROPERTY(VisibleAnywhere, Category = "Camera")
-    UCameraComponent* third_person_camera_component{nullptr};
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    USpringArmComponent* spring_arm{nullptr};
+    // TArray<USpringArmComponent*, TFixedAllocator<spring_arm_count>> spring_arm_components{};
+    TArray<USpringArmComponent*> spring_arm_components{};
     UPROPERTY(VisibleAnywhere, Category = "Camera")
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
 
