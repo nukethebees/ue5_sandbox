@@ -1,3 +1,104 @@
 #include "Sandbox/data/LandMinePayload.h"
 
-void FLandMinePayload::execute(FCollisionContext context) {}
+#include "Components/PrimitiveComponent.h"
+#include "Engine/OverlapResult.h"
+#include "Engine/World.h"
+#include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/data/HealthChange.h"
+#include "Sandbox/subsystems/DamageManagerSubsystem.h"
+#include "Sandbox/utilities/math.h"
+
+void FLandMinePayload::execute(FCollisionContext context) {
+    static constexpr auto logger{NestedLogger<"execute">()};
+
+    auto& world{context.world};
+    auto& collided_actor{context.collided_actor};
+
+    // Find all overlapping actors within explosion radius
+    TArray<FOverlapResult> overlaps;
+    FCollisionQueryParams query_params;
+    query_params.bTraceComplex = false;
+    query_params.bReturnPhysicalMaterial = false;
+
+    // Use collision shape to find all actors in explosion radius
+    FCollisionShape sphere{FCollisionShape::MakeSphere(explosion_radius)};
+
+    bool found_overlaps{world.OverlapMultiByChannel(
+        overlaps, mine_location, FQuat::Identity, ECC_Pawn, sphere, query_params)};
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+    {
+        constexpr bool persistent_lines{true};
+        constexpr int32 segments{8};
+        constexpr auto lifetime{5.0f};
+        constexpr uint8 depth_priority{0};
+        constexpr auto thickness{1.0f};
+        DrawDebugSphere(&world,
+                        mine_location,
+                        explosion_radius,
+                        segments,
+                        FColor::Yellow,
+                        persistent_lines,
+                        lifetime,
+                        depth_priority,
+                        thickness);
+    }
+#endif
+
+    if (!found_overlaps) {
+        logger.log_warning(TEXT("No overlaps found."));
+        return;
+    }
+
+    auto* damage_manager{world.GetSubsystem<UDamageManagerSubsystem>()};
+    if (!damage_manager) {
+        logger.log_warning(TEXT("No UDamageManagerSubsystem found."));
+        return;
+    }
+
+    // Process each overlapping actor
+    for (auto const& overlap : overlaps) {
+        auto* target_actor{overlap.GetActor()};
+        if (!target_actor) {
+            logger.log_warning(TEXT("target_actor is null."));
+            continue;
+        }
+
+        logger.log_verbose(TEXT("Actor is %s"), *target_actor->GetName());
+
+        // Calculate distance from mine (needed for scaling)
+        auto const distance{
+            static_cast<float>(FVector::Dist(mine_location, target_actor->GetActorLocation()))};
+
+        // Apply damage if actor has health component
+        if (auto* health_component{target_actor->FindComponentByClass<UHealthComponent>()}) {
+            float const scaled_damage{
+                ml::calculate_explosion_damage(distance, explosion_radius, damage)};
+            if (scaled_damage > 0.0f) {
+                FHealthChange damage_change{scaled_damage, EHealthChangeType::Damage};
+                damage_manager->queue_damage(health_component, damage_change);
+            }
+        }
+
+        // Apply explosion force
+        if (auto* root_component{target_actor->GetRootComponent()}) {
+            if (auto* primitive_component{Cast<UPrimitiveComponent>(root_component)}) {
+                // Check if component can receive impulse
+                if (primitive_component->IsSimulatingPhysics() &&
+                    primitive_component->Mobility == EComponentMobility::Movable) {
+
+                    // Calculate direction from mine to target
+                    FVector direction{target_actor->GetActorLocation() - mine_location};
+                    direction.Z = FMath::Abs(direction.Z); // Force upward component
+                    direction.Normalize();
+
+                    // Scale force by distance (closer = more force)
+                    float const force_scale{1.0f - (distance / explosion_radius)};
+                    FVector const impulse{direction * explosion_force * force_scale};
+
+                    primitive_component->AddImpulse(impulse, NAME_None, true);
+                }
+            }
+        }
+    }
+}
