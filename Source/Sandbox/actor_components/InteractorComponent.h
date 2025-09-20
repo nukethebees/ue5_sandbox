@@ -7,14 +7,10 @@
 
 #include "InteractorComponent.generated.h"
 
-namespace ml {
-inline static constexpr wchar_t InteractorComponentLogTag[]{TEXT("InteractorComponent")};
-}
-
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractorComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<ml::InteractorComponentLogTag> {
+    , public ml::LogMsgMixin<TEXT("InteractorComponent")> {
     GENERATED_BODY()
   public:
     UInteractorComponent();

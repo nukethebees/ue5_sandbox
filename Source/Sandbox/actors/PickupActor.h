@@ -8,15 +8,11 @@
 
 #include "PickupActor.generated.h"
 
-namespace ml {
-inline static constexpr wchar_t APickupActorLogTag[]{TEXT("APickupActor")};
-}
-
 UCLASS()
 class SANDBOX_API APickupActor
     : public AActor
     , public ICollisionOwner
-    , public ml::LogMsgMixin<ml::APickupActorLogTag> {
+    , public ml::LogMsgMixin<TEXT("APickupActor")> {
     GENERATED_BODY()
   public:
     APickupActor();

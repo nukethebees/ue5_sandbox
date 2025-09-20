@@ -67,8 +67,6 @@ struct FCameraConfig {
 };
 
 namespace ml {
-inline static constexpr wchar_t MyCharacterLogTag[]{TEXT("MyCharacter")};
-
 namespace AMyCharacter {
 inline static constexpr int32 camera_count{static_cast<int32>(ECharacterCameraMode::MAX)};
 inline static constexpr FCameraConfig camera_configs[camera_count] = {
@@ -113,7 +111,7 @@ UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
     , public print_msg_mixin
-    , public ml::LogMsgMixin<ml::MyCharacterLogTag>
+    , public ml::LogMsgMixin<TEXT("MyCharacter")>
     , public IDeathHandler
     , public IMaxSpeedChangeListener {
     GENERATED_BODY()

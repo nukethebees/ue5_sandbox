@@ -4,11 +4,12 @@
 #include <type_traits>
 
 #include "CoreMinimal.h"
+#include "Sandbox/utilities/string_literal_wrapper.h"
 
 namespace ml {
-template <wchar_t const* tag>
+template <StaticTCharString tag>
 struct LogMsgMixin {
-    static constexpr wchar_t const* get_tag() { return tag; }
+    static constexpr auto* get_tag() { return tag.data.data(); }
 
     // Strip references because the format string requires value types
     template <typename... Args>
@@ -21,7 +22,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Fatal,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
     }
 
@@ -30,7 +31,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Error,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
     }
 
@@ -39,7 +40,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Warning,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
     }
 
@@ -48,7 +49,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Display,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
     }
 
@@ -58,7 +59,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Log,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
 #endif
     }
@@ -69,7 +70,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                Verbose,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
 #endif
     }
@@ -80,7 +81,7 @@ struct LogMsgMixin {
         UE_LOG(LogTemp,
                VeryVerbose,
                TEXT("%s: %s"),
-               tag,
+               get_tag(),
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
 #endif
     }
