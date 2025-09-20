@@ -71,6 +71,7 @@ constexpr auto tuple_array_index_v =
 #define COLLISION_CASE(i)                                                                     \
     case i: {                                                                                 \
         if constexpr (i < N_TYPES) {                                                          \
+            self.log_verbose(TEXT("Handling case %d."), i);                                   \
             std::get<i>(self.payloads)[payload_index.array_index].execute(collision_context); \
         }                                                                                     \
         break;                                                                                \
@@ -163,30 +164,30 @@ class UCollisionEffectSubsystemData
         self.log_verbose(TEXT("handle_collision_event"));
 
         if (!OtherActor || !OverlappedComponent) {
-            self.log_warning(TEXT("No OtherActor or OverlappedComponent."));
+            self.log_warning(TEXT("No OtherActor or OverlappedComponent in collision event."));
             return;
         }
 
         auto const* index_ptr{self.collision_ids.Find(OverlappedComponent)};
         if (!index_ptr) {
-            self.log_warning(TEXT("No collision entry."));
+            self.log_warning(TEXT("No collision entry in collision event."));
             return;
         }
 
         int32 const index{*index_ptr};
         auto* owner{self.actors[index].Get()};
         if (!owner) {
-            self.log_warning(TEXT("No owner."));
+            self.log_warning(TEXT("No owner in collision event."));
             return;
         }
 
         auto* world{owner->GetWorld()};
         if (!world) {
-            self.log_warning(TEXT("No world."));
+            self.log_warning(TEXT("No world in collision event."));
             return;
         }
 
-        auto collision_context{FCollisionContext(*world, *owner)};
+        auto collision_context{FCollisionContext(*world, *OtherActor)};
 
         // Should have already been validated
         auto& collision_owner{*Cast<ICollisionOwner>(owner)};
