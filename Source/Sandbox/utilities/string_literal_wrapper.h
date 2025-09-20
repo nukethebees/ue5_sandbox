@@ -48,6 +48,15 @@ struct StringLiteralWrapper {
         return result;
     }
 
+    template <auto First, auto Second, auto... Rest>
+    static constexpr auto concatenate_all() {
+        if constexpr (sizeof...(Rest)) {
+            return concatenate_all<First.concatenate(Second), Rest...>();
+        } else {
+            return First.concatenate(Second);
+        }
+    }
+
     constexpr bool operator==(StringLiteralWrapper const&) const = default;
 
     std::array<CharType, N> data_;

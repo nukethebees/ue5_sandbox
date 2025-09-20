@@ -13,10 +13,9 @@ struct LogMsgMixin {
 
     template <StaticTCharString inner_tag>
     static consteval auto NestedLogger() {
-        constexpr StaticTCharString<3> sep{": "};
-
-        constexpr auto combined{tag.concatenate(sep).concatenate(inner_tag)};
-        return LogMsgMixin<combined>{};
+        using Str = StaticTCharString<3>;
+        constexpr Str sep{": "};
+        return LogMsgMixin<tag.concatenate_all<tag, sep, inner_tag>()>{};
     }
 
     // Strip references because the format string requires value types
