@@ -28,7 +28,6 @@ struct FLandMinePayload {
     float explosion_radius{300.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float explosion_force{5000.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     FVector mine_location{FVector::ZeroVector};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float detonation_delay{2.0f};
