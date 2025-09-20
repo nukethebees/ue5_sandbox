@@ -77,13 +77,7 @@ class SANDBOX_API ALandMine
 #endif
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float explosion_radius{100.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float max_damage{25.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float explosion_force{1000.0f};
+    FLandMinePayload payload_config{};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     FLandMineColours colours;
@@ -93,9 +87,6 @@ class SANDBOX_API ALandMine
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     ELandMineState current_state{ELandMineState::Active};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float detonation_delay{2.0f};
   public:
     void change_state(ELandMineState new_state);
 

@@ -23,7 +23,7 @@ void FLandMinePayload::execute(FCollisionContext context) {
 }
 
 void FLandMinePayload::explode(FCollisionContext context) {
-    static constexpr auto logger{NestedLogger<"execute">()};
+    static constexpr auto logger{log.NestedLogger<"execute">()};
 
     auto& world{context.world};
     auto& collided_actor{context.collided_actor};

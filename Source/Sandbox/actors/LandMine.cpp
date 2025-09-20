@@ -47,7 +47,7 @@ ALandMine::ALandMine() {
     explosion_radius_debug->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     explosion_radius_debug->SetCanEverAffectNavigation(false);
     explosion_radius_debug->SetHiddenInGame(true);
-    explosion_radius_debug->SetSphereRadius(explosion_radius);
+    explosion_radius_debug->SetSphereRadius(payload_config.explosion_radius);
     explosion_radius_debug->ShapeColor = FColor::Orange;
     explosion_radius_debug->bDrawOnlyIfSelected = true;
 #endif
@@ -66,8 +66,11 @@ void ALandMine::BeginPlay() {
                                                                       &ALandMine::on_warning_exit);
     }
 
-    try_emplace_subsystem_payload<UCollisionEffectSubsystem, FLandMinePayload>(
-        *this, max_damage, explosion_radius, explosion_force, GetActorLocation(), detonation_delay);
+    // Set runtime location in payload config
+    payload_config.mine_location = GetActorLocation();
+
+    try_emplace_subsystem_payload<UCollisionEffectSubsystem, FLandMinePayload>(*this,
+                                                                               payload_config);
 }
 
 void ALandMine::on_pre_collision_effect(AActor& other_actor) {
@@ -169,7 +172,7 @@ void ALandMine::on_warning_exit(UPrimitiveComponent* OverlappedComponent,
 void ALandMine::update_debug_sphere() {
 #if WITH_EDITORONLY_DATA
     if (explosion_radius_debug) {
-        explosion_radius_debug->SetSphereRadius(explosion_radius /
+        explosion_radius_debug->SetSphereRadius(payload_config.explosion_radius /
                                                 explosion_radius_debug->GetShapeScale());
     }
 #endif
