@@ -8,9 +8,21 @@
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/HealthChange.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/math.h"
 
 void FLandMinePayload::execute(FCollisionContext context) {
+    // Start timer to trigger explosion after delay
+    if (detonation_delay > 0.0f) {
+        context.world.GetTimerManager().SetTimer(
+            timer_handle, [this, context]() { explode(context); }, detonation_delay, false);
+    } else {
+        // No delay, explode immediately
+        explode(context);
+    }
+}
+
+void FLandMinePayload::explode(FCollisionContext context) {
     static constexpr auto logger{NestedLogger<"execute">()};
 
     auto& world{context.world};

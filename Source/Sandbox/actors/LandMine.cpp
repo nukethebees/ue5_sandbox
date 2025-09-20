@@ -67,7 +67,7 @@ void ALandMine::BeginPlay() {
     }
 
     try_emplace_subsystem_payload<UCollisionEffectSubsystem, FLandMinePayload>(
-        *this, max_damage, explosion_radius, explosion_force, GetActorLocation());
+        *this, max_damage, explosion_radius, explosion_force, GetActorLocation(), detonation_delay);
 }
 
 void ALandMine::on_pre_collision_effect(AActor& other_actor) {
