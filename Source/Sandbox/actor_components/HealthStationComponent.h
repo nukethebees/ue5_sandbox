@@ -62,6 +62,7 @@ class SANDBOX_API UHealthStationComponent
   private:
     void reset_current_capacity();
     void start_cooldown();
+    bool is_empty() const { return FMath::IsNearlyZero(current_capacity); }
 
     float current_capacity{0.0f};
     float cooldown_remaining{0.0f};
