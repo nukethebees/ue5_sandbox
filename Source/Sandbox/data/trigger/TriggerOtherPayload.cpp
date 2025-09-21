@@ -22,9 +22,10 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
         .source_triggerable = {} // Will be set to this actor's ID if available
     };
 
-    // Try to get this actor's ID for proper chain tracking
-    if (auto this_id{subsystem->get_triggerable_id(&context.triggered_actor)}) {
-        new_source.source_triggerable = *this_id;
+    // Try to get this actor's first ID for proper chain tracking
+    auto triggerable_ids{subsystem->get_triggerable_ids(&context.triggered_actor)};
+    if (!triggerable_ids.empty()) {
+        new_source.source_triggerable = triggerable_ids[0];
     }
 
     for (uint8 i{0}; i < n_targets; ++i) {

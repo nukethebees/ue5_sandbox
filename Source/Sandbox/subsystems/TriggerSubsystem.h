@@ -31,7 +31,7 @@ class SANDBOX_API UTriggerSubsystem
 
     void deregister_triggerable(AActor* actor) { data_.deregister_triggerable(actor); }
 
-    auto get_triggerable_id(AActor* actor) { return data_.get_triggerable_id(actor); }
+    auto get_triggerable_ids(AActor* actor) { return data_.get_triggerable_ids(actor); }
 
     template <typename... Args>
     auto get_or_create_actor_id(Args&&... args) {
