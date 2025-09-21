@@ -131,8 +131,13 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         TriggerableId id{static_cast<int32>(payload_array_index), payload_element_index};
 
         // Update actor range
-        ActorId actor_id{self.get_or_create_actor_id(actor)};
-        if (auto* range{self.actor_id_to_range.Find(actor_id)}) {
+        auto const actor_id{self.get_or_create_actor_id(actor)};
+        if (!actor_id) {
+            self.log_error(TEXT("Could not get the actor ID."));
+            return TriggerableId::invalid();
+        }
+
+        if (auto* range{self.actor_id_to_range.Find(*actor_id)}) {
             if (range->is_empty()) {
                 // First triggerable for this actor - set offset
                 range->offset = payload_element_index;
@@ -370,9 +375,12 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     // Actor ID management
     template <typename Self>
-    ActorId get_or_create_actor_id(this Self&& self, AActor* actor) {
+    std::optional<ActorId> get_or_create_actor_id(this Self&& self, AActor* actor) {
+        static constexpr auto LOG{self.NestedLogger<"get_or_create_actor_id">()};
+
         if (!actor) {
-            return 0; // Invalid actor ID
+            LOG.log_warning(TEXT("Actor is invalid."));
+            return std::nullopt;
         }
 
         if (auto* existing_id{self.actor_to_actor_id.Find(actor)}) {
@@ -383,7 +391,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.actor_to_actor_id.Add(actor, new_id);
         self.actor_id_to_range.Add(new_id, FTriggerableRange{});
 
-        self.log_verbose(
+        LOG.log_verbose(
             TEXT("Created actor ID %llu for actor %s"), new_id, *actor->GetActorLabel());
         return new_id;
     }
@@ -397,6 +405,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         if (auto* id{self.actor_to_actor_id.Find(actor)}) {
             return *id;
         }
+
         return std::nullopt;
     }
   private:

@@ -33,8 +33,10 @@ class SANDBOX_API UTriggerSubsystem
 
     auto get_triggerable_id(AActor* actor) { return data_.get_triggerable_id(actor); }
 
-    // Actor ID system
-    ActorId get_or_create_actor_id(AActor* actor) { return data_.get_or_create_actor_id(actor); }
+    template <typename... Args>
+    auto get_or_create_actor_id(Args&&... args) {
+        return data_.get_or_create_actor_id(std::forward<Args>(args)...);
+    }
     auto get_actor_id(AActor* actor) { return data_.get_actor_id(actor); }
     auto trigger_actor(ActorId actor_id, FTriggeringSource source) {
         return data_.trigger_actor(actor_id, source);
