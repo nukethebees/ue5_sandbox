@@ -2,7 +2,8 @@
 
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Sandbox/interfaces/Interactable.h"
+#include "Sandbox/data/HealthStationPayload.h"
+#include "Sandbox/data/TriggerableId.h"
 
 #include "HealthStationComponent.generated.h"
 
@@ -28,43 +29,27 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
                                             state_data);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UHealthStationComponent
-    : public UActorComponent
-    , public IInteractable {
+class SANDBOX_API UHealthStationComponent : public UActorComponent {
     GENERATED_BODY()
   public:
     UHealthStationComponent();
-
-    virtual void interact(AActor* interactor = nullptr) override;
-    virtual bool can_interact(AActor const* interactor) const override;
 
     void broadcast_state() const;
 
     UPROPERTY(BlueprintAssignable, Category = "Health Station")
     FOnStationStateChanged on_station_state_changed;
-  protected:
-    virtual void BeginPlay() override;
-    virtual void TickComponent(float DeltaTime,
-                               ELevelTick TickType,
-                               FActorComponentTickFunction* ThisTickFunction) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
+    FHealthStationPayload health_station_payload;
 
     UFUNCTION(BlueprintCallable, Category = "Health Station")
-    float get_current_capacity() const { return current_capacity; }
+    float get_current_capacity() const { return health_station_payload.current_capacity; }
 
-    UPROPERTY(EditAnywhere, Category = "Health Station")
-    float max_capacity{100.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
-    float heal_amount_per_use{25.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
-    float cooldown_duration{2.0f}; // seconds
+    UFUNCTION(BlueprintCallable, Category = "Health Station")
+    bool is_ready() const { return health_station_payload.is_ready(); }
+  protected:
+    virtual void BeginPlay() override;
+    virtual void EndPlay(EEndPlayReason::Type reason) override;
   private:
-    void reset_current_capacity();
-    void start_cooldown();
-    bool is_empty() const { return FMath::IsNearlyZero(current_capacity); }
-
-    float current_capacity{0.0f};
-    float cooldown_remaining{0.0f};
-    FTimerHandle cooldown_timer_handle;
+    TriggerableId my_trigger_id{};
 };

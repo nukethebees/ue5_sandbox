@@ -2,13 +2,13 @@
 
 #include "Sandbox/subsystems/TriggerSubsystem.h"
 
-void FTriggerOtherPayload::trigger(FTriggerContext context) {
+FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     log_verbose(TEXT("Triggering %d targets"), n_targets);
 
     auto* subsystem{context.world.GetSubsystem<UTriggerSubsystem>()};
     if (!subsystem) {
         log_warning(TEXT("No UTriggerSubsystem found"));
-        return;
+        return {.enable_ticking = false};
     }
 
     // Create new source for targets, preserving original instigator
@@ -36,4 +36,6 @@ void FTriggerOtherPayload::trigger(FTriggerContext context) {
             }
         }
     }
+
+    return {.enable_ticking = false}; // No ticking needed for trigger other
 }

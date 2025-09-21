@@ -9,6 +9,8 @@
 #include "Sandbox/data/TriggerableId.h"
 #include "Sandbox/data/TriggerContext.h"
 #include "Sandbox/data/TriggerPayloadConcept.h"
+#include "Sandbox/data/TriggerResult.h"
+#include "Sandbox/data/TriggerResults.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
 
@@ -56,13 +58,15 @@ constexpr auto trigger_array_index_v =
     TRIGGER_STAMP64(n + 128); \
     TRIGGER_STAMP64(n + 192)
 
-#define TRIGGER_CASE(i)                                                                \
-    case i: {                                                                          \
-        if constexpr (i < N_TYPES) {                                                   \
-            self.log_verbose(TEXT("Handling trigger case %d."), i);                    \
-            std::get<i>(self.triggerables)[id.array_index()].trigger(trigger_context); \
-        }                                                                              \
-        break;                                                                         \
+#define TRIGGER_CASE(i)                                                                     \
+    case i: {                                                                               \
+        if constexpr (i < N_TYPES) {                                                        \
+            self.log_verbose(TEXT("Handling trigger case %d."), i);                         \
+            auto result{                                                                    \
+                std::get<i>(self.triggerables)[id.array_index()].trigger(trigger_context)}; \
+            self.handle_trigger_result(id, result);                                         \
+        }                                                                                   \
+        break;                                                                              \
     }
 
 #define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                            \
@@ -78,6 +82,52 @@ constexpr auto trigger_array_index_v =
     } while (0)
 
 #define TRIGGER_STAMP(N_CASES) TRIGGER_VISIT_STAMP(TRIGGER_STAMP##N_CASES, N_CASES)
+
+#define TICK_CASE(i)                                                                  \
+    case i: {                                                                         \
+        if constexpr (i < N_TYPES) {                                                  \
+            return std::get<i>(self.triggerables)[id.array_index()].tick(delta_time); \
+        }                                                                             \
+        break;                                                                        \
+    }
+
+#define TICK_VISIT_STAMP(stamper, N_CASES)                                            \
+    do {                                                                              \
+        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");    \
+        switch (id.tuple_index()) {                                                   \
+            stamper(0);                                                               \
+            default: {                                                                \
+                self.log_warning(TEXT("Unhandled tick type: %d."), id.tuple_index()); \
+                return false;                                                         \
+            }                                                                         \
+        }                                                                             \
+    } while (0)
+
+#define TICK_STAMP4(n) \
+    TICK_CASE(n);      \
+    TICK_CASE(n + 1);  \
+    TICK_CASE(n + 2);  \
+    TICK_CASE(n + 3)
+
+#define TICK_STAMP16(n) \
+    TICK_STAMP4(n);     \
+    TICK_STAMP4(n + 4); \
+    TICK_STAMP4(n + 8); \
+    TICK_STAMP4(n + 12)
+
+#define TICK_STAMP64(n)   \
+    TICK_STAMP16(n);      \
+    TICK_STAMP16(n + 16); \
+    TICK_STAMP16(n + 32); \
+    TICK_STAMP16(n + 48)
+
+#define TICK_STAMP256(n)   \
+    TICK_STAMP64(n);       \
+    TICK_STAMP64(n + 64);  \
+    TICK_STAMP64(n + 128); \
+    TICK_STAMP64(n + 192)
+
+#define TICK_STAMP(N_CASES) TICK_VISIT_STAMP(TICK_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
 class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
@@ -201,10 +251,104 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         return *id_ptr;
     }
+
+    template <typename Self>
+    bool trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
+        auto id_opt{self.get_triggerable_id(actor)};
+        if (!id_opt || !id_opt->is_valid()) {
+            return false;
+        }
+
+        self.trigger(*id_opt, source);
+        return true;
+    }
+
+    template <typename Self>
+    FTriggerResults
+        trigger(this Self&& self, TArrayView<AActor*> actors, FTriggeringSource source) {
+        FTriggerResults results{};
+        results.actors.Init(nullptr, actors.Num()); // Pre-allocate with nullptr
+
+        int32 triggered_index{0};                    // Fill from front
+        int32 not_triggered_index{actors.Num() - 1}; // Fill from back
+
+        for (auto* actor : actors) {
+            if (self.trigger(actor, source)) {
+                results.actors[triggered_index++] = actor;
+            } else {
+                results.actors[not_triggered_index--] = actor;
+            }
+        }
+
+        results.n_triggered = triggered_index;
+
+        self.log_verbose(TEXT("Batch trigger: %d triggered, %d not triggered"),
+                         results.n_triggered,
+                         results.num_not_triggered());
+
+        return results;
+    }
+
+    template <typename Self>
+    void handle_trigger_result(this Self&& self, TriggerableId id, FTriggerResult result) {
+        if (result.enable_ticking) {
+            self.ticking_payloads.AddUnique(id);
+            self.log_verbose(
+                TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
+        }
+    }
+
+    template <typename Self>
+    bool call_payload_tick(this Self&& self, TriggerableId id, float delta_time) {
+        static_assert(N_TYPES <= 256, "Cannot support this many trigger types for ticking.");
+
+        if constexpr (N_TYPES <= 4) {
+            TICK_STAMP(4);
+        } else if constexpr (N_TYPES <= 16) {
+            TICK_STAMP(16);
+        } else if constexpr (N_TYPES <= 64) {
+            TICK_STAMP(64);
+        } else if constexpr (N_TYPES <= 256) {
+            TICK_STAMP(256);
+        } else {
+            self.log_warning(TEXT("Too many types for tick branch."));
+            return false;
+        }
+        return false; // Should never reach here
+    }
+
+    template <typename Self>
+    void tick_payloads(this Self&& self, float delta_time) {
+        if (self.ticking_payloads.IsEmpty()) {
+            return;
+        }
+
+        int32 write_index{0}; // Where to write next still-ticking ID
+
+        for (int32 read_index{0}; read_index < self.ticking_payloads.Num(); ++read_index) {
+            auto const id{self.ticking_payloads[read_index]};
+            auto const continue_ticking{self.call_payload_tick(id, delta_time)};
+
+            if (continue_ticking) {
+                self.ticking_payloads[write_index++] = id; // Keep this one
+            }
+        }
+
+        // Shrink array to only the still-ticking payloads
+        self.ticking_payloads.SetNum(write_index);
+
+        self.log_verbose(TEXT("Ticking %d payloads"), self.ticking_payloads.Num());
+    }
+
+    template <typename Self>
+    bool has_ticking_payloads(this Self&& self) {
+        return !self.ticking_payloads.IsEmpty();
+    }
   private:
     TriggerableTupleT triggerables;
     TMap<AActor*, TriggerableId> actor_to_id;
     TMap<uint64, AActor*> id_to_actor;
+    TArray<TriggerableId> ticking_payloads;
 };
 
 #undef TRIGGER_STAMP4
@@ -214,3 +358,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 #undef TRIGGER_CASE
 #undef TRIGGER_VISIT_STAMP
 #undef TRIGGER_STAMP
+#undef TICK_CASE
+#undef TICK_VISIT_STAMP
+#undef TICK_STAMP

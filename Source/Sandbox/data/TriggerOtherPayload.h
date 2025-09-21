@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/data/TriggerableId.h"
 #include "Sandbox/data/TriggerContext.h"
+#include "Sandbox/data/TriggerResult.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
@@ -20,5 +21,6 @@ struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
         }
     }
 
-    void trigger(FTriggerContext context);
+    FTriggerResult trigger(FTriggerContext context);
+    bool tick(float delta_time) { return false; } // No ticking needed
 };
