@@ -14,7 +14,8 @@ FTriggerResult FRotatePayload::trigger(FTriggerContext context) {
 
 bool FRotatePayload::tick(float delta_time) {
     if (!is_rotating || time_remaining <= 0.0f || !rotating_actor.IsValid()) {
-        return false; // Stop ticking
+        logger.log_verbose(TEXT("Stopping ticking."));
+        return false;
     }
 
     // Apply rotation
@@ -34,6 +35,7 @@ bool FRotatePayload::tick(float delta_time) {
 }
 
 void FRotatePayload::start_rotation() {
+    logger.log_verbose(TEXT("Starting rotation."));
     if (!is_rotating) {
         is_rotating = true;
         time_remaining = rotation_duration_seconds;
@@ -42,6 +44,7 @@ void FRotatePayload::start_rotation() {
 }
 
 void FRotatePayload::stop_rotation() {
+    logger.log_verbose(TEXT("Stopping rotation."));
     if (is_rotating) {
         is_rotating = false;
         time_remaining = 0.0f;

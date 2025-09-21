@@ -15,6 +15,16 @@
 #include "Sandbox/utilities/tuple.h"
 #include "Sandbox/macros/switch_stamping.hpp"
 
+using ActorId = uint64;
+
+struct FTriggerableRange {
+    uint32 offset{0};
+    uint16 length{0};
+
+    bool is_empty() const { return length == 0; }
+    uint32 end() const { return offset + length; }
+};
+
 namespace ml {
 template <typename T>
 using TriggerArray = TArray<T>;
@@ -97,12 +107,38 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return TriggerableId::invalid();
         }
 
+        // Validate contiguous registration
+        if (self.current_registering_actor != actor) {
+            // Check if actor already has triggerables
+            if (auto actor_id_opt{self.get_actor_id(actor)}) {
+                if (auto* range{self.actor_id_to_range.Find(*actor_id_opt)}) {
+                    if (range->length > 0) {
+                        self.log_error(TEXT("Actor %s already finished registration - cannot add "
+                                            "more triggerables"),
+                                       *actor->GetActorLabel());
+                        return TriggerableId::invalid();
+                    }
+                }
+            }
+            self.current_registering_actor = actor;
+        }
+
         auto& payload_array{ml::TriggerArrayGet<std::remove_cvref_t<Payload>>(self.triggerables)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
         constexpr auto payload_array_index{
             ml::trigger_array_index_v<std::remove_cvref_t<Payload>, Self>};
 
         TriggerableId id{static_cast<int32>(payload_array_index), payload_element_index};
+
+        // Update actor range
+        ActorId actor_id{self.get_or_create_actor_id(actor)};
+        if (auto* range{self.actor_id_to_range.Find(actor_id)}) {
+            if (range->is_empty()) {
+                // First triggerable for this actor - set offset
+                range->offset = payload_element_index;
+            }
+            range->length++;
+        }
 
         self.actor_to_id.Add(actor, id);
         self.id_to_actor.Add(id.as_combined_id(), actor);
@@ -239,6 +275,44 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         return results;
     }
 
+    // Trigger all triggerables for an actor ID
+    template <typename Self>
+    ETriggerOccurred trigger_actor(this Self&& self, ActorId actor_id, FTriggeringSource source) {
+        if (actor_id == 0) {
+            return ETriggerOccurred::no;
+        }
+
+        auto const* range{self.actor_id_to_range.Find(actor_id)};
+        if (!range || range->is_empty()) {
+            self.log_verbose(TEXT("Actor ID %llu has no triggerables"), actor_id);
+            return ETriggerOccurred::no;
+        }
+
+        self.log_verbose(
+            TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id);
+
+        bool any_triggered{false};
+        for (uint32 i{0}; i < range->length; ++i) {
+            uint32 array_index{range->offset + i};
+
+            // Find which tuple this array index belongs to
+            // For now, assume all triggerables are in the first tuple (FTriggerOtherPayload)
+            // TODO: Make this more generic to handle multiple tuple types
+            TriggerableId id{0, static_cast<int32>(array_index)};
+
+            auto const combined_id{id.as_combined_id()};
+            if (auto const* actor_ptr{self.id_to_actor.Find(combined_id)}) {
+                auto* actor{*actor_ptr};
+                if (actor) {
+                    self.trigger(id, source);
+                    any_triggered = true;
+                }
+            }
+        }
+
+        return any_triggered ? ETriggerOccurred::yes : ETriggerOccurred::no;
+    }
+
     template <typename Self>
     void handle_trigger_result(this Self&& self, TriggerableId id, FTriggerResult result) {
         if (result.enable_ticking) {
@@ -286,18 +360,58 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         // Shrink array to only the still-ticking payloads
         self.ticking_payloads.SetNum(write_index);
 
-        self.log_verbose(TEXT("Ticking %d payloads"), self.ticking_payloads.Num());
+        self.log_very_verbose(TEXT("Ticking %d payloads"), self.ticking_payloads.Num());
     }
 
     template <typename Self>
     bool has_ticking_payloads(this Self&& self) {
         return !self.ticking_payloads.IsEmpty();
     }
+
+    // Actor ID management
+    template <typename Self>
+    ActorId get_or_create_actor_id(this Self&& self, AActor* actor) {
+        if (!actor) {
+            return 0; // Invalid actor ID
+        }
+
+        if (auto* existing_id{self.actor_to_actor_id.Find(actor)}) {
+            return *existing_id;
+        }
+
+        ActorId new_id{self.next_actor_id++};
+        self.actor_to_actor_id.Add(actor, new_id);
+        self.actor_id_to_range.Add(new_id, FTriggerableRange{});
+
+        self.log_verbose(
+            TEXT("Created actor ID %llu for actor %s"), new_id, *actor->GetActorLabel());
+        return new_id;
+    }
+
+    template <typename Self>
+    std::optional<ActorId> get_actor_id(this Self&& self, AActor* actor) {
+        if (!actor) {
+            return std::nullopt;
+        }
+
+        if (auto* id{self.actor_to_actor_id.Find(actor)}) {
+            return *id;
+        }
+        return std::nullopt;
+    }
   private:
     TriggerableTupleT triggerables;
-    TMap<AActor*, TriggerableId> actor_to_id;
+    TMap<AActor*, TriggerableId> actor_to_id; // Legacy: first triggerable per actor
     TMap<uint64, AActor*> id_to_actor;
     TArray<TriggerableId> ticking_payloads;
+
+    // Actor ID system
+    TMap<AActor*, ActorId> actor_to_actor_id;
+    TMap<ActorId, FTriggerableRange> actor_id_to_range;
+    ActorId next_actor_id{1};
+
+    // Contiguous registration tracking
+    AActor* current_registering_actor{nullptr};
 };
 
 #undef TRIGGER_CASE

@@ -24,15 +24,19 @@ void UInteractorComponent::BeginPlay() {
 }
 
 void UInteractorComponent::try_interact() {
+    static constexpr auto LOG{NestedLogger<"try_interact">()};
+
+    LOG.log_verbose(TEXT("Start."));
+
     if (cooling_down) {
-        log_verbose(TEXT("Cooling down. Cannot interact."));
+        LOG.log_verbose(TEXT("Cooling down. Cannot interact."));
         return;
     }
 
     auto* const world{GetWorld()};
     auto* const owner{GetOwner()};
     if (!world) {
-        log_warning(TEXT("Could not get world pointer."));
+        LOG.log_warning(TEXT("Could not get world pointer."));
         return;
     }
 
@@ -66,7 +70,7 @@ void UInteractorComponent::try_interact() {
 #endif
 
     if (!hit) {
-        log_verbose(TEXT("No hit."));
+        LOG.log_verbose(TEXT("No hit."));
         return;
     }
 
@@ -80,7 +84,7 @@ void UInteractorComponent::try_interact() {
     }
 
     if (hit_actors.IsEmpty()) {
-        log_verbose(TEXT("No valid hit actors."));
+        LOG.log_verbose(TEXT("No valid hit actors."));
         return;
     }
 
@@ -98,7 +102,7 @@ void UInteractorComponent::try_interact() {
         auto const results{subsystem->trigger(hit_actors, source)};
 
         if (results.any_triggered()) {
-            log_verbose(TEXT("Triggered %d actors through new system"), results.n_triggered);
+            LOG.log_verbose(TEXT("Triggered %d actors."), results.n_triggered);
 
             cooling_down = true;
             constexpr bool loop_timer{false};
@@ -109,10 +113,10 @@ void UInteractorComponent::try_interact() {
                 loop_timer);
             return;
         } else {
-            log_verbose(TEXT("No actors triggered through trigger system"));
+            LOG.log_verbose(TEXT("No actors triggered."));
         }
 
     } else {
-        log_warning(TEXT("No UTriggerSubsystem found"));
+        LOG.log_warning(TEXT("No UTriggerSubsystem found"));
     }
 }

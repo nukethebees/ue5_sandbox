@@ -3,11 +3,13 @@
 #include "Sandbox/subsystems/TriggerSubsystem.h"
 
 FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
-    log_verbose(TEXT("Triggering %d targets"), n_targets);
+    static constexpr auto LOG{NestedLogger<"trigger">()};
+
+    LOG.log_verbose(TEXT("Triggering %d targets"), n_targets);
 
     auto* subsystem{context.world.GetSubsystem<UTriggerSubsystem>()};
     if (!subsystem) {
-        log_warning(TEXT("No UTriggerSubsystem found"));
+        LOG.log_warning(TEXT("No UTriggerSubsystem found"));
         return {false};
     }
 
@@ -26,14 +28,20 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     }
 
     for (uint8 i{0}; i < n_targets; ++i) {
-        if (targets[i].is_valid()) {
+        LOG.log_verbose(TEXT("Triggering target %d."), i);
+
+        ActorId actor_id{target_actor_ids[i]};
+        if (actor_id != 0) {
             if (activation_delay > 0.0f) {
                 // TODO: Implement delayed triggering when needed
-                log_verbose(TEXT("Delayed triggering not yet implemented, triggering immediately"));
-                subsystem->trigger(targets[i], new_source);
+                LOG.log_verbose(
+                    TEXT("Delayed triggering not yet implemented, triggering immediately"));
+                subsystem->trigger_actor(actor_id, new_source);
             } else {
-                subsystem->trigger(targets[i], new_source);
+                subsystem->trigger_actor(actor_id, new_source);
             }
+        } else {
+            LOG.log_verbose(TEXT("Actor id is zero."));
         }
     }
 

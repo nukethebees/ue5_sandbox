@@ -25,10 +25,12 @@ void UInteractRotateComponent::BeginPlay() {
 }
 
 void UInteractRotateComponent::interact(AActor* interactor) {
-    trigger_rotation();
+    trigger_rotation(interactor);
 }
 
 void UInteractRotateComponent::trigger_rotation(AActor* instigator) {
+    log_verbose(TEXT("Triggering rotation."));
+
     if (auto* const world{GetWorld()}) {
         if (auto* const trigger_subsystem{world->GetSubsystem<UTriggerSubsystem>()}) {
             FTriggeringSource source{.type = ETriggerForm::PlayerInteraction,
@@ -43,6 +45,10 @@ void UInteractRotateComponent::trigger_rotation(AActor* instigator) {
             }
 
             trigger_subsystem->trigger(triggerable_id, source);
+        } else {
+            log_warning(TEXT("Couldn't get UTriggerSubsystem."));
         }
+    } else {
+        log_warning(TEXT("Couldn't get world."));
     }
 }

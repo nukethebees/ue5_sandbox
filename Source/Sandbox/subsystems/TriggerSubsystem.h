@@ -33,6 +33,13 @@ class SANDBOX_API UTriggerSubsystem
 
     auto get_triggerable_id(AActor* actor) { return data_.get_triggerable_id(actor); }
 
+    // Actor ID system
+    ActorId get_or_create_actor_id(AActor* actor) { return data_.get_or_create_actor_id(actor); }
+    auto get_actor_id(AActor* actor) { return data_.get_actor_id(actor); }
+    auto trigger_actor(ActorId actor_id, FTriggeringSource source) {
+        return data_.trigger_actor(actor_id, source);
+    }
+
     // FTickableGameObject interface
     virtual void Tick(float DeltaTime) override { data_.tick_payloads(DeltaTime); }
     virtual bool IsTickable() const override { return data_.has_ticking_payloads(); }
