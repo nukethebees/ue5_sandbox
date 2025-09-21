@@ -42,7 +42,6 @@ constexpr auto tuple_array_index_v =
 // Adapted from MSVC's STL variant visitor
 // Don't forget to undefine these after!
 // ----------------------------------------------
-
 #define COLLISION_CASE(i)                                                                     \
     case i: {                                                                                 \
         if constexpr (i < N_TYPES) {                                                          \
@@ -63,8 +62,6 @@ constexpr auto tuple_array_index_v =
             }                                                                              \
         }                                                                                  \
     } while (0)
-
-#define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
 class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSubsystemData"> {
@@ -176,13 +173,13 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
                       "Cannot support this many collision types. The macros must be extended.");
         for (auto const& payload_index : payload_indexes.indexes) {
             if constexpr (N_TYPES <= 4) {
-                COLLISION_STAMP(4);
+                SWITCH_STAMP(4, COLLISION_VISIT_STAMP);
             } else if constexpr (N_TYPES <= 16) {
-                COLLISION_STAMP(16);
+                SWITCH_STAMP(16, COLLISION_VISIT_STAMP);
             } else if constexpr (N_TYPES <= 64) {
-                COLLISION_STAMP(64);
+                SWITCH_STAMP(64, COLLISION_VISIT_STAMP);
             } else if constexpr (N_TYPES <= 256) {
-                COLLISION_STAMP(256);
+                SWITCH_STAMP(256, COLLISION_VISIT_STAMP);
             } else {
                 self.log_warning(TEXT("Too many types for branch. This should never hit."));
                 return;
@@ -216,6 +213,5 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
 
 #undef COLLISION_CASE
 #undef COLLISION_VISIT_STAMP
-#undef COLLISION_STAMP
 
 #include "Sandbox/macros/switch_stamping_undef.hpp"
