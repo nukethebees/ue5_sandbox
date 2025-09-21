@@ -6,16 +6,11 @@ FTriggerResult FForcefieldPayload::trigger(FTriggerContext context) {
     logger.log_verbose(TEXT("Triggering forcefield for actor %s"),
                        *context.triggered_actor.GetName());
 
-    forcefield_actor = &context.triggered_actor;
-
-    // Delegate to the existing AForcefieldActor trigger_activation method
-    if (auto* const actor{Cast<AForcefieldActor>(forcefield_actor.Get())}) {
+    if (auto* const actor{Cast<AForcefieldActor>(&context.triggered_actor)}) {
         actor->trigger_activation();
     }
 
-    FTriggerResult result{};
-    result.enable_ticking = false; // Let the actor handle its own timing
-    return result;
+    return FTriggerResult(false);
 }
 
 bool FForcefieldPayload::tick(float delta_time) {

@@ -3,6 +3,10 @@
 #include "CoreMinimal.h"
 
 struct FTriggerResult {
+    FTriggerResult() = default;
+    FTriggerResult(bool enable_ticking)
+        : enable_ticking(enable_ticking) {}
+
     bool enable_ticking{false};
 };
 
