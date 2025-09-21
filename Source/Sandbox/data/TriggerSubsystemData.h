@@ -13,6 +13,7 @@
 #include "Sandbox/data/TriggerResults.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
+#include "Sandbox/macros/switch_stamping.hpp"
 
 namespace ml {
 template <typename T>
@@ -34,30 +35,6 @@ constexpr auto trigger_array_index_v =
 }
 
 // Macros for generating switch statement
-#define TRIGGER_STAMP4(n) \
-    TRIGGER_CASE(n);      \
-    TRIGGER_CASE(n + 1);  \
-    TRIGGER_CASE(n + 2);  \
-    TRIGGER_CASE(n + 3)
-
-#define TRIGGER_STAMP16(n) \
-    TRIGGER_STAMP4(n);     \
-    TRIGGER_STAMP4(n + 4); \
-    TRIGGER_STAMP4(n + 8); \
-    TRIGGER_STAMP4(n + 12)
-
-#define TRIGGER_STAMP64(n)   \
-    TRIGGER_STAMP16(n);      \
-    TRIGGER_STAMP16(n + 16); \
-    TRIGGER_STAMP16(n + 32); \
-    TRIGGER_STAMP16(n + 48)
-
-#define TRIGGER_STAMP256(n)   \
-    TRIGGER_STAMP64(n);       \
-    TRIGGER_STAMP64(n + 64);  \
-    TRIGGER_STAMP64(n + 128); \
-    TRIGGER_STAMP64(n + 192)
-
 #define TRIGGER_CASE(i)                                                                     \
     case i: {                                                                               \
         if constexpr (i < N_TYPES) {                                                        \
@@ -73,7 +50,7 @@ constexpr auto trigger_array_index_v =
     do {                                                                                 \
         static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");       \
         switch (id.tuple_index()) {                                                      \
-            stamper(0);                                                                  \
+            stamper(0, TRIGGER_CASE);                                                                  \
             default: {                                                                   \
                 self.log_warning(TEXT("Unhandled trigger type: %d."), id.tuple_index()); \
                 break;                                                                   \
@@ -81,7 +58,7 @@ constexpr auto trigger_array_index_v =
         }                                                                                \
     } while (0)
 
-#define TRIGGER_STAMP(N_CASES) TRIGGER_VISIT_STAMP(TRIGGER_STAMP##N_CASES, N_CASES)
+#define TRIGGER_STAMP(N_CASES) TRIGGER_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
 
 #define TICK_CASE(i)                                                                  \
     case i: {                                                                         \
@@ -95,7 +72,7 @@ constexpr auto trigger_array_index_v =
     do {                                                                              \
         static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");    \
         switch (id.tuple_index()) {                                                   \
-            stamper(0);                                                               \
+            stamper(0, TICK_CASE);                                                               \
             default: {                                                                \
                 self.log_warning(TEXT("Unhandled tick type: %d."), id.tuple_index()); \
                 return false;                                                         \
@@ -103,31 +80,7 @@ constexpr auto trigger_array_index_v =
         }                                                                             \
     } while (0)
 
-#define TICK_STAMP4(n) \
-    TICK_CASE(n);      \
-    TICK_CASE(n + 1);  \
-    TICK_CASE(n + 2);  \
-    TICK_CASE(n + 3)
-
-#define TICK_STAMP16(n) \
-    TICK_STAMP4(n);     \
-    TICK_STAMP4(n + 4); \
-    TICK_STAMP4(n + 8); \
-    TICK_STAMP4(n + 12)
-
-#define TICK_STAMP64(n)   \
-    TICK_STAMP16(n);      \
-    TICK_STAMP16(n + 16); \
-    TICK_STAMP16(n + 32); \
-    TICK_STAMP16(n + 48)
-
-#define TICK_STAMP256(n)   \
-    TICK_STAMP64(n);       \
-    TICK_STAMP64(n + 64);  \
-    TICK_STAMP64(n + 128); \
-    TICK_STAMP64(n + 192)
-
-#define TICK_STAMP(N_CASES) TICK_VISIT_STAMP(TICK_STAMP##N_CASES, N_CASES)
+#define TICK_STAMP(N_CASES) TICK_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
 class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
@@ -351,13 +304,11 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     TArray<TriggerableId> ticking_payloads;
 };
 
-#undef TRIGGER_STAMP4
-#undef TRIGGER_STAMP16
-#undef TRIGGER_STAMP64
-#undef TRIGGER_STAMP256
 #undef TRIGGER_CASE
 #undef TRIGGER_VISIT_STAMP
 #undef TRIGGER_STAMP
 #undef TICK_CASE
 #undef TICK_VISIT_STAMP
 #undef TICK_STAMP
+
+#include "Sandbox/macros/switch_stamping_undef.hpp"

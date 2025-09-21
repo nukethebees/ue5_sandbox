@@ -7,9 +7,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/data/PayloadIndex.h"
 #include "Sandbox/data/CollisionContext.h"
+#include "Sandbox/data/PayloadIndex.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
+#include "Sandbox/macros/switch_stamping.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
@@ -41,29 +42,6 @@ constexpr auto tuple_array_index_v =
 // Adapted from MSVC's STL variant visitor
 // Don't forget to undefine these after!
 // ----------------------------------------------
-#define COLLISION_STAMP4(n) \
-    COLLISION_CASE(n);      \
-    COLLISION_CASE(n + 1);  \
-    COLLISION_CASE(n + 2);  \
-    COLLISION_CASE(n + 3)
-
-#define COLLISION_STAMP16(n) \
-    COLLISION_STAMP4(n);     \
-    COLLISION_STAMP4(n + 4); \
-    COLLISION_STAMP4(n + 8); \
-    COLLISION_STAMP4(n + 12)
-
-#define COLLISION_STAMP64(n)   \
-    COLLISION_STAMP16(n);      \
-    COLLISION_STAMP16(n + 16); \
-    COLLISION_STAMP16(n + 32); \
-    COLLISION_STAMP16(n + 48)
-
-#define COLLISION_STAMP256(n)   \
-    COLLISION_STAMP64(n);       \
-    COLLISION_STAMP64(n + 64);  \
-    COLLISION_STAMP64(n + 128); \
-    COLLISION_STAMP64(n + 192)
 
 #define COLLISION_CASE(i)                                                                     \
     case i: {                                                                                 \
@@ -78,7 +56,7 @@ constexpr auto tuple_array_index_v =
     do {                                                                                   \
         static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");         \
         switch (payload_index.type_tag) {                                                  \
-            stamper(0);                                                                    \
+            stamper(0, COLLISION_CASE);                                                    \
             default: {                                                                     \
                 self.log_warning(TEXT("Unhandled tag type: %d."), payload_index.type_tag); \
                 break;                                                                     \
@@ -86,7 +64,7 @@ constexpr auto tuple_array_index_v =
         }                                                                                  \
     } while (0)
 
-#define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(COLLISION_STAMP##N_CASES, N_CASES)
+#define COLLISION_STAMP(N_CASES) COLLISION_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
 class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSubsystemData"> {
@@ -236,10 +214,8 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
     TMap<UPrimitiveComponent*, int32> collision_ids{};
 };
 
-#undef COLLISION_STAMP4
-#undef COLLISION_STAMP16
-#undef COLLISION_STAMP64
-#undef COLLISION_STAMP256
 #undef COLLISION_CASE
 #undef COLLISION_VISIT_STAMP
 #undef COLLISION_STAMP
+
+#include "Sandbox/macros/switch_stamping_undef.hpp"
