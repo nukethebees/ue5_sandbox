@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sandbox/data/HealthStationPayload.h"
+#include "Sandbox/data/TriggerableId.h"
 #include "HealthStationActor.generated.h"
 
-class UHealthStationComponent;
 class UWidgetComponent;
 class UHealthStationWidget;
 class USceneComponent;
@@ -17,11 +18,18 @@ class SANDBOX_API AHealthStationActor : public AActor {
     GENERATED_BODY()
   public:
     AHealthStationActor();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
+    FHealthStationPayload health_station_payload;
+
+    UFUNCTION(BlueprintCallable, Category = "Health Station")
+    float get_current_capacity() const { return health_station_payload.current_capacity; }
+
+    UFUNCTION(BlueprintCallable, Category = "Health Station")
+    bool is_ready() const { return health_station_payload.is_ready(); }
   protected:
     virtual void BeginPlay() override;
-
-    UPROPERTY(VisibleAnywhere)
-    UHealthStationComponent* health_station_component;
+    virtual void EndPlay(EEndPlayReason::Type reason) override;
 
     UPROPERTY(EditInstanceOnly, Category = "UI")
     USceneComponent* widget_pivot;
@@ -31,7 +39,9 @@ class SANDBOX_API AHealthStationActor : public AActor {
 
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UHealthStationWidget> health_station_widget_class;
-  public:
+  private:
+    TriggerableId my_trigger_id{};
+
     UFUNCTION()
     void handle_station_state_changed(FStationStateData const& state_data);
 };
