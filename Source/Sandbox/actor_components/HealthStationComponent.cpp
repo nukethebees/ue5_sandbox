@@ -38,7 +38,7 @@ void UHealthStationComponent::interact(AActor* interactor) {
     if (auto* const manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
         FHealthChange change{FMath::Min(heal_amount_per_use, current_capacity),
                              EHealthChangeType::Healing};
-        manager->queue_damage(health, change);
+        manager->queue_health_change(health, change);
 
         current_capacity = FMath::Max(0.0f, current_capacity - change.value);
         start_cooldown();

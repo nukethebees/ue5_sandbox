@@ -22,7 +22,7 @@ void UHealthChangeTriggerComponent::change_health(AActor* OverlappedActor, AActo
         }
 
         if (auto* manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
-            manager->queue_damage(health, health_change);
+            manager->queue_health_change(health, health_change);
         }
 
         owner->Destroy();

@@ -23,7 +23,7 @@ UCLASS()
 class SANDBOX_API UDamageManagerSubsystem : public UTickableWorldSubsystem {
     GENERATED_BODY()
   public:
-    void queue_damage(UHealthComponent* receiver, FHealthChange const& change);
+    void queue_health_change(UHealthComponent* receiver, FHealthChange const& change);
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;
