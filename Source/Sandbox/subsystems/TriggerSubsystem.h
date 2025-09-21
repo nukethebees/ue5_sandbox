@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Sandbox/data/health/HealthStationPayload.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
+#include "Sandbox/data/trigger/FRotatePayload.h"
+#include "Sandbox/data/trigger/FForcefieldPayload.h"
 #include "Sandbox/data/trigger/TriggerResults.h"
 #include "Sandbox/data/trigger/TriggerSubsystemData.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -37,5 +39,9 @@ class SANDBOX_API UTriggerSubsystem
     virtual TStatId GetStatId() const override { return TStatId(); }
     virtual UWorld* GetTickableGameObjectWorld() const override { return GetWorld(); }
   private:
-    UTriggerSubsystemData<FTriggerOtherPayload, FHealthStationPayload> data_{};
+    UTriggerSubsystemData<FTriggerOtherPayload,
+                          FHealthStationPayload,
+                          FRotatePayload,
+                          FForcefieldPayload>
+        data_{};
 };

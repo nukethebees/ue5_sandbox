@@ -6,6 +6,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Sandbox/subsystems/TriggerSubsystem.h"
 #include "TimerManager.h"
 
 AForcefieldActor::AForcefieldActor() {
@@ -104,11 +105,17 @@ void AForcefieldActor::BeginPlay() {
                                         true);
     }
 
+    // Register with TriggerSubsystem
+    if (auto* const trigger_subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()}) {
+        triggerable_id = trigger_subsystem->register_triggerable(this, forcefield_payload);
+        log_verbose(TEXT("Registered forcefield with trigger subsystem"));
+    }
+
     log_verbose(TEXT("Forcefield initialized at %s"), *GetActorLocation().ToString());
 }
 
-void AForcefieldActor::trigger_activation(AActor* instigator) {
-    if (!can_activate(instigator)) {
+void AForcefieldActor::trigger_activation() {
+    if (!can_activate()) {
         log_verbose(TEXT("Forcefield cannot activate."));
         return;
     }
@@ -132,7 +139,7 @@ void AForcefieldActor::trigger_activation(AActor* instigator) {
     }
 }
 
-bool AForcefieldActor::can_activate(AActor const* instigator) const {
+bool AForcefieldActor::can_activate() const {
     return current_state == EForcefieldState::Inactive || current_state == EForcefieldState::Active;
 }
 

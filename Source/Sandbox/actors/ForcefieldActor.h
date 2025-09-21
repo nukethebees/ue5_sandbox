@@ -9,7 +9,8 @@
 #include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"
 #include "Particles/ParticleSystemComponent.h"
-#include "Sandbox/interfaces/Activatable.h"
+#include "Sandbox/data/trigger/FForcefieldPayload.h"
+#include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "ForcefieldActor.generated.h"
@@ -30,7 +31,6 @@ inline FString to_fstring(EForcefieldState state) {
 UCLASS()
 class SANDBOX_API AForcefieldActor
     : public AActor
-    , public IActivatable
     , public ml::LogMsgMixin<"Forcefield"> {
     GENERATED_BODY()
   public:
@@ -65,11 +65,10 @@ class SANDBOX_API AForcefieldActor
   protected:
     virtual void BeginPlay() override;
     virtual void OnConstruction(FTransform const& Transform) override;
-
-    // IActivatable interface
-    void trigger_activation(AActor* instigator = nullptr) override;
-    bool can_activate(AActor const* instigator) const override;
-
+  public:
+    void trigger_activation();
+    bool can_activate() const;
+  protected:
     // Configuration properties
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Forcefield Settings")
     float cooldown_duration{3.0f};
@@ -117,6 +116,12 @@ class SANDBOX_API AForcefieldActor
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UPostProcessComponent* distortion_effect;
+
+    // Trigger system integration
+    UPROPERTY(EditAnywhere, Category = "Trigger System")
+    FForcefieldPayload forcefield_payload{};
+
+    TriggerableId triggerable_id{TriggerableId::invalid()};
   private:
     // Debug drawing constants
     static constexpr bool debug_persistent_lines{false};
@@ -140,14 +145,14 @@ class SANDBOX_API AForcefieldActor
 
     // Resolved opacity value (from material or override)
     float resolved_peak_opacity{default_opacity};
-
-    // State transition methods
+  public:
+    // State transition methods (made public for FForcefieldPayload)
     void start_activation();
     void start_deactivation();
     void start_cooldown();
     void complete_cooldown();
     void change_state(EForcefieldState state);
-
+  private:
     // Visual management
     void update_visual_effects();
     void update_collision_blocking();

@@ -264,7 +264,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             self.log_warning(TEXT("Too many types for tick branch."));
             return false;
         }
-        return false; // Should never reach here
     }
 
     template <typename Self>

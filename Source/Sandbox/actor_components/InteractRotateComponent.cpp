@@ -1,45 +1,42 @@
 #include "Sandbox/actor_components/InteractRotateComponent.h"
 
+#include "Sandbox/data/trigger/TriggerCapabilities.h"
+#include "Sandbox/subsystems/TriggerSubsystem.h"
+
 UInteractRotateComponent::UInteractRotateComponent() {
-    PrimaryComponentTick.bCanEverTick = true;
-    PrimaryComponentTick.bStartWithTickEnabled = false;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UInteractRotateComponent::BeginPlay() {
     Super::BeginPlay();
-}
 
-void UInteractRotateComponent::TickComponent(float DeltaTime,
-                                             ELevelTick TickType,
-                                             FActorComponentTickFunction* ThisTickFunction) {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-    auto* const owner{GetOwner()};
-    if (owner != nullptr) {
-        auto const new_rotation{owner->GetActorRotation() + rotation_rate * DeltaTime};
-        owner->SetActorRotation(new_rotation);
+    // Register with TriggerSubsystem
+    if (auto* const world{GetWorld()}) {
+        if (auto* const trigger_subsystem{world->GetSubsystem<UTriggerSubsystem>()}) {
+            triggerable_id = trigger_subsystem->register_triggerable(GetOwner(), rotation_payload);
+        }
     }
 }
+
 void UInteractRotateComponent::interact(AActor* interactor) {
-    start_rotation(interactor);
+    trigger_rotation(interactor);
 }
-void UInteractRotateComponent::trigger_activation(AActor* interactor) {
-    start_rotation(interactor);
-}
-void UInteractRotateComponent::start_rotation(AActor* interactor) {
-    auto const* const owner{GetOwner()};
-    auto* const world{GetWorld()};
 
-    if (!owner || !world) {
-        return;
+void UInteractRotateComponent::trigger_rotation(AActor* instigator) {
+    if (auto* const world{GetWorld()}) {
+        if (auto* const trigger_subsystem{world->GetSubsystem<UTriggerSubsystem>()}) {
+            FTriggeringSource source{.type = ETriggerForm::PlayerInteraction,
+                                     .capabilities = {},
+                                     .instigator = instigator,
+                                     .source_location = instigator ? instigator->GetActorLocation()
+                                                                   : GetOwner()->GetActorLocation(),
+                                     .source_triggerable = std::nullopt};
+
+            if (instigator) {
+                source.capabilities.add_capability(ETriggerCapability::Humanoid);
+            }
+
+            trigger_subsystem->trigger(triggerable_id, source);
+        }
     }
-    PrimaryComponentTick.SetTickFunctionEnable(true);
-    world->GetTimerManager().SetTimer(rotation_timer_handle,
-                                      this,
-                                      &UInteractRotateComponent::stop_rotation,
-                                      rotation_duration_seconds,
-                                      false);
-}
-void UInteractRotateComponent::stop_rotation() {
-    PrimaryComponentTick.SetTickFunctionEnable(false);
 }
