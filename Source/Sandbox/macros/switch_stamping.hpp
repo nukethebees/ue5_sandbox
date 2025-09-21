@@ -1,0 +1,23 @@
+#define SWITCH_STAMP4(n, CASE_MACRO) \
+    CASE_MACRO(n);                   \
+    CASE_MACRO(n + 1);               \
+    CASE_MACRO(n + 2);               \
+    CASE_MACRO(n + 3)
+
+#define SWITCH_STAMP16(n, CASE_MACRO) \
+    SWITCH_STAMP4(n, CASE_MACRO);     \
+    SWITCH_STAMP4(n + 4, CASE_MACRO); \
+    SWITCH_STAMP4(n + 8, CASE_MACRO); \
+    SWITCH_STAMP4(n + 12, CASE_MACRO)
+
+#define SWITCH_STAMP64(n, CASE_MACRO)   \
+    SWITCH_STAMP16(n, CASE_MACRO);      \
+    SWITCH_STAMP16(n + 16, CASE_MACRO); \
+    SWITCH_STAMP16(n + 32, CASE_MACRO); \
+    SWITCH_STAMP16(n + 48, CASE_MACRO)
+
+#define SWITCH_STAMP256(n, CASE_MACRO)   \
+    SWITCH_STAMP64(n, CASE_MACRO);       \
+    SWITCH_STAMP64(n + 64, CASE_MACRO);  \
+    SWITCH_STAMP64(n + 128, CASE_MACRO); \
+    SWITCH_STAMP64(n + 192, CASE_MACRO)
