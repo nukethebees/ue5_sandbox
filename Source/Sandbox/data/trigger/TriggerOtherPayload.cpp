@@ -8,7 +8,7 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     auto* subsystem{context.world.GetSubsystem<UTriggerSubsystem>()};
     if (!subsystem) {
         log_warning(TEXT("No UTriggerSubsystem found"));
-        return {.enable_ticking = false};
+        return {false};
     }
 
     // Create new source for targets, preserving original instigator
@@ -37,5 +37,5 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
         }
     }
 
-    return {.enable_ticking = false}; // No ticking needed for trigger other
+    return {false}; // No ticking needed for trigger other
 }

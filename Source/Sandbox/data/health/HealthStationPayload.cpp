@@ -5,19 +5,19 @@
 FTriggerResult FHealthStationPayload::trigger(FTriggerContext context) {
     if (!can_trigger(context)) {
         logger.log_verbose(TEXT("Health station cannot be triggered"));
-        return {.enable_ticking = false};
+        return {false};
     }
 
     auto* const health{context.source.get_instigator()->FindComponentByClass<UHealthComponent>()};
     if (!health || health->at_max_health()) {
         logger.log_verbose(TEXT("Interactor has no health component or is at max health"));
-        return {.enable_ticking = false};
+        return {false};
     }
 
     auto* const manager{context.world.GetSubsystem<UDamageManagerSubsystem>()};
     if (!manager) {
         logger.log_warning(TEXT("No UDamageManagerSubsystem found"));
-        return {.enable_ticking = false};
+        return {false};
     }
 
     FHealthChange change{FMath::Min(heal_amount_per_use, current_capacity),
@@ -33,7 +33,7 @@ FTriggerResult FHealthStationPayload::trigger(FTriggerContext context) {
                        change.value,
                        current_capacity);
 
-    return {.enable_ticking = true}; // Start cooldown ticking
+    return {true}; // Start cooldown ticking
 }
 
 bool FHealthStationPayload::can_trigger(FTriggerContext const& context) const {
