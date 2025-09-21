@@ -101,7 +101,6 @@ class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSu
             return;
         }
 
-        // auto& payload_array{ml::ArrayGet<Payload>(std::forward<Self>(self).payloads)};
         auto& payload_array{ml::ArrayGet<Payload>(self.payloads)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
         constexpr auto payload_array_index{ml::tuple_array_index_v<Payload, Self>};
