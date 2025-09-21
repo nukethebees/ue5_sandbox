@@ -22,12 +22,9 @@ class SANDBOX_API UTriggerSubsystem
         return data_.register_triggerable(actor, std::forward<T>(payload), this);
     }
 
-    void trigger(TriggerableId id, FTriggeringSource source) { data_.trigger(id, source); }
-
-    bool trigger(AActor* actor, FTriggeringSource source) { return data_.trigger(actor, source); }
-
-    FTriggerResults trigger(TArrayView<AActor*> actors, FTriggeringSource source) {
-        return data_.trigger(actors, source);
+    template <typename... Args>
+    auto trigger(Args&&... args) {
+        return data_.trigger(std::forward<Args>(args)...);
     }
 
     void deregister_triggerable(AActor* actor) { data_.deregister_triggerable(actor); }

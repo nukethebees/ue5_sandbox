@@ -50,7 +50,7 @@ constexpr auto trigger_array_index_v =
     do {                                                                                 \
         static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");       \
         switch (id.tuple_index()) {                                                      \
-            stamper(0, TRIGGER_CASE);                                                                  \
+            stamper(0, TRIGGER_CASE);                                                    \
             default: {                                                                   \
                 self.log_warning(TEXT("Unhandled trigger type: %d."), id.tuple_index()); \
                 break;                                                                   \
@@ -70,7 +70,7 @@ constexpr auto trigger_array_index_v =
     do {                                                                              \
         static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");    \
         switch (id.tuple_index()) {                                                   \
-            stamper(0, TICK_CASE);                                                               \
+            stamper(0, TICK_CASE);                                                    \
             default: {                                                                \
                 self.log_warning(TEXT("Unhandled tick type: %d."), id.tuple_index()); \
                 return false;                                                         \
@@ -202,14 +202,14 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
 
     template <typename Self>
-    bool trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
+    ETriggerOccurred trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
         auto id_opt{self.get_triggerable_id(actor)};
         if (!id_opt || !id_opt->is_valid()) {
-            return false;
+            return ETriggerOccurred::no;
         }
 
         self.trigger(*id_opt, source);
-        return true;
+        return ETriggerOccurred::yes;
     }
 
     template <typename Self>
@@ -222,7 +222,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         int32 not_triggered_index{actors.Num() - 1}; // Fill from back
 
         for (auto* actor : actors) {
-            if (self.trigger(actor, source)) {
+            if (self.trigger(actor, source) == ETriggerOccurred::yes) {
                 results.actors[triggered_index++] = actor;
             } else {
                 results.actors[not_triggered_index--] = actor;

@@ -96,7 +96,7 @@ void UInteractorComponent::try_interact() {
 
         source.capabilities.add_capability(ETriggerCapability::Humanoid);
 
-        auto results{subsystem->trigger(hit_actors, source)};
+        auto const results{subsystem->trigger(hit_actors, source)};
 
         if (results.any_triggered()) {
             log_verbose(TEXT("Triggered %d actors through new system"), results.n_triggered);
