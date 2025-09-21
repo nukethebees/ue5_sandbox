@@ -45,13 +45,13 @@ void ATriggerButtonActor::add_target_actor(AActor* actor) {
 
 void ATriggerButtonActor::clear_targets() {
     target_actors.Empty();
-    trigger_payload.targets = {};
+    trigger_payload.target_actor_ids = {};
     trigger_payload.n_targets = 0;
 }
 
 void ATriggerButtonActor::register_targets_with_payload() {
     // Clear existing targets
-    trigger_payload.targets = {};
+    trigger_payload.target_actor_ids = {};
     trigger_payload.n_targets = 0;
 
     auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
@@ -65,17 +65,20 @@ void ATriggerButtonActor::register_targets_with_payload() {
             continue;
         }
 
-        // Get the TriggerableId for this actor
-        if (auto target_id{subsystem->get_triggerable_id(target_actor)}) {
-            trigger_payload.add_target(*target_id);
-            log_verbose(TEXT("Added target: %s"), *target_actor->GetActorLabel());
+        // Get or create actor ID for this target
+        ActorId actor_id{subsystem->get_or_create_actor_id(target_actor)};
+        if (actor_id != 0) {
+            trigger_payload.add_target_actor(actor_id);
+            log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
+                        actor_id,
+                        *target_actor->GetActorLabel());
         } else {
-            log_warning(TEXT("Actor %s is not registered with trigger subsystem"),
+            log_warning(TEXT("Failed to get actor ID for actor %s"),
                         *target_actor->GetActorLabel());
         }
     }
 
-    log_log(TEXT("Registered %d targets with trigger button: %s"),
+    log_log(TEXT("Registered %d target actors with trigger button: %s"),
             trigger_payload.n_targets,
             *GetActorLabel());
 }

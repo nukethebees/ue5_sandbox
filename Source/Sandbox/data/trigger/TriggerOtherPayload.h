@@ -8,17 +8,26 @@
 #include "Sandbox/data/trigger/TriggerResult.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
+// Forward declare ActorId
+using ActorId = uint64;
+
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     static constexpr uint8 MAX_TARGETS{8};
 
-    std::array<TriggerableId, MAX_TARGETS> targets{};
+    std::array<ActorId, MAX_TARGETS> target_actor_ids{};
     uint8 n_targets{0};
     float activation_delay{0.0f};
 
-    void add_target(TriggerableId target) {
-        if (n_targets < MAX_TARGETS && target.is_valid()) {
-            targets[n_targets++] = target;
+    void add_target_actor(ActorId actor_id) {
+        if (n_targets < MAX_TARGETS && actor_id != 0) {
+            target_actor_ids[n_targets++] = actor_id;
         }
+    }
+
+    // Legacy method for backward compatibility
+    void add_target(TriggerableId target) {
+        // This method is deprecated - use add_target_actor instead
+        // For now, we'll ignore this to force migration to actor IDs
     }
 
     FTriggerResult trigger(FTriggerContext context);
