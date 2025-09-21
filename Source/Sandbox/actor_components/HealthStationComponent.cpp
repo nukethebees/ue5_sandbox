@@ -1,61 +1,36 @@
 #include "Sandbox/actor_components/HealthStationComponent.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/subsystems/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/TriggerSubsystem.h"
 
 UHealthStationComponent::UHealthStationComponent() {
-    PrimaryComponentTick.bCanEverTick = true;
-    PrimaryComponentTick.bStartWithTickEnabled = false;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 void UHealthStationComponent::BeginPlay() {
     Super::BeginPlay();
-    reset_current_capacity();
-}
-void UHealthStationComponent::TickComponent(float DeltaTime,
-                                            ELevelTick TickType,
-                                            FActorComponentTickFunction* ThisTickFunction) {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    cooldown_remaining = FMath::Max(0.0f, cooldown_remaining - DeltaTime);
+    // Initialize payload capacity
+    health_station_payload.reset_capacity();
 
-    if (cooldown_remaining <= 0.0f) {
-        cooldown_remaining = 0.0f;
-        SetComponentTickEnabled(false);
-    }
+    // Bind delegate for UI updates (two-phase initialization)
+    health_station_payload.on_state_changed.BindUObject(this, &UHealthStationComponent::broadcast_state);
 
-    broadcast_state();
-}
-void UHealthStationComponent::interact(AActor* interactor) {
-    if (!interactor || !can_interact(interactor)) {
-        return;
-    }
-
-    auto* const health{interactor->FindComponentByClass<UHealthComponent>()};
-    if (!health || health->at_max_health()) {
-        return;
-    }
-
-    if (auto* const manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
-        FHealthChange change{FMath::Min(heal_amount_per_use, current_capacity),
-                             EHealthChangeType::Healing};
-        manager->queue_health_change(health, change);
-
-        current_capacity = FMath::Max(0.0f, current_capacity - change.value);
-        start_cooldown();
-        broadcast_state();
+    // Register with trigger subsystem
+    auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
+    if (subsystem) {
+        my_trigger_id = subsystem->register_triggerable(GetOwner(), health_station_payload);
     }
 }
-bool UHealthStationComponent::can_interact(AActor const*) const {
-    return !is_empty();
-}
-void UHealthStationComponent::reset_current_capacity() {
-    current_capacity = max_capacity;
+void UHealthStationComponent::EndPlay(EEndPlayReason::Type reason) {
+    if (auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()}) {
+        subsystem->deregister_triggerable(GetOwner());
+    }
+    Super::EndPlay(reason);
 }
 void UHealthStationComponent::broadcast_state() const {
-    on_station_state_changed.Broadcast(
-        {current_capacity, cooldown_remaining, cooldown_duration, can_interact(nullptr)});
-}
-void UHealthStationComponent::start_cooldown() {
-    cooldown_remaining = cooldown_duration;
-    SetComponentTickEnabled(true);
+    FStationStateData state{.remaining_capacity = health_station_payload.current_capacity,
+                            .cooldown_remaining = health_station_payload.cooldown_remaining,
+                            .cooldown_total = health_station_payload.cooldown_duration,
+                            .is_ready = health_station_payload.is_ready()};
+
+    on_station_state_changed.Broadcast(state);
 }

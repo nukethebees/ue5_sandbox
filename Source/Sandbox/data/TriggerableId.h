@@ -2,6 +2,7 @@
 
 #include <array>
 #include <bit>
+#include <compare>
 
 #include "CoreMinimal.h"
 
@@ -26,6 +27,8 @@ struct TriggerableId {
     bool is_valid() const { return tuple_index() >= 0 && array_index() >= 0; }
 
     static TriggerableId invalid() { return {}; }
+
+    auto operator<=>(TriggerableId const& other) const = default;
   private:
     std::array<int32, 2> indexes_{-1, -1};
 };

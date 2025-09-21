@@ -1,6 +1,8 @@
 #include "Sandbox/actor_components/InteractorComponent.h"
 
 #include "Sandbox/actor_components/InteractableComponent.h"
+#include "Sandbox/data/TriggerCapabilities.h"
+#include "Sandbox/subsystems/TriggerSubsystem.h"
 
 UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
@@ -69,15 +71,55 @@ void UInteractorComponent::try_interact() {
         return;
     }
 
-    // Only trigger the first valid one
+    // Extract actors from hit results
+    TArray<AActor*> hit_actors{};
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
-
-        log_verbose(TEXT("Checking hit actor %s."), *actor->GetName());
-
-        if ((actor == owner) || (actor == nullptr)) {
-            continue;
+        if (actor && actor != owner) {
+            hit_actors.Add(actor);
         }
+    }
+
+    if (hit_actors.IsEmpty()) {
+        log_verbose(TEXT("No valid hit actors."));
+        return;
+    }
+
+    // Try new trigger system first
+    auto* subsystem{world->GetSubsystem<UTriggerSubsystem>()};
+    if (subsystem) {
+        FTriggeringSource source{.type = ETriggerForm::PlayerInteraction,
+                                 .capabilities = {},
+                                 .instigator = owner,
+                                 .source_location = owner->GetActorLocation(),
+                                 .source_triggerable = std::nullopt};
+
+        source.capabilities.add_capability(ETriggerCapability::Humanoid);
+
+        auto results{subsystem->trigger(hit_actors, source)};
+
+        if (results.any_triggered()) {
+            log_verbose(TEXT("Triggered %d actors through new system"), results.n_triggered);
+
+            cooling_down = true;
+            constexpr bool loop_timer{false};
+            world->GetTimerManager().SetTimer(
+                cooldown_handle,
+                [this]() { cooling_down = false; },
+                interaction_cooldown,
+                loop_timer);
+            return;
+        }
+
+        // If no actors triggered through new system, try old system with non-triggered actors
+        log_verbose(TEXT("No actors triggered through new system, trying old system"));
+        auto nt{results.get_not_triggered()};
+        hit_actors = TArray<AActor*>(nt.data(), nt.size());
+    }
+
+    // Fallback to old interaction system
+    for (auto* const actor : hit_actors) {
+        log_verbose(TEXT("Checking hit actor %s with old system."), *actor->GetName());
 
         if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
             log_verbose(TEXT("Found UInteractableComponent."));
