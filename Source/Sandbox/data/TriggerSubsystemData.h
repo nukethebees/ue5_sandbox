@@ -215,11 +215,12 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     template <typename Self>
     FTriggerResults
         trigger(this Self&& self, TArrayView<AActor*> actors, FTriggeringSource source) {
+        // Fill results array from both sides
+        // Triggered actors from the left, non-triggered from the right
         FTriggerResults results{};
-        results.actors.Init(nullptr, actors.Num()); // Pre-allocate with nullptr
-
-        int32 triggered_index{0};                    // Fill from front
-        int32 not_triggered_index{actors.Num() - 1}; // Fill from back
+        results.actors.Init(nullptr, actors.Num());
+        int32 triggered_index{0};
+        int32 not_triggered_index{actors.Num() - 1};
 
         for (auto* actor : actors) {
             if (self.trigger(actor, source) == ETriggerOccurred::yes) {
