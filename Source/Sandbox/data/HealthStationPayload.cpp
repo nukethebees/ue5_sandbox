@@ -27,8 +27,7 @@ FTriggerResult FHealthStationPayload::trigger(FTriggerContext context) {
     current_capacity = FMath::Max(0.0f, current_capacity - change.value);
     cooldown_remaining = cooldown_duration;
 
-    // Notify UI of state change
-    on_state_changed.ExecuteIfBound();
+    broadcast_state();
 
     logger.log_verbose(TEXT("Health station triggered: healed %.1f, remaining capacity %.1f"),
                        change.value,
@@ -58,14 +57,18 @@ bool FHealthStationPayload::can_trigger(FTriggerContext const& context) const {
 bool FHealthStationPayload::tick(float delta_time) {
     if (cooldown_remaining > 0.0f) {
         cooldown_remaining = FMath::Max(0.0f, cooldown_remaining - delta_time);
-
-        // Notify UI of cooldown progress
-        on_state_changed.ExecuteIfBound();
-
-        // Continue ticking while cooldown is active
+        broadcast_state();
         return cooldown_remaining > 0.0f;
     }
 
-    // No longer need ticking
     return false;
+}
+
+void FHealthStationPayload::broadcast_state() const {
+    FStationStateData state{.remaining_capacity = current_capacity,
+                            .cooldown_remaining = cooldown_remaining,
+                            .cooldown_total = cooldown_duration,
+                            .is_ready = is_ready()};
+
+    on_station_state_changed.Broadcast(state);
 }

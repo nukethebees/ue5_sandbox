@@ -1,15 +1,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/HealthChange.h"
+#include "Sandbox/data/StationStateData.h"
 #include "Sandbox/data/TriggerContext.h"
 #include "Sandbox/data/TriggerResult.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "HealthStationPayload.generated.h"
 
-class UDamageManagerSubsystem;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
+                                            FStationStateData const&,
+                                            state_data);
 
 USTRUCT(BlueprintType)
 struct FHealthStationPayload {
@@ -28,9 +30,8 @@ struct FHealthStationPayload {
     float current_capacity{0.0f};
     float cooldown_remaining{0.0f};
 
-    // Delegate for UI updates (moved with payload)
-    DECLARE_DELEGATE(FOnStateChanged);
-    FOnStateChanged on_state_changed;
+    UPROPERTY(BlueprintAssignable, Category = "Health Station")
+    FOnStationStateChanged on_station_state_changed;
 
     // Static logger since can't inherit from LogMsgMixin
     static inline auto logger{ml::LogMsgMixin<"FHealthStationPayload">{}};
@@ -40,4 +41,5 @@ struct FHealthStationPayload {
     bool can_trigger(FTriggerContext const& context) const;
     void reset_capacity() { current_capacity = max_capacity; }
     bool is_ready() const { return current_capacity > 0.0f && cooldown_remaining <= 0.0f; }
+    void broadcast_state() const;
 };

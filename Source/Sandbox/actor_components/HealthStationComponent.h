@@ -7,37 +7,11 @@
 
 #include "HealthStationComponent.generated.h"
 
-USTRUCT(BlueprintType)
-struct FStationStateData {
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadOnly)
-    float remaining_capacity{0.0f};
-
-    UPROPERTY(BlueprintReadOnly)
-    float cooldown_remaining{0.0f};
-
-    UPROPERTY(BlueprintReadOnly)
-    float cooldown_total{1.0f};
-
-    UPROPERTY(BlueprintReadOnly)
-    bool is_ready{false};
-};
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
-                                            FStationStateData const&,
-                                            state_data);
-
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UHealthStationComponent : public UActorComponent {
     GENERATED_BODY()
   public:
     UHealthStationComponent();
-
-    void broadcast_state() const;
-
-    UPROPERTY(BlueprintAssignable, Category = "Health Station")
-    FOnStationStateChanged on_station_state_changed;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health Station")
     FHealthStationPayload health_station_payload;

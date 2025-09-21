@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "CoreMinimal.h"
 #include "Sandbox/data/HealthStationPayload.h"
 #include "Sandbox/data/TriggerOtherPayload.h"
@@ -10,7 +12,9 @@
 #include "TriggerSubsystem.generated.h"
 
 UCLASS()
-class SANDBOX_API UTriggerSubsystem : public UWorldSubsystem, public FTickableGameObject {
+class SANDBOX_API UTriggerSubsystem
+    : public UWorldSubsystem
+    , public FTickableGameObject {
     GENERATED_BODY()
   public:
     template <typename T>
@@ -35,7 +39,6 @@ class SANDBOX_API UTriggerSubsystem : public UWorldSubsystem, public FTickableGa
     virtual bool IsTickable() const override { return data_.has_ticking_payloads(); }
     virtual TStatId GetStatId() const override { return TStatId(); }
     virtual UWorld* GetTickableGameObjectWorld() const override { return GetWorld(); }
-
   private:
     UTriggerSubsystemData<FTriggerOtherPayload, FHealthStationPayload> data_{};
 };
