@@ -90,7 +90,7 @@ void FLandMinePayload::explode(FCollisionContext context) {
                 ml::calculate_explosion_damage(distance, explosion_radius, damage)};
             if (scaled_damage > 0.0f) {
                 FHealthChange damage_change{scaled_damage, EHealthChangeType::Damage};
-                damage_manager->queue_damage(health_component, damage_change);
+                damage_manager->queue_health_change(health_component, damage_change);
             }
         }
 
