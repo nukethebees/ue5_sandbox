@@ -31,7 +31,7 @@ class SANDBOX_API AHealthStationActor : public AActor {
 
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UHealthStationWidget> health_station_widget_class;
-
+  public:
     UFUNCTION()
     void handle_station_state_changed(FStationStateData const& state_data);
 };

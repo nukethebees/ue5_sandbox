@@ -21,11 +21,11 @@ AHealthStationActor::AHealthStationActor() {
 void AHealthStationActor::BeginPlay() {
     Super::BeginPlay();
 
-    if (health_station_component) {
-        health_station_component->on_station_state_changed.AddDynamic(
-            this, &AHealthStationActor::handle_station_state_changed);
-        health_station_component->broadcast_state();
-    }
+    //if (health_station_component) {
+    //    health_station_component->on_station_state_changed.AddDynamic(
+    //        this, &AHealthStationActor::handle_station_state_changed);
+    //    health_station_component->broadcast_state();
+    //}
 }
 
 void AHealthStationActor::handle_station_state_changed(FStationStateData const& state_data) {
