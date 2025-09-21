@@ -77,3 +77,4 @@ DerivedDataCache/*
 # Claude local files
 /.claude
 /ai_checkpoints
+/notes/
