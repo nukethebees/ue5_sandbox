@@ -27,7 +27,7 @@ class SANDBOX_API ATriggerButtonActor
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Button")
     float activation_delay{0.0f};
 
-     UFUNCTION(BlueprintCallable, Category = "Trigger Button")
+    UFUNCTION(BlueprintCallable, Category = "Trigger Button")
     int32 get_target_count() const { return trigger_payload.n_targets; }
 
     UFUNCTION(BlueprintCallable, Category = "Trigger Button")

@@ -48,7 +48,7 @@ constexpr auto trigger_array_index_v =
 #define TRIGGER_CASE(i)                                                                     \
     case i: {                                                                               \
         if constexpr (i < N_TYPES) {                                                        \
-            self.log_verbose(TEXT("Handling trigger case %d."), i);                         \
+            LOG.log_verbose(TEXT("Handling trigger case %d."), i);                          \
             auto result{                                                                    \
                 std::get<i>(self.triggerables)[id.array_index()].trigger(trigger_context)}; \
             self.handle_trigger_result(id, result);                                         \
@@ -56,16 +56,16 @@ constexpr auto trigger_array_index_v =
         break;                                                                              \
     }
 
-#define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                            \
-    do {                                                                                 \
-        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");       \
-        switch (id.tuple_index()) {                                                      \
-            stamper(0, TRIGGER_CASE);                                                    \
-            default: {                                                                   \
-                self.log_warning(TEXT("Unhandled trigger type: %d."), id.tuple_index()); \
-                break;                                                                   \
-            }                                                                            \
-        }                                                                                \
+#define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                           \
+    do {                                                                                \
+        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");      \
+        switch (id.tuple_index()) {                                                     \
+            stamper(0, TRIGGER_CASE);                                                   \
+            default: {                                                                  \
+                LOG.log_warning(TEXT("Unhandled trigger type: %d."), id.tuple_index()); \
+                break;                                                                  \
+            }                                                                           \
+        }                                                                               \
     } while (0)
 
 #define TICK_CASE(i)                                                                  \
@@ -158,24 +158,26 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     template <typename Self>
     void trigger(this Self&& self, TriggerableId id, FTriggeringSource source) {
+        static constexpr auto LOG{NestedLogger<"trigger">()};
+
         if (!id.is_valid()) {
-            self.log_warning(TEXT("Cannot trigger invalid ID"));
+            LOG.log_warning(TEXT("Cannot trigger invalid ID"));
             return;
         }
 
         auto const combined_id{id.as_combined_id()};
         auto const* actor_ptr{self.id_to_actor.Find(combined_id)};
         if (!actor_ptr || !*actor_ptr) {
-            self.log_warning(TEXT("Cannot find actor for trigger ID (%d, %d)"),
-                             id.tuple_index(),
-                             id.array_index());
+            LOG.log_warning(TEXT("Cannot find actor for trigger ID (%d, %d)"),
+                            id.tuple_index(),
+                            id.array_index());
             return;
         }
 
         auto* actor{*actor_ptr};
         auto* world{actor->GetWorld()};
         if (!world) {
-            self.log_warning(TEXT("Actor has no world"));
+            LOG.log_warning(TEXT("Actor has no world"));
             return;
         }
 
@@ -186,10 +188,10 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                                         .trigger_location = actor->GetActorLocation(),
                                         .delta_time = world->GetDeltaSeconds()};
 
-        self.log_verbose(TEXT("Triggering ID (%d, %d) for actor %s"),
-                         id.tuple_index(),
-                         id.array_index(),
-                         *actor->GetActorLabel());
+        LOG.log_verbose(TEXT("Triggering ID (%d, %d) for actor %s"),
+                        id.tuple_index(),
+                        id.array_index(),
+                        *actor->GetActorLabel());
 
         static_assert(N_TYPES <= 256,
                       "Cannot support this many trigger types. The macros must be extended.");
@@ -203,7 +205,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         } else if constexpr (N_TYPES <= 256) {
             SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
         } else {
-            self.log_warning(TEXT("Too many types for branch. This should never hit."));
+            LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
             return;
         }
     }
@@ -244,8 +246,11 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     template <typename Self>
     ETriggerOccurred trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
+        static constexpr auto LOG{NestedLogger<"trigger">()};
+
         auto id_opt{self.get_triggerable_id(actor)};
         if (!id_opt || !id_opt->is_valid()) {
+            LOG.log_warning(TEXT("Not a valid id."));
             return ETriggerOccurred::no;
         }
 
@@ -283,36 +288,61 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     // Trigger all triggerables for an actor ID
     template <typename Self>
     ETriggerOccurred trigger_actor(this Self&& self, ActorId actor_id, FTriggeringSource source) {
+        static constexpr auto LOG{NestedLogger<"trigger_actor">()};
+
+        LOG.log_verbose(TEXT("Start."));
+
         if (actor_id == 0) {
+            LOG.log_warning(TEXT("Actor ID is zero."));
             return ETriggerOccurred::no;
         }
 
-        auto const* range{self.actor_id_to_range.Find(actor_id)};
-        if (!range || range->is_empty()) {
-            self.log_verbose(TEXT("Actor ID %llu has no triggerables"), actor_id);
+        // Find the actor for this actor ID
+        AActor* target_actor{nullptr};
+        for (auto const& [actor, id] : self.actor_to_actor_id) {
+            if (id == actor_id) {
+                target_actor = actor;
+                break;
+            }
+        }
+
+        if (!target_actor) {
+            LOG.log_warning(TEXT("Could not find actor for actor ID %llu"), actor_id);
             return ETriggerOccurred::no;
         }
 
-        self.log_verbose(
-            TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id);
+        LOG.log_verbose(
+            TEXT("Found actor %s for actor ID %llu"), *target_actor->GetActorLabel(), actor_id);
+
+        // Find all TriggerableIds for this actor by searching id_to_actor map
+        TArray<TriggerableId> actor_triggerables{};
+        for (auto const& [combined_id, actor] : self.id_to_actor) {
+            if (actor == target_actor) {
+                TriggerableId id{};
+                id = TriggerableId::from_combined_id(combined_id);
+                actor_triggerables.Add(id);
+            }
+        }
+
+        if (actor_triggerables.IsEmpty()) {
+            LOG.log_verbose(TEXT("Actor %s (ID %llu) has no registered triggerables"),
+                            *target_actor->GetActorLabel(),
+                            actor_id);
+            return ETriggerOccurred::no;
+        }
+
+        LOG.log_verbose(TEXT("Triggering %d triggerables for actor %s (ID %llu)"),
+                        actor_triggerables.Num(),
+                        *target_actor->GetActorLabel(),
+                        actor_id);
 
         bool any_triggered{false};
-        for (uint32 i{0}; i < range->length; ++i) {
-            uint32 array_index{range->offset + i};
-
-            // Find which tuple this array index belongs to
-            // For now, assume all triggerables are in the first tuple (FTriggerOtherPayload)
-            // TODO: Make this more generic to handle multiple tuple types
-            TriggerableId id{0, static_cast<int32>(array_index)};
-
-            auto const combined_id{id.as_combined_id()};
-            if (auto const* actor_ptr{self.id_to_actor.Find(combined_id)}) {
-                auto* actor{*actor_ptr};
-                if (actor) {
-                    self.trigger(id, source);
-                    any_triggered = true;
-                }
-            }
+        for (auto const& triggerable_id : actor_triggerables) {
+            LOG.log_verbose(TEXT("Triggering TriggerableId (%d, %d)"),
+                            triggerable_id.tuple_index(),
+                            triggerable_id.array_index());
+            self.trigger(triggerable_id, source);
+            any_triggered = true;
         }
 
         return any_triggered ? ETriggerOccurred::yes : ETriggerOccurred::no;
