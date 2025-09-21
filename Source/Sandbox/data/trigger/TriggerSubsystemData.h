@@ -108,7 +108,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.id_to_actor.Add(id.as_combined_id(), actor);
 
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
-                         *actor->GetName(),
+                         *actor->GetActorLabel(),
                          id.tuple_index(),
                          id.array_index());
 
@@ -148,7 +148,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.log_verbose(TEXT("Triggering ID (%d, %d) for actor %s"),
                          id.tuple_index(),
                          id.array_index(),
-                         *actor->GetName());
+                         *actor->GetActorLabel());
 
         static_assert(N_TYPES <= 256,
                       "Cannot support this many trigger types. The macros must be extended.");
@@ -184,7 +184,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.actor_to_id.Remove(actor);
         self.id_to_actor.Remove(combined_id);
 
-        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor->GetName());
+        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor->GetActorLabel());
     }
 
     template <typename Self>
