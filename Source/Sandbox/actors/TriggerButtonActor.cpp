@@ -21,7 +21,9 @@ void ATriggerButtonActor::BeginPlay() {
     // Register with trigger subsystem
     auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
     if (subsystem) {
-        my_trigger_id = subsystem->register_triggerable(this, std::move(trigger_payload));
+        if (auto const id{subsystem->register_triggerable(this, std::move(trigger_payload))}) {
+            my_trigger_id = *id;
+        }
     }
 }
 

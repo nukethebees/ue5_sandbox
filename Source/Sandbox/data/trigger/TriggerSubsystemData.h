@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 #include <tuple>
 #include <utility>
 
@@ -95,16 +96,16 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     static constexpr std::size_t N_TYPES{sizeof...(Types)};
 
     template <typename Self, typename Payload>
-    TriggerableId register_triggerable(this Self&& self,
-                                       AActor* actor,
-                                       Payload&& payload,
-                                       auto* top_subsystem) {
+    std::optional<TriggerableId> register_triggerable(this Self&& self,
+                                                      AActor* actor,
+                                                      Payload&& payload,
+                                                      auto* top_subsystem) {
         static_assert(ml::IsTriggerPayload<std::remove_cvref_t<Payload>>,
                       "Payload must satisfy IsTriggerPayload concept");
 
         if (!actor) {
             self.log_warning(TEXT("Cannot register null actor"));
-            return TriggerableId::invalid();
+            return std::nullopt;
         }
 
         // Validate contiguous registration
@@ -116,7 +117,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                         self.log_error(TEXT("Actor %s already finished registration - cannot add "
                                             "more triggerables"),
                                        *actor->GetActorLabel());
-                        return TriggerableId::invalid();
+                        return std::nullopt;
                     }
                 }
             }
@@ -130,22 +131,24 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         TriggerableId id{static_cast<int32>(payload_array_index), payload_element_index};
 
-        // Update actor range
+        // Add to parallel TriggerableId array
+        auto const triggerable_id_index{self.triggerable_ids.Add(id)};
+
+        // Update actor range to point to triggerable_ids array
         auto const actor_id{self.get_or_create_actor_id(actor)};
         if (!actor_id) {
             self.log_error(TEXT("Could not get the actor ID."));
-            return TriggerableId::invalid();
+            return std::nullopt;
         }
 
         if (auto* range{self.actor_id_to_range.Find(*actor_id)}) {
             if (range->is_empty()) {
-                // First triggerable for this actor - set offset
-                range->offset = payload_element_index;
+                // First triggerable for this actor - set offset to triggerable_ids index
+                range->offset = triggerable_id_index;
             }
             range->length++;
         }
 
-        self.actor_to_id.Add(actor, id);
         self.id_to_actor.Add(id.as_combined_id(), actor);
 
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
@@ -216,45 +219,56 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return;
         }
 
-        auto const* id_ptr{self.actor_to_id.Find(actor)};
-        if (!id_ptr) {
+        auto triggerable_ids{self.get_triggerable_ids(actor)};
+        if (triggerable_ids.empty()) {
             return;
         }
 
-        auto const id{*id_ptr};
-        auto const combined_id{id.as_combined_id()};
+        // Remove all TriggerableIds for this actor from id_to_actor map
+        for (auto const& id : triggerable_ids) {
+            self.id_to_actor.Remove(id.as_combined_id());
+        }
 
-        self.actor_to_id.Remove(actor);
-        self.id_to_actor.Remove(combined_id);
+        // Remove actor from actor ID system
+        if (auto actor_id_opt{self.get_actor_id(actor)}) {
+            self.actor_id_to_range.Remove(*actor_id_opt);
+            self.actor_to_actor_id.Remove(actor);
+        }
 
         self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor->GetActorLabel());
     }
 
     template <typename Self>
-    std::optional<TriggerableId> get_triggerable_id(this Self&& self, AActor* actor) {
+    std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor* actor) {
         if (!actor) {
-            return std::nullopt;
+            return {};
         }
 
-        auto const* id_ptr{self.actor_to_id.Find(actor)};
-        if (!id_ptr) {
-            return std::nullopt;
+        auto const actor_id_opt{self.get_actor_id(actor)};
+        if (!actor_id_opt) {
+            return {};
         }
 
-        return *id_ptr;
+        auto const* range{self.actor_id_to_range.Find(*actor_id_opt)};
+        if (!range || range->is_empty()) {
+            return {};
+        }
+
+        return std::span{&self.triggerable_ids[range->offset], range->length};
     }
 
     template <typename Self>
     ETriggerOccurred trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
-        auto id_opt{self.get_triggerable_id(actor)};
-        if (!id_opt || !id_opt->is_valid()) {
-            LOG.log_warning(TEXT("Not a valid id."));
+        auto triggerable_ids{self.get_triggerable_ids(actor)};
+        if (triggerable_ids.empty()) {
+            LOG.log_warning(TEXT("Actor has no triggerables."));
             return ETriggerOccurred::no;
         }
 
-        self.trigger(*id_opt, source);
+        // Trigger first triggerable (backward compatibility)
+        self.trigger(triggerable_ids[0], source);
         return ETriggerOccurred::yes;
     }
 
@@ -292,60 +306,26 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         LOG.log_verbose(TEXT("Start."));
 
-        if (actor_id == 0) {
-            LOG.log_warning(TEXT("Actor ID is zero."));
-            return ETriggerOccurred::no;
-        }
-
-        // Find the actor for this actor ID
-        AActor* target_actor{nullptr};
-        for (auto const& [actor, id] : self.actor_to_actor_id) {
-            if (id == actor_id) {
-                target_actor = actor;
-                break;
-            }
-        }
-
-        if (!target_actor) {
-            LOG.log_warning(TEXT("Could not find actor for actor ID %llu"), actor_id);
+        auto const* range{self.actor_id_to_range.Find(actor_id)};
+        if (!range || range->is_empty()) {
+            LOG.log_verbose(TEXT("Actor ID %llu has no triggerables"), actor_id);
             return ETriggerOccurred::no;
         }
 
         LOG.log_verbose(
-            TEXT("Found actor %s for actor ID %llu"), *target_actor->GetActorLabel(), actor_id);
+            TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id);
 
-        // Find all TriggerableIds for this actor by searching id_to_actor map
-        TArray<TriggerableId> actor_triggerables{};
-        for (auto const& [combined_id, actor] : self.id_to_actor) {
-            if (actor == target_actor) {
-                TriggerableId id{};
-                id = TriggerableId::from_combined_id(combined_id);
-                actor_triggerables.Add(id);
-            }
-        }
+        std::span<TriggerableId const> triggerables{&self.triggerable_ids[range->offset],
+                                                    range->length};
 
-        if (actor_triggerables.IsEmpty()) {
-            LOG.log_verbose(TEXT("Actor %s (ID %llu) has no registered triggerables"),
-                            *target_actor->GetActorLabel(),
-                            actor_id);
-            return ETriggerOccurred::no;
-        }
-
-        LOG.log_verbose(TEXT("Triggering %d triggerables for actor %s (ID %llu)"),
-                        actor_triggerables.Num(),
-                        *target_actor->GetActorLabel(),
-                        actor_id);
-
-        bool any_triggered{false};
-        for (auto const& triggerable_id : actor_triggerables) {
+        for (auto const& triggerable_id : triggerables) {
             LOG.log_verbose(TEXT("Triggering TriggerableId (%d, %d)"),
                             triggerable_id.tuple_index(),
                             triggerable_id.array_index());
             self.trigger(triggerable_id, source);
-            any_triggered = true;
         }
 
-        return any_triggered ? ETriggerOccurred::yes : ETriggerOccurred::no;
+        return ETriggerOccurred::yes;
     }
 
     template <typename Self>
@@ -440,8 +420,8 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
   private:
     TriggerableTupleT triggerables;
-    TMap<AActor*, TriggerableId> actor_to_id; // Legacy: first triggerable per actor
-    TMap<uint64, AActor*> id_to_actor;
+    TArray<TriggerableId> triggerable_ids; // Parallel storage for contiguous ID access
+    TMap<CombinedId, AActor*> id_to_actor;
     TArray<TriggerableId> ticking_payloads;
 
     // Actor ID system

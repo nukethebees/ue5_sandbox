@@ -27,7 +27,10 @@ void AHealthStationActor::BeginPlay() {
 
     auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
     if (subsystem) {
-        my_trigger_id = subsystem->register_triggerable(this, std::move(health_station_payload));
+        if (auto const id{
+                subsystem->register_triggerable(this, std::move(health_station_payload))}) {
+            my_trigger_id = *id;
+        }
     }
 }
 
