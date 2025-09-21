@@ -44,8 +44,8 @@ void UHealthStationComponent::interact(AActor* interactor) {
         broadcast_state();
     }
 }
-bool UHealthStationComponent::can_interact(AActor const* interactor) const {
-    return cooldown_remaining <= 0.0f;
+bool UHealthStationComponent::can_interact(AActor const*) const {
+    return !is_empty();
 }
 void UHealthStationComponent::reset_current_capacity() {
     current_capacity = max_capacity;
