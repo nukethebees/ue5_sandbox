@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/data/CollisionContext.h"
+#include "Sandbox/data/collision/CollisionContext.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "TimerManager.h"
 

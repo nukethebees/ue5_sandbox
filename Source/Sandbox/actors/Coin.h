@@ -4,7 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/data/CollisionPayloads.h"
+#include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 
 #include "Coin.generated.h"

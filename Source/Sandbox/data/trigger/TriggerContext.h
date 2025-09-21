@@ -3,8 +3,8 @@
 #include <optional>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/TriggerableId.h"
-#include "Sandbox/data/TriggerCapabilities.h"
+#include "Sandbox/data/trigger/TriggerableId.h"
+#include "Sandbox/data/trigger/TriggerCapabilities.h"
 
 class AActor;
 class UWorld;

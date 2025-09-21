@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/data/HealthChange.h"
+#include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/math.h"

@@ -1,4 +1,4 @@
-#include "Sandbox/data/CollisionPayloads.h"
+#include "Sandbox/data/collision/CollisionPayloads.h"
 
 void FSpeedBoostPayload::execute(FCollisionContext context) {
     if (auto* boost_component{

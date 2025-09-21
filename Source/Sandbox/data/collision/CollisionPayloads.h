@@ -4,7 +4,7 @@
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/data/CollisionContext.h"
+#include "Sandbox/data/collision/CollisionContext.h"
 #include "Sandbox/data/LandMinePayload.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"

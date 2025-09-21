@@ -1,7 +1,7 @@
 #include "Sandbox/actor_components/SpeedBoostItemComponent.h"
 
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/data/CollisionPayloads.h"
+#include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/subsystems/CollisionEffectSubsystem.h"
 
 USpeedBoostItemComponent::USpeedBoostItemComponent() {

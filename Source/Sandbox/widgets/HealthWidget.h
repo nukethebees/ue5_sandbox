@@ -4,7 +4,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "CoreMinimal.h"
-#include "Sandbox/data/HealthData.h"
+#include "Sandbox/data/health/HealthData.h"
 
 #include "HealthWidget.generated.h"
 

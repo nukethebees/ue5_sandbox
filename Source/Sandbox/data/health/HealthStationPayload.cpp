@@ -1,4 +1,4 @@
-#include "Sandbox/data/HealthStationPayload.h"
+#include "Sandbox/data/health/HealthStationPayload.h"
 
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
