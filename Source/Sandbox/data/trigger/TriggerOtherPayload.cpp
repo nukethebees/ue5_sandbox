@@ -1,4 +1,4 @@
-#include "Sandbox/data/TriggerOtherPayload.h"
+#include "Sandbox/data/trigger/TriggerOtherPayload.h"
 
 #include "Sandbox/subsystems/TriggerSubsystem.h"
 

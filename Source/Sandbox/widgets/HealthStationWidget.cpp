@@ -2,7 +2,7 @@
 
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
-#include "Sandbox/data/StationStateData.h"
+#include "Sandbox/data/health/StationStateData.h"
 
 UFUNCTION()
 void UHealthStationWidget::update(FStationStateData const& state_data) {

@@ -1,7 +1,6 @@
 #include "Sandbox/actor_components/InteractorComponent.h"
 
-#include "Sandbox/actor_components/InteractableComponent.h"
-#include "Sandbox/data/TriggerCapabilities.h"
+#include "Sandbox/data/trigger/TriggerCapabilities.h"
 #include "Sandbox/subsystems/TriggerSubsystem.h"
 
 UInteractorComponent::UInteractorComponent() {
@@ -109,36 +108,11 @@ void UInteractorComponent::try_interact() {
                 interaction_cooldown,
                 loop_timer);
             return;
+        } else {
+            log_verbose(TEXT("No actors triggered through trigger system"));
         }
 
-        // If no actors triggered through new system, try old system with non-triggered actors
-        log_verbose(TEXT("No actors triggered through new system, trying old system"));
-        auto nt{results.get_not_triggered()};
-        hit_actors = TArray<AActor*>(nt.data(), nt.size());
+    } else {
+        log_warning(TEXT("No UTriggerSubsystem found"));
     }
-
-    // Fallback to old interaction system
-    for (auto* const actor : hit_actors) {
-        log_verbose(TEXT("Checking hit actor %s with old system."), *actor->GetName());
-
-        if (auto* interactable_component{actor->FindComponentByClass<UInteractableComponent>()}) {
-            log_verbose(TEXT("Found UInteractableComponent."));
-            if (interactable_component->try_interact(owner) != EInteractTriggered::none_triggered) {
-                log_verbose(TEXT("Component successfully interacted with."));
-                break;
-            } else {
-                log_verbose(TEXT("Try interact triggered none."));
-            }
-        }
-
-        if (IInteractable::try_interact(actor, owner)) {
-            log_verbose(TEXT("Interacted with the actor directly."));
-            break;
-        }
-    }
-
-    cooling_down = true;
-    constexpr bool loop_timer{false};
-    world->GetTimerManager().SetTimer(
-        cooldown_handle, [this]() { cooling_down = false; }, interaction_cooldown, loop_timer);
 }

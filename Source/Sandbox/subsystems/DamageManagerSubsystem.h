@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/data/HealthChange.h"
+#include "Sandbox/data/health/HealthChange.h"
 
 #include "DamageManagerSubsystem.generated.h"
 

@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/data/HealthStationPayload.h"
-#include "Sandbox/data/TriggerableId.h"
+#include "Sandbox/data/health/HealthStationPayload.h"
+#include "Sandbox/data/trigger/TriggerableId.h"
 #include "HealthStationActor.generated.h"
 
 class UWidgetComponent;

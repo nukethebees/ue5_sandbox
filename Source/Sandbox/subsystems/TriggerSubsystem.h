@@ -3,10 +3,10 @@
 #include <utility>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/HealthStationPayload.h"
-#include "Sandbox/data/TriggerOtherPayload.h"
-#include "Sandbox/data/TriggerResults.h"
-#include "Sandbox/data/TriggerSubsystemData.h"
+#include "Sandbox/data/health/HealthStationPayload.h"
+#include "Sandbox/data/trigger/TriggerOtherPayload.h"
+#include "Sandbox/data/trigger/TriggerResults.h"
+#include "Sandbox/data/trigger/TriggerSubsystemData.h"
 #include "Subsystems/WorldSubsystem.h"
 
 #include "TriggerSubsystem.generated.h"
