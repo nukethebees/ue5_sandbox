@@ -4,5 +4,6 @@
 
 struct FTriggerResult {
     bool enable_ticking{false};
-    // Extensible for future features: bool success, FString debug_info, etc.
 };
+
+enum class ETriggerOccurred : uint8 { no, yes };
