@@ -68,12 +68,14 @@ void ATriggerButtonActor::register_targets_with_payload() {
         // Get the TriggerableId for this actor
         if (auto target_id{subsystem->get_triggerable_id(target_actor)}) {
             trigger_payload.add_target(*target_id);
-            log_verbose(TEXT("Added target: %s"), *target_actor->GetName());
+            log_verbose(TEXT("Added target: %s"), *target_actor->GetActorLabel());
         } else {
             log_warning(TEXT("Actor %s is not registered with trigger subsystem"),
-                        *target_actor->GetName());
+                        *target_actor->GetActorLabel());
         }
     }
 
-    log_log(TEXT("Registered %d targets with trigger button"), trigger_payload.n_targets);
+    log_log(TEXT("Registered %d targets with trigger button: %s"),
+            trigger_payload.n_targets,
+            *GetActorLabel());
 }

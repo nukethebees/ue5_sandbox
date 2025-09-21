@@ -5,13 +5,15 @@
 #include "Sandbox/interfaces/Interactable.h"
 #include "Sandbox/data/trigger/FRotatePayload.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "InteractRotateComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractRotateComponent
     : public UActorComponent
-    , public IInteractable {
+    , public IInteractable
+    , public ml::LogMsgMixin<"UInteractRotateComponent"> {
     GENERATED_BODY()
   public:
     UInteractRotateComponent();
