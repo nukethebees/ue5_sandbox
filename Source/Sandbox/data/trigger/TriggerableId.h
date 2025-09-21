@@ -28,6 +28,11 @@ struct TriggerableId {
 
     static TriggerableId invalid() { return {}; }
 
+    static TriggerableId from_combined_id(uint64 combined_id) {
+        auto indexes{std::bit_cast<std::array<int32, 2>>(combined_id)};
+        return TriggerableId{indexes[0], indexes[1]};
+    }
+
     auto operator<=>(TriggerableId const& other) const = default;
   private:
     std::array<int32, 2> indexes_{-1, -1};
