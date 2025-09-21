@@ -58,8 +58,6 @@ constexpr auto trigger_array_index_v =
         }                                                                                \
     } while (0)
 
-#define TRIGGER_STAMP(N_CASES) TRIGGER_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
-
 #define TICK_CASE(i)                                                                  \
     case i: {                                                                         \
         if constexpr (i < N_TYPES) {                                                  \
@@ -79,8 +77,6 @@ constexpr auto trigger_array_index_v =
             }                                                                         \
         }                                                                             \
     } while (0)
-
-#define TICK_STAMP(N_CASES) TICK_VISIT_STAMP(SWITCH_STAMP##N_CASES, N_CASES)
 
 template <typename... Types>
 class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
@@ -158,13 +154,13 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                       "Cannot support this many trigger types. The macros must be extended.");
 
         if constexpr (N_TYPES <= 4) {
-            TRIGGER_STAMP(4);
+            SWITCH_STAMP(4, TRIGGER_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 16) {
-            TRIGGER_STAMP(16);
+            SWITCH_STAMP(16, TRIGGER_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 64) {
-            TRIGGER_STAMP(64);
+            SWITCH_STAMP(64, TRIGGER_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 256) {
-            TRIGGER_STAMP(256);
+            SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
         } else {
             self.log_warning(TEXT("Too many types for branch. This should never hit."));
             return;
@@ -256,13 +252,13 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         static_assert(N_TYPES <= 256, "Cannot support this many trigger types for ticking.");
 
         if constexpr (N_TYPES <= 4) {
-            TICK_STAMP(4);
+            SWITCH_STAMP(4, TICK_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 16) {
-            TICK_STAMP(16);
+            SWITCH_STAMP(16, TICK_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 64) {
-            TICK_STAMP(64);
+            SWITCH_STAMP(64, TICK_VISIT_STAMP);
         } else if constexpr (N_TYPES <= 256) {
-            TICK_STAMP(256);
+            SWITCH_STAMP(256, TICK_VISIT_STAMP);
         } else {
             self.log_warning(TEXT("Too many types for tick branch."));
             return false;
@@ -306,9 +302,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
 #undef TRIGGER_CASE
 #undef TRIGGER_VISIT_STAMP
-#undef TRIGGER_STAMP
 #undef TICK_CASE
 #undef TICK_VISIT_STAMP
-#undef TICK_STAMP
 
 #include "Sandbox/macros/switch_stamping_undef.hpp"
