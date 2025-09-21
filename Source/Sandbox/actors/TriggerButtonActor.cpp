@@ -32,23 +32,6 @@ void ATriggerButtonActor::EndPlay(EEndPlayReason::Type reason) {
     Super::EndPlay(reason);
 }
 
-void ATriggerButtonActor::add_target_actor(AActor* actor) {
-    if (actor && !target_actors.Contains(actor)) {
-        target_actors.Add(actor);
-
-        // If we're already playing, update the payload immediately
-        if (HasActorBegunPlay()) {
-            register_targets_with_payload();
-        }
-    }
-}
-
-void ATriggerButtonActor::clear_targets() {
-    target_actors.Empty();
-    trigger_payload.target_actor_ids = {};
-    trigger_payload.n_targets = 0;
-}
-
 void ATriggerButtonActor::register_targets_with_payload() {
     // Clear existing targets
     trigger_payload.target_actor_ids = {};
@@ -66,11 +49,11 @@ void ATriggerButtonActor::register_targets_with_payload() {
         }
 
         // Get or create actor ID for this target
-        ActorId actor_id{subsystem->get_or_create_actor_id(target_actor)};
-        if (actor_id != 0) {
-            trigger_payload.add_target_actor(actor_id);
+        auto const actor_id{subsystem->get_or_create_actor_id(target_actor)};
+        if (actor_id) {
+            trigger_payload.add_target_actor(*actor_id);
             log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
-                        actor_id,
+                        *actor_id,
                         *target_actor->GetActorLabel());
         } else {
             log_warning(TEXT("Failed to get actor ID for actor %s"),
