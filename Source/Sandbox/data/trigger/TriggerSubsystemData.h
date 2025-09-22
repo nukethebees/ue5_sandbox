@@ -7,14 +7,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sandbox/concepts/TriggerPayloadConcept.h"
+#include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/data/trigger/TriggerContext.h"
-#include "Sandbox/data/trigger/TriggerPayloadConcept.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/data/trigger/StrongIds.h"
+#include "Sandbox/macros/switch_stamping.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
-#include "Sandbox/macros/switch_stamping.hpp"
 
 struct FTriggerableRange {
     uint32 offset{0};
