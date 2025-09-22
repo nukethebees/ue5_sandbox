@@ -23,7 +23,7 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     };
 
     // Try to get this actor's first ID for proper chain tracking
-    auto triggerable_ids{subsystem->get_triggerable_ids(&context.triggered_actor)};
+    auto triggerable_ids{subsystem->get_triggerable_ids(context.triggered_actor)};
     if (!triggerable_ids.empty()) {
         new_source.source_triggerable = triggerable_ids[0];
     }

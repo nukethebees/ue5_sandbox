@@ -107,7 +107,7 @@ void AForcefieldActor::BeginPlay() {
 
     // Register with TriggerSubsystem
     if (auto* const trigger_subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()}) {
-        if (auto const id{trigger_subsystem->register_triggerable(this, forcefield_payload)}) {
+        if (auto const id{trigger_subsystem->register_triggerable(*this, forcefield_payload)}) {
             triggerable_id = *id;
             log_verbose(TEXT("Registered forcefield with trigger subsystem"));
         } else {
