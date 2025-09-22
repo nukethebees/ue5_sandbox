@@ -15,6 +15,7 @@
 #include "Sandbox/macros/switch_stamping.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 struct FTriggerableRange {
     uint32 offset{0};
@@ -103,7 +104,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                     if (range->length > 0) {
                         self.log_error(TEXT("Actor %s already finished registration - cannot add "
                                             "more triggerables"),
-                                       *actor.GetActorLabel());
+                                       *ActorUtils::GetBestDisplayName(&actor));
                         return std::nullopt;
                     }
                 }
@@ -129,7 +130,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         self.id_to_actor.Add(id.as_combined_id(), &actor);
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
-                         *actor.GetActorLabel(),
+                         *ActorUtils::GetBestDisplayName(&actor),
                          id.tuple_index(),
                          id.array_index());
 
@@ -154,7 +155,8 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             self.actor_to_actor_id.Remove(&actor);
         }
 
-        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor.GetActorLabel());
+        self.log_verbose(TEXT("Deregistered triggerable for actor %s"),
+                         *ActorUtils::GetBestDisplayName(&actor));
     }
 
     template <typename Self>
@@ -305,8 +307,9 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.actor_to_actor_id.Add(&actor, new_id);
         self.actor_id_to_range.Add(new_id, FTriggerableRange{});
 
-        LOG.log_verbose(
-            TEXT("Created actor ID %llu for actor %s"), new_id.get(), *actor.GetActorLabel());
+        LOG.log_verbose(TEXT("Created actor ID %llu for actor %s"),
+                        new_id.get(),
+                        *ActorUtils::GetBestDisplayName(&actor));
         return new_id;
     }
 
