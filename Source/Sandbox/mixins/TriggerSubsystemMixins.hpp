@@ -2,7 +2,7 @@
 
 class UTriggerSubsystemMixins {
   public:
-    FORWARDING_FN(data_, register_triggerable, &self);
+    FORWARDING_FN(data_, register_triggerable);
     FORWARDING_FN(data_, trigger);
     FORWARDING_FN(data_, deregister_triggerable);
     FORWARDING_FN(data_, get_triggerable_ids);
