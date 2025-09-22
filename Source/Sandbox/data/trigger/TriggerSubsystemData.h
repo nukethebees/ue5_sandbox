@@ -45,15 +45,10 @@ constexpr auto trigger_array_index_v =
 }
 
 // Macros for generating switch statement
-#define TRIGGER_CASE(i)                                                                     \
-    case i: {                                                                               \
-        if constexpr (i < N_TYPES) {                                                        \
-            LOG.log_verbose(TEXT("Handling trigger case %d."), i);                          \
-            auto result{                                                                    \
-                std::get<i>(self.triggerables)[id.array_index()].trigger(trigger_context)}; \
-            self.handle_case_trigger_result(id, result);                                    \
-        }                                                                                   \
-        break;                                                                              \
+#define TRIGGER_CASE(i)                                   \
+    case i: {                                             \
+        self.handle_trigger_case<i>(id, trigger_context); \
+        break;                                            \
     }
 
 #define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                           \
@@ -358,12 +353,22 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         return *actor_ptr;
     }
   private:
-    template <typename Self>
-    void handle_case_trigger_result(this Self&& self, TriggerableId id, FTriggerResult result) {
-        if (result.enable_ticking) {
-            self.ticking_payloads.AddUnique(id);
-            self.log_verbose(
-                TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
+    template <std::size_t TupleIndex, typename Self>
+    void handle_trigger_case(this Self&& self,
+                             TriggerableId id,
+                             FTriggerContext const& trigger_context) {
+        static constexpr auto LOG{NestedLogger<"handle_trigger_case">()};
+
+        if constexpr (TupleIndex < N_TYPES) {
+            LOG.log_verbose(TEXT("Handling trigger case %d."), static_cast<int32>(TupleIndex));
+            auto const result{
+                std::get<TupleIndex>(self.triggerables)[id.array_index()].trigger(trigger_context)};
+
+            if (result.enable_ticking) {
+                self.ticking_payloads.AddUnique(id);
+                self.log_verbose(
+                    TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
+            }
         }
     }
 
