@@ -7,13 +7,16 @@
 void UVideoSettingRowWidget::NativeConstruct() {
     Super::NativeConstruct();
 
+    log_verbose(TEXT("NativeConstruct()"));
+
     if (!setting_name_text || !current_value_text || !input_container) {
-        UE_LOG(
-            LogTemp, Warning, TEXT("VideoSettingRowWidget: Required widgets not bound properly"));
+        log_warning(TEXT("VideoSettingRowWidget: Required widgets not bound properly"));
     }
 }
 
 void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig const& config) {
+    log_verbose(TEXT("initialize_for_boolean_setting"));
+
     bool_config = &config;
     setting_type = config.type;
 
@@ -26,6 +29,8 @@ void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig co
 }
 
 void UVideoSettingRowWidget::initialize_for_float_setting(FloatSettingConfig const& config) {
+    log_verbose(TEXT("initialize_for_float_setting"));
+    
     float_config = &config;
     setting_type = config.type;
 
@@ -42,6 +47,8 @@ void UVideoSettingRowWidget::initialize_for_float_setting(FloatSettingConfig con
 }
 
 void UVideoSettingRowWidget::initialize_for_int_setting(IntSettingConfig const& config) {
+    log_verbose(TEXT("initialize_for_int_setting"));
+    
     int_config = &config;
     setting_type = config.type;
 
@@ -68,7 +75,6 @@ void UVideoSettingRowWidget::create_button_input() {
         input_container->AddChildToHorizontalBox(button_widget);
 
         // Create text block for button label
-        // button_text = CreateWidget<UTextBlock>(this);
         button_text =
             WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ButtonText"));
         if (button_text) {
@@ -83,7 +89,6 @@ void UVideoSettingRowWidget::create_slider_with_text_input() {
     }
 
     // Create slider
-    // slider_widget = CreateWidget<USlider>(this);
     slider_widget = WidgetTree->ConstructWidget<USlider>(USlider::StaticClass(), TEXT("Slider"));
     if (slider_widget) {
         slider_widget->OnValueChanged.AddDynamic(this,
@@ -101,7 +106,6 @@ void UVideoSettingRowWidget::create_slider_with_text_input() {
     }
 
     // Create text box
-    // text_widget = CreateWidget<UEditableTextBox>(this);
     text_widget = WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(),
                                                                 TEXT("EditableText"));
     if (text_widget) {
@@ -122,7 +126,6 @@ void UVideoSettingRowWidget::create_text_input() {
         return;
     }
 
-    // text_widget = CreateWidget<UEditableTextBox>(this);
     text_widget = WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(),
                                                                 TEXT("EditableText2"));
     if (text_widget) {

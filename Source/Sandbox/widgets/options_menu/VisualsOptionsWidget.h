@@ -8,6 +8,7 @@
 #include "Components/VerticalBox.h"
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/options_menu/VideoSettingsData.h"
 
 #include "VisualsOptionsWidget.generated.h"
@@ -15,7 +16,9 @@
 class UVideoSettingRowWidget;
 
 UCLASS()
-class SANDBOX_API UVisualsOptionsWidget : public UUserWidget {
+class SANDBOX_API UVisualsOptionsWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UVisualsOptionsWidget"> {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;

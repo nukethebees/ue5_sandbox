@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 #include "CoreMinimal.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/options_menu/AudioOptionsWidget.h"
 #include "Sandbox/widgets/options_menu/ControlsOptionsWidget.h"
@@ -18,7 +19,9 @@ UENUM(BlueprintType)
 enum class EOptionsTab : uint8 { Gameplay = 0, Visuals = 1, Audio = 2, Controls = 3 };
 
 UCLASS()
-class SANDBOX_API UOptionsWidget : public UUserWidget {
+class SANDBOX_API UOptionsWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;
