@@ -400,7 +400,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
   private:
     TriggerableTupleT triggerables;
     TArray<TriggerableId> triggerable_ids; // Parallel storage for contiguous ID access
-    TMap<CombinedId, AActor*> id_to_actor;
+    TMap<TriggerableId::CombinedId, AActor*> id_to_actor;
     TArray<TriggerableId> ticking_payloads;
 
     // Actor ID system
