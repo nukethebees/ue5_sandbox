@@ -31,7 +31,8 @@ AForcefieldActor::AForcefieldActor() {
     barrier_mesh->SetupAttachment(RootComponent);
     barrier_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     barrier_mesh->SetVisibility(true);
-    barrier_mesh->SetMobility(box_mobility);
+    // It must move to fix UV overlapping warnings
+    barrier_mesh->SetMobility(EComponentMobility::Movable);
 
     // Create particle system
     sparkle_particles = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("SparkleParticles"));
