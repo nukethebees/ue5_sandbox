@@ -1,7 +1,7 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 void FSandboxEditorModule::StartupModule() {
-    UE_LOG(LogTemp, Warning, TEXT("SandboxEditor module starting up!"));
+    UE_LOG(LogTemp, Verbose, TEXT("SandboxEditor module starting up!"));
     // No factory registration needed - MaterialExpressions control their own UI
 }
 
