@@ -99,7 +99,8 @@ void UInteractorComponent::try_interact() {
 
         source.capabilities.add_capability(ETriggerCapability::Humanoid);
 
-        auto const results{subsystem->trigger(hit_actors, source)};
+        auto const results{
+            subsystem->trigger(std::span(hit_actors.GetData(), hit_actors.Num()), source)};
 
         if (results.any_triggered()) {
             LOG.log_verbose(TEXT("Triggered %d actors."), results.n_triggered);
