@@ -8,13 +8,19 @@
 void UVisualsOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
 
+    log_verbose(TEXT("NativeConstruct() begin"));
+
     if (apply_button) {
         apply_button->OnClicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
         apply_button->SetIsEnabled(false);
+    } else {
+        log_warning(TEXT("ApplyButton is null."));
     }
 
     initialize_video_settings();
     populate_settings_ui();
+
+    log_verbose(TEXT("NativeConstruct() end"));
 }
 
 void UVisualsOptionsWidget::initialize_video_settings() {
@@ -53,7 +59,6 @@ void UVisualsOptionsWidget::populate_settings_ui() {
     }
 
     // Create vertical box container for settings
-    // settings_container = CreateWidget<UVerticalBox>(this);
     settings_container =
         WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox"));
     if (!settings_container) {
@@ -69,8 +74,15 @@ void UVisualsOptionsWidget::populate_settings_ui() {
 }
 
 void UVisualsOptionsWidget::create_setting_rows() {
+    log_verbose(TEXT("Creating setting rows"));
+
+    log_verbose(TEXT("Creating setting row: bool"));
     create_rows_for_type<bool>();
+
+    log_verbose(TEXT("Creating setting row: float"));
     create_rows_for_type<float>();
+
+    log_verbose(TEXT("Creating setting row: int32"));
     create_rows_for_type<int32>();
 }
 
@@ -78,6 +90,7 @@ template <typename T>
 void UVisualsOptionsWidget::create_rows_for_type() {
     auto const& settings_array{VideoSettingsHelpers::get_settings_array<T>(video_settings)};
 
+    log_verbose(TEXT("Settings array has %d elements."), settings_array.Num());
     for (auto const& setting : settings_array) {
         auto* row_widget{CreateWidget<UVideoSettingRowWidget>(this)};
         if (!row_widget) {

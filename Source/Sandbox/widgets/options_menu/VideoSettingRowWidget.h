@@ -2,11 +2,12 @@
 
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
+#include "Components/EditableTextBox.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
-#include "Components/EditableTextBox.h"
 #include "CoreMinimal.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/options_menu/VideoSettingsData.h"
 
 #include "VideoSettingRowWidget.generated.h"
@@ -14,7 +15,9 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVideoSettingChanged);
 
 UCLASS()
-class SANDBOX_API UVideoSettingRowWidget : public UUserWidget {
+class SANDBOX_API UVideoSettingRowWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   public:
     UPROPERTY(BlueprintAssignable, Category = "Events")

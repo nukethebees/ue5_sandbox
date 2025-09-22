@@ -50,6 +50,7 @@ void UOptionsWidget::set_active_tab(EOptionsTab tab) {
     current_tab = tab;
 
     if (tab_switcher) {
+        log_verbose(TEXT("Setting active widget to: %s"), *UEnum::GetValueAsString(tab));
         tab_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
     } else {
         UE_LOGFMT(LogTemp, Warning, "tab_switcher is nullptr.");
