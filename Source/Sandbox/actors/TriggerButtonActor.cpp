@@ -52,15 +52,10 @@ void ATriggerButtonActor::register_targets_with_payload() {
 
         // Get or create actor ID for this target
         auto const actor_id{subsystem->get_or_create_actor_id(*target_actor)};
-        if (actor_id) {
-            trigger_payload.add_target_actor(*actor_id);
-            log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
-                        *actor_id,
-                        *target_actor->GetActorLabel());
-        } else {
-            log_warning(TEXT("Failed to get actor ID for actor %s"),
-                        *target_actor->GetActorLabel());
-        }
+        trigger_payload.add_target_actor(actor_id);
+        log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
+                    actor_id,
+                    *target_actor->GetActorLabel());
     }
 
     log_log(TEXT("Registered %d target actors with trigger button: %s"),
