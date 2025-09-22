@@ -16,8 +16,7 @@
 
 UCLASS()
 class SANDBOX_API UTriggerSubsystem
-    : public UWorldSubsystem
-    , public FTickableGameObject
+    : public UTickableWorldSubsystem
     , public UTriggerSubsystemMixins {
     GENERATED_BODY()
     friend class UTriggerSubsystemMixins;
