@@ -10,14 +10,16 @@ class AActor;
 class UWorld;
 
 struct FTriggeringSource {
-    ETriggerForm type{ETriggerForm::Unknown};
+    ETriggerSourceType type{ETriggerSourceType::Unknown};
     FTriggerCapabilities capabilities;
     AActor* instigator{nullptr};
     FVector source_location{};
     std::optional<TriggerableId> source_triggerable{};
 
     bool is_from_triggerable() const { return source_triggerable.has_value(); }
-    bool has_capability(ETriggerCapability cap) const { return capabilities.has_capability(cap); }
+    bool has_capability(ETriggerSourceCapability cap) const {
+        return capabilities.has_capability(cap);
+    }
     AActor* get_instigator() const { return instigator; }
     TriggerableId get_source_id() const {
         return source_triggerable.value_or(TriggerableId::invalid());

@@ -7,24 +7,31 @@
 #include "TriggerCapabilities.generated.h"
 
 UENUM(BlueprintType)
-enum class ETriggerCapability : uint8 { None, Humanoid, Mechanical, Magical, Electronic, Physical };
+enum class ETriggerSourceCapability : uint8 {
+    None,
+    Humanoid,
+    Mechanical,
+    Magical,
+    Electronic,
+    Physical
+};
 
 UENUM(BlueprintType)
-enum class ETriggerForm : uint8 { Unknown, PlayerInteraction, Activation, Timer, Collision };
+enum class ETriggerSourceType : uint8 { Unknown, PlayerInteraction, Activation, Timer, Collision };
 
 struct FTriggerCapabilities {
-    static constexpr uint8 MAX_CAPABILITIES{8};
+    static constexpr uint8 MAX_CAPABILITIES{7};
   private:
-    std::array<ETriggerCapability, MAX_CAPABILITIES> capabilities_{};
+    std::array<ETriggerSourceCapability, MAX_CAPABILITIES> capabilities_{};
     uint8 count_{0};
   public:
-    void add_capability(ETriggerCapability cap) {
-        if (count_ < MAX_CAPABILITIES && cap != ETriggerCapability::None) {
+    void add_capability(ETriggerSourceCapability cap) {
+        if (count_ < MAX_CAPABILITIES && cap != ETriggerSourceCapability::None) {
             capabilities_[count_++] = cap;
         }
     }
 
-    bool has_capability(ETriggerCapability cap) const {
+    bool has_capability(ETriggerSourceCapability cap) const {
         for (uint8 i{0}; i < count_; ++i) {
             if (capabilities_[i] == cap) {
                 return true;

@@ -15,12 +15,15 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
 
     // Create new source for targets, preserving original instigator
     FTriggeringSource new_source{
-        .type = ETriggerForm::Activation,
-        .capabilities = {}, // No specific capabilities for simple activation
+        .type = ETriggerSourceType::Activation,
+        .capabilities = {},
         .instigator = context.source.get_instigator(),
         .source_location = context.triggered_actor.GetActorLocation(),
         .source_triggerable = {} // Will be set to this actor's ID if available
     };
+
+    // Add mechanical capability for button/switch triggers
+    new_source.capabilities.add_capability(ETriggerSourceCapability::Mechanical);
 
     // Try to get this actor's first ID for proper chain tracking
     auto triggerable_ids{subsystem->get_triggerable_ids(context.triggered_actor)};
