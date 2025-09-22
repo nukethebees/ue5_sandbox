@@ -21,6 +21,8 @@ void UVisualsOptionsWidget::NativeConstruct() {
     initialize_video_settings();
     populate_settings_ui();
 
+    log_verbose(TEXT("settings_container has %d children."),
+                settings_container->GetChildrenCount());
     log_verbose(TEXT("NativeConstruct() end"));
 }
 
