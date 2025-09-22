@@ -91,13 +91,13 @@ void UInteractorComponent::try_interact() {
     // Try new trigger system first
     auto* subsystem{world->GetSubsystem<UTriggerSubsystem>()};
     if (subsystem) {
-        FTriggeringSource source{.type = ETriggerForm::PlayerInteraction,
+        FTriggeringSource source{.type = ETriggerSourceType::PlayerInteraction,
                                  .capabilities = {},
                                  .instigator = owner,
                                  .source_location = owner->GetActorLocation(),
                                  .source_triggerable = std::nullopt};
 
-        source.capabilities.add_capability(ETriggerCapability::Humanoid);
+        source.capabilities.add_capability(ETriggerSourceCapability::Humanoid);
 
         bool any_triggered{false};
         for (auto* actor : hit_actors) {
