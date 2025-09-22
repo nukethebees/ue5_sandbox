@@ -12,6 +12,7 @@ void UVisualsOptionsWidget::NativeConstruct() {
 
     if (apply_button) {
         apply_button->OnClicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
+        // Will be enabled when changes are pending
         apply_button->SetIsEnabled(false);
     } else {
         log_warning(TEXT("ApplyButton is null."));
@@ -61,7 +62,7 @@ void UVisualsOptionsWidget::populate_settings_ui() {
     // Create vertical box container for settings
     settings_container =
         WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox"));
-    
+
     if (!settings_container) {
         log_error(TEXT("Failed to create settings container"));
         return;
