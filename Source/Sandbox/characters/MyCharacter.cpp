@@ -8,7 +8,6 @@
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/huds/MyHud.h"
-#include "Sandbox/interfaces/Interactable.h"
 #include "UObject/ScriptInterface.h"
 
 AMyCharacter::AMyCharacter() {
