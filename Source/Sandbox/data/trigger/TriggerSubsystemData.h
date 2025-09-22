@@ -11,7 +11,6 @@
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerPayloadConcept.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/data/trigger/TriggerResults.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
 #include "Sandbox/macros/switch_stamping.hpp"
@@ -52,7 +51,7 @@ constexpr auto trigger_array_index_v =
             LOG.log_verbose(TEXT("Handling trigger case %d."), i);                          \
             auto result{                                                                    \
                 std::get<i>(self.triggerables)[id.array_index()].trigger(trigger_context)}; \
-            self.handle_trigger_result(id, result);                                         \
+            self.handle_case_trigger_result(id, result);                                    \
         }                                                                                   \
         break;                                                                              \
     }
@@ -183,11 +182,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     void trigger(this Self&& self, TriggerableId id, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
-        if (!id.is_valid()) {
-            LOG.log_warning(TEXT("Cannot trigger invalid ID"));
-            return;
-        }
-
         auto* actor{self.get_actor(id)};
         if (!actor) {
             return;
@@ -212,72 +206,24 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                         id.array_index(),
                         *actor->GetActorLabel());
 
-        static_assert(N_TYPES <= 256,
-                      "Cannot support this many trigger types. The macros must be extended.");
-
-        if constexpr (N_TYPES <= 4) {
-            SWITCH_STAMP(4, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 16) {
-            SWITCH_STAMP(16, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 64) {
-            SWITCH_STAMP(64, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 256) {
-            SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
-        } else {
-            LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
-            return;
-        }
+        self.trigger_with_context(id, trigger_context);
     }
 
     template <typename Self>
     ETriggerOccurred trigger(this Self&& self, AActor& actor, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
-        auto triggerable_ids{self.get_triggerable_ids(actor)};
-        if (triggerable_ids.empty()) {
-            LOG.log_warning(TEXT("Actor has no triggerables."));
+        if (auto* const id{self.actor_to_actor_id.Find(&actor)}) {
+            return self.trigger(*id, source);
+        } else {
+            LOG.log_warning(TEXT("Actor is not registered."));
             return ETriggerOccurred::no;
         }
-
-        // Trigger first triggerable (backward compatibility)
-        self.trigger(triggerable_ids[0], source);
-        return ETriggerOccurred::yes;
     }
 
     template <typename Self>
-    FTriggerResults trigger(this Self&& self, std::span<AActor*> actors, FTriggeringSource source) {
-        auto const n_actors{static_cast<int32>(actors.size())};
-
-        // Fill results array from both sides
-        // Triggered actors from the left, non-triggered from the right
-        FTriggerResults results{};
-        results.actors.Init(nullptr, n_actors);
-        int32 triggered_index{0};
-        int32 not_triggered_index{n_actors - 1};
-
-        for (auto* actor : actors) {
-            if (self.trigger(*actor, source) == ETriggerOccurred::yes) {
-                results.actors[triggered_index++] = actor;
-            } else {
-                results.actors[not_triggered_index--] = actor;
-            }
-        }
-
-        results.n_triggered = triggered_index;
-
-        self.log_verbose(TEXT("Batch trigger: %d triggered, %d not triggered"),
-                         results.n_triggered,
-                         results.num_not_triggered());
-
-        return results;
-    }
-
-    // Trigger all triggerables for an actor ID
-    template <typename Self>
-    ETriggerOccurred trigger_actor(this Self&& self, ActorId actor_id, FTriggeringSource source) {
-        static constexpr auto LOG{NestedLogger<"trigger_actor">()};
-
-        LOG.log_verbose(TEXT("Start."));
+    ETriggerOccurred trigger(this Self&& self, ActorId actor_id, FTriggeringSource source) {
+        static constexpr auto LOG{NestedLogger<"trigger">()};
 
         auto const* range{self.actor_id_to_range.Find(actor_id)};
         if (!range || range->is_empty()) {
@@ -285,29 +231,42 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return ETriggerOccurred::no;
         }
 
+        // Get first triggerable to obtain actor and world for context creation
+        auto const first_triggerable_id{self.triggerable_ids[range->offset]};
+        auto* actor{self.get_actor(first_triggerable_id)};
+        if (!actor) {
+            return ETriggerOccurred::no;
+        }
+
+        auto* world{actor->GetWorld()};
+        if (!world) {
+            LOG.log_warning(TEXT("Actor has no world"));
+            return ETriggerOccurred::no;
+        }
+
+        // Create context once for all triggerables of this actor
+        constexpr float trigger_strength{1.0f};
+        FTriggerContext const trigger_context{*world,
+                                              *actor,
+                                              source,
+                                              trigger_strength,
+                                              actor->GetActorLocation(),
+                                              world->GetDeltaSeconds()};
+
         LOG.log_verbose(
             TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id);
 
+        // Trigger all triggerables for this actor with shared context
         std::span<TriggerableId const> triggerables{&self.triggerable_ids[range->offset],
                                                     range->length};
-
         for (auto const& triggerable_id : triggerables) {
             LOG.log_verbose(TEXT("Triggering TriggerableId (%d, %d)"),
                             triggerable_id.tuple_index(),
                             triggerable_id.array_index());
-            self.trigger(triggerable_id, source);
+            self.trigger_with_context(triggerable_id, trigger_context);
         }
 
         return ETriggerOccurred::yes;
-    }
-
-    template <typename Self>
-    void handle_trigger_result(this Self&& self, TriggerableId id, FTriggerResult result) {
-        if (result.enable_ticking) {
-            self.ticking_payloads.AddUnique(id);
-            self.log_verbose(
-                TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
-        }
     }
 
     template <typename Self>
@@ -399,6 +358,46 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         return *actor_ptr;
     }
   private:
+    template <typename Self>
+    void handle_case_trigger_result(this Self&& self, TriggerableId id, FTriggerResult result) {
+        if (result.enable_ticking) {
+            self.ticking_payloads.AddUnique(id);
+            self.log_verbose(
+                TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
+        }
+    }
+
+    template <typename Self>
+    void trigger_with_context(this Self&& self,
+                              TriggerableId id,
+                              FTriggerContext const& trigger_context) {
+        static constexpr auto LOG{NestedLogger<"trigger_with_context">()};
+
+        if (!id.is_valid()) {
+            LOG.log_warning(TEXT("Cannot trigger invalid ID"));
+            return;
+        }
+
+        LOG.log_verbose(TEXT("Triggering ID (%d, %d) with provided context"),
+                        id.tuple_index(),
+                        id.array_index());
+
+        static_assert(N_TYPES <= 256,
+                      "Cannot support this many trigger types. The macros must be extended.");
+
+        if constexpr (N_TYPES <= 4) {
+            SWITCH_STAMP(4, TRIGGER_VISIT_STAMP);
+        } else if constexpr (N_TYPES <= 16) {
+            SWITCH_STAMP(16, TRIGGER_VISIT_STAMP);
+        } else if constexpr (N_TYPES <= 64) {
+            SWITCH_STAMP(64, TRIGGER_VISIT_STAMP);
+        } else if constexpr (N_TYPES <= 256) {
+            SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
+        } else {
+            LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
+            return;
+        }
+    }
     TriggerableTupleT triggerables;
     TArray<TriggerableId> triggerable_ids; // Parallel storage for contiguous ID access
     TMap<TriggerableId::CombinedId, AActor*> id_to_actor;

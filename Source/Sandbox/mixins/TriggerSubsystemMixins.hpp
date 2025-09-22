@@ -8,7 +8,6 @@ class UTriggerSubsystemMixins {
     FORWARDING_FN(data_, get_triggerable_ids);
     FORWARDING_FN(data_, get_or_create_actor_id);
     FORWARDING_FN(data_, get_actor_id);
-    FORWARDING_FN(data_, trigger_actor);
 };
 
 #include "Sandbox/macros/create_forwarding_fn_undef.hpp"

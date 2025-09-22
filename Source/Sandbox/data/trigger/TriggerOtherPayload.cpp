@@ -32,17 +32,11 @@ FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
         LOG.log_verbose(TEXT("Triggering target %d."), i);
 
         ActorId actor_id{target_actor_ids[i]};
-        if (actor_id != 0) {
-            if (activation_delay > 0.0f) {
-                // TODO: Implement delayed triggering when needed
-                LOG.log_verbose(
-                    TEXT("Delayed triggering not yet implemented, triggering immediately"));
-                subsystem->trigger_actor(actor_id, new_source);
-            } else {
-                subsystem->trigger_actor(actor_id, new_source);
-            }
+        if (activation_delay > 0.0f) {
+            LOG.log_verbose(TEXT("Delayed triggering not yet implemented, triggering immediately"));
+            subsystem->trigger(actor_id, new_source);
         } else {
-            LOG.log_verbose(TEXT("Actor id is zero."));
+            subsystem->trigger(actor_id, new_source);
         }
     }
 
