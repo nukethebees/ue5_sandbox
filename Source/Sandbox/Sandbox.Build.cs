@@ -9,7 +9,7 @@ public class Sandbox : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
         PublicDependencyModuleNames.AddRange(new string[] {
-            "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "RenderCore"
+            "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "RenderCore", "SlateCore"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
