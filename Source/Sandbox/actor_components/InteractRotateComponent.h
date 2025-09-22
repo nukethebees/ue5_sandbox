@@ -2,7 +2,6 @@
 
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-#include "Sandbox/interfaces/Interactable.h"
 #include "Sandbox/data/trigger/FRotatePayload.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
