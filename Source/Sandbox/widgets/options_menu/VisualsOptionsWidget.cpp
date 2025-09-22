@@ -54,15 +54,16 @@ void UVisualsOptionsWidget::initialize_video_settings() {
 
 void UVisualsOptionsWidget::populate_settings_ui() {
     if (!settings_scroll_box) {
-        UE_LOG(LogTemp, Warning, TEXT("VisualsOptionsWidget: settings_scroll_box not bound"));
+        log_warning(TEXT("VisualsOptionsWidget: settings_scroll_box not bound"));
         return;
     }
 
     // Create vertical box container for settings
     settings_container =
         WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox"));
+    
     if (!settings_container) {
-        UE_LOG(LogTemp, Error, TEXT("Failed to create settings container"));
+        log_error(TEXT("Failed to create settings container"));
         return;
     }
 
@@ -92,9 +93,21 @@ void UVisualsOptionsWidget::create_rows_for_type() {
 
     log_verbose(TEXT("Settings array has %d elements."), settings_array.Num());
     for (auto const& setting : settings_array) {
-        auto* row_widget{CreateWidget<UVideoSettingRowWidget>(this)};
+        auto const row_name{FString::Printf(TEXT("Row_%d"), row_idx)};
+        log_verbose(TEXT("Constructing UVideoSettingRowWidget::%s"), *row_name);
+
+        auto* row_widget{CreateWidget<UVideoSettingRowWidget>(
+            this, UVideoSettingRowWidget::StaticClass(), *row_name)};
         if (!row_widget) {
+            log_warning(TEXT("Failed to construct UVideoSettingRowWidget::%s"), *row_name);
             continue;
+        }
+
+        setting_row_widgets.Add(row_widget);
+        // Add immediately to vertical box to trigger NativeConstruct()
+        auto* vertical_slot{settings_container->AddChildToVerticalBox(row_widget)};
+        if (vertical_slot) {
+            vertical_slot->SetPadding(FMargin{0.0f, 2.0f, 0.0f, 2.0f});
         }
 
         // Initialize the row widget for the specific type
@@ -110,13 +123,7 @@ void UVisualsOptionsWidget::create_rows_for_type() {
         row_widget->on_setting_changed.AddDynamic(this,
                                                   &UVisualsOptionsWidget::handle_setting_changed);
 
-        // Add to vertical box container
-        auto* vertical_slot{settings_container->AddChildToVerticalBox(row_widget)};
-        if (vertical_slot) {
-            vertical_slot->SetPadding(FMargin{0.0f, 2.0f, 0.0f, 2.0f});
-        }
-
-        setting_row_widgets.Add(row_widget);
+        row_idx++;
     }
 }
 

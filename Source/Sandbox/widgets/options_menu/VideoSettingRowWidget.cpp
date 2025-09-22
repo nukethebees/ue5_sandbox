@@ -9,9 +9,58 @@ void UVideoSettingRowWidget::NativeConstruct() {
 
     log_verbose(TEXT("NativeConstruct()"));
 
-    if (!setting_name_text || !current_value_text || !input_container) {
-        log_warning(TEXT("VideoSettingRowWidget: Required widgets not bound properly"));
+    create_widget_hierarchy();
+}
+
+void UVideoSettingRowWidget::create_widget_hierarchy() {
+    log_verbose(TEXT("create_widget_hierarchy()"));
+
+    // Create root horizontal container
+    root_container = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),
+                                                                 TEXT("RootContainer"));
+    if (!root_container) {
+        log_error(TEXT("Failed to create root container"));
+        return;
     }
+
+    // Set as root widget
+    WidgetTree->RootWidget = root_container;
+
+    // Create setting name label
+    setting_name_text =
+        WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("SettingNameText"));
+    if (setting_name_text) {
+        auto* name_slot{root_container->AddChildToHorizontalBox(setting_name_text)};
+        if (name_slot) {
+            name_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+            name_slot->SetPadding(FMargin{5.0f, 0.0f, 10.0f, 0.0f});
+        }
+    }
+
+    // Create current value display
+    current_value_text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
+                                                                 TEXT("CurrentValueText"));
+    if (current_value_text) {
+        auto* value_slot{root_container->AddChildToHorizontalBox(current_value_text)};
+        if (value_slot) {
+            value_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+            value_slot->SetPadding(FMargin{5.0f, 0.0f, 10.0f, 0.0f});
+        }
+        current_value_text->SetText(FText::FromString(TEXT("--")));
+    }
+
+    // Create input container
+    input_container = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),
+                                                                  TEXT("InputContainer"));
+    if (input_container) {
+        auto* input_slot{root_container->AddChildToHorizontalBox(input_container)};
+        if (input_slot) {
+            input_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+            input_slot->SetPadding(FMargin{5.0f, 0.0f, 5.0f, 0.0f});
+        }
+    }
+
+    log_verbose(TEXT("Widget hierarchy created successfully"));
 }
 
 void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig const& config) {
@@ -30,7 +79,7 @@ void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig co
 
 void UVideoSettingRowWidget::initialize_for_float_setting(FloatSettingConfig const& config) {
     log_verbose(TEXT("initialize_for_float_setting"));
-    
+
     float_config = &config;
     setting_type = config.type;
 
@@ -48,7 +97,7 @@ void UVideoSettingRowWidget::initialize_for_float_setting(FloatSettingConfig con
 
 void UVideoSettingRowWidget::initialize_for_int_setting(IntSettingConfig const& config) {
     log_verbose(TEXT("initialize_for_int_setting"));
-    
+
     int_config = &config;
     setting_type = config.type;
 
