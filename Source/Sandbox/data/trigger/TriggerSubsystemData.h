@@ -103,7 +103,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         // Actor triggerables must be stored contiguously
         // The actor may be added separately from its triggerables and this must be handled
-
         if (self.current_registering_actor != &actor) {
             // Check if actor already has triggerables
             if (auto actor_id_opt{self.get_actor_id(actor)}) {
@@ -121,31 +120,21 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         auto& payload_array{ml::TriggerArrayGet<std::remove_cvref_t<Payload>>(self.triggerables)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
-        constexpr auto payload_array_index{
+        static constexpr auto payload_array_index{
             ml::trigger_array_index_v<std::remove_cvref_t<Payload>, Self>};
 
-        TriggerableId id{static_cast<int32>(payload_array_index), payload_element_index};
-
-        // Add to parallel TriggerableId array
+        TriggerableId const id{static_cast<int32>(payload_array_index), payload_element_index};
         auto const triggerable_id_index{self.triggerable_ids.Add(id)};
-
-        // Update actor range to point to triggerable_ids array
         auto const actor_id{self.get_or_create_actor_id(actor)};
-        if (!actor_id) {
-            self.log_error(TEXT("Could not get the actor ID."));
-            return std::nullopt;
-        }
 
-        if (auto* range{self.actor_id_to_range.Find(*actor_id)}) {
+        if (auto* range{self.actor_id_to_range.Find(actor_id)}) {
             if (range->is_empty()) {
-                // First triggerable for this actor - set offset to triggerable_ids index
                 range->offset = triggerable_id_index;
             }
             range->length++;
         }
 
         self.id_to_actor.Add(id.as_combined_id(), &actor);
-
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
                          *actor.GetActorLabel(),
                          id.tuple_index(),
@@ -372,14 +361,14 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     // Actor ID management
     template <typename Self>
-    std::optional<ActorId> get_or_create_actor_id(this Self&& self, AActor& actor) {
+    ActorId get_or_create_actor_id(this Self&& self, AActor& actor) {
         static constexpr auto LOG{self.NestedLogger<"get_or_create_actor_id">()};
 
         if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) {
             return *existing_id;
         }
 
-        ActorId new_id{self.next_actor_id++};
+        ActorId const new_id{self.next_actor_id++};
         self.actor_to_actor_id.Add(&actor, new_id);
         self.actor_id_to_range.Add(new_id, FTriggerableRange{});
 
@@ -393,6 +382,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return *id;
         }
 
+        self.log_error(TEXT("Could not get the actor ID."));
         return std::nullopt;
     }
   private:
