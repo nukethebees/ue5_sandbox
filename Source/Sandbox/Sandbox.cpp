@@ -9,7 +9,7 @@ void FSandboxModule::StartupModule() {
 
     AddShaderSourceDirectoryMapping(TEXT("/Project"), shader_dir);
 
-    UE_LOG(LogTemp, Warning, TEXT("Mapped /Project to: %s"), *shader_dir);
+    UE_LOG(LogTemp, Verbose, TEXT("Mapped /Project to: %s"), *shader_dir);
 }
 
 void FSandboxModule::ShutdownModule() {
