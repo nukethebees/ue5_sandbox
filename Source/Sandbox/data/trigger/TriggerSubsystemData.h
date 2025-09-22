@@ -144,6 +144,42 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
 
     template <typename Self>
+    void deregister_triggerable(this Self&& self, AActor& actor) {
+        auto triggerable_ids{self.get_triggerable_ids(actor)};
+        if (triggerable_ids.empty()) {
+            return;
+        }
+
+        // Remove all TriggerableIds for this actor from id_to_actor map
+        for (auto const& id : triggerable_ids) {
+            self.id_to_actor.Remove(id.as_combined_id());
+        }
+
+        // Remove actor from actor ID system
+        if (auto actor_id_opt{self.get_actor_id(actor)}) {
+            self.actor_id_to_range.Remove(*actor_id_opt);
+            self.actor_to_actor_id.Remove(&actor);
+        }
+
+        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor.GetActorLabel());
+    }
+
+    template <typename Self>
+    std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor& actor) {
+        auto const actor_id_opt{self.get_actor_id(actor)};
+        if (!actor_id_opt) {
+            return {};
+        }
+
+        auto const* range{self.actor_id_to_range.Find(*actor_id_opt)};
+        if (!range || range->is_empty()) {
+            return {};
+        }
+
+        return std::span{&self.triggerable_ids[range->offset], range->length};
+    }
+
+    template <typename Self>
     void trigger(this Self&& self, TriggerableId id, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
@@ -191,42 +227,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
             return;
         }
-    }
-
-    template <typename Self>
-    void deregister_triggerable(this Self&& self, AActor& actor) {
-        auto triggerable_ids{self.get_triggerable_ids(actor)};
-        if (triggerable_ids.empty()) {
-            return;
-        }
-
-        // Remove all TriggerableIds for this actor from id_to_actor map
-        for (auto const& id : triggerable_ids) {
-            self.id_to_actor.Remove(id.as_combined_id());
-        }
-
-        // Remove actor from actor ID system
-        if (auto actor_id_opt{self.get_actor_id(actor)}) {
-            self.actor_id_to_range.Remove(*actor_id_opt);
-            self.actor_to_actor_id.Remove(&actor);
-        }
-
-        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor.GetActorLabel());
-    }
-
-    template <typename Self>
-    std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor& actor) {
-        auto const actor_id_opt{self.get_actor_id(actor)};
-        if (!actor_id_opt) {
-            return {};
-        }
-
-        auto const* range{self.actor_id_to_range.Find(*actor_id_opt)};
-        if (!range || range->is_empty()) {
-            return {};
-        }
-
-        return std::span{&self.triggerable_ids[range->offset], range->length};
     }
 
     template <typename Self>
