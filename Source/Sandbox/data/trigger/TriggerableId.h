@@ -5,10 +5,11 @@
 #include <compare>
 
 #include "CoreMinimal.h"
+#include "Sandbox/data/trigger/StrongIds.h"
 
 struct TriggerableId {
   public:
-    using CombinedId = uint64;
+    using CombinedId = CombinedTriggerableId;
 
     TriggerableId() = default;
     TriggerableId(int32 tuple_idx, int32 array_idx)
@@ -24,14 +25,16 @@ struct TriggerableId {
         return std::forward<Self>(self).indexes_[1];
     }
 
-    auto as_combined_id() const -> CombinedId { return std::bit_cast<CombinedId>(indexes_); }
+    auto as_combined_id() const -> CombinedId {
+        return CombinedTriggerableId{std::bit_cast<uint64>(indexes_)};
+    }
 
     bool is_valid() const { return tuple_index() >= 0 && array_index() >= 0; }
 
     static TriggerableId invalid() { return {}; }
 
     static TriggerableId from_combined_id(CombinedId combined_id) {
-        auto indexes{std::bit_cast<std::array<int32, 2>>(combined_id)};
+        auto indexes{std::bit_cast<std::array<int32, 2>>(combined_id.get())};
         return TriggerableId{indexes[0], indexes[1]};
     }
 

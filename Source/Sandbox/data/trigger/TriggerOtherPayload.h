@@ -6,10 +6,8 @@
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
+#include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-
-// Forward declare ActorId
-using ActorId = uint64;
 
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     static constexpr uint8 MAX_TARGETS{8};
@@ -19,7 +17,7 @@ struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     float activation_delay{0.0f};
 
     void add_target_actor(ActorId actor_id) {
-        if (n_targets < MAX_TARGETS && actor_id != 0) {
+        if (n_targets < MAX_TARGETS && actor_id.get() != 0) {
             target_actor_ids[n_targets++] = actor_id;
         }
     }

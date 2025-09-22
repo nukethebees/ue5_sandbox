@@ -54,7 +54,7 @@ void ATriggerButtonActor::register_targets_with_payload() {
         auto const actor_id{subsystem->get_or_create_actor_id(*target_actor)};
         trigger_payload.add_target_actor(actor_id);
         log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
-                    actor_id,
+                    actor_id.get(),
                     *target_actor->GetActorLabel());
     }
 

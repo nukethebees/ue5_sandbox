@@ -11,11 +11,10 @@
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerPayloadConcept.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
+#include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/utilities/tuple.h"
 #include "Sandbox/macros/switch_stamping.hpp"
-
-using ActorId = uint64;
 
 struct FTriggerableRange {
     uint32 offset{0};
@@ -191,7 +190,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         auto const* range{self.actor_id_to_range.Find(actor_id)};
         if (!range || range->is_empty()) {
-            LOG.log_verbose(TEXT("Actor ID %llu has no triggerables"), actor_id);
+            LOG.log_verbose(TEXT("Actor ID %llu has no triggerables"), actor_id.get());
             return ETriggerOccurred::no;
         }
 
@@ -218,7 +217,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                                               world->GetDeltaSeconds()};
 
         LOG.log_verbose(
-            TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id);
+            TEXT("Triggering %d triggerables for actor ID %llu"), range->length, actor_id.get());
 
         // Trigger all triggerables for this actor with shared context
         std::span<TriggerableId const> triggerables{&self.triggerable_ids[range->offset],
@@ -306,7 +305,8 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         self.actor_to_actor_id.Add(&actor, new_id);
         self.actor_id_to_range.Add(new_id, FTriggerableRange{});
 
-        LOG.log_verbose(TEXT("Created actor ID %llu for actor %s"), new_id, *actor.GetActorLabel());
+        LOG.log_verbose(
+            TEXT("Created actor ID %llu for actor %s"), new_id.get(), *actor.GetActorLabel());
         return new_id;
     }
 
@@ -361,7 +361,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     TMap<AActor*, ActorId> actor_to_actor_id;
     TMap<ActorId, FTriggerableRange> actor_id_to_range;
 
-    ActorId next_actor_id{0};
+    ActorId next_actor_id{ActorId{0}};
     AActor* current_registering_actor{nullptr};
 };
 
