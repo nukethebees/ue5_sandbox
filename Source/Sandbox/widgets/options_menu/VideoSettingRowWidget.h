@@ -32,16 +32,14 @@ class SANDBOX_API UVideoSettingRowWidget
     bool has_pending_changes() const;
   protected:
     virtual void NativeConstruct() override;
-
-    UPROPERTY(meta = (BindWidget))
+  private:
+    // Widget hierarchy (created dynamically)
+    UHorizontalBox* root_container{nullptr};
     UTextBlock* setting_name_text{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
     UTextBlock* current_value_text{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
     UHorizontalBox* input_container{nullptr};
   private:
+    void create_widget_hierarchy();
     void create_button_input();
     void create_slider_with_text_input();
     void create_text_input();

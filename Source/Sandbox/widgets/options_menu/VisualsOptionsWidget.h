@@ -29,6 +29,7 @@ class SANDBOX_API UVisualsOptionsWidget
     UPROPERTY(meta = (BindWidget))
     UButton* apply_button{nullptr};
   private:
+    UPROPERTY()
     UVerticalBox* settings_container{nullptr};
 
     void initialize_video_settings();
@@ -52,4 +53,5 @@ class SANDBOX_API UVisualsOptionsWidget
     VideoSettingsTuple video_settings{};
     TArray<UVideoSettingRowWidget*> setting_row_widgets{};
     bool pending_changes{false};
+    int32 row_idx{0};
 };
