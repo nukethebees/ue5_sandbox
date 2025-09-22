@@ -6,12 +6,11 @@
 
 class UCollisionEffectSubsystemMixins {
   public:
-    FORWARDING_FN(add_payload, &self);
-    FORWARDING_FN(register_actor, &self)
+    FORWARDING_FN(data_, add_payload, &self);
+    FORWARDING_FN(data_, register_actor, &self)
   protected:
-    FORWARDING_FN(handle_collision_event_)
+    FORWARDING_FN(data_, handle_collision_event_)
 };
-#undef FORWARDING_FN
 
 template <typename SubsystemT, typename PayloadT>
 inline void try_add_subsystem_payload(AActor& actor, PayloadT&& payload) {
@@ -30,3 +29,6 @@ inline void try_emplace_subsystem_payload(AActor& actor, Args&&... args) {
         }
     }
 }
+
+
+#include "Sandbox/macros/create_forwarding_fn_undef.hpp"
