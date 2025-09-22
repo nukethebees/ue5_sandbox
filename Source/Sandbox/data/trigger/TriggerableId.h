@@ -6,10 +6,10 @@
 
 #include "CoreMinimal.h"
 
-using CombinedId = uint64;
-
 struct TriggerableId {
   public:
+    using CombinedId = uint64;
+
     TriggerableId() = default;
     TriggerableId(int32 tuple_idx, int32 array_idx)
         : indexes_({tuple_idx, array_idx}) {}
