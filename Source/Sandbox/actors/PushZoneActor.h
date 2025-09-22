@@ -31,6 +31,7 @@ class SANDBOX_API APushZoneActor
     APushZoneActor();
   protected:
     virtual void BeginPlay() override;
+    virtual void OnConstruction(FTransform const& Transform) override;
   public:
     virtual void Tick(float DeltaTime) override;
 
@@ -71,7 +72,7 @@ class SANDBOX_API APushZoneActor
                         UPrimitiveComponent* OtherComponent,
                         int32 OtherBodyIndex);
   protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
     UBoxComponent* collision_box;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")

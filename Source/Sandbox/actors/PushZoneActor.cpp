@@ -31,6 +31,83 @@ APushZoneActor::APushZoneActor() {
     visual_mesh_outer = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshOuter"));
     visual_mesh_outer->SetupAttachment(RootComponent);
     visual_mesh_outer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    // Create inner visual mesh component
+    visual_mesh_inner = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshInner"));
+    visual_mesh_inner->SetupAttachment(RootComponent);
+    visual_mesh_inner->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void APushZoneActor::OnConstruction(FTransform const& Transform) {
+    Super::OnConstruction(Transform);
+
+    static constexpr auto LOGGER{NestedLogger<"OnConstruction">()};
+
+    LOGGER.log_verbose(TEXT("Start"));
+
+    // Explicit null checks with error messages
+    if (!collision_box) {
+        LOGGER.log_error(TEXT("collision_box is null - this should never happen"));
+        return;
+    }
+
+    if (!visual_mesh_outer) {
+        LOGGER.log_error(TEXT("visual_mesh_outer is null - this should never happen"));
+        return;
+    }
+
+    if (!visual_mesh_inner) {
+        LOGGER.log_error(TEXT("visual_mesh_inner is null - this should never happen"));
+        return;
+    }
+
+    if (!visual_mesh_outer->GetStaticMesh()) {
+        LOGGER.log_error(TEXT("visual_mesh_outer has no static mesh - set mesh in Blueprint"));
+        return;
+    }
+
+    // Position and scale outer mesh to match collision box
+
+    LOGGER.log_verbose(TEXT("Position and scale outer mesh"));
+
+    // Match position and rotation of collision box
+    visual_mesh_outer->SetWorldLocation(collision_box->GetComponentLocation());
+    visual_mesh_outer->SetWorldRotation(collision_box->GetComponentRotation());
+
+    // Scale to match collision box size
+    FVector const collision_size{collision_box->GetScaledBoxExtent() * 2.0f};
+    FVector const outer_mesh_size{visual_mesh_outer->GetStaticMesh()->GetBoundingBox().GetSize()};
+
+    if (!outer_mesh_size.IsNearlyZero()) {
+        FVector const desired_scale{collision_size / outer_mesh_size};
+        visual_mesh_outer->SetWorldScale3D(desired_scale);
+    }
+
+    // Update inner mesh to match outer mesh
+    // Copy mesh from outer shell
+    visual_mesh_inner->SetStaticMesh(visual_mesh_outer->GetStaticMesh());
+
+    // Match position and rotation of outer mesh
+    visual_mesh_inner->SetWorldLocation(visual_mesh_outer->GetComponentLocation());
+    visual_mesh_inner->SetWorldRotation(visual_mesh_outer->GetComponentRotation());
+
+    // Scale inner shell smaller than outer
+    FVector const inner_mesh_size{visual_mesh_inner->GetStaticMesh()->GetBoundingBox().GetSize()};
+
+    if (!inner_mesh_size.IsNearlyZero()) {
+        FVector const inner_collision_size{collision_size * inner_shell_scale_ratio};
+        FVector const inner_desired_scale{inner_collision_size / inner_mesh_size};
+        visual_mesh_inner->SetWorldScale3D(inner_desired_scale);
+    }
+
+    // Apply material with inner shell properties
+    if (auto* base_material{visual_mesh_outer->GetMaterial(0)}) {
+        auto* dynamic_material{UMaterialInstanceDynamic::Create(base_material, this)};
+        dynamic_material->SetScalarParameterValue(TEXT("OpacityMultiplier"),
+                                                  inner_opacity_multiplier);
+        dynamic_material->SetVectorParameterValue(TEXT("ColorTint"), inner_color_tint);
+        visual_mesh_inner->SetMaterial(0, dynamic_material);
+    }
 }
 
 void APushZoneActor::BeginPlay() {
@@ -39,32 +116,6 @@ void APushZoneActor::BeginPlay() {
     // Bind overlap events
     collision_box->OnComponentBeginOverlap.AddDynamic(this, &APushZoneActor::on_overlap_begin);
     collision_box->OnComponentEndOverlap.AddDynamic(this, &APushZoneActor::on_overlap_end);
-
-    // Create inner visual shell dynamically
-    if (visual_mesh_outer && !visual_mesh_inner) {
-        visual_mesh_inner = NewObject<UStaticMeshComponent>(this, TEXT("VisualMeshInner"));
-        visual_mesh_inner->SetupAttachment(RootComponent);
-        visual_mesh_inner->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-        // Copy mesh and base material from outer shell
-        visual_mesh_inner->SetStaticMesh(visual_mesh_outer->GetStaticMesh());
-
-        if (auto* base_material{visual_mesh_outer->GetMaterial(0)}) {
-            // Create dynamic material instance for inner shell
-            auto* dynamic_material{UMaterialInstanceDynamic::Create(base_material, this)};
-            dynamic_material->SetScalarParameterValue(TEXT("OpacityMultiplier"),
-                                                      inner_opacity_multiplier);
-            dynamic_material->SetVectorParameterValue(TEXT("ColorTint"), inner_color_tint);
-            visual_mesh_inner->SetMaterial(0, dynamic_material);
-        }
-
-        // Scale inner shell smaller than outer
-        visual_mesh_inner->SetRelativeScale3D(visual_mesh_outer->GetRelativeScale3D() *
-                                              inner_shell_scale_ratio);
-
-        // Register the component with the actor
-        visual_mesh_inner->RegisterComponent();
-    }
 }
 
 void APushZoneActor::Tick(float DeltaTime) {
