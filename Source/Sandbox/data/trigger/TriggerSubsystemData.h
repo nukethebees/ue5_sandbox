@@ -174,37 +174,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
 
     template <typename Self>
-    void trigger(this Self&& self, TriggerableId id, FTriggeringSource source) {
-        static constexpr auto LOG{NestedLogger<"trigger">()};
-
-        auto* actor{self.get_actor(id)};
-        if (!actor) {
-            return;
-        }
-
-        auto* world{actor->GetWorld()};
-        if (!world) {
-            LOG.log_warning(TEXT("Actor has no world"));
-            return;
-        }
-
-        constexpr float trigger_strength{1.0f};
-        FTriggerContext const trigger_context{*world,
-                                              *actor,
-                                              source,
-                                              trigger_strength,
-                                              actor->GetActorLocation(),
-                                              world->GetDeltaSeconds()};
-
-        LOG.log_verbose(TEXT("Triggering ID (%d, %d) for actor %s"),
-                        id.tuple_index(),
-                        id.array_index(),
-                        *actor->GetActorLabel());
-
-        self.trigger_with_context(id, trigger_context);
-    }
-
-    template <typename Self>
     ETriggerOccurred trigger(this Self&& self, AActor& actor, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
@@ -371,7 +340,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             }
         }
     }
-
     template <typename Self>
     void trigger_with_context(this Self&& self,
                               TriggerableId id,
