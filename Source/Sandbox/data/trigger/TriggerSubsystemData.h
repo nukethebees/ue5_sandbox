@@ -223,11 +223,25 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         // Trigger all triggerables for this actor with shared context
         std::span<TriggerableId const> triggerables{&self.triggerable_ids[range->offset],
                                                     range->length};
-        for (auto const& triggerable_id : triggerables) {
-            LOG.log_verbose(TEXT("Triggering TriggerableId (%d, %d)"),
-                            triggerable_id.tuple_index(),
-                            triggerable_id.array_index());
-            self.trigger_with_context(triggerable_id, trigger_context);
+        for (auto const& id : triggerables) {
+            LOG.log_verbose(
+                TEXT("Triggering TriggerableId (%d, %d)"), id.tuple_index(), id.array_index());
+
+            // Inline switch statement for performance (no function call overhead)
+            static_assert(N_TYPES <= 256,
+                          "Cannot support this many trigger types. The macros must be extended.");
+
+            if constexpr (N_TYPES <= 4) {
+                SWITCH_STAMP(4, TRIGGER_VISIT_STAMP);
+            } else if constexpr (N_TYPES <= 16) {
+                SWITCH_STAMP(16, TRIGGER_VISIT_STAMP);
+            } else if constexpr (N_TYPES <= 64) {
+                SWITCH_STAMP(64, TRIGGER_VISIT_STAMP);
+            } else if constexpr (N_TYPES <= 256) {
+                SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
+            } else {
+                LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
+            }
         }
 
         return ETriggerOccurred::yes;
@@ -302,7 +316,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return *id;
         }
 
-        self.log_error(TEXT("Could not get the actor ID."));
         return std::nullopt;
     }
 
@@ -338,37 +351,6 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
                 self.log_verbose(
                     TEXT("Enabled ticking for ID (%d, %d)"), id.tuple_index(), id.array_index());
             }
-        }
-    }
-    template <typename Self>
-    void trigger_with_context(this Self&& self,
-                              TriggerableId id,
-                              FTriggerContext const& trigger_context) {
-        static constexpr auto LOG{NestedLogger<"trigger_with_context">()};
-
-        if (!id.is_valid()) {
-            LOG.log_warning(TEXT("Cannot trigger invalid ID"));
-            return;
-        }
-
-        LOG.log_verbose(TEXT("Triggering ID (%d, %d) with provided context"),
-                        id.tuple_index(),
-                        id.array_index());
-
-        static_assert(N_TYPES <= 256,
-                      "Cannot support this many trigger types. The macros must be extended.");
-
-        if constexpr (N_TYPES <= 4) {
-            SWITCH_STAMP(4, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 16) {
-            SWITCH_STAMP(16, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 64) {
-            SWITCH_STAMP(64, TRIGGER_VISIT_STAMP);
-        } else if constexpr (N_TYPES <= 256) {
-            SWITCH_STAMP(256, TRIGGER_VISIT_STAMP);
-        } else {
-            LOG.log_warning(TEXT("Too many types for branch. This should never hit."));
-            return;
         }
     }
     TriggerableTupleT triggerables;
