@@ -152,28 +152,24 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             return;
         }
 
-        auto const combined_id{id.as_combined_id()};
-        auto const* actor_ptr{self.id_to_actor.Find(combined_id)};
-        if (!actor_ptr || !*actor_ptr) {
-            LOG.log_warning(TEXT("Cannot find actor for trigger ID (%d, %d)"),
-                            id.tuple_index(),
-                            id.array_index());
+        auto* actor{self.get_actor(id)};
+        if (!actor) {
             return;
         }
 
-        auto* actor{*actor_ptr};
         auto* world{actor->GetWorld()};
         if (!world) {
             LOG.log_warning(TEXT("Actor has no world"));
             return;
         }
 
-        FTriggerContext trigger_context{.world = *world,
-                                        .triggered_actor = *actor,
-                                        .source = source,
-                                        .trigger_strength = 1.0f,
-                                        .trigger_location = actor->GetActorLocation(),
-                                        .delta_time = world->GetDeltaSeconds()};
+        constexpr float trigger_strength{1.0f};
+        FTriggerContext const trigger_context{*world,
+                                              *actor,
+                                              source,
+                                              trigger_strength,
+                                              actor->GetActorLocation(),
+                                              world->GetDeltaSeconds()};
 
         LOG.log_verbose(TEXT("Triggering ID (%d, %d) for actor %s"),
                         id.tuple_index(),
@@ -384,6 +380,22 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
         self.log_error(TEXT("Could not get the actor ID."));
         return std::nullopt;
+    }
+
+    template <typename Self>
+    auto* get_actor(this Self&& self, TriggerableId id) {
+        auto const combined_id{id.as_combined_id()};
+        auto const* actor_ptr{std::forward<Self>(self).id_to_actor.Find(combined_id)};
+        using Return = decltype(*actor_ptr);
+
+        if (!actor_ptr || !*actor_ptr) {
+            self.log_warning(TEXT("Cannot find actor for trigger ID (%d, %d)"),
+                             id.tuple_index(),
+                             id.array_index());
+            return Return{nullptr};
+        }
+
+        return *actor_ptr;
     }
   private:
     TriggerableTupleT triggerables;

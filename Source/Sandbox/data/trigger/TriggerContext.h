@@ -31,4 +31,18 @@ struct FTriggerContext {
     float trigger_strength{1.0f};
     FVector trigger_location{};
     float delta_time{};
+
+    FTriggerContext() = delete;
+    FTriggerContext(UWorld& world,
+                    AActor& triggered_actor,
+                    FTriggeringSource source,
+                    float trigger_strength,
+                    FVector trigger_location,
+                    float delta_time)
+        : world(world)
+        , triggered_actor(triggered_actor)
+        , source(source)
+        , trigger_strength(trigger_strength)
+        , trigger_location(trigger_location)
+        , delta_time(delta_time) {}
 };
