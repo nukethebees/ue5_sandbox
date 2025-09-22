@@ -96,14 +96,14 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     static constexpr std::size_t N_TYPES{sizeof...(Types)};
 
     template <typename Self, typename Payload>
-    std::optional<TriggerableId> register_triggerable(this Self&& self,
-                                                      AActor& actor,
-                                                      Payload&& payload,
-                                                      auto* top_subsystem) {
+    std::optional<TriggerableId>
+        register_triggerable(this Self&& self, AActor& actor, Payload&& payload) {
         static_assert(ml::IsTriggerPayload<std::remove_cvref_t<Payload>>,
                       "Payload must satisfy IsTriggerPayload concept");
 
-        // Validate contiguous registration
+        // Actor triggerables must be stored contiguously
+        // The actor may be added separately from its triggerables and this must be handled
+
         if (self.current_registering_actor != &actor) {
             // Check if actor already has triggerables
             if (auto actor_id_opt{self.get_actor_id(actor)}) {
