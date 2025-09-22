@@ -22,12 +22,6 @@ struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
         }
     }
 
-    // Legacy method for backward compatibility
-    void add_target(TriggerableId target) {
-        // This method is deprecated - use add_target_actor instead
-        // For now, we'll ignore this to force migration to actor IDs
-    }
-
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time) { return false; } // No ticking needed
 };
