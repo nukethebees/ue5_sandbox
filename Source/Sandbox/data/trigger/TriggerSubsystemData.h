@@ -97,31 +97,26 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     template <typename Self, typename Payload>
     std::optional<TriggerableId> register_triggerable(this Self&& self,
-                                                      AActor* actor,
+                                                      AActor& actor,
                                                       Payload&& payload,
                                                       auto* top_subsystem) {
         static_assert(ml::IsTriggerPayload<std::remove_cvref_t<Payload>>,
                       "Payload must satisfy IsTriggerPayload concept");
 
-        if (!actor) {
-            self.log_warning(TEXT("Cannot register null actor"));
-            return std::nullopt;
-        }
-
         // Validate contiguous registration
-        if (self.current_registering_actor != actor) {
+        if (self.current_registering_actor != &actor) {
             // Check if actor already has triggerables
             if (auto actor_id_opt{self.get_actor_id(actor)}) {
                 if (auto* range{self.actor_id_to_range.Find(*actor_id_opt)}) {
                     if (range->length > 0) {
                         self.log_error(TEXT("Actor %s already finished registration - cannot add "
                                             "more triggerables"),
-                                       *actor->GetActorLabel());
+                                       *actor.GetActorLabel());
                         return std::nullopt;
                     }
                 }
             }
-            self.current_registering_actor = actor;
+            self.current_registering_actor = &actor;
         }
 
         auto& payload_array{ml::TriggerArrayGet<std::remove_cvref_t<Payload>>(self.triggerables)};
@@ -149,10 +144,10 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
             range->length++;
         }
 
-        self.id_to_actor.Add(id.as_combined_id(), actor);
+        self.id_to_actor.Add(id.as_combined_id(), &actor);
 
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
-                         *actor->GetActorLabel(),
+                         *actor.GetActorLabel(),
                          id.tuple_index(),
                          id.array_index());
 
@@ -214,11 +209,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
 
     template <typename Self>
-    void deregister_triggerable(this Self&& self, AActor* actor) {
-        if (!actor) {
-            return;
-        }
-
+    void deregister_triggerable(this Self&& self, AActor& actor) {
         auto triggerable_ids{self.get_triggerable_ids(actor)};
         if (triggerable_ids.empty()) {
             return;
@@ -232,18 +223,14 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         // Remove actor from actor ID system
         if (auto actor_id_opt{self.get_actor_id(actor)}) {
             self.actor_id_to_range.Remove(*actor_id_opt);
-            self.actor_to_actor_id.Remove(actor);
+            self.actor_to_actor_id.Remove(&actor);
         }
 
-        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor->GetActorLabel());
+        self.log_verbose(TEXT("Deregistered triggerable for actor %s"), *actor.GetActorLabel());
     }
 
     template <typename Self>
-    std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor* actor) {
-        if (!actor) {
-            return {};
-        }
-
+    std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor& actor) {
         auto const actor_id_opt{self.get_actor_id(actor)};
         if (!actor_id_opt) {
             return {};
@@ -258,7 +245,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
     }
 
     template <typename Self>
-    ETriggerOccurred trigger(this Self&& self, AActor* actor, FTriggeringSource source) {
+    ETriggerOccurred trigger(this Self&& self, AActor& actor, FTriggeringSource source) {
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
         auto triggerable_ids{self.get_triggerable_ids(actor)};
@@ -283,7 +270,7 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
         int32 not_triggered_index{actors.Num() - 1};
 
         for (auto* actor : actors) {
-            if (self.trigger(actor, source) == ETriggerOccurred::yes) {
+            if (self.trigger(*actor, source) == ETriggerOccurred::yes) {
                 results.actors[triggered_index++] = actor;
             } else {
                 results.actors[not_triggered_index--] = actor;
@@ -385,34 +372,24 @@ class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
 
     // Actor ID management
     template <typename Self>
-    std::optional<ActorId> get_or_create_actor_id(this Self&& self, AActor* actor) {
+    std::optional<ActorId> get_or_create_actor_id(this Self&& self, AActor& actor) {
         static constexpr auto LOG{self.NestedLogger<"get_or_create_actor_id">()};
 
-        if (!actor) {
-            LOG.log_warning(TEXT("Actor is invalid."));
-            return std::nullopt;
-        }
-
-        if (auto* existing_id{self.actor_to_actor_id.Find(actor)}) {
+        if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) {
             return *existing_id;
         }
 
         ActorId new_id{self.next_actor_id++};
-        self.actor_to_actor_id.Add(actor, new_id);
+        self.actor_to_actor_id.Add(&actor, new_id);
         self.actor_id_to_range.Add(new_id, FTriggerableRange{});
 
-        LOG.log_verbose(
-            TEXT("Created actor ID %llu for actor %s"), new_id, *actor->GetActorLabel());
+        LOG.log_verbose(TEXT("Created actor ID %llu for actor %s"), new_id, *actor.GetActorLabel());
         return new_id;
     }
 
     template <typename Self>
-    std::optional<ActorId> get_actor_id(this Self&& self, AActor* actor) {
-        if (!actor) {
-            return std::nullopt;
-        }
-
-        if (auto* id{self.actor_to_actor_id.Find(actor)}) {
+    std::optional<ActorId> get_actor_id(this Self&& self, AActor& actor) {
+        if (auto* id{self.actor_to_actor_id.Find(&actor)}) {
             return *id;
         }
 

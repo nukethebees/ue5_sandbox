@@ -13,19 +13,22 @@ void UInteractRotateComponent::BeginPlay() {
     log_verbose(TEXT("BeginPlay()"));
 
     // Register with TriggerSubsystem
-    if (auto* const world{GetWorld()}) {
-        if (auto* const trigger_subsystem{world->GetSubsystem<UTriggerSubsystem>()}) {
-            if (auto const id{
-                    trigger_subsystem->register_triggerable(GetOwner(), rotation_payload)}) {
-                triggerable_id = *id;
-            }
+    if (auto * owner{GetOwner()}) {
+        if (auto * const world{GetWorld()}) {
+            if (auto * const trigger_subsystem{world->GetSubsystem<UTriggerSubsystem>()}) {
+                if (auto const id{
+                    trigger_subsystem->register_triggerable(*owner, rotation_payload)}) {
+                    triggerable_id = *id;
+                }
 
+            } else {
+                log_warning(TEXT("Couldn't get UTriggerSubsystem."));
+            }
         } else {
-            log_warning(TEXT("Couldn't get UTriggerSubsystem."));
+            log_warning(TEXT("Couldn't get world."));
         }
-    } else {
-        log_warning(TEXT("Couldn't get world."));
     }
+    
 }
 
 void UInteractRotateComponent::interact(AActor* interactor) {
