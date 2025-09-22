@@ -7,7 +7,6 @@
 #include "Sandbox/data/trigger/FForcefieldPayload.h"
 #include "Sandbox/data/trigger/FRotatePayload.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
-#include "Sandbox/data/trigger/TriggerResults.h"
 #include "Sandbox/data/trigger/TriggerSubsystemData.h"
 #include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"

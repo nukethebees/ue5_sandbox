@@ -30,5 +30,4 @@ inline void try_emplace_subsystem_payload(AActor& actor, Args&&... args) {
     }
 }
 
-
 #include "Sandbox/macros/create_forwarding_fn_undef.hpp"
