@@ -10,7 +10,8 @@
 #include "Sandbox/data/video_options/VideoSettingRange.h"
 
 template <template <typename...> class T>
-using ExpandedSettingsT = T<BoolSettingConfig, FloatSettingConfig, IntSettingConfig>;
+using ExpandedSettingsT =
+    T<BoolSettingConfig, FloatSettingConfig, IntSettingConfig, QualitySettingConfig>;
 
 using VideoRow = ExpandedSettingsT<VideoRowSettingsVariantT>;
 using VideoSettingsTuple = ExpandedSettingsT<VideoSettingsTupleT>;
@@ -22,6 +23,11 @@ namespace VideoSettingsHelpers {
 template <typename T, typename Tuple>
 auto&& get_settings_array(Tuple&& tuple) {
     return std::get<TArray<FVideoSettingConfig<T>>>(std::forward<Tuple>(tuple));
+}
+
+template <typename ConfigT, typename Tuple>
+auto && get_config_settings_array(Tuple && tuple) {
+    return std::get<TArray<ConfigT>>(std::forward<Tuple>(tuple));
 }
 
 // Helper to create VideoRow from config

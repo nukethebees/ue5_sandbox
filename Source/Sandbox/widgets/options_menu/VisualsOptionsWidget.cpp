@@ -63,75 +63,90 @@ void UVisualsOptionsWidget::initialize_video_settings() {
                                           &UGameUserSettings::GetResolutionScaleNormalized,
                                           &UGameUserSettings::SetResolutionScaleNormalized});
 
+    // Initialize quality settings
+    constexpr auto quality_range{
+        SettingRange<EVisualQualityLevel>{EVisualQualityLevel::Low, EVisualQualityLevel::Epic}};
+    auto& quality_settings{
+        VideoSettingsHelpers::get_config_settings_array<QualitySettingConfig>(video_settings)};
+
+    // Quality settings (Low, Medium, High, Epic, Cinematic)
+    quality_settings.Add(QualitySettingConfig{TEXT("View Distance Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetViewDistanceQuality,
+                                              &UGameUserSettings::SetViewDistanceQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Shadow Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetShadowQuality,
+                                              &UGameUserSettings::SetShadowQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Global Illumination Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetGlobalIlluminationQuality,
+                                              &UGameUserSettings::SetGlobalIlluminationQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Reflection Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetReflectionQuality,
+                                              &UGameUserSettings::SetReflectionQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Anti-Aliasing Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetAntiAliasingQuality,
+                                              &UGameUserSettings::SetAntiAliasingQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Texture Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetTextureQuality,
+                                              &UGameUserSettings::SetTextureQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Visual Effect Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetVisualEffectQuality,
+                                              &UGameUserSettings::SetVisualEffectQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Post Processing Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetPostProcessingQuality,
+                                              &UGameUserSettings::SetPostProcessingQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Foliage Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetFoliageQuality,
+                                              &UGameUserSettings::SetFoliageQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Shading Quality"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetShadingQuality,
+                                              &UGameUserSettings::SetShadingQuality});
+
+    quality_settings.Add(QualitySettingConfig{TEXT("Audio Quality Level"),
+                                              EVideoSettingType::SliderWithText,
+                                              quality_range,
+                                              &UGameUserSettings::GetAudioQualityLevel,
+                                              &UGameUserSettings::SetAudioQualityLevel});
+
+    // Overall Scalability Level uses Auto range to support -1 (Auto/Custom)
+    constexpr auto scalability_range{
+        SettingRange<EVisualQualityLevel>{EVisualQualityLevel::Auto, EVisualQualityLevel::Epic}};
+    quality_settings.Add(QualitySettingConfig{TEXT("Overall Scalability Level"),
+                                              EVideoSettingType::SliderWithText,
+                                              scalability_range,
+                                              &UGameUserSettings::GetOverallScalabilityLevel,
+                                              &UGameUserSettings::SetOverallScalabilityLevel});
+
     // Initialize int settings
     auto& int_settings{VideoSettingsHelpers::get_settings_array<int32>(video_settings)};
-
-    // Quality settings (0-4: Low, Medium, High, Epic, Cinematic)
-    int_settings.Add(IntSettingConfig{TEXT("View Distance Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetViewDistanceQuality,
-                                      &UGameUserSettings::SetViewDistanceQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Shadow Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetShadowQuality,
-                                      &UGameUserSettings::SetShadowQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Global Illumination Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetGlobalIlluminationQuality,
-                                      &UGameUserSettings::SetGlobalIlluminationQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Reflection Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetReflectionQuality,
-                                      &UGameUserSettings::SetReflectionQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Anti-Aliasing Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetAntiAliasingQuality,
-                                      &UGameUserSettings::SetAntiAliasingQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Texture Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetTextureQuality,
-                                      &UGameUserSettings::SetTextureQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Visual Effect Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetVisualEffectQuality,
-                                      &UGameUserSettings::SetVisualEffectQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Post Processing Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetPostProcessingQuality,
-                                      &UGameUserSettings::SetPostProcessingQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Foliage Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetFoliageQuality,
-                                      &UGameUserSettings::SetFoliageQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Shading Quality"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetShadingQuality,
-                                      &UGameUserSettings::SetShadingQuality});
-
-    int_settings.Add(IntSettingConfig{TEXT("Overall Scalability Level"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetOverallScalabilityLevel,
-                                      &UGameUserSettings::SetOverallScalabilityLevel});
 
     // Note: Frame rate limit uses float methods, so we'll add it as a float setting instead
     auto& float_settings_for_framerate{
@@ -161,18 +176,21 @@ void UVisualsOptionsWidget::create_setting_rows() {
     log_verbose(TEXT("Creating setting rows"));
 
     log_verbose(TEXT("Creating setting row: bool"));
-    create_rows_for_type<bool>();
+    create_rows_for_type<BoolSettingConfig>();
 
     log_verbose(TEXT("Creating setting row: float"));
-    create_rows_for_type<float>();
+    create_rows_for_type<FloatSettingConfig>();
 
     log_verbose(TEXT("Creating setting row: int32"));
-    create_rows_for_type<int32>();
+    create_rows_for_type<IntSettingConfig>();
+
+    log_verbose(TEXT("Creating setting row: EVisualQualityLevel"));
+    create_rows_for_type<QualitySettingConfig>();
 }
 
 template <typename T>
 void UVisualsOptionsWidget::create_rows_for_type() {
-    auto const& settings_array{VideoSettingsHelpers::get_settings_array<T>(video_settings)};
+    auto const& settings_array{VideoSettingsHelpers::get_config_settings_array<T>(video_settings)};
 
     log_verbose(TEXT("Settings array has %d elements."), settings_array.Num());
     for (auto const& setting : settings_array) {
@@ -201,13 +219,10 @@ void UVisualsOptionsWidget::create_rows_for_type() {
             continue;
         }
 
-        auto const current_value{(game_settings->*(setting.getter))()};
-        auto const row_data{VideoSettingsHelpers::create_row_data(setting, current_value)};
+        auto const current_value{setting.get_value(*game_settings)};
+        auto const row_data{VideoSettingsHelpers::create_row_data<T>(setting, current_value)};
 
-        // Initialize the row widget with variant data
         row_widget->initialize_with_row_data(row_data);
-
-        // Bind to setting change events
         row_widget->on_setting_changed.AddDynamic(this,
                                                   &UVisualsOptionsWidget::handle_setting_changed);
 
@@ -228,18 +243,14 @@ void UVisualsOptionsWidget::handle_apply_clicked() {
         }
     }
 
-    // Apply and save settings
     game_settings->ApplySettings(false);
     game_settings->SaveSettings();
-
-    // Refresh all rows from current settings (handles cases like Overall Scalability changing other
-    // values)
     refresh_all_rows_from_settings();
 
     pending_changes_count = 0;
     update_button_states();
 
-    UE_LOG(LogTemp, Log, TEXT("Applied video settings changes"));
+    log_log(TEXT("Applied video settings changes"));
 }
 
 void UVisualsOptionsWidget::handle_setting_changed(EVideoRowSettingChangeType change_type) {

@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 
-template <std::totally_ordered T>
+// std::totally_ordered
+template <typename T>
 struct SettingRange {
     using value_type = T;
 

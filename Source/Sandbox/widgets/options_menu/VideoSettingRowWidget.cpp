@@ -3,7 +3,6 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "GameFramework/GameUserSettings.h"
-#include "Sandbox/concepts/concepts.h"
 
 void UVideoSettingRowWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -85,30 +84,6 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     }
 }
 
-template <typename DataType>
-void UVideoSettingRowWidget::setup_numeric_widgets(DataType const& data) {
-    // Show numeric controls, hide boolean controls
-    if (numeric_slider) {
-        numeric_slider->SetVisibility(ESlateVisibility::Visible);
-        numeric_slider->OnValueChanged.AddDynamic(this,
-                                                  &UVideoSettingRowWidget::handle_slider_changed);
-
-        // Set slider range
-        numeric_slider->SetMinValue(static_cast<float>(data.config->range.min));
-        numeric_slider->SetMaxValue(static_cast<float>(data.config->range.max));
-        log_verbose(TEXT("Numeric slider configured and shown"));
-    }
-
-    if (toggle_button) {
-        toggle_button->SetVisibility(ESlateVisibility::Hidden);
-    }
-
-    if (pending_value_input) {
-        pending_value_input->SetIsReadOnly(false);
-        log_verbose(TEXT("Pending input set to editable for numeric type"));
-    }
-}
-
 void UVideoSettingRowWidget::setup_boolean_widgets() {
     // Show boolean controls, hide numeric controls
     if (toggle_button) {
@@ -158,24 +133,15 @@ void UVideoSettingRowWidget::update_display_values() {
 
         // Update type-specific controls
         if constexpr (ml::is_numeric<SettingT>) {
-            // Update slider to match pending value
             if (numeric_slider) {
                 numeric_slider->SetValue(static_cast<float>(pending_value));
             }
         }
-        // Boolean toggle button always says "Toggle" - no update needed
     });
 }
 
-template <typename T>
-FText UVideoSettingRowWidget::get_display_text_for_value(T value) const {
-    if constexpr (std::is_same_v<T, bool>) {
-        return bool_text(value);
-    } else if constexpr (ml::is_numeric<T>) {
-        return FText::AsNumber(value);
-    } else {
-        return FText::FromString(TEXT("Unknown"));
-    }
+FText UVideoSettingRowWidget::get_quality_level_text(EVisualQualityLevel level) const {
+    return GetQualityLevelDisplayName(level);
 }
 
 void UVideoSettingRowWidget::update_reset_button_state() {
@@ -268,49 +234,12 @@ void UVideoSettingRowWidget::notify_setting_changed(EVideoRowSettingChangeType c
     on_setting_changed.Broadcast(change_type);
 }
 
-template <typename T>
-T UVideoSettingRowWidget::get_current_value_from_settings() const {
-    auto* settings{UGameUserSettings::GetGameUserSettings()};
-    if (!settings) {
-        return T{};
-    }
-
-    return visit_row_data([settings](auto const& data) -> T {
-        using ConfigType = std::decay_t<decltype(*data.config)>;
-        if constexpr (std::is_same_v<typename ConfigType::SettingT, T>) {
-            if (data.config && data.config->getter) {
-                return (settings->*(data.config->getter))();
-            }
-        }
-        return T{};
-    });
-}
-
-template <typename T>
-void UVideoSettingRowWidget::set_value_to_settings(T value) {
-    auto* settings{UGameUserSettings::GetGameUserSettings()};
-    if (!settings) {
-        return;
-    }
-
-    visit_row_data([settings, value](auto const& data) {
-        using ConfigType = std::decay_t<decltype(*data.config)>;
-        if constexpr (std::is_same_v<typename ConfigType::SettingT, T>) {
-            if (data.config && data.config->setter) {
-                (settings->*(data.config->setter))(value);
-            }
-        }
-    });
-}
-
 void UVideoSettingRowWidget::apply_pending_changes() {
     visit_row_data([this](auto& data) {
         if (data.has_pending_change()) {
-            // Apply pending value to settings
             auto const pending_value{*data.pending_value};
             set_value_to_settings(pending_value);
 
-            // Update current value and clear pending
             data.current_value = pending_value;
             data.reset_pending();
         }
@@ -322,9 +251,9 @@ void UVideoSettingRowWidget::apply_pending_changes() {
 
 void UVideoSettingRowWidget::refresh_current_value() {
     visit_row_data([this](auto& data) {
-        using ConfigType = std::decay_t<decltype(*data.config)>;
-        using SettingT = typename ConfigType::SettingT;
-        data.current_value = get_current_value_from_settings<SettingT>();
+        if (auto const value{get_current_value_from_settings<decltype(data.current_value)>()}) {
+            data.current_value = *value;
+        }
     });
 
     update_display_values();
