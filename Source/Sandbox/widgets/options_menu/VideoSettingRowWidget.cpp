@@ -320,6 +320,17 @@ void UVideoSettingRowWidget::apply_pending_changes() {
     update_reset_button_state();
 }
 
+void UVideoSettingRowWidget::refresh_current_value() {
+    visit_row_data([this](auto& data) {
+        using ConfigType = std::decay_t<decltype(*data.config)>;
+        using SettingT = typename ConfigType::SettingT;
+        data.current_value = get_current_value_from_settings<SettingT>();
+    });
+
+    update_display_values();
+    update_reset_button_state();
+}
+
 bool UVideoSettingRowWidget::has_pending_changes() const {
     return visit_row_data([](auto const& data) { return data.has_pending_change(); });
 }

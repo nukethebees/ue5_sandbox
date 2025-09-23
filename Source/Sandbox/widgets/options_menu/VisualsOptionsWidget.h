@@ -62,6 +62,7 @@ class SANDBOX_API UVisualsOptionsWidget
     bool has_pending_changes() const;
     void update_button_states();
     void reset_all_settings_to_original();
+    void refresh_all_rows_from_settings();
 
     UGameUserSettings* get_game_user_settings() const;
 
