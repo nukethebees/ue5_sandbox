@@ -63,8 +63,9 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     visit_row_data([this](auto const& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
         using SettingT = typename ConfigType::SettingT;
+        using UnrealT = typename ConfigType::UnrealT;
 
-        if constexpr (ml::is_numeric<SettingT>) {
+        if constexpr (ml::is_numeric<UnrealT>) {
             // Numeric type: Show slider + editable pending input, hide toggle button
             setup_numeric_widgets(data);
         } else {
@@ -121,6 +122,7 @@ void UVideoSettingRowWidget::update_display_values() {
     visit_row_data([this](auto const& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
         using SettingT = typename ConfigType::SettingT;
+        using UnrealT = typename ConfigType::UnrealT;
 
         // Always show current value from original/stored state
         auto const current_text{get_display_text_for_value(data.current_value)};
@@ -132,7 +134,7 @@ void UVideoSettingRowWidget::update_display_values() {
         pending_value_input->SetText(pending_text);
 
         // Update type-specific controls
-        if constexpr (ml::is_numeric<SettingT>) {
+        if constexpr (ml::is_numeric<UnrealT>) {
             if (numeric_slider) {
                 numeric_slider->SetValue(static_cast<float>(pending_value));
             }
@@ -173,20 +175,33 @@ void UVideoSettingRowWidget::handle_slider_changed(float value) {
     visit_row_data([this, value](auto& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
         using SettingT = typename ConfigType::SettingT;
+        using UnrealT = typename ConfigType::UnrealT;
 
-        if constexpr (ml::is_numeric<SettingT>) {
+        constexpr bool is_enum{std::is_enum_v<SettingT>};
+
+        if constexpr (ml::is_numeric<UnrealT>) {
             SettingT typed_value;
             if constexpr (std::is_same_v<SettingT, float>) {
                 typed_value = value;
             } else {
-                typed_value = static_cast<SettingT>(FMath::RoundToInt(value));
+                if constexpr (is_enum) {
+                    typed_value = static_cast<SettingT>(FMath::RoundToInt(value));
+                } else {
+                    typed_value = static_cast<SettingT>(FMath::RoundToInt(value));
+                }
             }
 
             data.set_pending_value(typed_value);
 
-            // Update pending value display
+            FText display_number;
+            if constexpr (is_enum) {
+                display_number = FText::AsNumber(std::to_underlying(typed_value));
+            } else {
+                display_number = FText::AsNumber(typed_value);
+            }
+
             if (pending_value_input) {
-                pending_value_input->SetText(FText::AsNumber(typed_value));
+                pending_value_input->SetText(display_number);
             }
         }
     });
@@ -200,8 +215,9 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
     visit_row_data([this, &text](auto& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
         using SettingT = typename ConfigType::SettingT;
+        using UnrealT = typename ConfigType::UnrealT;
 
-        if constexpr (ml::is_numeric<SettingT>) {
+        if constexpr (ml::is_numeric<UnrealT>) {
             SettingT value;
             if constexpr (std::is_same_v<SettingT, float>) {
                 value = FCString::Atof(*text.ToString());
@@ -220,7 +236,14 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
                 numeric_slider->SetValue(static_cast<float>(clamped_value));
             }
             if (pending_value_input) {
-                pending_value_input->SetText(FText::AsNumber(clamped_value));
+                FText display_number;
+                if constexpr (std::is_enum_v<SettingT>) {
+                    display_number = FText::AsNumber(std::to_underlying(clamped_value));
+                } else {
+                    display_number = FText::AsNumber(clamped_value);
+                }
+
+                pending_value_input->SetText(display_number);
             }
         }
         // For booleans, text input is read-only, so this shouldn't be called

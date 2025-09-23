@@ -26,7 +26,7 @@ auto&& get_settings_array(Tuple&& tuple) {
 }
 
 template <typename ConfigT, typename Tuple>
-auto && get_config_settings_array(Tuple && tuple) {
+auto&& get_config_settings_array(Tuple&& tuple) {
     return std::get<TArray<ConfigT>>(std::forward<Tuple>(tuple));
 }
 
