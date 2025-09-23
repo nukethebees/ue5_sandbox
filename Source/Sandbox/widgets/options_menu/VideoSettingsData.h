@@ -1,6 +1,8 @@
 #pragma once
 
+#include <optional>
 #include <tuple>
+#include <variant>
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
@@ -57,9 +59,47 @@ using BoolSettingConfig = FVideoSettingConfig<bool>;
 using FloatSettingConfig = FVideoSettingConfig<float>;
 using IntSettingConfig = FVideoSettingConfig<int32>;
 
+template <template <typename...> class T>
+using ExpandedSettingsT = T<BoolSettingConfig, FloatSettingConfig, IntSettingConfig>;
+
+template <typename... Args>
+using VideoSettingsTupleT = std::tuple<TArray<Args>...>;
+
+// Row data structure for variant-based storage
+template <typename Config>
+struct RowData {
+    using SettingT = typename Config::SettingT;
+
+    Config const* config{nullptr};
+    SettingT current_value{};
+    std::optional<SettingT> pending_value{std::nullopt};
+
+    RowData() = default;
+    RowData(Config const* cfg, SettingT current)
+        : config{cfg}
+        , current_value{current} {}
+
+    bool has_pending_change() const { return pending_value.has_value(); }
+    void set_pending_value(SettingT value) { pending_value = value; }
+    void reset_pending() { pending_value = std::nullopt; }
+    SettingT get_display_value() const { return pending_value.value_or(current_value); }
+};
+
+template <typename... Args>
+using VideoRowSettingsVariantT = std::variant<RowData<Args>...>;
+
+// Variant for type-safe row storage
+using RowVariant = ExpandedSettingsT<VideoRowSettingsVariantT>;
+
+// Config type IDs for std::get operations
+enum class ConfigTypeId : int32 { Bool = 0, Float = 1, Int = 2 };
+
+// Setting change types
+UENUM(BlueprintType)
+enum class ESettingChangeType : uint8 { ValueChanged, ValueReset };
+
 // Tuple of arrays for storing different setting types
-using VideoSettingsTuple =
-    std::tuple<TArray<BoolSettingConfig>, TArray<FloatSettingConfig>, TArray<IntSettingConfig>>;
+using VideoSettingsTuple = ExpandedSettingsT<VideoSettingsTupleT>;
 
 // Helper template for accessing arrays from tuple
 namespace VideoSettingsHelpers {
@@ -84,5 +124,25 @@ auto& get_settings_array(VideoSettingsTuple& tuple) {
 template <typename T>
 auto const& get_settings_array(VideoSettingsTuple const& tuple) {
     return std::get<get_array_index<T>()>(tuple);
+}
+
+// Config type identification
+template <typename Config>
+constexpr ConfigTypeId get_config_type_id() {
+    if constexpr (std::is_same_v<Config, BoolSettingConfig>) {
+        return ConfigTypeId::Bool;
+    } else if constexpr (std::is_same_v<Config, FloatSettingConfig>) {
+        return ConfigTypeId::Float;
+    } else if constexpr (std::is_same_v<Config, IntSettingConfig>) {
+        return ConfigTypeId::Int;
+    } else {
+        static_assert(std::is_same_v<Config, void>, "Unsupported config type");
+    }
+}
+
+// Helper to create RowVariant from config
+template <typename Config>
+RowVariant create_row_data(Config const& config, typename Config::SettingT current_value) {
+    return RowData<Config>{&config, current_value};
 }
 }

@@ -13,7 +13,9 @@
 
 #include "VideoSettingRowWidget.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVideoSettingChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVideoSettingChanged,
+                                            ESettingChangeType,
+                                            change_type);
 
 UCLASS()
 class SANDBOX_API UVideoSettingRowWidget
@@ -24,9 +26,8 @@ class SANDBOX_API UVideoSettingRowWidget
     UPROPERTY(BlueprintAssignable, Category = "Events")
     FOnVideoSettingChanged on_setting_changed;
 
-    void initialize_for_boolean_setting(BoolSettingConfig const& config);
-    void initialize_for_float_setting(FloatSettingConfig const& config);
-    void initialize_for_int_setting(IntSettingConfig const& config);
+    void initialize_with_row_data(RowVariant const& row_data);
+    void reset_to_original_value();
 
     void update_current_value_display();
     void apply_pending_changes();
@@ -48,8 +49,12 @@ class SANDBOX_API UVideoSettingRowWidget
 
     UPROPERTY(meta = (BindWidget))
     UEditableTextBox* text_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UTextButtonWidget* reset_button{nullptr};
   private:
     void setup_input_widgets_for_type();
+    void setup_reset_button();
 
     void update_boolean_display();
     void update_float_display();
@@ -65,13 +70,7 @@ class SANDBOX_API UVideoSettingRowWidget
     void handle_text_committed(FText const& text, ETextCommit::Type commit_type);
 
     UFUNCTION()
-    FText const& on_text() const;
-    UFUNCTION()
-    FText const & off_text() const;
-    UFUNCTION()
-    FText const & bool_text(bool state) const {
-        return state ? on_text() : off_text();
-    }
+    void handle_reset_clicked();
 
     template <typename T>
     T get_current_value_from_settings() const;
@@ -79,19 +78,21 @@ class SANDBOX_API UVideoSettingRowWidget
     template <typename T>
     void set_value_to_settings(T value);
 
+    void notify_setting_changed(ESettingChangeType change_type);
+    void update_display_values();
+    void update_reset_button_state();
+
+    RowVariant row_data{};
     EVideoSettingType setting_type{EVideoSettingType::TextBox};
 
-    // Store config data for different types
-    BoolSettingConfig const* bool_config{nullptr};
-    FloatSettingConfig const* float_config{nullptr};
-    IntSettingConfig const* int_config{nullptr};
+    // Helper methods for variant operations
+    template <typename Visitor>
+    auto visit_row_data(Visitor&& visitor) {
+        return std::visit(std::forward<Visitor>(visitor), row_data);
+    }
 
-    // Pending values (before apply is clicked)
-    bool pending_bool_value{false};
-    float pending_float_value{0.0f};
-    int32 pending_int_value{0};
-
-    bool has_pending_bool_change{false};
-    bool has_pending_float_change{false};
-    bool has_pending_int_change{false};
+    template <typename Visitor>
+    auto visit_row_data(Visitor&& visitor) const {
+        return std::visit(std::forward<Visitor>(visitor), row_data);
+    }
 };
