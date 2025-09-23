@@ -29,10 +29,4 @@ template <typename ConfigT, typename Tuple>
 auto&& get_config_settings_array(Tuple&& tuple) {
     return std::get<TArray<ConfigT>>(std::forward<Tuple>(tuple));
 }
-
-// Helper to create VideoRow from config
-template <typename Config>
-VideoRow create_row_data(Config const& config, typename Config::SettingT current_value) {
-    return RowData<Config>{&config, current_value};
-}
 }
