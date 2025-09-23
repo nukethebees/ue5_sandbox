@@ -28,9 +28,16 @@ class SANDBOX_API UVisualsOptionsWidget
 
     UPROPERTY(meta = (BindWidget))
     UButton* apply_button{nullptr};
-  private:
-    UPROPERTY()
+
+    UPROPERTY(meta = (BindWidget))
     UVerticalBox* settings_container{nullptr};
+
+    // Blueprint classes for different setting row types
+    UPROPERTY(EditDefaultsOnly,
+              BlueprintReadOnly,
+              Category = "Widget Classes",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UVideoSettingRowWidget> video_setting_row_widget_class{nullptr};
 
     void initialize_video_settings();
     void populate_settings_ui();
@@ -54,4 +61,6 @@ class SANDBOX_API UVisualsOptionsWidget
     TArray<UVideoSettingRowWidget*> setting_row_widgets{};
     bool pending_changes{false};
     int32 row_idx{0};
+
+    bool validate_widget_class() const;
 };

@@ -43,7 +43,7 @@ class SANDBOX_API UOptionsWidget
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* back_button{nullptr};
 
-    // Tab content widgets
+    // Tab content widgets (bound from Blueprint)
     UPROPERTY(meta = (BindWidget))
     UGameplayOptionsWidget* gameplay_tab{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -52,6 +52,31 @@ class SANDBOX_API UOptionsWidget
     UAudioOptionsWidget* audio_tab{nullptr};
     UPROPERTY(meta = (BindWidget))
     UControlsOptionsWidget* controls_tab{nullptr};
+
+    // Blueprint classes for tab content widgets
+    UPROPERTY(EditDefaultsOnly,
+              BlueprintReadOnly,
+              Category = "Widget Classes",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UGameplayOptionsWidget> gameplay_options_widget_class{nullptr};
+
+    UPROPERTY(EditDefaultsOnly,
+              BlueprintReadOnly,
+              Category = "Widget Classes",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UVisualsOptionsWidget> visuals_options_widget_class{nullptr};
+
+    UPROPERTY(EditDefaultsOnly,
+              BlueprintReadOnly,
+              Category = "Widget Classes",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UAudioOptionsWidget> audio_options_widget_class{nullptr};
+
+    UPROPERTY(EditDefaultsOnly,
+              BlueprintReadOnly,
+              Category = "Widget Classes",
+              meta = (AllowPrivateAccess = "true"))
+    TSubclassOf<UControlsOptionsWidget> controls_options_widget_class{nullptr};
   public:
     // Back navigation event
     UPROPERTY(BlueprintAssignable)
@@ -70,6 +95,7 @@ class SANDBOX_API UOptionsWidget
 
     void set_active_tab(EOptionsTab tab);
     void update_tab_button_states(EOptionsTab active_tab);
+    bool validate_widget_classes() const;
 
     EOptionsTab current_tab{EOptionsTab::Gameplay};
 };

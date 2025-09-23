@@ -3,6 +3,12 @@
 void UOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
 
+    // Validate widget classes are set in Blueprint
+    if (!validate_widget_classes()) {
+        log_error(TEXT("Widget classes not properly set in Blueprint"));
+        return;
+    }
+
     // Bind tab button clicks
     if (gameplay_tab_button) {
         gameplay_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_gameplay_tab);
@@ -63,4 +69,27 @@ void UOptionsWidget::update_tab_button_states(EOptionsTab active_tab) {
     // This would typically update button appearance to show which tab is active
     // Implementation depends on how TextButtonWidget handles selected states
     // For now, just ensuring the logic structure is in place
+}
+
+bool UOptionsWidget::validate_widget_classes() const {
+    bool all_valid{true};
+
+    if (!gameplay_options_widget_class) {
+        log_warning(TEXT("gameplay_options_widget_class not set in Blueprint"));
+        all_valid = false;
+    }
+    if (!visuals_options_widget_class) {
+        log_warning(TEXT("visuals_options_widget_class not set in Blueprint"));
+        all_valid = false;
+    }
+    if (!audio_options_widget_class) {
+        log_warning(TEXT("audio_options_widget_class not set in Blueprint"));
+        all_valid = false;
+    }
+    if (!controls_options_widget_class) {
+        log_warning(TEXT("controls_options_widget_class not set in Blueprint"));
+        all_valid = false;
+    }
+
+    return all_valid;
 }

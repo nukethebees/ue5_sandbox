@@ -9,58 +9,14 @@ void UVideoSettingRowWidget::NativeConstruct() {
 
     log_verbose(TEXT("NativeConstruct()"));
 
-    create_widget_hierarchy();
-}
-
-void UVideoSettingRowWidget::create_widget_hierarchy() {
-    log_verbose(TEXT("create_widget_hierarchy()"));
-
-    // Create root horizontal container
-    root_container = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),
-                                                                 TEXT("RootContainer"));
-    if (!root_container) {
-        log_error(TEXT("Failed to create root container"));
-        return;
+    // Widget hierarchy is now created in Blueprint
+    // Just verify that required widgets are bound
+    if (!setting_name_text) {
+        log_error(TEXT("setting_name_text not bound to Blueprint widget"));
     }
-
-    // Set as root widget
-    WidgetTree->RootWidget = root_container;
-
-    // Create setting name label
-    setting_name_text =
-        WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("SettingNameText"));
-    if (setting_name_text) {
-        auto* name_slot{root_container->AddChildToHorizontalBox(setting_name_text)};
-        if (name_slot) {
-            name_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-            name_slot->SetPadding(FMargin{5.0f, 0.0f, 10.0f, 0.0f});
-        }
+    if (!current_value_text) {
+        log_error(TEXT("current_value_text not bound to Blueprint widget"));
     }
-
-    // Create current value display
-    current_value_text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
-                                                                 TEXT("CurrentValueText"));
-    if (current_value_text) {
-        auto* value_slot{root_container->AddChildToHorizontalBox(current_value_text)};
-        if (value_slot) {
-            value_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
-            value_slot->SetPadding(FMargin{5.0f, 0.0f, 10.0f, 0.0f});
-        }
-        current_value_text->SetText(FText::FromString(TEXT("--")));
-    }
-
-    // Create input container
-    input_container = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),
-                                                                  TEXT("InputContainer"));
-    if (input_container) {
-        auto* input_slot{root_container->AddChildToHorizontalBox(input_container)};
-        if (input_slot) {
-            input_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
-            input_slot->SetPadding(FMargin{5.0f, 0.0f, 5.0f, 0.0f});
-        }
-    }
-
-    log_verbose(TEXT("Widget hierarchy created successfully"));
 }
 
 void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig const& config) {
@@ -73,7 +29,7 @@ void UVideoSettingRowWidget::initialize_for_boolean_setting(BoolSettingConfig co
         setting_name_text->SetText(FText::FromString(config.setting_name));
     }
 
-    create_button_input();
+    setup_input_widgets_for_type();
     update_boolean_display();
 }
 
@@ -87,11 +43,7 @@ void UVideoSettingRowWidget::initialize_for_float_setting(FloatSettingConfig con
         setting_name_text->SetText(FText::FromString(config.setting_name));
     }
 
-    if (config.type == EVideoSettingType::SliderWithText) {
-        create_slider_with_text_input();
-    } else {
-        create_text_input();
-    }
+    setup_input_widgets_for_type();
     update_float_display();
 }
 
@@ -105,83 +57,62 @@ void UVideoSettingRowWidget::initialize_for_int_setting(IntSettingConfig const& 
         setting_name_text->SetText(FText::FromString(config.setting_name));
     }
 
-    if (config.type == EVideoSettingType::SliderWithText) {
-        create_slider_with_text_input();
-    } else {
-        create_text_input();
-    }
+    setup_input_widgets_for_type();
     update_int_display();
 }
 
-void UVideoSettingRowWidget::create_button_input() {
-    if (!input_container) {
-        return;
-    }
-
-    button_widget = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("Button"));
-    if (button_widget) {
-        button_widget->OnClicked.AddDynamic(this, &UVideoSettingRowWidget::handle_button_clicked);
-        input_container->AddChildToHorizontalBox(button_widget);
-
-        // Create text block for button label
-        button_text =
-            WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ButtonText"));
-        if (button_text) {
-            button_widget->AddChild(button_text);
+void UVideoSettingRowWidget::setup_input_widgets_for_type() {
+    // Setup event bindings for widgets that are bound from Blueprint
+    switch (setting_type) {
+        case EVideoSettingType::Checkbox: {
+            if (button_widget) {
+                button_widget->OnClicked.AddDynamic(this,
+                                                    &UVideoSettingRowWidget::handle_button_clicked);
+                log_verbose(TEXT("Button widget bound and event connected"));
+            } else {
+                log_warning(TEXT("Button widget not bound for checkbox setting"));
+            }
+            break;
         }
-    }
-}
+        case EVideoSettingType::SliderWithText: {
+            if (slider_widget) {
+                slider_widget->OnValueChanged.AddDynamic(
+                    this, &UVideoSettingRowWidget::handle_slider_changed);
 
-void UVideoSettingRowWidget::create_slider_with_text_input() {
-    if (!input_container) {
-        return;
-    }
+                // Set slider range based on config
+                if (float_config) {
+                    slider_widget->SetMinValue(float_config->range.min);
+                    slider_widget->SetMaxValue(float_config->range.max);
+                } else if (int_config) {
+                    slider_widget->SetMinValue(static_cast<float>(int_config->range.min));
+                    slider_widget->SetMaxValue(static_cast<float>(int_config->range.max));
+                }
+                log_verbose(TEXT("Slider widget bound and configured"));
+            } else {
+                log_warning(TEXT("Slider widget not bound for slider setting"));
+            }
 
-    // Create slider
-    slider_widget = WidgetTree->ConstructWidget<USlider>(USlider::StaticClass(), TEXT("Slider"));
-    if (slider_widget) {
-        slider_widget->OnValueChanged.AddDynamic(this,
-                                                 &UVideoSettingRowWidget::handle_slider_changed);
-
-        if (float_config) {
-            slider_widget->SetMinValue(float_config->range.min);
-            slider_widget->SetMaxValue(float_config->range.max);
-        } else if (int_config) {
-            slider_widget->SetMinValue(static_cast<float>(int_config->range.min));
-            slider_widget->SetMaxValue(static_cast<float>(int_config->range.max));
+            if (text_widget) {
+                text_widget->OnTextCommitted.AddDynamic(
+                    this, &UVideoSettingRowWidget::handle_text_committed);
+                text_widget->SetJustification(ETextJustify::Center);
+                log_verbose(TEXT("Text widget bound for slider setting"));
+            } else {
+                log_warning(TEXT("Text widget not bound for slider setting"));
+            }
+            break;
         }
-
-        input_container->AddChildToHorizontalBox(slider_widget);
-    }
-
-    // Create text box
-    text_widget = WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(),
-                                                                TEXT("EditableText"));
-    if (text_widget) {
-        text_widget->OnTextCommitted.AddDynamic(this,
-                                                &UVideoSettingRowWidget::handle_text_committed);
-        text_widget->SetJustification(ETextJustify::Center);
-
-        auto* text_slot{input_container->AddChildToHorizontalBox(text_widget)};
-        if (text_slot) {
-            text_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-            text_slot->SetHorizontalAlignment(HAlign_Fill);
+        case EVideoSettingType::TextBox: {
+            if (text_widget) {
+                text_widget->OnTextCommitted.AddDynamic(
+                    this, &UVideoSettingRowWidget::handle_text_committed);
+                text_widget->SetJustification(ETextJustify::Center);
+                log_verbose(TEXT("Text widget bound for text box setting"));
+            } else {
+                log_warning(TEXT("Text widget not bound for text box setting"));
+            }
+            break;
         }
-    }
-}
-
-void UVideoSettingRowWidget::create_text_input() {
-    if (!input_container) {
-        return;
-    }
-
-    text_widget = WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(),
-                                                                TEXT("EditableText2"));
-    if (text_widget) {
-        text_widget->OnTextCommitted.AddDynamic(this,
-                                                &UVideoSettingRowWidget::handle_text_committed);
-        text_widget->SetJustification(ETextJustify::Center);
-        input_container->AddChildToHorizontalBox(text_widget);
     }
 }
 
