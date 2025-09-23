@@ -8,12 +8,12 @@ template <typename Config>
 struct RowData {
     using SettingT = typename Config::SettingT;
 
-    Config const * config{nullptr};
+    Config const* config{nullptr};
     SettingT current_value{};
     std::optional<SettingT> pending_value{std::nullopt};
 
     RowData() = default;
-    RowData(Config const * cfg, SettingT current)
+    RowData(Config const* cfg, SettingT current)
         : config{cfg}
         , current_value{current} {}
 
