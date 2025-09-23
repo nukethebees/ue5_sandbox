@@ -11,7 +11,7 @@ void UVisualsOptionsWidget::NativeConstruct() {
     log_verbose(TEXT("NativeConstruct() begin"));
 
     if (apply_button) {
-        apply_button->OnClicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
+        apply_button->on_clicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
         // Will be enabled when changes are pending
         apply_button->SetIsEnabled(false);
     } else {

@@ -9,6 +9,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/options_menu/VideoSettingsData.h"
+#include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "VideoSettingRowWidget.generated.h"
 
@@ -40,16 +41,13 @@ class SANDBOX_API UVideoSettingRowWidget
     UTextBlock* current_value_text{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UButton* button_widget{nullptr};
+    UTextButtonWidget* button_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     USlider* slider_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UEditableTextBox* text_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* button_text{nullptr};
   private:
     void setup_input_widgets_for_type();
 
@@ -65,6 +63,15 @@ class SANDBOX_API UVideoSettingRowWidget
 
     UFUNCTION()
     void handle_text_committed(FText const& text, ETextCommit::Type commit_type);
+
+    UFUNCTION()
+    FText const& on_text() const;
+    UFUNCTION()
+    FText const & off_text() const;
+    UFUNCTION()
+    FText const & bool_text(bool state) const {
+        return state ? on_text() : off_text();
+    }
 
     template <typename T>
     T get_current_value_from_settings() const;

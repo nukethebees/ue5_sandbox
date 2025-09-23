@@ -23,6 +23,10 @@ void UTextButtonWidget::SynchronizeProperties() {
 void UTextButtonWidget::handle_click() {
     on_clicked.Broadcast();
 }
+void UTextButtonWidget::set_label(FText const& txt) {
+    label = txt;
+    set_label();
+}
 void UTextButtonWidget::set_label() {
     if (text_block) {
         text_block->SetText(label);

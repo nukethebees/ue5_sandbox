@@ -10,6 +10,7 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/options_menu/VideoSettingsData.h"
+#include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "VisualsOptionsWidget.generated.h"
 
@@ -27,7 +28,7 @@ class SANDBOX_API UVisualsOptionsWidget
     UScrollBox* settings_scroll_box{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UButton* apply_button{nullptr};
+    UTextButtonWidget* apply_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* settings_container{nullptr};
