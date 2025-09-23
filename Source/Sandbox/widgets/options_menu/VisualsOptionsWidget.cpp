@@ -164,14 +164,14 @@ void UVisualsOptionsWidget::handle_apply_clicked() {
     UE_LOG(LogTemp, Log, TEXT("Applied video settings changes"));
 }
 
-void UVisualsOptionsWidget::handle_setting_changed(ESettingChangeType change_type) {
+void UVisualsOptionsWidget::handle_setting_changed(EVideoRowSettingChangeType change_type) {
     // Update counter based on change type
     switch (change_type) {
-        case ESettingChangeType::ValueChanged: {
+        case EVideoRowSettingChangeType::ValueChanged: {
             pending_changes_count++;
             break;
         }
-        case ESettingChangeType::ValueReset: {
+        case EVideoRowSettingChangeType::ValueReset: {
             pending_changes_count = FMath::Max(0, pending_changes_count - 1);
             break;
         }

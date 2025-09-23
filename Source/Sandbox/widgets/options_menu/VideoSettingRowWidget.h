@@ -7,14 +7,14 @@
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "CoreMinimal.h"
+#include "Sandbox/data/video_options/VideoSettingsData.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-#include "Sandbox/widgets/options_menu/VideoSettingsData.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "VideoSettingRowWidget.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVideoSettingChanged,
-                                            ESettingChangeType,
+                                            EVideoRowSettingChangeType,
                                             change_type);
 
 UCLASS()
@@ -26,7 +26,7 @@ class SANDBOX_API UVideoSettingRowWidget
     UPROPERTY(BlueprintAssignable, Category = "Events")
     FOnVideoSettingChanged on_setting_changed;
 
-    void initialize_with_row_data(RowVariant const& row_data);
+    void initialize_with_row_data(VideoRow const& row_data);
     void reset_to_original_value();
 
     void update_current_value_display();
@@ -78,11 +78,11 @@ class SANDBOX_API UVideoSettingRowWidget
     template <typename T>
     void set_value_to_settings(T value);
 
-    void notify_setting_changed(ESettingChangeType change_type);
+    void notify_setting_changed(EVideoRowSettingChangeType change_type);
     void update_display_values();
     void update_reset_button_state();
 
-    RowVariant row_data{};
+    VideoRow row_data{};
     EVideoSettingType setting_type{EVideoSettingType::TextBox};
 
     // Helper methods for variant operations
