@@ -7,6 +7,7 @@
 template <typename Config>
 struct RowData {
     using SettingT = typename Config::SettingT;
+    using ConfigT = typename Config;
 
     Config const* config{nullptr};
     SettingT current_value{};
