@@ -1,39 +1,11 @@
 #pragma once
 
+#include <utility>
+
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Sandbox/concepts/concepts.h"
 #include "Sandbox/data/video_options/VideoSettingRange.h"
-#include <utility>
-
-UENUM()
-enum class EVisualQualityLevel : int32 {
-    Auto = -1,
-    Low = 0,
-    Medium = 1,
-    High = 2,
-    Epic = 3,
-    Cinematic = 4
-};
-
-inline FText GetQualityLevelDisplayName(EVisualQualityLevel level) {
-    switch (level) {
-        case EVisualQualityLevel::Auto:
-            return FText::FromString(TEXT("Auto"));
-        case EVisualQualityLevel::Low:
-            return FText::FromString(TEXT("Low"));
-        case EVisualQualityLevel::Medium:
-            return FText::FromString(TEXT("Medium"));
-        case EVisualQualityLevel::High:
-            return FText::FromString(TEXT("High"));
-        case EVisualQualityLevel::Epic:
-            return FText::FromString(TEXT("Epic"));
-        case EVisualQualityLevel::Cinematic:
-            return FText::FromString(TEXT("Cinematic"));
-        default:
-            return FText::FromString(TEXT("Unknown"));
-    }
-}
 
 template <typename T,
           typename U = T,
