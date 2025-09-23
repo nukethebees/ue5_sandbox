@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include "CoreMinimal.h"
 #include "Sandbox/data/video_options/VideoRowData.h"
@@ -18,14 +19,9 @@ UENUM(BlueprintType)
 enum class EVideoRowSettingChangeType : uint8 { ValueChanged, ValueReset };
 
 namespace VideoSettingsHelpers {
-template <typename T>
-auto& get_settings_array(VideoSettingsTuple& tuple) {
-    return std::get<TArray<FVideoSettingConfig<T>>>(tuple);
-}
-
-template <typename T>
-auto const& get_settings_array(VideoSettingsTuple const& tuple) {
-    return std::get<TArray<FVideoSettingConfig<T>>>(tuple);
+template <typename T, typename Tuple>
+auto&& get_settings_array(Tuple&& tuple) {
+    return std::get<TArray<FVideoSettingConfig<T>>>(std::forward<Tuple>(tuple));
 }
 
 // Helper to create VideoRow from config
