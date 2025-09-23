@@ -60,14 +60,9 @@ class SANDBOX_API UVideoSettingRowWidget
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* reset_button{nullptr};
   private:
-    UFUNCTION()
     FText const& on_text() const;
-    UFUNCTION()
     FText const& off_text() const;
-    UFUNCTION()
     FText const& bool_text(bool state) const { return state ? on_text() : off_text(); }
-    UFUNCTION()
-    FText get_quality_level_text(EVisualQualityLevel level) const;
 
     void setup_input_widgets_for_type();
     void setup_reset_button();
@@ -85,17 +80,8 @@ class SANDBOX_API UVideoSettingRowWidget
     UFUNCTION()
     void handle_text_committed(FText const& text, ETextCommit::Type commit_type);
 
-    template <typename T>
-    std::optional<T> get_current_value_from_settings() const;
-
-    template <typename T>
-    void set_value_to_settings(T value);
-
     void notify_setting_changed(EVideoRowSettingChangeType change_type);
     void update_reset_button_state();
-
-    template <typename T>
-    FText get_display_text_for_value(T value) const;
 
     VideoRow row_data{};
     EVideoSettingType setting_type{EVideoSettingType::TextBox};
@@ -115,8 +101,8 @@ void UVideoSettingRowWidget::setup_numeric_widgets(DataType const& data) {
                                                   &UVideoSettingRowWidget::handle_slider_changed);
 
         // Set slider range
-        numeric_slider->SetMinValue(static_cast<float>(data.config->range.min));
-        numeric_slider->SetMaxValue(static_cast<float>(data.config->range.max));
+        numeric_slider->SetMinValue(data.slider_min());
+        numeric_slider->SetMaxValue(data.slider_max());
         log_verbose(TEXT("Numeric slider configured and shown"));
     }
 
@@ -128,58 +114,4 @@ void UVideoSettingRowWidget::setup_numeric_widgets(DataType const& data) {
         pending_value_input->SetIsReadOnly(false);
         log_verbose(TEXT("Pending input set to editable for numeric type"));
     }
-}
-
-template <typename T>
-FText UVideoSettingRowWidget::get_display_text_for_value(T value) const {
-    if constexpr (std::is_same_v<T, bool>) {
-        return bool_text(value);
-    } else if constexpr (std::is_same_v<T, EVisualQualityLevel>) {
-        return get_quality_level_text(value);
-    } else if constexpr (ml::is_numeric<T>) {
-        return FText::AsNumber(value);
-    } else {
-        return FText::FromString(TEXT("Unknown"));
-    }
-}
-
-template <typename T>
-std::optional<T> UVideoSettingRowWidget::get_current_value_from_settings() const {
-    // Due to the nature of std::visit, we need to ensure that all possible combinations
-    // of types are covered
-    // It's possible for you to ask for T but have a different T in the variant
-
-    return std::visit(
-        [](auto const& data) -> std::optional<T> {
-            auto* settings{UGameUserSettings::GetGameUserSettings()};
-            if (!settings) {
-                return std::optional<T>{std::nullopt};
-            }
-
-            using RetT = std::remove_cvref_t<decltype(data.config->get_value(*settings))>;
-            if constexpr (!std::is_same_v<RetT, T>) {
-                return std::nullopt;
-            } else {
-                if (data.config && data.config->getter) {
-                    return std::optional<T>{data.config->get_value(*settings)};
-                } else {
-                    return std::optional<T>{std::nullopt};
-                }
-            }
-        },
-        row_data);
-}
-
-template <typename T>
-void UVideoSettingRowWidget::set_value_to_settings(T value) {
-    auto* settings{UGameUserSettings::GetGameUserSettings()};
-    if (!settings) {
-        return;
-    }
-
-    visit_row_data([settings, value](auto const& data) {
-        if (data.config && data.config->setter) {
-            data.config->set_value(*settings, value);
-        }
-    });
 }

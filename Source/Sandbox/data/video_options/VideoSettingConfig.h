@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Sandbox/concepts/concepts.h"
 #include "Sandbox/data/video_options/VideoSettingRange.h"
 #include <utility>
 
