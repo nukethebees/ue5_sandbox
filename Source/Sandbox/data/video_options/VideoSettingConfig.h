@@ -19,30 +19,6 @@ enum class EVisualQualityLevel : int32 {
     Cinematic = 4
 };
 
-// Conversion and display functions for quality levels
-inline EVisualQualityLevel IntToQualityLevel(int32 value) {
-    switch (value) {
-        case -1:
-            return EVisualQualityLevel::Auto;
-        case 0:
-            return EVisualQualityLevel::Low;
-        case 1:
-            return EVisualQualityLevel::Medium;
-        case 2:
-            return EVisualQualityLevel::High;
-        case 3:
-            return EVisualQualityLevel::Epic;
-        case 4:
-            return EVisualQualityLevel::Cinematic;
-        default:
-            return EVisualQualityLevel::Low; // Default fallback
-    }
-}
-
-inline int32 QualityLevelToInt(EVisualQualityLevel level) {
-    return std::to_underlying(level);
-}
-
 inline FText GetQualityLevelDisplayName(EVisualQualityLevel level) {
     switch (level) {
         case EVisualQualityLevel::Auto:
