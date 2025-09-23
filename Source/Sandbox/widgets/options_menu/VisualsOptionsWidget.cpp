@@ -49,6 +49,12 @@ void UVisualsOptionsWidget::initialize_video_settings() {
                                         &UGameUserSettings::IsVSyncEnabled,
                                         &UGameUserSettings::SetVSyncEnabled});
 
+    bool_settings.Add(BoolSettingConfig{TEXT("Dynamic Resolution"),
+                                        EVideoSettingType::Checkbox,
+                                        {},
+                                        &UGameUserSettings::IsDynamicResolutionEnabled,
+                                        &UGameUserSettings::SetDynamicResolutionEnabled});
+
     // Initialize float settings
     auto& float_settings{VideoSettingsHelpers::get_settings_array<float>(video_settings)};
     float_settings.Add(FloatSettingConfig{TEXT("Resolution Scale"),
@@ -59,12 +65,86 @@ void UVisualsOptionsWidget::initialize_video_settings() {
 
     // Initialize int settings
     auto& int_settings{VideoSettingsHelpers::get_settings_array<int32>(video_settings)};
+
+    // Quality settings (0-4: Low, Medium, High, Epic, Cinematic)
+    int_settings.Add(IntSettingConfig{TEXT("View Distance Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetViewDistanceQuality,
+                                      &UGameUserSettings::SetViewDistanceQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Shadow Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetShadowQuality,
+                                      &UGameUserSettings::SetShadowQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Global Illumination Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetGlobalIlluminationQuality,
+                                      &UGameUserSettings::SetGlobalIlluminationQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Reflection Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetReflectionQuality,
+                                      &UGameUserSettings::SetReflectionQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Anti-Aliasing Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetAntiAliasingQuality,
+                                      &UGameUserSettings::SetAntiAliasingQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Texture Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetTextureQuality,
+                                      &UGameUserSettings::SetTextureQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Visual Effect Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetVisualEffectQuality,
+                                      &UGameUserSettings::SetVisualEffectQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Post Processing Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetPostProcessingQuality,
+                                      &UGameUserSettings::SetPostProcessingQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Foliage Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetFoliageQuality,
+                                      &UGameUserSettings::SetFoliageQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Shading Quality"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetShadingQuality,
+                                      &UGameUserSettings::SetShadingQuality});
+
+    int_settings.Add(IntSettingConfig{TEXT("Audio Quality Level"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetAudioQualityLevel,
+                                      &UGameUserSettings::SetAudioQualityLevel});
+
+    int_settings.Add(IntSettingConfig{TEXT("Overall Scalability Level"),
+                                      EVideoSettingType::SliderWithText,
+                                      SettingRange<int32>{0, 4},
+                                      &UGameUserSettings::GetOverallScalabilityLevel,
+                                      &UGameUserSettings::SetOverallScalabilityLevel});
+
     // Note: Frame rate limit uses float methods, so we'll add it as a float setting instead
     auto& float_settings_for_framerate{
         VideoSettingsHelpers::get_settings_array<float>(video_settings)};
     float_settings_for_framerate.Add(FloatSettingConfig{TEXT("Frame Rate Limit"),
                                                         EVideoSettingType::TextBox,
-                                                        SettingRange<float>{30.0f, 240.0f},
+                                                        SettingRange<float>{0.0f, 240.0f},
                                                         &UGameUserSettings::GetFrameRateLimit,
                                                         &UGameUserSettings::SetFrameRateLimit});
 }
