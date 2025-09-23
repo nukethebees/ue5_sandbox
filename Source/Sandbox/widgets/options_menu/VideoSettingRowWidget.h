@@ -27,10 +27,14 @@ class SANDBOX_API UVideoSettingRowWidget
     FOnVideoSettingChanged on_setting_changed;
 
     void initialize_with_row_data(VideoRow const& row_data);
+    UFUNCTION()
     void reset_to_original_value();
 
+    UFUNCTION()
     void update_display_values();
+    UFUNCTION()
     void apply_pending_changes();
+    UFUNCTION()
     bool has_pending_changes() const;
   protected:
     virtual void NativeConstruct() override;
@@ -53,6 +57,15 @@ class SANDBOX_API UVideoSettingRowWidget
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* reset_button{nullptr};
   private:
+      UFUNCTION()
+      FText const & on_text() const;
+      UFUNCTION()
+      FText const & off_text() const;
+      UFUNCTION()
+      FText const & bool_text(bool state) const {
+          return state ? on_text() : off_text();
+      }
+
     void setup_input_widgets_for_type();
     void setup_reset_button();
 

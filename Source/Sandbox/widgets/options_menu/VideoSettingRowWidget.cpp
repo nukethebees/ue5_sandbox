@@ -3,6 +3,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Sandbox/concepts/concepts.h"
 
 void UVideoSettingRowWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -49,6 +50,15 @@ void UVideoSettingRowWidget::reset_to_original_value() {
     notify_setting_changed(EVideoRowSettingChangeType::ValueReset);
 }
 
+FText const& UVideoSettingRowWidget::on_text() const {
+    static auto const txt{FText::FromString(TEXT("On"))};
+    return txt;
+}
+FText const& UVideoSettingRowWidget::off_text() const {
+    static auto const txt{FText::FromString(TEXT("Off"))};
+    return txt;
+}
+
 void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     // Setup event bindings for widgets that are bound from Blueprint
     switch (setting_type) {
@@ -70,10 +80,7 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
                 // Set slider range based on config from variant
                 visit_row_data([this](auto const& data) {
                     using ConfigType = std::decay_t<decltype(*data.config)>;
-                    if constexpr (std::is_same_v<ConfigType, FloatSettingConfig>) {
-                        slider_widget->SetMinValue(data.config->range.min);
-                        slider_widget->SetMaxValue(data.config->range.max);
-                    } else if constexpr (ConfigType::RangeT::has_min_max) {
+                    if constexpr (ml::is_numeric<typename ConfigType::SettingT>) {
                         slider_widget->SetMinValue(static_cast<float>(data.config->range.min));
                         slider_widget->SetMaxValue(static_cast<float>(data.config->range.max));
                     }
@@ -126,27 +133,20 @@ void UVideoSettingRowWidget::update_display_values() {
         auto const display_value{data.get_display_value()};
 
         if constexpr (std::is_same_v<ConfigType, BoolSettingConfig>) {
-            auto const text{display_value ? FText::FromString(TEXT("On"))
-                                          : FText::FromString(TEXT("Off"))};
+            auto const& text{bool_text(display_value)};
             current_value_text->SetText(text);
             if (button_widget) {
                 button_widget->set_label(text);
             }
-        } else if constexpr (std::is_same_v<ConfigType, FloatSettingConfig>) {
-            current_value_text->SetText(FText::AsNumber(display_value));
+        } else if constexpr (ml::is_numeric<typename ConfigType::SettingT>) {
+            auto const num_text{FText::AsNumber(display_value)};
+
+            current_value_text->SetText(num_text);
             if (slider_widget) {
-                slider_widget->SetValue(display_value);
+                slider_widget->SetValue(static_cast<ConfigType::SettingT>(display_value));
             }
             if (text_widget) {
-                text_widget->SetText(FText::AsNumber(display_value));
-            }
-        } else if constexpr (std::is_same_v<ConfigType, IntSettingConfig>) {
-            current_value_text->SetText(FText::AsNumber(display_value));
-            if (slider_widget) {
-                slider_widget->SetValue(static_cast<float>(display_value));
-            }
-            if (text_widget) {
-                text_widget->SetText(FText::AsNumber(display_value));
+                text_widget->SetText(num_text);
             }
         }
     });
