@@ -32,17 +32,26 @@ class SANDBOX_API UVideoSettingRowWidget
     bool has_pending_changes() const;
   protected:
     virtual void NativeConstruct() override;
-  private:
-    // Widget hierarchy (created dynamically)
-    UHorizontalBox* root_container{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
     UTextBlock* setting_name_text{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
     UTextBlock* current_value_text{nullptr};
-    UHorizontalBox* input_container{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UButton* button_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    USlider* slider_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UEditableTextBox* text_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* button_text{nullptr};
   private:
-    void create_widget_hierarchy();
-    void create_button_input();
-    void create_slider_with_text_input();
-    void create_text_input();
+    void setup_input_widgets_for_type();
 
     void update_boolean_display();
     void update_float_display();
@@ -69,12 +78,6 @@ class SANDBOX_API UVideoSettingRowWidget
     BoolSettingConfig const* bool_config{nullptr};
     FloatSettingConfig const* float_config{nullptr};
     IntSettingConfig const* int_config{nullptr};
-
-    // Widget references for different input types
-    UButton* button_widget{nullptr};
-    USlider* slider_widget{nullptr};
-    UEditableTextBox* text_widget{nullptr};
-    UTextBlock* button_text{nullptr};
 
     // Pending values (before apply is clicked)
     bool pending_bool_value{false};

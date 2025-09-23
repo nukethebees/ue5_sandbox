@@ -18,6 +18,11 @@ void UVisualsOptionsWidget::NativeConstruct() {
         log_warning(TEXT("ApplyButton is null."));
     }
 
+    if (!validate_widget_class()) {
+        log_error(TEXT("video_setting_row_widget_class not set in Blueprint"));
+        return;
+    }
+
     initialize_video_settings();
     populate_settings_ui();
 
@@ -45,14 +50,14 @@ void UVisualsOptionsWidget::initialize_video_settings() {
 
     // Initialize int settings
     auto& int_settings{VideoSettingsHelpers::get_settings_array<int32>(video_settings)};
-    int_settings.Add(IntSettingConfig{
-        TEXT("Frame Rate Limit"),
-        EVideoSettingType::TextBox,
-        SettingRange<int32>{30, 240},
-        // Note: These getters/setters may need to be verified for UE 5.6
-        nullptr, // &UGameUserSettings::GetFrameRateLimit,
-        nullptr  // &UGameUserSettings::SetFrameRateLimit
-    });
+    // Note: Frame rate limit uses float methods, so we'll add it as a float setting instead
+    auto& float_settings_for_framerate{
+        VideoSettingsHelpers::get_settings_array<float>(video_settings)};
+    float_settings_for_framerate.Add(FloatSettingConfig{TEXT("Frame Rate Limit"),
+                                                        EVideoSettingType::TextBox,
+                                                        SettingRange<float>{30.0f, 240.0f},
+                                                        &UGameUserSettings::GetFrameRateLimit,
+                                                        &UGameUserSettings::SetFrameRateLimit});
 }
 
 void UVisualsOptionsWidget::populate_settings_ui() {
@@ -61,17 +66,13 @@ void UVisualsOptionsWidget::populate_settings_ui() {
         return;
     }
 
-    // Create vertical box container for settings
-    settings_container =
-        WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox"));
-
     if (!settings_container) {
-        log_error(TEXT("Failed to create settings container"));
+        log_error(TEXT("settings_container not bound to Blueprint widget"));
         return;
     }
 
-    settings_scroll_box->ClearChildren();
-    settings_scroll_box->AddChild(settings_container);
+    // Clear existing children and reset widget array
+    settings_container->ClearChildren();
     setting_row_widgets.Empty();
 
     create_setting_rows();
@@ -99,8 +100,8 @@ void UVisualsOptionsWidget::create_rows_for_type() {
         auto const row_name{FString::Printf(TEXT("Row_%d"), row_idx)};
         log_verbose(TEXT("Constructing UVideoSettingRowWidget::%s"), *row_name);
 
-        auto* row_widget{CreateWidget<UVideoSettingRowWidget>(
-            this, UVideoSettingRowWidget::StaticClass(), *row_name)};
+        auto* row_widget{
+            CreateWidget<UVideoSettingRowWidget>(this, video_setting_row_widget_class, *row_name)};
         if (!row_widget) {
             log_warning(TEXT("Failed to construct UVideoSettingRowWidget::%s"), *row_name);
             continue;
@@ -175,4 +176,13 @@ void UVisualsOptionsWidget::update_apply_button_state() {
 
 UGameUserSettings* UVisualsOptionsWidget::get_game_user_settings() const {
     return UGameUserSettings::GetGameUserSettings();
+}
+
+bool UVisualsOptionsWidget::validate_widget_class() const {
+    if (!video_setting_row_widget_class) {
+        log_error(
+            TEXT("video_setting_row_widget_class is not set. Please set it in the Blueprint."));
+        return false;
+    }
+    return true;
 }
