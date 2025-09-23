@@ -21,7 +21,7 @@ void UVideoSettingRowWidget::NativeConstruct() {
     setup_reset_button();
 }
 
-void UVideoSettingRowWidget::initialize_with_row_data(RowVariant const& new_row_data) {
+void UVideoSettingRowWidget::initialize_with_row_data(VideoRow const& new_row_data) {
     log_verbose(TEXT("initialize_with_row_data"));
 
     row_data = new_row_data;
@@ -46,7 +46,7 @@ void UVideoSettingRowWidget::reset_to_original_value() {
 
     update_display_values();
     update_reset_button_state();
-    notify_setting_changed(ESettingChangeType::ValueReset);
+    notify_setting_changed(EVideoRowSettingChangeType::ValueReset);
 }
 
 void UVideoSettingRowWidget::setup_input_widgets_for_type() {
@@ -179,7 +179,7 @@ void UVideoSettingRowWidget::handle_button_clicked() {
             // Update display immediately
             update_display_values();
             update_reset_button_state();
-            notify_setting_changed(ESettingChangeType::ValueChanged);
+            notify_setting_changed(EVideoRowSettingChangeType::ValueChanged);
         }
     });
 }
@@ -202,7 +202,7 @@ void UVideoSettingRowWidget::handle_slider_changed(float value) {
     });
 
     update_reset_button_state();
-    notify_setting_changed(ESettingChangeType::ValueChanged);
+    notify_setting_changed(EVideoRowSettingChangeType::ValueChanged);
 }
 
 void UVideoSettingRowWidget::handle_text_committed(FText const& text,
@@ -235,14 +235,14 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
     });
 
     update_reset_button_state();
-    notify_setting_changed(ESettingChangeType::ValueChanged);
+    notify_setting_changed(EVideoRowSettingChangeType::ValueChanged);
 }
 
 void UVideoSettingRowWidget::handle_reset_clicked() {
     reset_to_original_value();
 }
 
-void UVideoSettingRowWidget::notify_setting_changed(ESettingChangeType change_type) {
+void UVideoSettingRowWidget::notify_setting_changed(EVideoRowSettingChangeType change_type) {
     on_setting_changed.Broadcast(change_type);
 }
 

@@ -8,8 +8,8 @@
 #include "Components/VerticalBox.h"
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Sandbox/data/video_options/VideoSettingsData.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-#include "Sandbox/widgets/options_menu/VideoSettingsData.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "VisualsOptionsWidget.generated.h"
@@ -57,7 +57,7 @@ class SANDBOX_API UVisualsOptionsWidget
     void handle_reset_all_clicked();
 
     UFUNCTION()
-    void handle_setting_changed(ESettingChangeType change_type);
+    void handle_setting_changed(EVideoRowSettingChangeType change_type);
 
     bool has_pending_changes() const;
     void update_button_states();
