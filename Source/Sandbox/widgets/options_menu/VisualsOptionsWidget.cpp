@@ -12,10 +12,19 @@ void UVisualsOptionsWidget::NativeConstruct() {
 
     if (apply_button) {
         apply_button->on_clicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
-        // Will be enabled when changes are pending
+        apply_button->set_label(FText::FromString(TEXT("Apply")));
         apply_button->SetIsEnabled(false);
     } else {
         log_warning(TEXT("ApplyButton is null."));
+    }
+
+    if (reset_all_button) {
+        reset_all_button->on_clicked.AddDynamic(this,
+                                                &UVisualsOptionsWidget::handle_reset_all_clicked);
+        reset_all_button->set_label(FText::FromString(TEXT("Reset All")));
+        reset_all_button->SetIsEnabled(false);
+    } else {
+        log_warning(TEXT("ResetAllButton is null."));
     }
 
     if (!validate_widget_class()) {
@@ -71,10 +80,6 @@ void UVisualsOptionsWidget::populate_settings_ui() {
         return;
     }
 
-    // Clear existing children and reset widget array
-    settings_container->ClearChildren();
-    setting_row_widgets.Empty();
-
     create_setting_rows();
 }
 
@@ -114,14 +119,19 @@ void UVisualsOptionsWidget::create_rows_for_type() {
             vertical_slot->SetPadding(FMargin{0.0f, 2.0f, 0.0f, 2.0f});
         }
 
-        // Initialize the row widget for the specific type
-        if constexpr (std::is_same_v<T, bool>) {
-            row_widget->initialize_for_boolean_setting(setting);
-        } else if constexpr (std::is_same_v<T, float>) {
-            row_widget->initialize_for_float_setting(setting);
-        } else if constexpr (std::is_same_v<T, int32>) {
-            row_widget->initialize_for_int_setting(setting);
+        // Get current value from settings and create row data
+        auto* game_settings{get_game_user_settings()};
+        if (!game_settings || !setting.getter) {
+            log_warning(TEXT("Failed to get game settings or getter is null for setting: %s"),
+                        *setting.setting_name);
+            continue;
         }
+
+        auto const current_value{(game_settings->*(setting.getter))()};
+        auto const row_data{VideoSettingsHelpers::create_row_data(setting, current_value)};
+
+        // Initialize the row widget with variant data
+        row_widget->initialize_with_row_data(row_data);
 
         // Bind to setting change events
         row_widget->on_setting_changed.AddDynamic(this,
@@ -148,15 +158,42 @@ void UVisualsOptionsWidget::handle_apply_clicked() {
     game_settings->ApplySettings(false);
     game_settings->SaveSettings();
 
-    pending_changes = false;
-    update_apply_button_state();
+    pending_changes_count = 0;
+    update_button_states();
 
     UE_LOG(LogTemp, Log, TEXT("Applied video settings changes"));
 }
 
-void UVisualsOptionsWidget::handle_setting_changed() {
-    pending_changes = has_pending_changes();
-    update_apply_button_state();
+void UVisualsOptionsWidget::handle_setting_changed(ESettingChangeType change_type) {
+    // Update counter based on change type
+    switch (change_type) {
+        case ESettingChangeType::ValueChanged: {
+            pending_changes_count++;
+            break;
+        }
+        case ESettingChangeType::ValueReset: {
+            pending_changes_count = FMath::Max(0, pending_changes_count - 1);
+            break;
+        }
+    }
+
+    update_button_states();
+}
+
+void UVisualsOptionsWidget::handle_reset_all_clicked() {
+    log_verbose(TEXT("handle_reset_all_clicked"));
+
+    reset_all_settings_to_original();
+    pending_changes_count = 0;
+    update_button_states();
+}
+
+void UVisualsOptionsWidget::reset_all_settings_to_original() {
+    for (auto* row_widget : setting_row_widgets) {
+        if (row_widget) {
+            row_widget->reset_to_original_value();
+        }
+    }
 }
 
 bool UVisualsOptionsWidget::has_pending_changes() const {
@@ -168,10 +205,18 @@ bool UVisualsOptionsWidget::has_pending_changes() const {
     return false;
 }
 
-void UVisualsOptionsWidget::update_apply_button_state() {
+void UVisualsOptionsWidget::update_button_states() {
+    bool const has_changes{pending_changes_count > 0};
+
     if (apply_button) {
-        apply_button->SetIsEnabled(pending_changes);
+        apply_button->SetIsEnabled(has_changes);
     }
+
+    if (reset_all_button) {
+        reset_all_button->SetIsEnabled(has_changes);
+    }
+
+    log_verbose(TEXT("Button states updated: %d pending changes"), pending_changes_count);
 }
 
 UGameUserSettings* UVisualsOptionsWidget::get_game_user_settings() const {

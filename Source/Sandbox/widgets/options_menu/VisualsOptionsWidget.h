@@ -31,6 +31,9 @@ class SANDBOX_API UVisualsOptionsWidget
     UTextButtonWidget* apply_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
+    UTextButtonWidget* reset_all_button{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
     UVerticalBox* settings_container{nullptr};
 
     // Blueprint classes for different setting row types
@@ -51,16 +54,20 @@ class SANDBOX_API UVisualsOptionsWidget
     void handle_apply_clicked();
 
     UFUNCTION()
-    void handle_setting_changed();
+    void handle_reset_all_clicked();
+
+    UFUNCTION()
+    void handle_setting_changed(ESettingChangeType change_type);
 
     bool has_pending_changes() const;
-    void update_apply_button_state();
+    void update_button_states();
+    void reset_all_settings_to_original();
 
     UGameUserSettings* get_game_user_settings() const;
 
     VideoSettingsTuple video_settings{};
     TArray<UVideoSettingRowWidget*> setting_row_widgets{};
-    bool pending_changes{false};
+    int32 pending_changes_count{0};
     int32 row_idx{0};
 
     bool validate_widget_class() const;
