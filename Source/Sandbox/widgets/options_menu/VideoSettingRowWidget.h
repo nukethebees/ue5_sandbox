@@ -85,14 +85,8 @@ class SANDBOX_API UVideoSettingRowWidget
     VideoRow row_data{};
     EVideoSettingType setting_type{EVideoSettingType::TextBox};
 
-    // Helper methods for variant operations
-    template <typename Visitor>
-    auto visit_row_data(Visitor&& visitor) {
-        return std::visit(std::forward<Visitor>(visitor), row_data);
-    }
-
-    template <typename Visitor>
-    auto visit_row_data(Visitor&& visitor) const {
-        return std::visit(std::forward<Visitor>(visitor), row_data);
+    template <typename Self, typename Visitor>
+    decltype(auto) visit_row_data(this Self&& self, Visitor&& visitor) {
+        return std::visit(std::forward<Visitor>(visitor), std::forward_like<Self>(self.row_data));
     }
 };
