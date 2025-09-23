@@ -61,9 +61,7 @@ FText const& UVideoSettingRowWidget::off_text() const {
 void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     // Setup widgets based on data type using concepts
     visit_row_data([this](auto const& data) {
-        using ConfigType = std::decay_t<decltype(*data.get_config())>;
-        using SettingT = typename ConfigType::SettingT;
-        using UnrealT = typename ConfigType::UnrealT;
+        using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
 
         if constexpr (ml::is_numeric<UnrealT>) {
             setup_numeric_widgets(data);
@@ -118,9 +116,7 @@ void UVideoSettingRowWidget::update_display_values() {
     }
 
     visit_row_data([this](auto const& data) {
-        using ConfigType = std::decay_t<decltype(*data.get_config())>;
-        using SettingT = typename ConfigType::SettingT;
-        using UnrealT = typename ConfigType::UnrealT;
+        using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
 
         current_value_text->SetText(data.get_current_display_text());
         pending_value_input->SetText(data.get_pending_display_text());
@@ -156,8 +152,7 @@ void UVideoSettingRowWidget::handle_button_clicked() {
 
 void UVideoSettingRowWidget::handle_slider_changed(float value) {
     visit_row_data([this, value](auto& data) {
-        using ConfigType = std::decay_t<decltype(*data.get_config())>;
-        using UnrealT = typename ConfigType::UnrealT;
+        using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
 
         if constexpr (ml::is_numeric<UnrealT>) {
             data.set_pending_value(value);
@@ -175,7 +170,7 @@ void UVideoSettingRowWidget::handle_slider_changed(float value) {
 void UVideoSettingRowWidget::handle_text_committed(FText const& text,
                                                    ETextCommit::Type commit_type) {
     visit_row_data([this, &text](auto& data) {
-        using ConfigType = std::decay_t<decltype(*data.get_config())>;
+        using ConfigType = std::remove_cvref_t<decltype(data)>::ConfigT;
         using SettingT = typename ConfigType::SettingT;
         using UnrealT = typename ConfigType::UnrealT;
 
@@ -188,10 +183,8 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
             }
 
             data.set_pending_value(value);
-            auto const display_value{data.get_display_value()};
-
             if (numeric_slider) {
-                numeric_slider->SetValue(static_cast<float>(display_value));
+                numeric_slider->SetValue(data.slider_pending());
             }
             if (pending_value_input) {
                 pending_value_input->SetText(data.get_pending_display_text());

@@ -15,6 +15,7 @@ FText GetQualityLevelDisplayName(EVisualQualityLevel level);
 template <typename Config>
 struct RowData : public ml::LogMsgMixin<"RowData"> {
     using SettingT = typename Config::SettingT;
+    using UnrealT = typename Config::UnrealT;
     using ConfigT = typename Config;
 
     FText to_display_text(SettingT const& value) const {
@@ -43,8 +44,8 @@ struct RowData : public ml::LogMsgMixin<"RowData"> {
     auto has_pending_change() const { return pending_value.has_value(); }
     auto get_display_value() const { return pending_value.value_or(current_value); }
 
-    float slider_max() const { return config ? 1e9 : config->range.get_max_float(); }
-    float slider_min() const { return config ? -1e9 : config->range.get_min_float(); }
+    float slider_max() const { return config ? config->range.get_max_float() : 1e9; }
+    float slider_min() const { return config ? config->range.get_min_float() : -1e9; }
     float slider_pending() const { return static_cast<float>(get_display_value()); }
 
     void refresh_current_value() {
