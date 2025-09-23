@@ -127,12 +127,6 @@ void UVisualsOptionsWidget::initialize_video_settings() {
                                       &UGameUserSettings::GetShadingQuality,
                                       &UGameUserSettings::SetShadingQuality});
 
-    int_settings.Add(IntSettingConfig{TEXT("Audio Quality Level"),
-                                      EVideoSettingType::SliderWithText,
-                                      SettingRange<int32>{0, 4},
-                                      &UGameUserSettings::GetAudioQualityLevel,
-                                      &UGameUserSettings::SetAudioQualityLevel});
-
     int_settings.Add(IntSettingConfig{TEXT("Overall Scalability Level"),
                                       EVideoSettingType::SliderWithText,
                                       SettingRange<int32>{0, 4},
@@ -238,6 +232,10 @@ void UVisualsOptionsWidget::handle_apply_clicked() {
     game_settings->ApplySettings(false);
     game_settings->SaveSettings();
 
+    // Refresh all rows from current settings (handles cases like Overall Scalability changing other
+    // values)
+    refresh_all_rows_from_settings();
+
     pending_changes_count = 0;
     update_button_states();
 
@@ -272,6 +270,14 @@ void UVisualsOptionsWidget::reset_all_settings_to_original() {
     for (auto* row_widget : setting_row_widgets) {
         if (row_widget) {
             row_widget->reset_to_original_value();
+        }
+    }
+}
+
+void UVisualsOptionsWidget::refresh_all_rows_from_settings() {
+    for (auto* row_widget : setting_row_widgets) {
+        if (row_widget) {
+            row_widget->refresh_current_value();
         }
     }
 }

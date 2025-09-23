@@ -36,6 +36,8 @@ class SANDBOX_API UVideoSettingRowWidget
     void apply_pending_changes();
     UFUNCTION()
     bool has_pending_changes() const;
+    UFUNCTION()
+    void refresh_current_value();
   protected:
     virtual void NativeConstruct() override;
 
