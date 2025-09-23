@@ -1,21 +1,25 @@
 #pragma once
 
-#include <concepts> 
+#include <concepts>
 
 #include "CoreMinimal.h"
 
 template <std::totally_ordered T>
 struct SettingRange {
-    T min{};
-    T max{};
+    using value_type = T;
+
+    static constexpr bool has_min_max{true};
+
+    value_type min{};
+    value_type max{};
 
     constexpr SettingRange() = default;
-    constexpr SettingRange(T const& min_val, T const& max_val)
+    constexpr SettingRange(value_type const& min_val, value_type const& max_val)
         : min{min_val}
         , max{max_val} {}
 };
 
 template <>
 struct SettingRange<bool> {
-    // No range needed for boolean settings
+    static constexpr bool has_min_max{false};
 };
