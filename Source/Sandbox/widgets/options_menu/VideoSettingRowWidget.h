@@ -46,28 +46,30 @@ class SANDBOX_API UVideoSettingRowWidget
     UTextBlock* current_value_text{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UTextButtonWidget* button_widget{nullptr};
+    UEditableTextBox* pending_value_input{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    USlider* slider_widget{nullptr};
+    UTextButtonWidget* toggle_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UEditableTextBox* text_widget{nullptr};
+    USlider* numeric_slider{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* reset_button{nullptr};
   private:
-      UFUNCTION()
-      FText const & on_text() const;
-      UFUNCTION()
-      FText const & off_text() const;
-      UFUNCTION()
-      FText const & bool_text(bool state) const {
-          return state ? on_text() : off_text();
-      }
+    UFUNCTION()
+    FText const& on_text() const;
+    UFUNCTION()
+    FText const& off_text() const;
+    UFUNCTION()
+    FText const& bool_text(bool state) const { return state ? on_text() : off_text(); }
 
     void setup_input_widgets_for_type();
     void setup_reset_button();
+
+    template <typename DataType>
+    void setup_numeric_widgets(DataType const& data);
+    void setup_boolean_widgets();
 
     UFUNCTION()
     void handle_button_clicked();
@@ -86,6 +88,9 @@ class SANDBOX_API UVideoSettingRowWidget
 
     void notify_setting_changed(EVideoRowSettingChangeType change_type);
     void update_reset_button_state();
+
+    template <typename T>
+    FText get_display_text_for_value(T value) const;
 
     VideoRow row_data{};
     EVideoSettingType setting_type{EVideoSettingType::TextBox};

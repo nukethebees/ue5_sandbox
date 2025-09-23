@@ -60,63 +60,78 @@ FText const& UVideoSettingRowWidget::off_text() const {
 }
 
 void UVideoSettingRowWidget::setup_input_widgets_for_type() {
-    // Setup event bindings for widgets that are bound from Blueprint
-    switch (setting_type) {
-        case EVideoSettingType::Checkbox: {
-            if (button_widget) {
-                button_widget->on_clicked.AddDynamic(
-                    this, &UVideoSettingRowWidget::handle_button_clicked);
-                log_verbose(TEXT("Button widget bound and event connected"));
-            } else {
-                log_warning(TEXT("Button widget not bound for checkbox setting"));
-            }
-            break;
-        }
-        case EVideoSettingType::SliderWithText: {
-            if (slider_widget) {
-                slider_widget->OnValueChanged.AddDynamic(
-                    this, &UVideoSettingRowWidget::handle_slider_changed);
+    // Setup widgets based on data type using concepts
+    visit_row_data([this](auto const& data) {
+        using ConfigType = std::decay_t<decltype(*data.config)>;
+        using SettingT = typename ConfigType::SettingT;
 
-                // Set slider range based on config from variant
-                visit_row_data([this](auto const& data) {
-                    using ConfigType = std::decay_t<decltype(*data.config)>;
-                    if constexpr (ml::is_numeric<typename ConfigType::SettingT>) {
-                        slider_widget->SetMinValue(static_cast<float>(data.config->range.min));
-                        slider_widget->SetMaxValue(static_cast<float>(data.config->range.max));
-                    }
-                });
-                log_verbose(TEXT("Slider widget bound and configured"));
-            } else {
-                log_warning(TEXT("Slider widget not bound for slider setting"));
-            }
+        if constexpr (ml::is_numeric<SettingT>) {
+            // Numeric type: Show slider + editable pending input, hide toggle button
+            setup_numeric_widgets(data);
+        } else {
+            // Boolean type: Show toggle button + read-only pending input, hide slider
+            setup_boolean_widgets();
+        }
+    });
 
-            if (text_widget) {
-                text_widget->OnTextCommitted.AddDynamic(
-                    this, &UVideoSettingRowWidget::handle_text_committed);
-                text_widget->SetJustification(ETextJustify::Center);
-                log_verbose(TEXT("Text widget bound for slider setting"));
-            } else {
-                log_warning(TEXT("Text widget not bound for slider setting"));
-            }
-            break;
-        }
-        case EVideoSettingType::TextBox: {
-            if (text_widget) {
-                text_widget->OnTextCommitted.AddDynamic(
-                    this, &UVideoSettingRowWidget::handle_text_committed);
-                text_widget->SetJustification(ETextJustify::Center);
-                log_verbose(TEXT("Text widget bound for text box setting"));
-            } else {
-                log_warning(TEXT("Text widget not bound for text box setting"));
-            }
-            break;
-        }
+    // Setup pending value input widget (always present)
+    if (pending_value_input) {
+        pending_value_input->OnTextCommitted.AddDynamic(
+            this, &UVideoSettingRowWidget::handle_text_committed);
+        pending_value_input->SetJustification(ETextJustify::Center);
+        log_verbose(TEXT("Pending value input widget bound"));
+    } else {
+        log_warning(TEXT("Pending value input widget not bound"));
+    }
+}
+
+template <typename DataType>
+void UVideoSettingRowWidget::setup_numeric_widgets(DataType const& data) {
+    // Show numeric controls, hide boolean controls
+    if (numeric_slider) {
+        numeric_slider->SetVisibility(ESlateVisibility::Visible);
+        numeric_slider->OnValueChanged.AddDynamic(this,
+                                                  &UVideoSettingRowWidget::handle_slider_changed);
+
+        // Set slider range
+        numeric_slider->SetMinValue(static_cast<float>(data.config->range.min));
+        numeric_slider->SetMaxValue(static_cast<float>(data.config->range.max));
+        log_verbose(TEXT("Numeric slider configured and shown"));
+    }
+
+    if (toggle_button) {
+        toggle_button->SetVisibility(ESlateVisibility::Hidden);
+    }
+
+    if (pending_value_input) {
+        pending_value_input->SetIsReadOnly(false);
+        log_verbose(TEXT("Pending input set to editable for numeric type"));
+    }
+}
+
+void UVideoSettingRowWidget::setup_boolean_widgets() {
+    // Show boolean controls, hide numeric controls
+    if (toggle_button) {
+        toggle_button->SetVisibility(ESlateVisibility::Visible);
+        toggle_button->set_label(FText::FromString(TEXT("Toggle")));
+        toggle_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::handle_button_clicked);
+        log_verbose(TEXT("Toggle button configured and shown"));
+    }
+
+    if (numeric_slider) {
+        numeric_slider->SetVisibility(ESlateVisibility::Hidden);
+    }
+
+    if (pending_value_input) {
+        pending_value_input->SetIsReadOnly(true);
+        log_verbose(TEXT("Pending input set to read-only for boolean type"));
     }
 }
 
 void UVideoSettingRowWidget::setup_reset_button() {
     if (reset_button) {
         reset_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::reset_to_original_value);
+        reset_button->set_label(FText::FromString(TEXT("Reset")));
         log_verbose(TEXT("Reset button bound and configured"));
     } else {
         log_verbose(TEXT("Reset button not bound - using global reset only"));
@@ -124,32 +139,43 @@ void UVideoSettingRowWidget::setup_reset_button() {
 }
 
 void UVideoSettingRowWidget::update_display_values() {
-    if (!current_value_text) {
+    if (!current_value_text || !pending_value_input) {
         return;
     }
 
     visit_row_data([this](auto const& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
-        auto const display_value{data.get_display_value()};
+        using SettingT = typename ConfigType::SettingT;
 
-        if constexpr (std::is_same_v<ConfigType, BoolSettingConfig>) {
-            auto const& text{bool_text(display_value)};
-            current_value_text->SetText(text);
-            if (button_widget) {
-                button_widget->set_label(text);
-            }
-        } else if constexpr (ml::is_numeric<typename ConfigType::SettingT>) {
-            auto const num_text{FText::AsNumber(display_value)};
+        // Always show current value from original/stored state
+        auto const current_text{get_display_text_for_value(data.current_value)};
+        current_value_text->SetText(current_text);
 
-            current_value_text->SetText(num_text);
-            if (slider_widget) {
-                slider_widget->SetValue(static_cast<ConfigType::SettingT>(display_value));
-            }
-            if (text_widget) {
-                text_widget->SetText(num_text);
+        // Show pending value if it exists, otherwise show current value
+        auto const pending_value{data.get_display_value()};
+        auto const pending_text{get_display_text_for_value(pending_value)};
+        pending_value_input->SetText(pending_text);
+
+        // Update type-specific controls
+        if constexpr (ml::is_numeric<SettingT>) {
+            // Update slider to match pending value
+            if (numeric_slider) {
+                numeric_slider->SetValue(static_cast<float>(pending_value));
             }
         }
+        // Boolean toggle button always says "Toggle" - no update needed
     });
+}
+
+template <typename T>
+FText UVideoSettingRowWidget::get_display_text_for_value(T value) const {
+    if constexpr (std::is_same_v<T, bool>) {
+        return bool_text(value);
+    } else if constexpr (ml::is_numeric<T>) {
+        return FText::AsNumber(value);
+    } else {
+        return FText::FromString(TEXT("Unknown"));
+    }
 }
 
 void UVideoSettingRowWidget::update_reset_button_state() {
@@ -180,16 +206,21 @@ void UVideoSettingRowWidget::handle_button_clicked() {
 void UVideoSettingRowWidget::handle_slider_changed(float value) {
     visit_row_data([this, value](auto& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
-        if constexpr (std::is_same_v<ConfigType, FloatSettingConfig>) {
-            data.set_pending_value(value);
-            if (text_widget) {
-                text_widget->SetText(FText::AsNumber(value));
+        using SettingT = typename ConfigType::SettingT;
+
+        if constexpr (ml::is_numeric<SettingT>) {
+            SettingT typed_value;
+            if constexpr (std::is_same_v<SettingT, float>) {
+                typed_value = value;
+            } else {
+                typed_value = static_cast<SettingT>(FMath::RoundToInt(value));
             }
-        } else if constexpr (std::is_same_v<ConfigType, IntSettingConfig>) {
-            auto const int_value{static_cast<int32>(FMath::RoundToInt(value))};
-            data.set_pending_value(int_value);
-            if (text_widget) {
-                text_widget->SetText(FText::AsNumber(int_value));
+
+            data.set_pending_value(typed_value);
+
+            // Update pending value display
+            if (pending_value_input) {
+                pending_value_input->SetText(FText::AsNumber(typed_value));
             }
         }
     });
@@ -202,29 +233,31 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
                                                    ETextCommit::Type commit_type) {
     visit_row_data([this, &text](auto& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
-        if constexpr (std::is_same_v<ConfigType, FloatSettingConfig>) {
-            auto const value{FCString::Atof(*text.ToString())};
+        using SettingT = typename ConfigType::SettingT;
+
+        if constexpr (ml::is_numeric<SettingT>) {
+            SettingT value;
+            if constexpr (std::is_same_v<SettingT, float>) {
+                value = FCString::Atof(*text.ToString());
+            } else {
+                value = static_cast<SettingT>(FCString::Atoi(*text.ToString()));
+            }
+
+            // Clamp to valid range
             auto const clamped_value{
                 FMath::Clamp(value, data.config->range.min, data.config->range.max)};
 
             data.set_pending_value(clamped_value);
 
-            if (slider_widget) {
-                slider_widget->SetValue(clamped_value);
+            // Update slider and pending text to clamped value
+            if (numeric_slider) {
+                numeric_slider->SetValue(static_cast<float>(clamped_value));
             }
-            text_widget->SetText(FText::AsNumber(clamped_value));
-        } else if constexpr (std::is_same_v<ConfigType, IntSettingConfig>) {
-            auto const value{FCString::Atoi(*text.ToString())};
-            auto const clamped_value{
-                FMath::Clamp(value, data.config->range.min, data.config->range.max)};
-
-            data.set_pending_value(clamped_value);
-
-            if (slider_widget) {
-                slider_widget->SetValue(static_cast<float>(clamped_value));
+            if (pending_value_input) {
+                pending_value_input->SetText(FText::AsNumber(clamped_value));
             }
-            text_widget->SetText(FText::AsNumber(clamped_value));
         }
+        // For booleans, text input is read-only, so this shouldn't be called
     });
 
     update_reset_button_state();
