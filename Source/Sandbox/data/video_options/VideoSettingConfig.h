@@ -6,9 +6,6 @@
 #include "Sandbox/data/video_options/VideoSettingRange.h"
 #include <utility>
 
-UENUM(BlueprintType)
-enum class EVideoSettingType : uint8 { Checkbox, SliderWithText, TextBox };
-
 UENUM()
 enum class EVisualQualityLevel : int32 {
     Auto = -1,
@@ -49,7 +46,6 @@ struct FVideoSettingConfig {
     using RangeT = ValueRange;
 
     FString setting_name{};
-    EVideoSettingType type{EVideoSettingType::TextBox};
     ValueRange range{};
     Getter getter{nullptr};
     Setter setter{nullptr};
