@@ -220,8 +220,7 @@ void UVisualsOptionsWidget::create_rows_for_type() {
         }
 
         auto const current_value{setting.get_value(*game_settings)};
-        auto const row_data{VideoSettingsHelpers::create_row_data<T>(setting, current_value)};
-
+        auto const row_data{RowData<T>(&setting, current_value)};
         row_widget->initialize_with_row_data(row_data);
         row_widget->on_setting_changed.AddDynamic(this,
                                                   &UVisualsOptionsWidget::handle_setting_changed);
