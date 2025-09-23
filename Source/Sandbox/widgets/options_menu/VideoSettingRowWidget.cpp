@@ -66,8 +66,8 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     switch (setting_type) {
         case EVideoSettingType::Checkbox: {
             if (button_widget) {
-                button_widget->OnClicked.AddDynamic(this,
-                                                    &UVideoSettingRowWidget::handle_button_clicked);
+                button_widget->on_clicked.AddDynamic(
+                    this, &UVideoSettingRowWidget::handle_button_clicked);
                 log_verbose(TEXT("Button widget bound and event connected"));
             } else {
                 log_warning(TEXT("Button widget not bound for checkbox setting"));
@@ -140,10 +140,11 @@ void UVideoSettingRowWidget::update_boolean_display() {
     }
 
     auto const current_value{get_current_value_from_settings<bool>()};
-    current_value_text->SetText(FText::FromString(current_value ? TEXT("On") : TEXT("Off")));
+    auto const& text{bool_text(current_value)};
+    current_value_text->SetText(text);
 
-    if (button_text) {
-        button_text->SetText(FText::FromString(current_value ? TEXT("On") : TEXT("Off")));
+    if (button_widget) {
+        button_widget->set_label(text);
     }
 }
 
@@ -190,8 +191,8 @@ void UVideoSettingRowWidget::handle_button_clicked() {
     has_pending_bool_change = true;
 
     // Update button text immediately
-    if (button_text) {
-        button_text->SetText(FText::FromString(pending_bool_value ? TEXT("On") : TEXT("Off")));
+    if (button_widget) {
+        button_widget->set_label(bool_text(pending_bool_value));
     }
 
     on_setting_changed.Broadcast();
@@ -245,6 +246,15 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
     }
 
     on_setting_changed.Broadcast();
+}
+
+FText const& UVideoSettingRowWidget::on_text() const {
+    static auto const txt{FText::FromString(TEXT("On"))};
+    return txt;
+}
+FText const& UVideoSettingRowWidget::off_text() const {
+    static auto const txt{FText::FromString(TEXT("Off"))};
+    return txt;
 }
 
 template <typename T>

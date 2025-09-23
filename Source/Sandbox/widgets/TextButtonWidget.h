@@ -13,6 +13,9 @@ UCLASS()
 class SANDBOX_API UTextButtonWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    UFUNCTION()
+    void set_label(FText const& txt);
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (ExposeOnSpawn = true))
     FText label{};
 
