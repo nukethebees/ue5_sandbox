@@ -84,7 +84,6 @@ class SANDBOX_API UVideoSettingRowWidget
     void update_reset_button_state();
 
     VideoRow row_data{};
-    EVideoSettingType setting_type{EVideoSettingType::TextBox};
 
     template <typename Self, typename Visitor>
     decltype(auto) visit_row_data(this Self&& self, Visitor&& visitor) {

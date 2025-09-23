@@ -28,7 +28,6 @@ void UVideoSettingRowWidget::initialize_with_row_data(VideoRow const& new_row_da
 
     // Extract setting type and name from variant
     visit_row_data([this](auto const& data) {
-        setting_type = data.get_config()->type;
         if (setting_name_text) {
             setting_name_text->SetText(FText::FromString(data.get_config()->setting_name));
         }
