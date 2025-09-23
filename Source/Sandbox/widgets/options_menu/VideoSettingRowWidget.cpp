@@ -73,7 +73,7 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
                     if constexpr (std::is_same_v<ConfigType, FloatSettingConfig>) {
                         slider_widget->SetMinValue(data.config->range.min);
                         slider_widget->SetMaxValue(data.config->range.max);
-                    } else if constexpr (std::is_same_v<ConfigType, IntSettingConfig>) {
+                    } else if constexpr (ConfigType::RangeT::has_min_max) {
                         slider_widget->SetMinValue(static_cast<float>(data.config->range.min));
                         slider_widget->SetMaxValue(static_cast<float>(data.config->range.max));
                     }
@@ -109,16 +109,11 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
 
 void UVideoSettingRowWidget::setup_reset_button() {
     if (reset_button) {
-        reset_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::handle_reset_clicked);
-        reset_button->set_label(FText::FromString(TEXT("Reset")));
+        reset_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::reset_to_original_value);
         log_verbose(TEXT("Reset button bound and configured"));
     } else {
         log_verbose(TEXT("Reset button not bound - using global reset only"));
     }
-}
-
-void UVideoSettingRowWidget::update_current_value_display() {
-    update_display_values();
 }
 
 void UVideoSettingRowWidget::update_display_values() {
@@ -172,11 +167,9 @@ void UVideoSettingRowWidget::handle_button_clicked() {
     visit_row_data([this](auto& data) {
         using ConfigType = std::decay_t<decltype(*data.config)>;
         if constexpr (std::is_same_v<ConfigType, BoolSettingConfig>) {
-            // Toggle the current value
             auto const new_value{!data.get_display_value()};
             data.set_pending_value(new_value);
 
-            // Update display immediately
             update_display_values();
             update_reset_button_state();
             notify_setting_changed(EVideoRowSettingChangeType::ValueChanged);
@@ -236,10 +229,6 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
 
     update_reset_button_state();
     notify_setting_changed(EVideoRowSettingChangeType::ValueChanged);
-}
-
-void UVideoSettingRowWidget::handle_reset_clicked() {
-    reset_to_original_value();
 }
 
 void UVideoSettingRowWidget::notify_setting_changed(EVideoRowSettingChangeType change_type) {

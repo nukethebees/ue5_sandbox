@@ -13,6 +13,7 @@ template <typename T,
     typename Setter = void (UGameUserSettings:: *)(T)>
 struct FVideoSettingConfig {
     using SettingT = T;
+    using RangeT = ValueRange;
 
     FString setting_name{};
     EVideoSettingType type{EVideoSettingType::TextBox};

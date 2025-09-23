@@ -29,7 +29,7 @@ class SANDBOX_API UVideoSettingRowWidget
     void initialize_with_row_data(VideoRow const& row_data);
     void reset_to_original_value();
 
-    void update_current_value_display();
+    void update_display_values();
     void apply_pending_changes();
     bool has_pending_changes() const;
   protected:
@@ -56,10 +56,6 @@ class SANDBOX_API UVideoSettingRowWidget
     void setup_input_widgets_for_type();
     void setup_reset_button();
 
-    void update_boolean_display();
-    void update_float_display();
-    void update_int_display();
-
     UFUNCTION()
     void handle_button_clicked();
 
@@ -69,9 +65,6 @@ class SANDBOX_API UVideoSettingRowWidget
     UFUNCTION()
     void handle_text_committed(FText const& text, ETextCommit::Type commit_type);
 
-    UFUNCTION()
-    void handle_reset_clicked();
-
     template <typename T>
     T get_current_value_from_settings() const;
 
@@ -79,7 +72,6 @@ class SANDBOX_API UVideoSettingRowWidget
     void set_value_to_settings(T value);
 
     void notify_setting_changed(EVideoRowSettingChangeType change_type);
-    void update_display_values();
     void update_reset_button_state();
 
     VideoRow row_data{};
