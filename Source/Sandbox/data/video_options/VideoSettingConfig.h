@@ -8,9 +8,9 @@ UENUM(BlueprintType)
 enum class EVideoSettingType : uint8 { Checkbox, SliderWithText, TextBox };
 
 template <typename T,
-    typename ValueRange = SettingRange<T>,
-    typename Getter = T(UGameUserSettings:: *)() const,
-    typename Setter = void (UGameUserSettings:: *)(T)>
+          typename ValueRange = SettingRange<T>,
+          typename Getter = T (UGameUserSettings::*)() const,
+          typename Setter = void (UGameUserSettings::*)(T)>
 struct FVideoSettingConfig {
     using SettingT = T;
     using RangeT = ValueRange;
