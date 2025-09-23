@@ -80,6 +80,8 @@ struct RowData : public ml::LogMsgMixin<"RowData"> {
     void write_pending_value_to_process() {
         if (pending_value && config) {
             if (auto* settings{UGameUserSettings::GetGameUserSettings()}) {
+                log_verbose(TEXT("Writing setting for %s"), *config->setting_name);
+
                 current_value = *pending_value;
                 config->set_value(*settings, current_value);
                 pending_value = std::nullopt;
