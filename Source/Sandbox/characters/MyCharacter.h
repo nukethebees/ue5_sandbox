@@ -200,6 +200,8 @@ class SANDBOX_API AMyCharacter
     // Bullets
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TSubclassOf<AActor> bullet_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    int32 ammo{10};
   protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

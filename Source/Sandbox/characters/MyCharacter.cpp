@@ -158,6 +158,10 @@ void AMyCharacter::cycle_camera() {
 void AMyCharacter::attack(FRotator attack_direction) {
     log_verbose(TEXT("Attacking."));
 
+    if (ammo <= 0) {
+        return;
+    }
+
     if (!bullet_class) {
         log_warning(TEXT("No bullet class."));
         return;
@@ -173,6 +177,7 @@ void AMyCharacter::attack(FRotator attack_direction) {
 
     auto const bullet{GetWorld()->SpawnActor<AActor>(
         bullet_class, spawn_location, attack_direction, spawn_params)};
+    --ammo;
 }
 
 // Torch
