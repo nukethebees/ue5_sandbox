@@ -196,6 +196,10 @@ class SANDBOX_API AMyCharacter
     TArray<USpringArmComponent*> spring_arms{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
+
+    // Bullets
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    TSubclassOf<AActor> bullet_class;
   protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
