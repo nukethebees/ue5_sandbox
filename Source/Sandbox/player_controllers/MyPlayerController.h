@@ -21,20 +21,20 @@ struct FMyPlayerControllerInputActions {
 
     FMyPlayerControllerInputActions() = default;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputMappingContext* default_context;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* look;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* toggle_mouse;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* mouse_click;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* toggle_torch;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* scroll_torch_cone;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    UInputAction* warp_to_cursor;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputMappingContext* default_context{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* look{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* toggle_mouse{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* mouse_click{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* toggle_torch{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* scroll_torch_cone{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* warp_to_cursor{nullptr};
 };
 
 UCLASS()
