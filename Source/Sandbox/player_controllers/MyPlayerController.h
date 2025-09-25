@@ -22,26 +22,26 @@ struct FMyPlayerControllerInputActions {
     FMyPlayerControllerInputActions() = default;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputMappingContext> default_context;
+    UInputMappingContext* default_context;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> look;
+    UInputAction* look;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> toggle_mouse;
+    UInputAction* toggle_mouse;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> mouse_click;
+    UInputAction* mouse_click;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> toggle_torch;
+    UInputAction* toggle_torch;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> scroll_torch_cone;
+    UInputAction* scroll_torch_cone;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-    TSoftObjectPtr<UInputAction> warp_to_cursor;
+    UInputAction* warp_to_cursor;
 };
 
 UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
     , public print_msg_mixin
-    , public ml::LogMsgMixin<"MyCharacter"> {
+    , public ml::LogMsgMixin<"MyPlayerController"> {
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
@@ -55,7 +55,7 @@ class SANDBOX_API AMyPlayerController
     UFUNCTION()
     void look(FInputActionValue const& value);
     UFUNCTION()
-    void toggle_mouse(FInputActionValue const& value);
+    void toggle_mouse();
     UFUNCTION()
     void mouse_click(FInputActionValue const& value);
     UFUNCTION()
@@ -73,4 +73,6 @@ class SANDBOX_API AMyPlayerController
   private:
     void set_game_input_mode();
     void set_mouse_input_mode();
+
+    bool tick_no_controller_character_warning_fired{false};
 };

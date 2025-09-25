@@ -27,16 +27,14 @@
 class UInputMappingContext;
 class UInputAction;
 class UInputComponent;
+
 class AMyPlayerController;
-class UJetpackComponent;
 class AMyHUD;
 
-class USpeedBoostComponent;
 class UInteractorComponent;
 class USpeedBoostComponent;
 class UJetpackComponent;
 class UHealthComponent;
-class UInteractorComponent;
 class UCoinCollectorActorComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
@@ -120,13 +118,6 @@ class SANDBOX_API AMyCharacter
 
     AMyCharacter();
 
-    UFUNCTION()
-    void set_player_controller(AMyPlayerController* pc) {
-        if (pc) {
-            my_player_controller = pc;
-        }
-    }
-
     // Camera
     UCameraComponent const* get_active_camera() const;
 
@@ -165,34 +156,34 @@ class SANDBOX_API AMyCharacter
     FOnMaxSpeedChanged OnMaxSpeedChanged;
 
     // Components
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UCoinCollectorActorComponent* coins{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UInteractorComponent* interactor{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UHealthComponent* health{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     USpeedBoostComponent* speed_boost{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
     UJetpackComponent* jetpack{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Torch")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Torch")
     USpotLightComponent* torch{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
     UWarpComponent* warp{nullptr};
 
     // Camera components
     static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
     static constexpr int32 spring_arm_count{ml::AMyCharacter::count_required_spring_arms()};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TArray<UCameraComponent*> cameras{};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TArray<USpringArmComponent*> spring_arms{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
@@ -207,9 +198,6 @@ class SANDBOX_API AMyCharacter
     // Input
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     FCharacterInputActions input_actions{};
-
-    UPROPERTY()
-    AMyPlayerController* my_player_controller;
 
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
