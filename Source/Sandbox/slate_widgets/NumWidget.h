@@ -3,6 +3,7 @@
 #pragma once
 
 #include <optional>
+#include <type_traits>
 #include <utility>
 
 #include "Components/Widget.h"
@@ -66,6 +67,13 @@ class UNumWidgetMixins {
     CREATE_SETTER(label)
     CREATE_SETTER(value)
     CREATE_SETTER(max_value)
+
+    TSharedRef<SWidget> rebuild_widget(this auto& self) {
+        using T = typename std::remove_cvref_t<decltype(self)>::NumT;
+
+        self.slate_widget = SNew(SNumWidget<T>).label(FText::FromString(TEXT("Default")));
+        return self.slate_widget.ToSharedRef();
+    }
 };
 #undef CREATE_SETTER
 
@@ -76,12 +84,13 @@ class UFloatNumWidget
     , public ml::LogMsgMixin<"UFloatNumWidget"> {
     GENERATED_BODY()
     friend class UNumWidgetMixins;
+  public:
+    using NumT = float;
   protected:
-    virtual TSharedRef<SWidget> RebuildWidget() override;
+    virtual TSharedRef<SWidget> RebuildWidget() override { return rebuild_widget(); }
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
-    auto get_widget() { return slate_widget.ToSharedRef(); }
   private:
-    TSharedPtr<SNumWidget<float>> slate_widget;
+    TSharedPtr<SNumWidget<NumT>> slate_widget;
 };
 
 UCLASS()
@@ -91,10 +100,11 @@ class UIntNumWidget
     , public ml::LogMsgMixin<"UIntNumWidget"> {
     GENERATED_BODY()
     friend class UNumWidgetMixins;
+  public:
+    using NumT = int32;
   protected:
-    virtual TSharedRef<SWidget> RebuildWidget() override;
+    virtual TSharedRef<SWidget> RebuildWidget() override { return rebuild_widget(); }
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
-    auto get_widget() { return slate_widget.ToSharedRef(); }
   private:
-    TSharedPtr<SNumWidget<int32>> slate_widget;
+    TSharedPtr<SNumWidget<NumT>> slate_widget;
 };
