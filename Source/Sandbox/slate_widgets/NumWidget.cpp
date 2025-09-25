@@ -2,6 +2,7 @@
 
 #include "Fonts/CompositeFont.h"
 #include "Sandbox/utilities/ui.h"
+#include "Sandbox/utilities/SandboxStyle.h"
 #include "SlateOptMacros.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -11,15 +12,11 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
     value_ = InArgs._value;
     max_value_ = InArgs._max_value;
 
-    auto const font_size{ml::scale_font_to_umg(32)};
-    auto const style{FSlateFontInfo(FCoreStyle::GetDefaultFontStyle("Bold", font_size))};
-
     // clang-format off
     ChildSlot[
         SNew(STextBlock)
             .Text(this, &SNumWidget::get_display_text)
-            .Font(style)
-            .ColorAndOpacity(FSlateColor(FLinearColor::White))
+            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
     ];
     // clang-format on
 }
