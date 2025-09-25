@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "MyPlayerController.h"
 
 #include "Sandbox/actors/TalkingPillar.h"
@@ -16,10 +14,10 @@ void AMyPlayerController::BeginPlay() {
     if (auto* local_player{GetLocalPlayer()}) {
         using SS = UEnhancedInputLocalPlayerSubsystem;
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
-            subsystem->AddMappingContext(default_mapping_context.LoadSynchronous(), 0);
+            subsystem->AddMappingContext(input.default_context.LoadSynchronous(), 0);
         }
     } else {
-        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not get local player.");
+        log_warning(TEXT("AMyPlayerController: Could not get local player."));
     }
 
     if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
@@ -27,7 +25,7 @@ void AMyPlayerController::BeginPlay() {
             character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
         }
     } else {
-        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not cast to AMyCharacter.");
+        log_warning(TEXT("AMyPlayerController: Could not cast to AMyCharacter."));
     }
 }
 void AMyPlayerController::OnPossess(APawn* InPawn) {
@@ -37,7 +35,7 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
     if (controlled_character) {
         controlled_character->set_player_controller(this);
     } else {
-        UE_LOGFMT(LogTemp, Warning, "AMyPlayerController: Could not possess a AMyCharacter.");
+        log_warning(TEXT("AMyPlayerController: Could not possess a AMyCharacter."));
     }
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
@@ -72,35 +70,35 @@ void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
 
     if (auto* eic{Cast<UEnhancedInputComponent>(InputComponent)}) {
-        eic->BindAction(look_action.LoadSynchronous(),
+        eic->BindAction(input.look.LoadSynchronous(),
                         ETriggerEvent::Triggered,
                         this,
                         &AMyPlayerController::look);
-        eic->BindAction(toggle_mouse_action.LoadSynchronous(),
+        eic->BindAction(input.toggle_mouse.LoadSynchronous(),
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::toggle_mouse);
-        eic->BindAction(mouse_click_action.LoadSynchronous(),
+        eic->BindAction(input.mouse_click.LoadSynchronous(),
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::mouse_click);
 
-        eic->BindAction(toggle_torch_action.LoadSynchronous(),
+        eic->BindAction(input.toggle_torch.LoadSynchronous(),
                         ETriggerEvent::Started,
                         this,
                         &AMyPlayerController::toggle_torch);
 
-        eic->BindAction(scroll_torch_cone_action.LoadSynchronous(),
+        eic->BindAction(input.scroll_torch_cone.LoadSynchronous(),
                         ETriggerEvent::Triggered,
                         this,
                         &AMyPlayerController::scroll_torch_cone);
 
-        eic->BindAction(warp_to_cursor_action.LoadSynchronous(),
+        eic->BindAction(input.warp_to_cursor.LoadSynchronous(),
                         ETriggerEvent::Completed,
                         this,
                         &AMyPlayerController::warp_to_cursor);
     } else {
-        print_msg(TEXT("AMyPlayerController: Did not get the UEnhancedInputComponent."));
+        log_warning(TEXT("AMyPlayerController: Did not get the UEnhancedInputComponent."));
     }
 }
 
@@ -165,7 +163,7 @@ void AMyPlayerController::toggle_torch(FInputActionValue const& value) {
 }
 void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
     if (!controlled_character || !controlled_character->torch) {
-        print_msg("No char or torch");
+        log_warning(TEXT("No char or torch"));
     }
 
     auto const scroll_delta{value.Get<float>()};
@@ -183,7 +181,7 @@ void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
 }
 void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
     if (!controlled_character) {
-        print_msg(TEXT("No char to warp"));
+        log_warning(TEXT("No char to warp"));
         return;
     }
     if (!bShowMouseCursor) {
