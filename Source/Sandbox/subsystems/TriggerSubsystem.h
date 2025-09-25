@@ -26,8 +26,8 @@ class SANDBOX_API UTriggerSubsystem
     virtual UWorld* GetTickableGameObjectWorld() const override { return GetWorld(); }
   private:
     TriggerSubsystemCore<FTriggerOtherPayload,
-                          FHealthStationPayload,
-                          FRotatePayload,
-                          FForcefieldPayload>
+                         FHealthStationPayload,
+                         FRotatePayload,
+                         FForcefieldPayload>
         core_{};
 };

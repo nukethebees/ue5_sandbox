@@ -5,6 +5,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
 ABulletActor::ABulletActor() {
     PrimaryActorTick.bCanEverTick = false;
@@ -19,9 +20,6 @@ ABulletActor::ABulletActor() {
     mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-    health_change_component =
-        CreateDefaultSubobject<UHealthChangeTriggerComponent>(TEXT("HealthChangeComponent"));
 
     projectile_movement =
         CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
@@ -55,10 +53,10 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
     }
 
     if (OtherActor) {
-        if (health_change_component) {
-            health_change_component->change_health(this, OtherActor);
-        } else {
-            log_warning(TEXT("health_change_component is null"));
+        if (auto* actor_health{OtherActor->FindComponentByClass<UHealthComponent>()}) {
+            if (auto* manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
+                manager->queue_health_change(actor_health, damage);
+            }
         }
     } else {
         log_warning(TEXT("No OtherActor"));
