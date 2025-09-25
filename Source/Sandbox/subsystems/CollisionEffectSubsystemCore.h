@@ -64,7 +64,7 @@ constexpr auto tuple_array_index_v =
     } while (0)
 
 template <typename... Types>
-class UCollisionEffectSubsystemData : public ml::LogMsgMixin<"UCollisionEffectSubsystemData"> {
+class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSubsystemCore"> {
   public:
     using PayloadsT = ml::ArrayTuple<Types...>;
     static constexpr std::size_t N_TYPES = sizeof...(Types);

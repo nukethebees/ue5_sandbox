@@ -84,7 +84,7 @@ constexpr auto trigger_array_index_v =
     } while (0)
 
 template <typename... Types>
-class UTriggerSubsystemData : public ml::LogMsgMixin<"UTriggerSubsystemData"> {
+class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
   public:
     using TriggerableTupleT = ml::TriggerTuple<Types...>;
     static constexpr std::size_t N_TYPES{sizeof...(Types)};
