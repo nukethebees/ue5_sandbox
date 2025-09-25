@@ -1,5 +1,6 @@
 #include "Sandbox/slate_widgets/NumWidget.h"
 
+#include "Engine/UserInterfaceSettings.h"
 #include "Fonts/CompositeFont.h"
 #include "SlateOptMacros.h"
 #include "Styling/AppStyle.h"
@@ -11,7 +12,12 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
     value_ = InArgs._value;
     max_value_ = InArgs._max_value;
 
-    auto style{FSlateFontInfo(FCoreStyle::GetDefaultFontStyle("Bold", 32))};
+    int32 font_size{32};
+    if (auto* ui_settings{GetDefault<UUserInterfaceSettings>()}) {
+        auto const dpi_scale_factor{static_cast<float>(ui_settings->GetFontDisplayDPI()) / 96.0f};
+        font_size = FMath::RoundToInt(static_cast<float>(font_size) * dpi_scale_factor);
+    }
+    auto const style{FSlateFontInfo(FCoreStyle::GetDefaultFontStyle("Bold", font_size))};
 
     // clang-format off
     ChildSlot[
@@ -26,7 +32,6 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 template <typename T>
 void SNumWidget<T>::set_label(FText const& new_label) {
-    log_verbose(TEXT("set_label"));
     if (!label_.EqualTo(new_label)) {
         label_ = new_label;
         is_display_text_dirty_ = true;
@@ -42,7 +47,6 @@ void SNumWidget<T>::set_value(T const& new_value) {
 }
 template <typename T>
 void SNumWidget<T>::set_max_value(std::optional<T> const& new_max_value) {
-    log_verbose(TEXT("set_max_value"));
     if (max_value_ != new_max_value) {
         max_value_ = new_max_value;
         is_display_text_dirty_ = true;
