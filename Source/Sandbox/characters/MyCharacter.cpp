@@ -155,13 +155,12 @@ void AMyCharacter::stop_jetpack() {
 void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
-void AMyCharacter::attack() {
+void AMyCharacter::attack(FRotator attack_direction) {
     log_verbose(TEXT("Attacking."));
 
     if (!bullet_class) {
-        return;
-    } else {
         log_warning(TEXT("No bullet class."));
+        return;
     }
 
     auto const current_location{GetActorLocation()};
@@ -172,8 +171,8 @@ void AMyCharacter::attack() {
     FActorSpawnParameters spawn_params{};
     spawn_params.Owner = this;
 
-    auto const bullet{
-        GetWorld()->SpawnActor<AActor>(bullet_class, spawn_location, fwd.Rotation(), spawn_params)};
+    auto const bullet{GetWorld()->SpawnActor<AActor>(
+        bullet_class, spawn_location, attack_direction, spawn_params)};
 }
 
 // Torch
