@@ -6,6 +6,8 @@
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
 
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
     bEnableClickEvents = true;
     bEnableMouseOverEvents = false;
 
@@ -14,10 +16,16 @@ void AMyPlayerController::BeginPlay() {
     if (auto* local_player{GetLocalPlayer()}) {
         using SS = UEnhancedInputLocalPlayerSubsystem;
         if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
-            subsystem->AddMappingContext(input.default_context.LoadSynchronous(), 0);
+            if (input.default_context) {
+                subsystem->AddMappingContext(input.default_context, 0);
+            } else {
+                log_warning(TEXT("Default context is nullptr."));
+            }
+        } else {
+            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
         }
     } else {
-        log_warning(TEXT("AMyPlayerController: Could not get local player."));
+        log_warning(TEXT("Could not get local player."));
     }
 
     if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
@@ -25,26 +33,26 @@ void AMyPlayerController::BeginPlay() {
             character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
         }
     } else {
-        log_warning(TEXT("AMyPlayerController: Could not cast to AMyCharacter."));
+        log_warning(TEXT("Could not cast to AMyCharacter."));
     }
 }
 void AMyPlayerController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
 
     controlled_character = Cast<AMyCharacter>(InPawn);
-    if (controlled_character) {
-        controlled_character->set_player_controller(this);
-    } else {
-        log_warning(TEXT("AMyPlayerController: Could not possess a AMyCharacter."));
-    }
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
     Super::Tick(DeltaSeconds);
 
     if (!controlled_character) {
-        print_msg(TEXT("No controlled character"));
+        if (!tick_no_controller_character_warning_fired) {
+            log_warning(TEXT("No controlled character"));
+            tick_no_controller_character_warning_fired = true;
+        }
+
         return;
     }
+    tick_no_controller_character_warning_fired = false;
 
     constexpr float torch_target_scale{1000.0f};
 
@@ -70,35 +78,24 @@ void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
 
     if (auto* eic{Cast<UEnhancedInputComponent>(InputComponent)}) {
-        eic->BindAction(input.look.LoadSynchronous(),
-                        ETriggerEvent::Triggered,
-                        this,
-                        &AMyPlayerController::look);
-        eic->BindAction(input.toggle_mouse.LoadSynchronous(),
-                        ETriggerEvent::Started,
-                        this,
-                        &AMyPlayerController::toggle_mouse);
-        eic->BindAction(input.mouse_click.LoadSynchronous(),
-                        ETriggerEvent::Started,
-                        this,
-                        &AMyPlayerController::mouse_click);
+        using enum ETriggerEvent;
 
-        eic->BindAction(input.toggle_torch.LoadSynchronous(),
-                        ETriggerEvent::Started,
-                        this,
-                        &AMyPlayerController::toggle_torch);
+        auto bind{[&](auto* action, ETriggerEvent state, auto pmf) -> void {
+            if (action) {
+                eic->BindAction(action, state, this, pmf);
+            } else {
+                log_warning(TEXT("Binding action pointer missing."));
+            }
+        }};
 
-        eic->BindAction(input.scroll_torch_cone.LoadSynchronous(),
-                        ETriggerEvent::Triggered,
-                        this,
-                        &AMyPlayerController::scroll_torch_cone);
-
-        eic->BindAction(input.warp_to_cursor.LoadSynchronous(),
-                        ETriggerEvent::Completed,
-                        this,
-                        &AMyPlayerController::warp_to_cursor);
+        bind(input.look, Triggered, &AMyPlayerController::look);
+        bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
+        bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
+        bind(input.toggle_torch, Started, &AMyPlayerController::toggle_torch);
+        bind(input.scroll_torch_cone, Triggered, &AMyPlayerController::scroll_torch_cone);
+        bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
     } else {
-        log_warning(TEXT("AMyPlayerController: Did not get the UEnhancedInputComponent."));
+        log_warning(TEXT("Did not get the UEnhancedInputComponent."));
     }
 }
 
@@ -107,9 +104,7 @@ void AMyPlayerController::look(FInputActionValue const& value) {
         controlled_character->look(value);
     }
 }
-void AMyPlayerController::toggle_mouse(FInputActionValue const& value) {
-    auto const mouse_value{value.Get<bool>()};
-
+void AMyPlayerController::toggle_mouse() {
     if (bShowMouseCursor) {
         set_game_input_mode();
     } else {
@@ -128,7 +123,7 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
         auto const end{world_location + (world_direction * 10000)};
         FHitResult hit_result;
         GetWorld()->LineTraceSingleByChannel(hit_result, world_location, end, ECC_Visibility);
-
+#if WITH_EDITOR
         DrawDebugLine(GetWorld(),
                       world_location - FVector(0.0f, 0.0f, 10.0f),
                       end,
@@ -137,6 +132,7 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
                       2.0f,  // Duration in seconds
                       0,     // Depth priority
                       1.0f   // Thickness
+#endif
         );
         if (hit_result.bBlockingHit) {
             DrawDebugSphere(GetWorld(),
@@ -209,7 +205,9 @@ void AMyPlayerController::set_game_input_mode() {
     auto input_mode{FInputModeGameOnly()};
     SetInputMode(input_mode);
     bShowMouseCursor = false;
-    controlled_character->reset_torch_position();
+    if (controlled_character) {
+        controlled_character->reset_torch_position();
+    }
 }
 void AMyPlayerController::set_mouse_input_mode() {
     auto input_mode{FInputModeGameAndUI()};
