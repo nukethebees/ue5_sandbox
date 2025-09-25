@@ -18,6 +18,7 @@
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
+#include "Sandbox/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/utilities/enums.h"
@@ -90,19 +91,20 @@ struct FCharacterInputActions {
     FCharacterInputActions() = default;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputMappingContext> character_context{nullptr};
+    UInputMappingContext* character_context{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> move{nullptr};
-
+    UInputAction* move{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jump{nullptr};
-
+    UInputAction* jump{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jetpack{nullptr};
-
+    UInputAction* jetpack{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> cycle_camera{nullptr};
+    UInputAction* cycle_camera{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* toggle_torch{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* scroll_torch_cone{nullptr};
 };
 
 UCLASS()
@@ -111,7 +113,8 @@ class SANDBOX_API AMyCharacter
     , public print_msg_mixin
     , public ml::LogMsgMixin<"MyCharacter">
     , public IDeathHandler
-    , public IMaxSpeedChangeListener {
+    , public IMaxSpeedChangeListener
+    , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
     static constexpr int32 default_max_jump_count{2};
@@ -142,6 +145,8 @@ class SANDBOX_API AMyCharacter
     void toggle_torch();
     UFUNCTION()
     void set_torch(bool on);
+    UFUNCTION()
+    void scroll_torch_cone(FInputActionValue const& value);
 
     // Jumping
     UFUNCTION()
