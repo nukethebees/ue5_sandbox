@@ -15,9 +15,13 @@ struct FHumanoidMovement {
         , acceleration(acceleration) {}
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float walk_speed{800.0f};
+    float walk_speed{450.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float run_speed{1200.0f};
+    float run_speed{600.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float acceleration{100.0f};
+    float acceleration{2048.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float boost_scale_factor{1.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    bool is_running{false};
 };

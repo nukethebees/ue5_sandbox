@@ -63,7 +63,8 @@ void AMyCharacter::BeginPlay() {
     }
 
     auto& char_movement{*GetCharacterMovement()};
-    set_speed(movement.walk_speed);
+    movement.is_running = false; // Initialize movement state
+    update_speed();              // Apply initial speed
     char_movement.MaxAcceleration = movement.acceleration;
 
     reset_max_jump_count();
@@ -155,14 +156,12 @@ void AMyCharacter::stop_crouch() {
     UnCrouch();
 }
 void AMyCharacter::start_sprint() {
-    if (auto* char_movement{GetCharacterMovement()}) {
-        set_speed(movement.run_speed);
-    }
+    movement.is_running = true;
+    update_speed();
 }
 void AMyCharacter::stop_sprint() {
-    if (auto* char_movement{GetCharacterMovement()}) {
-        set_speed(movement.walk_speed);
-    }
+    movement.is_running = false;
+    update_speed();
 }
 
 void AMyCharacter::start_jetpack() {
@@ -269,6 +268,11 @@ void AMyCharacter::handle_death() {
 void AMyCharacter::on_speed_changed(float new_speed) {
     OnMaxSpeedChanged.Broadcast(new_speed);
 }
+
+void AMyCharacter::set_movement_multiplier(float multiplier) {
+    movement.boost_scale_factor = multiplier;
+    update_speed();
+}
 void AMyCharacter::disable_all_cameras() {
     for (auto* camera : cameras) {
         if (camera) {
@@ -314,9 +318,15 @@ void AMyCharacter::reset_max_jump_count() {
 void AMyCharacter::increase_max_jump_count(int32 jumps) {
     this->JumpMaxCount += jumps;
 }
+void AMyCharacter::update_speed() {
+    auto const base_speed{movement.is_running ? movement.run_speed : movement.walk_speed};
+    set_speed(base_speed);
+}
+
 void AMyCharacter::set_speed(float new_speed) {
     if (auto* char_movement{GetCharacterMovement()}) {
-        char_movement->MaxWalkSpeed = new_speed;
+        auto const boosted_speed{new_speed * movement.boost_scale_factor};
+        char_movement->MaxWalkSpeed = boosted_speed;
         OnMaxSpeedChanged.Broadcast(char_movement->MaxWalkSpeed);
     } else {
         log_warning(TEXT("Couldn't get character movement component."));

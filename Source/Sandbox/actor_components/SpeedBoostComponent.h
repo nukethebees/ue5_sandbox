@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/interfaces/MovementMultiplierReceiver.h"
 
 #include "SpeedBoostComponent.generated.h"
 
@@ -19,16 +20,15 @@ class SANDBOX_API USpeedBoostComponent : public UActorComponent {
     void apply_speed_boost(FSpeedBoost boost);
   private:
     TArray<FSpeedBoost> active_boosts{};
-    float original_speed{0.0f};
     float total_multiplier{1.0f};
     FTimerHandle boost_timer_handle{};
 
-    auto get_movement() -> UCharacterMovementComponent* {
-        auto* const character{Cast<ACharacter>(GetOwner())};
-        if (!character) {
+    auto get_multiplier_receiver() -> IMovementMultiplierReceiver* {
+        auto* const owner{GetOwner()};
+        if (!owner) {
             return nullptr;
         }
 
-        return character->GetCharacterMovement();
+        return Cast<IMovementMultiplierReceiver>(owner);
     }
 };

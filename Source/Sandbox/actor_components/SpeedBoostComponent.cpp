@@ -3,6 +3,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
+#include "Sandbox/interfaces/MovementMultiplierReceiver.h"
 #include "TimerManager.h"
 
 USpeedBoostComponent::USpeedBoostComponent() {
@@ -10,23 +11,19 @@ USpeedBoostComponent::USpeedBoostComponent() {
 }
 
 void USpeedBoostComponent::apply_speed_boost(FSpeedBoost boost) {
-    auto* const movement{get_movement()};
-    if (!movement) {
+    auto* const multiplier_receiver{get_multiplier_receiver()};
+    if (!multiplier_receiver) {
         return;
     }
 
     auto const current_time{static_cast<double>(GetWorld()->GetTimeSeconds())};
     auto const expiration{current_time + boost.duration};
 
-    if (active_boosts.IsEmpty()) {
-        original_speed = movement->MaxWalkSpeed;
-    }
-
     active_boosts.Add(boost);
     total_multiplier *= boost.multiplier;
-    auto const new_speed{original_speed * total_multiplier};
-    movement->MaxWalkSpeed = new_speed;
-    IMaxSpeedChangeListener::try_broadcast(GetOwner(), new_speed);
+
+    // Apply the new total multiplier
+    multiplier_receiver->set_movement_multiplier(total_multiplier);
 
     FTimerHandle handle{};
 
@@ -36,20 +33,17 @@ void USpeedBoostComponent::apply_speed_boost(FSpeedBoost boost) {
             active_boosts.RemoveSingle(boost);
             total_multiplier /= boost.multiplier;
 
-            auto* const movement{get_movement()};
-            if (!movement) {
+            auto* const multiplier_receiver{get_multiplier_receiver()};
+            if (!multiplier_receiver) {
                 return;
             }
 
             if (active_boosts.IsEmpty()) {
-                movement->MaxWalkSpeed = original_speed;
-                IMaxSpeedChangeListener::try_broadcast(GetOwner(), original_speed);
                 total_multiplier = 1.0f;
-            } else {
-                auto const new_speed{original_speed * total_multiplier};
-                IMaxSpeedChangeListener::try_broadcast(GetOwner(), new_speed);
-                movement->MaxWalkSpeed = new_speed;
             }
+
+            // Apply the updated multiplier
+            multiplier_receiver->set_movement_multiplier(total_multiplier);
         },
         expiration,
         false);
