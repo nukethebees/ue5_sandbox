@@ -11,8 +11,7 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
     value_ = InArgs._value;
     max_value_ = InArgs._max_value;
 
-    auto style{FCoreStyle::GetDefaultFontStyle("Bold", 32)};
-    style = FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Bold.ttf"), 32);
+    auto style{FSlateFontInfo(FCoreStyle::GetDefaultFontStyle("Bold", 32))};
 
     // clang-format off
     ChildSlot[
