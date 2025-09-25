@@ -148,6 +148,8 @@ class SANDBOX_API AMyCharacter
     void reset_max_jump_count();
     UFUNCTION()
     void increase_max_jump_count(int32 jumps);
+    virtual void OnJumped_Implementation() override;
+    virtual void Landed(FHitResult const& Hit) override;
 
     UPROPERTY()
     bool is_forced_movement{false};
@@ -189,7 +191,6 @@ class SANDBOX_API AMyCharacter
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
   protected:
     virtual void BeginPlay() override;
-    virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     // Speed
@@ -209,7 +210,6 @@ class SANDBOX_API AMyCharacter
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
 
-    int32 cached_jump_count{0};
     bool torch_on{true};
     APlayerController* player_controller{nullptr};
     AMyHUD* hud{nullptr};

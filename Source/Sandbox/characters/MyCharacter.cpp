@@ -11,7 +11,7 @@
 #include "UObject/ScriptInterface.h"
 
 AMyCharacter::AMyCharacter() {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     // Initialise arrays
     cameras.Init(nullptr, camera_count);
@@ -85,24 +85,6 @@ void AMyCharacter::BeginPlay() {
         if (hud) {
             hud->update_jump(JumpCurrentCount);
         }
-    }
-}
-
-void AMyCharacter::Tick(float DeltaTime) {
-    Super::Tick(DeltaTime);
-
-    if (cached_jump_count != JumpCurrentCount) {
-        if (player_controller) {
-            if (hud) {
-                hud->update_jump(JumpCurrentCount);
-            } else {
-                print_msg(TEXT("No HUD when updating HUD."));
-            }
-        } else {
-            print_msg(TEXT("No PC when updating HUD."));
-        }
-
-        cached_jump_count = JumpCurrentCount;
     }
 }
 
@@ -244,6 +226,19 @@ void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
         if (cameras.IsValidIndex(default_index)) {
             cameras[default_index]->SetActive(true);
         }
+    }
+}
+
+void AMyCharacter::OnJumped_Implementation() {
+    Super::OnJumped_Implementation();
+    if (hud) {
+        hud->update_jump(JumpCurrentCount);
+    }
+}
+void AMyCharacter::Landed(FHitResult const& Hit) {
+    Super::Landed(Hit);
+    if (hud) {
+        hud->update_jump(0);
     }
 }
 void AMyCharacter::reset_max_jump_count() {
