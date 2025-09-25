@@ -111,11 +111,11 @@ void AMyPlayerController::toggle_mouse() {
         set_mouse_input_mode();
     }
 }
-void AMyPlayerController::mouse_click(FInputActionValue const& value) {
+void AMyPlayerController::mouse_click(FInputActionValue const& value) {   
     if (!bShowMouseCursor) {
         return;
     }
-    print_msg("Shooting a ray.");
+    log_verbose(TEXT("Shooting a ray."));
 
     FVector world_location;
     FVector world_direction;
