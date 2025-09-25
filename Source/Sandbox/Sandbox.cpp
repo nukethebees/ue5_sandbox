@@ -1,6 +1,8 @@
 // Sandbox.cpp
 #include "Sandbox/Sandbox.h"
 
+#include "Sandbox/utilities/SandboxStyle.h"
+
 #define LOCTEXT_NAMESPACE "FSandboxModule"
 
 void FSandboxModule::StartupModule() {
@@ -10,10 +12,14 @@ void FSandboxModule::StartupModule() {
     AddShaderSourceDirectoryMapping(TEXT("/Project"), shader_dir);
 
     UE_LOG(LogTemp, Verbose, TEXT("Mapped /Project to: %s"), *shader_dir);
+
+    // Initialize style set
+    ml::SandboxStyle::initialize();
 }
 
 void FSandboxModule::ShutdownModule() {
-    // Cleanup not usually needed for shader mappings
+    // Cleanup style set
+    ml::SandboxStyle::shutdown();
 }
 
 #undef LOCTEXT_NAMESPACE
