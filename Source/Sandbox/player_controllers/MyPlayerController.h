@@ -25,6 +25,11 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* base_context{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputMappingContext* direct_mode_context{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputMappingContext* cursor_mode_context{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* look{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_mouse{nullptr};
@@ -70,4 +75,5 @@ class SANDBOX_API AMyPlayerController
 
     bool tick_no_controller_character_warning_fired{false};
     void add_input_mapping_context(UInputMappingContext* context);
+    void swap_input_mapping_context(UInputMappingContext* to_remove, UInputMappingContext* to_add);
 };

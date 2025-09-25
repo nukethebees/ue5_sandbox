@@ -161,6 +161,7 @@ void AMyPlayerController::set_game_input_mode() {
     auto input_mode{FInputModeGameOnly()};
     SetInputMode(input_mode);
     bShowMouseCursor = false;
+    swap_input_mapping_context(input.cursor_mode_context, input.direct_mode_context);
     if (controlled_character) {
         controlled_character->reset_torch_position();
     }
@@ -169,6 +170,7 @@ void AMyPlayerController::set_mouse_input_mode() {
     auto input_mode{FInputModeGameAndUI()};
     SetInputMode(input_mode);
     bShowMouseCursor = true;
+    swap_input_mapping_context(input.direct_mode_context, input.cursor_mode_context);
 }
 
 void AMyPlayerController::add_input_mapping_context(UInputMappingContext* context) {
@@ -176,6 +178,20 @@ void AMyPlayerController::add_input_mapping_context(UInputMappingContext* contex
         if (auto* subsystem{
                 ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
             subsystem->AddMappingContext(context, 0);
+        } else {
+            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
+        }
+    } else {
+        log_warning(TEXT("Could not get local player."));
+    }
+}
+void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_remove,
+                                                     UInputMappingContext* to_add) {
+    if (auto* local_player{GetLocalPlayer()}) {
+        if (auto* subsystem{
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
+            subsystem->RemoveMappingContext(to_remove);
+            subsystem->AddMappingContext(to_add, 0);
         } else {
             log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
         }
