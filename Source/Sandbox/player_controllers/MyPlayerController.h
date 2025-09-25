@@ -22,7 +22,7 @@ struct FMyPlayerControllerInputActions {
     FMyPlayerControllerInputActions() = default;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputMappingContext* default_context{nullptr};
+    UInputMappingContext* base_context{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* look{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -75,4 +75,5 @@ class SANDBOX_API AMyPlayerController
     void set_mouse_input_mode();
 
     bool tick_no_controller_character_warning_fired{false};
+    void add_input_mapping_context(UInputMappingContext* context);
 };

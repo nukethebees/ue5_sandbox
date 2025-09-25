@@ -90,19 +90,19 @@ struct FCharacterInputActions {
     FCharacterInputActions() = default;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputMappingContext> first_person_context{nullptr};
+    TObjectPtr<UInputMappingContext> character_context{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> move_action{nullptr};
+    TObjectPtr<UInputAction> move{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jump_action{nullptr};
+    TObjectPtr<UInputAction> jump{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> jetpack_action{nullptr};
+    TObjectPtr<UInputAction> jetpack{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> cycle_camera_action{nullptr};
+    TObjectPtr<UInputAction> cycle_camera{nullptr};
 };
 
 UCLASS()
