@@ -19,6 +19,7 @@
 #include "Sandbox/data/HumanoidMovement.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
+#include "Sandbox/interfaces/MovementMultiplierReceiver.h"
 #include "Sandbox/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
@@ -120,6 +121,7 @@ class SANDBOX_API AMyCharacter
     , public ml::LogMsgMixin<"MyCharacter">
     , public IDeathHandler
     , public IMaxSpeedChangeListener
+    , public IMovementMultiplierReceiver
     , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
@@ -223,6 +225,7 @@ class SANDBOX_API AMyCharacter
 
     // Speed
     virtual void on_speed_changed(float new_speed);
+    virtual void set_movement_multiplier(float multiplier) override;
 
     // Input
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -235,6 +238,7 @@ class SANDBOX_API AMyCharacter
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
     void set_speed(float new_speed);
+    void update_speed();
 
     bool torch_on{true};
     APlayerController* player_controller{nullptr};
