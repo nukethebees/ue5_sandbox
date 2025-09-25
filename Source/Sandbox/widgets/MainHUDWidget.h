@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/widgets/HealthWidget.h"
 #include "Sandbox/widgets/ValueWidget.h"
+#include "Components/VerticalBox.h"
 
 #include "MainHUDWidget.generated.h"
 
@@ -12,7 +13,9 @@ UCLASS()
 class SANDBOX_API UMainHUDWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    // Widget instances
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* current_stat_box{nullptr};
+
     UPROPERTY(meta = (BindWidget))
     UValueWidget* fuel_widget;
 
