@@ -37,7 +37,7 @@ class SANDBOX_API AHealthPackActor
     UStaticMeshComponent* mesh_component{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health Pack")
-    URotatingActorComponent * rotating_component{};
+    URotatingActorComponent* rotating_component{};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
     FHealthChange healing{25.0f, EHealthChangeType::Healing};
