@@ -1,12 +1,13 @@
 #include "MyCharacter.h"
 
+#include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/actor_components/InteractorComponent.h"
 #include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/huds/MyHud.h"
 #include "UObject/ScriptInterface.h"
 
@@ -154,7 +155,26 @@ void AMyCharacter::stop_jetpack() {
 void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
-void AMyCharacter::attack() {}
+void AMyCharacter::attack() {
+    log_verbose(TEXT("Attacking."));
+
+    if (!bullet_class) {
+        return;
+    } else {
+        log_warning(TEXT("No bullet class."));
+    }
+
+    auto const current_location{GetActorLocation()};
+    auto const fwd{GetActorForwardVector()};
+    constexpr float spawn_disance_cm{50.0f};
+    auto const spawn_location{current_location + fwd * spawn_disance_cm};
+
+    FActorSpawnParameters spawn_params{};
+    spawn_params.Owner = this;
+
+    auto const bullet{
+        GetWorld()->SpawnActor<AActor>(bullet_class, spawn_location, fwd.Rotation(), spawn_params)};
+}
 
 // Torch
 void AMyCharacter::aim_torch(FVector const& world_location) {

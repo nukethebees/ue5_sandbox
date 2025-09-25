@@ -87,6 +87,8 @@ void AMyPlayerController::look(FInputActionValue const& value) {
 void AMyPlayerController::attack() {
     if (controlled_character) {
         controlled_character->attack();
+    } else {
+        log_warning(TEXT("No controlled character."));
     }
 }
 void AMyPlayerController::toggle_mouse() {
