@@ -21,10 +21,6 @@ void FCoinPayload::execute(FCollisionContext context) {
         if (auto* const coin_collector{
                 player->FindComponentByClass<UCoinCollectorActorComponent>()}) {
             coin_collector->add_coins(value);
-        } else {
-            log_warning(TEXT("Collided actor has no UCoinCollectorActorComponent."));
         }
-    } else {
-        log_warning(TEXT("Couldn't cast the collided actor to AMyCharacter."));
     }
 }
