@@ -130,11 +130,13 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void look(FInputActionValue const& value);
     UFUNCTION()
-    void start_jetpack(FInputActionValue const& value);
+    void start_jetpack();
     UFUNCTION()
-    void stop_jetpack(FInputActionValue const& value);
+    void stop_jetpack();
     UFUNCTION()
-    void cycle_camera(FInputActionValue const& value);
+    void cycle_camera();
+    UFUNCTION()
+    void attack();
 
     // Torch
     UFUNCTION()

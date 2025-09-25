@@ -32,6 +32,8 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* look{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* attack{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_mouse{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* mouse_click{nullptr};
@@ -57,6 +59,8 @@ class SANDBOX_API AMyPlayerController
 
     UFUNCTION()
     void look(FInputActionValue const& value);
+    UFUNCTION()
+    void attack();
     UFUNCTION()
     void toggle_mouse();
     UFUNCTION()

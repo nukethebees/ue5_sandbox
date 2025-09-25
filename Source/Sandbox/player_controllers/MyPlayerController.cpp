@@ -70,6 +70,7 @@ void AMyPlayerController::SetupInputComponent() {
         auto bind{make_input_binder(eic)};
 
         bind(input.look, Triggered, &AMyPlayerController::look);
+        bind(input.attack, Started, &AMyPlayerController::attack);
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
         bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
@@ -81,6 +82,11 @@ void AMyPlayerController::SetupInputComponent() {
 void AMyPlayerController::look(FInputActionValue const& value) {
     if (controlled_character) {
         controlled_character->look(value);
+    }
+}
+void AMyPlayerController::attack() {
+    if (controlled_character) {
+        controlled_character->attack();
     }
 }
 void AMyPlayerController::toggle_mouse() {
