@@ -1,9 +1,8 @@
 #include "Sandbox/slate_widgets/NumWidget.h"
 
-#include "Engine/UserInterfaceSettings.h"
 #include "Fonts/CompositeFont.h"
+#include "Sandbox/utilities/ui.h"
 #include "SlateOptMacros.h"
-#include "Styling/AppStyle.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 template <typename T>
@@ -12,11 +11,7 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
     value_ = InArgs._value;
     max_value_ = InArgs._max_value;
 
-    int32 font_size{32};
-    if (auto* ui_settings{GetDefault<UUserInterfaceSettings>()}) {
-        auto const dpi_scale_factor{static_cast<float>(ui_settings->GetFontDisplayDPI()) / 96.0f};
-        font_size = FMath::RoundToInt(static_cast<float>(font_size) * dpi_scale_factor);
-    }
+    auto const font_size{ml::scale_font_to_umg(32)};
     auto const style{FSlateFontInfo(FCoreStyle::GetDefaultFontStyle("Bold", font_size))};
 
     // clang-format off
