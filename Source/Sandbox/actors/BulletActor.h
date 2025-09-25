@@ -8,7 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NiagaraSystem.h"
-#include "Sandbox/actor_components/HealthChangeTriggerComponent.h"
+#include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "BulletActor.generated.h"
@@ -39,8 +39,8 @@ class SANDBOX_API ABulletActor
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
     UStaticMeshComponent* mesh_component{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
-    UHealthChangeTriggerComponent* health_change_component{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+    FHealthChange damage{5.0f, EHealthChangeType::Damage};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
     UProjectileMovementComponent* projectile_movement{nullptr};
