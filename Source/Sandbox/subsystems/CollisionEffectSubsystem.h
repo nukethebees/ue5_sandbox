@@ -3,7 +3,7 @@
 #include <tuple>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/collision/CollisionEffectSubsystemData.h"
+#include "Sandbox/subsystems/CollisionEffectSubsystemCore.h"
 #include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/mixins/CollisionEffectSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"
@@ -28,9 +28,9 @@ class SANDBOX_API UCollisionEffectSubsystem
             OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
     }
   private:
-    UCollisionEffectSubsystemData<FSpeedBoostPayload,
+    UCollisionEffectSubsystemCore<FSpeedBoostPayload,
                                   FJumpIncreasePayload,
                                   FCoinPayload,
                                   FLandMinePayload>
-        data_{};
+        core_{};
 };

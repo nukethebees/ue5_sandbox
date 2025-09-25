@@ -7,7 +7,7 @@
 #include "Sandbox/data/trigger/FForcefieldPayload.h"
 #include "Sandbox/data/trigger/FRotatePayload.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
-#include "Sandbox/data/trigger/TriggerSubsystemData.h"
+#include "Sandbox/subsystems/TriggerSubsystemCore.h"
 #include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"
 
@@ -20,14 +20,14 @@ class SANDBOX_API UTriggerSubsystem
     GENERATED_BODY()
     friend class UTriggerSubsystemMixins;
   public:
-    virtual void Tick(float DeltaTime) override { data_.tick_payloads(DeltaTime); }
-    virtual bool IsTickable() const override { return data_.has_ticking_payloads(); }
+    virtual void Tick(float DeltaTime) override { core_.tick_payloads(DeltaTime); }
+    virtual bool IsTickable() const override { return core_.has_ticking_payloads(); }
     virtual TStatId GetStatId() const override { return TStatId(); }
     virtual UWorld* GetTickableGameObjectWorld() const override { return GetWorld(); }
   private:
-    UTriggerSubsystemData<FTriggerOtherPayload,
+    TriggerSubsystemCore<FTriggerOtherPayload,
                           FHealthStationPayload,
                           FRotatePayload,
                           FForcefieldPayload>
-        data_{};
+        core_{};
 };

@@ -6,10 +6,10 @@
 
 class UCollisionEffectSubsystemMixins {
   public:
-    FORWARDING_FN(data_, add_payload, &self);
-    FORWARDING_FN(data_, register_actor, &self)
+    FORWARDING_FN(core_, add_payload, &self);
+    FORWARDING_FN(core_, register_actor, &self)
   protected:
-    FORWARDING_FN(data_, handle_collision_event_)
+    FORWARDING_FN(core_, handle_collision_event_)
 };
 
 template <typename SubsystemT, typename PayloadT>
