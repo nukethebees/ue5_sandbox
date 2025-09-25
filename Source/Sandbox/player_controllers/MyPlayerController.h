@@ -3,24 +3,45 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/GameViewportClient.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
-#include "Engine/GameViewportClient.h"
 
 #include "MyPlayerController.generated.h"
 
-/**
- *
- */
+USTRUCT(BlueprintType)
+struct FMyPlayerControllerInputActions {
+    GENERATED_BODY()
+
+    FMyPlayerControllerInputActions() = default;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputMappingContext> default_context;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> look;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> toggle_mouse;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> mouse_click;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> toggle_torch;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> scroll_torch_cone;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    TSoftObjectPtr<UInputAction> warp_to_cursor;
+};
+
 UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
-    , public print_msg_mixin {
+    , public print_msg_mixin
+    , public ml::LogMsgMixin<"MyCharacter"> {
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
@@ -30,24 +51,6 @@ class SANDBOX_API AMyPlayerController
     virtual void Tick(float DeltaSeconds) override;
   public:
     virtual void SetupInputComponent() override;
-
-    UPROPERTY()
-    AMyCharacter* controlled_character;
-
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputMappingContext> default_mapping_context;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> look_action;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> toggle_mouse_action;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> mouse_click_action;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> toggle_torch_action;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> scroll_torch_cone_action;
-    UPROPERTY(EditAnywhere, Category = "Input")
-    TSoftObjectPtr<UInputAction> warp_to_cursor_action;
 
     UFUNCTION()
     void look(FInputActionValue const& value);
@@ -61,6 +64,12 @@ class SANDBOX_API AMyPlayerController
     void scroll_torch_cone(FInputActionValue const& value);
     UFUNCTION()
     void warp_to_cursor(FInputActionValue const& value);
+
+    UPROPERTY()
+    AMyCharacter* controlled_character;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    FMyPlayerControllerInputActions input{};
   private:
     void set_game_input_mode();
     void set_mouse_input_mode();
