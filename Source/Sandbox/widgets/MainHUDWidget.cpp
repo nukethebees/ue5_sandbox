@@ -1,5 +1,8 @@
 #include "Sandbox/widgets/MainHUDWidget.h"
 
+#include "Components/VerticalBoxSlot.h"
+#include "Blueprint/WidgetTree.h"
+
 #define WIDGET_CHECK(widget, name_string)            \
     do {                                             \
         if (!widget) {                               \
@@ -7,6 +10,17 @@
             return;                                  \
         }                                            \
     } while (0)
+
+void UMainHUDWidget::NativeConstruct() {
+    Super::NativeConstruct();
+
+    ammo_widget = WidgetTree->ConstructWidget<UIntNumWidget>(UIntNumWidget::StaticClass(),
+                                                             TEXT("ammo_widget"));
+    if (ammo_widget && current_stat_box) {
+        ammo_widget->set_label(FText::FromName(TEXT("Ammo")));
+        current_stat_box->AddChild(ammo_widget);
+    }
+}
 
 void UMainHUDWidget::update_health(FHealthData health_data) {
     WIDGET_CHECK(health_widget, "update_health_percent");

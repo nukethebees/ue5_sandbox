@@ -86,24 +86,45 @@ class SANDBOX_API SNumWidget : public SCompoundWidget {
     mutable bool is_display_text_dirty_{true};
 };
 
-UCLASS()
-class UFloatNumWidget : public UWidget {
-    GENERATED_BODY()
+#define CREATE_SETTER(NAME)                                    \
+    template <typename Self, typename T>                       \
+    void set_##NAME(this Self& self, T&& x) {                  \
+        if (self.slate_widget) {                               \
+            self.slate_widget->set_##NAME(std::forward<T>(x)); \
+        }                                                      \
+    }
+class UNumWidgetMixins {
   public:
+    CREATE_SETTER(label)
+    CREATE_SETTER(value)
+    CREATE_SETTER(max_value)
+};
+#undef CREATE_SETTER
+
+UCLASS()
+class UFloatNumWidget
+    : public UWidget
+    , public UNumWidgetMixins {
+    GENERATED_BODY()
+    friend class UNumWidgetMixins;
   protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+    auto get_widget() { return slate_widget.ToSharedRef(); }
   private:
     TSharedPtr<SNumWidget<float>> slate_widget;
 };
 
 UCLASS()
-class UIntNumWidget : public UWidget {
+class UIntNumWidget
+    : public UWidget
+    , public UNumWidgetMixins {
     GENERATED_BODY()
-  public:
+    friend class UNumWidgetMixins;
   protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+    auto get_widget() { return slate_widget.ToSharedRef(); }
   private:
     TSharedPtr<SNumWidget<int32>> slate_widget;
 };

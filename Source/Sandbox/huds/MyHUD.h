@@ -46,4 +46,6 @@ class SANDBOX_API AMyHUD : public AHUD {
             main_widget->max_speed_widget->update(data);
         }
     }
+    UFUNCTION()
+    void update_ammo(int32 ammo_count);
 };
