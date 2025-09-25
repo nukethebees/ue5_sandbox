@@ -90,16 +90,21 @@ struct FCharacterInputActions {
 
     FCharacterInputActions() = default;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* character_context{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* move{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* jump{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* crouch{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* sprint{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* jetpack{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* cycle_camera{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_torch{nullptr};
@@ -133,6 +138,15 @@ class SANDBOX_API AMyCharacter
     void start_jetpack();
     UFUNCTION()
     void stop_jetpack();
+    UFUNCTION()
+    void start_crouch();
+    UFUNCTION()
+    void stop_crouch();
+    UFUNCTION()
+    void start_sprint();
+    UFUNCTION()
+    void stop_sprint();
+
     UFUNCTION()
     void cycle_camera();
     UFUNCTION()
@@ -215,13 +229,16 @@ class SANDBOX_API AMyCharacter
 
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float move_speed{800.0f};
+    float walk_speed{800.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
+    float run_speed{1200.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     float acceleration{100.0f};
   private:
     virtual void handle_death();
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
+    void set_speed(float new_speed);
 
     bool torch_on{true};
     APlayerController* player_controller{nullptr};

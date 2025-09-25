@@ -63,9 +63,8 @@ void AMyCharacter::BeginPlay() {
     }
 
     auto& char_movement{*GetCharacterMovement()};
-    char_movement.MaxWalkSpeed = this->move_speed;
-    char_movement.MaxAcceleration = this->acceleration;
-    OnMaxSpeedChanged.Broadcast(char_movement.MaxWalkSpeed);
+    set_speed(walk_speed);
+    char_movement.MaxAcceleration = acceleration;
 
     reset_max_jump_count();
 
@@ -99,6 +98,12 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
         bind(input_actions.jump, Started, &ACharacter::Jump);
         bind(input_actions.jump, Completed, &ACharacter::StopJumping);
+
+        bind(input_actions.crouch, Started, &AMyCharacter::start_crouch);
+        bind(input_actions.crouch, Completed, &AMyCharacter::stop_crouch);
+
+        bind(input_actions.sprint, Started, &AMyCharacter::start_sprint);
+        bind(input_actions.sprint, Completed, &AMyCharacter::stop_sprint);
 
         bind(input_actions.jetpack, Triggered, &AMyCharacter::start_jetpack);
         bind(input_actions.jetpack, Completed, &AMyCharacter::stop_jetpack);
@@ -143,6 +148,23 @@ void AMyCharacter::look(FInputActionValue const& value) {
         AddControllerPitchInput(look_axis_value.Y);
     }
 }
+void AMyCharacter::start_crouch() {
+    Crouch();
+}
+void AMyCharacter::stop_crouch() {
+    UnCrouch();
+}
+void AMyCharacter::start_sprint() {
+    if (auto* char_movement{GetCharacterMovement()}) {
+        set_speed(run_speed);
+    }
+}
+void AMyCharacter::stop_sprint() {
+    if (auto* char_movement{GetCharacterMovement()}) {
+        set_speed(walk_speed);
+    }
+}
+
 void AMyCharacter::start_jetpack() {
     if (jetpack != nullptr) {
         jetpack->start_jetpack();
@@ -153,9 +175,11 @@ void AMyCharacter::stop_jetpack() {
         jetpack->stop_jetpack();
     }
 }
+
 void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
+
 void AMyCharacter::attack(FRotator attack_direction) {
     log_verbose(TEXT("Attacking."));
 
@@ -289,4 +313,12 @@ void AMyCharacter::reset_max_jump_count() {
 }
 void AMyCharacter::increase_max_jump_count(int32 jumps) {
     this->JumpMaxCount += jumps;
+}
+void AMyCharacter::set_speed(float new_speed) {
+    if (auto* char_movement{GetCharacterMovement()}) {
+        char_movement->MaxWalkSpeed = new_speed;
+        OnMaxSpeedChanged.Broadcast(char_movement->MaxWalkSpeed);
+    } else {
+        log_warning(TEXT("Couldn't get character movement component."));
+    }
 }
