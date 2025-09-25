@@ -108,6 +108,16 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
     }
 }
 
+UCameraComponent const* AMyCharacter::get_active_camera() const {
+    auto const camera_index{static_cast<int32>(camera_mode)};
+    if (cameras.IsValidIndex(camera_index)) {
+        return cameras[camera_index];
+    }
+
+    log_warning(TEXT("Invalid camera mode. Returning first person."));
+    return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
+}
+
 void AMyCharacter::move(FInputActionValue const& value) {
     auto const movement_value{value.Get<FVector>()};
 
@@ -131,28 +141,20 @@ void AMyCharacter::look(FInputActionValue const& value) {
         AddControllerPitchInput(look_axis_value.Y);
     }
 }
-void AMyCharacter::start_jetpack(FInputActionValue const&) {
+void AMyCharacter::start_jetpack() {
     if (jetpack != nullptr) {
         jetpack->start_jetpack();
     }
 }
-void AMyCharacter::stop_jetpack(FInputActionValue const&) {
+void AMyCharacter::stop_jetpack() {
     if (jetpack != nullptr) {
         jetpack->stop_jetpack();
     }
 }
-void AMyCharacter::cycle_camera(FInputActionValue const&) {
+void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
-UCameraComponent const* AMyCharacter::get_active_camera() const {
-    auto const camera_index{static_cast<int32>(camera_mode)};
-    if (cameras.IsValidIndex(camera_index)) {
-        return cameras[camera_index];
-    }
-
-    log_warning(TEXT("Invalid camera mode. Returning first person."));
-    return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
-}
+void AMyCharacter::attack() {}
 
 // Torch
 void AMyCharacter::aim_torch(FVector const& world_location) {
