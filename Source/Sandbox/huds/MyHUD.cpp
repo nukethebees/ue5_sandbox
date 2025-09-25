@@ -86,3 +86,10 @@ void AMyHUD::update_health(FHealthData health_data) {
     MAIN_WIDGET_NULL_CHECK();
     main_widget->update_health(health_data);
 }
+void AMyHUD::update_ammo(int32 ammo_count) {
+    MAIN_WIDGET_NULL_CHECK();
+
+    if (main_widget->ammo_widget) {
+        main_widget->ammo_widget->set_value(ammo_count);
+    }
+}

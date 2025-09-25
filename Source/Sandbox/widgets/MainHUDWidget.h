@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/widgets/HealthWidget.h"
 #include "Sandbox/widgets/ValueWidget.h"
+#include "Sandbox/slate_widgets/NumWidget.h"
 #include "Components/VerticalBox.h"
 
 #include "MainHUDWidget.generated.h"
@@ -30,6 +31,10 @@ class SANDBOX_API UMainHUDWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UValueWidget* max_speed_widget;
+
+    UIntNumWidget* ammo_widget{nullptr};
+  protected:
+    virtual void NativeConstruct() override;
   public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void update_health(FHealthData health_data);

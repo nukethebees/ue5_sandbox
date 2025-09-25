@@ -85,6 +85,7 @@ void AMyCharacter::BeginPlay() {
 
         if (hud) {
             hud->update_jump(JumpCurrentCount);
+            hud->update_ammo(ammo);
         }
     }
 }
@@ -178,6 +179,10 @@ void AMyCharacter::attack(FRotator attack_direction) {
     auto const bullet{GetWorld()->SpawnActor<AActor>(
         bullet_class, spawn_location, attack_direction, spawn_params)};
     --ammo;
+
+    if (hud) {
+        hud->update_ammo(ammo);
+    }
 }
 
 // Torch
