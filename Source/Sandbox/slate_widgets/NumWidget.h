@@ -32,23 +32,62 @@ class SANDBOX_API SNumWidget : public SCompoundWidget {
     END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
     FText get_display_text() const {
-        if (max_value_) {
-            return FText::Format(NSLOCTEXT("StatWidget", "ValueWithMax", "{0}: {1} / {2}"),
-                                 label_,
-                                 FText::AsNumber(value_),
-                                 FText::AsNumber(*max_value_));
+        if (is_display_text_dirty_) {
+            if (max_value_) {
+                cached_display_text_ =
+                    FText::Format(NSLOCTEXT("StatWidget", "ValueWithMax", "{0}: {1} / {2}"),
+                                  label_,
+                                  FText::AsNumber(value_),
+                                  FText::AsNumber(*max_value_));
+            } else {
+                cached_display_text_ =
+                    FText::Format(NSLOCTEXT("StatWidget", "ValueOnly", "{0}: {1}"),
+                                  label_,
+                                  FText::AsNumber(value_));
+            }
+            is_display_text_dirty_ = false;
         }
-        return FText::Format(
-            NSLOCTEXT("StatWidget", "ValueOnly", "{0}: {1}"), label_, FText::AsNumber(value_));
+        return cached_display_text_;
+    }
+
+    // Getters
+    auto const& get_label() const { return label_; }
+    auto const& get_value() const { return value_; }
+    auto const& get_max_value() const { return max_value_; }
+
+    // Setters
+    void set_label(FText const& new_label) {
+        if (!label_.EqualTo(new_label)) {
+            label_ = new_label;
+            is_display_text_dirty_ = true;
+        }
+    }
+
+    void set_value(T const& new_value) {
+        if (value_ != new_value) {
+            value_ = new_value;
+            is_display_text_dirty_ = true;
+        }
+    }
+
+    void set_max_value(std::optional<T> const& new_max_value) {
+        if (max_value_ != new_max_value) {
+            max_value_ = new_max_value;
+            is_display_text_dirty_ = true;
+        }
     }
   private:
     FText label_;
     T value_;
     std::optional<T> max_value_;
+
+    // Caching members for expensive text formatting
+    mutable FText cached_display_text_;
+    mutable bool is_display_text_dirty_{true};
 };
 
 UCLASS()
-class UNumWidget : public UWidget {
+class UFloatNumWidget : public UWidget {
     GENERATED_BODY()
   public:
   protected:
@@ -56,4 +95,15 @@ class UNumWidget : public UWidget {
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
   private:
     TSharedPtr<SNumWidget<float>> slate_widget;
+};
+
+UCLASS()
+class UIntNumWidget : public UWidget {
+    GENERATED_BODY()
+  public:
+  protected:
+    virtual TSharedRef<SWidget> RebuildWidget() override;
+    virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+  private:
+    TSharedPtr<SNumWidget<int32>> slate_widget;
 };
