@@ -12,6 +12,7 @@
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/mixins/EnhancedInputMixin.hpp"
 
 #include "MyPlayerController.generated.h"
 
@@ -30,10 +31,6 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* mouse_click{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputAction* toggle_torch{nullptr};
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputAction* scroll_torch_cone{nullptr};
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* warp_to_cursor{nullptr};
 };
 
@@ -41,7 +38,8 @@ UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
     , public print_msg_mixin
-    , public ml::LogMsgMixin<"MyPlayerController"> {
+    , public ml::LogMsgMixin<"MyPlayerController">
+    , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
@@ -58,10 +56,6 @@ class SANDBOX_API AMyPlayerController
     void toggle_mouse();
     UFUNCTION()
     void mouse_click(FInputActionValue const& value);
-    UFUNCTION()
-    void toggle_torch(FInputActionValue const& value);
-    UFUNCTION()
-    void scroll_torch_cone(FInputActionValue const& value);
     UFUNCTION()
     void warp_to_cursor(FInputActionValue const& value);
 

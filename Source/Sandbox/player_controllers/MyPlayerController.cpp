@@ -67,19 +67,11 @@ void AMyPlayerController::SetupInputComponent() {
     if (auto* eic{Cast<UEnhancedInputComponent>(InputComponent)}) {
         using enum ETriggerEvent;
 
-        auto bind{[&](auto* action, ETriggerEvent state, auto pmf) -> void {
-            if (action) {
-                eic->BindAction(action, state, this, pmf);
-            } else {
-                log_warning(TEXT("Binding action pointer missing."));
-            }
-        }};
+        auto bind{make_input_binder(eic)};
 
         bind(input.look, Triggered, &AMyPlayerController::look);
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
-        bind(input.toggle_torch, Started, &AMyPlayerController::toggle_torch);
-        bind(input.scroll_torch_cone, Triggered, &AMyPlayerController::scroll_torch_cone);
         bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
     } else {
         log_warning(TEXT("Did not get the UEnhancedInputComponent."));
@@ -138,29 +130,6 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
             }
         }
     }
-}
-void AMyPlayerController::toggle_torch(FInputActionValue const& value) {
-    if (controlled_character) {
-        controlled_character->toggle_torch();
-    }
-}
-void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
-    if (!controlled_character || !controlled_character->torch) {
-        log_warning(TEXT("No char or torch"));
-    }
-
-    auto const scroll_delta{value.Get<float>()};
-    auto* const torch{controlled_character->torch};
-
-    static constexpr auto min_cone{5.0f};
-    static constexpr auto max_cone{15.0f};
-
-    auto const new_outer{
-        FMath::Clamp(torch->OuterConeAngle + scroll_delta * 2.0f, min_cone, max_cone)};
-    torch->SetOuterConeAngle(new_outer);
-
-    auto const new_inner{FMath::Clamp(new_outer * 0.7f, 2.0f, new_outer)};
-    torch->SetInnerConeAngle(new_inner);
 }
 void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
     if (!controlled_character) {

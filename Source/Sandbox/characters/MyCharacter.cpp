@@ -90,21 +90,21 @@ void AMyCharacter::BeginPlay() {
 
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
-        eic->BindAction(
-            this->input_actions.move, ETriggerEvent::Triggered, this, &AMyCharacter::move);
+        using enum ETriggerEvent;
+        auto bind{make_input_binder(eic)};
 
-        // Bind Jump Actions
-        eic->BindAction(input_actions.jump, ETriggerEvent::Started, this, &ACharacter::Jump);
-        eic->BindAction(
-            input_actions.jump, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+        bind(input_actions.move, Triggered, &AMyCharacter::move);
 
-        eic->BindAction(
-            input_actions.jetpack, ETriggerEvent::Triggered, this, &AMyCharacter::start_jetpack);
-        eic->BindAction(
-            input_actions.jetpack, ETriggerEvent::Completed, this, &AMyCharacter::stop_jetpack);
+        bind(input_actions.jump, Started, &ACharacter::Jump);
+        bind(input_actions.jump, Completed, &ACharacter::StopJumping);
 
-        eic->BindAction(
-            input_actions.cycle_camera, ETriggerEvent::Started, this, &AMyCharacter::cycle_camera);
+        bind(input_actions.jetpack, Triggered, &AMyCharacter::start_jetpack);
+        bind(input_actions.jetpack, Completed, &AMyCharacter::stop_jetpack);
+
+        bind(input_actions.cycle_camera, Started, &AMyCharacter::cycle_camera);
+
+        bind(input_actions.toggle_torch, Started, &AMyCharacter::toggle_torch);
+        bind(input_actions.scroll_torch_cone, Triggered, &AMyCharacter::scroll_torch_cone);
     }
 }
 
@@ -154,6 +154,7 @@ UCameraComponent const* AMyCharacter::get_active_camera() const {
     return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
 }
 
+// Torch
 void AMyCharacter::aim_torch(FVector const& world_location) {
     if (!torch) {
         print_msg("No torch");
@@ -185,6 +186,23 @@ void AMyCharacter::set_torch(bool on) {
 
     torch_on = on;
     torch->SetVisibility(torch_on);
+}
+void AMyCharacter::scroll_torch_cone(FInputActionValue const& value) {
+    if (!torch) {
+        log_warning(TEXT("No  torch"));
+    }
+
+    auto const scroll_delta{value.Get<float>()};
+
+    static constexpr auto min_cone{5.0f};
+    static constexpr auto max_cone{15.0f};
+
+    auto const new_outer{
+        FMath::Clamp(torch->OuterConeAngle + scroll_delta * 2.0f, min_cone, max_cone)};
+    torch->SetOuterConeAngle(new_outer);
+
+    auto const new_inner{FMath::Clamp(new_outer * 0.7f, 2.0f, new_outer)};
+    torch->SetInnerConeAngle(new_inner);
 }
 
 void AMyCharacter::handle_death() {
