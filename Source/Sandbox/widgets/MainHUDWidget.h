@@ -2,16 +2,19 @@
 
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
 #include "CoreMinimal.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/slate_widgets/NumWidget.h"
 #include "Sandbox/widgets/HealthWidget.h"
 #include "Sandbox/widgets/ValueWidget.h"
-#include "Sandbox/slate_widgets/NumWidget.h"
-#include "Components/VerticalBox.h"
 
 #include "MainHUDWidget.generated.h"
 
 UCLASS()
-class SANDBOX_API UMainHUDWidget : public UUserWidget {
+class SANDBOX_API UMainHUDWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UMainHUDWidget"> {
     GENERATED_BODY()
   public:
     UPROPERTY(meta = (BindWidget))

@@ -17,8 +17,11 @@ void UMainHUDWidget::NativeConstruct() {
     ammo_widget = WidgetTree->ConstructWidget<UIntNumWidget>(UIntNumWidget::StaticClass(),
                                                              TEXT("ammo_widget"));
     if (ammo_widget && current_stat_box) {
-        ammo_widget->set_label(FText::FromName(TEXT("Ammo")));
+        // You must add the widget first before setters will work
         current_stat_box->AddChild(ammo_widget);
+        ammo_widget->set_label(FText::FromName(TEXT("Ammo")));
+    } else {
+        log_warning(TEXT("Failed to add the child."));
     }
 }
 
