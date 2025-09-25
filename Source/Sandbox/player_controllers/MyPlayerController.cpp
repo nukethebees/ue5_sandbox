@@ -13,20 +13,7 @@ void AMyPlayerController::BeginPlay() {
 
     set_game_input_mode();
 
-    if (auto* local_player{GetLocalPlayer()}) {
-        using SS = UEnhancedInputLocalPlayerSubsystem;
-        if (auto* subsystem{ULocalPlayer::GetSubsystem<SS>(local_player)}) {
-            if (input.default_context) {
-                subsystem->AddMappingContext(input.default_context, 0);
-            } else {
-                log_warning(TEXT("Default context is nullptr."));
-            }
-        } else {
-            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
-        }
-    } else {
-        log_warning(TEXT("Could not get local player."));
-    }
+    add_input_mapping_context(input.base_context);
 
     if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
         if (auto* hud{Cast<AMyHUD>(GetHUD())}) {
@@ -111,7 +98,7 @@ void AMyPlayerController::toggle_mouse() {
         set_mouse_input_mode();
     }
 }
-void AMyPlayerController::mouse_click(FInputActionValue const& value) {   
+void AMyPlayerController::mouse_click(FInputActionValue const& value) {
     if (!bShowMouseCursor) {
         return;
     }
@@ -213,4 +200,17 @@ void AMyPlayerController::set_mouse_input_mode() {
     auto input_mode{FInputModeGameAndUI()};
     SetInputMode(input_mode);
     bShowMouseCursor = true;
+}
+
+void AMyPlayerController::add_input_mapping_context(UInputMappingContext* context) {
+    if (auto* local_player{GetLocalPlayer()}) {
+        if (auto* subsystem{
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
+            subsystem->AddMappingContext(context, 0);
+        } else {
+            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
+        }
+    } else {
+        log_warning(TEXT("Could not get local player."));
+    }
 }
