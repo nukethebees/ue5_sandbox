@@ -63,8 +63,8 @@ void AMyCharacter::BeginPlay() {
     }
 
     auto& char_movement{*GetCharacterMovement()};
-    set_speed(walk_speed);
-    char_movement.MaxAcceleration = acceleration;
+    set_speed(movement.walk_speed);
+    char_movement.MaxAcceleration = movement.acceleration;
 
     reset_max_jump_count();
 
@@ -156,12 +156,12 @@ void AMyCharacter::stop_crouch() {
 }
 void AMyCharacter::start_sprint() {
     if (auto* char_movement{GetCharacterMovement()}) {
-        set_speed(run_speed);
+        set_speed(movement.run_speed);
     }
 }
 void AMyCharacter::stop_sprint() {
     if (auto* char_movement{GetCharacterMovement()}) {
-        set_speed(walk_speed);
+        set_speed(movement.walk_speed);
     }
 }
 

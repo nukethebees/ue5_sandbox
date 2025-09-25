@@ -16,6 +16,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
 #include "Sandbox/actor_components/WarpComponent.h"
+#include "Sandbox/data/HumanoidMovement.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/mixins/EnhancedInputMixin.hpp"
@@ -227,13 +228,8 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     FCharacterInputActions input_actions{};
 
-    // Movement
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float walk_speed{800.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float run_speed{1200.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
-    float acceleration{100.0f};
+    FHumanoidMovement movement{};
   private:
     virtual void handle_death();
     void disable_all_cameras();
