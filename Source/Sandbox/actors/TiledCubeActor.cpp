@@ -2,6 +2,7 @@
 
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/Texture2D.h"
 
 FName const ATiledCubeActor::face_material_name{TEXT("Face")};
 FName const ATiledCubeActor::edge_material_name{TEXT("Edge")};
@@ -29,25 +30,28 @@ void ATiledCubeActor::OnConstruction(FTransform const& Transform) {
         return;
     }
 
-    auto const full_width{width * tile_width};
-    auto const full_height{height * tile_height};
+    auto const full_width{tile_width * n_tiles_width};
+    auto const full_height{tile_height * n_tiles_height};
 
-    FVector const scale{full_width, depth, full_height};
+    FVector const scale{full_width, tile_depth, full_height};
     cube_mesh->SetWorldScale3D(scale);
-    cube_mesh->SetMaterial(1, edge_material);
+    cube_mesh->SetMaterialByName(edge_material_name, material.edge_material);
 
     if (!face_material_inst) {
-        face_material_inst = UMaterialInstanceDynamic::Create(face_material, this);
+        face_material_inst = UMaterialInstanceDynamic::Create(material.face_material, this);
     }
 
-    if (!face_material_inst) {
-        LOGGER.log_warning(TEXT("face_material_inst is nullptr."));
-        return;
-    }
+    face_material_inst->SetScalarParameterValue(Constants::tiling_u(), n_tiles_width);
+    face_material_inst->SetScalarParameterValue(Constants::tiling_v(), n_tiles_height);
+    face_material_inst->SetTextureParameterValue(Constants::face_texture(), material.face_texture);
 
-    static FName tiling_u{TEXT("tiling_u")};
-    static FName tiling_v{TEXT("tiling_v")};
-    face_material_inst->SetScalarParameterValue(tiling_u, tile_width);
-    face_material_inst->SetScalarParameterValue(tiling_v, tile_height);
-    cube_mesh->SetMaterial(0, face_material_inst);
+    face_material_inst->SetScalarParameterValue(Constants::metallic(), material.metallic);
+    face_material_inst->SetScalarParameterValue(Constants::specular(), material.specular);
+    face_material_inst->SetScalarParameterValue(Constants::roughness(), material.roughness);
+
+    face_material_inst->SetVectorParameterValue(Constants::base_colour(), material.base_colour);
+    face_material_inst->SetVectorParameterValue(Constants::emissive_colour(),
+                                                material.emissive_colour);
+
+    cube_mesh->SetMaterialByName(face_material_name, face_material_inst);
 }
