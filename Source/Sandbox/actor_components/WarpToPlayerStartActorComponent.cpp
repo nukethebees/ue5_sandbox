@@ -30,7 +30,7 @@ void UWarpToPlayerStartActorComponent::OnOverlapBegin(UPrimitiveComponent* Overl
         if (OtherActor) {
             OtherActor->SetActorLocation(it->GetActorLocation());
         }
-        break;
+        return;
     }
     UE_LOG(LogTemp, Warning, TEXT("UWarpToPlayerStartActorComponent: No player start found."));
 }

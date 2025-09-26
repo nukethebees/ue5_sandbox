@@ -2,12 +2,42 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Math/Color.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "TiledCubeActor.generated.h"
 
 class UMaterialInstanceDynamic;
 class UStaticMeshComponent;
+
+USTRUCT(BlueprintType)
+struct FTiledCubeActorMaterialParams {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    FLinearColor base_colour{0.1f, 0.1f, 0.1f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    FLinearColor emissive_colour{0.0f, 1.0f, 1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float metallic{0.1f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float specular{0.2f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float roughness{0.2f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    UTexture2D* face_texture{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    UMaterialInterface* face_material{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    UMaterialInterface* edge_material{nullptr};
+};
 
 UCLASS()
 class SANDBOX_API ATiledCubeActor
@@ -19,29 +49,43 @@ class SANDBOX_API ATiledCubeActor
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
   public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
-    float width{1.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
-    float height{1.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
-    float depth{1.0f};
+    struct Constants {
+#define MAKE_CONST(NAME)                \
+    static auto NAME() {                \
+        static FName text{TEXT(#NAME)}; \
+        return text;                    \
+    }
+        MAKE_CONST(tiling_u)
+        MAKE_CONST(tiling_v)
+        MAKE_CONST(face_texture)
+        MAKE_CONST(metallic)
+        MAKE_CONST(specular)
+        MAKE_CONST(roughness)
+        MAKE_CONST(base_colour)
+        MAKE_CONST(emissive_colour)
+#undef MAKE_CONST
+    };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float tile_width{1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float tile_height{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float tile_depth{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float n_tiles_width{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float n_tiles_height{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    FTiledCubeActorMaterialParams material{};
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    UStaticMeshComponent* cube_mesh;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
-    UMaterialInterface* face_material;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
-    UMaterialInterface* edge_material;
+    UStaticMeshComponent* cube_mesh{nullptr};
 
     UPROPERTY(Transient)
     UMaterialInstanceDynamic* face_material_inst;
