@@ -27,6 +27,7 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& Ow
         nav_sys->GetRandomReachablePointInRadius(actor_location, radius, random_point)};
 
     if (!found) {
+        UE_LOG(LogTemp, Warning, TEXT("No point found."));
         return EBTNodeResult::Failed;
     }
 
@@ -37,8 +38,9 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& Ow
     FPathFollowingRequestResult result{ai_controller->MoveTo(move_request)};
 
     if (result.Code == EPathFollowingRequestResult::RequestSuccessful) {
-        return EBTNodeResult::InProgress;
+        return EBTNodeResult::Succeeded;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("Task failed."));
     return EBTNodeResult::Failed;
 }
