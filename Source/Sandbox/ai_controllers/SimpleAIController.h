@@ -17,6 +17,7 @@ class UAIPerceptionComponent;
 class UBehaviorTreeComponent;
 class UBlackboardComponent;
 class UBehaviorTree;
+class UAISenseConfig_Sight;
 
 UCLASS()
 class SANDBOX_API ASimpleAIController
@@ -27,6 +28,9 @@ class SANDBOX_API ASimpleAIController
     ASimpleAIController();
   protected:
     virtual void BeginPlay() override;
+
+    UFUNCTION()
+    void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
@@ -39,6 +43,9 @@ class SANDBOX_API ASimpleAIController
 
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBehaviorTree* behavior_tree{nullptr};
+
+    UPROPERTY(VisibleAnywhere, Category = "AI")
+    UAISenseConfig_Sight* sight_config;
   private:
     FTimerHandle wander_timer;
 };
