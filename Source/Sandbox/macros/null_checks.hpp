@@ -5,3 +5,11 @@
         UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is null."); \
         return;                                             \
     }
+
+// TRY_INIT_PTR but for Behaviour Tree tasks
+#define TRY_INIT_BTTASK_PTR(PTR_NAME, PTR_EXPR)             \
+    auto PTR_NAME{PTR_EXPR};                                \
+    if (!PTR_NAME) {                                        \
+        UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is null."); \
+        return EBTNodeResult::Failed;                       \
+    }

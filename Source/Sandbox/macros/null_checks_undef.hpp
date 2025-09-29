@@ -1,1 +1,2 @@
 #undef TRY_INIT_PTR
+#undef TRY_INIT_BTTASK_PTR

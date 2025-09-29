@@ -27,16 +27,6 @@ class SANDBOX_API ASimpleAIController
     ASimpleAIController();
   protected:
     virtual void BeginPlay() override;
-    virtual void OnMoveCompleted(FAIRequestID RequestID,
-                                 FPathFollowingResult const& Result) override;
-
-    void choose_new_target();
-
-    UPROPERTY(EditAnywhere, Category = "AI")
-    float wander_radius{1000.0f};
-
-    UPROPERTY(EditAnywhere, Category = "AI")
-    float wander_interval{3.0f};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
