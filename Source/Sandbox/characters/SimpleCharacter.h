@@ -10,7 +10,7 @@
 UCLASS()
 class SANDBOX_API ASimpleCharacter
     : public ACharacter
-    , public ml::LogMsgMixin<"SimpleCharacter"> {
+    , public ml::LogMsgMixin<"ASimpleCharacter"> {
     GENERATED_BODY()
   public:
     ASimpleCharacter();
