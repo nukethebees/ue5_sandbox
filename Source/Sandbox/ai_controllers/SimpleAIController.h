@@ -1,10 +1,22 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "AIController.h"
+#include "CoreMinimal.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "SimpleAIController.generated.h"
+
+UENUM(BlueprintType)
+enum class ESimpleAIState : uint8 {
+    Wandering UMETA(DisplayName = "Wandering"),
+    Following UMETA(DisplayName = "Following"),
+    Investigating UMETA(DisplayName = "Investigating")
+};
+
+class UAIPerceptionComponent;
+class UBehaviorTreeComponent;
+class UBlackboardComponent;
+class UBehaviorTree;
 
 UCLASS()
 class SANDBOX_API ASimpleAIController
@@ -25,6 +37,18 @@ class SANDBOX_API ASimpleAIController
 
     UPROPERTY(EditAnywhere, Category = "AI")
     float wander_interval{3.0f};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+    UAIPerceptionComponent* ai_perception{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UBehaviorTreeComponent* behavior_tree_component{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UBlackboardComponent* blackboard_component{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UBehaviorTree* behavior_tree{nullptr};
   private:
     FTimerHandle wander_timer;
 };
