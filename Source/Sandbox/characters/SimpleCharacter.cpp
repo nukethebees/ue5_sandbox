@@ -3,7 +3,7 @@
 #include "Sandbox/ai_controllers/SimpleAIController.h"
 
 ASimpleCharacter::ASimpleCharacter() {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     AIControllerClass = ASimpleAIController::StaticClass();
 }
