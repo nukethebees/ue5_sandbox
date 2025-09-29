@@ -1,6 +1,10 @@
 #include "Sandbox/ai_controllers/SimpleAIController.h"
 
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "NavigationSystem.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "Sandbox/macros/null_checks.hpp"
 
 ASimpleAIController::ASimpleAIController() {}
@@ -8,13 +12,18 @@ ASimpleAIController::ASimpleAIController() {}
 void ASimpleAIController::BeginPlay() {
     Super::BeginPlay();
 
+    behavior_tree_component =
+        CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
+    blackboard_component =
+        CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
+    ai_perception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
+
+    TRY_INIT_PTR(world, GetWorld());
+
     constexpr float timer_delay{1.0f};
     constexpr bool repeat_timer{false};
-
-    if (auto* world{GetWorld()}) {
-        world->GetTimerManager().SetTimer(
-            wander_timer, this, &ASimpleAIController::choose_new_target, timer_delay, repeat_timer);
-    }
+    world->GetTimerManager().SetTimer(
+        wander_timer, this, &ASimpleAIController::choose_new_target, timer_delay, repeat_timer);
 }
 void ASimpleAIController::OnMoveCompleted(FAIRequestID RequestID,
                                           FPathFollowingResult const& Result) {
