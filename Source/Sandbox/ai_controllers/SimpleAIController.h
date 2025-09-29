@@ -2,16 +2,10 @@
 
 #include "AIController.h"
 #include "CoreMinimal.h"
+#include "Sandbox/data/SimpleAIState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "SimpleAIController.generated.h"
-
-UENUM(BlueprintType)
-enum class ESimpleAIState : uint8 {
-    Wandering UMETA(DisplayName = "Wandering"),
-    Following UMETA(DisplayName = "Following"),
-    Investigating UMETA(DisplayName = "Investigating")
-};
 
 class UAIPerceptionComponent;
 class UBehaviorTreeComponent;
@@ -46,6 +40,4 @@ class SANDBOX_API ASimpleAIController
 
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UAISenseConfig_Sight* sight_config;
-  private:
-    FTimerHandle wander_timer;
 };
