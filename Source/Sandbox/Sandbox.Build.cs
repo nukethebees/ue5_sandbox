@@ -10,7 +10,7 @@ public class Sandbox : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "RenderCore",
-            "Slate", "SlateCore", "Niagara"
+            "Slate", "SlateCore", "Niagara", "AIModule"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
