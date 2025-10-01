@@ -21,7 +21,6 @@ void AObjectPoolWarmer::BeginPlay() {
     }
 
     for (auto const& config : bullet_pool_warmups) {
-        log_warning(TEXT("Preallocating."));
         pool->preallocate<FBulletPoolConfig>(
             TSubclassOf<typename FBulletPoolConfig::ActorType>(config.actor_class), config.count);
     }

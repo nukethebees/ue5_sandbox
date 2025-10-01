@@ -145,11 +145,14 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     template <typename Config>
     void preallocate(TSubclassOf<typename Config::ActorType> subclass, int32 count) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::preallocate"))
         add_pool_members<Config>(subclass, count);
     }
   private:
     template <typename Config>
     typename Config::ActorType* spawn_actor(TSubclassOf<typename Config::ActorType> actor_class) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::spawn_actor"))
+        
         auto* world{world_.Get()};
         if (!world) {
             return nullptr;
@@ -181,6 +184,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     template <typename Config>
     void add_pool_members(TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::add_pool_members"))
         static constexpr auto logger{NestedLogger<"add_pool_members">()};
 
         if (!world_.IsValid()) {
