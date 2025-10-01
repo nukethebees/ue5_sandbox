@@ -47,6 +47,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Lazy spawn if free list is empty
         if (subclass_data.freelist.IsEmpty()) {
+            logger.log_warning(TEXT("Free list is empty."));
             if (!extend_pool<Config>(actor_class, subclass_data.freelist)) {
                 logger.log_warning(TEXT("Couldn't extend the pool."));
                 return nullptr;
@@ -58,9 +59,10 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         auto* actor{pool[pool_idx].Get()};
         actor->Activate();
 
-        logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d"),
+        logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d (%d free)"),
                                 *ActorUtils::GetBestDisplayName(actor),
-                                pool_idx);
+                                pool_idx,
+                                subclass_data.freelist.Num());
 
         return actor;
     }
@@ -97,7 +99,9 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         item->Deactivate();
         subclass_data.freelist.Push(pool_idx);
 
-        logger.log_very_verbose(TEXT("Returned actor to pool at index %d"), pool_idx);
+        logger.log_very_verbose(TEXT("Returned actor to pool at index %d. (%d free)"),
+                                pool_idx,
+                                subclass_data.freelist.Num());
     }
 
     template <typename Config>
@@ -134,8 +138,11 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
                     return false;
                 }
                 new_items = max_size - current_size;
+                target_size = max_size;
             }
         }
+
+        logger.log_display(TEXT("Extending pool by %d to %d objects."), new_items, target_size);
 
         add_pool_members<Config>(actor_class, new_items);
 

@@ -88,19 +88,6 @@ void ABulletActor::Activate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Activate"))
     static constexpr auto LOG{NestedLogger<"Activate">()};
 
-    LOG.log_very_verbose(TEXT("Start"));
-
-    if (collision_component) {
-        collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    } else {
-        LOG.log_warning(TEXT("collision_component is nullptr"));
-    }
-
-    if (mesh_component) {
-        mesh_component->SetVisibility(true);
-    } else {
-        LOG.log_warning(TEXT("mesh_component is nullptr"));
-    }
     if (projectile_movement) {
         projectile_movement->Activate();
         projectile_movement->Velocity = FVector::ZeroVector;
@@ -115,20 +102,6 @@ void ABulletActor::Activate() {
 void ABulletActor::Deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Deactivate"))
     static constexpr auto LOG{NestedLogger<"Deactivate">()};
-
-    LOG.log_very_verbose(TEXT("Start"));
-
-    if (collision_component) {
-        collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    } else {
-        LOG.log_warning(TEXT("collision_component is nullptr"));
-    }
-
-    if (mesh_component) {
-        mesh_component->SetVisibility(false);
-    } else {
-        LOG.log_warning(TEXT("mesh_component is nullptr"));
-    }
 
     if (projectile_movement) {
         projectile_movement->Deactivate();
