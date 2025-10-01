@@ -9,5 +9,5 @@ void UObjectPoolSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 
     TRY_INIT_PTR(world, GetWorld());
 
-    core_.initialize_pools(*world);
+    core_.initialize_pools(*world, std::move(subclasses));
 }

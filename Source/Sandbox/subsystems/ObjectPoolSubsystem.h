@@ -22,6 +22,9 @@ class SANDBOX_API UObjectPoolSubsystem : public UWorldSubsystem {
     void ReturnItem(typename Config::ActorType* item) {
         core_.ReturnItem<Config>(item);
     }
+  protected:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pooling")
+    TArray<TSubclassOf<AActor>> subclasses;
   private:
     UObjectPoolSubsystemCore<FBulletPoolConfig> core_{};
 };

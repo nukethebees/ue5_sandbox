@@ -26,10 +26,23 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     static constexpr auto n_configs{sizeof...(Configs)};
 
-    UObjectPoolSubsystemCore() { free_indexes_.SetNum(static_cast<int32>(n_configs)); }
+    UObjectPoolSubsystemCore() {
+        constexpr auto n{static_cast<int32>(n_configs)};
+        free_indexes_.SetNum(n);
+    }
 
-    void initialize_pools(UWorld& world) {
+    void initialize_pools(UWorld& world, TArray<TSubclassOf<AActor>>&& subclasses) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::initialize_pools"))
+
+        constexpr auto expected_n_subclasses{static_cast<int32>(n_configs)};
+        auto const n_subclasses{subclasses.Num()};
+        if (expected_n_subclasses != n_subclasses) {
+            log_warning(
+                TEXT("Expected %d subclasses, got %d."), expected_n_subclasses, n_subclasses);
+            return;
+        }
+
+        subclasses_ = std::move(subclasses);
 
         if (initialized_) {
             log_warning(TEXT("Pools already initialized"));
@@ -241,6 +254,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
 
     pools_type pools_;
+    TArray<TSubclassOf<AActor>> subclasses_;
     TArray<indexes_type> free_indexes_;
     TWeakObjectPtr<UWorld> world_;
     bool initialized_{false};
