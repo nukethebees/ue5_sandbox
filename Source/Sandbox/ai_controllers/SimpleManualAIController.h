@@ -1,9 +1,12 @@
 #pragma once
 
+#include <optional>
 #include <utility>
 
 #include "AIController.h"
 #include "CoreMinimal.h"
+#include "Misc/Optional.h"
+
 #include "Sandbox/data/SimpleAIState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
@@ -18,6 +21,7 @@ enum class ESimpleManualAIState : uint8 {
     Wandering UMETA(DisplayName = "Wandering"),
     Following UMETA(DisplayName = "Following"),
     Moving UMETA(DisplayName = "Moving"),
+    MovingToLastKnownLocation UMETA(DisplayName = "MovingToLastKnownLocation"),
     Stuck UMETA(DisplayName = "Stuck")
 };
 
@@ -44,6 +48,8 @@ USTRUCT()
 struct FSimpleManualAIControllerMemory {
     GENERATED_BODY()
 
+    void print_states() const;
+
     UPROPERTY(VisibleAnywhere)
     ESimpleManualAIState previous_state{ESimpleManualAIState::Idle};
 
@@ -55,6 +61,9 @@ struct FSimpleManualAIControllerMemory {
 
     UPROPERTY(VisibleAnywhere)
     AActor* target{nullptr};
+
+    UPROPERTY(VisibleAnywhere)
+    TOptional<FVector> last_known_location{NullOpt};
 };
 
 UCLASS()
@@ -82,6 +91,7 @@ class SANDBOX_API ASimpleManualAIController
     void fsm_wandering(float delta_time);
     void fsm_following(float delta_time);
     void fsm_moving(float delta_time);
+    void fsm_moving_to_last_known_location(float delta_time);
     void fsm_stuck(float delta_time);
 
     void wait_for_time(auto&& callback, float wait_time) {
@@ -90,6 +100,8 @@ class SANDBOX_API ASimpleManualAIController
         GetWorld()->GetTimerManager().SetTimer(
             wait_timer, std::forward<decltype(callback)>(callback), wait_time, repeat);
     }
+    void move_to_location(FVector location);
+    void handle_successful_move();
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
