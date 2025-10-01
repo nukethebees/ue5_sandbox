@@ -27,14 +27,19 @@ void ABulletSpawner::Tick(float DeltaTime) {
 void ABulletSpawner::spawn_bullet() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletSpawner::spawn_bullet"))
 
-    if (!bullet_class || !fire_point) {
+    if (!bullet_class) {
+        log_warning(TEXT("bullet_class is nullptr."));
+        return;
+    }
+    if (!fire_point) {
+        log_warning(TEXT("fire_point is nullptr."));
         return;
     }
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
 
-    AActor* bullet{nullptr};
+    ABulletActor* bullet{nullptr};
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
         bullet = pool->get_item<FBulletPoolConfig>(bullet_class);
@@ -46,7 +51,7 @@ void ABulletSpawner::spawn_bullet() {
 
         FActorSpawnParameters spawn_params{};
         spawn_params.Owner = this;
-        bullet = GetWorld()->SpawnActor<AActor>(
+        bullet = GetWorld()->SpawnActor<ABulletActor>(
             bullet_class, spawn_location, spawn_rotation, spawn_params);
     }
 
@@ -56,9 +61,13 @@ void ABulletSpawner::spawn_bullet() {
         if (auto* movement{bullet->FindComponentByClass<UProjectileMovementComponent>()}) {
             movement->InitialSpeed = bullet_speed;
             movement->MaxSpeed = bullet_speed;
+
             auto velocity_unit{spawn_rotation.Vector()};
             velocity_unit.Normalize();
+
             movement->Velocity = velocity_unit * bullet_speed;
+
+            log_very_verbose(TEXT("Setting velocity to %s"), *movement->Velocity.ToString());
         } else {
             log_warning(TEXT("UProjectileMovementComponent is nullptr"));
         }

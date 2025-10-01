@@ -4,10 +4,12 @@
 
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
+
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 #include "Sandbox/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 ABulletActor::ABulletActor() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))
@@ -54,6 +56,8 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::on_hit"))
     static constexpr auto LOG{NestedLogger<"on_hit">()};
 
+    log_very_verbose(TEXT("Hit occurred."));
+
     if (impact_effect) {
         auto const impact_location{Hit.Location};
         auto const impact_rotation{UKismetMathLibrary::MakeRotFromZ(Hit.Normal)};
@@ -69,13 +73,13 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
             }
         }
     } else {
-        log_warning(TEXT("No OtherActor"));
+        LOG.log_warning(TEXT("No OtherActor"));
     }
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
         pool->return_item<FBulletPoolConfig>(this);
     } else {
-        log_warning(TEXT("No object pool subsystem, destroying instead"));
+        LOG.log_warning(TEXT("No object pool subsystem, destroying instead"));
         Destroy();
     }
 }
@@ -83,6 +87,8 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
 void ABulletActor::Activate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Activate"))
     static constexpr auto LOG{NestedLogger<"Activate">()};
+
+    LOG.log_very_verbose(TEXT("Start"));
 
     if (collision_component) {
         collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -109,6 +115,8 @@ void ABulletActor::Activate() {
 void ABulletActor::Deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Deactivate"))
     static constexpr auto LOG{NestedLogger<"Deactivate">()};
+
+    LOG.log_very_verbose(TEXT("Start"));
 
     if (collision_component) {
         collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
