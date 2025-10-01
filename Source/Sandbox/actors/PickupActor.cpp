@@ -5,8 +5,10 @@
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;
 
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
-    RootComponent = collision_component;
+    collision_component->SetupAttachment(RootComponent);
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
     collision_component->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
