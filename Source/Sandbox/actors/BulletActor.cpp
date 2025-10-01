@@ -8,6 +8,8 @@
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
 
 ABulletActor::ABulletActor() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))
+
     PrimaryActorTick.bCanEverTick = false;
 
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
@@ -31,6 +33,8 @@ ABulletActor::ABulletActor() {
 }
 
 void ABulletActor::BeginPlay() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::BeginPlay"))
+
     Super::BeginPlay();
 
     // Bind to collision event
@@ -44,6 +48,8 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
                           UPrimitiveComponent* OtherComponent,
                           FVector NormalImpulse,
                           FHitResult const& Hit) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::on_hit"))
+
     if (impact_effect) {
         auto const impact_location{Hit.Location};
         auto const impact_rotation{UKismetMathLibrary::MakeRotFromZ(Hit.Normal)};
