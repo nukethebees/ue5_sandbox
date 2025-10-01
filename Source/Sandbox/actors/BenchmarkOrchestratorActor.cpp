@@ -32,6 +32,14 @@ void ABenchmarkOrchestratorActor::BeginPlay() {
                                     benchmark_duration_seconds,
                                     false);
 }
+void ABenchmarkOrchestratorActor::EndPlay(EEndPlayReason::Type const EndPlayReason) {
+    Super::EndPlay(EndPlayReason);
+
+    if (trace_timer_handle.IsValid()) {
+        GetWorldTimerManager().ClearTimer(trace_timer_handle);
+    }
+    stop_trace();
+}
 
 void ABenchmarkOrchestratorActor::start_trace() {
 #if UE_TRACE_ENABLED

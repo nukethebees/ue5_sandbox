@@ -3,6 +3,8 @@
 #include "Sandbox/actors/BulletSpawner.h"
 
 #include "Sandbox/actors/BulletActor.h"
+#include "Sandbox/data/pool/PoolConfig.h"
+#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
 
 ABulletSpawner::ABulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;
@@ -32,15 +34,30 @@ void ABulletSpawner::spawn_bullet() {
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
 
-    FActorSpawnParameters spawn_params{};
-    spawn_params.Owner = this;
+    AActor* bullet{nullptr};
 
-    auto* bullet{
-        GetWorld()->SpawnActor<AActor>(bullet_class, spawn_location, spawn_rotation, spawn_params)};
+    if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
+        bullet = pool->GetItem<FBulletPoolConfig>();
+    }
+
+    // Fallback to SpawnActor if pool unavailable or exhausted
+    if (!bullet) {
+        log_warning(TEXT("Failed to spawn a bullet."));
+
+        FActorSpawnParameters spawn_params{};
+        spawn_params.Owner = this;
+        bullet = GetWorld()->SpawnActor<AActor>(
+            bullet_class, spawn_location, spawn_rotation, spawn_params);
+    }
+
     if (bullet) {
+        bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
+
         if (auto* movement{bullet->FindComponentByClass<UProjectileMovementComponent>()}) {
             movement->InitialSpeed = bullet_speed;
             movement->MaxSpeed = bullet_speed;
         }
+    } else {
+        log_warning(TEXT("No bullet to move."));
     }
 }
