@@ -14,14 +14,10 @@ class SANDBOX_API UInteractorComponent
     GENERATED_BODY()
   public:
     UInteractorComponent();
-  protected:
-    virtual void BeginPlay() override;
   public:
     UFUNCTION(BlueprintCallable)
     void try_interact();
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    TObjectPtr<UInputAction> interact_action;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float interaction_cooldown{0.1f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")

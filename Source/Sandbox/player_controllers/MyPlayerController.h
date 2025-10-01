@@ -39,6 +39,9 @@ struct FMyPlayerControllerInputActions {
     UInputAction* mouse_click{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* warp_to_cursor{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* interact{nullptr};
 };
 
 UCLASS()
@@ -67,6 +70,8 @@ class SANDBOX_API AMyPlayerController
     void mouse_click(FInputActionValue const& value);
     UFUNCTION()
     void warp_to_cursor(FInputActionValue const& value);
+    UFUNCTION()
+    void interact();
 
     UPROPERTY()
     AMyCharacter* controlled_character;
