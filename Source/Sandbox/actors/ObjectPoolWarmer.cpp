@@ -16,28 +16,13 @@ void AObjectPoolWarmer::BeginPlay() {
 
     auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()};
     if (!pool) {
+        log_warning(TEXT("UObjectPoolSubsystem is nullptr."));
         return;
     }
 
-    //// Pre-warm bullet pools
-    // for (auto const& config : BulletPoolWarmups) {
-    //     if (!config.ActorClass) {
-    //         continue;
-    //     }
-    //
-    //     TArray<AActor*> spawned_items{};
-    //     spawned_items.Reserve(config.Count);
-    //
-    //     // Request items to force pool to spawn them
-    //     for (int32 i{0}; i < config.Count; ++i) {
-    //         if (auto* item{pool->GetItem<FBulletPoolConfig>(config.ActorClass)}) {
-    //             spawned_items.Add(item);
-    //         }
-    //     }
-    //
-    //     // Return all items to pool
-    //     for (auto* item : spawned_items) {
-    //         pool->ReturnItem<FBulletPoolConfig>(Cast<ABulletActor>(item));
-    //     }
-    // }
+    for (auto const& config : bullet_pool_warmups) {
+        log_warning(TEXT("Preallocating."));
+        pool->preallocate<FBulletPoolConfig>(
+            TSubclassOf<typename FBulletPoolConfig::ActorType>(config.actor_class), config.count);
+    }
 }
