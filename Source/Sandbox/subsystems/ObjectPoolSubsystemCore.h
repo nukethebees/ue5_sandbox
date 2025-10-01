@@ -16,6 +16,12 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
   public:
     using free_list_type = TArray<int32>;
 
+    struct SubclassPoolData {
+        TArray<int32>& freelist;
+        int32& count;
+        int32 index;
+    };
+
     UObjectPoolSubsystemCore(UWorld& world)
         : world{world} {}
 
@@ -36,19 +42,19 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
             return nullptr;
         }
 
-        auto& freelist{get_freelist<Config>(actor_class)};
+        auto subclass_data{get_subclass_data<Config>(actor_class)};
         auto& pool{get_pool<Config>()};
 
         // Lazy spawn if free list is empty
-        if (freelist.IsEmpty()) {
-            if (!extend_pool<Config>(actor_class, freelist)) {
+        if (subclass_data.freelist.IsEmpty()) {
+            if (!extend_pool<Config>(actor_class, subclass_data.freelist)) {
                 logger.log_warning(TEXT("Couldn't extend the pool."));
                 return nullptr;
             }
         }
 
         // Reuse from pool
-        auto const pool_idx{freelist.Pop()};
+        auto const pool_idx{subclass_data.freelist.Pop()};
         auto* actor{pool[pool_idx].Get()};
         actor->Activate();
 
@@ -80,25 +86,16 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Look up which free list this actor's class belongs to
         auto actor_class{item->GetClass()};
-        auto* freelist_idx_ptr{subclass_to_index_.Find(actor_class)};
-
-        if (!freelist_idx_ptr) {
-            logger.log_error(TEXT("No free list found for actor class %s"),
-                             *actor_class->GetName());
-            return;
-        }
-
-        auto freelist_idx{*freelist_idx_ptr};
-        auto& freelist{free_indexes_[freelist_idx]};
+        auto subclass_data{get_subclass_data<Config>(actor_class)};
 
         // Check for double-return
-        if (freelist.Contains(pool_idx)) {
+        if (subclass_data.freelist.Contains(pool_idx)) {
             logger.log_error(TEXT("Attempted to return already-free item at index %d"), pool_idx);
             return;
         }
 
         item->Deactivate();
-        freelist.Push(pool_idx);
+        subclass_data.freelist.Push(pool_idx);
 
         logger.log_very_verbose(TEXT("Returned actor to pool at index %d"), pool_idx);
     }
@@ -121,8 +118,8 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::extend_pool"))
         static constexpr auto logger{NestedLogger<"extend_pool">()};
 
-        auto& pool{get_pool<Config>()};
-        auto const current_size{pool.Num()};
+        auto subclass_data{get_subclass_data<Config>(actor_class)};
+        auto const current_size{subclass_data.count};
 
         // Calculate 1.5x growth
         auto new_items{FMath::Max(1, current_size / 2)};
@@ -156,7 +153,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         }
 
         auto& pool{get_pool<Config>()};
-        auto& free_idxs{get_freelist<Config>(actor_class)};
+        auto subclass_data{get_subclass_data<Config>(actor_class)};
 
         FActorSpawnParameters params{};
         params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -176,17 +173,19 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
             actor->Deactivate();
 
             auto const added_idx{pool.Add(actor)};
-            free_idxs.Push(added_idx);
+            subclass_data.freelist.Push(added_idx);
             ++added;
         }
+
+        subclass_data.count += added;
 
         logger.log_verbose(TEXT("Added %d actors to pool"), added);
     }
 
     template <typename Config>
-    auto& get_freelist(TSubclassOf<typename Config::ActorType> actor_class) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_freelist"))
-        static constexpr auto logger{NestedLogger<"get_freelist">()};
+    SubclassPoolData get_subclass_data(TSubclassOf<typename Config::ActorType> actor_class) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_subclass_data"))
+        static constexpr auto logger{NestedLogger<"get_subclass_data">()};
 
         int32* freelist_idx_ptr{subclass_to_index_.Find(actor_class)};
         int32 freelist_idx{-1};
@@ -195,17 +194,20 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
             // First time seeing this actor_class, create free list
             freelist_idx = free_indexes_.Add(TArray<int32>{});
             subclass_to_index_.Add(actor_class, freelist_idx);
+            subclass_index_count_.Add(0);
             logger.log_verbose(
                 TEXT("Created free list %d for class %s"), freelist_idx, *actor_class->GetName());
         } else {
             freelist_idx = *freelist_idx_ptr;
         }
 
-        return free_indexes_[freelist_idx];
+        return SubclassPoolData{
+            free_indexes_[freelist_idx], subclass_index_count_[freelist_idx], freelist_idx};
     }
 
     std::tuple<TArray<TObjectPtr<typename Configs::ActorType>>...> pools_;
     TMap<TSubclassOf<AActor>, int32> subclass_to_index_;
     TArray<free_list_type> free_indexes_;
+    TArray<int32> subclass_index_count_;
     UWorld& world;
 };
