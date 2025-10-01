@@ -37,7 +37,7 @@ void ABulletSpawner::spawn_bullet() {
     AActor* bullet{nullptr};
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
-        bullet = pool->GetItem<FBulletPoolConfig>();
+        bullet = pool->GetItem<FBulletPoolConfig>(bullet_class);
     }
 
     // Fallback to SpawnActor if pool unavailable or exhausted
@@ -56,6 +56,11 @@ void ABulletSpawner::spawn_bullet() {
         if (auto* movement{bullet->FindComponentByClass<UProjectileMovementComponent>()}) {
             movement->InitialSpeed = bullet_speed;
             movement->MaxSpeed = bullet_speed;
+            auto velocity_unit{spawn_rotation.Vector()};
+            velocity_unit.Normalize();
+            movement->Velocity = velocity_unit * bullet_speed;
+        } else {
+            log_warning(TEXT("UProjectileMovementComponent is nullptr"));
         }
     } else {
         log_warning(TEXT("No bullet to move."));

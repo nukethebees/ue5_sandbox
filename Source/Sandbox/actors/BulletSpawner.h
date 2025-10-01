@@ -8,6 +8,8 @@
 
 #include "BulletSpawner.generated.h"
 
+class ABulletActor;
+
 UCLASS()
 class SANDBOX_API ABulletSpawner
     : public AActor
@@ -21,7 +23,8 @@ class SANDBOX_API ABulletSpawner
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     float bullet_speed{5000.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    TSubclassOf<AActor> bullet_class;
+    // TSubclassOf<AActor> bullet_class;
+    TSubclassOf<ABulletActor> bullet_class;
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     USceneComponent* fire_point{nullptr};

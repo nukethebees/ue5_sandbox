@@ -52,6 +52,7 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **Const placement**: Right of type - `int* const x{nullptr};`
 - **auto usage**: Use everywhere unless explicit type is genuinely needed for a particular reason
 - **const correctness**: Apply where appropriate, but don't force const on values that need to be mutable
+- **Prefer references to pointers**: Use references instead of pointers where possible - `void foo(UWorld& world)` instead of `void foo(UWorld* world)` when the parameter cannot be null
 - **Always use braces**: Even for single-line blocks - `if (x) { return; }`
 - **Switch case braces**: Always use braces for switch case blocks - `case Foo: { statements; break; }`
 - **No magic numbers**: Use `static constexpr` variables instead of literal numbers - `DrawDebugBox(..., debug_line_thickness)` not `DrawDebugBox(..., 2.0f)`
