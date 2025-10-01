@@ -21,6 +21,9 @@ class SANDBOX_API ABulletActor
     GENERATED_BODY()
   public:
     ABulletActor();
+
+    void Activate();
+    void Deactivate();
   protected:
     virtual void BeginPlay() override;
 

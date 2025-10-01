@@ -4,10 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 #include "BulletSpawner.generated.h"
 
 UCLASS()
-class SANDBOX_API ABulletSpawner : public AActor {
+class SANDBOX_API ABulletSpawner
+    : public AActor
+    , public ml::LogMsgMixin<"ABulletSpawner"> {
     GENERATED_BODY()
   public:
     ABulletSpawner();

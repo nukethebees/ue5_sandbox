@@ -5,7 +5,9 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/subsystems/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
 
 ABulletActor::ABulletActor() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))
@@ -34,6 +36,7 @@ ABulletActor::ABulletActor() {
 
 void ABulletActor::BeginPlay() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::BeginPlay"))
+    static constexpr auto LOG{NestedLogger<"BeginPlay">()};
 
     Super::BeginPlay();
 
@@ -49,6 +52,7 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
                           FVector NormalImpulse,
                           FHitResult const& Hit) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::on_hit"))
+    static constexpr auto LOG{NestedLogger<"on_hit">()};
 
     if (impact_effect) {
         auto const impact_location{Hit.Location};
@@ -68,5 +72,64 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
         log_warning(TEXT("No OtherActor"));
     }
 
-    Destroy();
+    if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
+        pool->ReturnItem<FBulletPoolConfig>(this);
+    } else {
+        log_warning(TEXT("No object pool subsystem, destroying instead"));
+        Destroy();
+    }
+}
+
+void ABulletActor::Activate() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Activate"))
+    static constexpr auto LOG{NestedLogger<"Activate">()};
+
+    if (collision_component) {
+        collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    } else {
+        LOG.log_warning(TEXT("collision_component is nullptr"));
+    }
+
+    if (mesh_component) {
+        mesh_component->SetVisibility(true);
+    } else {
+        LOG.log_warning(TEXT("mesh_component is nullptr"));
+    }
+    if (projectile_movement) {
+        projectile_movement->Activate();
+        projectile_movement->Velocity = FVector::ZeroVector;
+    } else {
+        LOG.log_warning(TEXT("projectile_movement is nullptr"));
+    }
+
+    SetActorHiddenInGame(false);
+    SetActorEnableCollision(true);
+}
+
+void ABulletActor::Deactivate() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Deactivate"))
+    static constexpr auto LOG{NestedLogger<"Deactivate">()};
+
+    if (collision_component) {
+        collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    } else {
+        LOG.log_warning(TEXT("collision_component is nullptr"));
+    }
+
+    if (mesh_component) {
+        mesh_component->SetVisibility(false);
+    } else {
+        LOG.log_warning(TEXT("mesh_component is nullptr"));
+    }
+
+    if (projectile_movement) {
+        projectile_movement->Deactivate();
+        projectile_movement->Velocity = FVector::ZeroVector;
+    } else {
+        LOG.log_warning(TEXT("projectile_movement is nullptr"));
+    }
+
+    SetActorHiddenInGame(true);
+    SetActorEnableCollision(false);
+    SetActorLocation(FVector::ZeroVector);
 }

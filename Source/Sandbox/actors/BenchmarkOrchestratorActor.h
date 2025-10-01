@@ -16,6 +16,7 @@ class SANDBOX_API ABenchmarkOrchestratorActor : public AActor {
     ABenchmarkOrchestratorActor();
   protected:
     virtual void BeginPlay() override;
+    virtual void EndPlay(EEndPlayReason::Type const EndPlayReason) override;
 
     UPROPERTY(EditAnywhere, Category = "Benchmark")
     float benchmark_duration_seconds{10.0f};
