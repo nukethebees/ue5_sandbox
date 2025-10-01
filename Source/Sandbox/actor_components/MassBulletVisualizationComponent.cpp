@@ -17,9 +17,9 @@ void UMassBulletVisualizationComponent::BeginPlay() {
     }
 }
 
-int32 UMassBulletVisualizationComponent::add_instance(FTransform const& transform) {
+std::optional<int32> UMassBulletVisualizationComponent::add_instance(FTransform const& transform) {
     if (!ismc) {
-        return -1;
+        return std::nullopt;
     }
 
     if (free_indices.Num() > 0) {
@@ -33,13 +33,13 @@ int32 UMassBulletVisualizationComponent::add_instance(FTransform const& transfor
 
 void UMassBulletVisualizationComponent::update_instance(int32 instance_index,
                                                         FTransform const& transform) {
-    if (ismc && instance_index >= 0) {
+    if (ismc) {
         ismc->UpdateInstanceTransform(instance_index, transform, true, true);
     }
 }
 
 void UMassBulletVisualizationComponent::remove_instance(int32 instance_index) {
-    if (ismc && instance_index >= 0) {
+    if (ismc) {
         free_indices.Add(instance_index);
         ismc->UpdateInstanceTransform(
             instance_index, FTransform{FVector{0.0f, 0.0f, -10000.0f}}, true, true);
