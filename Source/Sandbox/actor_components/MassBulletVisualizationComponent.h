@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Components/ActorComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "CoreMinimal.h"
@@ -14,7 +16,7 @@ class SANDBOX_API UMassBulletVisualizationComponent : public UActorComponent {
   public:
     UMassBulletVisualizationComponent();
 
-    int32 add_instance(FTransform const& transform);
+    std::optional<int32> add_instance(FTransform const& transform);
     void update_instance(int32 instance_index, FTransform const& transform);
     void remove_instance(int32 instance_index);
 

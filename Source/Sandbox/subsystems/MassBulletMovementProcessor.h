@@ -15,21 +15,22 @@ struct FMassBulletMovementExecutor : public UE::Mass::FQueryExecutor {
 
     UE::Mass::FQueryDefinition<UE::Mass::FMutableFragmentAccess<FMassBulletTransformFragment>,
                                UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>>
-        Accessors{*this};
+        accessors{*this};
 
-    virtual void Execute(FMassExecutionContext& Context) {
-        constexpr auto executor{[](FMassExecutionContext& Context, auto& Data, uint32 EntityIndex) {
-            auto const delta_time{Context.GetDeltaTimeSeconds()};
-            auto const transforms{Context.GetMutableFragmentView<FMassBulletTransformFragment>()};
-            auto const velocities{Context.GetFragmentView<FMassBulletVelocityFragment>()};
+    virtual void Execute(FMassExecutionContext& context) {
+        constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+            auto const delta_time{context.GetDeltaTimeSeconds()};
+            auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
+            auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
 
-            for (auto i{0}; i < Context.GetNumEntities(); ++i) {
+            auto const n{context.GetNumEntities()};
+            for (auto i{0}; i < n; ++i) {
                 auto const displacement{velocities[i].velocity * delta_time};
                 transforms[i].transform.AddToTranslation(displacement);
             }
         }};
 
-        ForEachEntity(Context, Accessors, std::move(executor));
+        ForEachEntity(context, accessors, std::move(executor));
     }
 };
 

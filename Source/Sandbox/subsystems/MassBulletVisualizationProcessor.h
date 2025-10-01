@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MassExecutionContext.h"
 #include "MassProcessor.h"
 #include "MassQueryExecutor.h"
 
+#include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/data/mass/MassBulletFragments.h"
 
 #include "MassBulletVisualizationProcessor.generated.h"
@@ -17,47 +19,40 @@ struct FMassBulletVisualizationExecutor : public UE::Mass::FQueryExecutor {
 
     UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
                                UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>>
-        Accessors{*this};
+        accessors{*this};
 
     UMassBulletVisualizationComponent* visualization_component{nullptr};
 
-    virtual void Execute(FMassExecutionContext& Context) {
-        constexpr auto executor{[](FMassExecutionContext& Context, auto& Data, uint32 EntityIndex) {
+    virtual void Execute(FMassExecutionContext& context) {
+        auto executor{[this](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+            if (!visualization_component) {
+                return;
+            }
 
+            auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
+            auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
+
+            auto const n{context.GetNumEntities()};
+            for (auto i{0}; i < n; ++i) {
+                visualization_component->update_instance(indices[i].instance_index,
+                                                         transforms[i].transform);
+            }
         }};
 
-        ForEachEntity(Context, Accessors, std::move(executor));
+        ForEachEntity(context, accessors, std::move(executor));
     }
 };
-
-// UCLASS()
-// class SANDBOX_API UMassBulletMovementProcessor : public UMassProcessor {
-//     GENERATED_BODY()
-// public:
-//     UMassBulletMovementProcessor() {
-//         executor =
-//             UE::Mass::FQueryExecutor::CreateQuery<FMassBulletMovementExecutor>(entity_query,
-//             this);
-//     }
-// private:
-//     FMassEntityQuery entity_query{};
-//     TSharedPtr<FMassBulletMovementExecutor> executor;
-// };
 
 UCLASS()
 class SANDBOX_API UMassBulletVisualizationProcessor : public UMassProcessor {
     GENERATED_BODY()
   public:
-    UMassBulletVisualizationProcessor();
-
     void set_visualization_component(UMassBulletVisualizationComponent* component);
+    UMassBulletVisualizationProcessor();
   protected:
-    virtual void ConfigureQueries(TSharedRef<FMassEntityManager> const& manager) override;
-    virtual void Execute(FMassEntityManager& EntityManager,
-                         FMassExecutionContext& Context) override;
-  private:
-    FMassEntityQuery entity_query{};
-
     UPROPERTY()
     UMassBulletVisualizationComponent* visualization_component{nullptr};
+  private:
+    FMassEntityQuery entity_query{};
+    TSharedPtr<FMassBulletVisualizationExecutor> executor;
 };
