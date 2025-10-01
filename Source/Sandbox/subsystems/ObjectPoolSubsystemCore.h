@@ -16,24 +16,8 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
   public:
     using free_list_type = TArray<int32>;
 
-    void initialize_pools(UWorld* world) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::initialize_pools"))
-
-        if (initialized_) {
-            log_warning(TEXT("Pools already initialized"));
-            return;
-        }
-
-        if (!world) {
-            log_error(TEXT("Cannot initialize pools without world"));
-            return;
-        }
-
-        world_ = world;
-        initialized_ = true;
-
-        log_verbose(TEXT("Object pools initialized"));
-    }
+    UObjectPoolSubsystemCore(UWorld& world)
+        : world{world} {}
 
     template <typename Config>
     typename Config::ActorType*
@@ -41,11 +25,6 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_item"))
 
         static constexpr auto logger{NestedLogger<"get_item">()};
-
-        if (!initialized_) {
-            logger.log_error(TEXT("Pools not initialized"));
-            return nullptr;
-        }
 
         // Use default class if none specified
         if (!actor_class) {
@@ -124,11 +103,9 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
 
     template <typename Config>
-    void preallocate(UWorld& world,
-                     TSubclassOf<typename Config::ActorType> actor_class,
-                     int32 count) {
+    void preallocate(TSubclassOf<typename Config::ActorType> actor_class, int32 count) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::preallocate"))
-        add_pool_members<Config>(world, actor_class, count);
+        add_pool_members<Config>(actor_class, count);
     }
   private:
     template <typename Config>
@@ -142,12 +119,6 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
                                    free_list_type& free_list) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::extend_pool"))
         static constexpr auto logger{NestedLogger<"extend_pool">()};
-
-        auto* world{world_.Get()};
-        if (!world) {
-            logger.log_error(TEXT("World is invalid"));
-            return false;
-        }
 
         auto& pool{get_pool<Config>()};
         auto const current_size{pool.Num()};
@@ -168,15 +139,13 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
             }
         }
 
-        add_pool_members<Config>(*world, actor_class, new_items);
+        add_pool_members<Config>(actor_class, new_items);
 
         return true;
     }
 
     template <typename Config>
-    void add_pool_members(UWorld& world,
-                          TSubclassOf<typename Config::ActorType> actor_class,
-                          int32 n) {
+    void add_pool_members(TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::add_pool_members"))
         static constexpr auto logger{NestedLogger<"add_pool_members">()};
 
@@ -237,6 +206,5 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     std::tuple<TArray<TObjectPtr<typename Configs::ActorType>>...> pools_;
     TMap<TSubclassOf<AActor>, int32> subclass_to_index_;
     TArray<free_list_type> free_indexes_;
-    TWeakObjectPtr<UWorld> world_;
-    bool initialized_{false};
+    UWorld& world;
 };
