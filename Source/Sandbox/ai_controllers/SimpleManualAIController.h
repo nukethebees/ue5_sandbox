@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "AIController.h"
 #include "CoreMinimal.h"
 #include "Sandbox/data/SimpleAIState.h"
@@ -15,6 +17,7 @@ enum class ESimpleManualAIState : uint8 {
     Idle UMETA(DisplayName = "Idle"),
     Wandering UMETA(DisplayName = "Wandering"),
     Following UMETA(DisplayName = "Following"),
+    Moving UMETA(DisplayName = "Moving"),
     Stuck UMETA(DisplayName = "Stuck")
 };
 
@@ -42,6 +45,9 @@ struct FSimpleManualAIControllerMemory {
     GENERATED_BODY()
 
     UPROPERTY(VisibleAnywhere)
+    ESimpleManualAIState previous_state{ESimpleManualAIState::Idle};
+
+    UPROPERTY(VisibleAnywhere)
     ESimpleManualAIState state{ESimpleManualAIState::Idle};
 
     UPROPERTY(VisibleAnywhere)
@@ -65,6 +71,26 @@ class SANDBOX_API ASimpleManualAIController
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
 
+    virtual void OnMoveCompleted(FAIRequestID RequestID,
+                                 FPathFollowingResult const& Result) override;
+
+    void update_fsm(float delta_time);
+    void move_to_state(ESimpleManualAIState new_state);
+    void move_to_next_state();
+
+    void fsm_idle(float delta_time);
+    void fsm_wandering(float delta_time);
+    void fsm_following(float delta_time);
+    void fsm_moving(float delta_time);
+    void fsm_stuck(float delta_time);
+
+    void wait_for_time(auto&& callback, float wait_time) {
+        constexpr bool repeat{false};
+        log_verbose(TEXT("Waiting for %f seconds."), wait_time);
+        GetWorld()->GetTimerManager().SetTimer(
+            wait_timer, std::forward<decltype(callback)>(callback), wait_time, repeat);
+    }
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
@@ -76,13 +102,6 @@ class SANDBOX_API ASimpleManualAIController
 
     UPROPERTY(VisibleAnywhere, Category = "AI")
     FSimpleManualAIControllerMemory memory;
-
-    void update_fsm(float delta_time);
-    void move_to_state(ESimpleManualAIState new_state);
-    void fsm_idle(float delta_time);
-    void fsm_wandering(float delta_time);
-    void fsm_following(float delta_time);
-    void fsm_stuck(float delta_time);
   private:
-    FTimerHandle wander_timer;
+    FTimerHandle wait_timer;
 };
