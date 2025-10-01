@@ -67,7 +67,7 @@ void ABulletSpawner::spawn_bullet() {
 
             movement->Velocity = velocity_unit * bullet_speed;
 
-            log_very_verbose(TEXT("Setting velocity to %s"), *movement->Velocity.ToString());
+            //log_very_verbose(TEXT("Setting velocity to %s"), *movement->Velocity.ToString());
         } else {
             log_warning(TEXT("UProjectileMovementComponent is nullptr"));
         }
