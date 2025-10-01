@@ -1,5 +1,6 @@
 #include "MyPlayerController.h"
 
+#include "Sandbox/actor_components/InteractorComponent.h"
 #include "Sandbox/actors/TalkingPillar.h"
 #include "Sandbox/huds/MyHud.h"
 
@@ -74,6 +75,7 @@ void AMyPlayerController::SetupInputComponent() {
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
         bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
+        bind(input.interact, ETriggerEvent::Started, &AMyPlayerController::interact);
     } else {
         log_warning(TEXT("Did not get the UEnhancedInputComponent."));
     }
@@ -162,6 +164,11 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
         if (GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)) {
             controlled_character->warp->warp_to_location(controlled_character, hit.Location);
         }
+    }
+}
+void AMyPlayerController::interact() {
+    if (controlled_character && controlled_character->interactor) {
+        controlled_character->interactor->try_interact();
     }
 }
 

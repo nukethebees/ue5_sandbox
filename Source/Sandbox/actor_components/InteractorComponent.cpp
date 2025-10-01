@@ -7,22 +7,6 @@ UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UInteractorComponent::BeginPlay() {
-    Super::BeginPlay();
-
-    auto const* const pawn{Cast<APawn>(GetOwner())};
-    if (!pawn || !interact_action) {
-        return;
-    }
-
-    if (auto* const eic{Cast<UEnhancedInputComponent>(pawn->InputComponent)}) {
-        eic->BindAction(this->interact_action,
-                        ETriggerEvent::Started,
-                        this,
-                        &UInteractorComponent::try_interact);
-    }
-}
-
 void UInteractorComponent::try_interact() {
     static constexpr auto LOG{NestedLogger<"try_interact">()};
 
