@@ -87,6 +87,8 @@ class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSu
 
     template <typename Self>
     std::optional<int32> register_actor(this Self&& self, AActor* actor, auto* top_subsystem) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::UCollisionEffectSubsystemCore::register_actor"))
         if (!actor) {
             return std::nullopt;
         }

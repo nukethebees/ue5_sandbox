@@ -21,6 +21,8 @@ void ABulletSpawner::Tick(float DeltaTime) {
 }
 
 void ABulletSpawner::spawn_bullet() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletSpawner::spawn_bullet"))
+
     if (!bullet_class || !fire_point) {
         return;
     }

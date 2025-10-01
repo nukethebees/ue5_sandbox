@@ -2,6 +2,7 @@
 
 void UDamageManagerSubsystem::queue_health_change(UHealthComponent* receiver,
                                                   FHealthChange const& change) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::queue_health_change"))
     if (!receiver) {
         return;
     }
@@ -10,6 +11,8 @@ void UDamageManagerSubsystem::queue_health_change(UHealthComponent* receiver,
     tick_enabled = true;
 }
 void UDamageManagerSubsystem::Tick(float DeltaTime) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::Tick"))
+
     Super::Tick(DeltaTime);
 
     if (pending_changes.IsEmpty()) {
