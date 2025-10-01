@@ -42,6 +42,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         // Lazy spawn if free list is empty
         if (freelist.IsEmpty()) {
             if (!extend_pool<Config>(actor_class, freelist)) {
+                logger.log_warning(TEXT("Couldn't extend the pool."));
                 return nullptr;
             }
         }
@@ -99,7 +100,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         item->Deactivate();
         freelist.Push(pool_idx);
 
-        logger.log_verbose(TEXT("Returned actor to pool at index %d"), pool_idx);
+        logger.log_very_verbose(TEXT("Returned actor to pool at index %d"), pool_idx);
     }
 
     template <typename Config>
