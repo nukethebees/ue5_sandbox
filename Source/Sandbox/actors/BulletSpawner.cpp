@@ -2,6 +2,8 @@
 
 #include "Sandbox/actors/BulletSpawner.h"
 
+#include "Sandbox/actors/BulletActor.h"
+
 ABulletSpawner::ABulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;
 }
@@ -33,6 +35,12 @@ void ABulletSpawner::spawn_bullet() {
     FActorSpawnParameters spawn_params{};
     spawn_params.Owner = this;
 
-    auto const bullet{
+    auto* bullet{
         GetWorld()->SpawnActor<AActor>(bullet_class, spawn_location, spawn_rotation, spawn_params)};
+    if (bullet) {
+        if (auto* movement{bullet->FindComponentByClass<UProjectileMovementComponent>()}) {
+            movement->InitialSpeed = bullet_speed;
+            movement->MaxSpeed = bullet_speed;
+        }
+    }
 }
