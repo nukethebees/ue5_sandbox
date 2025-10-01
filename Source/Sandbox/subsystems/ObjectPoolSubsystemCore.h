@@ -37,7 +37,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     template <typename Config>
     typename Config::ActorType*
-        get_item(TSubclassOf<typename Config::ActorType> subclass = nullptr) {
+        get_item(TSubclassOf<typename Config::ActorType> actor_class = nullptr) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_item"))
 
         static constexpr auto logger{NestedLogger<"get_item">()};
@@ -48,21 +48,21 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         }
 
         // Use default class if none specified
-        if (!subclass) {
-            subclass = Config::GetDefaultClass();
+        if (!actor_class) {
+            actor_class = Config::GetDefaultClass();
         }
 
-        if (!subclass) {
-            logger.log_error(TEXT("No subclass specified and no default available"));
+        if (!actor_class) {
+            logger.log_error(TEXT("No actor_class specified and no default available"));
             return nullptr;
         }
 
-        auto& freelist{get_freelist<Config>(subclass)};
+        auto& freelist{get_freelist<Config>(actor_class)};
         auto& pool{get_pool<Config>()};
 
         // Lazy spawn if free list is empty
         if (freelist.IsEmpty()) {
-            if (!extend_pool<Config>(subclass, freelist)) {
+            if (!extend_pool<Config>(actor_class, freelist)) {
                 return nullptr;
             }
         }
@@ -100,7 +100,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Look up which free list this actor's class belongs to
         auto actor_class{item->GetClass()};
-        auto* freelist_idx_ptr{subclass_to_freelist_.Find(actor_class)};
+        auto* freelist_idx_ptr{subclass_to_index_.Find(actor_class)};
 
         if (!freelist_idx_ptr) {
             logger.log_error(TEXT("No free list found for actor class %s"),
@@ -124,9 +124,11 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
 
     template <typename Config>
-    void preallocate(TSubclassOf<typename Config::ActorType> subclass, int32 count) {
+    void preallocate(UWorld& world,
+                     TSubclassOf<typename Config::ActorType> actor_class,
+                     int32 count) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::preallocate"))
-        add_pool_members<Config>(subclass, count);
+        add_pool_members<Config>(world, actor_class, count);
     }
   private:
     template <typename Config>
@@ -156,7 +158,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Check max pool size constraint
         if constexpr (Config::MaxPoolSize.has_value()) {
-            auto const max_size{Config::MaxPoolSize.value()};
+            constexpr auto max_size{Config::MaxPoolSize.value()};
             if (target_size > max_size) {
                 if (current_size >= max_size) {
                     logger.log_error(TEXT("Pool exhausted and at max capacity %d"), max_size);
@@ -166,20 +168,17 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
             }
         }
 
-        add_pool_members<Config>(actor_class, new_items);
+        add_pool_members<Config>(*world, actor_class, new_items);
 
         return true;
     }
 
     template <typename Config>
-    void add_pool_members(TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
+    void add_pool_members(UWorld& world,
+                          TSubclassOf<typename Config::ActorType> actor_class,
+                          int32 n) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::add_pool_members"))
         static constexpr auto logger{NestedLogger<"add_pool_members">()};
-
-        if (!world_.IsValid()) {
-            logger.log_error(TEXT("world_ is nullptr"));
-            return;
-        }
 
         if (!actor_class) {
             logger.log_error(TEXT("actor_class is nullptr"));
@@ -194,7 +193,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         int added{0};
         for (int32 i{0}; i < n; ++i) {
-            auto* actor{world_->SpawnActor<typename Config::ActorType>(
+            auto* actor{world.SpawnActor<typename Config::ActorType>(
                 actor_class, FVector::ZeroVector, FRotator::ZeroRotator, params)};
 
             if (!actor) {
@@ -215,19 +214,19 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
 
     template <typename Config>
-    auto& get_freelist(TSubclassOf<typename Config::ActorType> subclass) {
+    auto& get_freelist(TSubclassOf<typename Config::ActorType> actor_class) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_freelist"))
         static constexpr auto logger{NestedLogger<"get_freelist">()};
 
-        int32* freelist_idx_ptr{subclass_to_freelist_.Find(subclass)};
+        int32* freelist_idx_ptr{subclass_to_index_.Find(actor_class)};
         int32 freelist_idx{-1};
 
         if (!freelist_idx_ptr) {
-            // First time seeing this subclass, create free list
+            // First time seeing this actor_class, create free list
             freelist_idx = free_indexes_.Add(TArray<int32>{});
-            subclass_to_freelist_.Add(subclass, freelist_idx);
+            subclass_to_index_.Add(actor_class, freelist_idx);
             logger.log_verbose(
-                TEXT("Created free list %d for class %s"), freelist_idx, *subclass->GetName());
+                TEXT("Created free list %d for class %s"), freelist_idx, *actor_class->GetName());
         } else {
             freelist_idx = *freelist_idx_ptr;
         }
@@ -236,7 +235,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
 
     std::tuple<TArray<TObjectPtr<typename Configs::ActorType>>...> pools_;
-    TMap<TSubclassOf<AActor>, int32> subclass_to_freelist_;
+    TMap<TSubclassOf<AActor>, int32> subclass_to_index_;
     TArray<free_list_type> free_indexes_;
     TWeakObjectPtr<UWorld> world_;
     bool initialized_{false};
