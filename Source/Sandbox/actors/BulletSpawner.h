@@ -15,6 +15,8 @@ class SANDBOX_API ABulletSpawner : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     float bullets_per_second{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    float bullet_speed{5000.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TSubclassOf<AActor> bullet_class;
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")

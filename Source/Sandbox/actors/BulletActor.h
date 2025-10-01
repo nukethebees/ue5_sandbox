@@ -8,6 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NiagaraSystem.h"
+
 #include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
