@@ -1,14 +1,18 @@
 #include "Sandbox/subsystems/DestructionManagerSubsystem.h"
 
 void UDestructionManagerSubsystem::queue_destruction(AActor* actor) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction"))
     queue_destruction(actor, queued_actors);
 }
 
 void UDestructionManagerSubsystem::queue_destruction(UActorComponent* component) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction"))
     queue_destruction(component, queued_components);
 }
 
 void UDestructionManagerSubsystem::queue_destruction_with_delay(AActor* actor, float delay) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction_with_delay"))
     log_verbose(TEXT("Logging with delay."));
 
     if (!actor || delay <= 0.0f) {
@@ -30,6 +34,8 @@ void UDestructionManagerSubsystem::queue_destruction_with_delay(AActor* actor, f
 
 void UDestructionManagerSubsystem::queue_destruction_with_delay(UActorComponent* component,
                                                                 float delay) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction_with_delay"))
     if (!component || delay <= 0.0f) {
         queue_destruction(component);
         return;
@@ -48,6 +54,7 @@ void UDestructionManagerSubsystem::queue_destruction_with_delay(UActorComponent*
 }
 
 void UDestructionManagerSubsystem::Tick(float DeltaTime) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDestructionManagerSubsystem::Tick"))
     Super::Tick(DeltaTime);
 
     // Destroy queued actors
@@ -71,6 +78,8 @@ void UDestructionManagerSubsystem::Tick(float DeltaTime) {
 }
 
 void UDestructionManagerSubsystem::destroy_actor_delayed(int32 destruction_id) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::UDestructionManagerSubsystem::destroy_actor_delayed"))
     log_verbose(TEXT("destroy_actor_delayed with ID %d."), destruction_id);
 
     if (auto* actor_ptr{delayed_actors.Find(destruction_id)}) {
@@ -90,6 +99,8 @@ void UDestructionManagerSubsystem::destroy_actor_delayed(int32 destruction_id) {
 }
 
 void UDestructionManagerSubsystem::destroy_component_delayed(int32 destruction_id) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::UDestructionManagerSubsystem::destroy_component_delayed"))
     if (auto* component_ptr{delayed_components.Find(destruction_id)}) {
         if (component_ptr->IsValid()) {
             (*component_ptr)->DestroyComponent();

@@ -92,6 +92,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
     template <typename Self, typename Payload>
     std::optional<TriggerableId>
         register_triggerable(this Self&& self, AActor& actor, Payload&& payload) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::register_triggerable"))
+
         static_assert(ml::IsTriggerPayload<std::remove_cvref_t<Payload>>,
                       "Payload must satisfy IsTriggerPayload concept");
 
@@ -139,6 +141,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     void deregister_triggerable(this Self&& self, AActor& actor) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::deregister_triggerable"))
+
         auto triggerable_ids{self.get_triggerable_ids(actor)};
         if (triggerable_ids.empty()) {
             return;
@@ -176,6 +180,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     ETriggerOccurred trigger(this Self&& self, AActor& actor, FTriggeringSource source) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::trigger"))
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
         if (auto* const id{self.actor_to_actor_id.Find(&actor)}) {
@@ -188,6 +193,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     ETriggerOccurred trigger(this Self&& self, ActorId actor_id, FTriggeringSource source) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::trigger"))
+
         static constexpr auto LOG{NestedLogger<"trigger">()};
 
         auto const* range{self.actor_id_to_range.Find(actor_id)};
@@ -250,6 +257,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     bool call_payload_tick(this Self&& self, TriggerableId id, float delta_time) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::UCollisionEffectSubsystemCore::call_payload_tick"))
         static_assert(N_TYPES <= 256, "Cannot support this many trigger types for ticking.");
 
         if constexpr (N_TYPES <= 4) {
@@ -268,6 +277,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     void tick_payloads(this Self&& self, float delta_time) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UCollisionEffectSubsystemCore::tick_payloads"))
         if (self.ticking_payloads.IsEmpty()) {
             return;
         }
@@ -297,6 +307,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
     // Actor ID management
     template <typename Self>
     ActorId get_or_create_actor_id(this Self&& self, AActor& actor) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::UCollisionEffectSubsystemCore::get_or_create_actor_id"))
         static constexpr auto LOG{self.NestedLogger<"get_or_create_actor_id">()};
 
         if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) {
@@ -315,6 +327,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     std::optional<ActorId> get_actor_id(this Self&& self, AActor& actor) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UCollisionEffectSubsystemCore::get_actor_id"))
         if (auto* id{self.actor_to_actor_id.Find(&actor)}) {
             return *id;
         }
@@ -324,6 +337,8 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
     template <typename Self>
     auto* get_actor(this Self&& self, TriggerableId id) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UCollisionEffectSubsystemCore::get_actor"))
+
         auto const combined_id{id.as_combined_id()};
         auto const* actor_ptr{std::forward<Self>(self).id_to_actor.Find(combined_id)};
         using Return = decltype(*actor_ptr);
@@ -342,6 +357,9 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
     void handle_trigger_case(this Self&& self,
                              TriggerableId id,
                              FTriggerContext const& trigger_context) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::UCollisionEffectSubsystemCore::handle_trigger_case"))
+
         static constexpr auto LOG{NestedLogger<"handle_trigger_case">()};
 
         if constexpr (TupleIndex < N_TYPES) {
