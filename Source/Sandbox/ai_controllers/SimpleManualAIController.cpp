@@ -9,6 +9,15 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
+void FSimpleManualAIControllerMemory::print_states() const {
+    UE_LOGFMT(LogTemp,
+              Verbose,
+              "States:\n    Previous state: {0}\n    Current state: {1}\n    Next state: {2}",
+              *UEnum::GetValueAsString(previous_state),
+              *UEnum::GetValueAsString(state),
+              *UEnum::GetValueAsString(next_state));
+}
+
 ASimpleManualAIController::ASimpleManualAIController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -54,6 +63,7 @@ void ASimpleManualAIController::on_target_perception_updated(AActor* Actor, FAIS
 
     if (Stimulus.WasSuccessfullySensed()) {
         memory.target = Actor;
+        memory.last_known_location = Actor->GetActorLocation();
         LOG.log_display(TEXT("Spotted: %s"), *Actor->GetName());
     } else {
         memory.target = nullptr;
@@ -71,16 +81,7 @@ void ASimpleManualAIController::OnMoveCompleted(FAIRequestID RequestID,
 
     if (memory.state == ESimpleManualAIState::Moving) {
         if (Result.IsSuccess()) {
-            switch (memory.previous_state) {
-                case Wandering: {
-                    wait_for_time([this]() { move_to_state(Idle); }, config.wander_wait_time);
-                    break;
-                }
-                default: {
-                    LOG.log_warning(TEXT("Unhandled previous_state: %s"),
-                                    *UEnum::GetValueAsString(memory.previous_state));
-                }
-            }
+            handle_successful_move();
         } else {
             LOG.log_warning(TEXT("Move failed."));
             move_to_state(Idle);
@@ -104,6 +105,7 @@ void ASimpleManualAIController::update_fsm(float delta_time) {
         STATE_CASE(Wandering, fsm_wandering);
         STATE_CASE(Following, fsm_following);
         STATE_CASE(Moving, fsm_moving);
+        STATE_CASE(MovingToLastKnownLocation, fsm_moving_to_last_known_location);
         STATE_CASE(Stuck, fsm_stuck);
 
         default: {
@@ -123,47 +125,46 @@ void ASimpleManualAIController::move_to_state(ESimpleManualAIState new_state) {
 void ASimpleManualAIController::move_to_next_state() {
     constexpr auto LOG{NestedLogger<"move_to_next_state">()};
 
-    LOG.log_verbose(TEXT("Moving from %s to %s."),
+    LOG.log_verbose(TEXT("\nMoving state:\n    From: %s\n    To  : %s."),
                     *UEnum::GetValueAsString(memory.state),
                     *UEnum::GetValueAsString(memory.next_state));
 
     memory.previous_state = memory.state;
     memory.state = memory.next_state;
 
+#define STATE_CASE(ENUM_NAME, BOOL_STATE) \
+    case ENUM_NAME: {                     \
+        SetActorTickEnabled(BOOL_STATE);  \
+        break;                            \
+    }
+
     switch (memory.state) {
         using enum ESimpleManualAIState;
-        case Idle: {
-            SetActorTickEnabled(true);
-            break;
-        }
-        case Wandering: {
-            SetActorTickEnabled(true);
-            break;
-        }
-        case Following: {
-            SetActorTickEnabled(true);
-            break;
-        }
-        case Moving: {
-            SetActorTickEnabled(false);
-            break;
-        }
-        case Stuck: {
-            SetActorTickEnabled(false);
-            break;
-        }
+        STATE_CASE(Idle, true);
+        STATE_CASE(Wandering, true);
+        STATE_CASE(Following, true);
+        STATE_CASE(Moving, false);
+        STATE_CASE(MovingToLastKnownLocation, true);
+        STATE_CASE(Stuck, false);
         default: {
             LOG.log_warning(TEXT("Unhandled FSM state."));
             break;
         }
     }
+#undef STATE_CASE
 }
 
 void ASimpleManualAIController::fsm_idle(float delta_time) {
     using enum ESimpleManualAIState;
     constexpr auto LOG{NestedLogger<"fsm_idle">()};
 
-    move_to_state(memory.target ? Following : Wandering);
+    if (memory.target) {
+        move_to_state(Following);
+    } else if (memory.last_known_location.IsSet()) {
+        move_to_state(MovingToLastKnownLocation);
+    } else {
+        move_to_state(Wandering);
+    }
 }
 void ASimpleManualAIController::fsm_wandering(float delta_time) {
     // Move to a random location then wait
@@ -177,7 +178,26 @@ void ASimpleManualAIController::fsm_wandering(float delta_time) {
         return;
     }
 
-    FAIMoveRequest move_request{random_point->Location};
+    move_to_location(random_point->Location);
+}
+void ASimpleManualAIController::fsm_following(float delta_time) {
+    move_to_location(memory.target->GetActorLocation());
+}
+void ASimpleManualAIController::fsm_moving(float delta_time) {
+    return;
+}
+void ASimpleManualAIController::fsm_moving_to_last_known_location(float delta_time) {
+    move_to_location(memory.last_known_location.GetValue());
+}
+void ASimpleManualAIController::fsm_stuck(float delta_time) {
+    constexpr auto LOG{NestedLogger<"fsm_stuck">()};
+}
+
+void ASimpleManualAIController::move_to_location(FVector location) {
+    constexpr auto LOG{NestedLogger<"move_to_location">()};
+    using enum ESimpleManualAIState;
+
+    FAIMoveRequest move_request{location};
     move_request.SetAcceptanceRadius(config.acceptable_move_radius);
 
     if (auto const result{MoveTo(move_request)};
@@ -189,13 +209,27 @@ void ASimpleManualAIController::fsm_wandering(float delta_time) {
     UE_LOG(LogTemp, Warning, TEXT("MoveTo command failed."));
     move_to_state(Idle);
 }
-void ASimpleManualAIController::fsm_following(float delta_time) {
-    // Follow target for X seconds then wait
-    constexpr auto LOG{NestedLogger<"fsm_following">()};
-}
-void ASimpleManualAIController::fsm_moving(float delta_time) {
-    return;
-}
-void ASimpleManualAIController::fsm_stuck(float delta_time) {
-    constexpr auto LOG{NestedLogger<"fsm_stuck">()};
+void ASimpleManualAIController::handle_successful_move() {
+    constexpr auto LOG{NestedLogger<"handle_successful_move">()};
+    using enum ESimpleManualAIState;
+
+    switch (memory.previous_state) {
+        case MovingToLastKnownLocation: {
+            // Let the perception component see if it found the target
+            memory.last_known_location = NullOpt;
+            [[fallthrough]];
+        }
+        case Following: {
+            [[fallthrough]];
+        }
+        case Wandering: {
+            wait_for_time([this]() { move_to_state(Idle); }, config.wander_wait_time);
+            break;
+        }
+        default: {
+            move_to_state(Idle);
+            LOG.log_warning(TEXT("Unhandled previous state: %s"),
+                            *UEnum::GetValueAsString(memory.previous_state));
+        }
+    }
 }
