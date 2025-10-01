@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 #include "ObjectPoolWarmer.generated.h"
 
 USTRUCT(BlueprintType)
@@ -12,14 +14,16 @@ struct FPoolWarmupConfig {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool Warming")
-    TSubclassOf<AActor> ActorClass{nullptr};
+    TSubclassOf<AActor> actor_class{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool Warming")
-    int32 Count{50};
+    int32 count{50};
 };
 
 UCLASS()
-class SANDBOX_API AObjectPoolWarmer : public AActor {
+class SANDBOX_API AObjectPoolWarmer
+    : public AActor
+    , public ml::LogMsgMixin<"AObjectPoolWarmer"> {
     GENERATED_BODY()
   public:
     AObjectPoolWarmer();
@@ -27,5 +31,5 @@ class SANDBOX_API AObjectPoolWarmer : public AActor {
     virtual void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool Warming")
-    TArray<FPoolWarmupConfig> BulletPoolWarmups;
+    TArray<FPoolWarmupConfig> bullet_pool_warmups;
 };

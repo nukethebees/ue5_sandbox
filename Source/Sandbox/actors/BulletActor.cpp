@@ -73,7 +73,7 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
     }
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
-        pool->ReturnItem<FBulletPoolConfig>(this);
+        pool->return_item<FBulletPoolConfig>(this);
     } else {
         log_warning(TEXT("No object pool subsystem, destroying instead"));
         Destroy();

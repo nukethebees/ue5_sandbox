@@ -37,7 +37,7 @@ void ABulletSpawner::spawn_bullet() {
     AActor* bullet{nullptr};
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
-        bullet = pool->GetItem<FBulletPoolConfig>(bullet_class);
+        bullet = pool->get_item<FBulletPoolConfig>(bullet_class);
     }
 
     // Fallback to SpawnActor if pool unavailable or exhausted

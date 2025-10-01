@@ -35,10 +35,10 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     template <typename Config>
     typename Config::ActorType*
-        GetItem(TSubclassOf<typename Config::ActorType> SubClass = nullptr) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::GetItem"))
+        get_item(TSubclassOf<typename Config::ActorType> subclass = nullptr) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_item"))
 
-        static constexpr auto logger{NestedLogger<"GetItem">()};
+        static constexpr auto logger{NestedLogger<"get_item">()};
 
         if (!initialized_) {
             logger.log_error(TEXT("Pools not initialized"));
@@ -46,37 +46,23 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         }
 
         // Use default class if none specified
-        if (!SubClass) {
-            SubClass = Config::GetDefaultClass();
+        if (!subclass) {
+            subclass = Config::GetDefaultClass();
         }
 
-        if (!SubClass) {
+        if (!subclass) {
             logger.log_error(TEXT("No subclass specified and no default available"));
             return nullptr;
         }
 
-        // Get or create free list for this subclass
-        int32* freelist_idx_ptr{subclass_to_freelist_.Find(SubClass)};
-        int32 freelist_idx{-1};
-
-        if (!freelist_idx_ptr) {
-            // First time seeing this subclass, create free list
-            freelist_idx = free_indexes_.Add(TArray<int32>{});
-            subclass_to_freelist_.Add(SubClass, freelist_idx);
-            logger.log_verbose(
-                TEXT("Created free list %d for class %s"), freelist_idx, *SubClass->GetName());
-        } else {
-            freelist_idx = *freelist_idx_ptr;
-        }
-
-        auto& freelist{free_indexes_[freelist_idx]};
+        auto& freelist{get_freelist<Config>(subclass)};
         auto& pool{get_pool<Config>()};
 
         // Lazy spawn if free list is empty
         if (freelist.IsEmpty()) {
-            auto* actor{spawn_actor<Config>(SubClass)};
+            auto* actor{spawn_actor<Config>(subclass)};
             if (!actor) {
-                logger.log_error(TEXT("Failed to spawn actor of class %s"), *SubClass->GetName());
+                logger.log_error(TEXT("Failed to spawn actor of class %s"), *subclass->GetName());
                 return nullptr;
             }
 
@@ -96,7 +82,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         // Handle destroyed actors
         if (!IsValid(actor)) {
             logger.log_error(TEXT("Pooled actor destroyed, reallocating at index %d"), pool_idx);
-            actor = spawn_actor<Config>(SubClass);
+            actor = spawn_actor<Config>(subclass);
             if (!actor) {
                 logger.log_error(TEXT("Failed to respawn actor"));
                 freelist.Push(pool_idx);
@@ -106,18 +92,18 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         }
 
         actor->Activate();
-        logger.log_verbose(TEXT("Retrieved actor %s from pool at index %d"),
-                           *ActorUtils::GetBestDisplayName(actor),
-                           pool_idx);
+        logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d"),
+                                *ActorUtils::GetBestDisplayName(actor),
+                                pool_idx);
 
         return actor;
     }
 
     template <typename Config>
-    void ReturnItem(typename Config::ActorType* item) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::ReturnItem"))
+    void return_item(typename Config::ActorType* item) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::return_item"))
 
-        static constexpr auto logger{NestedLogger<"ReturnItem">()};
+        static constexpr auto logger{NestedLogger<"return_item">()};
 
         if (!item) {
             logger.log_warning(TEXT("Attempted to return null item"));
@@ -156,15 +142,20 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         logger.log_verbose(TEXT("Returned actor to pool at index %d"), pool_idx);
     }
+
+    template <typename Config>
+    void preallocate(TSubclassOf<typename Config::ActorType> subclass, int32 count) {
+        add_pool_members<Config>(subclass, count);
+    }
   private:
     template <typename Config>
-    typename Config::ActorType* spawn_actor(TSubclassOf<typename Config::ActorType> ActorClass) {
+    typename Config::ActorType* spawn_actor(TSubclassOf<typename Config::ActorType> actor_class) {
         auto* world{world_.Get()};
         if (!world) {
             return nullptr;
         }
 
-        if (!ActorClass) {
+        if (!actor_class) {
             return nullptr;
         }
 
@@ -172,7 +163,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
         auto* actor{world->SpawnActor<typename Config::ActorType>(
-            ActorClass, FVector::ZeroVector, FRotator::ZeroRotator, params)};
+            actor_class, FVector::ZeroVector, FRotator::ZeroRotator, params)};
 
         if (actor) {
             actor->Activate();
@@ -186,6 +177,69 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     auto& get_pool() {
         using PoolType = TArray<TObjectPtr<typename Config::ActorType>>;
         return std::get<PoolType>(pools_);
+    }
+
+    template <typename Config>
+    void add_pool_members(TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
+        static constexpr auto logger{NestedLogger<"add_pool_members">()};
+
+        if (!world_.IsValid()) {
+            logger.log_error(TEXT("world_ is nullptr"));
+            return;
+        }
+
+        if (!actor_class) {
+            logger.log_error(TEXT("actor_class is nullptr"));
+            return;
+        }
+
+        auto& pool{get_pool<Config>()};
+        auto& free_idxs{get_freelist<Config>(actor_class)};
+
+        FActorSpawnParameters params{};
+        params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        int added{0};
+        for (int32 i{0}; i < n; ++i) {
+            auto* actor{world_->SpawnActor<typename Config::ActorType>(
+                actor_class, FVector::ZeroVector, FRotator::ZeroRotator, params)};
+
+            if (!actor) {
+                logger.log_error(TEXT("Failed to spawn pooled actor at index %d"), i);
+                continue;
+            }
+
+            // Initialize with activate/deactivate cycle
+            actor->Activate();
+            actor->Deactivate();
+
+            auto const added_idx{pool.Add(actor)};
+            free_idxs.Push(added_idx);
+            ++added;
+        }
+
+        logger.log_verbose(TEXT("Added %d actors to pool"), added);
+    }
+
+    template <typename Config>
+    auto& get_freelist(TSubclassOf<typename Config::ActorType> subclass) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::get_freelist"))
+        static constexpr auto logger{NestedLogger<"get_freelist">()};
+
+        int32* freelist_idx_ptr{subclass_to_freelist_.Find(subclass)};
+        int32 freelist_idx{-1};
+
+        if (!freelist_idx_ptr) {
+            // First time seeing this subclass, create free list
+            freelist_idx = free_indexes_.Add(TArray<int32>{});
+            subclass_to_freelist_.Add(subclass, freelist_idx);
+            logger.log_verbose(
+                TEXT("Created free list %d for class %s"), freelist_idx, *subclass->GetName());
+        } else {
+            freelist_idx = *freelist_idx_ptr;
+        }
+
+        return free_indexes_[freelist_idx];
     }
 
     std::tuple<TArray<TObjectPtr<typename Configs::ActorType>>...> pools_;
