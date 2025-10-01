@@ -25,8 +25,8 @@ class SANDBOX_API UObjectPoolSubsystem : public UWorldSubsystem {
     }
 
     template <typename Config>
-    void preallocate(TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
-        core_.preallocate<Config>(actor_class, n);
+    void preallocate(UWorld& world, TSubclassOf<typename Config::ActorType> actor_class, int32 n) {
+        core_.preallocate<Config>(world, actor_class, n);
     }
   private:
     UObjectPoolSubsystemCore<FBulletPoolConfig> core_{};

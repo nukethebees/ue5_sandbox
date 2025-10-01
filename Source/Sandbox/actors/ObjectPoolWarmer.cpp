@@ -20,8 +20,12 @@ void AObjectPoolWarmer::BeginPlay() {
         return;
     }
 
-    for (auto const& config : bullet_pool_warmups) {
-        pool->preallocate<FBulletPoolConfig>(
-            TSubclassOf<typename FBulletPoolConfig::ActorType>(config.actor_class), config.count);
+    if (auto* world{GetWorld()}) {
+        for (auto const& config : bullet_pool_warmups) {
+            pool->preallocate<FBulletPoolConfig>(
+                *world,
+                TSubclassOf<typename FBulletPoolConfig::ActorType>(config.actor_class),
+                config.count);
+        }
     }
 }
