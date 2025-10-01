@@ -14,6 +14,8 @@ template <typename... Configs>
     requires (IsPoolConfig<Configs> && ...)
 class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCore"> {
   public:
+    using free_list_type = TArray<int32>;
+
     void initialize_pools(UWorld* world) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::initialize_pools"))
 
@@ -60,38 +62,16 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Lazy spawn if free list is empty
         if (freelist.IsEmpty()) {
-            auto* actor{spawn_actor<Config>(subclass)};
-            if (!actor) {
-                logger.log_error(TEXT("Failed to spawn actor of class %s"), *subclass->GetName());
+            if (!extend_pool<Config>(subclass, freelist)) {
                 return nullptr;
             }
-
-            auto pool_idx{pool.Add(actor)};
-            logger.log_verbose(TEXT("Lazily spawned actor %s at pool index %d"),
-                               *ActorUtils::GetBestDisplayName(actor),
-                               pool_idx);
-
-            actor->Activate();
-            return actor;
         }
 
         // Reuse from pool
         auto const pool_idx{freelist.Pop()};
         auto* actor{pool[pool_idx].Get()};
-
-        // Handle destroyed actors
-        if (!IsValid(actor)) {
-            logger.log_error(TEXT("Pooled actor destroyed, reallocating at index %d"), pool_idx);
-            actor = spawn_actor<Config>(subclass);
-            if (!actor) {
-                logger.log_error(TEXT("Failed to respawn actor"));
-                freelist.Push(pool_idx);
-                return nullptr;
-            }
-            pool[pool_idx] = actor;
-        }
-
         actor->Activate();
+
         logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d"),
                                 *ActorUtils::GetBestDisplayName(actor),
                                 pool_idx);
@@ -150,36 +130,45 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
     }
   private:
     template <typename Config>
-    typename Config::ActorType* spawn_actor(TSubclassOf<typename Config::ActorType> actor_class) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::spawn_actor"))
-        
-        auto* world{world_.Get()};
-        if (!world) {
-            return nullptr;
-        }
-
-        if (!actor_class) {
-            return nullptr;
-        }
-
-        FActorSpawnParameters params{};
-        params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        auto* actor{world->SpawnActor<typename Config::ActorType>(
-            actor_class, FVector::ZeroVector, FRotator::ZeroRotator, params)};
-
-        if (actor) {
-            actor->Activate();
-            actor->Deactivate();
-        }
-
-        return actor;
-    }
-
-    template <typename Config>
     auto& get_pool() {
         using PoolType = TArray<TObjectPtr<typename Config::ActorType>>;
         return std::get<PoolType>(pools_);
+    }
+
+    template <typename Config>
+    [[nodiscard]] bool extend_pool(TSubclassOf<typename Config::ActorType> actor_class,
+                                   free_list_type& free_list) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::extend_pool"))
+        static constexpr auto logger{NestedLogger<"extend_pool">()};
+
+        auto* world{world_.Get()};
+        if (!world) {
+            logger.log_error(TEXT("World is invalid"));
+            return false;
+        }
+
+        auto& pool{get_pool<Config>()};
+        auto const current_size{pool.Num()};
+
+        // Calculate 1.5x growth
+        auto new_items{FMath::Max(1, current_size / 2)};
+        auto target_size{current_size + new_items};
+
+        // Check max pool size constraint
+        if constexpr (Config::MaxPoolSize.has_value()) {
+            auto const max_size{Config::MaxPoolSize.value()};
+            if (target_size > max_size) {
+                if (current_size >= max_size) {
+                    logger.log_error(TEXT("Pool exhausted and at max capacity %d"), max_size);
+                    return false;
+                }
+                new_items = max_size - current_size;
+            }
+        }
+
+        add_pool_members<Config>(actor_class, new_items);
+
+        return true;
     }
 
     template <typename Config>
@@ -248,7 +237,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
     std::tuple<TArray<TObjectPtr<typename Configs::ActorType>>...> pools_;
     TMap<TSubclassOf<AActor>, int32> subclass_to_freelist_;
-    TArray<TArray<int32>> free_indexes_;
+    TArray<free_list_type> free_indexes_;
     TWeakObjectPtr<UWorld> world_;
     bool initialized_{false};
 };
