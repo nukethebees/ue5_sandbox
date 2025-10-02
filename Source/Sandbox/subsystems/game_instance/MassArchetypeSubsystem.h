@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/World.h"
 #include "MassArchetypeTypes.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -8,6 +9,7 @@
 
 #include "MassArchetypeSubsystem.generated.h"
 
+// Create cached Mass Entity archetypes.
 UCLASS()
 class SANDBOX_API UMassArchetypeSubsystem
     : public UGameInstanceSubsystem
@@ -18,6 +20,8 @@ class SANDBOX_API UMassArchetypeSubsystem
 
     auto get_bullet_archetype() const -> FMassArchetypeHandle;
   private:
+    void on_post_world_initialisation(UWorld* world,
+                                      UWorld::InitializationValues const initialisation_values);
     void build_archetypes(FMassEntityManager& entity_manager);
 
     FMassArchetypeHandle bullet_archetype;

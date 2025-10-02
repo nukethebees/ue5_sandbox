@@ -10,20 +10,8 @@ void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     constexpr auto logger{NestedLogger<"Initialize">()};
 
-    // Archetypes are created once and cached
-    auto* world{GetWorld()};
-    if (!world) {
-        logger.log_error(TEXT("world is nullptr"));
-        return;
-    }
-
-    auto* entity_subsystem{world->GetSubsystem<UMassEntitySubsystem>()};
-    if (!entity_subsystem) {
-        logger.log_error(TEXT("entity_subsystem is nullptr"));
-        return;
-    }
-
-    build_archetypes(entity_subsystem->GetMutableEntityManager());
+    FWorldDelegates::OnPostWorldInitialization.AddUObject(
+        this, &UMassArchetypeSubsystem::on_post_world_initialisation);
 }
 
 void UMassArchetypeSubsystem::Deinitialize() {
@@ -35,7 +23,18 @@ void UMassArchetypeSubsystem::Deinitialize() {
 auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHandle {
     return bullet_archetype;
 }
+void UMassArchetypeSubsystem::on_post_world_initialisation(
+    UWorld* world, UWorld::InitializationValues const initialisation_values) {
+    constexpr auto logger{NestedLogger<"on_post_world_initialisation">()};
 
+    auto* entity_subsystem{world->GetSubsystem<UMassEntitySubsystem>()};
+    if (!entity_subsystem) {
+        logger.log_error(TEXT("entity_subsystem is nullptr"));
+        return;
+    }
+
+    build_archetypes(entity_subsystem->GetMutableEntityManager());
+}
 void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manager) {
     {
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
