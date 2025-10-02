@@ -1,8 +1,7 @@
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 
-#include "DrawDebugHelpers.h"
-
 #include "Sandbox/actors/BulletActor.h"
+#include "Sandbox/data_assets/BulletDataAsset.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -13,13 +12,12 @@ UMassBulletVisualizationComponent::UMassBulletVisualizationComponent() {
 void UMassBulletVisualizationComponent::BeginPlay() {
     Super::BeginPlay();
 
-    RETURN_IF_NULLPTR(bullet_class);
+    RETURN_IF_NULLPTR(bullet_data);
     TRY_INIT_PTR(owner, GetOwner());
-    TRY_INIT_PTR(bullet_cdo, bullet_class->GetDefaultObject<ABulletActor>());
-    TRY_INIT_PTR(mesh_component, bullet_cdo->FindComponentByClass<UStaticMeshComponent>());
+    TRY_INIT_PTR(mesh_component, bullet_data->mesh);
 
     ismc = NewObject<UInstancedStaticMeshComponent>(owner, TEXT("BulletISMC"));
-    ismc->SetStaticMesh(mesh_component->GetStaticMesh());
+    ismc->SetStaticMesh(mesh_component);
     ismc->SetMaterial(0, mesh_component->GetMaterial(0));
     ismc->RegisterComponent();
     ismc->AttachToComponent(owner->GetRootComponent(),

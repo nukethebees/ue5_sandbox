@@ -11,6 +11,7 @@
 class UStaticMesh;
 class ABulletActor;
 class UNiagaraSystem;
+class UBulletDataAsset;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UMassBulletVisualizationComponent : public UActorComponent {
@@ -30,7 +31,7 @@ class SANDBOX_API UMassBulletVisualizationComponent : public UActorComponent {
     UInstancedStaticMeshComponent* ismc{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mass Bullet")
-    TSubclassOf<ABulletActor> bullet_class;
+    TObjectPtr<UBulletDataAsset> bullet_data;
 
     TArray<int32> free_indices{};
 };
