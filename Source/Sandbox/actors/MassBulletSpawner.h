@@ -10,6 +10,7 @@
 
 class ABulletActor;
 class UArrowComponent;
+class UMassBulletVisualizationComponent;
 
 UCLASS()
 class SANDBOX_API AMassBulletSpawner
@@ -31,6 +32,9 @@ class SANDBOX_API AMassBulletSpawner
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
     UArrowComponent* fire_point{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
+    UMassBulletVisualizationComponent* visualisation_component{nullptr};
   private:
     float time_since_last_shot{0.0f};
     void spawn_bullet();

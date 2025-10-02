@@ -1,6 +1,8 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
+
+#include "Sandbox/actors/BulletActor.h"
+
+#include "Sandbox/macros/null_checks.hpp"
 
 UMassBulletVisualizationComponent::UMassBulletVisualizationComponent() {
     PrimaryComponentTick.bCanEverTick = false;
@@ -9,12 +11,17 @@ UMassBulletVisualizationComponent::UMassBulletVisualizationComponent() {
 void UMassBulletVisualizationComponent::BeginPlay() {
     Super::BeginPlay();
 
-    if (auto* owner{GetOwner()}) {
-        ismc = NewObject<UInstancedStaticMeshComponent>(owner, TEXT("BulletISMC"));
-        ismc->RegisterComponent();
-        ismc->AttachToComponent(owner->GetRootComponent(),
-                                FAttachmentTransformRules::KeepRelativeTransform);
-    }
+    RETURN_IF_NULLPTR(bullet_class);
+    TRY_INIT_PTR(owner, GetOwner());
+    TRY_INIT_PTR(bullet_cdo, bullet_class->GetDefaultObject<ABulletActor>());
+    TRY_INIT_PTR(mesh_component, bullet_cdo->FindComponentByClass<UStaticMeshComponent>());
+
+    ismc = NewObject<UInstancedStaticMeshComponent>(owner, TEXT("BulletISMC"));
+    ismc->SetStaticMesh(mesh_component->GetStaticMesh());
+    ismc->SetMaterial(0, mesh_component->GetMaterial(0));
+    ismc->RegisterComponent();
+    ismc->AttachToComponent(owner->GetRootComponent(),
+                            FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 std::optional<int32> UMassBulletVisualizationComponent::add_instance(FTransform const& transform) {
