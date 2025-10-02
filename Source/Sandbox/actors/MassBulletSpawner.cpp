@@ -84,4 +84,8 @@ void AMassBulletSpawner::spawn_bullet() {
     auto& last_pos_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);
     last_pos_frag.last_position = spawn_location;
+
+    auto& hit_info_frag = entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
+    hit_info_frag.hit_location = FVector::ZeroVector;
+    hit_info_frag.hit_normal = FVector::ZeroVector;
 }

@@ -1,10 +1,12 @@
 #include "Sandbox/mass_entity/processors/MassBulletCleanupProcessor.h"
 
+#include "Kismet/KismetMathLibrary.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
+#include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
+#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -13,9 +15,19 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const visualization_components{
             context.GetFragmentView<FMassBulletVisualizationComponentFragment>()};
+        auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
 
         auto const instance_index{indices[EntityIndex].instance_index};
         auto viz_component{visualization_components[EntityIndex].component};
+
+        if (viz_component && viz_component->impact_effect) {
+            auto const impact_location{hit_infos[EntityIndex].hit_location};
+            auto const impact_rotation{
+                UKismetMathLibrary::MakeRotFromZ(hit_infos[EntityIndex].hit_normal)};
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                context.GetWorld(), viz_component->impact_effect, impact_location, impact_rotation);
+        }
 
         if (viz_component) {
             viz_component->remove_instance(instance_index);
