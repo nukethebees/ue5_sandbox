@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "MassArchetypeTypes.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "MassBulletSpawner.generated.h"
@@ -11,6 +12,7 @@
 class ABulletActor;
 class UArrowComponent;
 class UMassBulletVisualizationComponent;
+class UBulletDataAsset;
 
 UCLASS()
 class SANDBOX_API AMassBulletSpawner
@@ -38,4 +40,6 @@ class SANDBOX_API AMassBulletSpawner
   private:
     float time_since_last_shot{0.0f};
     void spawn_bullet();
+    UBulletDataAsset* bullet_data{nullptr};
+    FMassArchetypeHandle bullet_archetype;
 };
