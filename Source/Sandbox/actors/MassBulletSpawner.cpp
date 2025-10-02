@@ -52,8 +52,12 @@ void AMassBulletSpawner::spawn_bullet() {
     RETURN_IF_INVALID(bullet_archetype);
 
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(visualization_actor,
-                 TActorIterator<AMassBulletVisualizationActor>(world).operator->());
+    AMassBulletVisualizationActor * visualization_actor{nullptr};
+    for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
+        visualization_actor = *it;
+        break;
+    }
+    RETURN_IF_NULLPTR(visualization_actor);
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
