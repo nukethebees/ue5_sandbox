@@ -67,7 +67,7 @@ void AMassBulletSpawner::spawn_bullet() {
 
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
-    transform_frag.transform = FTransform(spawn_location);
+    transform_frag.transform = spawn_transform;
 
     auto& velocity_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletVelocityFragment>(entity);
