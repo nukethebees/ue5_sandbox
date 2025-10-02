@@ -9,8 +9,8 @@
 #include "Sandbox/data/trigger/ForcefieldPayload.h"
 #include "Sandbox/data/trigger/RotatePayload.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
-#include "Sandbox/subsystems/world/TriggerSubsystemCore.h"
 #include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
+#include "Sandbox/subsystems/world/TriggerSubsystemCore.h"
 
 #include "TriggerSubsystem.generated.h"
 

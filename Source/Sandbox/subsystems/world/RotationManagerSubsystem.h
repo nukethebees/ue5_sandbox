@@ -1,8 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
 #include "Sandbox/enums/RotationType.h"
+#include "Subsystems/WorldSubsystem.h"
 
 #include "RotationManagerSubsystem.generated.h"
 

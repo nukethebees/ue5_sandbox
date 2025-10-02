@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 #include "HorizAntigravLiftComponent.generated.h"
 
 class UBoxComponent;

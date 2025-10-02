@@ -6,8 +6,8 @@
 #include "Components/WidgetSwitcher.h"
 #include "CoreMinimal.h"
 #include "Sandbox/widgets/LevelSelect2Widget.h"
-#include "Sandbox/widgets/TextButtonWidget.h"
 #include "Sandbox/widgets/options_menu/OptionsWidget.h"
+#include "Sandbox/widgets/TextButtonWidget.h"
 
 #include "MainMenu2Widget.generated.h"
 

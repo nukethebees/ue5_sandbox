@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/StaticMeshComponent.h"
+#include "CoreMinimal.h"
 #include "Sandbox/actors/PickupActor.h"
 
 #include "JumpUpgradePickup.generated.h"

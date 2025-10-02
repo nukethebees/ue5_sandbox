@@ -6,6 +6,7 @@
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+
 #include "Sandbox/macros/null_checks.hpp"
 
 ASimpleAIController::ASimpleAIController() {

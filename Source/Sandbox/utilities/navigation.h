@@ -2,8 +2,8 @@
 
 #include <optional>
 
-#include "CoreMinimal.h"
 #include "AI/Navigation/NavigationTypes.h"
+#include "CoreMinimal.h"
 
 class AActor;
 

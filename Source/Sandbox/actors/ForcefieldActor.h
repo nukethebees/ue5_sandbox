@@ -10,9 +10,9 @@
 #include "GameFramework/Actor.h"
 #include "Particles/ParticleSystemComponent.h"
 
-#include "Sandbox/enums/ForcefieldState.h"
 #include "Sandbox/data/trigger/ForcefieldPayload.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
+#include "Sandbox/enums/ForcefieldState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "ForcefieldActor.generated.h"

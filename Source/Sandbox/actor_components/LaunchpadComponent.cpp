@@ -1,8 +1,8 @@
 #include "Sandbox/actor_components/LaunchpadComponent.h"
 
 #include "Components/BoxComponent.h"
-#include "GameFramework/Character.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 
 ULaunchpadComponent::ULaunchpadComponent() {
     PrimaryComponentTick.bCanEverTick = false;

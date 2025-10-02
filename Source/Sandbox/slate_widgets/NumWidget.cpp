@@ -1,8 +1,8 @@
 #include "Sandbox/slate_widgets/NumWidget.h"
 
 #include "Fonts/CompositeFont.h"
-#include "Sandbox/utilities/ui.h"
 #include "Sandbox/utilities/SandboxStyle.h"
+#include "Sandbox/utilities/ui.h"
 #include "SlateOptMacros.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION

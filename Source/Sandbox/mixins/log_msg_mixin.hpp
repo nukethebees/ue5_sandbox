@@ -1,7 +1,7 @@
 #pragma once
 
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 #include "CoreMinimal.h"
 #include "Sandbox/utilities/string_literal_wrapper.h"

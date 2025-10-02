@@ -6,8 +6,6 @@
 #include "MassArchetypeSubsystem.generated.h"
 
 UCLASS()
-class SANDBOX_API UMassArchetypeSubsystem : public UGameInstanceSubsystem
-{
-	GENERATED_BODY()
-	
+class SANDBOX_API UMassArchetypeSubsystem : public UGameInstanceSubsystem {
+    GENERATED_BODY()
 };

@@ -4,9 +4,9 @@
 
 #include <concepts>
 
-#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "CoreMinimal.h"
 
 #include "ValueWidget.generated.h"
 

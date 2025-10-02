@@ -7,13 +7,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/data/collision/CollisionContext.h"
 #include "Sandbox/data/PayloadIndex.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
-#include "Sandbox/macros/switch_stamping.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
+
+#include "Sandbox/macros/switch_stamping.hpp"
 
 namespace ml {
 template <typename T>

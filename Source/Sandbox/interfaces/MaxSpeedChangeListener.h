@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+
 #include "MaxSpeedChangeListener.generated.h"
 
 UINTERFACE(MinimalAPI)

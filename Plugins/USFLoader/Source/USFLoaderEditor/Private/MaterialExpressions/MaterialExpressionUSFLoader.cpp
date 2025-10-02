@@ -7,8 +7,8 @@
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
-#include "USFPathValidationSubsystem.h"
 #include "SGraphNodeMaterialUSFLoader.h"
+#include "USFPathValidationSubsystem.h"
 
 UMaterialExpressionUSFLoader::UMaterialExpressionUSFLoader() {
     bShaderInputData = false; // This is a utility node, not shader input data
