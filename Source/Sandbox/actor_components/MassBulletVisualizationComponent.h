@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include <optional>
@@ -9,6 +7,9 @@
 #include "Components/InstancedStaticMeshComponent.h"
 
 #include "MassBulletVisualizationComponent.generated.h"
+
+class UStaticMesh;
+class ABulletActor;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UMassBulletVisualizationComponent : public UActorComponent {
@@ -26,6 +27,9 @@ class SANDBOX_API UMassBulletVisualizationComponent : public UActorComponent {
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mass Bullet")
     UInstancedStaticMeshComponent* ismc{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mass Bullet")
+    TSubclassOf<ABulletActor> bullet_class;
 
     TArray<int32> free_indices{};
 };

@@ -9,12 +9,16 @@
 
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/MassProcessorMixins.hpp"
 
 #include "MassBulletVisualizationProcessor.generated.h"
 
 class UMassBulletVisualizationComponent;
 
-struct FMassBulletVisualizationExecutor : public UE::Mass::FQueryExecutor {
+struct FMassBulletVisualizationExecutor
+    : public UE::Mass::FQueryExecutor
+    , public ml::LogMsgMixin<"FMassBulletVisualizationExecutor"> {
     FMassBulletVisualizationExecutor() = default;
 
     UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
@@ -23,29 +27,16 @@ struct FMassBulletVisualizationExecutor : public UE::Mass::FQueryExecutor {
 
     UMassBulletVisualizationComponent* visualization_component{nullptr};
 
-    virtual void Execute(FMassExecutionContext& context) {
-        auto executor{[this](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
-            if (!visualization_component) {
-                return;
-            }
-
-            auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
-            auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
-
-            auto const n{context.GetNumEntities()};
-            for (auto i{0}; i < n; ++i) {
-                visualization_component->update_instance(indices[i].instance_index,
-                                                         transforms[i].transform);
-            }
-        }};
-
-        ForEachEntity(context, accessors, std::move(executor));
-    }
+    virtual void Execute(FMassExecutionContext& context) override;
 };
 
 UCLASS()
-class SANDBOX_API UMassBulletVisualizationProcessor : public UMassProcessor {
+class SANDBOX_API UMassBulletVisualizationProcessor
+    : public UMassProcessor
+    , public ml::MassProcessorMixins {
     GENERATED_BODY()
+
+    friend struct MassProcessorMixins;
   public:
     void set_visualization_component(UMassBulletVisualizationComponent* component);
     UMassBulletVisualizationProcessor();

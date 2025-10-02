@@ -7,41 +7,34 @@
 #include "MassQueryExecutor.h"
 
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/MassProcessorMixins.hpp"
 
 #include "MassBulletMovementProcessor.generated.h"
 
-struct FMassBulletMovementExecutor : public UE::Mass::FQueryExecutor {
+struct FMassBulletMovementExecutor
+    : public UE::Mass::FQueryExecutor
+    , public ml::LogMsgMixin<"FMassBulletMovementExecutor"> {
     FMassBulletMovementExecutor() = default;
 
-    UE::Mass::FQueryDefinition<UE::Mass::FMutableFragmentAccess<FMassBulletTransformFragment>,
-                               UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>>
-        accessors{*this};
+    using Query =
+        UE::Mass::FQueryDefinition<UE::Mass::FMutableFragmentAccess<FMassBulletTransformFragment>,
+                                   UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>>;
 
-    virtual void Execute(FMassExecutionContext& context) {
-        constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
-            auto const delta_time{context.GetDeltaTimeSeconds()};
-            auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
-            auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
+    Query accessors{*this};
 
-            auto const n{context.GetNumEntities()};
-            for (auto i{0}; i < n; ++i) {
-                auto const displacement{velocities[i].velocity * delta_time};
-                transforms[i].transform.AddToTranslation(displacement);
-            }
-        }};
-
-        ForEachEntity(context, accessors, std::move(executor));
-    }
+    virtual void Execute(FMassExecutionContext& context) override;
 };
 
 UCLASS()
-class SANDBOX_API UMassBulletMovementProcessor : public UMassProcessor {
+class SANDBOX_API UMassBulletMovementProcessor
+    : public UMassProcessor
+    , public ml::MassProcessorMixins {
     GENERATED_BODY()
+
+    friend struct MassProcessorMixins;
   public:
-    UMassBulletMovementProcessor() {
-        executor =
-            UE::Mass::FQueryExecutor::CreateQuery<FMassBulletMovementExecutor>(entity_query, this);
-    }
+    UMassBulletMovementProcessor();
   private:
     FMassEntityQuery entity_query{};
     TSharedPtr<FMassBulletMovementExecutor> executor;
