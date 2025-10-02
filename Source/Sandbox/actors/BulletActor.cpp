@@ -11,19 +11,19 @@
 #include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 #include "Sandbox/utilities/actor_utils.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 ABulletActor::ABulletActor() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))
 
     PrimaryActorTick.bCanEverTick = false;
-
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
     collision_component->SetBoxExtent(FVector{1.0f, 1.0f, 1.0f});
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     collision_component->SetCollisionResponseToAllChannels(ECR_Block);
     collision_component->SetNotifyRigidBodyCollision(true);
-    collision_component->SetupAttachment(RootComponent);
+    RootComponent = collision_component;
 
     mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     mesh_component->SetupAttachment(RootComponent);
@@ -36,6 +36,7 @@ ABulletActor::ABulletActor() {
     projectile_movement->bRotationFollowsVelocity = true;
     projectile_movement->bShouldBounce = false;
     projectile_movement->ProjectileGravityScale = 0.0f;
+    projectile_movement->UpdatedComponent = RootComponent;
 }
 
 void ABulletActor::BeginPlay() {
@@ -45,6 +46,7 @@ void ABulletActor::BeginPlay() {
     Super::BeginPlay();
 
     // Bind to collision event
+    RETURN_IF_NULLPTR(collision_component);
     if (collision_component) {
         collision_component->OnComponentHit.AddDynamic(this, &ABulletActor::on_hit);
     }
