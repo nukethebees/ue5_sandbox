@@ -77,4 +77,8 @@ void AMassBulletSpawner::spawn_bullet() {
     auto& index_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletInstanceIndexFragment>(entity);
     index_frag.instance_index = *idx;
+
+    auto& viz_frag =
+        entity_manager.GetFragmentDataChecked<FMassBulletVisualizationComponentFragment>(entity);
+    viz_frag.component = visualisation_component;
 }

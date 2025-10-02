@@ -21,11 +21,12 @@ struct FMassBulletVisualizationExecutor
     , public ml::LogMsgMixin<"FMassBulletVisualizationExecutor"> {
     FMassBulletVisualizationExecutor() = default;
 
-    UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
-                               UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>>
-        accessors{*this};
+    using Query = UE::Mass::FQueryDefinition<
+        UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
+        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
+        UE::Mass::FConstFragmentAccess<FMassBulletVisualizationComponentFragment>>;
 
-    UMassBulletVisualizationComponent* visualization_component{nullptr};
+    Query accessors{*this};
 
     virtual void Execute(FMassExecutionContext& context) override;
 };
@@ -38,11 +39,7 @@ class SANDBOX_API UMassBulletVisualizationProcessor
 
     friend struct MassProcessorMixins;
   public:
-    void set_visualization_component(UMassBulletVisualizationComponent* component);
     UMassBulletVisualizationProcessor();
-  protected:
-    UPROPERTY()
-    UMassBulletVisualizationComponent* visualization_component{nullptr};
   private:
     FMassEntityQuery entity_query{};
     TSharedPtr<FMassBulletVisualizationExecutor> executor;

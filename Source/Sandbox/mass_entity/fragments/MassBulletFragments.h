@@ -7,6 +7,15 @@
 
 #include "MassBulletFragments.generated.h"
 
+class UMassBulletVisualizationComponent;
+
+USTRUCT()
+struct SANDBOX_API FMassBulletVisualizationComponentFragment : public FMassFragment {
+    GENERATED_BODY()
+
+    TObjectPtr<UMassBulletVisualizationComponent> component{nullptr};
+};
+
 USTRUCT()
 struct SANDBOX_API FMassBulletTransformFragment : public FMassFragment {
     GENERATED_BODY()
