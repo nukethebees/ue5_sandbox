@@ -17,10 +17,8 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
 
         auto const n{context.GetNumEntities()};
-        for (auto i{0}; i < n; ++i) {
-            visualization_fragment[i].component->update_instance(indices[i].instance_index,
-                                                                 transforms[i].transform);
-        }
+        visualization_fragment[EntityIndex].component->update_instance(
+            indices[EntityIndex].instance_index, transforms[EntityIndex].transform);
     }};
 
     ForEachEntity(context, accessors, std::move(executor));

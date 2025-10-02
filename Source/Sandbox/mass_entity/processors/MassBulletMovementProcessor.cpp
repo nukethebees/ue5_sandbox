@@ -11,11 +11,8 @@ void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
         auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
         auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
 
-        auto const n{context.GetNumEntities()};
-        for (auto i{0}; i < n; ++i) {
-            auto const displacement{velocities[i].velocity * delta_time};
-            transforms[i].transform.AddToTranslation(displacement);
-        }
+        auto const displacement{velocities[EntityIndex].velocity * delta_time};
+        transforms[EntityIndex].transform.AddToTranslation(displacement);
     }};
 
     ForEachEntity(context, accessors, std::move(executor));
