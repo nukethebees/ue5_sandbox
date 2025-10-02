@@ -49,7 +49,7 @@ void AMassBulletSpawner::spawn_bullet() {
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
-    FVector const spawn_scale{0.01f, 0.01f, 0.01f};
+    FVector const spawn_scale{FVector::OneVector};
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 
