@@ -28,6 +28,14 @@ AMassBulletSpawner::AMassBulletSpawner() {
 }
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
+
+    UAssetManager& asset_manager{UAssetManager::Get()};
+    FPrimaryAssetId asset_id{FPrimaryAssetType("Bullet"), FName("Standard")};
+    bullet_data = Cast<UBulletDataAsset>(asset_manager.GetPrimaryAssetObject(asset_id));
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
+    bullet_archetype = archetype_subsystem->get_bullet_archetype();
 }
 void AMassBulletSpawner::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
@@ -45,11 +53,10 @@ void AMassBulletSpawner::spawn_bullet() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::spawn_bullet"))
     constexpr auto logger{NestedLogger<"spawn_bullet">()};
 
-    UAssetManager& asset_manager{UAssetManager::Get()};
-
     RETURN_IF_NULLPTR(bullet_class);
     RETURN_IF_NULLPTR(fire_point);
     RETURN_IF_NULLPTR(visualisation_component);
+    RETURN_IF_INVALID(bullet_archetype);
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
@@ -57,23 +64,16 @@ void AMassBulletSpawner::spawn_bullet() {
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 
-    logger.log_verbose(TEXT("Creating entity"));
     TRY_INIT_OPTIONAL(idx, visualisation_component->add_instance(spawn_transform));
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
-    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
-
-    FPrimaryAssetId asset_id{FPrimaryAssetType("Bullet"), FName("Standard")};
-    TRY_INIT_PTR(data, Cast<UBulletDataAsset>(asset_manager.GetPrimaryAssetObject(asset_id)));
-
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
-    TRY_INIT_VALID(bullet_archetype, archetype_subsystem->get_bullet_archetype());
     auto entity = entity_manager.CreateEntity(bullet_archetype);
 
     auto shared_handle{
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
-            data->impact_effect)};
+            bullet_data->impact_effect)};
     entity_manager.AddConstSharedFragmentToEntity(entity, shared_handle);
 
     auto& transform_frag{
