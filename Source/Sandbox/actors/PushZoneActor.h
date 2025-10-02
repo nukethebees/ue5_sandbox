@@ -4,10 +4,10 @@
 
 #include <utility>
 
+#include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"

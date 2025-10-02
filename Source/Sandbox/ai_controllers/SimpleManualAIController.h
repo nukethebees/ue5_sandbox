@@ -3,8 +3,8 @@
 #include <optional>
 #include <utility>
 
-#include "AIController.h"
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "Misc/Optional.h"
 
 #include "Sandbox/data/SimpleAIState.h"

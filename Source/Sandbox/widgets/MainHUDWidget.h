@@ -1,9 +1,9 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "CoreMinimal.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/slate_widgets/NumWidget.h"
 #include "Sandbox/widgets/HealthWidget.h"

@@ -56,6 +56,13 @@ EmptyLineBeforeAccessModifier: Never
 FixNamespaceComments: false
 
 IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '^<.*>$'
+    Priority: 1   # STL
+  - Regex: '^"CoreMinimal.h"'
+    Priority: 2   # Unreal core
+  - Regex: '^".*"' 
+    Priority: 3   # Project headers
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: true

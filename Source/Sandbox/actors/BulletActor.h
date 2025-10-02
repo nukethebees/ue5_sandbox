@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NiagaraSystem.h"

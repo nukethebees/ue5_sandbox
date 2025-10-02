@@ -4,9 +4,9 @@
 
 #include <optional>
 
+#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
-#include "CoreMinimal.h"
 
 #include "MassBulletVisualizationComponent.generated.h"
 

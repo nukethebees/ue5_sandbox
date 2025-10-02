@@ -4,8 +4,8 @@
 
 #include <array>
 
-#include "Components/PointLightComponent.h"
 #include "CoreMinimal.h"
+#include "Components/PointLightComponent.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/interfaces/Clickable.h"
 

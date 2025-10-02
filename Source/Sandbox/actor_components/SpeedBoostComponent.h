@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/data/SpeedBoost.h"

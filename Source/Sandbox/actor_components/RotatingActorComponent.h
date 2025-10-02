@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "Sandbox/enums/RotationType.h"
 
 #include "RotatingActorComponent.generated.h"

@@ -2,8 +2,8 @@
 
 #include <limits>
 
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 
 #include "LoopingLiftComponent.generated.h"
 

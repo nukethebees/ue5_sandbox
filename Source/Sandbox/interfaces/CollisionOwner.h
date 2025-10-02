@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/PrimitiveComponent.h"
 #include "CoreMinimal.h"
+#include "Components/PrimitiveComponent.h"
 #include "UObject/Interface.h"
 
 #include "CollisionOwner.generated.h"

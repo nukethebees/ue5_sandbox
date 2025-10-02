@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/BoxComponent.h"
 #include "CoreMinimal.h"
+#include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
