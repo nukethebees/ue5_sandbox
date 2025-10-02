@@ -4,6 +4,7 @@
 #include "MassExecutionContext.h"
 #include "MassProcessingTypes.h"
 
+#include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "Sandbox/macros/null_checks.hpp"
