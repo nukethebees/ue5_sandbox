@@ -1,8 +1,8 @@
 #include "Sandbox/actor_components/RandLaunchpadComponent.h"
 
 #include "Components/BoxComponent.h"
-#include "GameFramework/Character.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 
 URandLaunchpadComponent::URandLaunchpadComponent() {
     PrimaryComponentTick.bCanEverTick = false;

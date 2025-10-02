@@ -55,6 +55,7 @@ EmptyLineBeforeAccessModifier: Never
 
 FixNamespaceComments: false
 
+IncludeBlocks: Preserve
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: true
@@ -78,7 +79,7 @@ RequiresClausePosition: OwnLine
 RequiresExpressionIndentation: OuterScope
 
 SeparateDefinitionBlocks: Leave
-SortIncludes: Never
+SortIncludes: CaseInsensitive
 SpaceAfterTemplateKeyword: true
 SpaceBeforeCaseColon: false
 SpaceBeforeCtorInitializerColon: true

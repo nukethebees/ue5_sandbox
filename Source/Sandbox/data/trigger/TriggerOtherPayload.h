@@ -3,10 +3,10 @@
 #include <array>
 
 #include "CoreMinimal.h"
+#include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {

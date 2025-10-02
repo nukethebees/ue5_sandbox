@@ -1,7 +1,7 @@
 #include "Sandbox/widgets/MainHUDWidget.h"
 
-#include "Components/VerticalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/VerticalBoxSlot.h"
 
 #define WIDGET_CHECK(widget, name_string)            \
     do {                                             \

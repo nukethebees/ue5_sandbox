@@ -1,8 +1,8 @@
 #include "SGraphNodeMaterialUSFLoader.h"
 
 #include "GraphEditorSettings.h"
-#include "MaterialGraph/MaterialGraphNode.h"
 #include "MaterialExpressionUSFLoader.h"
+#include "MaterialGraph/MaterialGraphNode.h"
 #include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SCheckBox.h"

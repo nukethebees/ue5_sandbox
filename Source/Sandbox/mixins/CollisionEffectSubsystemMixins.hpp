@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Sandbox/macros/create_forwarding_fn.hpp"
-
 #include "GameFramework/Actor.h"
+
+#include "Sandbox/macros/create_forwarding_fn.hpp"
 
 class UCollisionEffectSubsystemMixins {
   public:

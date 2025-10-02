@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "BehaviorTree/BTTaskNode.h"
+#include "CoreMinimal.h"
 
 #include "BTTask_MoveToRandom.generated.h"
 

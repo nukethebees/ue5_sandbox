@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+
 #include "MovementMultiplierReceiver.generated.h"
 
 UINTERFACE(MinimalAPI)

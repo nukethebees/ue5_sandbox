@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+
 #include "Clickable.generated.h"
 
 UINTERFACE(MinimalAPI)
