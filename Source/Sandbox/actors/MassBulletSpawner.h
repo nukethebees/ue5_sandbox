@@ -12,6 +12,7 @@
 class ABulletActor;
 class UArrowComponent;
 class UBulletDataAsset;
+class AMassBulletVisualizationActor;
 
 UCLASS()
 class SANDBOX_API AMassBulletSpawner
@@ -38,4 +39,5 @@ class SANDBOX_API AMassBulletSpawner
     float time_since_last_shot{0.0f};
     void spawn_bullet();
     FMassArchetypeHandle bullet_archetype;
+    AMassBulletVisualizationActor* visualization_actor{nullptr};
 };

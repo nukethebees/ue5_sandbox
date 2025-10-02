@@ -8,6 +8,7 @@
 #include "MassBulletFragments.generated.h"
 
 class UNiagaraSystem;
+class AMassBulletVisualizationActor;
 
 USTRUCT()
 struct SANDBOX_API FMassBulletTransformFragment : public FMassFragment {
@@ -77,4 +78,16 @@ struct SANDBOX_API FMassBulletImpactEffectFragment : public FMassConstSharedFrag
 USTRUCT()
 struct SANDBOX_API FMassBulletDeadTag : public FMassTag {
     GENERATED_BODY()
+};
+
+USTRUCT()
+struct SANDBOX_API FMassBulletVisualizationActorFragment : public FMassConstSharedFragment {
+    GENERATED_BODY()
+
+    FMassBulletVisualizationActorFragment() = default;
+    FMassBulletVisualizationActorFragment(AMassBulletVisualizationActor* actor)
+        : actor(actor) {}
+
+    UPROPERTY()
+    AMassBulletVisualizationActor* actor{nullptr};
 };

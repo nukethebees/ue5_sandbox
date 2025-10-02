@@ -1,6 +1,5 @@
 #include "Sandbox/mass_entity/processors/MassBulletVisualizationProcessor.h"
 
-#include "EngineUtils.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 #include "MassProcessingTypes.h"
@@ -11,24 +10,18 @@
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
-    TRY_INIT_PTR(world, context.GetWorld());
 
-    AMassBulletVisualizationActor* visualization_actor{nullptr};
-    for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
-        visualization_actor = *it;
-        break;
-    }
+    auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+        auto const viz_fragment{
+            context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
+        RETURN_IF_NULLPTR(viz_fragment.actor);
 
-    RETURN_IF_NULLPTR(visualization_actor);
+        auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
+        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
 
-    auto executor{
-        [&visualization_actor](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
-            auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
-            auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
-
-            visualization_actor->update_instance(indices[EntityIndex].instance_index,
-                                                 transforms[EntityIndex].transform);
-        }};
+        viz_fragment.actor->update_instance(indices[EntityIndex].instance_index,
+                                            transforms[EntityIndex].transform);
+    }};
 
     ForEachEntity(context, accessors, std::move(executor));
 }
