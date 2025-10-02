@@ -27,9 +27,19 @@ AMassBulletSpawner::AMassBulletSpawner() {
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
 
+    constexpr auto logger{NestedLogger<"spawn_bullet">()};
+
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
     bullet_archetype = archetype_subsystem->get_bullet_archetype();
+
+    for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
+        visualization_actor = *it;
+        break;
+    }
+    if (!visualization_actor) {
+        logger.log_warning(TEXT("visualization_actor is nullptr."));
+    }
 }
 void AMassBulletSpawner::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
@@ -50,14 +60,9 @@ void AMassBulletSpawner::spawn_bullet() {
     RETURN_IF_NULLPTR(fire_point);
     RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_INVALID(bullet_archetype);
+    RETURN_IF_NULLPTR(visualization_actor);
 
     TRY_INIT_PTR(world, GetWorld());
-    AMassBulletVisualizationActor * visualization_actor{nullptr};
-    for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
-        visualization_actor = *it;
-        break;
-    }
-    RETURN_IF_NULLPTR(visualization_actor);
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
@@ -71,10 +76,15 @@ void AMassBulletSpawner::spawn_bullet() {
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
     auto entity = entity_manager.CreateEntity(bullet_archetype);
 
-    auto shared_handle{
+    auto impact_effect_handle{
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
             bullet_data->impact_effect)};
-    entity_manager.AddConstSharedFragmentToEntity(entity, shared_handle);
+    entity_manager.AddConstSharedFragmentToEntity(entity, impact_effect_handle);
+
+    auto viz_actor_handle{
+        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
+            visualization_actor)};
+    entity_manager.AddConstSharedFragmentToEntity(entity, viz_actor_handle);
 
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
