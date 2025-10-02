@@ -16,12 +16,14 @@ ABulletActor::ABulletActor() {
 
     PrimaryActorTick.bCanEverTick = false;
 
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
-    RootComponent = collision_component;
     collision_component->SetBoxExtent(FVector{1.0f, 1.0f, 1.0f});
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     collision_component->SetCollisionResponseToAllChannels(ECR_Block);
     collision_component->SetNotifyRigidBodyCollision(true);
+    collision_component->SetupAttachment(RootComponent);
 
     mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     mesh_component->SetupAttachment(RootComponent);
