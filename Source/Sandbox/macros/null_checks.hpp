@@ -1,9 +1,9 @@
-#define RETURN_IF_NULLPTR(PTR_NAME)                             \
-    do {                                                        \
-        if (!PTR_NAME) {                                        \
-            UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is null."); \
-            return;                                             \
-        }                                                       \
+#define RETURN_IF_NULLPTR(PTR_NAME)                                \
+    do {                                                           \
+        if (!PTR_NAME) {                                           \
+            UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is nullptr."); \
+            return;                                                \
+        }                                                          \
     } while (0)
 
 // Initialse a pointer and return early with a log message if it's null
@@ -12,11 +12,11 @@
     RETURN_IF_NULLPTR(PTR_NAME)
 
 // TRY_INIT_PTR but for Behaviour Tree tasks
-#define TRY_INIT_BTTASK_PTR(PTR_NAME, PTR_EXPR)             \
-    auto PTR_NAME{PTR_EXPR};                                \
-    if (!PTR_NAME) {                                        \
-        UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is null."); \
-        return EBTNodeResult::Failed;                       \
+#define TRY_INIT_BTTASK_PTR(PTR_NAME, PTR_EXPR)                \
+    auto PTR_NAME{PTR_EXPR};                                   \
+    if (!PTR_NAME) {                                           \
+        UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is nullptr."); \
+        return EBTNodeResult::Failed;                          \
     }
 
 // For objects that require calls to IsValid()

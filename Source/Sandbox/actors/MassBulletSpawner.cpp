@@ -29,10 +29,6 @@ AMassBulletSpawner::AMassBulletSpawner() {
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
 
-    UAssetManager& asset_manager{UAssetManager::Get()};
-    FPrimaryAssetId asset_id{FPrimaryAssetType("Bullet"), FName("Standard")};
-    bullet_data = Cast<UBulletDataAsset>(asset_manager.GetPrimaryAssetObject(asset_id));
-
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
     bullet_archetype = archetype_subsystem->get_bullet_archetype();
@@ -53,7 +49,6 @@ void AMassBulletSpawner::spawn_bullet() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::spawn_bullet"))
     constexpr auto logger{NestedLogger<"spawn_bullet">()};
 
-    RETURN_IF_NULLPTR(bullet_class);
     RETURN_IF_NULLPTR(fire_point);
     RETURN_IF_NULLPTR(visualisation_component);
     RETURN_IF_NULLPTR(bullet_data);

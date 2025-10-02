@@ -26,8 +26,6 @@ class SANDBOX_API AMassBulletSpawner
     float bullets_per_second{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     float bullet_speed{5000.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    TSubclassOf<ABulletActor> bullet_class;
   protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
@@ -37,9 +35,11 @@ class SANDBOX_API AMassBulletSpawner
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
     UMassBulletVisualizationComponent* visualisation_component{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
   private:
     float time_since_last_shot{0.0f};
     void spawn_bullet();
-    UBulletDataAsset* bullet_data{nullptr};
     FMassArchetypeHandle bullet_archetype;
 };
