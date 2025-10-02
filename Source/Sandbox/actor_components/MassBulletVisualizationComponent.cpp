@@ -1,5 +1,7 @@
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 
+#include "DrawDebugHelpers.h"
+
 #include "Sandbox/actors/BulletActor.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -32,6 +34,7 @@ std::optional<int32> UMassBulletVisualizationComponent::add_instance(FTransform 
     if (free_indices.Num() > 0) {
         auto const index{free_indices.Pop()};
         ismc->UpdateInstanceTransform(index, transform, true, true);
+
         return index;
     }
 
