@@ -6,7 +6,7 @@
 #include "Sandbox/data/trigger/TriggerResult.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
-#include "FRotatePayload.generated.h"
+#include "RotatePayload.generated.h"
 
 USTRUCT(BlueprintType)
 struct FRotatePayload {

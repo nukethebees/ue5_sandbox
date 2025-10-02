@@ -6,19 +6,13 @@
 #include "Components/StaticMeshComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/data/LandMinePayload.h"
+#include "Sandbox/enums/LandMineState.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "LandMine.generated.h"
-
-UENUM(BlueprintType)
-enum class ELandMineState : uint8 {
-    Active UMETA(DisplayName = "Active"),
-    Warning UMETA(DisplayName = "Warning"),
-    Detonating UMETA(DisplayName = "Detonating"),
-    Deactivated UMETA(DisplayName = "Deactivated")
-};
 
 USTRUCT(BlueprintType)
 struct FLandMineColours {

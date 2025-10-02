@@ -9,6 +9,7 @@
 #include "MassBulletSpawner.generated.h"
 
 class ABulletActor;
+class UArrowComponent;
 
 UCLASS()
 class SANDBOX_API AMassBulletSpawner
@@ -28,8 +29,8 @@ class SANDBOX_API AMassBulletSpawner
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    USceneComponent* fire_point{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
+    UArrowComponent* fire_point{nullptr};
   private:
     float time_since_last_shot{0.0f};
     void spawn_bullet();

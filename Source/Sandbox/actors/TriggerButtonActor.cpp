@@ -1,7 +1,7 @@
 #include "Sandbox/actors/TriggerButtonActor.h"
 
 #include "Components/SceneComponent.h"
-#include "Sandbox/subsystems/TriggerSubsystem.h"
+#include "Sandbox/subsystems/world/TriggerSubsystem.h"
 #include "Sandbox/utilities/actor_utils.h"
 
 ATriggerButtonActor::ATriggerButtonActor() {

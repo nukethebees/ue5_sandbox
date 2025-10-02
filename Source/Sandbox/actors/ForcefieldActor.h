@@ -9,24 +9,13 @@
 #include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"
 #include "Particles/ParticleSystemComponent.h"
-#include "Sandbox/data/trigger/FForcefieldPayload.h"
+
+#include "Sandbox/enums/ForcefieldState.h"
+#include "Sandbox/data/trigger/ForcefieldPayload.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "ForcefieldActor.generated.h"
-
-UENUM(BlueprintType)
-enum class EForcefieldState : uint8 {
-    Inactive UMETA(DisplayName = "Inactive"),
-    Activating UMETA(DisplayName = "Activating"),
-    Active UMETA(DisplayName = "Active"),
-    Deactivating UMETA(DisplayName = "Deactivating"),
-    Cooldown UMETA(DisplayName = "Cooldown")
-};
-
-inline FString to_fstring(EForcefieldState state) {
-    return UEnum::GetValueAsString(state);
-}
 
 UCLASS()
 class SANDBOX_API AForcefieldActor

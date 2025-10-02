@@ -58,6 +58,12 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 - **No magic numbers**: Use `static constexpr` variables instead of literal numbers - `DrawDebugBox(..., debug_line_thickness)` not `DrawDebugBox(..., 2.0f)`
 - **Follow `.clang-format`**: 100 character line limit, 4-space indentation
 - **Comments**: Only add comments when the code itself doesn't easily make the meaning clear
+- **Header organization**: Group includes in the following order, separated by blank lines:
+  1. STL headers (e.g., `<vector>`, `<string>`)
+  2. Unreal headers (e.g., `"CoreMinimal.h"`, `"Engine/World.h"`)
+  3. Project headers (e.g., `"Sandbox/actors/MyActor.h"`)
+  4. Macro headers from `macros/` directory (if they exist)
+  5. Generated header (e.g., `"MyClass.generated.h"`) - only in header files for Unreal objects, must be last
 
 ### Architecture Principles
 - **C++ for logic, Blueprints for visuals**: Keep game logic in C++, use Blueprints for visual elements and configuration

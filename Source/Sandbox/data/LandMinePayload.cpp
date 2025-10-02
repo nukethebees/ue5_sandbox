@@ -7,8 +7,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/subsystems/DamageManagerSubsystem.h"
-#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/math.h"
 
 void FLandMinePayload::execute(FCollisionContext context) {

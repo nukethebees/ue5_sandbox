@@ -2,8 +2,8 @@
 
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/subsystems/RotationManagerSubsystem.h"
-#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
+#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
 
 ACoin::ACoin() {
     PrimaryActorTick.bCanEverTick = false;

@@ -1,7 +1,7 @@
 #include "Sandbox/actors/HealthStationActor.h"
 
 #include "Components/WidgetComponent.h"
-#include "Sandbox/subsystems/TriggerSubsystem.h"
+#include "Sandbox/subsystems/world/TriggerSubsystem.h"
 #include "Sandbox/widgets/HealthStationWidget.h"
 
 AHealthStationActor::AHealthStationActor() {

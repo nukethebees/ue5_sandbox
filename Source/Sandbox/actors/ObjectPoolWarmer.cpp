@@ -3,7 +3,7 @@
 #include "Sandbox/actors/ObjectPoolWarmer.h"
 
 #include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 
 AObjectPoolWarmer::AObjectPoolWarmer() {
     PrimaryActorTick.bCanEverTick = false;

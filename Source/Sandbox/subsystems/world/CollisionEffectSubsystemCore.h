@@ -12,7 +12,7 @@
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/macros/switch_stamping.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
 
 namespace ml {

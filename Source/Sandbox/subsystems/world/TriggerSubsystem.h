@@ -3,13 +3,14 @@
 #include <utility>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/health/HealthStationPayload.h"
-#include "Sandbox/data/trigger/FForcefieldPayload.h"
-#include "Sandbox/data/trigger/FRotatePayload.h"
-#include "Sandbox/data/trigger/TriggerOtherPayload.h"
-#include "Sandbox/subsystems/TriggerSubsystemCore.h"
-#include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"
+
+#include "Sandbox/data/health/HealthStationPayload.h"
+#include "Sandbox/data/trigger/ForcefieldPayload.h"
+#include "Sandbox/data/trigger/RotatePayload.h"
+#include "Sandbox/data/trigger/TriggerOtherPayload.h"
+#include "Sandbox/subsystems/world/TriggerSubsystemCore.h"
+#include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
 
 #include "TriggerSubsystem.generated.h"
 

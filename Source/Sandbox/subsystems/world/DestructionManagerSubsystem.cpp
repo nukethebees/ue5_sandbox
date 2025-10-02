@@ -1,4 +1,4 @@
-#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 
 void UDestructionManagerSubsystem::queue_destruction(AActor* actor) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction"))

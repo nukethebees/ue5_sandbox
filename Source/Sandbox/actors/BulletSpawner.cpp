@@ -4,7 +4,7 @@
 
 #include "Sandbox/actors/BulletActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 
 ABulletSpawner::ABulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;

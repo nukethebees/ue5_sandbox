@@ -3,7 +3,7 @@
 #include <tuple>
 
 #include "CoreMinimal.h"
-#include "Sandbox/subsystems/CollisionEffectSubsystemCore.h"
+#include "Sandbox/subsystems/world/CollisionEffectSubsystemCore.h"
 #include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/mixins/CollisionEffectSubsystemMixins.hpp"
 #include "Subsystems/WorldSubsystem.h"

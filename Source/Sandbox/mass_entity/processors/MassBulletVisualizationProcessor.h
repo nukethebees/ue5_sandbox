@@ -8,7 +8,7 @@
 #include "MassQueryExecutor.h"
 
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
-#include "Sandbox/data/mass/MassBulletFragments.h"
+#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "MassBulletVisualizationProcessor.generated.h"
 
