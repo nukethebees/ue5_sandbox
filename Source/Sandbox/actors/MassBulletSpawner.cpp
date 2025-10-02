@@ -3,9 +3,11 @@
 #include "Components/ArrowComponent.h"
 #include "MassEntitySubsystem.h"
 
+#include "Engine/AssetManager.h"
 #include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/actors/BulletActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
+#include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
 #include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
@@ -43,6 +45,8 @@ void AMassBulletSpawner::spawn_bullet() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::spawn_bullet"))
     constexpr auto logger{NestedLogger<"spawn_bullet">()};
 
+    UAssetManager& asset_manager{UAssetManager::Get()};
+
     RETURN_IF_NULLPTR(bullet_class);
     RETURN_IF_NULLPTR(fire_point);
     RETURN_IF_NULLPTR(visualisation_component);
@@ -60,9 +64,17 @@ void AMassBulletSpawner::spawn_bullet() {
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
     TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
 
+    FPrimaryAssetId asset_id{FPrimaryAssetType("Bullet"), FName("Standard")};
+    TRY_INIT_PTR(data, Cast<UBulletDataAsset>(asset_manager.GetPrimaryAssetObject(asset_id)));
+
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
     TRY_INIT_VALID(bullet_archetype, archetype_subsystem->get_bullet_archetype());
     auto entity = entity_manager.CreateEntity(bullet_archetype);
+
+    auto shared_handle{
+        entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
+            data->impact_effect)};
+    entity_manager.AddConstSharedFragmentToEntity(entity, shared_handle);
 
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};

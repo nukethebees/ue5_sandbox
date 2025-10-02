@@ -28,6 +28,7 @@ auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHand
     return bullet_archetype;
 }
 void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manager) {
+    constexpr auto logger{NestedLogger<"build_archetypes">()};
     {
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
         descriptor.Fragments.Add(*FMassBulletTransformFragment::StaticStruct());
@@ -36,6 +37,8 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         descriptor.Fragments.Add(*FMassBulletVisualizationComponentFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletLastPositionFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletHitInfoFragment::StaticStruct());
+
+        descriptor.ConstSharedFragments.Add(*FMassBulletImpactEffectFragment::StaticStruct());
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));

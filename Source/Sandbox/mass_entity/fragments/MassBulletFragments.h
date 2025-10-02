@@ -8,6 +8,7 @@
 #include "MassBulletFragments.generated.h"
 
 class UMassBulletVisualizationComponent;
+class UNiagaraSystem;
 
 USTRUCT()
 struct SANDBOX_API FMassBulletVisualizationComponentFragment : public FMassFragment {
@@ -69,6 +70,18 @@ struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
 
     UPROPERTY()
     FVector hit_normal{FVector::ZeroVector};
+};
+
+USTRUCT()
+struct SANDBOX_API FMassBulletImpactEffectFragment : public FMassConstSharedFragment {
+    GENERATED_BODY()
+
+    FMassBulletImpactEffectFragment() = default;
+    FMassBulletImpactEffectFragment(UNiagaraSystem* impact_effect)
+        : impact_effect(impact_effect) {}
+
+    UPROPERTY()
+    UNiagaraSystem* impact_effect{nullptr};
 };
 
 USTRUCT()

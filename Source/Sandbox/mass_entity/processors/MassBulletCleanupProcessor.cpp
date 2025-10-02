@@ -20,13 +20,18 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
         auto const instance_index{indices[EntityIndex].instance_index};
         auto viz_component{visualization_components[EntityIndex].component};
 
-        if (viz_component && viz_component->impact_effect) {
+        auto impact_effect_fragment{
+            context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
+
+        if (impact_effect_fragment.impact_effect) {
             auto const impact_location{hit_infos[EntityIndex].hit_location};
             auto const impact_rotation{
                 UKismetMathLibrary::MakeRotFromZ(hit_infos[EntityIndex].hit_normal)};
 
-            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-                context.GetWorld(), viz_component->impact_effect, impact_location, impact_rotation);
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(context.GetWorld(),
+                                                           impact_effect_fragment.impact_effect,
+                                                           impact_location,
+                                                           impact_rotation);
         }
 
         if (viz_component) {
