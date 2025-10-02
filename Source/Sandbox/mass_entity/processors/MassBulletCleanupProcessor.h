@@ -21,7 +21,7 @@ struct FMassBulletCleanupExecutor
 
     using Query = UE::Mass::FQueryDefinition<
         UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletVisualizationComponentFragment>,
+        UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationComponentFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletHitInfoFragment>,
         UE::Mass::FConstSharedFragmentAccess<FMassBulletImpactEffectFragment>,
         UE::Mass::FMassTagRequired<FMassBulletDeadTag>>;
