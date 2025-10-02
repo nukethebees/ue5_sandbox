@@ -59,6 +59,19 @@ struct SANDBOX_API FMassBulletLastPositionFragment : public FMassFragment {
 };
 
 USTRUCT()
+struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
+    GENERATED_BODY()
+
+    FMassBulletHitInfoFragment() = default;
+
+    UPROPERTY()
+    FVector hit_location{FVector::ZeroVector};
+
+    UPROPERTY()
+    FVector hit_normal{FVector::ZeroVector};
+};
+
+USTRUCT()
 struct SANDBOX_API FMassBulletDeadTag : public FMassTag {
     GENERATED_BODY()
 };

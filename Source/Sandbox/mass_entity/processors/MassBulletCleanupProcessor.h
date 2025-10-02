@@ -12,6 +12,8 @@
 
 #include "MassBulletCleanupProcessor.generated.h"
 
+class UNiagaraSystem;
+
 struct FMassBulletCleanupExecutor
     : public UE::Mass::FQueryExecutor
     , public ml::LogMsgMixin<"FMassBulletCleanupExecutor"> {
@@ -20,6 +22,7 @@ struct FMassBulletCleanupExecutor
     using Query = UE::Mass::FQueryDefinition<
         UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletVisualizationComponentFragment>,
+        UE::Mass::FConstFragmentAccess<FMassBulletHitInfoFragment>,
         UE::Mass::FMassTagRequired<FMassBulletDeadTag>>;
 
     Query accessors{*this};

@@ -12,6 +12,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const last_positions{
             context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
+        auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
 
         auto const current_position{transforms[EntityIndex].transform.GetLocation()};
         auto const last_position{last_positions[EntityIndex].last_position};
@@ -39,6 +40,8 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                                                            query_params)};
 
         if (hit_detected && hit_results.Num() > 0) {
+            hit_infos[EntityIndex].hit_location = hit_results[0].Location;
+            hit_infos[EntityIndex].hit_normal = hit_results[0].Normal;
             context.Defer().AddTag<FMassBulletDeadTag>(context.GetEntity(EntityIndex));
         }
 
