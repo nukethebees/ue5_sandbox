@@ -7,7 +7,7 @@
 #include "Sandbox/actors/BulletActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/subsystems/game_instance/MassArchetypeSubsystem.h"
+#include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
 #include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -57,9 +57,8 @@ void AMassBulletSpawner::spawn_bullet() {
     TRY_INIT_OPTIONAL(idx, visualisation_component->add_instance(spawn_transform));
 
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(game_instance, GetGameInstance());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
-    TRY_INIT_PTR(archetype_subsystem, game_instance->GetSubsystem<UMassArchetypeSubsystem>());
+    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
 
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
     TRY_INIT_VALID(bullet_archetype, archetype_subsystem->get_bullet_archetype());

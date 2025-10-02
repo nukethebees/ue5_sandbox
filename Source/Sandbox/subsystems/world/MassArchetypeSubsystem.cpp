@@ -1,4 +1,4 @@
-#include "Sandbox/subsystems/game_instance/MassArchetypeSubsystem.h"
+#include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
 
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"
@@ -6,12 +6,16 @@
 
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     constexpr auto logger{NestedLogger<"Initialize">()};
 
-    FWorldDelegates::OnPostWorldInitialization.AddUObject(
-        this, &UMassArchetypeSubsystem::on_post_world_initialisation);
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
+
+    build_archetypes(entity_subsystem->GetMutableEntityManager());
 }
 
 void UMassArchetypeSubsystem::Deinitialize() {
@@ -22,18 +26,6 @@ void UMassArchetypeSubsystem::Deinitialize() {
 
 auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHandle {
     return bullet_archetype;
-}
-void UMassArchetypeSubsystem::on_post_world_initialisation(
-    UWorld* world, UWorld::InitializationValues const initialisation_values) {
-    constexpr auto logger{NestedLogger<"on_post_world_initialisation">()};
-
-    auto* entity_subsystem{world->GetSubsystem<UMassEntitySubsystem>()};
-    if (!entity_subsystem) {
-        logger.log_error(TEXT("entity_subsystem is nullptr"));
-        return;
-    }
-
-    build_archetypes(entity_subsystem->GetMutableEntityManager());
 }
 void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manager) {
     {
