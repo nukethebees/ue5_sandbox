@@ -56,6 +56,7 @@ void AMassBulletSpawner::spawn_bullet() {
     RETURN_IF_NULLPTR(bullet_class);
     RETURN_IF_NULLPTR(fire_point);
     RETURN_IF_NULLPTR(visualisation_component);
+    RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_INVALID(bullet_archetype);
 
     auto const spawn_location{fire_point->GetComponentLocation()};
@@ -75,6 +76,10 @@ void AMassBulletSpawner::spawn_bullet() {
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
             bullet_data->impact_effect)};
     entity_manager.AddConstSharedFragmentToEntity(entity, shared_handle);
+    entity_manager.AddConstSharedFragmentToEntity(
+        entity,
+        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationComponentFragment>(
+            visualisation_component));
 
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
@@ -88,10 +93,6 @@ void AMassBulletSpawner::spawn_bullet() {
     auto& index_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletInstanceIndexFragment>(entity);
     index_frag.instance_index = *idx;
-
-    auto& viz_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletVisualizationComponentFragment>(entity);
-    viz_frag.component = visualisation_component;
 
     auto& last_pos_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);

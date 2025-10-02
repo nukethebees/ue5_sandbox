@@ -13,12 +13,11 @@
 void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
     auto executor{[this](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
-        auto const visualization_components{
-            context.GetFragmentView<FMassBulletVisualizationComponentFragment>()};
+        auto const visualization_component{
+            context.GetConstSharedFragment<FMassBulletVisualizationComponentFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
 
         auto const instance_index{indices[EntityIndex].instance_index};
-        auto viz_component{visualization_components[EntityIndex].component};
 
         auto impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
@@ -34,8 +33,8 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
                                                            impact_rotation);
         }
 
-        if (viz_component) {
-            viz_component->remove_instance(instance_index);
+        if (visualization_component.component) {
+            visualization_component.component->remove_instance(instance_index);
         }
 
         context.Defer().DestroyEntity(context.GetEntity(EntityIndex));

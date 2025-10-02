@@ -11,10 +11,13 @@ class UMassBulletVisualizationComponent;
 class UNiagaraSystem;
 
 USTRUCT()
-struct SANDBOX_API FMassBulletVisualizationComponentFragment : public FMassFragment {
+struct SANDBOX_API FMassBulletVisualizationComponentFragment : public FMassConstSharedFragment {
     GENERATED_BODY()
 
     FMassBulletVisualizationComponentFragment() = default;
+    FMassBulletVisualizationComponentFragment(
+        TObjectPtr<UMassBulletVisualizationComponent> component)
+        : component(component) {}
 
     TObjectPtr<UMassBulletVisualizationComponent> component{nullptr};
 };
