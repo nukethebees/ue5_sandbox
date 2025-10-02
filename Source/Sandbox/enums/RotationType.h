@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "RotationType.generated.h"
 
 UENUM(BlueprintType)

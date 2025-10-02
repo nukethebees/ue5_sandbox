@@ -5,7 +5,7 @@
 #include "Sandbox/data/trigger/TriggerResult.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
-#include "FForcefieldPayload.generated.h"
+#include "ForcefieldPayload.generated.h"
 
 USTRUCT(BlueprintType)
 struct FForcefieldPayload {

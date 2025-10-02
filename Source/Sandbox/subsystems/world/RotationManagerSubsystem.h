@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "Sandbox/data/RotationType.h"
+#include "Sandbox/enums/RotationType.h"
 
 #include "RotationManagerSubsystem.generated.h"
 

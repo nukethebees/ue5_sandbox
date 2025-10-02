@@ -2,7 +2,7 @@
 
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
 
 AJumpUpgradePickup::AJumpUpgradePickup() {
     // Create mesh component for visual representation

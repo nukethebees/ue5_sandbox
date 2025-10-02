@@ -1,4 +1,4 @@
-#include "FRotatePayload.h"
+#include "RotatePayload.h"
 
 FTriggerResult FRotatePayload::trigger(FTriggerContext context) {
     logger.log_verbose(TEXT("Triggering rotation for actor %s"),

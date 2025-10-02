@@ -1,13 +1,19 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Sandbox/actors/MassBulletSpawner.h"
+
+#include "Components/ArrowComponent.h"
 
 #include "Sandbox/actors/BulletActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 
 AMassBulletSpawner::AMassBulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;
+
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    RootComponent->SetMobility(EComponentMobility::Movable);
+
+    fire_point = CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point"));
+    fire_point->SetupAttachment(RootComponent);
 }
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();

@@ -7,8 +7,8 @@
 
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/DamageManagerSubsystem.h"
-#include "Sandbox/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 #include "Sandbox/utilities/actor_utils.h"
 
 ABulletActor::ABulletActor() {

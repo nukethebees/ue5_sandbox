@@ -1,8 +1,6 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+#include "Sandbox/mass_entity/processors/MassBulletVisualizationProcessor.h"
 
-#include "Sandbox/subsystems/MassBulletVisualizationProcessor.h"
-
-#include "Sandbox/data/mass/MassBulletFragments.h"
+#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor() {
     executor =

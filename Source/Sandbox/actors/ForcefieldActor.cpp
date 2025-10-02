@@ -6,7 +6,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "Sandbox/subsystems/TriggerSubsystem.h"
+#include "Sandbox/subsystems/world/TriggerSubsystem.h"
 #include "TimerManager.h"
 
 AForcefieldActor::AForcefieldActor() {

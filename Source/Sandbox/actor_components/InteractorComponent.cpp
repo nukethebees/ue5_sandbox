@@ -1,7 +1,7 @@
 #include "Sandbox/actor_components/InteractorComponent.h"
 
 #include "Sandbox/data/trigger/TriggerCapabilities.h"
-#include "Sandbox/subsystems/TriggerSubsystem.h"
+#include "Sandbox/subsystems/world/TriggerSubsystem.h"
 
 UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;

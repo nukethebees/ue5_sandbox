@@ -8,7 +8,7 @@
 #include "Sandbox/data/LandMinePayload.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 
 struct FSpeedBoostPayload {
     FSpeedBoostPayload() = default;

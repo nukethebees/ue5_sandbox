@@ -6,7 +6,7 @@
 #include "MassProcessor.h"
 #include "MassQueryExecutor.h"
 
-#include "Sandbox/data/mass/MassBulletFragments.h"
+#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "MassBulletMovementProcessor.generated.h"
 

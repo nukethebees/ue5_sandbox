@@ -1,6 +1,6 @@
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
 
-#include "Sandbox/subsystems/TriggerSubsystem.h"
+#include "Sandbox/subsystems/world/TriggerSubsystem.h"
 
 FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     static constexpr auto LOG{NestedLogger<"trigger">()};

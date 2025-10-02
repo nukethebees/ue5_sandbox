@@ -4,7 +4,7 @@
 
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 
 URemoveGhostsOnStartComponent::URemoveGhostsOnStartComponent() {
     PrimaryComponentTick.bCanEverTick = true;

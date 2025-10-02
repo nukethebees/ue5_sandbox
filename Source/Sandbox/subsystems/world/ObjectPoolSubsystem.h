@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/ObjectPoolSubsystemCore.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystemCore.h"
 #include "Subsystems/WorldSubsystem.h"
 
 #include "ObjectPoolSubsystem.generated.h"
