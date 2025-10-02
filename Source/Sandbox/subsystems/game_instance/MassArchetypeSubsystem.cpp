@@ -41,6 +41,7 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         descriptor.Fragments.Add(*FMassBulletTransformFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletVelocityFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletInstanceIndexFragment::StaticStruct());
+        descriptor.Fragments.Add(*FMassBulletVisualizationComponentFragment::StaticStruct());
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));
