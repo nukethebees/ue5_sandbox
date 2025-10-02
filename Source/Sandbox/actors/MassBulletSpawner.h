@@ -11,7 +11,6 @@
 
 class ABulletActor;
 class UArrowComponent;
-class UMassBulletVisualizationComponent;
 class UBulletDataAsset;
 
 UCLASS()
@@ -32,9 +31,6 @@ class SANDBOX_API AMassBulletSpawner
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
     UArrowComponent* fire_point{nullptr};
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
-    UMassBulletVisualizationComponent* visualisation_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};

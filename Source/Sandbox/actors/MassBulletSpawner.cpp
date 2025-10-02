@@ -1,11 +1,12 @@
 #include "Sandbox/actors/MassBulletSpawner.h"
 
 #include "Components/ArrowComponent.h"
+#include "EngineUtils.h"
 #include "MassEntitySubsystem.h"
 
 #include "Engine/AssetManager.h"
-#include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/actors/BulletActor.h"
+#include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
@@ -22,9 +23,6 @@ AMassBulletSpawner::AMassBulletSpawner() {
 
     fire_point = CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point"));
     fire_point->SetupAttachment(RootComponent);
-
-    visualisation_component = CreateDefaultSubobject<UMassBulletVisualizationComponent>(
-        TEXT("mass_visualisation_component"));
 }
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
@@ -50,9 +48,12 @@ void AMassBulletSpawner::spawn_bullet() {
     constexpr auto logger{NestedLogger<"spawn_bullet">()};
 
     RETURN_IF_NULLPTR(fire_point);
-    RETURN_IF_NULLPTR(visualisation_component);
     RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_INVALID(bullet_archetype);
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(visualization_actor,
+                 TActorIterator<AMassBulletVisualizationActor>(world).operator->());
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
@@ -60,9 +61,8 @@ void AMassBulletSpawner::spawn_bullet() {
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 
-    TRY_INIT_OPTIONAL(idx, visualisation_component->add_instance(spawn_transform));
+    TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
 
-    TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
     auto entity = entity_manager.CreateEntity(bullet_archetype);
@@ -71,10 +71,6 @@ void AMassBulletSpawner::spawn_bullet() {
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
             bullet_data->impact_effect)};
     entity_manager.AddConstSharedFragmentToEntity(entity, shared_handle);
-    entity_manager.AddConstSharedFragmentToEntity(
-        entity,
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationComponentFragment>(
-            visualisation_component));
 
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
