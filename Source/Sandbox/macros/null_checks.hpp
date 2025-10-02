@@ -1,9 +1,19 @@
-#define RETURN_IF_NULLPTR(PTR_NAME)                                \
-    do {                                                           \
-        if (!PTR_NAME) {                                           \
-            UE_LOGFMT(LogTemp, Warning, #PTR_NAME " is nullptr."); \
-            return;                                                \
-        }                                                          \
+#include <source_location>
+
+#define RETURN_IF_NULLPTR(PTR_NAME)                                    \
+    do {                                                               \
+        if (!PTR_NAME) {                                               \
+            auto const loc{std::source_location::current()};           \
+            FString const fn_name{ANSI_TO_TCHAR(loc.function_name())}; \
+            FString const file_name{ANSI_TO_TCHAR(loc.file_name())};   \
+            UE_LOGFMT(LogTemp,                                         \
+                      Warning,                                         \
+                      #PTR_NAME " is nullptr. [{0}, {1}, {2}]",        \
+                      *fn_name,                                        \
+                      loc.line(),                                      \
+                      *file_name);                                     \
+            return;                                                    \
+        }                                                              \
     } while (0)
 
 // Initialse a pointer and return early with a log message if it's null

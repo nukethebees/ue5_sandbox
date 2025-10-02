@@ -1,44 +1,46 @@
 #include "Sandbox/mass_entity/processors/MassBulletCleanupProcessor.h"
 
+#include "EngineUtils.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
+#include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
-    auto executor{[this](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
-        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
-        auto const visualization_component{
-            context.GetConstSharedFragment<FMassBulletVisualizationComponentFragment>()};
-        auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
+    TRY_INIT_PTR(world, context.GetWorld());
+    TRY_INIT_PTR(visualization_actor,
+                 TActorIterator<AMassBulletVisualizationActor>(world).operator->());
 
-        auto const instance_index{indices[EntityIndex].instance_index};
+    auto executor{
+        [&visualization_actor](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+            auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
+            auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
 
-        auto impact_effect_fragment{
-            context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
+            auto const instance_index{indices[EntityIndex].instance_index};
 
-        if (impact_effect_fragment.impact_effect) {
-            auto const impact_location{hit_infos[EntityIndex].hit_location};
-            auto const impact_rotation{
-                UKismetMathLibrary::MakeRotFromZ(hit_infos[EntityIndex].hit_normal)};
+            auto impact_effect_fragment{
+                context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
-            UNiagaraFunctionLibrary::SpawnSystemAtLocation(context.GetWorld(),
-                                                           impact_effect_fragment.impact_effect,
-                                                           impact_location,
-                                                           impact_rotation);
-        }
+            if (impact_effect_fragment.impact_effect) {
+                auto const impact_location{hit_infos[EntityIndex].hit_location};
+                auto const impact_rotation{
+                    UKismetMathLibrary::MakeRotFromZ(hit_infos[EntityIndex].hit_normal)};
 
-        if (visualization_component.component) {
-            visualization_component.component->remove_instance(instance_index);
-        }
+                UNiagaraFunctionLibrary::SpawnSystemAtLocation(context.GetWorld(),
+                                                               impact_effect_fragment.impact_effect,
+                                                               impact_location,
+                                                               impact_rotation);
+            }
 
-        context.Defer().DestroyEntity(context.GetEntity(EntityIndex));
-    }};
+            visualization_actor->remove_instance(instance_index);
+
+            context.Defer().DestroyEntity(context.GetEntity(EntityIndex));
+        }};
 
     ForEachEntity(context, accessors, std::move(executor));
 }

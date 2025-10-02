@@ -7,14 +7,11 @@
 #include "MassProcessor.h"
 #include "MassQueryExecutor.h"
 
-#include "Sandbox/actor_components/MassBulletVisualizationComponent.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/MassProcessorMixins.hpp"
 
 #include "MassBulletVisualizationProcessor.generated.h"
-
-class UMassBulletVisualizationComponent;
 
 struct FMassBulletVisualizationExecutor
     : public UE::Mass::FQueryExecutor
@@ -23,8 +20,7 @@ struct FMassBulletVisualizationExecutor
 
     using Query = UE::Mass::FQueryDefinition<
         UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationComponentFragment>>;
+        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>>;
 
     Query accessors{*this};
 
