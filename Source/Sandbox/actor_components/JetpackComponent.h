@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "Sandbox/data/JetpackState.h"
 
 #include "JetpackComponent.generated.h"

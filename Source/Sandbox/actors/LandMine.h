@@ -1,10 +1,10 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/data/LandMinePayload.h"

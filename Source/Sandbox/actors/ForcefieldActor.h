@@ -1,10 +1,10 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TimelineComponent.h"
-#include "CoreMinimal.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"

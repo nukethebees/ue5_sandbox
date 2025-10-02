@@ -1,9 +1,9 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
-#include "CoreMinimal.h"
 #include "Sandbox/data/health/HealthData.h"
 
 #include "HealthWidget.generated.h"

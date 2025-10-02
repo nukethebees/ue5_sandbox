@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
-#include "CoreMinimal.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/options_menu/AudioOptionsWidget.h"

@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Components/VerticalBox.h"
-#include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Sandbox/data/video_options/VideoSettingsData.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"

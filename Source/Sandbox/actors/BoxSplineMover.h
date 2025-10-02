@@ -1,8 +1,8 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
 #include "BoxSplineMover.generated.h"

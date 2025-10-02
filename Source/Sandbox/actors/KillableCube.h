@@ -1,7 +1,7 @@
 #pragma once
 
-#include "components/StaticMeshComponent.h"
 #include "CoreMinimal.h"
+#include "components/StaticMeshComponent.h"
 #include "engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/actor_components/HealthComponent.h"

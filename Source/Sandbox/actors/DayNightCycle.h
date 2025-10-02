@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/DirectionalLightComponent.h"
 #include "CoreMinimal.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "GameFramework/Actor.h"
 

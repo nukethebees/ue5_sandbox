@@ -6,8 +6,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "Components/Widget.h"
 #include "CoreMinimal.h"
+#include "Components/Widget.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Widgets/SCompoundWidget.h"
 

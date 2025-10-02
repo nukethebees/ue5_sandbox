@@ -1,8 +1,8 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/interfaces/CollisionOwner.h"

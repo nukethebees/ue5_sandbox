@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AIController.h"
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "Sandbox/data/SimpleAIState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 

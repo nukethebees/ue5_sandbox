@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "components/ActorComponent.h"
 #include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/data/health/HealthData.h"
 #include "Sandbox/interfaces/DeathHandler.h"

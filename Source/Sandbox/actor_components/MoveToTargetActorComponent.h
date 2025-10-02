@@ -1,8 +1,8 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Components/SceneComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/interfaces/clickable.h"
 

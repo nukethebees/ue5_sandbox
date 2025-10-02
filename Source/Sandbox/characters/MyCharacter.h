@@ -5,10 +5,10 @@
 #include <type_traits>
 #include <utility>
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SpotLightComponent.h"
-#include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Character.h"

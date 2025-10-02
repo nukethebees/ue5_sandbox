@@ -1,12 +1,12 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
-#include "CoreMinimal.h"
 #include "Sandbox/concepts/concepts.h"
 #include "Sandbox/data/video_options/VideoSettingsData.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"

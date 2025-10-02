@@ -1,8 +1,8 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/GridPanel.h"
-#include "CoreMinimal.h"
 #include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/LoadLevelButtonWidget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"

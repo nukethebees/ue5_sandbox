@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/data/health/HealthChange.h"

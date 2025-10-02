@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
