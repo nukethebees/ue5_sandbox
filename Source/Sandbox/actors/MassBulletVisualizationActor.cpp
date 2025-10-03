@@ -105,29 +105,17 @@ void AMassBulletVisualizationActor::add_instances(int32 n) {
 }
 void AMassBulletVisualizationActor::grow_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::grow_instances"))
-    RETURN_IF_NULLPTR(ismc);
+        RETURN_IF_NULLPTR(ismc);
 
     constexpr int32 small_num{8};
 
     auto const n_ismcs{FMath::Max(ismc->GetNumInstances(), 1)};
     auto const target{(n_ismcs < small_num)
-                          ? small_num
-                          : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
+        ? small_num
+        : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
     auto const to_add{target - n_ismcs};
 
     log_display(TEXT("Increasing ISM instances from %d to %d."), n_ismcs, target);
 
     add_instances(to_add);
-}
-FTransform const& AMassBulletVisualizationActor::get_hidden_transform() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(
-        TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
-
-    static FRotator const rotation{};
-    static FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
-    static auto const scale{FVector::OneVector};
-
-    static FTransform const transform{rotation, infinite_location, scale};
-
-    return transform;
 }
