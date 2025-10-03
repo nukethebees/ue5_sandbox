@@ -29,35 +29,6 @@ AMassBulletSpawner::AMassBulletSpawner() {
 }
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
-
-    constexpr auto logger{NestedLogger<"spawn_bullet">()};
-
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
-    bullet_archetype = archetype_subsystem->get_bullet_archetype();
-
-    for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
-        visualization_actor = *it;
-        break;
-    }
-    if (!visualization_actor) {
-        logger.log_warning(TEXT("visualization_actor is nullptr."));
-    }
-
-    TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
-    auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
-
-    auto impact_effect_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
-            bullet_data->impact_effect)};
-
-    auto viz_actor_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
-            visualization_actor)};
-
-    shared_values.Add(impact_effect_handle);
-    shared_values.Add(viz_actor_handle);
-    shared_values.Sort();
 }
 void AMassBulletSpawner::Tick(float DeltaTime) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::Tick"))

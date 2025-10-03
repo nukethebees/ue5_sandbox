@@ -34,15 +34,9 @@ class SANDBOX_API AMassBulletSpawner
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
     UArrowComponent* fire_point{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
   private:
     void spawn_bullet();
     FTransform get_spawn_transform(UArrowComponent const& bullet_start) const;
 
     float time_since_last_shot{0.0f};
-    FMassArchetypeHandle bullet_archetype;
-    AMassBulletVisualizationActor* visualization_actor{nullptr};
-    FMassArchetypeSharedFragmentValues shared_values{};
 };
