@@ -45,7 +45,20 @@ class SANDBOX_API AMassBulletVisualizationActor
     TArray<int32> create_instances(int32 n);
     void add_instances(int32 n);
     void grow_instances();
-    FTransform const& get_hidden_transform() const;
+    FTransform const& get_hidden_transform() const {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
+
+        static auto const transform{[]() -> FTransform {
+            FRotator const rotation{};
+            FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
+            auto const scale{FVector::OneVector};
+
+            return {rotation, infinite_location, scale};
+        }()};
+
+        return transform;
+    }
     void update_transform(UInstancedStaticMeshComponent& component,
                           int32 i,
                           FTransform const& transform) {
