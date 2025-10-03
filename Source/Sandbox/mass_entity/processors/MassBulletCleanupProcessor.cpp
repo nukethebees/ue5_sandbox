@@ -51,9 +51,9 @@ UMassBulletCleanupProcessor::UMassBulletCleanupProcessor()
         UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCleanupExecutor>(entity_query, this);
     AutoExecuteQuery = executor;
 
+    SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+
     if (HasAnyFlags(RF_ClassDefaultObject)) {
-        SetShouldAutoRegisterWithGlobalList(true);
-        ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::ApplyForces);
         bRequiresGameThreadExecution = true;
         set_execution_flags(EProcessorExecutionFlags::All);
     }

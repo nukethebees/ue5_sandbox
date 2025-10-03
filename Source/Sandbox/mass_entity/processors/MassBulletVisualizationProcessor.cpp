@@ -33,9 +33,9 @@ UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()
         UE::Mass::FQueryExecutor::CreateQuery<FMassBulletVisualizationExecutor>(entity_query, this);
     AutoExecuteQuery = executor;
 
+    SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+
     if (HasAnyFlags(RF_ClassDefaultObject)) {
-        SetShouldAutoRegisterWithGlobalList(true);
-        ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::SyncWorldToMass;
         bRequiresGameThreadExecution = true;
         set_execution_flags(EProcessorExecutionFlags::All);
     }
