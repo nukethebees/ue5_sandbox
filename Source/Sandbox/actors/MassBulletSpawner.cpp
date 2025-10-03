@@ -1,12 +1,12 @@
 #include "Sandbox/actors/MassBulletSpawner.h"
 
 #include "Components/ArrowComponent.h"
+#include "Engine/AssetManager.h"
 #include "EngineUtils.h"
 #include "MassCommandBuffer.h"
 #include "MassCommands.h"
 #include "MassEntitySubsystem.h"
 
-#include "Engine/AssetManager.h"
 #include "Sandbox/actors/BulletActor.h"
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data/pool/PoolConfig.h"
