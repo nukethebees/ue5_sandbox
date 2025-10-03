@@ -31,6 +31,8 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
         if (impact_effect_fragment.impact_effect) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                TEXT("Sandbox::FMassBulletCleanupExecutor::Execute[create_impact_event]"))
             auto const impact_location{hit_infos[i].hit_location};
             auto const impact_rotation{UKismetMathLibrary::MakeRotFromZ(hit_infos[i].hit_normal)};
 
