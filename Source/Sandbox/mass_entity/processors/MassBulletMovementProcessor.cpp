@@ -73,9 +73,9 @@ UMassBulletMovementProcessor::UMassBulletMovementProcessor()
         UE::Mass::FQueryExecutor::CreateQuery<FMassBulletMovementExecutor>(entity_query, this);
     AutoExecuteQuery = executor;
 
+    SetProcessingPhase(EMassProcessingPhase::PrePhysics);
+
     if (HasAnyFlags(RF_ClassDefaultObject)) {
-        SetShouldAutoRegisterWithGlobalList(true);
-        ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
         set_execution_flags(EProcessorExecutionFlags::All);
         bRequiresGameThreadExecution = false;
     }

@@ -54,14 +54,13 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
 }
 
 UMassBulletCollisionProcessor::UMassBulletCollisionProcessor()
-    : entity_query(*this) {
-    executor =
-        UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCollisionExecutor>(entity_query, this);
+    : entity_query(*this)
+    , executor(
+          UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCollisionExecutor>(entity_query, this)) {
     AutoExecuteQuery = executor;
+    SetProcessingPhase(EMassProcessingPhase::EndPhysics);
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
-        SetShouldAutoRegisterWithGlobalList(true);
-        ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Movement);
         bRequiresGameThreadExecution = true;
         set_execution_flags(EProcessorExecutionFlags::All);
     }
