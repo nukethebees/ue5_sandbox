@@ -18,7 +18,12 @@ class SANDBOX_API AMassBulletVisualizationActor
     , public ml::LogMsgMixin<"AMassBulletVisualizationActor"> {
     GENERATED_BODY()
   public:
+    static constexpr float growth_factor{1.5};
+
     AMassBulletVisualizationActor();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    int32 preallocate_isms{0};
 
     std::optional<int32> add_instance(FTransform const& transform);
     void update_instance(int32 instance_index, FTransform const& transform);
@@ -29,6 +34,11 @@ class SANDBOX_API AMassBulletVisualizationActor
     virtual void BeginPlay() override;
   private:
     void handle_assets_ready(FPrimaryAssetId primary_asset_id);
+    void handle_preallocation();
+    TArray<int32> create_instances(int32 n);
+    void add_instances(int32 n);
+    void grow_instances();
+    FTransform const& get_hidden_transform() const;
 
     UPROPERTY(VisibleAnywhere)
     UInstancedStaticMeshComponent* ismc{nullptr};

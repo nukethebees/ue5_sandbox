@@ -39,6 +39,8 @@ void AMassBulletVisualizationActor::handle_assets_ready(FPrimaryAssetId primary_
     logger.log_display(TEXT("Setting up bullet mesh and material"));
     ismc->SetStaticMesh(mesh_component);
     ismc->SetMaterial(0, mesh_component->GetMaterial(0));
+
+    handle_preallocation();
 }
 
 std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform const& transform) {
@@ -46,13 +48,13 @@ std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform cons
         return std::nullopt;
     }
 
-    if (free_indices.Num() > 0) {
-        auto const index{free_indices.Pop()};
-        ismc->UpdateInstanceTransform(index, transform, true, true);
-        return index;
+    if (free_indices.IsEmpty()) {
+        grow_instances();
     }
 
-    return ismc->AddInstance(transform, true);
+    auto const index{free_indices.Pop()};
+    ismc->UpdateInstanceTransform(index, transform, true, true);
+    return index;
 }
 
 void AMassBulletVisualizationActor::update_instance(int32 instance_index,
@@ -65,6 +67,47 @@ void AMassBulletVisualizationActor::remove_instance(int32 instance_index) {
     RETURN_IF_NULLPTR(ismc);
 
     free_indices.Add(instance_index);
-    ismc->UpdateInstanceTransform(
-        instance_index, FTransform{FVector{0.0f, 0.0f, -10000.0f}}, true, true);
+    ismc->UpdateInstanceTransform(instance_index, get_hidden_transform(), true, true);
+}
+
+void AMassBulletVisualizationActor::handle_preallocation() {
+    if (preallocate_isms > 0) {
+        log_display(TEXT("Preallocating %d ISM instances."), preallocate_isms);
+        free_indices = create_instances(preallocate_isms);
+    }
+}
+TArray<int32> AMassBulletVisualizationActor::create_instances(int32 n) {
+    TArray<FTransform> transforms;
+    transforms.Init(get_hidden_transform(), n);
+
+    constexpr bool bShouldReturnIndices{true};
+    constexpr bool bWorldSpace{true};
+    constexpr bool bUpdateNavigation{false};
+
+    return ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
+}
+void AMassBulletVisualizationActor::add_instances(int32 n) {
+    auto indexes{create_instances(n)};
+    free_indices.Append(std::move(indexes));
+}
+void AMassBulletVisualizationActor::grow_instances() {
+    RETURN_IF_NULLPTR(ismc);
+
+    auto const n_ismcs{FMath::Max(ismc->GetNumInstances(), 1)};
+    auto const target{
+        (n_ismcs < 8) ? 8 : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
+    auto const to_add{target - n_ismcs};
+
+    log_display(TEXT("Increasing ISM instances from %d to %d."), n_ismcs, target);
+
+    add_instances(to_add);
+}
+FTransform const& AMassBulletVisualizationActor::get_hidden_transform() const {
+    static FRotator const rotation{};
+    static FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
+    static auto const scale{FVector::OneVector};
+
+    static FTransform const transform{rotation, infinite_location, scale};
+
+    return transform;
 }
