@@ -7,22 +7,23 @@
 
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionExecutor::Execute"))
 
-    constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+    constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 i) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::executor"))
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const last_positions{
             context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
         auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
 
-        auto const current_position{transforms[EntityIndex].transform.GetLocation()};
-        auto const last_position{last_positions[EntityIndex].last_position};
+        auto const current_position{transforms[i].transform.GetLocation()};
+        auto const last_position{last_positions[i].last_position};
 
-        auto* world{context.GetWorld()};
-        if (!world) {
-            return;
-        }
+        TRY_INIT_PTR(world, context.GetWorld());
 
         FCollisionQueryParams query_params{};
         query_params.bTraceComplex = false;
@@ -42,12 +43,12 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                                                            query_params)};
 
         if (hit_detected && hit_results.Num() > 0) {
-            hit_infos[EntityIndex].hit_location = hit_results[0].Location;
-            hit_infos[EntityIndex].hit_normal = hit_results[0].Normal;
-            context.Defer().AddTag<FMassBulletDeadTag>(context.GetEntity(EntityIndex));
+            hit_infos[i].hit_location = hit_results[0].Location;
+            hit_infos[i].hit_normal = hit_results[0].Normal;
+            context.Defer().AddTag<FMassBulletDeadTag>(context.GetEntity(i));
         }
 
-        last_positions[EntityIndex].last_position = current_position;
+        last_positions[i].last_position = current_position;
     }};
 
     ForEachEntity(context, accessors, std::move(executor));

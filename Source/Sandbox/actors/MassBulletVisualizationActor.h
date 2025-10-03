@@ -3,13 +3,13 @@
 #include <optional>
 
 #include "CoreMinimal.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "MassBulletVisualizationActor.generated.h"
 
-class UInstancedStaticMeshComponent;
 class UBulletDataAsset;
 
 UCLASS()
@@ -28,6 +28,13 @@ class SANDBOX_API AMassBulletVisualizationActor
     std::optional<int32> add_instance(FTransform const& transform);
     void update_instance(int32 instance_index, FTransform const& transform);
     void remove_instance(int32 instance_index);
+    bool mark_render_state_as_dirty() {
+        if (ismc) {
+            ismc->MarkRenderStateDirty();
+            return true;
+        }
+        return false;
+    }
 
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
   protected:
@@ -39,6 +46,16 @@ class SANDBOX_API AMassBulletVisualizationActor
     void add_instances(int32 n);
     void grow_instances();
     FTransform const& get_hidden_transform() const;
+    void update_transform(UInstancedStaticMeshComponent& component,
+                          int32 i,
+                          FTransform const& transform) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::AMassBulletVisualizationActor::update_transform"))
+        constexpr bool world_space{true};
+        constexpr bool mark_dirty{false};
+        constexpr bool teleport{true};
+        component.UpdateInstanceTransform(i, transform, world_space, mark_dirty, teleport);
+    }
 
     UPROPERTY(VisibleAnywhere)
     UInstancedStaticMeshComponent* ismc{nullptr};

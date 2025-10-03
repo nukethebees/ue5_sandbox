@@ -11,11 +11,19 @@
 
 void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletVisualizationExecutor::Execute"))
+    constexpr auto logger{NestedLogger<"Execute">()};
 
-    constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+    AMassBulletVisualizationActor* actor{nullptr};
+
+    auto executor{[&actor](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::FMassBulletVisualizationExecutor::Execute::executor"))
+
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
+
+        actor = viz_fragment.actor;
 
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
@@ -25,6 +33,10 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
     }};
 
     ForEachEntity(context, accessors, std::move(executor));
+
+    if (!actor->mark_render_state_as_dirty()) {
+        logger.log_error(TEXT("Failed to mark render state as dirty."));
+    }
 }
 
 UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()

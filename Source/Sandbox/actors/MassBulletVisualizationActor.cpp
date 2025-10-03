@@ -1,6 +1,5 @@
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 
-#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 
 #include "Sandbox/data_assets/BulletDataAsset.h"
@@ -14,6 +13,13 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
 
     ismc = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BulletISMC"));
     ismc->SetupAttachment(RootComponent);
+
+    // This is very important
+    // If it's not disabled, updating any transform will force an update of all
+    ismc->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ismc->SetSimulatePhysics(false);
+    ismc->SetEnableGravity(false);
+    ismc->SetCanEverAffectNavigation(false);
 }
 
 void AMassBulletVisualizationActor::BeginPlay() {
@@ -44,6 +50,7 @@ void AMassBulletVisualizationActor::handle_assets_ready(FPrimaryAssetId primary_
 }
 
 std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform const& transform) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::add_instance"))
     if (!ismc || !bullet_data) {
         return std::nullopt;
     }
@@ -53,30 +60,35 @@ std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform cons
     }
 
     auto const index{free_indices.Pop()};
-    ismc->UpdateInstanceTransform(index, transform, true, true);
+    update_transform(*ismc, index, transform);
     return index;
 }
 
 void AMassBulletVisualizationActor::update_instance(int32 instance_index,
                                                     FTransform const& transform) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::update_instance"))
     RETURN_IF_NULLPTR(ismc);
-    ismc->UpdateInstanceTransform(instance_index, transform, true, true);
+    update_transform(*ismc, instance_index, transform);
 }
 
 void AMassBulletVisualizationActor::remove_instance(int32 instance_index) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::remove_instance"))
     RETURN_IF_NULLPTR(ismc);
 
     free_indices.Add(instance_index);
-    ismc->UpdateInstanceTransform(instance_index, get_hidden_transform(), true, true);
+    update_transform(*ismc, instance_index, get_hidden_transform());
 }
 
 void AMassBulletVisualizationActor::handle_preallocation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::AMassBulletVisualizationActor::handle_preallocation"))
     if (preallocate_isms > 0) {
         log_display(TEXT("Preallocating %d ISM instances."), preallocate_isms);
         free_indices = create_instances(preallocate_isms);
     }
 }
 TArray<int32> AMassBulletVisualizationActor::create_instances(int32 n) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::create_instances"))
     TArray<FTransform> transforms;
     transforms.Init(get_hidden_transform(), n);
 
@@ -87,15 +99,20 @@ TArray<int32> AMassBulletVisualizationActor::create_instances(int32 n) {
     return ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
 }
 void AMassBulletVisualizationActor::add_instances(int32 n) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::add_instances"))
     auto indexes{create_instances(n)};
     free_indices.Append(std::move(indexes));
 }
 void AMassBulletVisualizationActor::grow_instances() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::grow_instances"))
     RETURN_IF_NULLPTR(ismc);
 
+    constexpr int32 small_num{8};
+
     auto const n_ismcs{FMath::Max(ismc->GetNumInstances(), 1)};
-    auto const target{
-        (n_ismcs < 8) ? 8 : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
+    auto const target{(n_ismcs < small_num)
+                          ? small_num
+                          : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
     auto const to_add{target - n_ismcs};
 
     log_display(TEXT("Increasing ISM instances from %d to %d."), n_ismcs, target);
@@ -103,6 +120,9 @@ void AMassBulletVisualizationActor::grow_instances() {
     add_instances(to_add);
 }
 FTransform const& AMassBulletVisualizationActor::get_hidden_transform() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
+
     static FRotator const rotation{};
     static FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
     static auto const scale{FVector::OneVector};
