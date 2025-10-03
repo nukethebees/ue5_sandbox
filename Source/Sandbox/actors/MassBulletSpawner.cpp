@@ -96,6 +96,7 @@ void AMassBulletSpawner::spawn_bullet() {
             logger.log_verbose(TEXT("Async creation"));
 
             auto entity = entity_manager.CreateEntity(bullet_archetype, shared_values);
+            entity_manager.AddTagToEntity(entity, FMassBulletActiveTag::StaticStruct());
 
             auto& transform_frag{
                 entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};

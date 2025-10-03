@@ -39,7 +39,8 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
         viz_fragment.actor->remove_instance(instance_index);
 
-        context.Defer().DestroyEntity(context.GetEntity(EntityIndex));
+        context.Defer().RemoveTag<FMassBulletDeadTag>(context.GetEntity(EntityIndex));
+        context.Defer().AddTag<FMassBulletInactiveTag>(context.GetEntity(EntityIndex));
     }};
 
     ForEachEntity(context, accessors, std::move(executor));

@@ -76,11 +76,6 @@ struct SANDBOX_API FMassBulletImpactEffectFragment : public FMassConstSharedFrag
 };
 
 USTRUCT()
-struct SANDBOX_API FMassBulletDeadTag : public FMassTag {
-    GENERATED_BODY()
-};
-
-USTRUCT()
 struct SANDBOX_API FMassBulletVisualizationActorFragment : public FMassConstSharedFragment {
     GENERATED_BODY()
 
@@ -90,4 +85,18 @@ struct SANDBOX_API FMassBulletVisualizationActorFragment : public FMassConstShar
 
     UPROPERTY()
     AMassBulletVisualizationActor* actor{nullptr};
+};
+
+// Tags
+USTRUCT()
+struct SANDBOX_API FMassBulletDeadTag : public FMassTag {
+    GENERATED_BODY()
+};
+USTRUCT()
+struct SANDBOX_API FMassBulletActiveTag : public FMassTag {
+    GENERATED_BODY()
+};
+USTRUCT()
+struct SANDBOX_API FMassBulletInactiveTag : public FMassTag {
+    GENERATED_BODY()
 };
