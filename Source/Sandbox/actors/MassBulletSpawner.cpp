@@ -2,6 +2,8 @@
 
 #include "Components/ArrowComponent.h"
 #include "EngineUtils.h"
+#include "MassCommandBuffer.h"
+#include "MassCommands.h"
 #include "MassEntitySubsystem.h"
 
 #include "Engine/AssetManager.h"
@@ -40,6 +42,21 @@ void AMassBulletSpawner::BeginPlay() {
     if (!visualization_actor) {
         logger.log_warning(TEXT("visualization_actor is nullptr."));
     }
+
+    TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
+    auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
+
+    auto impact_effect_handle{
+        entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
+            bullet_data->impact_effect)};
+
+    auto viz_actor_handle{
+        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
+            visualization_actor)};
+
+    shared_values.Add(impact_effect_handle);
+    shared_values.Add(viz_actor_handle);
+    shared_values.Sort();
 }
 void AMassBulletSpawner::Tick(float DeltaTime) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::Tick"))
@@ -66,46 +83,49 @@ void AMassBulletSpawner::spawn_bullet() {
 
     TRY_INIT_PTR(world, GetWorld());
 
-    auto const spawn_location{fire_point->GetComponentLocation()};
-    auto const spawn_rotation{fire_point->GetComponentRotation()};
-    FVector const spawn_scale{FVector::OneVector};
-
-    FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
+    FTransform const spawn_transform{get_spawn_transform(*fire_point)};
 
     TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
 
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
-    auto entity = entity_manager.CreateEntity(bullet_archetype);
+    auto& cmd_buffer{entity_manager.Defer()};
 
-    auto impact_effect_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
-            bullet_data->impact_effect)};
-    entity_manager.AddConstSharedFragmentToEntity(entity, impact_effect_handle);
+    cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
+        [idx, spawn_transform, this](FMassEntityManager& entity_manager) {
+            logger.log_verbose(TEXT("Async creation"));
 
-    auto viz_actor_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
-            visualization_actor)};
-    entity_manager.AddConstSharedFragmentToEntity(entity, viz_actor_handle);
+            auto entity = entity_manager.CreateEntity(bullet_archetype, shared_values);
 
-    auto& transform_frag{
-        entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
-    transform_frag.transform = spawn_transform;
+            auto& transform_frag{
+                entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
+            transform_frag.transform = spawn_transform;
 
-    auto& velocity_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletVelocityFragment>(entity);
-    auto const velocity{spawn_rotation.Vector() * bullet_speed};
-    velocity_frag.velocity = velocity;
+            auto& velocity_frag =
+                entity_manager.GetFragmentDataChecked<FMassBulletVelocityFragment>(entity);
+            auto const velocity{spawn_transform.Rotator().Vector().GetSafeNormal() * bullet_speed};
+            velocity_frag.velocity = velocity;
 
-    auto& index_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletInstanceIndexFragment>(entity);
-    index_frag.instance_index = *idx;
+            auto& index_frag =
+                entity_manager.GetFragmentDataChecked<FMassBulletInstanceIndexFragment>(entity);
+            index_frag.instance_index = *idx;
 
-    auto& last_pos_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);
-    last_pos_frag.last_position = spawn_location;
+            auto& last_pos_frag =
+                entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);
+            last_pos_frag.last_position = spawn_transform.GetLocation();
 
-    auto& hit_info_frag = entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
-    hit_info_frag.hit_location = FVector::ZeroVector;
-    hit_info_frag.hit_normal = FVector::ZeroVector;
+            auto& hit_info_frag =
+                entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
+            hit_info_frag.hit_location = FVector::ZeroVector;
+            hit_info_frag.hit_normal = FVector::ZeroVector;
+        });
+}
+FTransform AMassBulletSpawner::get_spawn_transform(UArrowComponent const& bullet_start) const {
+    auto const spawn_location{bullet_start.GetComponentLocation()};
+    auto const spawn_rotation{bullet_start.GetComponentRotation()};
+    FVector const spawn_scale{FVector::OneVector};
+
+    FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
+
+    return spawn_transform;
 }
