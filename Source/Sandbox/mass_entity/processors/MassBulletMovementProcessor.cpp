@@ -6,6 +6,7 @@
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
+#if 1
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletMovementExecutor::Execute"))
 
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
@@ -18,6 +19,29 @@ void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
     }};
 
     ForEachEntity(context, accessors, std::move(executor));
+#else
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletMovementExecutor::Execute"))
+
+    constexpr auto executor{[](FMassExecutionContext& context, auto& Data) {
+        auto const n{context.GetNumEntities()};
+        auto const delta_time{context.GetDeltaTimeSeconds()};
+
+        auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
+        auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
+
+        for (int32 i{0}; i < n; ++i) {
+            auto const displacement{velocities[i].velocity * delta_time};
+            transforms[i].transform.AddToTranslation(displacement);
+        }
+
+        // for (int32 i{0}; i < n; ++i) {
+        //     Data.Get<FMassBulletTransformFragment>()[i].transform.AddToTranslation(
+        //         Data.Get<FMassBulletVelocityFragment>()[i].velocity * delta_time);
+        // }
+    }};
+
+    ParallelForEachEntityChunk(context, accessors, std::move(executor));
+#endif
 }
 
 UMassBulletMovementProcessor::UMassBulletMovementProcessor()
@@ -30,5 +54,6 @@ UMassBulletMovementProcessor::UMassBulletMovementProcessor()
         SetShouldAutoRegisterWithGlobalList(true);
         ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Movement;
         set_execution_flags(EProcessorExecutionFlags::All);
+        bRequiresGameThreadExecution = false;
     }
 }
