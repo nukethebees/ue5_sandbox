@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "MassArchetypeTypes.h"
+#include "MassEntityTypes.h"
+
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "MassBulletSpawner.generated.h"
@@ -36,8 +38,11 @@ class SANDBOX_API AMassBulletSpawner
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
   private:
-    float time_since_last_shot{0.0f};
     void spawn_bullet();
+    FTransform get_spawn_transform(UArrowComponent const& bullet_start) const;
+
+    float time_since_last_shot{0.0f};
     FMassArchetypeHandle bullet_archetype;
     AMassBulletVisualizationActor* visualization_actor{nullptr};
+    FMassArchetypeSharedFragmentValues shared_values{};
 };
