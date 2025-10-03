@@ -13,6 +13,8 @@ void ABulletSpawner::BeginPlay() {
     Super::BeginPlay();
 }
 void ABulletSpawner::Tick(float DeltaTime) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletSpawner::Tick"))
+
     Super::Tick(DeltaTime);
 
     time_since_last_shot += DeltaTime;

@@ -42,6 +42,8 @@ void AMassBulletSpawner::BeginPlay() {
     }
 }
 void AMassBulletSpawner::Tick(float DeltaTime) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::Tick"))
+
     Super::Tick(DeltaTime);
 
     time_since_last_shot += DeltaTime;

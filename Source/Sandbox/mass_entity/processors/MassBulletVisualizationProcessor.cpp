@@ -10,6 +10,8 @@
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletVisualizationExecutor::Execute"))
+
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
