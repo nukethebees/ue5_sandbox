@@ -7,13 +7,17 @@
 
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCleanupExecutor::Execute"))
 
-    constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+    TRY_INIT_PTR(world, context.GetWorld());
+    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+
+    auto executor{[mass_bullet_subsystem](FMassExecutionContext& context, auto& Data, uint32 i) {
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
@@ -21,15 +25,14 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
 
-        auto const instance_index{indices[EntityIndex].instance_index};
+        auto const instance_index{indices[i].instance_index};
 
         auto impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
         if (impact_effect_fragment.impact_effect) {
-            auto const impact_location{hit_infos[EntityIndex].hit_location};
-            auto const impact_rotation{
-                UKismetMathLibrary::MakeRotFromZ(hit_infos[EntityIndex].hit_normal)};
+            auto const impact_location{hit_infos[i].hit_location};
+            auto const impact_rotation{UKismetMathLibrary::MakeRotFromZ(hit_infos[i].hit_normal)};
 
             UNiagaraFunctionLibrary::SpawnSystemAtLocation(context.GetWorld(),
                                                            impact_effect_fragment.impact_effect,
@@ -39,8 +42,9 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
         viz_fragment.actor->remove_instance(instance_index);
 
-        context.Defer().RemoveTag<FMassBulletDeadTag>(context.GetEntity(EntityIndex));
-        context.Defer().AddTag<FMassBulletInactiveTag>(context.GetEntity(EntityIndex));
+        context.Defer().RemoveTag<FMassBulletDeadTag>(context.GetEntity(i));
+        context.Defer().AddTag<FMassBulletInactiveTag>(context.GetEntity(i));
+        mass_bullet_subsystem->return_bullet(context.GetEntity(i));
     }};
 
     ForEachEntity(context, accessors, std::move(executor));
