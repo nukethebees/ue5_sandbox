@@ -29,6 +29,27 @@
         return EBTNodeResult::Failed;                          \
     }
 
+// With return value
+#define RETURN_VALUE_IF_NULLPTR(PTR_NAME, VALUE)                       \
+    do {                                                               \
+        if (!PTR_NAME) {                                               \
+            auto const loc{std::source_location::current()};           \
+            FString const fn_name{ANSI_TO_TCHAR(loc.function_name())}; \
+            FString const file_name{ANSI_TO_TCHAR(loc.file_name())};   \
+            UE_LOGFMT(LogTemp,                                         \
+                      Warning,                                         \
+                      #PTR_NAME " is nullptr. [{0}, {1}, {2}]",        \
+                      *fn_name,                                        \
+                      loc.line(),                                      \
+                      *file_name);                                     \
+            return VALUE;                                              \
+        }                                                              \
+    } while (0)
+
+#define INIT_PTR_OR_RETURN_VALUE(PTR_NAME, PTR_EXPR, RETURN_VALUE) \
+    auto PTR_NAME{PTR_EXPR};                                       \
+    RETURN_VALUE_IF_NULLPTR(PTR_NAME, RETURN_VALUE)
+
 // For objects that require calls to IsValid()
 #define RETURN_IF_INVALID(VAR_NAME)                                  \
     do {                                                             \
