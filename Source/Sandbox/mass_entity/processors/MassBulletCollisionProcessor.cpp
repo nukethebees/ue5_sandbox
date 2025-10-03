@@ -8,6 +8,8 @@
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionExecutor::Execute"))
+
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const last_positions{

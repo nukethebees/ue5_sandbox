@@ -6,6 +6,8 @@
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletMovementExecutor::Execute"))
+
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
         auto const delta_time{context.GetDeltaTimeSeconds()};
         auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
