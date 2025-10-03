@@ -21,7 +21,8 @@ struct FMassBulletCollisionExecutor
         UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
         UE::Mass::FMutableFragmentAccess<FMassBulletLastPositionFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>,
-        UE::Mass::FMutableFragmentAccess<FMassBulletHitInfoFragment>>;
+        UE::Mass::FMutableFragmentAccess<FMassBulletHitInfoFragment>,
+        UE::Mass::FMassTagRequired<FMassBulletActiveTag>>;
 
     Query accessors{*this};
 
