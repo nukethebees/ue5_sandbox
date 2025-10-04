@@ -8,7 +8,11 @@
 #include <span>
 #include <type_traits>
 
-enum class ELockFreeMPSCQueueInitResult : std::uint8_t { Success, AlreadyInitialised };
+enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
+    Success,
+    AlreadyInitialised,
+    AllocationFailed
+};
 enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
 
 // Lock-free multi-producer single-consumer queue
@@ -61,7 +65,14 @@ class LockFreeMPSCQueue {
             return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
         }
 
-        data_ = AllocTraits::allocate(allocator_, full_capacity());
+        try {
+            capacity_per_buffer_ = n;
+            data_ = AllocTraits::allocate(allocator_, full_capacity());
+        } catch (std::bad_alloc const&) {
+            capacity_per_buffer_ = 0;
+            return ELockFreeMPSCQueueInitResult::AllocationFailed;
+        }
+
         return ELockFreeMPSCQueueInitResult::Success;
     }
 
