@@ -12,6 +12,17 @@
 template <typename T, typename Allocator = std::allocator<T>>
 class LockFreeMPSCQueue {
   public:
+    using AllocTraits = std::allocator_traits<Allocator>;
+    using value_type = typename AllocTraits::value_type;
+    using allocator_type = Allocator;
+    using size_type = typename AllocTraits::size_type;
+    using difference_type = typename AllocTraits::difference_type;
+    using pointer = typename AllocTraits::pointer;
+    using const_pointer = typename AllocTraits::const_pointer;
+    using reference = value_type&;
+    using const_reference = value_type const&;
+
+    LockFreeMPSCQueue() = default;
     explicit LockFreeMPSCQueue(std::size_t capacity, Allocator alloc = Allocator{})
         : capacity_per_buffer_{capacity}
         , allocator_{std::move(alloc)} {
@@ -77,9 +88,9 @@ class LockFreeMPSCQueue {
     }
 
     T* data_{nullptr};
-    std::size_t const capacity_per_buffer_;
+    std::size_t const capacity_per_buffer_{0};
     std::atomic_size_t write_index_{0};
     std::size_t read_size_{0};
     std::atomic_size_t active_buffer_{0};
-    [[no_unique_address]] Allocator allocator_;
+    [[no_unique_address]] Allocator allocator_{};
 };
