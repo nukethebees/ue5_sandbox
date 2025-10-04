@@ -11,6 +11,11 @@
 #include <utility>
 
 namespace ml {
+template <typename T, typename... Args>
+concept queueable_from =
+    std::constructible_from<T, Args&&...> &&
+    (std::is_nothrow_constructible_v<T, Args&&...> || std::is_nothrow_move_constructible_v<T>);
+
 enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
     Success,
     AlreadyInitialised,
@@ -81,9 +86,7 @@ class LockFreeMPSCQueue {
     }
 
     template <typename... Args>
-        requires (std::constructible_from<value_type, Args && ...> &&
-                  (std::is_nothrow_constructible_v<value_type, Args && ...> ||
-                   std::is_nothrow_move_constructible_v<value_type>))
+        requires queueable_from<value_type, Args&&...>
     [[nodiscard]] auto
         enqueue(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type, Args&&...>)
             -> ELockFreeMPSCQueueEnqueueResult {
