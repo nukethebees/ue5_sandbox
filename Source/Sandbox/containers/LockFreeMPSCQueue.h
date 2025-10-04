@@ -135,10 +135,15 @@ class LockFreeMPSCQueue {
         }
     }
 
+    static constexpr std::size_t cache_line_size_bytes{64};
+
     T* data_{nullptr};
     std::size_t capacity_per_buffer_{0};
     std::atomic_size_t write_index_{0};
     std::size_t read_size_{0};
     std::atomic_size_t write_buffer_index_{0};
     [[no_unique_address]] Allocator allocator_{};
+    // Align to cache line to prevent false sharing
+    alignas(cache_line_size_bytes) std::atomic_size_t write_buffer_index_{0};
+    alignas(cache_line_size_bytes) std::atomic_size_t write_index_{0};
 };
