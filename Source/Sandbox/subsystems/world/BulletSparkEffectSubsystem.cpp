@@ -38,6 +38,9 @@ void UBulletSparkEffectSubsystem::register_actor(ABulletSparkEffectManagerActor*
 
     manager_actor = actor;
 }
+void UBulletSparkEffectSubsystem::unregister_actor() {
+    manager_actor = nullptr;
+}
 
 void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
@@ -58,13 +61,16 @@ void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collectio
             break;
         }
     }
-
-    FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
 }
 
 void UBulletSparkEffectSubsystem::Deinitialize() {
     FCoreDelegates::OnEndFrame.RemoveAll(this);
+    unregister_actor();
     Super::Deinitialize();
+}
+void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld& world) {
+    Super::OnWorldBeginPlay(world);
+    FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
 }
 
 void UBulletSparkEffectSubsystem::Tick(float DeltaTime) {}
