@@ -78,31 +78,40 @@ class LockFreeMPSCQueue {
 
     template <typename U>
         requires std::same_as<U, T>
-    [[nodiscard]] auto enqueue(U&& value) noexcept -> ELockFreeMPSCQueueEnqueueResult {
+    [[nodiscard]] auto enqueue(U&& value) noexcept(std::is_nothrow_constructible_v<value_type>)
+        -> ELockFreeMPSCQueueEnqueueResult {
         if (!is_initialised()) {
             return ELockFreeMPSCQueueEnqueueResult::Uninitialised;
         }
 
-        auto const i{write_index_.fetch_add(1, std::memory_order_acquire)};
-        if (i >= capacity_per_buffer_) {
-            return ELockFreeMPSCQueueEnqueueResult::Full;
+        // Perform a compare and swap until a valid index is found
+        auto i{write_index_.load(std::memory_order_relaxed)};
+        for (;;) {
+            if (i >= buffer_capacity()) {
+                return ELockFreeMPSCQueueEnqueueResult::Full;
+            }
+
+            if (write_index_.compare_exchange_weak(
+                    i, i + 1, std::memory_order_release, std::memory_order_relaxed)) {
+                break;
+            }
         }
 
-        auto* const address{get_address(write_buffer_index_.load(std::memory_order_acquire), i)};
+        auto* const address{get_address(write_buffer_index_.load(std::memory_order_relaxed), i)};
+
         new (address) T{std::forward<U>(value)};
+
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
     [[nodiscard]] std::span<T> swap_and_consume() {
         // Swap the read/write buffers and destroy the objects in the new write buffer
-
-        auto const new_read_size{write_index_.load(std::memory_order_acquire)};
+        auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};
         read_size_ = new_read_size;
 
         auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
         write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
-        write_index_.store(0, std::memory_order_release);
 
         auto const* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
         auto const* const new_read_buffer{get_address(old_write_buffer, 0)};
@@ -117,9 +126,12 @@ class LockFreeMPSCQueue {
         auto* const buffer_start{data_ + buffer_start_offset};
         return buffer_start + item_index;
     }
-    void destroy_buffer(pointer ptr, size_type n) {
-        for (std::size_t i{0}; i < n; ++i) {
-            AllocTraits::destroy(allocator_, ptr + i);
+    void destroy_buffer(pointer ptr,
+                        size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
+        if constexpr (!std::is_trivially_destructible_v<value_type>) {
+            for (std::size_t i{0}; i < n; ++i) {
+                AllocTraits::destroy(allocator_, ptr + i);
+            }
         }
     }
 
