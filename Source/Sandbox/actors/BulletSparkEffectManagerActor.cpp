@@ -32,6 +32,7 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
 
     using NL = UNiagaraDataInterfaceArrayFunctionLibrary;
 
-    NL::SetNiagaraArrayVector(niagara_component, FName("ImpactPositions"), impact_positions);
+    NL::SetNiagaraArrayPosition(niagara_component, FName("ImpactPositions"), impact_positions);
     NL::SetNiagaraArrayQuat(niagara_component, FName("ImpactRotations"), impact_rotations);
+    niagara_component->SetIntParameter(FName("n_bursts"), n);
 }
