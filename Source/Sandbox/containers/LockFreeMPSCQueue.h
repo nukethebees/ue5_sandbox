@@ -80,7 +80,7 @@ class LockFreeMPSCQueue {
     }
 
     template <typename U>
-        requires std::same_as<U, T>
+        requires std::same_as<std::remove_cvref_t<U>, T>
     [[nodiscard]] auto enqueue(U&& value) noexcept(std::is_nothrow_constructible_v<value_type>)
         -> ELockFreeMPSCQueueEnqueueResult {
         auto address{get_next_write_address()};
