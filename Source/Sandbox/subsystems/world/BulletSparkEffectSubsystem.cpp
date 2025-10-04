@@ -4,6 +4,8 @@
 
 #include "Sandbox/actors/BulletSparkEffectManagerActor.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void UBulletSparkEffectSubsystem::add_impact(FVector const& location, FRotator const& rotation) {
     constexpr auto logger{NestedLogger<"add_impact">()};
 
@@ -29,7 +31,7 @@ void UBulletSparkEffectSubsystem::add_impact(FVector const& location, FRotator c
 void UBulletSparkEffectSubsystem::register_actor(ABulletSparkEffectManagerActor* actor) {
     constexpr auto logger{NestedLogger<"register_actor">()};
 
-    if (manager_actor) {
+    if (manager_actor.IsValid()) {
         logger.log_error(TEXT("Trying to register another ABulletSparkEffectManagerActor actor."));
         return;
     }
@@ -68,8 +70,10 @@ void UBulletSparkEffectSubsystem::Deinitialize() {
 void UBulletSparkEffectSubsystem::Tick(float DeltaTime) {}
 
 void UBulletSparkEffectSubsystem::on_end_frame() {
-    queue.swap_and_visit([](std::span<FSparkEffectTransform> impacts) {
-        // TODO: Process impacts
+    RETURN_IF_INVALID(manager_actor);
+
+    queue.swap_and_visit([this](std::span<FSparkEffectTransform> impacts) {
+        manager_actor->consume_impacts(impacts);
     });
 }
 
