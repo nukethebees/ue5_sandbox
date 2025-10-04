@@ -19,8 +19,8 @@ enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
 enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
 
 // Lock-free multi-producer single-consumer queue
-// Contract: consume() must only be called when all enqueue() operations are complete
-// (e.g., at end of frame after all producers have finished)
+// Contract: The swap_and_{x}() functions must only be called when all enqueue() operations 
+// are complete (e.g., at end of frame after all producers have finished)
 template <typename T, typename Allocator = std::allocator<T>>
 class LockFreeMPSCQueue {
   public:
