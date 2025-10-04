@@ -6,12 +6,16 @@
 #include "GameFramework/Actor.h"
 #include "NiagaraComponent.h"
 
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 #include "BulletSparkEffectManagerActor.generated.h"
 
 struct FSparkEffectTransform;
 
 UCLASS()
-class SANDBOX_API ABulletSparkEffectManagerActor : public AActor {
+class SANDBOX_API ABulletSparkEffectManagerActor
+    : public AActor
+    , public ml::LogMsgMixin<"ABulletSparkEffectManagerActor"> {
     GENERATED_BODY()
   public:
     ABulletSparkEffectManagerActor();

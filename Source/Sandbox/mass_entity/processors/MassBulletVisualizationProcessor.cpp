@@ -23,7 +23,9 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
 
-        actor = viz_fragment.actor;
+        if (!actor) {
+            actor = viz_fragment.actor;
+        }
 
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
@@ -33,6 +35,11 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
     }};
 
     ForEachEntity(context, accessors, std::move(executor));
+
+    // RETURN_IF_NULLPTR(actor);
+    if (!actor) {
+        return;
+    }
 
     if (!actor->mark_render_state_as_dirty()) {
         logger.log_error(TEXT("Failed to mark render state as dirty."));
