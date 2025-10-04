@@ -22,7 +22,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
 
     virtual TStatId GetStatId() const override;
   protected:
-    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Tick(float DeltaTime) override;
   private:
     TArray<FVector> impact_locations;
