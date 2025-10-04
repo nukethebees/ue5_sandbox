@@ -14,6 +14,8 @@ ABulletSparkEffectManagerActor::ABulletSparkEffectManagerActor() {
 }
 
 void ABulletSparkEffectManagerActor::BeginPlay() {
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
+
     Super::BeginPlay();
 
     TRY_INIT_PTR(subsystem, GetWorld()->GetSubsystem<UBulletSparkEffectSubsystem>());
@@ -21,7 +23,11 @@ void ABulletSparkEffectManagerActor::BeginPlay() {
 }
 
 void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTransform> impacts) {
+    constexpr auto logger{NestedLogger<"consume_impacts">()};
+
     auto const n{static_cast<int32>(impacts.size())};
+    logger.log_verbose(TEXT("Writing %d impacts."), n);
+
     impact_positions.SetNum(n);
     impact_rotations.SetNum(n);
 
@@ -32,7 +38,7 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
 
     using NL = UNiagaraDataInterfaceArrayFunctionLibrary;
 
-    NL::SetNiagaraArrayPosition(niagara_component, FName("ImpactPositions"), impact_positions);
-    NL::SetNiagaraArrayQuat(niagara_component, FName("ImpactRotations"), impact_rotations);
+    NL::SetNiagaraArrayPosition(niagara_component, FName("impact_positions"), impact_positions);
+    NL::SetNiagaraArrayQuat(niagara_component, FName("impact_rotations"), impact_rotations);
     niagara_component->SetIntParameter(FName("n_bursts"), n);
 }

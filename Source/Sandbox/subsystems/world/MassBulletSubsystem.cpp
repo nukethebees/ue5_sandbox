@@ -54,9 +54,11 @@ void UMassBulletSubsystem::return_bullet(FMassEntityHandle handle) {
 
 void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::OnWorldBeginPlay"))
+    constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
     Super::OnWorldBeginPlay(world);
 
     if (!initialise_asset_data()) {
+        logger.log_warning(TEXT("Failed to load the asset data."));
         return;
     }
 

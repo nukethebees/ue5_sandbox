@@ -9,6 +9,8 @@
 void UBulletSparkEffectSubsystem::add_impact(FVector const& location, FRotator const& rotation) {
     constexpr auto logger{NestedLogger<"add_impact">()};
 
+    logger.log_verbose(TEXT("Adding impact to %s"), *location.ToString());
+
     switch (queue.enqueue(location, rotation)) {
         using enum ml::ELockFreeMPSCQueueEnqueueResult;
         case Success: {
@@ -78,7 +80,20 @@ void UBulletSparkEffectSubsystem::Tick(float DeltaTime) {}
 void UBulletSparkEffectSubsystem::on_end_frame() {
     RETURN_IF_INVALID(manager_actor);
 
+    if (auto* world{GetWorld()}) {
+        if (!world->IsGameWorld()) {
+            return;
+        }
+        if (world->IsPaused()) {
+            return;
+        }
+    }
+
     queue.swap_and_visit([this](std::span<FSparkEffectTransform> impacts) {
+        if (impacts.empty()) {
+            return;
+        }
+
         manager_actor->consume_impacts(impacts);
     });
 }

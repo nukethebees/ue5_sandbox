@@ -42,10 +42,13 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                                                            collision_shape,
                                                            query_params)};
 
+        auto& command_buffer{context.Defer()};
+
         if (hit_detected && hit_results.Num() > 0) {
             hit_infos[i].hit_location = hit_results[0].Location;
             hit_infos[i].hit_normal = hit_results[0].Normal;
-            context.Defer().AddTag<FMassBulletDeadTag>(context.GetEntity(i));
+            command_buffer.AddTag<FMassBulletDeadTag>(context.GetEntity(i));
+            command_buffer.RemoveTag<FMassBulletActiveTag>(context.GetEntity(i));
         }
 
         last_positions[i].last_position = current_position;
