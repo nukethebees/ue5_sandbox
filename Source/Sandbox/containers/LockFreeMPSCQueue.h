@@ -138,9 +138,7 @@ class LockFreeMPSCQueue {
     void destroy_buffer(pointer ptr,
                         size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
         if constexpr (!std::is_trivially_destructible_v<value_type>) {
-            for (std::size_t i{0}; i < n; ++i) {
-                std::destroy_at(ptr + i);
-            }
+            std::destroy_n(ptr, n);
         }
     }
     [[nodiscard]] auto get_next_write_address() noexcept
