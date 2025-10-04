@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <type_traits>
 
 enum class ELockFreeMPSCQueueInitResult : std::uint8_t { Success, AlreadyInitialised };
 enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
@@ -26,16 +27,18 @@ class LockFreeMPSCQueue {
     using reference = value_type&;
     using const_reference = value_type const&;
 
-    explicit LockFreeMPSCQueue(Allocator alloc = Allocator{})
+    explicit LockFreeMPSCQueue(Allocator alloc = Allocator{}) noexcept
         : allocator_{std::move(alloc)} {}
 
     ~LockFreeMPSCQueue() {
-        auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
-        destroy_buffer(read_buffer_start, read_size_);
+        if constexpr (!std::is_trivially_destructible_v<value_type>) {
+            auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
+            destroy_buffer(read_buffer_start, read_size_);
 
-        auto write_count{write_index_.load()};
-        auto* write_buffer_start{get_address(write_buffer_index_.load(), 0)};
-        destroy_buffer(write_buffer_start, write_count);
+            auto write_count{write_index_.load()};
+            auto* write_buffer_start{get_address(write_buffer_index_.load(), 0)};
+            destroy_buffer(write_buffer_start, write_count);
+        }
 
         AllocTraits::deallocate(allocator_, data_, 2 * capacity_per_buffer_);
     }
@@ -45,9 +48,9 @@ class LockFreeMPSCQueue {
     LockFreeMPSCQueue(LockFreeMPSCQueue&&) = delete;
     LockFreeMPSCQueue& operator=(LockFreeMPSCQueue&&) = delete;
 
-    auto full_capacity() const { return buffer_capacity() * 2; }
-    auto buffer_capacity() const { return capacity_per_buffer_; }
-    auto is_initialised() const { return capacity_per_buffer_ > 0; }
+    auto full_capacity() const noexcept { return buffer_capacity() * 2; }
+    auto buffer_capacity() const noexcept { return capacity_per_buffer_; }
+    auto is_initialised() const noexcept { return capacity_per_buffer_ > 0; }
 
     [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
         if (n == 0) {
@@ -64,7 +67,7 @@ class LockFreeMPSCQueue {
 
     template <typename U>
         requires std::same_as<U, T>
-    [[nodiscard]] auto enqueue(U&& value) -> ELockFreeMPSCQueueEnqueueResult {
+    [[nodiscard]] auto enqueue(U&& value) noexcept -> ELockFreeMPSCQueueEnqueueResult {
         if (!is_initialised()) {
             return ELockFreeMPSCQueueEnqueueResult::Uninitialised;
         }
@@ -79,7 +82,7 @@ class LockFreeMPSCQueue {
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
-    [[nodiscard]] std::span<T> consume() {
+    [[nodiscard]] std::span<T> swap_and_consume() {
         // Swap the read/write buffers and destroy the objects in the new write buffer
 
         auto const new_read_size{write_index_.load(std::memory_order_acquire)};
@@ -98,7 +101,7 @@ class LockFreeMPSCQueue {
         return std::span<T>{new_read_buffer, new_read_size};
     }
   private:
-    inline T* get_address(std::size_t buffer_index, std::size_t item_index) const noexcept {
+    T* get_address(std::size_t buffer_index, std::size_t item_index) const noexcept {
         auto const buffer_start_offset{buffer_index * buffer_capacity()};
         auto* const buffer_start{data_ + buffer_start_offset};
         return buffer_start + item_index;
@@ -110,7 +113,7 @@ class LockFreeMPSCQueue {
     }
 
     T* data_{nullptr};
-    std::size_t const capacity_per_buffer_{0};
+    std::size_t capacity_per_buffer_{0};
     std::atomic_size_t write_index_{0};
     std::size_t read_size_{0};
     std::atomic_size_t write_buffer_index_{0};
