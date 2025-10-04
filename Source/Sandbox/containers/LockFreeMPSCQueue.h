@@ -3,8 +3,12 @@
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
+
+enum class ELockFreeMPSCQueueInitResult : std::uint8_t { Success, AlreadyInitialised };
+enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
 
 // Lock-free multi-producer single-consumer queue
 // Contract: consume() must only be called when all enqueue() operations are complete
@@ -22,28 +26,24 @@ class LockFreeMPSCQueue {
     using reference = value_type&;
     using const_reference = value_type const&;
 
-    LockFreeMPSCQueue() = default;
-    explicit LockFreeMPSCQueue(std::size_t capacity, Allocator alloc = Allocator{})
-        : capacity_per_buffer_{capacity}
-        , allocator_{std::move(alloc)} {
-        data_ = allocator_.allocate(2 * capacity_per_buffer_);
-    }
+    explicit LockFreeMPSCQueue(Allocator alloc = Allocator{})
+        : allocator_{std::move(alloc)} {}
 
     ~LockFreeMPSCQueue() {
         // Destroy objects in read buffer
         auto* read_buffer_start{get_address(1 - active_buffer_.load(), 0)};
         for (std::size_t i{0}; i < read_size_; ++i) {
-            std::destroy_at(read_buffer_start + i);
+            AllocTraits::destroy(allocator_, read_buffer_start + i);
         }
 
         // Destroy objects in write buffer
         auto write_count{write_index_.load()};
         auto* write_buffer_start{get_address(active_buffer_.load(), 0)};
         for (std::size_t i{0}; i < write_count; ++i) {
-            std::destroy_at(write_buffer_start + i);
+            AllocTraits::destroy(allocator_, write_buffer_start + i);
         }
 
-        allocator_.deallocate(data_, 2 * capacity_per_buffer_);
+        AllocTraits::deallocate(allocator_, data_, 2 * capacity_per_buffer_);
     }
 
     LockFreeMPSCQueue(LockFreeMPSCQueue const&) = delete;
@@ -51,40 +51,64 @@ class LockFreeMPSCQueue {
     LockFreeMPSCQueue(LockFreeMPSCQueue&&) = delete;
     LockFreeMPSCQueue& operator=(LockFreeMPSCQueue&&) = delete;
 
-    template <typename U>
-        requires std::same_as<U, T>
-    [[nodiscard]] bool enqueue(U&& value) {
-        auto index{write_index_.fetch_add(1, std::memory_order_acquire)};
-        if (index >= capacity_per_buffer_) {
-            return false;
+    auto full_capacity() const { return buffer_capacity() * 2; }
+    auto buffer_capacity() const { return capacity_per_buffer_; }
+    auto is_initialised() const { return capacity_per_buffer_ > 0; }
+
+    [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
+        if (n == 0) {
+            return ELockFreeMPSCQueueInitResult::Success;
         }
 
-        auto* address{get_address(active_buffer_.load(std::memory_order_acquire), index)};
-        new (address) T(std::forward<U>(value));
-        return true;
+        if (is_initialised()) {
+            return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
+        }
+
+        data_ = AllocTraits::allocate(allocator_, full_capacity());
+        return ELockFreeMPSCQueueInitResult::Success;
+    }
+
+    template <typename U>
+        requires std::same_as<U, T>
+    [[nodiscard]] auto enqueue(U&& value) -> ELockFreeMPSCQueueEnqueueResult {
+        if (!is_initialised()) {
+            return ELockFreeMPSCQueueEnqueueResult::Uninitialised;
+        }
+
+        auto const i{write_index_.fetch_add(1, std::memory_order_acquire)};
+        if (i >= capacity_per_buffer_) {
+            return ELockFreeMPSCQueueEnqueueResult::Full;
+        }
+
+        auto* const address{get_address(active_buffer_.load(std::memory_order_acquire), i)};
+        new (address) T{std::forward<U>(value)};
+        return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
     [[nodiscard]] std::span<T> consume() {
-        auto new_read_size{write_index_.load(std::memory_order_acquire)};
-        auto old_read_size{read_size_};
+        auto const new_read_size{write_index_.load(std::memory_order_acquire)};
+        auto const old_read_size{read_size_};
         read_size_ = new_read_size;
 
-        auto old_active_buffer{active_buffer_.load(std::memory_order_acquire)};
+        auto const old_active_buffer{active_buffer_.load(std::memory_order_acquire)};
         active_buffer_.store(1 - old_active_buffer, std::memory_order_release);
         write_index_.store(0, std::memory_order_release);
 
-        // Destroy objects in the new write buffer (was the old read buffer)
-        auto* new_write_buffer{get_address(1 - old_active_buffer, 0)};
-        for (std::size_t i{0}; i < old_read_size; ++i) {
-            std::destroy_at(new_write_buffer + i);
-        }
+        auto const* const new_write_buffer{get_address(1 - old_active_buffer, 0)};
+        auto const* const new_read_buffer{get_address(old_active_buffer, 0)};
 
-        // Return span of old write buffer (now the read buffer)
-        return std::span<T>{get_address(old_active_buffer, 0), new_read_size};
+        destroy_buffer(new_write_buffer, old_read_size);
+
+        return std::span<T>{new_read_buffer, new_read_size};
     }
   private:
     inline T* get_address(std::size_t buffer_index, std::size_t item_index) const noexcept {
-        return data_ + (buffer_index * capacity_per_buffer_ + item_index);
+        return data_ + (buffer_index * buffer_capacity() + item_index);
+    }
+    void destroy_buffer(pointer ptr, size_type n) {
+        for (std::size_t i{0}; i < n; ++i) {
+            AllocTraits::destroy(allocator_, ptr + i);
+        }
     }
 
     T* data_{nullptr};

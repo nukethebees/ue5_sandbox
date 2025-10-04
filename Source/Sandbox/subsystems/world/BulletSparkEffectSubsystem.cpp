@@ -8,6 +8,25 @@ void UBulletSparkEffectSubsystem::register_actor(ABulletSparkEffectManagerActor*
     manager_actor = actor;
 }
 
+void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
+    constexpr auto logger{NestedLogger<"Initialize">()};
+
+    constexpr std::size_t n_queue_elements{100};
+    switch (queue.init(n_queue_elements)) {
+        using enum ELockFreeMPSCQueueInitResult;
+        case Success: {
+            break;
+        }
+        case AlreadyInitialised: {
+            logger.log_error(TEXT("Queue initialised twice."));
+            break;
+        }
+        default: {
+            logger.log_error(TEXT("Unhandled ELockFreeMPSCQueueInitResult state."));
+            break;
+        }
+    }
+}
 void UBulletSparkEffectSubsystem::Tick(float DeltaTime) {}
 
 TStatId UBulletSparkEffectSubsystem::GetStatId() const {
