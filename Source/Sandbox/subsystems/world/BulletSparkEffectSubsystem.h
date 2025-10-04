@@ -28,5 +28,5 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     TArray<FVector> impact_locations;
     TArray<FRotator> impact_rotations;
     ABulletSparkEffectManagerActor* manager_actor{nullptr};
-    LockFreeMPSCQueue<FVector> queue;
+    ml::LockFreeMPSCQueue<FVector> queue;
 };

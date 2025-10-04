@@ -13,7 +13,7 @@ void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 
     constexpr std::size_t n_queue_elements{100};
     switch (queue.init(n_queue_elements)) {
-        using enum ELockFreeMPSCQueueInitResult;
+        using enum ml::ELockFreeMPSCQueueInitResult;
         case Success: {
             break;
         }
