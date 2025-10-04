@@ -5,12 +5,17 @@
 
 #include "BulletSparkEffectSubsystem.generated.h"
 
+class UNiagaraComponent;
+class ABulletSparkEffectManagerActor;
+
 UCLASS()
 class SANDBOX_API UBulletSparkEffectSubsystem : public UWorldSubsystem {
     GENERATED_BODY()
   public:
     void add_impact(FVector const& location, FRotator const& rotation);
+    void register_actor(ABulletSparkEffectManagerActor* actor);
   private:
     TArray<FVector> impact_locations;
     TArray<FRotator> impact_rotations;
+    ABulletSparkEffectManagerActor* manager_actor{nullptr};
 };
