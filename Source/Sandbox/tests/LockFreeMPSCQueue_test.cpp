@@ -173,16 +173,16 @@ void FLockFreeMPSCQueueInt32Spec::Define() {
         });
     });
 
-    Describe("try_emplace", [this]() {
+    Describe("enqueue", [this]() {
         It("should construct values in place", [this]() {
             ml::LockFreeMPSCQueue<int32> queue{};
             (void)queue.init(3);
 
-            TestEqual(TEXT("First try_emplace"),
-                      queue.try_emplace(100),
+            TestEqual(TEXT("First enqueue"),
+                      queue.enqueue(100),
                       ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Second try_emplace"),
-                      queue.try_emplace(200),
+            TestEqual(TEXT("Second enqueue"),
+                      queue.enqueue(200),
                       ml::ELockFreeMPSCQueueEnqueueResult::Success);
 
             auto const result{queue.swap_and_consume()};
@@ -195,10 +195,10 @@ void FLockFreeMPSCQueueInt32Spec::Define() {
             ml::LockFreeMPSCQueue<int32> queue{};
             (void)queue.init(2);
 
-            (void)queue.try_emplace(1);
-            (void)queue.try_emplace(2);
-            TestEqual(TEXT("try_emplace when full"),
-                      queue.try_emplace(3),
+            (void)queue.enqueue(1);
+            (void)queue.enqueue(2);
+            TestEqual(TEXT("enqueue when full"),
+                      queue.enqueue(3),
                       ml::ELockFreeMPSCQueueEnqueueResult::Full);
         });
     });
@@ -238,26 +238,28 @@ void FLockFreeMPSCQueueInt32Spec::Define() {
     });
 }
 
-BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueFStringSpec,
-                  "Sandbox.LockFreeMPSCQueue.FString",
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueFVectorSpec,
+                  "Sandbox.LockFreeMPSCQueue.FVector",
                   EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-TArray<TTuple<FString, TArray<TArray<FString>>>> test_cases;
-END_DEFINE_SPEC(FLockFreeMPSCQueueFStringSpec)
+TArray<TTuple<FString, TArray<TArray<FVector>>>> test_cases;
+END_DEFINE_SPEC(FLockFreeMPSCQueueFVectorSpec)
 
-void FLockFreeMPSCQueueFStringSpec::Define() {
+void FLockFreeMPSCQueueFVectorSpec::Define() {
     test_cases = {
-        MakeTuple(FString("Single batch with multiple strings"),
-                  TArray<TArray<FString>>{{TEXT("Hello"), TEXT("World"), TEXT("Test")}}),
-        MakeTuple(FString("Multiple batches"),
-                  TArray<TArray<FString>>{{TEXT("Batch"), TEXT("One"), TEXT("Data")},
-                                          {TEXT("Batch"), TEXT("Two"), TEXT("Data")},
-                                          {TEXT("Batch"), TEXT("Three"), TEXT("Data")}}),
+        MakeTuple(FString("Single batch with multiple vectors"),
+                  TArray<TArray<FVector>>{
+                      {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}, FVector{7.0, 8.0, 9.0}}}),
+        MakeTuple(
+            FString("Multiple batches"),
+            TArray<TArray<FVector>>{{FVector{10.0, 20.0, 30.0}, FVector{40.0, 50.0, 60.0}},
+                                    {FVector{70.0, 80.0, 90.0}, FVector{100.0, 110.0, 120.0}}}),
         MakeTuple(FString("Empty and non-empty batches"),
-                  TArray<TArray<FString>>{
-                      {TEXT("First"), TEXT("Batch")}, {}, {TEXT("Third"), TEXT("Batch")}}),
+                  TArray<TArray<FVector>>{{FVector{1.0, 1.0, 1.0}, FVector{2.0, 2.0, 2.0}},
+                                          {},
+                                          {FVector{3.0, 3.0, 3.0}}}),
     };
 
-    Describe("LockFreeMPSCQueue<FString> - Basic operations", [this]() {
+    Describe("LockFreeMPSCQueue<FVector> - Basic operations", [this]() {
         for (auto const& test_case : test_cases) {
             auto const& name{test_case.Get<0>()};
             auto const& batches{test_case.Get<1>()};
@@ -266,54 +268,57 @@ void FLockFreeMPSCQueueFStringSpec::Define() {
         }
     });
 
-    Describe("swap_and_visit with FString", [this]() {
+    Describe("swap_and_visit with FVector", [this]() {
         It("should invoke callable with correct span", [this]() {
-            ml::LockFreeMPSCQueue<FString> queue{};
+            ml::LockFreeMPSCQueue<FVector> queue{};
             (void)queue.init(3);
 
-            (void)queue.enqueue(TEXT("Hello"));
-            (void)queue.enqueue(TEXT("World"));
+            (void)queue.enqueue(FVector{1.0, 2.0, 3.0});
+            (void)queue.enqueue(FVector{4.0, 5.0, 6.0});
 
-            FString concatenated{};
-            queue.swap_and_visit([&concatenated](std::span<FString> span) {
-                for (auto const& str : span) {
-                    concatenated += str;
+            FVector sum{FVector::ZeroVector};
+            queue.swap_and_visit([&sum](std::span<FVector> span) {
+                for (auto const& vec : span) {
+                    sum += vec;
                 }
             });
 
-            TestEqual(TEXT("Concatenated string"), concatenated, TEXT("HelloWorld"));
+            TestEqual(TEXT("Sum of vectors"), sum, FVector{5.0, 7.0, 9.0});
         });
     });
 
-    Describe("try_emplace with FString", [this]() {
-        It("should forward construct FString values", [this]() {
-            ml::LockFreeMPSCQueue<FString> queue{};
+    Describe("enqueue with FVector", [this]() {
+        It("should construct FVector values in place", [this]() {
+            ml::LockFreeMPSCQueue<FVector> queue{};
             (void)queue.init(3);
 
-            (void)queue.try_emplace(TEXT("Forward"));
-            (void)queue.try_emplace(TEXT("Constructed"));
+            (void)queue.enqueue(1.0, 2.0, 3.0);
+            (void)queue.enqueue(4.0, 5.0, 6.0);
 
             auto const result{queue.swap_and_consume()};
             TestEqual(TEXT("Result size"), static_cast<int32>(result.size()), 2);
-            TestEqual(TEXT("First value"), result[0], TEXT("Forward"));
-            TestEqual(TEXT("Second value"), result[1], TEXT("Constructed"));
+            TestEqual(TEXT("First value"), result[0], FVector{1.0, 2.0, 3.0});
+            TestEqual(TEXT("Second value"), result[1], FVector{4.0, 5.0, 6.0});
         });
     });
 
-    Describe("Order preservation with FString", [this]() {
+    Describe("Order preservation with FVector", [this]() {
         It("should maintain FIFO order", [this]() {
-            ml::LockFreeMPSCQueue<FString> queue{};
+            ml::LockFreeMPSCQueue<FVector> queue{};
             (void)queue.init(5);
 
-            TArray<FString> expected{
-                TEXT("First"), TEXT("Second"), TEXT("Third"), TEXT("Fourth"), TEXT("Fifth")};
-            for (auto const& str : expected) {
-                (void)queue.enqueue(str);
+            TArray<FVector> expected{FVector{1.0, 0.0, 0.0},
+                                     FVector{0.0, 1.0, 0.0},
+                                     FVector{0.0, 0.0, 1.0},
+                                     FVector{1.0, 1.0, 0.0},
+                                     FVector{1.0, 1.0, 1.0}};
+            for (auto const& vec : expected) {
+                (void)queue.enqueue(vec);
             }
 
             auto const result{queue.swap_and_consume()};
             for (int32 i{0}; i < expected.Num(); ++i) {
-                TestEqual(*FString::Printf(TEXT("String at index %d"), i), result[i], expected[i]);
+                TestEqual(*FString::Printf(TEXT("Vector at index %d"), i), result[i], expected[i]);
             }
         });
     });
