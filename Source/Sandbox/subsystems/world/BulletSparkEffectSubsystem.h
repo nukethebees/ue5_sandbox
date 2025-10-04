@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
+#include "Sandbox/containers/LockFreeMPSCQueue.h"
+
 #include "BulletSparkEffectSubsystem.generated.h"
 
 class UNiagaraComponent;
@@ -20,4 +22,5 @@ class SANDBOX_API UBulletSparkEffectSubsystem : public UTickableWorldSubsystem {
     TArray<FVector> impact_locations;
     TArray<FRotator> impact_rotations;
     ABulletSparkEffectManagerActor* manager_actor{nullptr};
+    LockFreeMPSCQueue<FVector> queue;
 };
