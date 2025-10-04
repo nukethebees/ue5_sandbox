@@ -2,6 +2,8 @@
 
 #include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 ABulletSparkEffectManagerActor::ABulletSparkEffectManagerActor() {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -12,9 +14,8 @@ ABulletSparkEffectManagerActor::ABulletSparkEffectManagerActor() {
 void ABulletSparkEffectManagerActor::BeginPlay() {
     Super::BeginPlay();
 
-    if (auto* subsystem{GetWorld()->GetSubsystem<UBulletSparkEffectSubsystem>()}) {
-        subsystem->register_actor(this);
-    }
+    TRY_INIT_PTR(subsystem, GetWorld()->GetSubsystem<UBulletSparkEffectSubsystem>());
+    subsystem->register_actor(this);
 }
 
 void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTransform> impacts) {
