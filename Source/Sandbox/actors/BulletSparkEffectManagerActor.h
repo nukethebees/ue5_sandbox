@@ -29,5 +29,5 @@ class SANDBOX_API ABulletSparkEffectManagerActor : public AActor {
     UNiagaraComponent* niagara_component{nullptr};
 
     TArray<FVector> impact_positions;
-    TArray<FRotator> impact_rotations;
+    TArray<FQuat> impact_rotations;
 };
