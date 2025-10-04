@@ -114,8 +114,8 @@ class LockFreeMPSCQueue {
         auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
         write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
 
-        auto const* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
-        auto const* const new_read_buffer{get_address(old_write_buffer, 0)};
+        auto* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
+        auto* const new_read_buffer{get_address(old_write_buffer, 0)};
 
         destroy_buffer(new_write_buffer, old_read_size);
 
@@ -139,7 +139,7 @@ class LockFreeMPSCQueue {
                         size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
         if constexpr (!std::is_trivially_destructible_v<value_type>) {
             for (std::size_t i{0}; i < n; ++i) {
-                std::destroy_at(ptr, i);
+                std::destroy_at(ptr + i);
             }
         }
     }
