@@ -4,11 +4,13 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <memory>
 #include <span>
 #include <type_traits>
 #include <utility>
 
+namespace ml {
 enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
     Success,
     AlreadyInitialised,
@@ -53,9 +55,9 @@ class LockFreeMPSCQueue {
     LockFreeMPSCQueue(LockFreeMPSCQueue&&) = delete;
     LockFreeMPSCQueue& operator=(LockFreeMPSCQueue&&) = delete;
 
-    auto full_capacity() const noexcept { return buffer_capacity() * 2; }
-    auto buffer_capacity() const noexcept { return capacity_per_buffer_; }
-    auto is_initialised() const noexcept { return capacity_per_buffer_ > 0; }
+    [[nodiscard]] auto full_capacity() const noexcept { return buffer_capacity() * 2; }
+    [[nodiscard]] auto buffer_capacity() const noexcept { return capacity_per_buffer_; }
+    [[nodiscard]] auto is_initialised() const noexcept { return capacity_per_buffer_ > 0; }
 
     [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
         if (n == 0) {
@@ -81,32 +83,29 @@ class LockFreeMPSCQueue {
         requires std::same_as<U, T>
     [[nodiscard]] auto enqueue(U&& value) noexcept(std::is_nothrow_constructible_v<value_type>)
         -> ELockFreeMPSCQueueEnqueueResult {
-        if (!is_initialised()) {
-            return ELockFreeMPSCQueueEnqueueResult::Uninitialised;
+        auto address{get_next_write_address()};
+        if (!address) {
+            return address.error();
         }
+        new (*address) T{std::forward<U>(value)};
 
-        // Perform a compare and swap until a valid index is found
-        auto i{write_index_.load(std::memory_order_relaxed)};
-        for (;;) {
-            if (i >= buffer_capacity()) {
-                return ELockFreeMPSCQueueEnqueueResult::Full;
-            }
-
-            if (write_index_.compare_exchange_weak(
-                    i, i + 1, std::memory_order_release, std::memory_order_relaxed)) {
-                break;
-            }
+        return ELockFreeMPSCQueueEnqueueResult::Success;
+    }
+    template <typename... Args>
+    [[nodiscard]] auto
+        try_emplace(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type>)
+            -> ELockFreeMPSCQueueEnqueueResult {
+        auto address{get_next_write_address()};
+        if (!address) {
+            return address.error();
         }
-
-        auto* const address{get_address(write_buffer_index_.load(std::memory_order_relaxed), i)};
-
-        new (address) T{std::forward<U>(value)};
+        new (*address) T{std::forward<Args>(args)...};
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
-    [[nodiscard]] std::span<T>
-        swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>) {
+    [[nodiscard]] auto swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>)
+        -> std::span<T> {
         // Swap the read/write buffers and destroy the objects in the new write buffer
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};
@@ -130,7 +129,8 @@ class LockFreeMPSCQueue {
         return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
-    T* get_address(std::size_t buffer_index, std::size_t item_index) const noexcept {
+    [[nodiscard]] auto get_address(std::size_t buffer_index, std::size_t item_index) const noexcept
+        -> T* {
         auto const buffer_start_offset{buffer_index * buffer_capacity()};
         auto* const buffer_start{data_ + buffer_start_offset};
         return buffer_start + item_index;
@@ -143,6 +143,28 @@ class LockFreeMPSCQueue {
             }
         }
     }
+    [[nodiscard]] auto get_next_write_address() noexcept
+        -> std::expected<T*, ELockFreeMPSCQueueEnqueueResult> {
+        if (!is_initialised()) {
+            return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+        }
+
+        // Perform a compare and swap until a valid index is found
+        auto i{write_index_.load(std::memory_order_relaxed)};
+        for (;;) {
+            if (i >= buffer_capacity()) {
+                return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Full);
+            }
+
+            if (write_index_.compare_exchange_weak(
+                    i, i + 1, std::memory_order_release, std::memory_order_relaxed)) {
+                break;
+            }
+        }
+
+        auto* const address{get_address(write_buffer_index_.load(std::memory_order_relaxed), i)};
+        return address;
+    }
 
     static constexpr std::size_t cache_line_size_bytes{64};
 
@@ -154,3 +176,4 @@ class LockFreeMPSCQueue {
     alignas(cache_line_size_bytes) std::atomic_size_t write_buffer_index_{0};
     alignas(cache_line_size_bytes) std::atomic_size_t write_index_{0};
 };
+}
