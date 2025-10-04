@@ -10,44 +10,54 @@ import subprocess
 import shutil
 import argparse
 from pathlib import Path
+from typing import Optional
 
 
-def check_clang_format():
+def check_clang_format() -> bool:
     """Check if clang-format is available in PATH."""
     if shutil.which("clang-format") is None:
-        print("ERROR: clang-format not found in PATH", file=sys.stderr)
-        print("Please install clang-format and ensure it's in your PATH", file=sys.stderr)
-        print("Installation instructions:", file=sys.stderr)
-        print("  - Windows: Install LLVM or Visual Studio Build Tools", file=sys.stderr)
-        print("  - macOS: brew install clang-format", file=sys.stderr)
-        print("  - Ubuntu/Debian: sudo apt install clang-format", file=sys.stderr)
-        print("  - Fedora/RHEL: sudo dnf install clang-tools-extra", file=sys.stderr)
+        print("""ERROR: clang-format not found in PATH
+Please install clang-format and ensure it's in your PATH
+Installation instructions:
+  - Windows: Install LLVM or Visual Studio Build Tools
+  - macOS: brew install clang-format
+  - Ubuntu/Debian: sudo apt install clang-format
+  - Fedora/RHEL: sudo dnf install clang-tools-extra""", file=sys.stderr)
         return False
     return True
 
 
-def find_cpp_files(directory):
-    """Find all C++ files recursively in the given directory."""
-    cpp_extensions = {'.cpp', '.h', '.hpp', '.cc', '.cxx', '.usf', '.ush', '.hlsl'}
-    cpp_files = []
+def get_file_extensions(format_hlsl: bool) -> set[str]:
+    """Get the set of file extensions to format."""
+    extensions = {'.cpp', '.h', '.hpp', '.cc', '.cxx'}
+    if format_hlsl:
+        extensions.add('.hlsl')
+        extensions.add('.usf')
+        extensions.add('.ush')
+    return extensions
+
+
+def find_files(directory: Path, extensions: set[str]) -> list[Path]:
+    """Find all files with the given extensions recursively in the given directory."""
+    files = []
 
     if not directory.exists():
         print(f"WARNING: Directory not found: {directory}")
-        return cpp_files
+        return files
 
     try:
         for file_path in directory.rglob('*'):
-            if file_path.is_file() and file_path.suffix.lower() in cpp_extensions:
-                cpp_files.append(file_path)
+            if file_path.is_file() and file_path.suffix.lower() in extensions:
+                files.append(file_path)
     except PermissionError as e:
         print(f"WARNING: Permission denied accessing {directory}: {e}")
     except Exception as e:
         print(f"ERROR: Failed to scan {directory}: {e}")
 
-    return cpp_files
+    return files
 
 
-def format_file(file_path):
+def format_file(file_path: Path) -> tuple[bool, Optional[str]]:
     """Format a single file with clang-format."""
     try:
         result = subprocess.run(
@@ -68,10 +78,11 @@ def format_file(file_path):
         return False, str(e)
 
 
-def main():
+def main() -> None:
     """Main function to format all C++ files."""
     parser = argparse.ArgumentParser(description="Format C++ files with clang-format")
     parser.add_argument("--verbose", action="store_true", help="Show detailed progress for each file")
+    parser.add_argument("--format-hlsl", action="store_true", default=True, help="Include HLSL files (default: True)")
     args = parser.parse_args()
 
     print("Running clang-format recursively on the current directory.")
@@ -89,6 +100,9 @@ def main():
         script_dir / "Plugins" / "USFLoader"
     ]
 
+    # Get file extensions to format
+    extensions = get_file_extensions(args.format_hlsl)
+
     total_files = 0
     formatted_files = 0
     errors = []
@@ -98,7 +112,7 @@ def main():
         if args.verbose:
             print(f"Processing directory: {directory.relative_to(script_dir)}")
 
-        cpp_files = find_cpp_files(directory)
+        cpp_files = find_files(directory, extensions)
 
         for file_path in cpp_files:
             total_files += 1
