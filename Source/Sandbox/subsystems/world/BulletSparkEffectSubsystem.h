@@ -11,6 +11,11 @@
 class UNiagaraComponent;
 class ABulletSparkEffectManagerActor;
 
+struct FSparkEffectTransform {
+    FVector location;
+    FRotator rotation;
+};
+
 UCLASS()
 class SANDBOX_API UBulletSparkEffectSubsystem
     : public UTickableWorldSubsystem
@@ -23,10 +28,12 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     virtual TStatId GetStatId() const override;
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
+    virtual void Deinitialize() override;
     virtual void Tick(float DeltaTime) override;
+    virtual bool IsTickable() const override { return false; }
   private:
-    TArray<FVector> impact_locations;
-    TArray<FRotator> impact_rotations;
+    void on_end_frame();
+
     ABulletSparkEffectManagerActor* manager_actor{nullptr};
-    ml::LockFreeMPSCQueue<FVector> queue;
+    ml::LockFreeMPSCQueue<FSparkEffectTransform> queue;
 };
