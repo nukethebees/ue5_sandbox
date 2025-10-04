@@ -19,9 +19,10 @@ enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
 enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
 
 // Lock-free multi-producer single-consumer queue
-// Contract: The swap_and_{x}() functions must only be called when all enqueue() operations 
+// Contract: The swap_and_{x}() functions must only be called when all enqueue() operations
 // are complete (e.g., at end of frame after all producers have finished)
 template <typename T, typename Allocator = std::allocator<T>>
+    requires (std::is_nothrow_constructible_v<T> || std::is_nothrow_move_constructible_v<T>)
 class LockFreeMPSCQueue {
   public:
     using AllocTraits = std::allocator_traits<Allocator>;
@@ -79,28 +80,27 @@ class LockFreeMPSCQueue {
         return ELockFreeMPSCQueueInitResult::Success;
     }
 
-    template <typename U>
-        requires std::convertible_to<std::remove_cvref_t<U>, value_type>
-    [[nodiscard]] auto enqueue(U&& value) noexcept(std::is_nothrow_constructible_v<value_type>)
-        -> ELockFreeMPSCQueueEnqueueResult {
-        auto address{get_next_write_address()};
-        if (!address) {
-            return address.error();
-        }
-        new (*address) value_type{std::forward<U>(value)};
-
-        return ELockFreeMPSCQueueEnqueueResult::Success;
-    }
     template <typename... Args>
-        requires std::constructible_from<value_type, Args...>
+        requires (std::constructible_from<value_type, Args && ...> &&
+                  (std::is_nothrow_constructible_v<value_type, Args && ...> ||
+                   std::is_nothrow_move_constructible_v<value_type>))
     [[nodiscard]] auto
-        try_emplace(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type>)
+        enqueue(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type, Args&&...>)
             -> ELockFreeMPSCQueueEnqueueResult {
-        auto address{get_next_write_address()};
-        if (!address) {
-            return address.error();
+        if constexpr (std::is_nothrow_constructible_v<value_type, Args&&...>) {
+            auto address{get_next_write_address()};
+            if (!address) {
+                return address.error();
+            }
+            new (*address) value_type{std::forward<Args>(args)...};
+        } else {
+            value_type local_value{std::forward<Args>(args)...};
+            auto address{get_next_write_address()};
+            if (!address) {
+                return address.error();
+            }
+            new (*address) value_type{std::move(local_value)};
         }
-        new (*address) value_type{std::forward<Args>(args)...};
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
