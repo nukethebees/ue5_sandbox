@@ -1,16 +1,22 @@
 #pragma once
 
+#include <span>
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NiagaraComponent.h"
 
 #include "BulletSparkEffectManagerActor.generated.h"
 
+struct FSparkEffectTransform;
+
 UCLASS()
 class SANDBOX_API ABulletSparkEffectManagerActor : public AActor {
     GENERATED_BODY()
   public:
     ABulletSparkEffectManagerActor();
+
+    void consume_impacts(std::span<FSparkEffectTransform> impacts);
 
     UNiagaraComponent* get_niagara_component() const { return niagara_component; }
   protected:
@@ -21,4 +27,7 @@ class SANDBOX_API ABulletSparkEffectManagerActor : public AActor {
               Category = "Effects",
               meta = (AllowPrivateAccess = "true"))
     UNiagaraComponent* niagara_component{nullptr};
+
+    TArray<FVector> impact_positions;
+    TArray<FRotator> impact_rotations;
 };

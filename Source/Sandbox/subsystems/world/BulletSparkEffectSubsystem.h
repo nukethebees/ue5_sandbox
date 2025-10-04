@@ -34,6 +34,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
   private:
     void on_end_frame();
 
-    ABulletSparkEffectManagerActor* manager_actor{nullptr};
+    UPROPERTY()
+    TWeakObjectPtr<ABulletSparkEffectManagerActor> manager_actor{nullptr};
     ml::LockFreeMPSCQueue<FSparkEffectTransform> queue;
 };
