@@ -8,6 +8,7 @@ import os
 import sys
 import subprocess
 import shutil
+import argparse
 from pathlib import Path
 
 
@@ -69,7 +70,11 @@ def format_file(file_path):
 
 def main():
     """Main function to format all C++ files."""
-    print("Starting C++ file formatting...")
+    parser = argparse.ArgumentParser(description="Format C++ files with clang-format")
+    parser.add_argument("--verbose", action="store_true", help="Show detailed progress for each file")
+    args = parser.parse_args()
+
+    print("Running clang-format recursively on the current directory.")
 
     # Check if clang-format is available
     if not check_clang_format():
@@ -90,14 +95,17 @@ def main():
 
     # Process each directory
     for directory in directories:
-        print(f"Processing directory: {directory.relative_to(script_dir)}")
+        if args.verbose:
+            print(f"Processing directory: {directory.relative_to(script_dir)}")
 
         cpp_files = find_cpp_files(directory)
 
         for file_path in cpp_files:
             total_files += 1
             relative_path = file_path.relative_to(script_dir)
-            print(f"Formatting: {relative_path}")
+
+            if args.verbose:
+                print(f"Formatting: {relative_path}")
 
             success, error_msg = format_file(file_path)
 
@@ -108,18 +116,13 @@ def main():
                 print(f"ERROR formatting {relative_path}: {error_msg}")
 
     # Print summary
-    print(f"\nFormatting complete!")
-    print(f"Total files processed: {total_files}")
-    print(f"Successfully formatted: {formatted_files}")
+    print(f"Successfully formatted {formatted_files}/{total_files} files.")
 
     if errors:
-        print(f"Files with errors: {len(errors)}")
-        print("\nErrors encountered:")
+        print(f"\nErrors encountered:")
         for error in errors:
             print(f"  {error}")
         sys.exit(1)
-    else:
-        print("All files formatted successfully!")
 
 
 if __name__ == "__main__":
