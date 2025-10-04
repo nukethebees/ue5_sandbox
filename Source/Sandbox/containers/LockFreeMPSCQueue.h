@@ -30,18 +30,12 @@ class LockFreeMPSCQueue {
         : allocator_{std::move(alloc)} {}
 
     ~LockFreeMPSCQueue() {
-        // Destroy objects in read buffer
-        auto* read_buffer_start{get_address(1 - active_buffer_.load(), 0)};
-        for (std::size_t i{0}; i < read_size_; ++i) {
-            AllocTraits::destroy(allocator_, read_buffer_start + i);
-        }
+        auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
+        destroy_buffer(read_buffer_start, read_size_);
 
-        // Destroy objects in write buffer
         auto write_count{write_index_.load()};
-        auto* write_buffer_start{get_address(active_buffer_.load(), 0)};
-        for (std::size_t i{0}; i < write_count; ++i) {
-            AllocTraits::destroy(allocator_, write_buffer_start + i);
-        }
+        auto* write_buffer_start{get_address(write_buffer_index_.load(), 0)};
+        destroy_buffer(write_buffer_start, write_count);
 
         AllocTraits::deallocate(allocator_, data_, 2 * capacity_per_buffer_);
     }
@@ -80,22 +74,24 @@ class LockFreeMPSCQueue {
             return ELockFreeMPSCQueueEnqueueResult::Full;
         }
 
-        auto* const address{get_address(active_buffer_.load(std::memory_order_acquire), i)};
+        auto* const address{get_address(write_buffer_index_.load(std::memory_order_acquire), i)};
         new (address) T{std::forward<U>(value)};
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
     [[nodiscard]] std::span<T> consume() {
+        // Swap the read/write buffers and destroy the objects in the new write buffer
+
         auto const new_read_size{write_index_.load(std::memory_order_acquire)};
         auto const old_read_size{read_size_};
         read_size_ = new_read_size;
 
-        auto const old_active_buffer{active_buffer_.load(std::memory_order_acquire)};
-        active_buffer_.store(1 - old_active_buffer, std::memory_order_release);
+        auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
+        write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
         write_index_.store(0, std::memory_order_release);
 
-        auto const* const new_write_buffer{get_address(1 - old_active_buffer, 0)};
-        auto const* const new_read_buffer{get_address(old_active_buffer, 0)};
+        auto const* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
+        auto const* const new_read_buffer{get_address(old_write_buffer, 0)};
 
         destroy_buffer(new_write_buffer, old_read_size);
 
@@ -103,7 +99,9 @@ class LockFreeMPSCQueue {
     }
   private:
     inline T* get_address(std::size_t buffer_index, std::size_t item_index) const noexcept {
-        return data_ + (buffer_index * buffer_capacity() + item_index);
+        auto const buffer_start_offset{buffer_index * buffer_capacity()};
+        auto* const buffer_start{data_ + buffer_start_offset};
+        return buffer_start + item_index;
     }
     void destroy_buffer(pointer ptr, size_type n) {
         for (std::size_t i{0}; i < n; ++i) {
@@ -115,6 +113,6 @@ class LockFreeMPSCQueue {
     std::size_t const capacity_per_buffer_{0};
     std::atomic_size_t write_index_{0};
     std::size_t read_size_{0};
-    std::atomic_size_t active_buffer_{0};
+    std::atomic_size_t write_buffer_index_{0};
     [[no_unique_address]] Allocator allocator_{};
 };
