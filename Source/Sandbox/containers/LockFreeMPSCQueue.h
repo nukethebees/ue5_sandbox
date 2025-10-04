@@ -80,18 +80,19 @@ class LockFreeMPSCQueue {
     }
 
     template <typename U>
-        requires std::same_as<std::remove_cvref_t<U>, T>
+        requires std::convertible_to<std::remove_cvref_t<U>, value_type>
     [[nodiscard]] auto enqueue(U&& value) noexcept(std::is_nothrow_constructible_v<value_type>)
         -> ELockFreeMPSCQueueEnqueueResult {
         auto address{get_next_write_address()};
         if (!address) {
             return address.error();
         }
-        new (*address) T{std::forward<U>(value)};
+        new (*address) value_type{std::forward<U>(value)};
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
     template <typename... Args>
+        requires std::constructible_from<value_type, Args...>
     [[nodiscard]] auto
         try_emplace(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type>)
             -> ELockFreeMPSCQueueEnqueueResult {
@@ -99,13 +100,13 @@ class LockFreeMPSCQueue {
         if (!address) {
             return address.error();
         }
-        new (*address) T{std::forward<Args>(args)...};
+        new (*address) value_type{std::forward<Args>(args)...};
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
     [[nodiscard]] auto swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>)
-        -> std::span<T> {
+        -> std::span<value_type> {
         // Swap the read/write buffers and destroy the objects in the new write buffer
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};
@@ -119,18 +120,18 @@ class LockFreeMPSCQueue {
 
         destroy_buffer(new_write_buffer, old_read_size);
 
-        return std::span<T>{new_read_buffer, new_read_size};
+        return std::span<value_type>{new_read_buffer, new_read_size};
     }
 
     // A safer way to access the read buffer by only using it once within a lambda
     template <typename Callable>
-        requires std::invocable<Callable, std::span<T>>
+        requires std::invocable<Callable, std::span<value_type>>
     [[nodiscard]] decltype(auto) swap_and_visit(Callable&& callable) {
         return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
     [[nodiscard]] auto get_address(std::size_t buffer_index, std::size_t item_index) const noexcept
-        -> T* {
+        -> pointer {
         auto const buffer_start_offset{buffer_index * buffer_capacity()};
         auto* const buffer_start{data_ + buffer_start_offset};
         return buffer_start + item_index;
@@ -142,7 +143,7 @@ class LockFreeMPSCQueue {
         }
     }
     [[nodiscard]] auto get_next_write_address() noexcept
-        -> std::expected<T*, ELockFreeMPSCQueueEnqueueResult> {
+        -> std::expected<pointer, ELockFreeMPSCQueueEnqueueResult> {
         if (!is_initialised()) {
             return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
         }
@@ -166,7 +167,7 @@ class LockFreeMPSCQueue {
 
     static constexpr std::size_t cache_line_size_bytes{64};
 
-    T* data_{nullptr};
+    pointer data_{nullptr};
     std::size_t capacity_per_buffer_{0};
     std::size_t read_size_{0};
     [[no_unique_address]] Allocator allocator_{};
