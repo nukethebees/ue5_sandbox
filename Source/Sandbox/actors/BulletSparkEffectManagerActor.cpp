@@ -1,5 +1,7 @@
 #include "Sandbox/actors/BulletSparkEffectManagerActor.h"
 
+#include "NiagaraDataInterfaceArrayFunctionLibrary.h"
+
 #include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -19,14 +21,17 @@ void ABulletSparkEffectManagerActor::BeginPlay() {
 }
 
 void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTransform> impacts) {
-    impact_positions.SetNum(impacts.size());
-    impact_rotations.SetNum(impacts.size());
+    auto const n{static_cast<int32>(impacts.size())};
+    impact_positions.SetNum(n);
+    impact_rotations.SetNum(n);
 
-    for (std::size_t i{0}; i < impacts.size(); ++i) {
+    for (int32 i{0}; i < n; ++i) {
         impact_positions[i] = impacts[i].location;
-        impact_rotations[i] = impacts[i].rotation;
+        impact_rotations[i] = impacts[i].rotation.Quaternion();
     }
 
-    // niagara_component->SetVectorParameter(FName("ImpactPositions"), impact_positions);
-    // niagara_component->SetVectorParameter(FName("ImpactRotations"), impact_rotations);
+    using NL = UNiagaraDataInterfaceArrayFunctionLibrary;
+
+    NL::SetNiagaraArrayVector(niagara_component, FName("ImpactPositions"), impact_positions);
+    NL::SetNiagaraArrayQuat(niagara_component, FName("ImpactRotations"), impact_rotations);
 }
