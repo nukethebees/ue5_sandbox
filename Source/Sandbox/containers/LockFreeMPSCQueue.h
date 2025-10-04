@@ -130,7 +130,7 @@ class LockFreeMPSCQueue {
                         size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
         if constexpr (!std::is_trivially_destructible_v<value_type>) {
             for (std::size_t i{0}; i < n; ++i) {
-                AllocTraits::destroy(allocator_, ptr + i);
+                std::destroy_at(ptr, i);
             }
         }
     }
