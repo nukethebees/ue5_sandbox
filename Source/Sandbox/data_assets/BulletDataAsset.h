@@ -28,7 +28,7 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
         UE_LOG(LogTemp,
-               Display,
+               Verbose,
                TEXT("Asset name is %s, %s"),
                *asset_type.GetName().ToString(),
                *asset_name.ToString());
