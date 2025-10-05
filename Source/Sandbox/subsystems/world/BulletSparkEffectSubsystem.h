@@ -17,19 +17,13 @@ class UNiagaraDataChannelAsset;
 class UNiagaraDataChannelWriter;
 class UBulletDataAsset;
 
-USTRUCT()
-struct FSparkEffectTransform {
-    GENERATED_BODY()
+struct FSparkEffectView {
+    std::span<FVector> locations;
+    std::span<FVector> rotations;
 
-    UPROPERTY()
-    FVector location;
-    UPROPERTY()
-    FVector rotation;
-
-    FSparkEffectTransform() = default;
-    FSparkEffectTransform(FVector location, FVector rotation)
-        : location(location)
-        , rotation(rotation) {}
+    FSparkEffectView(std::span<FVector> locs, std::span<FVector> rots)
+        : locations(locs)
+        , rotations(rots) {}
 };
 
 UCLASS()
@@ -40,7 +34,8 @@ class SANDBOX_API UBulletSparkEffectSubsystem
   public:
     static constexpr std::size_t n_queue_elements{3000};
 
-    void add_impact(FSparkEffectTransform&& impact);
+    template <typename... Args>
+    void add_impact(Args&&... args);
 
     virtual TStatId GetStatId() const override;
   protected:
@@ -52,7 +47,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
   private:
     [[nodiscard]] bool initialise_asset_data();
     void on_end_frame();
-    void consume_impacts(std::span<FSparkEffectTransform> impacts);
+    void consume_impacts(FSparkEffectView const& impacts);
     UNiagaraDataChannelWriter* create_data_channel_writer(UNiagaraDataChannelAsset& asset, int32 n);
 
     UPROPERTY()
@@ -61,5 +56,28 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters{};
 
-    ml::LockFreeMPSCQueue<FSparkEffectTransform> queue;
+    ml::LockFreeMPSCQueueSoA<FSparkEffectView, FVector, FVector> queue;
 };
+
+template <typename... Args>
+void UBulletSparkEffectSubsystem::add_impact(Args&&... args) {
+    constexpr auto logger{NestedLogger<"add_impact">()};
+
+    switch (queue.enqueue(std::forward<Args>(args)...)) {
+        using enum ml::ELockFreeMPSCQueueEnqueueResult;
+        case Success: {
+            break;
+        }
+        case Full: {
+            logger.log_warning(TEXT("Queue is full."));
+            return;
+        }
+        case Uninitialised: {
+            logger.log_error(TEXT("Queue is uninitialised."));
+            return;
+        }
+        default: {
+            break;
+        }
+    }
+}

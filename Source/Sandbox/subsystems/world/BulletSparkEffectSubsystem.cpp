@@ -12,38 +12,13 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-void UBulletSparkEffectSubsystem::add_impact(FSparkEffectTransform&& impact) {
-    constexpr auto logger{NestedLogger<"add_impact">()};
-
-    logger.log_verbose(
-        TEXT("Adding impact to %s / %s"), *impact.location.ToString(), *impact.rotation.ToString());
-
-    switch (queue.enqueue(std::move(impact))) {
-        using enum ml::ELockFreeMPSCQueueEnqueueResult;
-        case Success: {
-            break;
-        }
-        case Full: {
-            logger.log_warning(TEXT("Queue is full."));
-            return;
-        }
-        case Uninitialised: {
-            logger.log_error(TEXT("Queue is uninitialised."));
-            return;
-        }
-        default: {
-            break;
-        }
-    }
-}
-
-void UBulletSparkEffectSubsystem::consume_impacts(std::span<FSparkEffectTransform> impacts) {
+void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
 
     RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_NULLPTR(bullet_data->ndc_asset);
 
-    auto const n{static_cast<int32>(impacts.size())};
+    auto const n{static_cast<int32>(impacts.locations.size())};
     if (n == 0) {
         return;
     }
@@ -55,8 +30,8 @@ void UBulletSparkEffectSubsystem::consume_impacts(std::span<FSparkEffectTransfor
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
     for (int32 i{0}; i < n; ++i) {
-        writer->WritePosition(position_label, i, impacts[i].location);
-        writer->WriteVector(rotation_label, i, impacts[i].rotation);
+        writer->WritePosition(position_label, i, impacts.locations[i]);
+        writer->WriteVector(rotation_label, i, impacts.rotations[i]);
     }
 }
 
@@ -142,8 +117,8 @@ void UBulletSparkEffectSubsystem::on_end_frame() {
         }
     }
 
-    queue.swap_and_visit([this](std::span<FSparkEffectTransform> impacts) {
-        if (impacts.empty()) {
+    queue.swap_and_visit([this](FSparkEffectView const& impacts) {
+        if (impacts.locations.empty()) {
             return;
         }
 
