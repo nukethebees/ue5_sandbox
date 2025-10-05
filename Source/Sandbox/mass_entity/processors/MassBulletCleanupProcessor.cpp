@@ -41,7 +41,7 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             auto const impact_location{hit_infos[i].hit_location};
             auto const impact_rotation{hit_infos[i].hit_normal};
 
-            spark_effect_subsystem->add_impact({impact_location, impact_rotation});
+            spark_effect_subsystem->add_impact(impact_location, impact_rotation);
         }
 
         viz_fragment.actor->remove_instance(instance_index);
