@@ -105,7 +105,7 @@ class LockFreeMPSCQueueSoA {
 
         [&]<std::size_t... Is>(std::index_sequence<Is...>) {
             (construct_element<Is>(buffer_idx, idx, std::forward<Args>(args)), ...);
-        }(std::index_sequence_for<Args...>{});
+        }(type_indexes);
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
@@ -149,7 +149,7 @@ class LockFreeMPSCQueueSoA {
 
             auto align_and_add = [&]<typename T>() {
                 // Align offset to T's alignment requirement
-                auto const alignment{alignof(T)};
+                constexpr auto alignment{alignof(T)};
                 offset = (offset + alignment - 1) & ~(alignment - 1);
 
                 layout.offsets[idx++] = offset;
@@ -173,9 +173,9 @@ class LockFreeMPSCQueueSoA {
     }
 
     template <size_type I>
-    void construct_element(size_type buffer_idx, size_type item_idx, auto&& arg) noexcept {
-        auto* ptr{get_buffer_ptr<I>(buffer_idx) + item_idx};
-        new (ptr) value_type<I>{std::forward<decltype(arg)>(arg)};
+    void construct_element(size_type buffer_idx, size_type element_index, auto&& value) noexcept {
+        auto* ptr{get_buffer_ptr<I>(buffer_idx) + element_index};
+        new (ptr) value_type<I>{std::forward<decltype(value)>(value)};
     }
 
     template <size_type I>
@@ -251,4 +251,4 @@ class LockFreeMPSCQueueSoA {
     alignas(cache_line_size_bytes) std::atomic<size_type> write_index_{0};
 };
 
-} // namespace ml
+}
