@@ -33,6 +33,7 @@ class LockFreeMPSCQueueSoA {
     using view_type = std::conditional_t<is_void_view, std::tuple<std::span<Ts>...>, View>;
     template <size_type I>
     using value_type = std::tuple_element_t<I, std::tuple<Ts...>>;
+    using view_tuple = std::tuple<std::span<Ts>...>;
 
     explicit LockFreeMPSCQueueSoA(
         std::pmr::memory_resource* mr = std::pmr::get_default_resource()) noexcept
@@ -190,10 +191,8 @@ class LockFreeMPSCQueueSoA {
     }
 
     [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept
-        -> std::tuple<std::span<Ts>...> {
-        return [&]<size_type... Is>(std::index_sequence<Is...>) {
-            return std::tuple{std::span<Ts>{get_buffer_ptr<Is>(buffer_idx), count}...};
-        }(type_indexes);
+        -> view_tuple {
+        return std::tuple{std::span<Ts>{get_buffer_ptr<type_indexes>(buffer_idx), count}...};
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
