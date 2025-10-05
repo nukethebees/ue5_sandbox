@@ -14,6 +14,7 @@ ABulletSparkEffectManagerActor::ABulletSparkEffectManagerActor() {
     PrimaryActorTick.bCanEverTick = false;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    search_parameters = FNiagaraDataChannelSearchParameters{RootComponent};
 }
 
 void ABulletSparkEffectManagerActor::BeginPlay() {
@@ -42,11 +43,10 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
     constexpr bool bVisibleToGPU{true};
     FString DebugSource{};
 
-    FNiagaraDataChannelSearchParameters search_params{RootComponent};
     // This calls init write for us
     auto* writer{UNiagaraDataChannelLibrary::WriteToNiagaraDataChannel(GetWorld(),
                                                                        ndc_asset,
-                                                                       search_params,
+                                                                       search_parameters,
                                                                        n,
                                                                        bVisibleToGame,
                                                                        bVisibleToCPU,
