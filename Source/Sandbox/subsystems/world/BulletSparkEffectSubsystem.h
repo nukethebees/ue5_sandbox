@@ -11,9 +11,19 @@
 class UNiagaraComponent;
 class ABulletSparkEffectManagerActor;
 
+USTRUCT()
 struct FSparkEffectTransform {
+    GENERATED_BODY()
+
+    UPROPERTY()
     FVector location;
+    UPROPERTY()
     FRotator rotation;
+
+    FSparkEffectTransform() = default;
+    FSparkEffectTransform(FVector location, FRotator rotation)
+        : location(location)
+        , rotation(rotation) {}
 };
 
 UCLASS()

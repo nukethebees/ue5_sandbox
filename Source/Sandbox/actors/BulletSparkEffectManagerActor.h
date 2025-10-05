@@ -10,6 +10,8 @@
 
 #include "BulletSparkEffectManagerActor.generated.h"
 
+class UNiagaraDataChannelAsset;
+
 struct FSparkEffectTransform;
 
 UCLASS()
@@ -23,6 +25,9 @@ class SANDBOX_API ABulletSparkEffectManagerActor
     void consume_impacts(std::span<FSparkEffectTransform> impacts);
 
     UNiagaraComponent* get_niagara_component() const { return niagara_component; }
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Niagara")
+    TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
   protected:
     virtual void BeginPlay() override;
   private:
