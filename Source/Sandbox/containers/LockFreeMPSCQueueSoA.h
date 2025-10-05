@@ -100,10 +100,8 @@ class LockFreeMPSCQueueSoA {
         auto const idx{*address_result};
         auto const buffer_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 
-        // Construct each element in its respective buffer
-        [&]<size_type... Is>(std::index_sequence<Is...>) {
-            (construct_element<Is>(buffer_idx, idx, std::move(args)), ...);
-        }(type_indexes);
+        for_each_index(
+            [&]<std::size_t I>() { construct_element<I>(buffer_idx, idx, std::move(args)); });
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
@@ -185,14 +183,11 @@ class LockFreeMPSCQueueSoA {
     }
 
     void destroy_all_buffers(size_type buffer_idx, size_type count) noexcept {
-        [&]<size_type... Is>(std::index_sequence<Is...>) {
-            (destroy_buffer<Is>(buffer_idx, count), ...);
-        }(type_indexes);
+        for_each_index([&]<std::size_t I>() { destroy_buffer<I>(buffer_idx, count); });
     }
 
-    [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept
-        -> view_tuple {
-        return std::tuple{std::span<Ts>{get_buffer_ptr<type_indexes>(buffer_idx), count}...};
+    [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept {
+        return view_tuple{std::span<Ts>{get_buffer_ptr<type_indexes>(buffer_idx), count}...};
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
@@ -215,6 +210,16 @@ class LockFreeMPSCQueueSoA {
         }
 
         return i;
+    }
+
+    template <typename Fn, std::size_t... Is>
+    constexpr void for_each_index_impl(Fn&& fn, std::index_sequence<Is...>) {
+        (fn.template operator()<Is>(), ...);
+    }
+
+    template <typename Fn>
+    constexpr void for_each_index(Fn&& fn) {
+        for_each_index_impl(std::forward<Fn>(fn), type_indexes);
     }
 
     static constexpr size_type max_alignment{std::max({alignof(Ts)...})};
