@@ -91,7 +91,10 @@ class LockFreeMPSCQueueSoA {
         return ELockFreeMPSCQueueInitResult::Success;
     }
 
-    [[nodiscard]] auto enqueue(Ts&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
+    template <typename... Args>
+        requires (sizeof...(Args) == sizeof...(Ts)) &&
+                 (std::is_nothrow_constructible_v<Ts, Args &&> && ...)
+    [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
         auto const address_result{get_next_write_index()};
         if (!address_result) {
             return address_result.error();
@@ -100,8 +103,9 @@ class LockFreeMPSCQueueSoA {
         auto const idx{*address_result};
         auto const buffer_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 
-        for_each_index(
-            [&]<std::size_t I>() { construct_element<I>(buffer_idx, idx, std::move(args)); });
+        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            (construct_element<Is>(buffer_idx, idx, std::forward<Args>(args)), ...);
+        }(std::index_sequence_for<Args...>{});
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
@@ -138,7 +142,7 @@ class LockFreeMPSCQueueSoA {
         size_type total_bytes{0};
         std::array<size_type, sizeof...(Ts)> offsets{};
 
-        static consteval auto compute(size_type capacity_per_buffer) -> BufferLayout {
+        static auto compute(size_type capacity_per_buffer) -> BufferLayout {
             BufferLayout layout{};
             size_type offset{0};
             size_type idx{0};
@@ -186,8 +190,10 @@ class LockFreeMPSCQueueSoA {
         for_each_index([&]<std::size_t I>() { destroy_buffer<I>(buffer_idx, count); });
     }
 
-    [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept {
-        return view_tuple{std::span<Ts>{get_buffer_ptr<type_indexes>(buffer_idx), count}...};
+    [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) noexcept -> view_tuple {
+        return map_index([&]<std::size_t I>() {
+            return std::span<value_type<I>>(get_buffer_ptr<I>(buffer_idx), count);
+        });
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
@@ -220,6 +226,16 @@ class LockFreeMPSCQueueSoA {
     template <typename Fn>
     constexpr void for_each_index(Fn&& fn) {
         for_each_index_impl(std::forward<Fn>(fn), type_indexes);
+    }
+
+    template <typename Fn, std::size_t... Is>
+    constexpr auto map_index_impl(Fn&& fn, std::index_sequence<Is...>) {
+        return std::tuple { fn.template operator()<Is>()... };
+    }
+
+    template <typename Fn>
+    constexpr auto map_index(Fn&& fn) {
+        return map_index_impl(std::forward<Fn>(fn), type_indexes);
     }
 
     static constexpr size_type max_alignment{std::max({alignof(Ts)...})};
