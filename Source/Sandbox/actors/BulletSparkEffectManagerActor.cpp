@@ -40,7 +40,7 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
 
     constexpr bool bVisibleToGame{false};
     constexpr bool bVisibleToCPU{true};
-    constexpr bool bVisibleToGPU{false};
+    constexpr bool bVisibleToGPU{true};
     FString DebugSource{};
 
     // This calls init write for us
@@ -55,8 +55,10 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
 
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
+    static auto const rotation_vec_label{FName("rotation_vec")};
     for (int32 i{0}; i < n; ++i) {
         writer->WritePosition(position_label, i, impacts[i].location);
         writer->WriteQuat(rotation_label, i, impacts[i].rotation.Quaternion());
+        writer->WriteVector(rotation_vec_label, i, impacts[i].rotation_vec);
     }
 }

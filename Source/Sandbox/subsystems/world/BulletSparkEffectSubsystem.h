@@ -19,11 +19,14 @@ struct FSparkEffectTransform {
     FVector location;
     UPROPERTY()
     FRotator rotation;
+    UPROPERTY()
+    FVector rotation_vec;
 
     FSparkEffectTransform() = default;
-    FSparkEffectTransform(FVector location, FRotator rotation)
+    FSparkEffectTransform(FVector location, FRotator rotation, FVector rotation_vec)
         : location(location)
-        , rotation(rotation) {}
+        , rotation(rotation)
+        , rotation_vec(rotation_vec) {}
 };
 
 UCLASS()
@@ -32,7 +35,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem"> {
     GENERATED_BODY()
   public:
-    void add_impact(FVector const& location, FRotator const& rotation);
+    void add_impact(FSparkEffectTransform&& impact);
     void register_actor(ABulletSparkEffectManagerActor* actor);
     void unregister_actor();
 

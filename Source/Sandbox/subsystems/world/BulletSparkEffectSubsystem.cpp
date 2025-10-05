@@ -6,13 +6,15 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-void UBulletSparkEffectSubsystem::add_impact(FVector const& location, FRotator const& rotation) {
+void UBulletSparkEffectSubsystem::add_impact(FSparkEffectTransform&& impact) {
     constexpr auto logger{NestedLogger<"add_impact">()};
 
-    logger.log_verbose(
-        TEXT("Adding impact to %s / %s"), *location.ToString(), *rotation.ToString());
+    logger.log_verbose(TEXT("Adding impact to %s / %s / %s"),
+                       *impact.location.ToString(),
+                       *impact.rotation.ToString(),
+                       *impact.rotation_vec.ToString());
 
-    switch (queue.enqueue(location, rotation)) {
+    switch (queue.enqueue(std::move(impact))) {
         using enum ml::ELockFreeMPSCQueueEnqueueResult;
         case Success: {
             break;
