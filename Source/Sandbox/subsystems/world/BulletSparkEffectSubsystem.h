@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
@@ -35,6 +37,8 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem"> {
     GENERATED_BODY()
   public:
+    static constexpr std::size_t n_queue_elements{3000};
+
     void add_impact(FSparkEffectTransform&& impact);
 
     virtual TStatId GetStatId() const override;
