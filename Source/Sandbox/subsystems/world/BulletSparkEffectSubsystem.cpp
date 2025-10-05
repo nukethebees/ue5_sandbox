@@ -49,7 +49,7 @@ void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collectio
     Super::Initialize(collection);
     constexpr auto logger{NestedLogger<"Initialize">()};
 
-    constexpr std::size_t n_queue_elements{100};
+    constexpr std::size_t n_queue_elements{2000};
     switch (queue.init(n_queue_elements)) {
         using enum ml::ELockFreeMPSCQueueInitResult;
         case Success: {
