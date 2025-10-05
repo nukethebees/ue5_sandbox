@@ -26,9 +26,12 @@ template <typename View = void, typename... Ts>
               is_soa_queue_view<View, Ts...>)
 class LockFreeMPSCQueueSoA {
   public:
-    using size_type = std::size_t;
     static constexpr bool is_void_view{std::is_void_v<View>};
+
+    using size_type = std::size_t;
     using view_type = std::conditional_t<is_void_view, std::tuple<std::span<Ts>...>, View>;
+    template <size_type I>
+    using value_type = std::tuple_element_t<I, std::tuple<Ts...>>;
 
     explicit LockFreeMPSCQueueSoA(
         std::pmr::memory_resource* mr = std::pmr::get_default_resource()) noexcept
@@ -96,7 +99,7 @@ class LockFreeMPSCQueueSoA {
         auto const buffer_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 
         // Construct each element in its respective buffer
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        [&]<size_type... Is>(std::index_sequence<Is...>) {
             (construct_element<Is>(buffer_idx, idx, std::move(args)), ...);
         }(std::index_sequence_for<Ts...>{});
 
@@ -158,38 +161,36 @@ class LockFreeMPSCQueueSoA {
         }
     };
 
-    template <std::size_t I>
+    template <size_type I>
     [[nodiscard]] auto get_buffer_ptr(size_type buffer_idx) noexcept -> auto* {
-        using T = std::tuple_element_t<I, std::tuple<Ts...>>;
+        using T = value_type<I>;
         auto const buffer_start{layout_.offsets[I] + buffer_idx * capacity_per_buffer_ * sizeof(T)};
         return std::launder(reinterpret_cast<T*>(buffer_ + buffer_start));
     }
 
-    template <std::size_t I>
+    template <size_type I>
     void construct_element(size_type buffer_idx, size_type item_idx, auto&& arg) noexcept {
-        using T = std::tuple_element_t<I, std::tuple<Ts...>>;
         auto* ptr{get_buffer_ptr<I>(buffer_idx) + item_idx};
-        new (ptr) T{std::forward<decltype(arg)>(arg)};
+        new (ptr) value_type<I>{std::forward<decltype(arg)>(arg)};
     }
 
-    template <std::size_t I>
+    template <size_type I>
     void destroy_buffer(size_type buffer_idx, size_type count) noexcept {
-        using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-        if constexpr (!std::is_trivially_destructible_v<T>) {
+        if constexpr (!std::is_trivially_destructible_v<value_type<I>>) {
             auto* ptr{get_buffer_ptr<I>(buffer_idx)};
             std::destroy_n(ptr, count);
         }
     }
 
     void destroy_all_buffers(size_type buffer_idx, size_type count) noexcept {
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        [&]<size_type... Is>(std::index_sequence<Is...>) {
             (destroy_buffer<Is>(buffer_idx, count), ...);
         }(std::index_sequence_for<Ts...>{});
     }
 
     [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept
         -> std::tuple<std::span<Ts>...> {
-        return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return [&]<size_type... Is>(std::index_sequence<Is...>) {
             return std::tuple{std::span<Ts>{get_buffer_ptr<Is>(buffer_idx), count}...};
         }(std::index_sequence_for<Ts...>{});
     }
