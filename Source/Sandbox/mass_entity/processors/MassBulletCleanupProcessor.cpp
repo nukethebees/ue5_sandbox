@@ -30,7 +30,6 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
-
         auto const instance_index{indices[i].instance_index};
 
         auto impact_effect_fragment{
@@ -40,12 +39,9 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 TEXT("Sandbox::FMassBulletCleanupExecutor::Execute[create_impact_event]"))
             auto const impact_location{hit_infos[i].hit_location};
-            // auto const
-            // impact_rotation{UKismetMathLibrary::MakeRotFromZ(hit_infos[i].hit_normal)};
-            auto const impact_rotation{hit_infos[i].hit_normal.Rotation()};
+            auto const impact_rotation{hit_infos[i].hit_normal};
 
-            spark_effect_subsystem->add_impact(
-                {impact_location, impact_rotation, hit_infos[i].hit_normal});
+            spark_effect_subsystem->add_impact({impact_location, impact_rotation});
         }
 
         viz_fragment.actor->remove_instance(instance_index);
