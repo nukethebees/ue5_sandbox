@@ -3,6 +3,9 @@
 #include "Containers/UnrealString.h"
 #include "Misc/AutomationTest.h"
 
+#define TEST_SPAN_EQUAL(Message, Span, Expected) \
+    TestEqual(TEXT(Message), static_cast<int32>((Span).size()), Expected)
+
 template <typename... Ts>
 struct SoATestBatch {
     using BatchType = std::tuple<TArray<Ts>...>;
@@ -91,8 +94,8 @@ void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
             (void)queue.init(10);
 
             auto const [int_span, float_span]{queue.swap_and_consume()};
-            TestEqual(TEXT("Empty int span size"), static_cast<int32>(int_span.size()), 0);
-            TestEqual(TEXT("Empty float span size"), static_cast<int32>(float_span.size()), 0);
+            TEST_SPAN_EQUAL("Empty int span size", int_span, 0);
+            TEST_SPAN_EQUAL("Empty float span size", float_span, 0);
         });
 
         It("should return empty spans when called twice in a row", [this]() {
@@ -101,14 +104,12 @@ void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
 
             (void)queue.enqueue(42, 3.14f);
             auto const [int_span1, float_span1]{queue.swap_and_consume()};
-            TestEqual(TEXT("First call int span size"), static_cast<int32>(int_span1.size()), 1);
-            TestEqual(
-                TEXT("First call float span size"), static_cast<int32>(float_span1.size()), 1);
+            TEST_SPAN_EQUAL("First call int span size", int_span1, 1);
+            TEST_SPAN_EQUAL("First call float span size", float_span1, 1);
 
             auto const [int_span2, float_span2]{queue.swap_and_consume()};
-            TestEqual(TEXT("Second call int span size"), static_cast<int32>(int_span2.size()), 0);
-            TestEqual(
-                TEXT("Second call float span size"), static_cast<int32>(float_span2.size()), 0);
+            TEST_SPAN_EQUAL("Second call int span size", int_span2, 0);
+            TEST_SPAN_EQUAL("Second call float span size", float_span2, 0);
         });
     });
 
@@ -399,8 +400,8 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
 
             auto const view{queue.swap_and_consume()};
 
-            TestEqual(TEXT("Int32 span size"), static_cast<int32>(view.int32_span.size()), 3);
-            TestEqual(TEXT("Float span size"), static_cast<int32>(view.float_span.size()), 3);
+            TEST_SPAN_EQUAL("Int32 span size", view.int32_span, 3);
+            TEST_SPAN_EQUAL("Float span size", view.float_span, 3);
 
             TestEqual(TEXT("First int value"), view.int32_span[0], 10);
             TestEqual(TEXT("First float value"), view.float_span[0], 1.5f);
@@ -461,8 +462,8 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
             bool called{false};
             queue.swap_and_visit([&](Int32FloatView const& view) {
                 called = true;
-                TestEqual(TEXT("Empty int32 span"), static_cast<int32>(view.int32_span.size()), 0);
-                TestEqual(TEXT("Empty float span"), static_cast<int32>(view.float_span.size()), 0);
+                TEST_SPAN_EQUAL("Empty int32 span", view.int32_span, 0);
+                TEST_SPAN_EQUAL("Empty float span", view.float_span, 0);
             });
 
             TestTrue(TEXT("Callable was invoked"), called);
@@ -475,8 +476,8 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
             (void)queue.init(10);
 
             auto const view{queue.swap_and_consume()};
-            TestEqual(TEXT("Empty int32 span size"), static_cast<int32>(view.int32_span.size()), 0);
-            TestEqual(TEXT("Empty float span size"), static_cast<int32>(view.float_span.size()), 0);
+            TEST_SPAN_EQUAL("Empty int32 span size", view.int32_span, 0);
+            TEST_SPAN_EQUAL("Empty float span size", view.float_span, 0);
         });
 
         It("should return empty view when called twice in a row", [this]() {
@@ -485,17 +486,12 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
 
             (void)queue.enqueue(42, 3.14f);
             auto const view1{queue.swap_and_consume()};
-            TestEqual(
-                TEXT("First call int span size"), static_cast<int32>(view1.int32_span.size()), 1);
-            TestEqual(
-                TEXT("First call float span size"), static_cast<int32>(view1.float_span.size()), 1);
+            TEST_SPAN_EQUAL("First call int span size", view1.int32_span, 1);
+            TEST_SPAN_EQUAL("First call float span size", view1.float_span, 1);
 
             auto const view2{queue.swap_and_consume()};
-            TestEqual(
-                TEXT("Second call int span size"), static_cast<int32>(view2.int32_span.size()), 0);
-            TestEqual(TEXT("Second call float span size"),
-                      static_cast<int32>(view2.float_span.size()),
-                      0);
+            TEST_SPAN_EQUAL("Second call int span size", view2.int32_span, 0);
+            TEST_SPAN_EQUAL("Second call float span size", view2.float_span, 0);
         });
 
         It("should handle queue full behavior with custom view", [this]() {
@@ -509,8 +505,8 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
             TestEqual(TEXT("Third enqueue (full)"), queue.enqueue(3, 3.0f), Full);
 
             auto const view{queue.swap_and_consume()};
-            TestEqual(TEXT("View int span size"), static_cast<int32>(view.int32_span.size()), 2);
-            TestEqual(TEXT("View float span size"), static_cast<int32>(view.float_span.size()), 2);
+            TEST_SPAN_EQUAL("View int span size", view.int32_span, 2);
+            TEST_SPAN_EQUAL("View float span size", view.float_span, 2);
 
             TestEqual(TEXT("Enqueue after consume"), queue.enqueue(4, 4.0f), Success);
         });
@@ -527,8 +523,8 @@ void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
 
             auto const view{queue.swap_and_consume()};
 
-            TestEqual(TEXT("Int32 span size"), static_cast<int32>(view.int32_span.size()), 3);
-            TestEqual(TEXT("Vector span size"), static_cast<int32>(view.vector_span.size()), 3);
+            TEST_SPAN_EQUAL("Int32 span size", view.int32_span, 3);
+            TEST_SPAN_EQUAL("Vector span size", view.vector_span, 3);
 
             TestEqual(TEXT("First int"), view.int32_span[0], 10);
             TestEqual(TEXT("First vector"), view.vector_span[0], FVector{1.0, 0.0, 0.0});
