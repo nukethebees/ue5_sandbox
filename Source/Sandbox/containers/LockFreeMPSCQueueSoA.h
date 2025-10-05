@@ -13,16 +13,9 @@
 #include <type_traits>
 #include <utility>
 
+#include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
+
 namespace ml {
-
-enum class ELockFreeMPSCQueueSoAInitResult : std::uint8_t {
-    Success,
-    AlreadyInitialised,
-    AllocationFailed
-};
-
-enum class ELockFreeMPSCQueueSoAEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
-
 // Lock-free multi-producer single-consumer queue with Structure of Arrays layout
 // Contract: swap_and_consume() must only be called when all enqueue() operations are complete
 template <typename View = void, typename... Ts>
@@ -67,13 +60,13 @@ class LockFreeMPSCQueueSoA {
         return capacity_per_buffer_ * 2;
     }
 
-    [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueSoAInitResult {
+    [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
         if (n == 0) {
-            return ELockFreeMPSCQueueSoAInitResult::Success;
+            return ELockFreeMPSCQueueInitResult::Success;
         }
 
         if (is_initialised()) {
-            return ELockFreeMPSCQueueSoAInitResult::AlreadyInitialised;
+            return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
         }
 
         layout_ = BufferLayout::compute(n);
@@ -84,16 +77,16 @@ class LockFreeMPSCQueueSoA {
                 static_cast<std::byte*>(alloc_.allocate_bytes(layout_.total_bytes, max_alignment));
         } catch (...) {
             capacity_per_buffer_ = 0;
-            return ELockFreeMPSCQueueSoAInitResult::AllocationFailed;
+            return ELockFreeMPSCQueueInitResult::AllocationFailed;
         }
 
-        return ELockFreeMPSCQueueSoAInitResult::Success;
+        return ELockFreeMPSCQueueInitResult::Success;
     }
 
     template <typename... Args>
         requires (sizeof...(Args) == sizeof...(Ts)) &&
                  (std::is_same_v<std::remove_cvref_t<Args>, Ts> && ...)
-    [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueSoAEnqueueResult {
+    [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
         auto address_result{get_next_write_index()};
         if (!address_result) {
             return address_result.error();
@@ -107,7 +100,7 @@ class LockFreeMPSCQueueSoA {
             (construct_element<Is>(buffer_idx, idx, std::move(args)), ...);
         }(std::index_sequence_for<Ts...>{});
 
-        return ELockFreeMPSCQueueSoAEnqueueResult::Success;
+        return ELockFreeMPSCQueueEnqueueResult::Success;
     }
 
     [[nodiscard]] auto swap_and_consume() noexcept -> view_type {
@@ -202,16 +195,16 @@ class LockFreeMPSCQueueSoA {
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
-        -> std::expected<size_type, ELockFreeMPSCQueueSoAEnqueueResult> {
+        -> std::expected<size_type, ELockFreeMPSCQueueEnqueueResult> {
         if (!is_initialised()) {
-            return std::unexpected(ELockFreeMPSCQueueSoAEnqueueResult::Uninitialised);
+            return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
         }
 
         // Compare-and-swap loop to reserve an index
         auto i{write_index_.load(std::memory_order_relaxed)};
         for (;;) {
             if (i >= buffer_capacity()) {
-                return std::unexpected(ELockFreeMPSCQueueSoAEnqueueResult::Full);
+                return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Full);
             }
 
             if (write_index_.compare_exchange_weak(

@@ -10,18 +10,13 @@
 #include <type_traits>
 #include <utility>
 
+#include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
+
 namespace ml {
 template <typename T, typename... Args>
 concept queueable_from =
     std::constructible_from<T, Args&&...> &&
     (std::is_nothrow_constructible_v<T, Args&&...> || std::is_nothrow_move_constructible_v<T>);
-
-enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
-    Success,
-    AlreadyInitialised,
-    AllocationFailed
-};
-enum class ELockFreeMPSCQueueEnqueueResult : std::uint8_t { Success, Full, Uninitialised };
 
 // Lock-free multi-producer single-consumer queue
 // Contract: The swap_and_{x}() functions must only be called when all enqueue() operations
