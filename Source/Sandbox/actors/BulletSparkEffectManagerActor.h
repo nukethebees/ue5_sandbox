@@ -24,19 +24,8 @@ class SANDBOX_API ABulletSparkEffectManagerActor
 
     void consume_impacts(std::span<FSparkEffectTransform> impacts);
 
-    UNiagaraComponent* get_niagara_component() const { return niagara_component; }
-
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Niagara")
     TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
   protected:
     virtual void BeginPlay() override;
-  private:
-    UPROPERTY(VisibleAnywhere,
-              BlueprintReadOnly,
-              Category = "Effects",
-              meta = (AllowPrivateAccess = "true"))
-    UNiagaraComponent* niagara_component{nullptr};
-
-    TArray<FVector> impact_positions;
-    TArray<FQuat> impact_rotations;
 };
