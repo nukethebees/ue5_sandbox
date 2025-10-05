@@ -46,15 +46,9 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
         auto& command_buffer{context.Defer()};
 
         if (hit_detected && hit_results.Num() > 0) {
-            // hit_infos[i].hit_location = hit_results[0].Location;
             hit_infos[i].hit_location = hit_results[0].ImpactPoint;
-            // hit_infos[i].hit_normal = hit_results[0].Normal;
-            hit_infos[i].hit_normal = hit_results[0].ImpactNormal;
-            // hit_infos[i].hit_normal = transforms[i].transform.Rotator().Vector();
-
-            auto const reflection_vector{FMath::GetReflectionVector(
-                velocities[i].velocity.GetSafeNormal(), hit_results[0].ImpactNormal)};
-            hit_infos[i].hit_normal = reflection_vector;
+            hit_infos[i].hit_normal = FMath::GetReflectionVector(
+                velocities[i].velocity.GetSafeNormal(), hit_results[0].ImpactNormal);
 
             command_buffer.AddTag<FMassBulletDeadTag>(context.GetEntity(i));
             command_buffer.RemoveTag<FMassBulletActiveTag>(context.GetEntity(i));

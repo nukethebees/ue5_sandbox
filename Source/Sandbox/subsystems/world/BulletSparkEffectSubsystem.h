@@ -18,15 +18,12 @@ struct FSparkEffectTransform {
     UPROPERTY()
     FVector location;
     UPROPERTY()
-    FRotator rotation;
-    UPROPERTY()
-    FVector rotation_vec;
+    FVector rotation;
 
     FSparkEffectTransform() = default;
-    FSparkEffectTransform(FVector location, FRotator rotation, FVector rotation_vec)
+    FSparkEffectTransform(FVector location, FVector rotation)
         : location(location)
-        , rotation(rotation)
-        , rotation_vec(rotation_vec) {}
+        , rotation(rotation) {}
 };
 
 UCLASS()
