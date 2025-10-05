@@ -38,20 +38,7 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
 
     logger.log_verbose(TEXT("Writing %d impacts."), n);
 
-    constexpr bool bVisibleToGame{false};
-    constexpr bool bVisibleToCPU{true};
-    constexpr bool bVisibleToGPU{true};
-    FString DebugSource{};
-
-    // This calls init write for us
-    auto* writer{UNiagaraDataChannelLibrary::WriteToNiagaraDataChannel(GetWorld(),
-                                                                       ndc_asset,
-                                                                       search_parameters,
-                                                                       n,
-                                                                       bVisibleToGame,
-                                                                       bVisibleToCPU,
-                                                                       bVisibleToGPU,
-                                                                       DebugSource)};
+    auto* writer{create_data_channel_writer(*ndc_asset, n)};
 
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
@@ -59,4 +46,24 @@ void ABulletSparkEffectManagerActor::consume_impacts(std::span<FSparkEffectTrans
         writer->WritePosition(position_label, i, impacts[i].location);
         writer->WriteVector(rotation_label, i, impacts[i].rotation);
     }
+}
+UNiagaraDataChannelWriter*
+    ABulletSparkEffectManagerActor::create_data_channel_writer(UNiagaraDataChannelAsset& asset,
+                                                               int32 n) {
+
+    constexpr bool bVisibleToGame{false};
+    constexpr bool bVisibleToCPU{true};
+    constexpr bool bVisibleToGPU{true};
+    FString DebugSource{};
+
+    // This calls init write for us
+    auto* writer{UNiagaraDataChannelLibrary::WriteToNiagaraDataChannel(GetWorld(),
+                                                                       &asset,
+                                                                       search_parameters,
+                                                                       n,
+                                                                       bVisibleToGame,
+                                                                       bVisibleToCPU,
+                                                                       bVisibleToGPU,
+                                                                       DebugSource)};
+    return writer;
 }

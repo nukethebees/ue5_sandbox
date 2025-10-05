@@ -12,6 +12,7 @@
 #include "BulletSparkEffectManagerActor.generated.h"
 
 class UNiagaraDataChannelAsset;
+class UNiagaraDataChannelWriter;
 
 struct FSparkEffectTransform;
 
@@ -30,5 +31,8 @@ class SANDBOX_API ABulletSparkEffectManagerActor
   protected:
     virtual void BeginPlay() override;
   private:
+    UNiagaraDataChannelWriter* create_data_channel_writer(UNiagaraDataChannelAsset& asset, int32 n);
+
+    UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters{};
 };
