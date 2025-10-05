@@ -62,5 +62,4 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     FNiagaraDataChannelSearchParameters search_parameters{};
 
     ml::LockFreeMPSCQueue<FSparkEffectTransform> queue;
-    ml::LockFreeMPSCQueueSoA<void, int32, float> queue_soa;
 };
