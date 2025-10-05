@@ -41,16 +41,11 @@ class LockFreeMPSCQueueSoA {
 
     ~LockFreeMPSCQueueSoA() {
         if (buffer_ != nullptr) {
-            // Destroy elements in read buffer
-            auto const read_buffer_idx{1 - write_buffer_index_.load()};
-            destroy_all_buffers(read_buffer_idx, read_size_);
+            destroy_all_buffers(active_read_buffer(), read_size_);
 
-            // Destroy elements in write buffer
-            auto const write_buffer_idx{write_buffer_index_.load()};
             auto const write_count{write_index_.load()};
-            destroy_all_buffers(write_buffer_idx, write_count);
+            destroy_all_buffers(active_write_buffer(), write_count);
 
-            // Deallocate memory
             alloc_.deallocate_bytes(buffer_, layout_.total_bytes, max_alignment);
         }
     }
@@ -100,10 +95,9 @@ class LockFreeMPSCQueueSoA {
             return address_result.error();
         }
 
-        auto const idx{*address_result};
         auto const buffer_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        [&, idx = *address_result]<std::size_t... Is>(std::index_sequence<Is...>) {
             (construct_element<Is>(buffer_idx, idx, std::forward<Args>(args)), ...);
         }(type_indexes);
 
@@ -122,14 +116,9 @@ class LockFreeMPSCQueueSoA {
         // Destroy old read buffer (which becomes the new write buffer)
         destroy_all_buffers(1 - old_write_buffer, old_read_size);
 
-        // Create spans for the new read buffer
-        auto spans{make_spans(old_write_buffer, new_read_size)};
-
-        if constexpr (is_void_view) {
-            return spans;
-        } else {
-            return std::apply([](auto... s) { return view_type{s...}; }, spans);
-        }
+        return map_index<view_type>([&]<std::size_t I>() {
+            return std::span<value_type<I>>(get_buffer_ptr<I>(old_write_buffer), new_read_size);
+        });
     }
 
     template <typename Callable>
@@ -173,8 +162,10 @@ class LockFreeMPSCQueueSoA {
     }
 
     template <size_type I>
-    void construct_element(size_type buffer_idx, size_type element_index, auto&& value) noexcept {
-        auto* ptr{get_buffer_ptr<I>(buffer_idx) + element_index};
+    void construct_element(size_type active_write_buffer_idx,
+                           size_type element_index,
+                           auto&& value) noexcept {
+        auto* ptr{get_buffer_ptr<I>(active_write_buffer_idx) + element_index};
         new (ptr) value_type<I>{std::forward<decltype(value)>(value)};
     }
 
@@ -188,12 +179,6 @@ class LockFreeMPSCQueueSoA {
 
     void destroy_all_buffers(size_type buffer_idx, size_type count) noexcept {
         for_each_index([&]<std::size_t I>() { destroy_buffer<I>(buffer_idx, count); });
-    }
-
-    [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) noexcept -> view_tuple {
-        return map_index([&]<std::size_t I>() {
-            return std::span<value_type<I>>(get_buffer_ptr<I>(buffer_idx), count);
-        });
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
@@ -218,6 +203,15 @@ class LockFreeMPSCQueueSoA {
         return i;
     }
 
+    // Index helpers
+    [[nodiscard]] size_type active_write_buffer() const noexcept {
+        return write_buffer_index_.load(std::memory_order_relaxed);
+    }
+    [[nodiscard]] size_type active_read_buffer() const noexcept {
+        return 1 - write_buffer_index_.load(std::memory_order_relaxed);
+    }
+
+    // Tuple iteration
     template <typename Fn, std::size_t... Is>
     constexpr void for_each_index_impl(Fn&& fn, std::index_sequence<Is...>) {
         (fn.template operator()<Is>(), ...);
@@ -228,14 +222,14 @@ class LockFreeMPSCQueueSoA {
         for_each_index_impl(std::forward<Fn>(fn), type_indexes);
     }
 
-    template <typename Fn, std::size_t... Is>
+    template <typename Container, typename Fn, std::size_t... Is>
     constexpr auto map_index_impl(Fn&& fn, std::index_sequence<Is...>) {
-        return std::tuple { fn.template operator()<Is>()... };
+        return Container { fn.template operator()<Is>()... };
     }
 
-    template <typename Fn>
+    template <typename Container, typename Fn>
     constexpr auto map_index(Fn&& fn) {
-        return map_index_impl(std::forward<Fn>(fn), type_indexes);
+        return map_index_impl<Container>(std::forward<Fn>(fn), type_indexes);
     }
 
     static constexpr size_type max_alignment{std::max({alignof(Ts)...})};
