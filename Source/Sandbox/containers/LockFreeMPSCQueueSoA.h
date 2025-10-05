@@ -95,10 +95,10 @@ class LockFreeMPSCQueueSoA {
             return address_result.error();
         }
 
-        auto const buffer_idx{write_buffer_index_.load(std::memory_order_relaxed)};
+        auto const cur_write_buf_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 
         [&, idx = *address_result]<std::size_t... Is>(std::index_sequence<Is...>) {
-            (construct_element<Is>(buffer_idx, idx, std::forward<Args>(args)), ...);
+            (construct_element<Is>(cur_write_buf_idx, idx, std::forward<Args>(args)), ...);
         }(type_indexes);
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
@@ -110,14 +110,16 @@ class LockFreeMPSCQueueSoA {
         auto const old_read_size{read_size_};
         read_size_ = new_read_size;
 
-        auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
-        write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
+        auto const old_write_buf_idx{write_buffer_index_.load(std::memory_order_acquire)};
+        auto const new_write_buf_idx{1 - old_write_buf_idx};
+        write_buffer_index_.store(new_write_buf_idx, std::memory_order_release);
 
         // Destroy old read buffer (which becomes the new write buffer)
-        destroy_all_buffers(1 - old_write_buffer, old_read_size);
+        destroy_all_buffers(new_write_buf_idx, old_read_size);
 
+        // Return a view to the new read buffer
         return map_index<view_type>([&]<std::size_t I>() {
-            return std::span<value_type<I>>(get_buffer_ptr<I>(old_write_buffer), new_read_size);
+            return std::span<value_type<I>>(get_buffer_ptr<I>(old_write_buf_idx), new_read_size);
         });
     }
 
