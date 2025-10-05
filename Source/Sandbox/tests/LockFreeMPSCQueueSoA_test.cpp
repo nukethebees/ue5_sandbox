@@ -10,8 +10,9 @@ struct SoATestBatch {
     FString name;
     TArray<BatchType> batches;
 
-    SoATestBatch(FString n, TArray<BatchType> b)
-        : name(std::move(n))
+    template <typename StringType>
+    SoATestBatch(StringType&& n, TArray<BatchType> b)
+        : name(std::forward<StringType>(n))
         , batches(std::move(b)) {}
 };
 
@@ -70,11 +71,10 @@ END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32FloatSpec)
 
 void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
     test_cases = {
-        {FString("Single batch with multiple values"),
-         {{{1, 2, 3, 4, 5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}}}},
-        {FString("Multiple batches"),
+        {"Single batch with multiple values", {{{1, 2, 3, 4, 5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}}}},
+        {"Multiple batches",
          {{{10, 20}, {1.5f, 2.5f}}, {{30, 40}, {3.5f, 4.5f}}, {{50, 60}, {5.5f, 6.5f}}}},
-        {FString("Empty and non-empty batches"),
+        {"Empty and non-empty batches",
          {{{100, 200}, {10.0f, 20.0f}}, {{}, {}}, {{300, 400}, {30.0f, 40.0f}}}},
     };
 
@@ -185,18 +185,12 @@ void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
             ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
             (void)queue.init(3);
 
-            TestEqual(TEXT("First enqueue"),
-                      queue.enqueue(1, 1.0f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Second enqueue"),
-                      queue.enqueue(2, 2.0f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Third enqueue"),
-                      queue.enqueue(3, 3.0f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Fourth enqueue"),
-                      queue.enqueue(4, 4.0f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Full);
+            using enum ml::ELockFreeMPSCQueueEnqueueResult;
+
+            TestEqual(TEXT("First enqueue"), queue.enqueue(1, 1.0f), Success);
+            TestEqual(TEXT("Second enqueue"), queue.enqueue(2, 2.0f), Success);
+            TestEqual(TEXT("Third enqueue"), queue.enqueue(3, 3.0f), Success);
+            TestEqual(TEXT("Fourth enqueue"), queue.enqueue(4, 4.0f), Full);
         });
 
         It("should allow enqueue after swap_and_consume", [this]() {
@@ -263,15 +257,13 @@ END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32VectorSpec)
 
 void FLockFreeMPSCQueueSoAInt32VectorSpec::Define() {
     test_cases = {
-        {FString("Single batch with multiple values"),
-         {{{1, 2, 3}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}, FVector{7.0, 8.0, 9.0}}}}},
-        {FString("Multiple batches"),
-         {{{10, 20}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
-          {{30, 40}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
-        {FString("Empty and non-empty batches"),
-         {{{100, 200}, {FVector{1.0, 1.0, 1.0}, FVector{2.0, 2.0, 2.0}}},
-          {{}, {}},
-          {{300}, {FVector{3.0, 3.0, 3.0}}}}},
+        {"Single batch with multiple values",
+         {{{1, 2, 3}, {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}}}}},
+        {"Multiple batches",
+         {{{10, 20}, {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}},
+          {{30, 40}, {{0.0, 0.0, 1.0}, {1.0, 1.0, 0.0}}}}},
+        {"Empty and non-empty batches",
+         {{{100, 200}, {{1.0, 1.0, 1.0}, {2.0, 2.0, 2.0}}}, {{}, {}}, {{300}, {{3.0, 3.0, 3.0}}}}},
     };
 
     Describe("LockFreeMPSCQueueSoA<void, int32, FVector> - Basic operations", [this]() {
@@ -312,11 +304,11 @@ void FLockFreeMPSCQueueSoAInt32VectorSpec::Define() {
             (void)queue.init(5);
 
             TArray<int32> expected_ints{0, 1, 2, 3, 4};
-            TArray<FVector> expected_vecs{FVector{1.0, 0.0, 0.0},
-                                          FVector{0.0, 1.0, 0.0},
-                                          FVector{0.0, 0.0, 1.0},
-                                          FVector{1.0, 1.0, 0.0},
-                                          FVector{1.0, 1.0, 1.0}};
+            TArray<FVector> expected_vecs{{1.0, 0.0, 0.0},
+                                          {0.0, 1.0, 0.0},
+                                          {0.0, 0.0, 1.0},
+                                          {1.0, 1.0, 0.0},
+                                          {1.0, 1.0, 1.0}};
 
             for (int32 i{0}; i < expected_ints.Num(); ++i) {
                 (void)queue.enqueue(expected_ints[i], expected_vecs[i]);
@@ -341,11 +333,11 @@ END_DEFINE_SPEC(FLockFreeMPSCQueueSoAThreeTypesSpec)
 
 void FLockFreeMPSCQueueSoAThreeTypesSpec::Define() {
     test_cases = {
-        {FString("Single batch with three types"),
-         {{{100, 200}, {1.5f, 2.5f}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}}}}},
-        {FString("Multiple batches with three types"),
-         {{{10, 20}, {1.0f, 2.0f}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
-          {{30, 40}, {3.0f, 4.0f}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
+        {"Single batch with three types",
+         {{{100, 200}, {1.5f, 2.5f}, {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}}}}},
+        {"Multiple batches with three types",
+         {{{10, 20}, {1.0f, 2.0f}, {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}},
+          {{30, 40}, {3.0f, 4.0f}, {{0.0, 0.0, 1.0}, {1.0, 1.0, 0.0}}}}},
     };
 
     Describe("LockFreeMPSCQueueSoA<void, int32, float, FVector> - Basic operations", [this]() {
