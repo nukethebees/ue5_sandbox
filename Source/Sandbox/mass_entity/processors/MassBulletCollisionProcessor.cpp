@@ -12,55 +12,56 @@
 void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionExecutor::Execute"))
 
-    constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 i) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::get_views]"))
-        auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
-        auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
-        auto const last_positions{
-            context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
-        auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
-        auto const hit_occurred_flags{
-            context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
+    TRY_INIT_PTR(world, context.GetWorld());
 
-        auto const current_position{transforms[i].transform.GetLocation()};
-        auto const last_position{last_positions[i].last_position};
+    FCollisionQueryParams query_params{};
+    query_params.bTraceComplex = false;
+    query_params.bReturnPhysicalMaterial = false;
 
-        TRY_INIT_PTR(world, context.GetWorld());
+    FCollisionShape collision_shape{};
+    collision_shape.SetSphere(collision_shape_radius);
 
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::do_trace]"))
-        FCollisionQueryParams query_params{};
-        query_params.bTraceComplex = false;
-        query_params.bReturnPhysicalMaterial = false;
+    auto executor{
+        [world, &query_params, &collision_shape](FMassExecutionContext& context, auto& Data) {
+            auto const num_entities{context.GetNumEntities()};
+            auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
+            auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
+            auto const last_positions{
+                context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
+            auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
+            auto const hit_occurred_flags{
+                context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
 
-        static constexpr auto collision_shape_radius{2.0f};
-        FCollisionShape collision_shape{};
-        collision_shape.SetSphere(collision_shape_radius);
+            for (int32 i{0}; i < num_entities; ++i) {
+                if (hit_occurred_flags[i].hit_occurred) {
+                    continue;
+                }
 
-        FHitResult hit_result{};
-        auto const hit_detected{world->SweepSingleByChannel(hit_result,
-                                                            last_position,
-                                                            current_position,
-                                                            FQuat::Identity,
-                                                            ECC_GameTraceChannel1,
-                                                            collision_shape,
-                                                            query_params)};
+                auto const current_position{transforms[i].transform.GetLocation()};
+                auto const last_position{last_positions[i].last_position};
 
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::process_trace_result]"))
-        if (hit_detected) {
-            hit_infos[i].hit_location = hit_result.ImpactPoint;
-            hit_infos[i].hit_normal = FMath::GetReflectionVector(
-                velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
+                FHitResult hit_result{};
+                auto const hit_detected{world->SweepSingleByChannel(hit_result,
+                                                                    last_position,
+                                                                    current_position,
+                                                                    FQuat::Identity,
+                                                                    ECC_GameTraceChannel1,
+                                                                    collision_shape,
+                                                                    query_params)};
 
-            hit_occurred_flags[i].hit_occurred = true;
-        }
+                if (hit_detected) {
+                    hit_infos[i].hit_location = hit_result.ImpactPoint;
+                    hit_infos[i].hit_normal = FMath::GetReflectionVector(
+                        velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
 
-        last_positions[i].last_position = current_position;
-    }};
+                    hit_occurred_flags[i].hit_occurred = true;
+                }
 
-    ForEachEntity(context, accessors, std::move(executor));
+                last_positions[i].last_position = current_position;
+            }
+        }};
+
+    ForEachEntityChunk(context, accessors, std::move(executor));
 }
 
 UMassBulletCollisionProcessor::UMassBulletCollisionProcessor()
