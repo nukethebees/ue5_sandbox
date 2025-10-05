@@ -7,6 +7,7 @@
 
 class UNiagaraSystem;
 class UStaticMesh;
+class UNiagaraDataChannelAsset;
 
 UCLASS()
 class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
@@ -20,6 +21,9 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     UStaticMesh* mesh{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    UNiagaraDataChannelAsset* ndc_asset{nullptr};
 
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         FPrimaryAssetType const asset_type{TEXT("Bullet")};
