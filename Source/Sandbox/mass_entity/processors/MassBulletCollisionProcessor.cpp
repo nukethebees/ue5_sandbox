@@ -34,21 +34,21 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
         FCollisionShape collision_shape{};
         collision_shape.SetSphere(collision_shape_radius);
 
-        TArray<FHitResult> hit_results{};
-        auto const hit_detected{world->SweepMultiByChannel(hit_results,
-                                                           last_position,
-                                                           current_position,
-                                                           FQuat::Identity,
-                                                           ECC_GameTraceChannel1,
-                                                           collision_shape,
-                                                           query_params)};
+        FHitResult hit_result{};
+        auto const hit_detected{world->SweepSingleByChannel(hit_result,
+                                                            last_position,
+                                                            current_position,
+                                                            FQuat::Identity,
+                                                            ECC_GameTraceChannel1,
+                                                            collision_shape,
+                                                            query_params)};
 
         auto& command_buffer{context.Defer()};
 
-        if (hit_detected && hit_results.Num() > 0) {
-            hit_infos[i].hit_location = hit_results[0].ImpactPoint;
+        if (hit_detected) {
+            hit_infos[i].hit_location = hit_result.ImpactPoint;
             hit_infos[i].hit_normal = FMath::GetReflectionVector(
-                velocities[i].velocity.GetSafeNormal(), hit_results[0].ImpactNormal);
+                velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
 
             command_buffer.AddTag<FMassBulletDeadTag>(context.GetEntity(i));
             command_buffer.RemoveTag<FMassBulletActiveTag>(context.GetEntity(i));
