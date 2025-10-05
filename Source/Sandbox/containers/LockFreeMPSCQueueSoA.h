@@ -86,11 +86,8 @@ class LockFreeMPSCQueueSoA {
         return ELockFreeMPSCQueueInitResult::Success;
     }
 
-    template <typename... Args>
-        requires (sizeof...(Args) == sizeof...(Ts)) &&
-                 (std::is_same_v<std::remove_cvref_t<Args>, Ts> && ...)
-    [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
-        auto address_result{get_next_write_index()};
+    [[nodiscard]] auto enqueue(Ts&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
+        auto const address_result{get_next_write_index()};
         if (!address_result) {
             return address_result.error();
         }
