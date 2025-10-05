@@ -1,0 +1,335 @@
+#include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
+
+#include "Containers/UnrealString.h"
+#include "Misc/AutomationTest.h"
+
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoABasicSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.Basic",
+                  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoABasicSpec)
+
+void FLockFreeMPSCQueueSoABasicSpec::Define() {
+    Describe("LockFreeMPSCQueueSoA<void, int32, float> - Basic operations", [this]() {
+        It("should enqueue and consume single batch", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            auto const init_result{queue.init(5)};
+            TestEqual(TEXT("Queue initialization"),
+                      init_result,
+                      ml::ELockFreeMPSCQueueInitResult::Success);
+
+            TestEqual(TEXT("Enqueue 1"),
+                      queue.enqueue(10, 1.5f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+            TestEqual(TEXT("Enqueue 2"),
+                      queue.enqueue(20, 2.5f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+            TestEqual(TEXT("Enqueue 3"),
+                      queue.enqueue(30, 3.5f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+
+            auto const [int_span, float_span]{queue.swap_and_consume()};
+            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 3);
+            TestEqual(TEXT("Float span size"), static_cast<int32>(float_span.size()), 3);
+
+            TestEqual(TEXT("Int value 0"), int_span[0], 10);
+            TestEqual(TEXT("Int value 1"), int_span[1], 20);
+            TestEqual(TEXT("Int value 2"), int_span[2], 30);
+
+            TestEqual(TEXT("Float value 0"), float_span[0], 1.5f);
+            TestEqual(TEXT("Float value 1"), float_span[1], 2.5f);
+            TestEqual(TEXT("Float value 2"), float_span[2], 3.5f);
+        });
+
+        It("should handle multiple batches", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(3);
+
+            // First batch
+            (void)queue.enqueue(1, 1.0f);
+            (void)queue.enqueue(2, 2.0f);
+
+            auto [int_span1, float_span1]{queue.swap_and_consume()};
+            TestEqual(TEXT("First batch int span size"), static_cast<int32>(int_span1.size()), 2);
+            TestEqual(TEXT("First batch int value 0"), int_span1[0], 1);
+            TestEqual(TEXT("First batch int value 1"), int_span1[1], 2);
+            TestEqual(TEXT("First batch float value 0"), float_span1[0], 1.0f);
+            TestEqual(TEXT("First batch float value 1"), float_span1[1], 2.0f);
+
+            // Second batch
+            (void)queue.enqueue(10, 10.0f);
+            (void)queue.enqueue(20, 20.0f);
+            (void)queue.enqueue(30, 30.0f);
+
+            auto [int_span2, float_span2]{queue.swap_and_consume()};
+            TestEqual(TEXT("Second batch int span size"), static_cast<int32>(int_span2.size()), 3);
+            TestEqual(TEXT("Second batch int value 0"), int_span2[0], 10);
+            TestEqual(TEXT("Second batch int value 1"), int_span2[1], 20);
+            TestEqual(TEXT("Second batch int value 2"), int_span2[2], 30);
+        });
+    });
+
+    Describe("swap_and_consume edge cases", [this]() {
+        It("should return empty spans when called on empty queue", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(10);
+
+            auto const [int_span, float_span]{queue.swap_and_consume()};
+            TestEqual(TEXT("Empty int span size"), static_cast<int32>(int_span.size()), 0);
+            TestEqual(TEXT("Empty float span size"), static_cast<int32>(float_span.size()), 0);
+        });
+
+        It("should return empty spans when called twice in a row", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(10);
+
+            (void)queue.enqueue(42, 3.14f);
+            auto const [int_span1, float_span1]{queue.swap_and_consume()};
+            TestEqual(TEXT("First call int span size"), static_cast<int32>(int_span1.size()), 1);
+            TestEqual(
+                TEXT("First call float span size"), static_cast<int32>(float_span1.size()), 1);
+
+            auto const [int_span2, float_span2]{queue.swap_and_consume()};
+            TestEqual(TEXT("Second call int span size"), static_cast<int32>(int_span2.size()), 0);
+            TestEqual(
+                TEXT("Second call float span size"), static_cast<int32>(float_span2.size()), 0);
+        });
+    });
+
+    Describe("swap_and_visit", [this]() {
+        It("should invoke callable with correct spans", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(5);
+
+            (void)queue.enqueue(10, 1.0f);
+            (void)queue.enqueue(20, 2.0f);
+            (void)queue.enqueue(30, 3.0f);
+
+            int32 int_sum{0};
+            float float_sum{0.0f};
+            queue.swap_and_visit([&](auto const& spans) {
+                auto const& [int_span, float_span]{spans};
+                for (auto const value : int_span) {
+                    int_sum += value;
+                }
+                for (auto const value : float_span) {
+                    float_sum += value;
+                }
+            });
+
+            TestEqual(TEXT("Sum of ints"), int_sum, 60);
+            TestEqual(TEXT("Sum of floats"), float_sum, 6.0f);
+        });
+
+        It("should work with empty queue", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(5);
+
+            bool called{false};
+            (void)queue.swap_and_visit([&called](auto const& spans) {
+                called = true;
+                auto const& [int_span, float_span]{spans};
+                return int_span.size() + float_span.size();
+            });
+
+            TestTrue(TEXT("Callable was invoked"), called);
+        });
+    });
+
+    Describe("Initialization edge cases", [this]() {
+        It("should succeed when initialized with capacity 0", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            auto const result{queue.init(0)};
+            TestEqual(
+                TEXT("Init with 0 capacity"), result, ml::ELockFreeMPSCQueueInitResult::Success);
+        });
+
+        It("should return AlreadyInitialised when init called twice", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(10);
+            auto const result{queue.init(10)};
+            TestEqual(TEXT("Second init call"),
+                      result,
+                      ml::ELockFreeMPSCQueueInitResult::AlreadyInitialised);
+        });
+    });
+
+    Describe("Enqueue without initialization", [this]() {
+        It("should return Uninitialised when enqueuing to uninitialized queue", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            auto const result{queue.enqueue(42, 3.14f)};
+            TestEqual(TEXT("Enqueue on uninitialised"),
+                      result,
+                      ml::ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+        });
+    });
+
+    Describe("Queue full behavior", [this]() {
+        It("should return Full when queue is at capacity", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(3);
+
+            TestEqual(TEXT("First enqueue"),
+                      queue.enqueue(1, 1.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+            TestEqual(TEXT("Second enqueue"),
+                      queue.enqueue(2, 2.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+            TestEqual(TEXT("Third enqueue"),
+                      queue.enqueue(3, 3.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+            TestEqual(TEXT("Fourth enqueue"),
+                      queue.enqueue(4, 4.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Full);
+        });
+
+        It("should allow enqueue after swap_and_consume", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(2);
+
+            (void)queue.enqueue(1, 1.0f);
+            (void)queue.enqueue(2, 2.0f);
+            TestEqual(TEXT("Queue full"),
+                      queue.enqueue(3, 3.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Full);
+
+            (void)queue.swap_and_consume();
+
+            TestEqual(TEXT("Enqueue after swap"),
+                      queue.enqueue(4, 4.0f),
+                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        });
+    });
+
+    Describe("Capacity queries", [this]() {
+        It("should return correct capacity values", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            TestFalse(TEXT("Initially not initialized"), queue.is_initialised());
+            TestEqual(
+                TEXT("Initial buffer_capacity"), static_cast<int32>(queue.buffer_capacity()), 0);
+            TestEqual(TEXT("Initial full_capacity"), static_cast<int32>(queue.full_capacity()), 0);
+
+            (void)queue.init(10);
+            TestTrue(TEXT("After init is_initialised"), queue.is_initialised());
+            TestEqual(TEXT("After init buffer_capacity"),
+                      static_cast<int32>(queue.buffer_capacity()),
+                      10);
+            TestEqual(
+                TEXT("After init full_capacity"), static_cast<int32>(queue.full_capacity()), 20);
+        });
+    });
+
+    Describe("Order preservation", [this]() {
+        It("should maintain FIFO order", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
+            (void)queue.init(10);
+
+            for (int32 i{0}; i < 10; ++i) {
+                (void)queue.enqueue(i, static_cast<float>(i) * 10.0f);
+            }
+
+            auto const [int_span, float_span]{queue.swap_and_consume()};
+            for (int32 i{0}; i < 10; ++i) {
+                TestEqual(*FString::Printf(TEXT("Int value at index %d"), i), int_span[i], i);
+                TestEqual(*FString::Printf(TEXT("Float value at index %d"), i),
+                          float_span[i],
+                          static_cast<float>(i) * 10.0f);
+            }
+        });
+    });
+}
+
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoAComplexSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.Complex",
+                  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoAComplexSpec)
+
+void FLockFreeMPSCQueueSoAComplexSpec::Define() {
+    Describe("LockFreeMPSCQueueSoA<void, int32, FVector> - Complex types", [this]() {
+        It("should handle complex types correctly", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, FVector> queue{};
+            (void)queue.init(5);
+
+            (void)queue.enqueue(1, FVector{1.0, 2.0, 3.0});
+            (void)queue.enqueue(2, FVector{4.0, 5.0, 6.0});
+            (void)queue.enqueue(3, FVector{7.0, 8.0, 9.0});
+
+            auto const [int_span, vec_span]{queue.swap_and_consume()};
+            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 3);
+            TestEqual(TEXT("Vector span size"), static_cast<int32>(vec_span.size()), 3);
+
+            TestEqual(TEXT("Int value 0"), int_span[0], 1);
+            TestEqual(TEXT("Int value 1"), int_span[1], 2);
+            TestEqual(TEXT("Int value 2"), int_span[2], 3);
+
+            TestEqual(TEXT("Vector value 0"), vec_span[0], FVector{1.0, 2.0, 3.0});
+            TestEqual(TEXT("Vector value 1"), vec_span[1], FVector{4.0, 5.0, 6.0});
+            TestEqual(TEXT("Vector value 2"), vec_span[2], FVector{7.0, 8.0, 9.0});
+        });
+
+        It("should work with swap_and_visit for complex types", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, FVector> queue{};
+            (void)queue.init(3);
+
+            (void)queue.enqueue(10, FVector{1.0, 0.0, 0.0});
+            (void)queue.enqueue(20, FVector{0.0, 1.0, 0.0});
+
+            int32 int_sum{0};
+            FVector vec_sum{FVector::ZeroVector};
+            queue.swap_and_visit([&](auto const& spans) {
+                auto const& [int_span, vec_span]{spans};
+                for (auto const value : int_span) {
+                    int_sum += value;
+                }
+                for (auto const& vec : vec_span) {
+                    vec_sum += vec;
+                }
+            });
+
+            TestEqual(TEXT("Sum of ints"), int_sum, 30);
+            TestEqual(TEXT("Sum of vectors"), vec_sum, FVector{1.0, 1.0, 0.0});
+        });
+    });
+
+    Describe("LockFreeMPSCQueueSoA<void, int32, float, FVector> - Three types", [this]() {
+        It("should handle three different types", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float, FVector> queue{};
+            (void)queue.init(3);
+
+            (void)queue.enqueue(100, 1.5f, FVector{1.0, 2.0, 3.0});
+            (void)queue.enqueue(200, 2.5f, FVector{4.0, 5.0, 6.0});
+
+            auto const [int_span, float_span, vec_span]{queue.swap_and_consume()};
+            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 2);
+            TestEqual(TEXT("Float span size"), static_cast<int32>(float_span.size()), 2);
+            TestEqual(TEXT("Vector span size"), static_cast<int32>(vec_span.size()), 2);
+
+            TestEqual(TEXT("Int value 0"), int_span[0], 100);
+            TestEqual(TEXT("Int value 1"), int_span[1], 200);
+            TestEqual(TEXT("Float value 0"), float_span[0], 1.5f);
+            TestEqual(TEXT("Float value 1"), float_span[1], 2.5f);
+            TestEqual(TEXT("Vector value 0"), vec_span[0], FVector{1.0, 2.0, 3.0});
+            TestEqual(TEXT("Vector value 1"), vec_span[1], FVector{4.0, 5.0, 6.0});
+        });
+
+        It("should maintain order across all arrays", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, float, FVector> queue{};
+            (void)queue.init(5);
+
+            for (int32 i{0}; i < 5; ++i) {
+                (void)queue.enqueue(
+                    i, static_cast<float>(i) * 2.0f, FVector{static_cast<double>(i), 0.0, 0.0});
+            }
+
+            auto const [int_span, float_span, vec_span]{queue.swap_and_consume()};
+            for (int32 i{0}; i < 5; ++i) {
+                TestEqual(*FString::Printf(TEXT("Int at %d"), i), int_span[i], i);
+                TestEqual(*FString::Printf(TEXT("Float at %d"), i),
+                          float_span[i],
+                          static_cast<float>(i) * 2.0f);
+                TestEqual(*FString::Printf(TEXT("Vector at %d"), i),
+                          vec_span[i],
+                          FVector{static_cast<double>(i), 0.0, 0.0});
+            }
+        });
+    });
+}
