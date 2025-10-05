@@ -19,6 +19,12 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::FMassBulletVisualizationExecutor::Execute::executor"))
 
+        auto const hit_occurred_flags{context.GetFragmentView<FMassBulletHitOccurredFragment>()};
+
+        if (hit_occurred_flags[EntityIndex].hit_occurred) {
+            return;
+        }
+
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);

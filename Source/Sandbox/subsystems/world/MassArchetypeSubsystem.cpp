@@ -36,6 +36,7 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         descriptor.Fragments.Add(*FMassBulletInstanceIndexFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletLastPositionFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletHitInfoFragment::StaticStruct());
+        descriptor.Fragments.Add(*FMassBulletHitOccurredFragment::StaticStruct());
 
         descriptor.ConstSharedFragments.Add(*FMassBulletImpactEffectFragment::StaticStruct());
         descriptor.ConstSharedFragments.Add(*FMassBulletVisualizationActorFragment::StaticStruct());

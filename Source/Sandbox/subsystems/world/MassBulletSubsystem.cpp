@@ -28,7 +28,6 @@ void UMassBulletSubsystem::add_bullet(FTransform const& spawn_transform, float b
     if (free_list.Num()) {
         logger.log_verbose(TEXT("Popping from list."));
         auto entity{free_list.Pop()};
-        cmd_buffer.RemoveTag<FMassBulletInactiveTag>(entity);
         configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed, *idx);
         return;
     }
@@ -114,8 +113,6 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
     constexpr auto logger{NestedLogger<"configure_active_bullet">()};
     logger.log_verbose(TEXT("Configuring bullet."));
 
-    entity_manager.AddTagToEntity(entity, FMassBulletActiveTag::StaticStruct());
-
     auto& transform_frag{
         entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
     transform_frag.transform = transform;
@@ -136,4 +133,8 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
     auto& hit_info_frag = entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
     hit_info_frag.hit_location = FVector::ZeroVector;
     hit_info_frag.hit_normal = FVector::ZeroVector;
+
+    auto& hit_occurred_frag =
+        entity_manager.GetFragmentDataChecked<FMassBulletHitOccurredFragment>(entity);
+    hit_occurred_frag.hit_occurred = false;
 }

@@ -22,6 +22,13 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
     auto executor{[mass_bullet_subsystem,
                    spark_effect_subsystem](FMassExecutionContext& context, auto& Data, uint32 i) {
+        auto const hit_occurred_flags{
+            context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
+
+        if (!hit_occurred_flags[i].hit_occurred) {
+            return;
+        }
+
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
@@ -46,11 +53,9 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
         viz_fragment.actor->remove_instance(instance_index);
 
-        auto& command_buffer{context.Defer()};
         auto entity{context.GetEntity(i)};
 
-        command_buffer.RemoveTag<FMassBulletDeadTag>(entity);
-        command_buffer.AddTag<FMassBulletInactiveTag>(entity);
+        hit_occurred_flags[i].hit_occurred = false;
         mass_bullet_subsystem->return_bullet(entity);
     }};
 
