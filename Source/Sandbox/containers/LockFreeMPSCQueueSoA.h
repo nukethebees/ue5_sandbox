@@ -26,13 +26,13 @@ enum class ELockFreeMPSCQueueSoAEnqueueResult : std::uint8_t { Success, Full, Un
 // Lock-free multi-producer single-consumer queue with Structure of Arrays layout
 // Contract: swap_and_consume() must only be called when all enqueue() operations are complete
 template <typename View = void, typename... Ts>
-    requires (sizeof...(Ts) > 0) && (std::is_nothrow_move_constructible_v<Ts> && ...)
+    requires (((sizeof...(Ts) > 0) && (std::is_nothrow_move_constructible_v<Ts> && ...)) &&
+              (std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>))
 class LockFreeMPSCQueueSoA {
   public:
     using size_type = std::size_t;
-
-    template <typename V = View>
-    using view_type = std::conditional_t<std::is_void_v<V>, std::tuple<std::span<Ts>...>, V>;
+    static constexpr bool is_void_view{std::is_void_v<View>};
+    using view_type = std::conditional_t<is_void_view, std::tuple<std::span<Ts>...>, View>;
 
     explicit LockFreeMPSCQueueSoA(
         std::pmr::memory_resource* mr = std::pmr::get_default_resource()) noexcept
@@ -110,9 +110,7 @@ class LockFreeMPSCQueueSoA {
         return ELockFreeMPSCQueueSoAEnqueueResult::Success;
     }
 
-    template <typename V = View>
-        requires std::is_void_v<V> || std::constructible_from<V, std::span<Ts>...>
-    [[nodiscard]] auto swap_and_consume() noexcept -> view_type<V> {
+    [[nodiscard]] auto swap_and_consume() noexcept -> view_type {
         // Swap buffers
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};
@@ -127,17 +125,17 @@ class LockFreeMPSCQueueSoA {
         // Create spans for the new read buffer
         auto spans{make_spans(old_write_buffer, new_read_size)};
 
-        if constexpr (std::is_void_v<V>) {
+        if constexpr (is_void_view) {
             return spans;
         } else {
-            return std::apply([](auto... s) { return V{s...}; }, spans);
+            return std::apply([](auto... s) { return view_type{s...}; }, spans);
         }
     }
 
     template <typename Callable>
-        requires std::invocable<Callable, view_type<View>>
+        requires std::invocable<Callable, view_type>
     [[nodiscard]] decltype(auto) swap_and_visit(Callable&& callable) {
-        return std::forward<Callable>(callable)(swap_and_consume<View>());
+        return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
     struct BufferLayout {
@@ -168,8 +166,7 @@ class LockFreeMPSCQueueSoA {
     };
 
     template <std::size_t I>
-    [[nodiscard]] auto get_buffer_ptr(size_type buffer_idx) const noexcept
-        -> std::tuple_element_t<I, std::tuple<Ts*, Ts*...>> {
+    [[nodiscard]] auto get_buffer_ptr(size_type buffer_idx) noexcept -> auto* {
         using T = std::tuple_element_t<I, std::tuple<Ts...>>;
         auto const buffer_start{layout_.offsets[I] + buffer_idx * capacity_per_buffer_ * sizeof(T)};
         return std::launder(reinterpret_cast<T*>(buffer_ + buffer_start));
