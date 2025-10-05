@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NiagaraComponent.h"
+#include "NiagaraDataChannelPublic.h"
 
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
@@ -28,4 +29,6 @@ class SANDBOX_API ABulletSparkEffectManagerActor
     TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
   protected:
     virtual void BeginPlay() override;
+  private:
+    FNiagaraDataChannelSearchParameters search_parameters{};
 };
