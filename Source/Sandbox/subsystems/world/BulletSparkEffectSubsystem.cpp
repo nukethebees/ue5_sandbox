@@ -9,7 +9,8 @@
 void UBulletSparkEffectSubsystem::add_impact(FVector const& location, FRotator const& rotation) {
     constexpr auto logger{NestedLogger<"add_impact">()};
 
-    logger.log_verbose(TEXT("Adding impact to %s"), *location.ToString());
+    logger.log_verbose(
+        TEXT("Adding impact to %s / %s"), *location.ToString(), *rotation.ToString());
 
     switch (queue.enqueue(location, rotation)) {
         using enum ml::ELockFreeMPSCQueueEnqueueResult;
