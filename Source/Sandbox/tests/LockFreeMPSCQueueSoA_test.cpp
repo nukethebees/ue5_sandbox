@@ -370,3 +370,194 @@ void FLockFreeMPSCQueueSoAThreeTypesSpec::Define() {
         });
     });
 }
+
+// Custom view structs for testing alternative API
+struct Int32FloatView {
+    std::span<int32 const> int32_span;
+    std::span<float const> float_span;
+};
+
+struct Int32VectorView {
+    std::span<int32 const> int32_span;
+    std::span<FVector const> vector_span;
+};
+
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoACustomViewSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.CustomView",
+                  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoACustomViewSpec)
+
+void FLockFreeMPSCQueueSoACustomViewSpec::Define() {
+    Describe("Custom view with Int32FloatView", [this]() {
+        It("should enqueue and consume using custom view struct", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(5);
+
+            (void)queue.enqueue(10, 1.5f);
+            (void)queue.enqueue(20, 2.5f);
+            (void)queue.enqueue(30, 3.5f);
+
+            auto const view{queue.swap_and_consume()};
+
+            TestEqual(TEXT("Int32 span size"), static_cast<int32>(view.int32_span.size()), 3);
+            TestEqual(TEXT("Float span size"), static_cast<int32>(view.float_span.size()), 3);
+
+            TestEqual(TEXT("First int value"), view.int32_span[0], 10);
+            TestEqual(TEXT("First float value"), view.float_span[0], 1.5f);
+            TestEqual(TEXT("Second int value"), view.int32_span[1], 20);
+            TestEqual(TEXT("Second float value"), view.float_span[1], 2.5f);
+            TestEqual(TEXT("Third int value"), view.int32_span[2], 30);
+            TestEqual(TEXT("Third float value"), view.float_span[2], 3.5f);
+        });
+
+        It("should maintain FIFO order with named view members", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(10);
+
+            for (int32 i{0}; i < 10; ++i) {
+                (void)queue.enqueue(i * 100, static_cast<float>(i) + 0.5f);
+            }
+
+            auto const view{queue.swap_and_consume()};
+
+            for (int32 i{0}; i < 10; ++i) {
+                TestEqual(
+                    *FString::Printf(TEXT("Int at index %d"), i), view.int32_span[i], i * 100);
+                TestEqual(*FString::Printf(TEXT("Float at index %d"), i),
+                          view.float_span[i],
+                          static_cast<float>(i) + 0.5f);
+            }
+        });
+    });
+
+    Describe("swap_and_visit with custom view", [this]() {
+        It("should invoke callable with custom view struct", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(5);
+
+            (void)queue.enqueue(100, 10.0f);
+            (void)queue.enqueue(200, 20.0f);
+            (void)queue.enqueue(300, 30.0f);
+
+            int32 int_sum{0};
+            float float_sum{0.0f};
+            queue.swap_and_visit([&](Int32FloatView const& view) {
+                for (auto const value : view.int32_span) {
+                    int_sum += value;
+                }
+                for (auto const value : view.float_span) {
+                    float_sum += value;
+                }
+            });
+
+            TestEqual(TEXT("Sum of ints"), int_sum, 600);
+            TestEqual(TEXT("Sum of floats"), float_sum, 60.0f);
+        });
+
+        It("should work with empty queue using custom view", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(5);
+
+            bool called{false};
+            queue.swap_and_visit([&](Int32FloatView const& view) {
+                called = true;
+                TestEqual(TEXT("Empty int32 span"), static_cast<int32>(view.int32_span.size()), 0);
+                TestEqual(TEXT("Empty float span"), static_cast<int32>(view.float_span.size()), 0);
+            });
+
+            TestTrue(TEXT("Callable was invoked"), called);
+        });
+    });
+
+    Describe("Edge cases with custom view", [this]() {
+        It("should return empty spans in custom view when queue is empty", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(10);
+
+            auto const view{queue.swap_and_consume()};
+            TestEqual(TEXT("Empty int32 span size"), static_cast<int32>(view.int32_span.size()), 0);
+            TestEqual(TEXT("Empty float span size"), static_cast<int32>(view.float_span.size()), 0);
+        });
+
+        It("should return empty view when called twice in a row", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(10);
+
+            (void)queue.enqueue(42, 3.14f);
+            auto const view1{queue.swap_and_consume()};
+            TestEqual(
+                TEXT("First call int span size"), static_cast<int32>(view1.int32_span.size()), 1);
+            TestEqual(
+                TEXT("First call float span size"), static_cast<int32>(view1.float_span.size()), 1);
+
+            auto const view2{queue.swap_and_consume()};
+            TestEqual(
+                TEXT("Second call int span size"), static_cast<int32>(view2.int32_span.size()), 0);
+            TestEqual(TEXT("Second call float span size"),
+                      static_cast<int32>(view2.float_span.size()),
+                      0);
+        });
+
+        It("should handle queue full behavior with custom view", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32FloatView, int32, float> queue{};
+            (void)queue.init(2);
+
+            using enum ml::ELockFreeMPSCQueueEnqueueResult;
+
+            TestEqual(TEXT("First enqueue"), queue.enqueue(1, 1.0f), Success);
+            TestEqual(TEXT("Second enqueue"), queue.enqueue(2, 2.0f), Success);
+            TestEqual(TEXT("Third enqueue (full)"), queue.enqueue(3, 3.0f), Full);
+
+            auto const view{queue.swap_and_consume()};
+            TestEqual(TEXT("View int span size"), static_cast<int32>(view.int32_span.size()), 2);
+            TestEqual(TEXT("View float span size"), static_cast<int32>(view.float_span.size()), 2);
+
+            TestEqual(TEXT("Enqueue after consume"), queue.enqueue(4, 4.0f), Success);
+        });
+    });
+
+    Describe("Custom view with Int32VectorView", [this]() {
+        It("should work with FVector using custom view", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32VectorView, int32, FVector> queue{};
+            (void)queue.init(3);
+
+            (void)queue.enqueue(10, FVector{1.0, 0.0, 0.0});
+            (void)queue.enqueue(20, FVector{0.0, 1.0, 0.0});
+            (void)queue.enqueue(30, FVector{0.0, 0.0, 1.0});
+
+            auto const view{queue.swap_and_consume()};
+
+            TestEqual(TEXT("Int32 span size"), static_cast<int32>(view.int32_span.size()), 3);
+            TestEqual(TEXT("Vector span size"), static_cast<int32>(view.vector_span.size()), 3);
+
+            TestEqual(TEXT("First int"), view.int32_span[0], 10);
+            TestEqual(TEXT("First vector"), view.vector_span[0], FVector{1.0, 0.0, 0.0});
+            TestEqual(TEXT("Second int"), view.int32_span[1], 20);
+            TestEqual(TEXT("Second vector"), view.vector_span[1], FVector{0.0, 1.0, 0.0});
+            TestEqual(TEXT("Third int"), view.int32_span[2], 30);
+            TestEqual(TEXT("Third vector"), view.vector_span[2], FVector{0.0, 0.0, 1.0});
+        });
+
+        It("should support swap_and_visit with Int32VectorView", [this]() {
+            ml::LockFreeMPSCQueueSoA<Int32VectorView, int32, FVector> queue{};
+            (void)queue.init(5);
+
+            (void)queue.enqueue(5, FVector{1.0, 2.0, 3.0});
+            (void)queue.enqueue(10, FVector{4.0, 5.0, 6.0});
+
+            int32 int_sum{0};
+            FVector vec_sum{FVector::ZeroVector};
+            queue.swap_and_visit([&](Int32VectorView const& view) {
+                for (auto const value : view.int32_span) {
+                    int_sum += value;
+                }
+                for (auto const& vec : view.vector_span) {
+                    vec_sum += vec;
+                }
+            });
+
+            TestEqual(TEXT("Sum of ints"), int_sum, 15);
+            TestEqual(TEXT("Sum of vectors"), vec_sum, FVector{5.0, 7.0, 9.0});
+        });
+    });
+}
