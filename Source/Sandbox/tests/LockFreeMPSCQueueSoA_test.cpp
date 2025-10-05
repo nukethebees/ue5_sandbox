@@ -15,9 +15,14 @@ struct SoATestBatch {
         , batches(std::move(b)) {}
 };
 
+// Tests a LockFreeMPSCQueueSoA by enqueuing batches of parallel arrays and validating results.
+// Each batch is a tuple of arrays (SoA-style), where each array corresponds to one type in Ts.
+// For each batch, elements at the same index across all arrays are enqueued together.
 template <typename... Ts>
 void run_soa_queue_test(FAutomationTestBase* test,
                         TArray<std::tuple<TArray<Ts>...>> const& batches) {
+    constexpr auto indexes{std::index_sequence_for<Ts...>{}};
+
     ml::LockFreeMPSCQueueSoA<void, Ts...> queue{};
     auto const capacity{batches.Num() > 0 ? std::get<0>(batches[0]).Num() : 0};
     auto const init_result{queue.init(capacity)};
@@ -30,7 +35,7 @@ void run_soa_queue_test(FAutomationTestBase* test,
         for (int32 i{0}; i < batch_size; ++i) {
             auto const enqueue_result{[&]<std::size_t... Is>(std::index_sequence<Is...>) {
                 return queue.enqueue(std::get<Is>(batch)[i]...);
-            }(std::index_sequence_for<Ts...>{})};
+            }(indexes)};
 
             test->TestEqual(TEXT("Enqueue result"),
                             enqueue_result,
@@ -44,7 +49,7 @@ void run_soa_queue_test(FAutomationTestBase* test,
                               static_cast<int32>(std::get<Is>(result_spans).size()),
                               batch_size)),
              ...);
-        }(std::index_sequence_for<Ts...>{});
+        }(indexes);
 
         for (int32 i{0}; i < batch_size; ++i) {
             [&]<std::size_t... Is>(std::index_sequence<Is...>) {
@@ -52,7 +57,7 @@ void run_soa_queue_test(FAutomationTestBase* test,
                                   std::get<Is>(result_spans)[i],
                                   std::get<Is>(batch)[i])),
                  ...);
-            }(std::index_sequence_for<Ts...>{});
+            }(indexes);
         }
     }
 }
@@ -64,17 +69,13 @@ TArray<SoATestBatch<int32, float>> test_cases;
 END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32FloatSpec)
 
 void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
-    using Batch = SoATestBatch<int32, float>::BatchType;
-
     test_cases = {
         {FString("Single batch with multiple values"),
-         {Batch{{1, 2, 3, 4, 5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}}}},
+         {{{1, 2, 3, 4, 5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}}}},
         {FString("Multiple batches"),
-         {Batch{{10, 20}, {1.5f, 2.5f}},
-          Batch{{30, 40}, {3.5f, 4.5f}},
-          Batch{{50, 60}, {5.5f, 6.5f}}}},
+         {{{10, 20}, {1.5f, 2.5f}}, {{30, 40}, {3.5f, 4.5f}}, {{50, 60}, {5.5f, 6.5f}}}},
         {FString("Empty and non-empty batches"),
-         {Batch{{100, 200}, {10.0f, 20.0f}}, Batch{{}, {}}, Batch{{300, 400}, {30.0f, 40.0f}}}},
+         {{{100, 200}, {10.0f, 20.0f}}, {{}, {}}, {{300, 400}, {30.0f, 40.0f}}}},
     };
 
     Describe("LockFreeMPSCQueueSoA<void, int32, float> - Basic operations", [this]() {
@@ -261,19 +262,16 @@ TArray<SoATestBatch<int32, FVector>> test_cases;
 END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32VectorSpec)
 
 void FLockFreeMPSCQueueSoAInt32VectorSpec::Define() {
-    using Batch = SoATestBatch<int32, FVector>::BatchType;
-
     test_cases = {
         {FString("Single batch with multiple values"),
-         {Batch{{1, 2, 3},
-                {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}, FVector{7.0, 8.0, 9.0}}}}},
+         {{{1, 2, 3}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}, FVector{7.0, 8.0, 9.0}}}}},
         {FString("Multiple batches"),
-         {Batch{{10, 20}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
-          Batch{{30, 40}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
+         {{{10, 20}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
+          {{30, 40}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
         {FString("Empty and non-empty batches"),
-         {Batch{{100, 200}, {FVector{1.0, 1.0, 1.0}, FVector{2.0, 2.0, 2.0}}},
-          Batch{{}, {}},
-          Batch{{300}, {FVector{3.0, 3.0, 3.0}}}}},
+         {{{100, 200}, {FVector{1.0, 1.0, 1.0}, FVector{2.0, 2.0, 2.0}}},
+          {{}, {}},
+          {{300}, {FVector{3.0, 3.0, 3.0}}}}},
     };
 
     Describe("LockFreeMPSCQueueSoA<void, int32, FVector> - Basic operations", [this]() {
@@ -342,14 +340,12 @@ TArray<SoATestBatch<int32, float, FVector>> test_cases;
 END_DEFINE_SPEC(FLockFreeMPSCQueueSoAThreeTypesSpec)
 
 void FLockFreeMPSCQueueSoAThreeTypesSpec::Define() {
-    using Batch = SoATestBatch<int32, float, FVector>::BatchType;
-
     test_cases = {
         {FString("Single batch with three types"),
-         {Batch{{100, 200}, {1.5f, 2.5f}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}}}}},
+         {{{100, 200}, {1.5f, 2.5f}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}}}}},
         {FString("Multiple batches with three types"),
-         {Batch{{10, 20}, {1.0f, 2.0f}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
-          Batch{{30, 40}, {3.0f, 4.0f}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
+         {{{10, 20}, {1.0f, 2.0f}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
+          {{30, 40}, {3.0f, 4.0f}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
     };
 
     Describe("LockFreeMPSCQueueSoA<void, int32, float, FVector> - Basic operations", [this]() {
