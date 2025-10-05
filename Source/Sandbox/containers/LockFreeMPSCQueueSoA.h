@@ -27,6 +27,7 @@ template <typename View = void, typename... Ts>
 class LockFreeMPSCQueueSoA {
   public:
     static constexpr bool is_void_view{std::is_void_v<View>};
+    static constexpr auto type_indexes{std::index_sequence_for<Ts...>{}};
 
     using size_type = std::size_t;
     using view_type = std::conditional_t<is_void_view, std::tuple<std::span<Ts>...>, View>;
@@ -101,7 +102,7 @@ class LockFreeMPSCQueueSoA {
         // Construct each element in its respective buffer
         [&]<size_type... Is>(std::index_sequence<Is...>) {
             (construct_element<Is>(buffer_idx, idx, std::move(args)), ...);
-        }(std::index_sequence_for<Ts...>{});
+        }(type_indexes);
 
         return ELockFreeMPSCQueueEnqueueResult::Success;
     }
@@ -185,14 +186,14 @@ class LockFreeMPSCQueueSoA {
     void destroy_all_buffers(size_type buffer_idx, size_type count) noexcept {
         [&]<size_type... Is>(std::index_sequence<Is...>) {
             (destroy_buffer<Is>(buffer_idx, count), ...);
-        }(std::index_sequence_for<Ts...>{});
+        }(type_indexes);
     }
 
     [[nodiscard]] auto make_spans(size_type buffer_idx, size_type count) const noexcept
         -> std::tuple<std::span<Ts>...> {
         return [&]<size_type... Is>(std::index_sequence<Is...>) {
             return std::tuple{std::span<Ts>{get_buffer_ptr<Is>(buffer_idx), count}...};
-        }(std::index_sequence_for<Ts...>{});
+        }(type_indexes);
     }
 
     [[nodiscard]] auto get_next_write_index() noexcept
