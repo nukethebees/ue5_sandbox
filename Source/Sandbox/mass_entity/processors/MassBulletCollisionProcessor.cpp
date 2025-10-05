@@ -14,18 +14,22 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
 
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 i) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::executor"))
+            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::get_views]"))
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
         auto const last_positions{
             context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
         auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
+        auto const hit_occurred_flags{
+            context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
 
         auto const current_position{transforms[i].transform.GetLocation()};
         auto const last_position{last_positions[i].last_position};
 
         TRY_INIT_PTR(world, context.GetWorld());
 
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::do_trace]"))
         FCollisionQueryParams query_params{};
         query_params.bTraceComplex = false;
         query_params.bReturnPhysicalMaterial = false;
@@ -43,15 +47,14 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                                                             collision_shape,
                                                             query_params)};
 
-        auto& command_buffer{context.Defer()};
-
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::FMassBulletCollisionExecutor::Execute[executor::process_trace_result]"))
         if (hit_detected) {
             hit_infos[i].hit_location = hit_result.ImpactPoint;
             hit_infos[i].hit_normal = FMath::GetReflectionVector(
                 velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
 
-            command_buffer.AddTag<FMassBulletDeadTag>(context.GetEntity(i));
-            command_buffer.RemoveTag<FMassBulletActiveTag>(context.GetEntity(i));
+            hit_occurred_flags[i].hit_occurred = true;
         }
 
         last_positions[i].last_position = current_position;

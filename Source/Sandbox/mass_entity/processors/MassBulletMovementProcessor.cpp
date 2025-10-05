@@ -11,6 +11,12 @@ void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletMovementExecutor::Execute"))
 
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+        auto const hit_occurred_flags{context.GetFragmentView<FMassBulletHitOccurredFragment>()};
+
+        if (hit_occurred_flags[EntityIndex].hit_occurred) {
+            return;
+        }
+
         auto const delta_time{context.GetDeltaTimeSeconds()};
         auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
         auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};

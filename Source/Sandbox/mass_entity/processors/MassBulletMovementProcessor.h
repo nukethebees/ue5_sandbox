@@ -20,9 +20,7 @@ struct FMassBulletMovementExecutor
     using Query =
         UE::Mass::FQueryDefinition<UE::Mass::FMutableFragmentAccess<FMassBulletTransformFragment>,
                                    UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>,
-                                   UE::Mass::FMassTagRequired<FMassBulletActiveTag>,
-                                   UE::Mass::FMassTagBlocked<FMassBulletInactiveTag>,
-                                   UE::Mass::FMassTagBlocked<FMassBulletDeadTag>>;
+                                   UE::Mass::FConstFragmentAccess<FMassBulletHitOccurredFragment>>;
 
     Query accessors{*this};
 
