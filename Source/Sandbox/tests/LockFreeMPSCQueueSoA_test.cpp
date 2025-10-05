@@ -3,69 +3,85 @@
 #include "Containers/UnrealString.h"
 #include "Misc/AutomationTest.h"
 
-BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoABasicSpec,
-                  "Sandbox.LockFreeMPSCQueueSoA.Basic",
+template <typename... Ts>
+struct SoATestBatch {
+    using BatchType = std::tuple<TArray<Ts>...>;
+
+    FString name;
+    TArray<BatchType> batches;
+
+    SoATestBatch(FString n, TArray<BatchType> b)
+        : name(std::move(n))
+        , batches(std::move(b)) {}
+};
+
+template <typename... Ts>
+void run_soa_queue_test(FAutomationTestBase* test,
+                        TArray<std::tuple<TArray<Ts>...>> const& batches) {
+    ml::LockFreeMPSCQueueSoA<void, Ts...> queue{};
+    auto const capacity{batches.Num() > 0 ? std::get<0>(batches[0]).Num() : 0};
+    auto const init_result{queue.init(capacity)};
+    test->TestEqual(
+        TEXT("Queue initialization"), init_result, ml::ELockFreeMPSCQueueInitResult::Success);
+
+    for (auto const& batch : batches) {
+        auto const batch_size{std::get<0>(batch).Num()};
+
+        for (int32 i{0}; i < batch_size; ++i) {
+            auto const enqueue_result{[&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                return queue.enqueue(std::get<Is>(batch)[i]...);
+            }(std::index_sequence_for<Ts...>{})};
+
+            test->TestEqual(TEXT("Enqueue result"),
+                            enqueue_result,
+                            ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        }
+
+        auto const result_spans{queue.swap_and_consume()};
+
+        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            ((test->TestEqual(*FString::Printf(TEXT("Result span %llu size"), Is),
+                              static_cast<int32>(std::get<Is>(result_spans).size()),
+                              batch_size)),
+             ...);
+        }(std::index_sequence_for<Ts...>{});
+
+        for (int32 i{0}; i < batch_size; ++i) {
+            [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                ((test->TestEqual(TEXT("Value at index"),
+                                  std::get<Is>(result_spans)[i],
+                                  std::get<Is>(batch)[i])),
+                 ...);
+            }(std::index_sequence_for<Ts...>{});
+        }
+    }
+}
+
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32FloatSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.Int32Float",
                   EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-END_DEFINE_SPEC(FLockFreeMPSCQueueSoABasicSpec)
+TArray<SoATestBatch<int32, float>> test_cases;
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32FloatSpec)
 
-void FLockFreeMPSCQueueSoABasicSpec::Define() {
+void FLockFreeMPSCQueueSoAInt32FloatSpec::Define() {
+    using Batch = SoATestBatch<int32, float>::BatchType;
+
+    test_cases = {
+        {FString("Single batch with multiple values"),
+         {Batch{{1, 2, 3, 4, 5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}}}},
+        {FString("Multiple batches"),
+         {Batch{{10, 20}, {1.5f, 2.5f}},
+          Batch{{30, 40}, {3.5f, 4.5f}},
+          Batch{{50, 60}, {5.5f, 6.5f}}}},
+        {FString("Empty and non-empty batches"),
+         {Batch{{100, 200}, {10.0f, 20.0f}}, Batch{{}, {}}, Batch{{300, 400}, {30.0f, 40.0f}}}},
+    };
+
     Describe("LockFreeMPSCQueueSoA<void, int32, float> - Basic operations", [this]() {
-        It("should enqueue and consume single batch", [this]() {
-            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
-            auto const init_result{queue.init(5)};
-            TestEqual(TEXT("Queue initialization"),
-                      init_result,
-                      ml::ELockFreeMPSCQueueInitResult::Success);
-
-            TestEqual(TEXT("Enqueue 1"),
-                      queue.enqueue(10, 1.5f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Enqueue 2"),
-                      queue.enqueue(20, 2.5f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-            TestEqual(TEXT("Enqueue 3"),
-                      queue.enqueue(30, 3.5f),
-                      ml::ELockFreeMPSCQueueEnqueueResult::Success);
-
-            auto const [int_span, float_span]{queue.swap_and_consume()};
-            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 3);
-            TestEqual(TEXT("Float span size"), static_cast<int32>(float_span.size()), 3);
-
-            TestEqual(TEXT("Int value 0"), int_span[0], 10);
-            TestEqual(TEXT("Int value 1"), int_span[1], 20);
-            TestEqual(TEXT("Int value 2"), int_span[2], 30);
-
-            TestEqual(TEXT("Float value 0"), float_span[0], 1.5f);
-            TestEqual(TEXT("Float value 1"), float_span[1], 2.5f);
-            TestEqual(TEXT("Float value 2"), float_span[2], 3.5f);
-        });
-
-        It("should handle multiple batches", [this]() {
-            ml::LockFreeMPSCQueueSoA<void, int32, float> queue{};
-            (void)queue.init(3);
-
-            // First batch
-            (void)queue.enqueue(1, 1.0f);
-            (void)queue.enqueue(2, 2.0f);
-
-            auto [int_span1, float_span1]{queue.swap_and_consume()};
-            TestEqual(TEXT("First batch int span size"), static_cast<int32>(int_span1.size()), 2);
-            TestEqual(TEXT("First batch int value 0"), int_span1[0], 1);
-            TestEqual(TEXT("First batch int value 1"), int_span1[1], 2);
-            TestEqual(TEXT("First batch float value 0"), float_span1[0], 1.0f);
-            TestEqual(TEXT("First batch float value 1"), float_span1[1], 2.0f);
-
-            // Second batch
-            (void)queue.enqueue(10, 10.0f);
-            (void)queue.enqueue(20, 20.0f);
-            (void)queue.enqueue(30, 30.0f);
-
-            auto [int_span2, float_span2]{queue.swap_and_consume()};
-            TestEqual(TEXT("Second batch int span size"), static_cast<int32>(int_span2.size()), 3);
-            TestEqual(TEXT("Second batch int value 0"), int_span2[0], 10);
-            TestEqual(TEXT("Second batch int value 1"), int_span2[1], 20);
-            TestEqual(TEXT("Second batch int value 2"), int_span2[2], 30);
-        });
+        for (auto const& test_case : test_cases) {
+            It(*test_case.name,
+               [this, batches = test_case.batches]() { run_soa_queue_test(this, batches); });
+        }
     });
 
     Describe("swap_and_consume edge cases", [this]() {
@@ -238,35 +254,37 @@ void FLockFreeMPSCQueueSoABasicSpec::Define() {
     });
 }
 
-BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoAComplexSpec,
-                  "Sandbox.LockFreeMPSCQueueSoA.Complex",
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32VectorSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.Int32Vector",
                   EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-END_DEFINE_SPEC(FLockFreeMPSCQueueSoAComplexSpec)
+TArray<SoATestBatch<int32, FVector>> test_cases;
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoAInt32VectorSpec)
 
-void FLockFreeMPSCQueueSoAComplexSpec::Define() {
-    Describe("LockFreeMPSCQueueSoA<void, int32, FVector> - Complex types", [this]() {
-        It("should handle complex types correctly", [this]() {
-            ml::LockFreeMPSCQueueSoA<void, int32, FVector> queue{};
-            (void)queue.init(5);
+void FLockFreeMPSCQueueSoAInt32VectorSpec::Define() {
+    using Batch = SoATestBatch<int32, FVector>::BatchType;
 
-            (void)queue.enqueue(1, FVector{1.0, 2.0, 3.0});
-            (void)queue.enqueue(2, FVector{4.0, 5.0, 6.0});
-            (void)queue.enqueue(3, FVector{7.0, 8.0, 9.0});
+    test_cases = {
+        {FString("Single batch with multiple values"),
+         {Batch{{1, 2, 3},
+                {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}, FVector{7.0, 8.0, 9.0}}}}},
+        {FString("Multiple batches"),
+         {Batch{{10, 20}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
+          Batch{{30, 40}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
+        {FString("Empty and non-empty batches"),
+         {Batch{{100, 200}, {FVector{1.0, 1.0, 1.0}, FVector{2.0, 2.0, 2.0}}},
+          Batch{{}, {}},
+          Batch{{300}, {FVector{3.0, 3.0, 3.0}}}}},
+    };
 
-            auto const [int_span, vec_span]{queue.swap_and_consume()};
-            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 3);
-            TestEqual(TEXT("Vector span size"), static_cast<int32>(vec_span.size()), 3);
+    Describe("LockFreeMPSCQueueSoA<void, int32, FVector> - Basic operations", [this]() {
+        for (auto const& test_case : test_cases) {
+            It(*test_case.name,
+               [this, batches = test_case.batches]() { run_soa_queue_test(this, batches); });
+        }
+    });
 
-            TestEqual(TEXT("Int value 0"), int_span[0], 1);
-            TestEqual(TEXT("Int value 1"), int_span[1], 2);
-            TestEqual(TEXT("Int value 2"), int_span[2], 3);
-
-            TestEqual(TEXT("Vector value 0"), vec_span[0], FVector{1.0, 2.0, 3.0});
-            TestEqual(TEXT("Vector value 1"), vec_span[1], FVector{4.0, 5.0, 6.0});
-            TestEqual(TEXT("Vector value 2"), vec_span[2], FVector{7.0, 8.0, 9.0});
-        });
-
-        It("should work with swap_and_visit for complex types", [this]() {
+    Describe("swap_and_visit with FVector", [this]() {
+        It("should invoke callable with correct spans", [this]() {
             ml::LockFreeMPSCQueueSoA<void, int32, FVector> queue{};
             (void)queue.init(3);
 
@@ -290,28 +308,59 @@ void FLockFreeMPSCQueueSoAComplexSpec::Define() {
         });
     });
 
-    Describe("LockFreeMPSCQueueSoA<void, int32, float, FVector> - Three types", [this]() {
-        It("should handle three different types", [this]() {
-            ml::LockFreeMPSCQueueSoA<void, int32, float, FVector> queue{};
-            (void)queue.init(3);
+    Describe("Order preservation with FVector", [this]() {
+        It("should maintain FIFO order", [this]() {
+            ml::LockFreeMPSCQueueSoA<void, int32, FVector> queue{};
+            (void)queue.init(5);
 
-            (void)queue.enqueue(100, 1.5f, FVector{1.0, 2.0, 3.0});
-            (void)queue.enqueue(200, 2.5f, FVector{4.0, 5.0, 6.0});
+            TArray<int32> expected_ints{0, 1, 2, 3, 4};
+            TArray<FVector> expected_vecs{FVector{1.0, 0.0, 0.0},
+                                          FVector{0.0, 1.0, 0.0},
+                                          FVector{0.0, 0.0, 1.0},
+                                          FVector{1.0, 1.0, 0.0},
+                                          FVector{1.0, 1.0, 1.0}};
 
-            auto const [int_span, float_span, vec_span]{queue.swap_and_consume()};
-            TestEqual(TEXT("Int span size"), static_cast<int32>(int_span.size()), 2);
-            TestEqual(TEXT("Float span size"), static_cast<int32>(float_span.size()), 2);
-            TestEqual(TEXT("Vector span size"), static_cast<int32>(vec_span.size()), 2);
+            for (int32 i{0}; i < expected_ints.Num(); ++i) {
+                (void)queue.enqueue(expected_ints[i], expected_vecs[i]);
+            }
 
-            TestEqual(TEXT("Int value 0"), int_span[0], 100);
-            TestEqual(TEXT("Int value 1"), int_span[1], 200);
-            TestEqual(TEXT("Float value 0"), float_span[0], 1.5f);
-            TestEqual(TEXT("Float value 1"), float_span[1], 2.5f);
-            TestEqual(TEXT("Vector value 0"), vec_span[0], FVector{1.0, 2.0, 3.0});
-            TestEqual(TEXT("Vector value 1"), vec_span[1], FVector{4.0, 5.0, 6.0});
+            auto const [int_span, vec_span]{queue.swap_and_consume()};
+            for (int32 i{0}; i < expected_ints.Num(); ++i) {
+                TestEqual(
+                    *FString::Printf(TEXT("Int at index %d"), i), int_span[i], expected_ints[i]);
+                TestEqual(
+                    *FString::Printf(TEXT("Vector at index %d"), i), vec_span[i], expected_vecs[i]);
+            }
         });
+    });
+}
 
-        It("should maintain order across all arrays", [this]() {
+BEGIN_DEFINE_SPEC(FLockFreeMPSCQueueSoAThreeTypesSpec,
+                  "Sandbox.LockFreeMPSCQueueSoA.ThreeTypes",
+                  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TArray<SoATestBatch<int32, float, FVector>> test_cases;
+END_DEFINE_SPEC(FLockFreeMPSCQueueSoAThreeTypesSpec)
+
+void FLockFreeMPSCQueueSoAThreeTypesSpec::Define() {
+    using Batch = SoATestBatch<int32, float, FVector>::BatchType;
+
+    test_cases = {
+        {FString("Single batch with three types"),
+         {Batch{{100, 200}, {1.5f, 2.5f}, {FVector{1.0, 2.0, 3.0}, FVector{4.0, 5.0, 6.0}}}}},
+        {FString("Multiple batches with three types"),
+         {Batch{{10, 20}, {1.0f, 2.0f}, {FVector{1.0, 0.0, 0.0}, FVector{0.0, 1.0, 0.0}}},
+          Batch{{30, 40}, {3.0f, 4.0f}, {FVector{0.0, 0.0, 1.0}, FVector{1.0, 1.0, 0.0}}}}},
+    };
+
+    Describe("LockFreeMPSCQueueSoA<void, int32, float, FVector> - Basic operations", [this]() {
+        for (auto const& test_case : test_cases) {
+            It(*test_case.name,
+               [this, batches = test_case.batches]() { run_soa_queue_test(this, batches); });
+        }
+    });
+
+    Describe("Order preservation across all arrays", [this]() {
+        It("should maintain FIFO order for all three types", [this]() {
             ml::LockFreeMPSCQueueSoA<void, int32, float, FVector> queue{};
             (void)queue.init(5);
 
