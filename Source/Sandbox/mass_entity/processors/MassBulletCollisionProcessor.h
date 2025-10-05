@@ -26,6 +26,8 @@ struct FMassBulletCollisionExecutor
 
     Query accessors{*this};
 
+    static constexpr float collision_shape_radius{2.0f};
+
     virtual void Execute(FMassExecutionContext& context) override;
 };
 
