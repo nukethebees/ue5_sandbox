@@ -15,12 +15,15 @@
 
 #include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
 
+template <typename View, typename... Ts>
+concept is_soa_queue_view = std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>;
+
 namespace ml {
 // Lock-free multi-producer single-consumer queue with Structure of Arrays layout
 // Contract: swap_and_consume() must only be called when all enqueue() operations are complete
 template <typename View = void, typename... Ts>
     requires (((sizeof...(Ts) > 0) && (std::is_nothrow_move_constructible_v<Ts> && ...)) &&
-              (std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>))
+              is_soa_queue_view<View, Ts...>)
 class LockFreeMPSCQueueSoA {
   public:
     using size_type = std::size_t;
