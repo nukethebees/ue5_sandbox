@@ -23,6 +23,8 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
 
     auto executor{
         [world, &query_params, &collision_shape](FMassExecutionContext& context, auto& Data) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::lambda"))
             auto const num_entities{context.GetNumEntities()};
             auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
             auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
@@ -61,7 +63,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
             }
         }};
 
-    ForEachEntityChunk(context, accessors, std::move(executor));
+    ParallelForEachEntityChunk(context, accessors, std::move(executor));
 }
 
 UMassBulletCollisionProcessor::UMassBulletCollisionProcessor()
