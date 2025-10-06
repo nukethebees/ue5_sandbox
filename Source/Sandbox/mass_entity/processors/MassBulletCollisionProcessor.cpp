@@ -74,7 +74,6 @@ UMassBulletCollisionProcessor::UMassBulletCollisionProcessor()
     SetProcessingPhase(EMassProcessingPhase::EndPhysics);
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
-        bRequiresGameThreadExecution = true;
         set_execution_flags(EProcessorExecutionFlags::All);
     }
 }
