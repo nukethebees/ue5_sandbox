@@ -62,6 +62,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
 template <typename... Args>
 void UBulletSparkEffectSubsystem::add_impact(Args&&... args) {
     constexpr auto logger{NestedLogger<"add_impact">()};
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UBulletSparkEffectSubsystem::add_impact"))
 
     switch (queue.enqueue(std::forward<Args>(args)...)) {
         using enum ml::ELockFreeMPSCQueueEnqueueResult;
