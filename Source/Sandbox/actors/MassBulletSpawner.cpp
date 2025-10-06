@@ -24,8 +24,8 @@ AMassBulletSpawner::AMassBulletSpawner() {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent->SetMobility(EComponentMobility::Movable);
 
-    fire_point = CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point"));
-    fire_point->SetupAttachment(RootComponent);
+    fire_point_component_ = CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point_component_"));
+    fire_point_component_->SetupAttachment(RootComponent);
 }
 void AMassBulletSpawner::BeginPlay() {
     Super::BeginPlay();
@@ -35,31 +35,31 @@ void AMassBulletSpawner::Tick(float DeltaTime) {
 
     Super::Tick(DeltaTime);
 
+    RETURN_IF_NULLPTR(fire_point_component_);
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+
     time_since_last_shot += DeltaTime;
     auto const seconds_per_bullet{1.0f / bullets_per_second};
 
-    if (time_since_last_shot >= seconds_per_bullet) {
-        spawn_bullet();
-        time_since_last_shot = 0.0f;
+    while (time_since_last_shot >= seconds_per_bullet) {
+        time_since_last_shot -= seconds_per_bullet;
+        spawn_bullet(*mass_bullet_subsystem, *fire_point_component_, time_since_last_shot);
     }
 }
 
-void AMassBulletSpawner::spawn_bullet() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletSpawner::spawn_bullet"))
-    constexpr auto logger{NestedLogger<"spawn_bullet">()};
-
-    RETURN_IF_NULLPTR(fire_point);
-    TRY_INIT_PTR(world, GetWorld());
-
-    FTransform const spawn_transform{get_spawn_transform(*fire_point)};
-
-    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
-    mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
+void AMassBulletSpawner::spawn_bullet(UMassBulletSubsystem& mass_bullet_subsystem,
+                                      UArrowComponent const& fire_point,
+                                      float travel_time) {
+    FTransform const spawn_transform{get_spawn_transform(fire_point, travel_time)};
+    mass_bullet_subsystem.add_bullet(spawn_transform, bullet_speed);
 }
-FTransform AMassBulletSpawner::get_spawn_transform(UArrowComponent const& bullet_start) const {
-    auto const spawn_location{bullet_start.GetComponentLocation()};
-    auto const spawn_rotation{bullet_start.GetComponentRotation()};
-    FVector const spawn_scale{FVector::OneVector};
+FTransform AMassBulletSpawner::get_spawn_transform(UArrowComponent const& fire_point,
+                                                   float travel_time) const {
+    auto const spawn_rotation{fire_point.GetComponentRotation()};
+    auto const travel_offset{spawn_rotation.Vector() * bullet_speed * travel_time};
+    auto const spawn_location{fire_point.GetComponentLocation() + travel_offset};
+    auto const spawn_scale{FVector::OneVector};
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 

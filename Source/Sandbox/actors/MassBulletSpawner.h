@@ -15,6 +15,7 @@ class ABulletActor;
 class UArrowComponent;
 class UBulletDataAsset;
 class AMassBulletVisualizationActor;
+class UMassBulletSubsystem;
 
 UCLASS()
 class SANDBOX_API AMassBulletSpawner
@@ -33,10 +34,12 @@ class SANDBOX_API AMassBulletSpawner
     virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")
-    UArrowComponent* fire_point{nullptr};
+    UArrowComponent* fire_point_component_{nullptr};
   private:
-    void spawn_bullet();
-    FTransform get_spawn_transform(UArrowComponent const& bullet_start) const;
+    void spawn_bullet(UMassBulletSubsystem& mass_bullet_subsystem,
+                      UArrowComponent const& fire_point,
+                      float travel_time);
+    FTransform get_spawn_transform(UArrowComponent const& bullet_start, float travel_time) const;
 
     float time_since_last_shot{0.0f};
 };
