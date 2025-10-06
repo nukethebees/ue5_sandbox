@@ -20,46 +20,45 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
     TRY_INIT_PTR(spark_effect_subsystem, world->GetSubsystem<UBulletSparkEffectSubsystem>());
 
-    auto executor{[mass_bullet_subsystem,
-                   spark_effect_subsystem](FMassExecutionContext& context, auto& Data, uint32 i) {
+    auto executor{[mass_bullet_subsystem, spark_effect_subsystem](FMassExecutionContext& context,
+                                                                  auto& Data) {
+        auto const n{context.GetNumEntities()};
+
         auto const hit_occurred_flags{
             context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
-
-        if (!hit_occurred_flags[i].hit_occurred) {
-            return;
-        }
-
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
 
-        logger.log_verbose(TEXT("Cleaning up chunk[%d]."), i);
-
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
-        auto const instance_index{indices[i].instance_index};
 
         auto impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
-        if (impact_effect_fragment.impact_effect) {
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                TEXT("Sandbox::FMassBulletCleanupExecutor::Execute[create_impact_event]"))
-            auto const impact_location{hit_infos[i].hit_location};
-            auto const impact_rotation{hit_infos[i].hit_normal};
+        for (int32 i{0}; i < n; ++i) {
+            if (!hit_occurred_flags[i].hit_occurred) {
+                continue;
+            }
 
-            spark_effect_subsystem->add_impact(impact_location, impact_rotation);
+            auto const instance_index{indices[i].instance_index};
+
+            if (impact_effect_fragment.impact_effect) {
+                auto const impact_location{hit_infos[i].hit_location};
+                auto const impact_rotation{hit_infos[i].hit_normal};
+                spark_effect_subsystem->add_impact(impact_location, impact_rotation);
+            }
+
+            viz_fragment.actor->remove_instance(instance_index);
+
+            auto entity{context.GetEntity(i)};
+
+            hit_occurred_flags[i].hit_occurred = false;
+            mass_bullet_subsystem->return_bullet(entity);
         }
-
-        viz_fragment.actor->remove_instance(instance_index);
-
-        auto entity{context.GetEntity(i)};
-
-        hit_occurred_flags[i].hit_occurred = false;
-        mass_bullet_subsystem->return_bullet(entity);
     }};
 
-    ForEachEntity(context, accessors, std::move(executor));
+    ForEachEntityChunk(context, accessors, std::move(executor));
 }
 
 UMassBulletCleanupProcessor::UMassBulletCleanupProcessor()
