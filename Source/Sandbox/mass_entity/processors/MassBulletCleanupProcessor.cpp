@@ -24,8 +24,7 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
                                                                   auto& Data) {
         auto const n{context.GetNumEntities()};
 
-        auto const hit_occurred_flags{
-            context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
+        auto const state_fragments{context.GetMutableFragmentView<FMassBulletStateFragment>()};
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
@@ -37,7 +36,7 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
-            if (!hit_occurred_flags[i].hit_occurred) {
+            if (state_fragments[i].state != EBulletState::Hit) {
                 continue;
             }
 
@@ -50,10 +49,8 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             }
 
             viz_fragment.actor->remove_instance(instance_index);
-
             auto entity{context.GetEntity(i)};
-
-            hit_occurred_flags[i].hit_occurred = false;
+            state_fragments[i].state = EBulletState::Pooled;
             mass_bullet_subsystem->return_bullet(entity);
         }
     }};

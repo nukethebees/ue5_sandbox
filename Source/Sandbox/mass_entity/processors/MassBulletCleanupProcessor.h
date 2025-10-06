@@ -24,7 +24,7 @@ struct FMassBulletCleanupExecutor
         UE::Mass::FConstFragmentAccess<FMassBulletHitInfoFragment>,
         UE::Mass::FConstSharedFragmentAccess<FMassBulletImpactEffectFragment>,
         UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationActorFragment>,
-        UE::Mass::FMutableFragmentAccess<FMassBulletHitOccurredFragment>>;
+        UE::Mass::FMutableFragmentAccess<FMassBulletStateFragment>>;
 
     Query accessors{*this};
 

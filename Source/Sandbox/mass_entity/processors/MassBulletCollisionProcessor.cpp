@@ -26,16 +26,15 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::lambda"))
             auto const n{context.GetNumEntities()};
-            auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
+            auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
             auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
             auto const last_positions{
                 context.GetMutableFragmentView<FMassBulletLastPositionFragment>()};
             auto const hit_infos{context.GetMutableFragmentView<FMassBulletHitInfoFragment>()};
-            auto const hit_occurred_flags{
-                context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
+            auto const state_fragments{context.GetMutableFragmentView<FMassBulletStateFragment>()};
 
             for (int32 i{0}; i < n; ++i) {
-                if (hit_occurred_flags[i].hit_occurred) {
+                if (state_fragments[i].state != EBulletState::Active) {
                     continue;
                 }
 
@@ -56,10 +55,14 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                     hit_infos[i].hit_normal = FMath::GetReflectionVector(
                         velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
 
-                    hit_occurred_flags[i].hit_occurred = true;
-                }
+                    state_fragments[i].state = EBulletState::Hit;
 
-                last_positions[i].last_position = current_position;
+                    // Move bullet back to impact point to prevent tunneling through walls
+                    transforms[i].transform.SetLocation(hit_result.ImpactPoint);
+                    last_positions[i].last_position = hit_result.ImpactPoint;
+                } else {
+                    last_positions[i].last_position = current_position;
+                }
             }
         }};
 

@@ -24,7 +24,7 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
 
-        auto const hit_occurred_flags{context.GetFragmentView<FMassBulletHitOccurredFragment>()};
+        auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
 
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
@@ -34,7 +34,7 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         }
 
         for (int32 i{0}; i < n; ++i) {
-            if (hit_occurred_flags[i].hit_occurred) {
+            if (state_fragments[i].state != EBulletState::Active) {
                 continue;
             }
 
