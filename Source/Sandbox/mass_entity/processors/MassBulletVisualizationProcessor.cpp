@@ -35,7 +35,7 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
 
         for (int32 i{0}; i < n; ++i) {
             if (hit_occurred_flags[i].hit_occurred) {
-                return;
+                continue;
             }
 
             viz_fragment.actor->update_instance(indices[i].instance_index, transforms[i].transform);
