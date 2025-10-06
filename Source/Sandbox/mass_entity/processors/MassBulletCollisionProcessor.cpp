@@ -25,7 +25,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
         [world, &query_params, &collision_shape](FMassExecutionContext& context, auto& Data) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::lambda"))
-            auto const num_entities{context.GetNumEntities()};
+            auto const n{context.GetNumEntities()};
             auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
             auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
             auto const last_positions{
@@ -34,7 +34,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
             auto const hit_occurred_flags{
                 context.GetMutableFragmentView<FMassBulletHitOccurredFragment>()};
 
-            for (int32 i{0}; i < num_entities; ++i) {
+            for (int32 i{0}; i < n; ++i) {
                 if (hit_occurred_flags[i].hit_occurred) {
                     continue;
                 }
