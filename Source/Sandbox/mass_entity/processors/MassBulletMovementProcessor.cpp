@@ -17,7 +17,7 @@ void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
 
         for (int32 i{0}; i < n; ++i) {
             if (hit_occurred_flags[i].hit_occurred) {
-                return;
+                continue;
             }
 
             auto const displacement{velocities[i].velocity * delta_time};
