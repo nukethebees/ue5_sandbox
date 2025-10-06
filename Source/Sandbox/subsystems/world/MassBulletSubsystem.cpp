@@ -138,7 +138,6 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
     hit_info_frag.hit_location = FVector::ZeroVector;
     hit_info_frag.hit_normal = FVector::ZeroVector;
 
-    auto& hit_occurred_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletHitOccurredFragment>(entity);
-    hit_occurred_frag.hit_occurred = false;
+    auto& state_frag = entity_manager.GetFragmentDataChecked<FMassBulletStateFragment>(entity);
+    state_frag.state = EBulletState::Active;
 }

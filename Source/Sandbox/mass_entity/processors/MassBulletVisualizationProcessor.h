@@ -22,7 +22,7 @@ struct FMassBulletVisualizationExecutor
         UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
         UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationActorFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletHitOccurredFragment>>;
+        UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>>;
 
     Query accessors{*this};
 
