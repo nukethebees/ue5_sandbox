@@ -15,32 +15,34 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
 
     AMassBulletVisualizationActor* actor{nullptr};
 
-    auto executor{[&actor](FMassExecutionContext& context, auto& Data, uint32 EntityIndex) {
+    auto executor{[&actor](FMassExecutionContext& context, auto& Data) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::FMassBulletVisualizationExecutor::Execute::executor"))
 
-        auto const hit_occurred_flags{context.GetFragmentView<FMassBulletHitOccurredFragment>()};
-
-        if (hit_occurred_flags[EntityIndex].hit_occurred) {
-            return;
-        }
-
+        auto const n{context.GetNumEntities()};
         auto const viz_fragment{
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
+
+        auto const hit_occurred_flags{context.GetFragmentView<FMassBulletHitOccurredFragment>()};
+
+        auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
+        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
 
         if (!actor) {
             actor = viz_fragment.actor;
         }
 
-        auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
-        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
+        for (int32 i{0}; i < n; ++i) {
+            if (hit_occurred_flags[i].hit_occurred) {
+                return;
+            }
 
-        viz_fragment.actor->update_instance(indices[EntityIndex].instance_index,
-                                            transforms[EntityIndex].transform);
+            viz_fragment.actor->update_instance(indices[i].instance_index, transforms[i].transform);
+        }
     }};
 
-    ForEachEntity(context, accessors, std::move(executor));
+    ForEachEntityChunk(context, accessors, std::move(executor));
 
     // RETURN_IF_NULLPTR(actor);
     if (!actor) {
