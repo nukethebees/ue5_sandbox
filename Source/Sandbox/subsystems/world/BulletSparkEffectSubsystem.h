@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 
 #include "CoreMinimal.h"
@@ -57,24 +58,28 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     FNiagaraDataChannelSearchParameters search_parameters{};
 
     ml::LockFreeMPSCQueueSoA<FSparkEffectView, FVector, FVector> queue;
+
+    std::atomic<std::size_t> success_count{0};
+    std::atomic<std::size_t> full_count{0};
+    std::atomic<std::size_t> uninitialised_count{0};
 };
 
 template <typename... Args>
 void UBulletSparkEffectSubsystem::add_impact(Args&&... args) {
-    constexpr auto logger{NestedLogger<"add_impact">()};
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UBulletSparkEffectSubsystem::add_impact"))
 
     switch (queue.enqueue(std::forward<Args>(args)...)) {
         using enum ml::ELockFreeMPSCQueueEnqueueResult;
         case Success: {
+            ++success_count;
             break;
         }
         case Full: {
-            logger.log_warning(TEXT("Queue is full."));
+            ++full_count;
             return;
         }
         case Uninitialised: {
-            logger.log_error(TEXT("Queue is uninitialised."));
+            ++uninitialised_count;
             return;
         }
         default: {
