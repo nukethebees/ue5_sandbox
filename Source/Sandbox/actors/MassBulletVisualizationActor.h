@@ -26,9 +26,6 @@ class SANDBOX_API AMassBulletVisualizationActor
 
     AMassBulletVisualizationActor();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
-    int32 preallocate_isms{0};
-
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
     void enqueue_transform(FTransform const& transform) {
         (void)transform_queue.enqueue(transform);
@@ -44,6 +41,14 @@ class SANDBOX_API AMassBulletVisualizationActor
 
         return transform;
     }
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    int32 preallocate_isms{0};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    int32 cull_min_distance{0};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    int32 cull_max_distance{5000};
   protected:
     virtual void BeginPlay() override;
   private:

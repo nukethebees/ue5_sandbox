@@ -32,6 +32,10 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
 void AMassBulletVisualizationActor::BeginPlay() {
     Super::BeginPlay();
 
+    RETURN_IF_NULLPTR(ismc);
+
+    ismc->SetCullDistances(cull_min_distance, cull_max_distance);
+
     FPrimaryAssetId const primary_asset_id{TEXT("Bullet"), TEXT("Standard")};
     auto& asset_manager{UAssetManager::Get()};
     asset_manager.CallOrRegister_OnCompletedInitialScan(FSimpleDelegate::CreateUObject(
