@@ -44,6 +44,7 @@ UMassBulletDestructionProcessor::UMassBulletDestructionProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionVisualization);
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         bRequiresGameThreadExecution = true;

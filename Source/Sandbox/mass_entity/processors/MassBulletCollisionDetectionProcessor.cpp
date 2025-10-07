@@ -70,7 +70,9 @@ UMassBulletCollisionDetectionProcessor::UMassBulletCollisionDetectionProcessor()
     , executor(UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCollisionDetectionExecutor>(
           entity_query, this)) {
     AutoExecuteQuery = executor;
+
     SetProcessingPhase(EMassProcessingPhase::EndPhysics);
+    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionDetection;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         set_execution_flags(EProcessorExecutionFlags::All);
