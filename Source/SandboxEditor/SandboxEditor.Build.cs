@@ -19,7 +19,9 @@ public class SandboxEditor : ModuleRules
             "SlateCore",
             "BlueprintGraph", // Required by UnrealEd
             "MaterialEditor",
-            "EditorSubsystem"
+            "EditorSubsystem",
+            "AssetRegistry", // For scanning data assets
+            "ToolMenus" // For editor toolbar buttons
         });
 
         // Editor-specific dependencies
