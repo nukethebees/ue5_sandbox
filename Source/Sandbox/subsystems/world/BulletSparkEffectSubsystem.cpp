@@ -16,6 +16,17 @@
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
 
+    auto const full{full_count.exchange(0)};
+    auto const uninitialised{uninitialised_count.exchange(0)};
+    (void)success_count.exchange(0);
+
+    if (full > 0) {
+        logger.log_warning(TEXT("Queue was full %zu times."), full);
+    }
+    if (uninitialised > 0) {
+        logger.log_error(TEXT("Queue was uninitialised %zu times."), uninitialised);
+    }
+
     RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_NULLPTR(bullet_data->ndc_asset);
 

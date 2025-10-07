@@ -8,6 +8,7 @@
 #include "Sandbox/macros/null_checks.hpp"
 
 AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
+    constexpr auto logger{NestedLogger<"AMassBulletVisualizationActor">()};
     PrimaryActorTick.bCanEverTick = false;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -22,7 +23,47 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     ismc->SetEnableGravity(false);
     ismc->SetCanEverAffectNavigation(false);
 
-    (void)transform_queue.init(transform_queue_capacity);
+    switch (transform_queue.init(transform_queue_capacity)) {
+        using enum ml::ELockFreeMPSCQueueInitResult;
+        case Success: {
+            break;
+        }
+        case AlreadyInitialised: {
+            logger.log_error(TEXT("Transform queue initialised twice."));
+            break;
+        }
+        case AllocationFailed: {
+            logger.log_error(TEXT("Transform queue allocation failed."));
+            break;
+        }
+        default: {
+            logger.log_error(TEXT("Unhandled ELockFreeMPSCQueueInitResult state."));
+            break;
+        }
+    }
+}
+
+void AMassBulletVisualizationActor::enqueue_transform(FTransform const& transform) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::enqueue_transform"))
+
+    switch (transform_queue.enqueue(transform)) {
+        using enum ml::ELockFreeMPSCQueueEnqueueResult;
+        case Success: {
+            ++success_count;
+            break;
+        }
+        case Full: {
+            ++full_count;
+            break;
+        }
+        case Uninitialised: {
+            ++uninitialised_count;
+            break;
+        }
+        default: {
+            break;
+        }
+    }
 }
 
 void AMassBulletVisualizationActor::BeginPlay() {
@@ -141,6 +182,17 @@ void AMassBulletVisualizationActor::register_phase_end_callback() {
 void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::on_phase_end"))
     constexpr auto logger{NestedLogger<"on_phase_end">()};
+
+    auto const full{full_count.exchange(0)};
+    auto const uninitialised{uninitialised_count.exchange(0)};
+    (void)success_count.exchange(0);
+
+    if (full > 0) {
+        logger.log_warning(TEXT("Transform queue was full %zu times."), full);
+    }
+    if (uninitialised > 0) {
+        logger.log_error(TEXT("Transform queue was uninitialised %zu times."), uninitialised);
+    }
 
     RETURN_IF_NULLPTR(ismc);
 

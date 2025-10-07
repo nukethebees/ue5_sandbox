@@ -26,11 +26,10 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         auto const states{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const& hidden_transform{viz_fragment.actor->get_hidden_transform()};
-        auto& transform_queue{viz_fragment.actor->get_transform_queue()};
         for (int32 i{0}; i < n; ++i) {
             auto const& transform{states[i].hit_occurred ? hidden_transform
                                                          : transforms[i].transform};
-            (void)transform_queue.enqueue(transform);
+            viz_fragment.actor->enqueue_transform(transform);
         }
     }};
 

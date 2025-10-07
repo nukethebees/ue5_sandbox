@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <optional>
 
 #include "CoreMinimal.h"
@@ -40,7 +41,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     }
 
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
-    ml::LockFreeMPSCQueue<FTransform>& get_transform_queue() { return transform_queue; }
+    void enqueue_transform(FTransform const& transform);
     FTransform const& get_hidden_transform() const {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
@@ -86,4 +87,8 @@ class SANDBOX_API AMassBulletVisualizationActor
     TArray<int32> free_indices{};
     ml::LockFreeMPSCQueue<FTransform> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
+
+    std::atomic<std::size_t> success_count{0};
+    std::atomic<std::size_t> full_count{0};
+    std::atomic<std::size_t> uninitialised_count{0};
 };
