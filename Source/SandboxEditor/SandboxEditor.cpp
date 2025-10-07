@@ -6,6 +6,8 @@
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "SandboxEditor/DataAssetCodeGenerator.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void FSandboxEditorModule::StartupModule() {
     constexpr auto logger{NestedLogger<"StartupModule">()};
     logger.log_verbose(TEXT("Module starting up!"));
@@ -31,23 +33,11 @@ void FSandboxEditorModule::ShutdownModule() {
 void FSandboxEditorModule::register_menu_extensions() {
     constexpr auto logger{NestedLogger<"register_menu_extensions">()};
 
-    auto* tool_menus{UToolMenus::Get()};
-    if (!tool_menus) {
-        logger.log_error(TEXT("Failed to get UToolMenus"));
-        return;
-    }
+    TRY_INIT_PTR(tool_menus, UToolMenus::Get());
 
-    // Extend the Level Editor toolbar
-    auto* menu{tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User")};
-    if (!menu) {
-        logger.log_error(TEXT("Failed to extend LevelEditor toolbar"));
-        return;
-    }
-
-    // Add a new section for our custom tools
+    TRY_INIT_PTR(menu, tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User"));
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};
 
-    // Add the data asset code generator button
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "GenerateDataAssetCode",
         FUIAction(
