@@ -23,16 +23,13 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
         auto const impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
+        RETURN_IF_NULLPTR(impact_effect_fragment.impact_effect);
+
         for (int32 i{0}; i < n; ++i) {
             if (!state_fragments[i].hit_occurred) {
                 continue;
             }
-
-            if (impact_effect_fragment.impact_effect) {
-                auto const impact_location{hit_infos[i].hit_location};
-                auto const impact_rotation{hit_infos[i].hit_normal};
-                spark_effect_subsystem->add_impact(impact_location, impact_rotation);
-            }
+            spark_effect_subsystem->add_impact(hit_infos[i].hit_location, hit_infos[i].hit_normal);
         }
     }};
 

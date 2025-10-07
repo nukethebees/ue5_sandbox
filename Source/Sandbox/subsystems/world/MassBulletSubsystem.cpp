@@ -84,8 +84,6 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
                                                    FMassEntityHandle entity,
                                                    FTransform const& transform,
                                                    float bullet_speed) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(
-        TEXT("Sandbox::UMassBulletSubsystem::add_bullet::configure_active_bullet"))
     constexpr auto logger{NestedLogger<"configure_active_bullet">()};
     logger.log_verbose(TEXT("Configuring bullet."));
 
