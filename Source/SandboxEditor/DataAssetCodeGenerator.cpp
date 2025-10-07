@@ -7,20 +7,49 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
+// Static method - creates instance and calls generate()
 bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
                                                       UClass* asset_class,
                                                       FString const& generated_class_name,
                                                       FString const& output_directory,
                                                       TArray<FString> const& additional_includes,
                                                       FString const& namespace_name) {
-    constexpr auto logger{NestedLogger<"generate_asset_registry">()};
     RETURN_VALUE_IF_NULLPTR(asset_class, false);
 
-    logger.log_log(
-        TEXT("Scanning '%s' for assets of type '%s'"), *scan_path, *asset_class->GetName());
+    FDataAssetCodeGenerator generator{scan_path,
+                                      asset_class,
+                                      generated_class_name,
+                                      output_directory,
+                                      additional_includes,
+                                      namespace_name};
+    return generator.generate();
+}
+
+// Private constructor - stores inputs as member variables
+FDataAssetCodeGenerator::FDataAssetCodeGenerator(FString const& scan_path,
+                                                 UClass* asset_class,
+                                                 FString const& generated_class_name,
+                                                 FString const& output_directory,
+                                                 TArray<FString> const& additional_includes,
+                                                 FString const& namespace_name)
+    : scan_path(scan_path)
+    , asset_class(asset_class)
+    , generated_class_name(generated_class_name)
+    , output_directory(output_directory)
+    , additional_includes(additional_includes)
+    , namespace_name(namespace_name)
+    , asset_type_name(FString(asset_class->GetPrefixCPP()) + asset_class->GetName())
+    , relative_header_path(TEXT("Sandbox/generated/data_asset_registries/") + generated_class_name +
+                           TEXT(".h")) {}
+
+// Instance method - performs the generation
+bool FDataAssetCodeGenerator::generate() {
+    constexpr auto logger{NestedLogger<"generate">()};
+
+    logger.log_log(TEXT("Scanning '%s' for assets of type '%s'"), *scan_path, *asset_type_name);
 
     // Scan for assets
-    auto const assets{scan_assets(scan_path, asset_class)};
+    auto const assets{scan_assets()};
     if (assets.Num() == 0) {
         logger.log_warning(TEXT("No assets found in '%s'"), *scan_path);
         return false;
@@ -38,16 +67,9 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
         }
     }
 
-    // Calculate relative header path for include in .cpp file
-    FString const relative_header_path{TEXT("Sandbox/generated/data_asset_registries/") +
-                                       generated_class_name + TEXT(".h")};
-
     // Generate code content
-    auto const asset_type_name{asset_class->GetName()};
-    auto const header_content{generate_header_content(
-        assets, generated_class_name, asset_type_name, additional_includes, namespace_name)};
-    auto const cpp_content{generate_cpp_content(
-        assets, generated_class_name, asset_type_name, namespace_name, relative_header_path)};
+    auto const header_content{generate_header_content(assets)};
+    auto const cpp_content{generate_cpp_content(assets)};
 
     // Write files (only if different)
     auto const header_path{full_output_path / generated_class_name + TEXT(".h")};
@@ -63,13 +85,19 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
         return false;
     }
 
-    logger.log_log(TEXT("Successfully generated files:\n  %s\n  %s"), *header_path, *cpp_path);
+    // Calculate project-relative path for output message
+    FString const project_dir{FPaths::ProjectDir()};
+    FString relative_output_dir{output_directory};
+    if (output_directory.StartsWith(project_dir)) {
+        relative_output_dir = output_directory.RightChop(project_dir.Len());
+    }
+
+    logger.log_log(TEXT("Generated %s in %s"), *generated_class_name, *relative_output_dir);
 
     return true;
 }
 
-TArray<FDataAssetCodeGenerator::FAssetInfo>
-    FDataAssetCodeGenerator::scan_assets(FString const& scan_path, UClass* asset_class) {
+TArray<FDataAssetCodeGenerator::FAssetInfo> FDataAssetCodeGenerator::scan_assets() {
     constexpr auto logger{NestedLogger<"scan_assets">()};
     TArray<FAssetInfo> result{};
 
@@ -106,11 +134,7 @@ TArray<FDataAssetCodeGenerator::FAssetInfo>
     return result;
 }
 
-FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> const& assets,
-                                                         FString const& class_name,
-                                                         FString const& asset_type_name,
-                                                         TArray<FString> const& additional_includes,
-                                                         FString const& namespace_name) {
+FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> const& assets) {
     FString content{};
 
     // Header guard and includes
@@ -141,7 +165,7 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     content += TEXT(" * Auto-generated accessor functions for data assets.\n");
     content += TEXT(" * Regenerate using the SandboxEditor toolbar button.\n");
     content += TEXT(" */\n");
-    content += FString::Printf(TEXT("class %s {\n"), *class_name);
+    content += FString::Printf(TEXT("class %s {\n"), *generated_class_name);
     content += TEXT("  public:\n");
 
     // Generate accessor function declarations
@@ -160,11 +184,7 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     return content;
 }
 
-FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& assets,
-                                                      FString const& class_name,
-                                                      FString const& asset_type_name,
-                                                      FString const& namespace_name,
-                                                      FString const& relative_header_path) {
+FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& assets) {
     FString content{};
 
     // Includes
@@ -180,8 +200,10 @@ FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& 
 
     // Generate accessor function implementations
     for (auto const& asset : assets) {
-        content += FString::Printf(
-            TEXT("%s* %s::%s() {\n"), *asset_type_name, *class_name, *asset.function_name);
+        content += FString::Printf(TEXT("%s* %s::%s() {\n"),
+                                   *asset_type_name,
+                                   *generated_class_name,
+                                   *asset.function_name);
 
         content +=
             FString::Printf(TEXT("    static %s* cached_asset{nullptr};\n"), *asset_type_name);

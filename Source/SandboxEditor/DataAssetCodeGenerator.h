@@ -38,17 +38,31 @@ class FDataAssetCodeGenerator : public ml::LogMsgMixin<"FDataAssetCodeGenerator"
         FString function_name;
     };
 
-    static TArray<FAssetInfo> scan_assets(FString const& scan_path, UClass* asset_class);
-    static FString generate_header_content(TArray<FAssetInfo> const& assets,
-                                           FString const& class_name,
-                                           FString const& asset_type_name,
-                                           TArray<FString> const& additional_includes,
-                                           FString const& namespace_name);
-    static FString generate_cpp_content(TArray<FAssetInfo> const& assets,
-                                        FString const& class_name,
-                                        FString const& asset_type_name,
-                                        FString const& namespace_name,
-                                        FString const& relative_header_path);
-    static bool write_file_if_different(FString const& file_path, FString const& content);
+    // Private constructor - stores inputs as member variables
+    FDataAssetCodeGenerator(FString const& scan_path,
+                            UClass* asset_class,
+                            FString const& generated_class_name,
+                            FString const& output_directory,
+                            TArray<FString> const& additional_includes,
+                            FString const& namespace_name);
+
+    // Instance method that performs the generation
+    bool generate();
+
+    // Helper methods that use member variables
+    TArray<FAssetInfo> scan_assets();
+    FString generate_header_content(TArray<FAssetInfo> const& assets);
+    FString generate_cpp_content(TArray<FAssetInfo> const& assets);
+    bool write_file_if_different(FString const& file_path, FString const& content);
     static FString sanitize_function_name(FString const& asset_name);
+
+    // Member variables
+    FString scan_path;
+    UClass* asset_class;
+    FString generated_class_name;
+    FString output_directory;
+    TArray<FString> additional_includes;
+    FString namespace_name;
+    FString asset_type_name;      // Full name with prefix (e.g., "UBulletDataAsset")
+    FString relative_header_path; // Calculated relative path for includes
 };
