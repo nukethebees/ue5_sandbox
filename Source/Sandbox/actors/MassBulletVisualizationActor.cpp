@@ -1,6 +1,7 @@
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 
 #include "Engine/AssetManager.h"
+#include "MassSimulationSubsystem.h"
 
 #include "Sandbox/data_assets/BulletDataAsset.h"
 
@@ -20,6 +21,8 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     ismc->SetSimulatePhysics(false);
     ismc->SetEnableGravity(false);
     ismc->SetCanEverAffectNavigation(false);
+
+    (void)transform_queue.init(transform_queue_capacity);
 }
 
 void AMassBulletVisualizationActor::BeginPlay() {
@@ -29,6 +32,8 @@ void AMassBulletVisualizationActor::BeginPlay() {
     auto& asset_manager{UAssetManager::Get()};
     asset_manager.CallOrRegister_OnCompletedInitialScan(FSimpleDelegate::CreateUObject(
         this, &AMassBulletVisualizationActor::handle_assets_ready, primary_asset_id));
+
+    register_phase_end_callback();
 }
 
 void AMassBulletVisualizationActor::handle_assets_ready(FPrimaryAssetId primary_asset_id) {
@@ -118,4 +123,41 @@ void AMassBulletVisualizationActor::grow_instances() {
     log_display(TEXT("Increasing ISM instances from %d to %d."), n_ismcs, target);
 
     add_instances(to_add);
+}
+
+void AMassBulletVisualizationActor::register_phase_end_callback() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        TEXT("Sandbox::AMassBulletVisualizationActor::register_phase_end_callback"))
+    constexpr auto logger{NestedLogger<"register_phase_end_callback">()};
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_simulation_subsystem, world->GetSubsystem<UMassSimulationSubsystem>());
+    auto& phase_manager{mass_simulation_subsystem->GetMutablePhaseManager()};
+
+    auto& phase_end_event{phase_manager.GetOnPhaseEnd(EMassProcessingPhase::FrameEnd)};
+    phase_end_delegate_handle =
+        phase_end_event.AddUObject(this, &AMassBulletVisualizationActor::on_phase_end);
+    logger.log_display(TEXT("Registered phase end callback for FrameEnd phase"));
+}
+
+void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::on_phase_end"))
+    constexpr auto logger{NestedLogger<"on_phase_end">()};
+
+    RETURN_IF_NULLPTR(ismc);
+
+    auto queued_transforms{transform_queue.swap_and_consume()};
+    if (queued_transforms.empty()) {
+        return;
+    }
+
+    constexpr int32 start_index{0};
+    constexpr bool world_space{true};
+    constexpr bool mark_dirty{true};
+    constexpr bool teleport{true};
+
+    TArrayView<FTransform const> transform_view(queued_transforms.data(), queued_transforms.size());
+
+    ismc->BatchUpdateInstancesTransforms(
+        start_index, transform_view, world_space, mark_dirty, teleport);
 }

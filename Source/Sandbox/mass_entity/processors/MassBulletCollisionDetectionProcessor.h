@@ -10,37 +10,37 @@
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/MassProcessorMixins.hpp"
 
-#include "MassBulletCleanupProcessor.generated.h"
+#include "MassBulletCollisionDetectionProcessor.generated.h"
 
-class UNiagaraSystem;
-
-struct FMassBulletCleanupExecutor
+struct FMassBulletCollisionDetectionExecutor
     : public UE::Mass::FQueryExecutor
-    , public ml::LogMsgMixin<"FMassBulletCleanupExecutor"> {
-    FMassBulletCleanupExecutor() = default;
+    , public ml::LogMsgMixin<"FMassBulletCollisionDetectionExecutor"> {
+    FMassBulletCollisionDetectionExecutor() = default;
 
     using Query = UE::Mass::FQueryDefinition<
-        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletHitInfoFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletImpactEffectFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationActorFragment>,
+        UE::Mass::FMutableFragmentAccess<FMassBulletTransformFragment>,
+        UE::Mass::FMutableFragmentAccess<FMassBulletLastPositionFragment>,
+        UE::Mass::FConstFragmentAccess<FMassBulletVelocityFragment>,
+        UE::Mass::FMutableFragmentAccess<FMassBulletHitInfoFragment>,
         UE::Mass::FMutableFragmentAccess<FMassBulletStateFragment>>;
 
     Query accessors{*this};
+
+    static constexpr float collision_shape_radius{2.0f};
 
     virtual void Execute(FMassExecutionContext& context) override;
 };
 
 UCLASS()
-class SANDBOX_API UMassBulletCleanupProcessor
+class SANDBOX_API UMassBulletCollisionDetectionProcessor
     : public UMassProcessor
     , public ml::MassProcessorMixins {
     GENERATED_BODY()
 
     friend struct MassProcessorMixins;
   public:
-    UMassBulletCleanupProcessor();
+    UMassBulletCollisionDetectionProcessor();
   private:
     FMassEntityQuery entity_query{};
-    TSharedPtr<FMassBulletCleanupExecutor> executor;
+    TSharedPtr<FMassBulletCollisionDetectionExecutor> executor;
 };
