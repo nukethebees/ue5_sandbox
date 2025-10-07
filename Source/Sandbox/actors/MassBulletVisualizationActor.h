@@ -42,11 +42,10 @@ class SANDBOX_API AMassBulletVisualizationActor
     }
 
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
-    void enqueue_transform(FTransform const& transform);
+    void enqueue_transform(FTransform const& transform) {
+        (void)transform_queue.enqueue(transform);
+    }
     FTransform const& get_hidden_transform() const {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
-
         static auto const transform{[]() -> FTransform {
             FRotator const rotation{};
             FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
@@ -71,8 +70,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     void update_transform(UInstancedStaticMeshComponent& component,
                           int32 i,
                           FTransform const& transform) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::AMassBulletVisualizationActor::update_transform"))
         constexpr bool world_space{true};
         constexpr bool mark_dirty{false};
         constexpr bool teleport{true};

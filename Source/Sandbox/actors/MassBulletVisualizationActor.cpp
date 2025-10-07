@@ -25,12 +25,6 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     (void)transform_queue.logged_init(transform_queue_capacity, "MassBulletVisualizationActor");
 }
 
-void AMassBulletVisualizationActor::enqueue_transform(FTransform const& transform) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::enqueue_transform"))
-
-    (void)transform_queue.enqueue(transform);
-}
-
 void AMassBulletVisualizationActor::BeginPlay() {
     Super::BeginPlay();
 
