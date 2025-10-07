@@ -1,4 +1,0 @@
-# Ignore all generated files except this .gitignore and README.md
-*
-!.gitignore
-!README.md

@@ -57,11 +57,18 @@ void FSandboxEditorModule::on_generate_data_asset_code() {
     FString const scan_path{TEXT("/Game/DataAssets")};
     UClass* asset_class{UBulletDataAsset::StaticClass()};
     FString const generated_class_name{TEXT("BulletAssetRegistry")};
-    FString const output_directory{FPaths::ProjectDir() / TEXT("Source/Sandbox/generated/")};
+    FString const output_directory{FPaths::ProjectDir() /
+                                   TEXT("Source/Sandbox/generated/data_asset_registries/")};
+    TArray<FString> const additional_includes{TEXT("Sandbox/data_assets/BulletDataAsset.h")};
+    FString const namespace_name{TEXT("ml")};
 
     // Generate the code
-    bool const success{FDataAssetCodeGenerator::generate_asset_registry(
-        scan_path, asset_class, generated_class_name, output_directory)};
+    bool const success{FDataAssetCodeGenerator::generate_asset_registry(scan_path,
+                                                                        asset_class,
+                                                                        generated_class_name,
+                                                                        output_directory,
+                                                                        additional_includes,
+                                                                        namespace_name)};
 
     if (success) {
         logger.log_log(TEXT("Code generation completed successfully!"));
