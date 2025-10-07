@@ -16,34 +16,8 @@
 
 void UMassBulletSubsystem::add_bullet(FTransform const& spawn_transform, float bullet_speed) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::add_bullet"))
-    constexpr auto logger{NestedLogger<"add_bullet">()};
 
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
-    auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
-    auto& cmd_buffer{entity_manager.Defer()};
-
-    RETURN_IF_NULLPTR(visualization_actor);
-    TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
-
-    if (free_list.Num()) {
-        logger.log_verbose(TEXT("Popping from list."));
-        auto entity{free_list.Pop()};
-        configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed, *idx);
-        return;
-    }
-    logger.log_verbose(TEXT("Queuing async creation."));
-
-    RETURN_IF_INVALID(bullet_archetype);
-    cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
-        [i = *idx, spawn_transform, bullet_speed, this](FMassEntityManager& entity_manager) {
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                TEXT("Sandbox::UMassBulletSubsystem::add_bullet::Command"))
-            logger.log_verbose(TEXT("Async creation starting."));
-
-            auto entity{entity_manager.CreateEntity(bullet_archetype, shared_values)};
-            configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed, i);
-        });
+    (void)queue.enqueue(spawn_transform, bullet_speed);
 }
 void UMassBulletSubsystem::return_bullet(FMassEntityHandle handle) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::return_bullet"))
@@ -87,10 +61,18 @@ void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
     shared_values.Add(impact_effect_handle);
     shared_values.Add(viz_actor_handle);
     shared_values.Sort();
+
+    FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
 }
 void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))
     Super::Initialize(collection);
+
+    (void)queue.logged_init(n_queue_elements, "MassBulletSubsystem");
+}
+void UMassBulletSubsystem::Deinitialize() {
+    FCoreDelegates::OnEndFrame.RemoveAll(this);
+    Super::Deinitialize();
 }
 bool UMassBulletSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"handle_assets_ready">()};
@@ -131,4 +113,107 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
 
     auto& state_frag = entity_manager.GetFragmentDataChecked<FMassBulletStateFragment>(entity);
     state_frag.hit_occurred = false;
+}
+
+void UMassBulletSubsystem::on_end_frame() {
+    if (auto* world{GetWorld()}) {
+        if (!world->IsGameWorld()) {
+            return;
+        }
+        if (world->IsPaused()) {
+            return;
+        }
+    }
+
+    queue.swap_and_visit([this](auto const& result) {
+        constexpr auto logger{NestedLogger<"on_end_frame">()};
+
+        if (result.full_count > 0) {
+            logger.log_warning(TEXT("Queue was full %zu times."), result.full_count);
+        }
+        if (result.uninitialised_count > 0) {
+            logger.log_error(TEXT("Queue was uninitialised %zu times."),
+                             result.uninitialised_count);
+        }
+
+        if (result.view.transforms.empty()) {
+            return;
+        }
+
+        consume_spawn_requests(result.view);
+    });
+}
+
+void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const& requests) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::consume_spawn_requests"))
+    constexpr auto logger{NestedLogger<"consume_spawn_requests">()};
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
+    auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
+    auto& cmd_buffer{entity_manager.Defer()};
+
+    RETURN_IF_NULLPTR(visualization_actor);
+    RETURN_IF_INVALID(bullet_archetype);
+
+    auto const n{static_cast<int32>(requests.transforms.size())};
+    logger.log_verbose(TEXT("Processing %d spawn requests."), n);
+
+    // Phase 1: Process entities from free list
+    auto const free_list_count{FMath::Min(free_list.Num(), n)};
+
+    for (int32 i{0}; i < free_list_count; ++i) {
+        auto const& spawn_transform{requests.transforms[i]};
+        auto const bullet_speed{requests.speeds[i]};
+
+        TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
+
+        auto entity{free_list.Pop()};
+        configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed, *idx);
+    }
+
+    // Phase 2: Batch create remaining entities
+    auto const remaining_count{n - free_list_count};
+    if (remaining_count <= 0) {
+        return;
+    }
+
+    logger.log_verbose(TEXT("Batch creating %d entities."), remaining_count);
+
+    // Pre-allocate ISMC instances for remaining bullets
+    TArray<int32> batch_ismc_indices{};
+    batch_ismc_indices.Reserve(remaining_count);
+
+    for (int32 i{free_list_count}; i < n; ++i) {
+        auto const& spawn_transform{requests.transforms[i]};
+        TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
+        batch_ismc_indices.Add(*idx);
+    }
+
+    cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
+        [requests,
+         batch_ismc_indices = MoveTemp(batch_ismc_indices),
+         free_list_count,
+         remaining_count,
+         this](FMassEntityManager& entity_manager) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                TEXT("Sandbox::UMassBulletSubsystem::consume_spawn_requests::BatchCreate"))
+            constexpr auto logger{NestedLogger<"consume_spawn_requests">()};
+
+            TArray<FMassEntityHandle> new_entities{};
+            entity_manager.BatchCreateEntities(
+                bullet_archetype, shared_values, remaining_count, new_entities);
+
+            logger.log_verbose(TEXT("Configuring %d batch created entities."), new_entities.Num());
+
+            auto const n{new_entities.Num()};
+            for (int32 i{0}; i < n; ++i) {
+                auto const request_idx{free_list_count + i};
+                configure_active_bullet(entity_manager,
+                                        new_entities[i],
+                                        requests.transforms[request_idx],
+                                        requests.speeds[request_idx],
+                                        batch_ismc_indices[i]);
+            }
+        });
 }
