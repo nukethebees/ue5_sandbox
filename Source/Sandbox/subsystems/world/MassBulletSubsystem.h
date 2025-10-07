@@ -55,8 +55,7 @@ class SANDBOX_API UMassBulletSubsystem
     void configure_active_bullet(FMassEntityManager& entity_manager,
                                  FMassEntityHandle entity,
                                  FTransform const& transform,
-                                 float bullet_speed,
-                                 int32 ismc_index);
+                                 float bullet_speed);
     void on_end_frame();
     void consume_spawn_requests(FBulletSpawnRequestView const& requests);
 

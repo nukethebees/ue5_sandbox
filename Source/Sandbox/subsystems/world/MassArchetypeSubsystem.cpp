@@ -33,7 +33,6 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
         descriptor.Fragments.Add(*FMassBulletTransformFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletVelocityFragment::StaticStruct());
-        descriptor.Fragments.Add(*FMassBulletInstanceIndexFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletLastPositionFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletHitInfoFragment::StaticStruct());
         descriptor.Fragments.Add(*FMassBulletStateFragment::StaticStruct());

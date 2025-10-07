@@ -29,18 +29,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
     int32 preallocate_isms{0};
 
-    std::optional<int32> add_instance(FTransform const& transform);
-    void update_instance(int32 instance_index, FTransform const& transform);
-    void remove_instance(int32 instance_index);
-    void return_instance_to_pool(int32 instance_index) { free_indices.Add(instance_index); }
-    bool mark_render_state_as_dirty() {
-        if (ismc) {
-            ismc->MarkRenderStateDirty();
-            return true;
-        }
-        return false;
-    }
-
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
     void enqueue_transform(FTransform const& transform) {
         (void)transform_queue.enqueue(transform);
@@ -61,7 +49,7 @@ class SANDBOX_API AMassBulletVisualizationActor
   private:
     void handle_assets_ready(FPrimaryAssetId primary_asset_id);
     void handle_preallocation();
-    TArray<int32> create_instances(int32 n);
+    void create_instances(int32 n);
     void add_instances(int32 n);
     void grow_instances();
     void register_phase_end_callback();
@@ -73,7 +61,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY()
     UBulletDataAsset* bullet_data;
 
-    TArray<int32> free_indices{};
     ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
+    int32 current_instance_count{0};
 };

@@ -17,10 +17,8 @@ struct FMassBulletDestructionExecutor
     , public ml::LogMsgMixin<"FMassBulletDestructionExecutor"> {
     FMassBulletDestructionExecutor() = default;
 
-    using Query = UE::Mass::FQueryDefinition<
-        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationActorFragment>>;
+    using Query =
+        UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>>;
 
     Query accessors{*this};
 

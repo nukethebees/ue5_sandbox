@@ -16,19 +16,11 @@ void FMassBulletDestructionExecutor::Execute(FMassExecutionContext& context) {
     auto executor{[](FMassExecutionContext& context, auto& Data) {
         auto const n{context.GetNumEntities()};
         auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
-        auto const viz_fragment{
-            context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
-        RETURN_IF_NULLPTR(viz_fragment.actor);
-
-        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
             if (!state_fragments[i].hit_occurred) {
                 continue;
             }
-
-            auto const instance_index{indices[i].instance_index};
-            viz_fragment.actor->return_instance_to_pool(instance_index);
 
             auto entity{context.GetEntity(i)};
             context.Defer().DestroyEntity(entity);
