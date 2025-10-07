@@ -6,6 +6,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "MassBulletVisualizationActor.generated.h"
@@ -19,6 +20,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     GENERATED_BODY()
   public:
     static constexpr float growth_factor{1.5};
+    static constexpr std::size_t transform_queue_capacity{10000};
 
     AMassBulletVisualizationActor();
 
@@ -28,6 +30,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     std::optional<int32> add_instance(FTransform const& transform);
     void update_instance(int32 instance_index, FTransform const& transform);
     void remove_instance(int32 instance_index);
+    void return_instance_to_pool(int32 instance_index) { free_indices.Add(instance_index); }
     bool mark_render_state_as_dirty() {
         if (ismc) {
             ismc->MarkRenderStateDirty();
@@ -37,6 +40,21 @@ class SANDBOX_API AMassBulletVisualizationActor
     }
 
     UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
+    ml::LockFreeMPSCQueue<FTransform>& get_transform_queue() { return transform_queue; }
+    FTransform const& get_hidden_transform() const {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
+
+        static auto const transform{[]() -> FTransform {
+            FRotator const rotation{};
+            FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
+            auto const scale{FVector::ZeroVector};
+
+            return {rotation, infinite_location, scale};
+        }()};
+
+        return transform;
+    }
   protected:
     virtual void BeginPlay() override;
   private:
@@ -45,20 +63,9 @@ class SANDBOX_API AMassBulletVisualizationActor
     TArray<int32> create_instances(int32 n);
     void add_instances(int32 n);
     void grow_instances();
-    FTransform const& get_hidden_transform() const {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("Sandbox::AMassBulletVisualizationActor::get_hidden_transform"))
+    void register_phase_end_callback();
+    void on_phase_end(float delta_time);
 
-        static auto const transform{[]() -> FTransform {
-            FRotator const rotation{};
-            FVector const infinite_location{FLT_MAX, FLT_MAX, FLT_MAX};
-            auto const scale{FVector::OneVector};
-
-            return {rotation, infinite_location, scale};
-        }()};
-
-        return transform;
-    }
     void update_transform(UInstancedStaticMeshComponent& component,
                           int32 i,
                           FTransform const& transform) {
@@ -77,4 +84,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     UBulletDataAsset* bullet_data;
 
     TArray<int32> free_indices{};
+    ml::LockFreeMPSCQueue<FTransform> transform_queue{};
+    FDelegateHandle phase_end_delegate_handle{};
 };

@@ -1,4 +1,4 @@
-#include "Sandbox/mass_entity/processors/MassBulletCollisionProcessor.h"
+#include "Sandbox/mass_entity/processors/MassBulletCollisionDetectionProcessor.h"
 
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
@@ -9,8 +9,8 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionExecutor::Execute"))
+void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& context) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionDetectionExecutor::Execute"))
 
     TRY_INIT_PTR(world, context.GetWorld());
 
@@ -24,7 +24,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
     auto executor{
         [world, &query_params, &collision_shape](FMassExecutionContext& context, auto& Data) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
-                TEXT("Sandbox::FMassBulletCollisionExecutor::Execute::lambda"))
+                TEXT("Sandbox::FMassBulletCollisionDetectionExecutor::Execute::lambda"))
             auto const n{context.GetNumEntities()};
             auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
             auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
@@ -65,10 +65,10 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
     ParallelForEachEntityChunk(context, accessors, std::move(executor));
 }
 
-UMassBulletCollisionProcessor::UMassBulletCollisionProcessor()
+UMassBulletCollisionDetectionProcessor::UMassBulletCollisionDetectionProcessor()
     : entity_query(*this)
-    , executor(
-          UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCollisionExecutor>(entity_query, this)) {
+    , executor(UE::Mass::FQueryExecutor::CreateQuery<FMassBulletCollisionDetectionExecutor>(
+          entity_query, this)) {
     AutoExecuteQuery = executor;
     SetProcessingPhase(EMassProcessingPhase::EndPhysics);
 
