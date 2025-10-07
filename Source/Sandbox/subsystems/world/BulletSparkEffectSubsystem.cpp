@@ -16,17 +16,6 @@
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
 
-    auto const full{full_count.exchange(0)};
-    auto const uninitialised{uninitialised_count.exchange(0)};
-    (void)success_count.exchange(0);
-
-    if (full > 0) {
-        logger.log_warning(TEXT("Queue was full %zu times."), full);
-    }
-    if (uninitialised > 0) {
-        logger.log_error(TEXT("Queue was uninitialised %zu times."), uninitialised);
-    }
-
     RETURN_IF_NULLPTR(bullet_data);
     RETURN_IF_NULLPTR(bullet_data->ndc_asset);
 
@@ -70,22 +59,8 @@ UNiagaraDataChannelWriter*
 
 void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    constexpr auto logger{NestedLogger<"Initialize">()};
 
-    switch (queue.init(n_queue_elements)) {
-        using enum ml::ELockFreeMPSCQueueInitResult;
-        case Success: {
-            break;
-        }
-        case AlreadyInitialised: {
-            logger.log_error(TEXT("Queue initialised twice."));
-            break;
-        }
-        default: {
-            logger.log_error(TEXT("Unhandled ELockFreeMPSCQueueInitResult state."));
-            break;
-        }
-    }
+    (void)queue.logged_init(n_queue_elements, "BulletSparkEffectSubsystem");
 }
 
 void UBulletSparkEffectSubsystem::Deinitialize() {
@@ -123,12 +98,22 @@ void UBulletSparkEffectSubsystem::on_end_frame() {
         }
     }
 
-    queue.swap_and_visit([this](FSparkEffectView const& impacts) {
-        if (impacts.locations.empty()) {
+    queue.swap_and_visit([this](auto const& result) {
+        constexpr auto logger{NestedLogger<"on_end_frame">()};
+
+        if (result.full_count > 0) {
+            logger.log_warning(TEXT("Queue was full %zu times."), result.full_count);
+        }
+        if (result.uninitialised_count > 0) {
+            logger.log_error(TEXT("Queue was uninitialised %zu times."),
+                             result.uninitialised_count);
+        }
+
+        if (result.view.locations.empty()) {
             return;
         }
 
-        consume_impacts(impacts);
+        consume_impacts(result.view);
     });
 }
 

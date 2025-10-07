@@ -8,6 +8,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
+#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "MassBulletVisualizationActor.generated.h"
@@ -85,10 +86,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     UBulletDataAsset* bullet_data;
 
     TArray<int32> free_indices{};
-    ml::LockFreeMPSCQueue<FTransform> transform_queue{};
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
-
-    std::atomic<std::size_t> success_count{0};
-    std::atomic<std::size_t> full_count{0};
-    std::atomic<std::size_t> uninitialised_count{0};
 };

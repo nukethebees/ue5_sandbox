@@ -34,6 +34,7 @@ class LockFreeMPSCQueue {
     using const_pointer = typename AllocTraits::const_pointer;
     using reference = value_type&;
     using const_reference = value_type const&;
+    using view_type = std::span<value_type>;
 
     explicit LockFreeMPSCQueue(Allocator alloc = Allocator{}) noexcept
         : allocator_{std::move(alloc)} {}
@@ -104,7 +105,7 @@ class LockFreeMPSCQueue {
     }
 
     [[nodiscard]] auto swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>)
-        -> std::span<value_type> {
+        -> view_type {
         // Swap the read/write buffers and destroy the objects in the new write buffer
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};
@@ -118,12 +119,12 @@ class LockFreeMPSCQueue {
 
         destroy_buffer(new_write_buffer, old_read_size);
 
-        return std::span<value_type>{new_read_buffer, new_read_size};
+        return view_type{new_read_buffer, new_read_size};
     }
 
     // A safer way to access the read buffer by only using it once within a lambda
     template <typename Callable>
-        requires std::invocable<Callable, std::span<value_type>>
+        requires std::invocable<Callable, view_type>
     [[nodiscard]] decltype(auto) swap_and_visit(Callable&& callable) {
         return std::forward<Callable>(callable)(swap_and_consume());
     }

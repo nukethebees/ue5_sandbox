@@ -7,8 +7,8 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "NiagaraDataChannelPublic.h"
-#include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
+#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "BulletSparkEffectSubsystem.generated.h"
@@ -57,33 +57,13 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters{};
 
-    ml::LockFreeMPSCQueueSoA<FSparkEffectView, FVector, FVector> queue;
-
-    std::atomic<std::size_t> success_count{0};
-    std::atomic<std::size_t> full_count{0};
-    std::atomic<std::size_t> uninitialised_count{0};
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueueSoA<FSparkEffectView, FVector, FVector>>
+        queue;
 };
 
 template <typename... Args>
 void UBulletSparkEffectSubsystem::add_impact(Args&&... args) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UBulletSparkEffectSubsystem::add_impact"))
 
-    switch (queue.enqueue(std::forward<Args>(args)...)) {
-        using enum ml::ELockFreeMPSCQueueEnqueueResult;
-        case Success: {
-            ++success_count;
-            break;
-        }
-        case Full: {
-            ++full_count;
-            return;
-        }
-        case Uninitialised: {
-            ++uninitialised_count;
-            return;
-        }
-        default: {
-            break;
-        }
-    }
+    (void)queue.enqueue(std::forward<Args>(args)...);
 }

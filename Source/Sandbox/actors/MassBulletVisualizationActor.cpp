@@ -8,7 +8,6 @@
 #include "Sandbox/macros/null_checks.hpp"
 
 AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
-    constexpr auto logger{NestedLogger<"AMassBulletVisualizationActor">()};
     PrimaryActorTick.bCanEverTick = false;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -23,47 +22,13 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     ismc->SetEnableGravity(false);
     ismc->SetCanEverAffectNavigation(false);
 
-    switch (transform_queue.init(transform_queue_capacity)) {
-        using enum ml::ELockFreeMPSCQueueInitResult;
-        case Success: {
-            break;
-        }
-        case AlreadyInitialised: {
-            logger.log_error(TEXT("Transform queue initialised twice."));
-            break;
-        }
-        case AllocationFailed: {
-            logger.log_error(TEXT("Transform queue allocation failed."));
-            break;
-        }
-        default: {
-            logger.log_error(TEXT("Unhandled ELockFreeMPSCQueueInitResult state."));
-            break;
-        }
-    }
+    (void)transform_queue.logged_init(transform_queue_capacity, "MassBulletVisualizationActor");
 }
 
 void AMassBulletVisualizationActor::enqueue_transform(FTransform const& transform) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::enqueue_transform"))
 
-    switch (transform_queue.enqueue(transform)) {
-        using enum ml::ELockFreeMPSCQueueEnqueueResult;
-        case Success: {
-            ++success_count;
-            break;
-        }
-        case Full: {
-            ++full_count;
-            break;
-        }
-        case Uninitialised: {
-            ++uninitialised_count;
-            break;
-        }
-        default: {
-            break;
-        }
-    }
+    (void)transform_queue.enqueue(transform);
 }
 
 void AMassBulletVisualizationActor::BeginPlay() {
@@ -183,21 +148,19 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::on_phase_end"))
     constexpr auto logger{NestedLogger<"on_phase_end">()};
 
-    auto const full{full_count.exchange(0)};
-    auto const uninitialised{uninitialised_count.exchange(0)};
-    (void)success_count.exchange(0);
+    auto result{transform_queue.swap_and_consume()};
 
-    if (full > 0) {
-        logger.log_warning(TEXT("Transform queue was full %zu times."), full);
+    if (result.full_count > 0) {
+        logger.log_warning(TEXT("Transform queue was full %zu times."), result.full_count);
     }
-    if (uninitialised > 0) {
-        logger.log_error(TEXT("Transform queue was uninitialised %zu times."), uninitialised);
+    if (result.uninitialised_count > 0) {
+        logger.log_error(TEXT("Transform queue was uninitialised %zu times."),
+                         result.uninitialised_count);
     }
 
     RETURN_IF_NULLPTR(ismc);
 
-    auto queued_transforms{transform_queue.swap_and_consume()};
-    auto n_transforms{queued_transforms.size()};
+    auto n_transforms{result.view.size()};
     if (n_transforms == 0) {
         return;
     }
@@ -208,7 +171,7 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     constexpr bool mark_dirty{true};
     constexpr bool teleport{true};
 
-    TArrayView<FTransform const> transform_view(queued_transforms.data(), queued_transforms.size());
+    TArrayView<FTransform const> transform_view(result.view.data(), result.view.size());
 
     ismc->BatchUpdateInstancesTransforms(
         start_index, transform_view, world_space, mark_dirty, teleport);
