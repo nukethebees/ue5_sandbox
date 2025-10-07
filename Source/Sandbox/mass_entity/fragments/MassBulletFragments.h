@@ -7,6 +7,12 @@
 
 #include "MassBulletFragments.generated.h"
 
+namespace ml::ProcessorGroupNames {
+FName const CollisionDetection = FName(TEXT("CollisionDetection"));
+FName const CollisionHandling = FName(TEXT("CollisionHandling"));
+FName const CollisionVisualization = FName(TEXT("CollisionVisualization"));
+}
+
 class UNiagaraSystem;
 class AMassBulletVisualizationActor;
 
