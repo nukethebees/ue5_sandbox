@@ -24,8 +24,6 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
         RETURN_IF_NULLPTR(viz_fragment.actor);
 
-        auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
-
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
 
@@ -34,10 +32,6 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         }
 
         for (int32 i{0}; i < n; ++i) {
-            if (state_fragments[i].state != EBulletState::Active) {
-                continue;
-            }
-
             viz_fragment.actor->update_instance(indices[i].instance_index, transforms[i].transform);
         }
     }};

@@ -63,9 +63,6 @@ struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
     FVector hit_normal{FVector::ZeroVector};
 };
 
-UENUM()
-enum class EBulletState : uint8 { Active, Hit, Pooled };
-
 USTRUCT()
 struct SANDBOX_API FMassBulletStateFragment : public FMassFragment {
     GENERATED_BODY()
@@ -73,7 +70,7 @@ struct SANDBOX_API FMassBulletStateFragment : public FMassFragment {
     FMassBulletStateFragment() = default;
 
     UPROPERTY()
-    EBulletState state{EBulletState::Active};
+    bool hit_occurred{false};
 };
 
 USTRUCT()

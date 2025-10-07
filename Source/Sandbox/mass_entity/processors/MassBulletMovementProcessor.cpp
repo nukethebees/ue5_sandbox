@@ -10,16 +10,11 @@ void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
 
     constexpr auto executor{[](FMassExecutionContext& context, auto& Data) {
         auto const n{context.GetNumEntities()};
-        auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const delta_time{context.GetDeltaTimeSeconds()};
         auto const transforms{context.GetMutableFragmentView<FMassBulletTransformFragment>()};
         auto const velocities{context.GetFragmentView<FMassBulletVelocityFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
-            if (state_fragments[i].state != EBulletState::Active) {
-                continue;
-            }
-
             auto const displacement{velocities[i].velocity * delta_time};
             transforms[i].transform.AddToTranslation(displacement);
         }

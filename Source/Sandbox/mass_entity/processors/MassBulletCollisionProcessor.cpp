@@ -34,10 +34,6 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
             auto const state_fragments{context.GetMutableFragmentView<FMassBulletStateFragment>()};
 
             for (int32 i{0}; i < n; ++i) {
-                if (state_fragments[i].state != EBulletState::Active) {
-                    continue;
-                }
-
                 auto const current_position{transforms[i].transform.GetLocation()};
                 auto const last_position{last_positions[i].last_position};
 
@@ -55,7 +51,7 @@ void FMassBulletCollisionExecutor::Execute(FMassExecutionContext& context) {
                     hit_infos[i].hit_normal = FMath::GetReflectionVector(
                         velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
 
-                    state_fragments[i].state = EBulletState::Hit;
+                    state_fragments[i].hit_occurred = true;
 
                     // Move bullet back to impact point to prevent tunneling through walls
                     transforms[i].transform.SetLocation(hit_result.ImpactPoint);

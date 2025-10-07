@@ -36,7 +36,7 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
-            if (state_fragments[i].state != EBulletState::Hit) {
+            if (!state_fragments[i].hit_occurred) {
                 continue;
             }
 
@@ -50,8 +50,7 @@ void FMassBulletCleanupExecutor::Execute(FMassExecutionContext& context) {
 
             viz_fragment.actor->remove_instance(instance_index);
             auto entity{context.GetEntity(i)};
-            state_fragments[i].state = EBulletState::Pooled;
-            mass_bullet_subsystem->return_bullet(entity);
+            context.Defer().DestroyEntity(entity);
         }
     }};
 
