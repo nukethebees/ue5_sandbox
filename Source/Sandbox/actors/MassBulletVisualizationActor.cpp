@@ -65,7 +65,7 @@ std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform cons
     }
 
     auto const index{free_indices.Pop()};
-    update_transform(*ismc, index, transform);
+    // update_transform(*ismc, index, transform);
     return index;
 }
 
@@ -147,9 +147,11 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     RETURN_IF_NULLPTR(ismc);
 
     auto queued_transforms{transform_queue.swap_and_consume()};
-    if (queued_transforms.empty()) {
+    auto n_transforms{queued_transforms.size()};
+    if (n_transforms == 0) {
         return;
     }
+    logger.log_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
 
     constexpr int32 start_index{0};
     constexpr bool world_space{true};
