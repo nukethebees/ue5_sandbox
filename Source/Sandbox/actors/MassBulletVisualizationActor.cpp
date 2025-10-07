@@ -67,21 +67,6 @@ std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform cons
     return free_indices.Pop();
 }
 
-void AMassBulletVisualizationActor::update_instance(int32 instance_index,
-                                                    FTransform const& transform) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::update_instance"))
-    RETURN_IF_NULLPTR(ismc);
-    update_transform(*ismc, instance_index, transform);
-}
-
-void AMassBulletVisualizationActor::remove_instance(int32 instance_index) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::remove_instance"))
-    RETURN_IF_NULLPTR(ismc);
-
-    free_indices.Add(instance_index);
-    update_transform(*ismc, instance_index, get_hidden_transform());
-}
-
 void AMassBulletVisualizationActor::handle_preallocation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         TEXT("Sandbox::AMassBulletVisualizationActor::handle_preallocation"))

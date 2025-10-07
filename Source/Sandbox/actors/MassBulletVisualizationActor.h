@@ -67,15 +67,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     void register_phase_end_callback();
     void on_phase_end(float delta_time);
 
-    void update_transform(UInstancedStaticMeshComponent& component,
-                          int32 i,
-                          FTransform const& transform) {
-        constexpr bool world_space{true};
-        constexpr bool mark_dirty{false};
-        constexpr bool teleport{true};
-        component.UpdateInstanceTransform(i, transform, world_space, mark_dirty, teleport);
-    }
-
     UPROPERTY(VisibleAnywhere)
     UInstancedStaticMeshComponent* ismc{nullptr};
 
