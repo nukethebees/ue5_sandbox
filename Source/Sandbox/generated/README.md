@@ -2,9 +2,10 @@
 
 This directory contains auto-generated C++ code created by the SandboxEditor module.
 
-## Contents
+## Structure
 
-- **BulletAssetRegistry.h/cpp** - Auto-generated accessor functions for bullet data assets
+- **data_asset_registries/** - Auto-generated data asset accessor classes
+  - **BulletAssetRegistry.h/cpp** - Accessor functions for bullet data assets
 
 ## How to Generate
 
@@ -14,15 +15,18 @@ This directory contains auto-generated C++ code created by the SandboxEditor mod
 
 ## Important Notes
 
-- **DO NOT EDIT** files in this directory manually - they will be overwritten
-- Generated files are excluded from version control via .gitignore
+- **DO NOT EDIT** generated files manually - they will be overwritten on regeneration
+- Generated files are **committed to version control** for build reproducibility
+- The generator only writes files when content has changed (incremental updates)
 - If you need to modify the generation logic, see `Source/SandboxEditor/DataAssetCodeGenerator.cpp`
 
 ## Configuration
 
 The generator is configured in `SandboxEditor.cpp`:
-- **Scan path**: `/Game/DataAssets/Bullets/`
+- **Scan path**: `/Game/DataAssets/`
 - **Asset class**: `UBulletDataAsset`
 - **Generated class name**: `BulletAssetRegistry`
+- **Output directory**: `Source/Sandbox/generated/data_asset_registries/`
+- **Namespace**: `sandbox`
 
 To add more generators or change settings, modify the `on_generate_data_asset_code()` function.

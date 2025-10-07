@@ -10,7 +10,9 @@
 bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
                                                       UClass* asset_class,
                                                       FString const& generated_class_name,
-                                                      FString const& output_directory) {
+                                                      FString const& output_directory,
+                                                      TArray<FString> const& additional_includes,
+                                                      FString const& namespace_name) {
     constexpr auto logger{NestedLogger<"generate_asset_registry">()};
     RETURN_VALUE_IF_NULLPTR(asset_class, false);
 
@@ -26,12 +28,6 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
 
     logger.log_log(TEXT("Found %d assets"), assets.Num());
 
-    // Generate code content
-    auto const asset_type_name{asset_class->GetName()};
-    auto const header_content{
-        generate_header_content(assets, generated_class_name, asset_type_name)};
-    auto const cpp_content{generate_cpp_content(assets, generated_class_name, asset_type_name)};
-
     // Ensure output directory exists
     auto const full_output_path{FPaths::ConvertRelativePathToFull(output_directory)};
     if (!IFileManager::Get().DirectoryExists(*full_output_path)) {
@@ -42,16 +38,27 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
         }
     }
 
-    // Write files
+    // Calculate relative header path for include in .cpp file
+    FString const relative_header_path{TEXT("Sandbox/generated/data_asset_registries/") +
+                                       generated_class_name + TEXT(".h")};
+
+    // Generate code content
+    auto const asset_type_name{asset_class->GetName()};
+    auto const header_content{generate_header_content(
+        assets, generated_class_name, asset_type_name, additional_includes, namespace_name)};
+    auto const cpp_content{generate_cpp_content(
+        assets, generated_class_name, asset_type_name, namespace_name, relative_header_path)};
+
+    // Write files (only if different)
     auto const header_path{full_output_path / generated_class_name + TEXT(".h")};
     auto const cpp_path{full_output_path / generated_class_name + TEXT(".cpp")};
 
-    if (!write_file(header_path, header_content)) {
+    if (!write_file_if_different(header_path, header_content)) {
         logger.log_error(TEXT("Failed to write header file"));
         return false;
     }
 
-    if (!write_file(cpp_path, cpp_content)) {
+    if (!write_file_if_different(cpp_path, cpp_content)) {
         logger.log_error(TEXT("Failed to write cpp file"));
         return false;
     }
@@ -101,13 +108,32 @@ TArray<FDataAssetCodeGenerator::FAssetInfo>
 
 FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> const& assets,
                                                          FString const& class_name,
-                                                         FString const& asset_type_name) {
+                                                         FString const& asset_type_name,
+                                                         TArray<FString> const& additional_includes,
+                                                         FString const& namespace_name) {
     FString content{};
 
     // Header guard and includes
     content += TEXT("#pragma once\n\n");
-    content += TEXT("#include \"CoreMinimal.h\"\n\n");
-    content += FString::Printf(TEXT("class %s;\n\n"), *asset_type_name);
+    content += TEXT("#include \"CoreMinimal.h\"\n");
+
+    // Add additional includes
+    for (auto const& include : additional_includes) {
+        content += FString::Printf(TEXT("#include \"%s\"\n"), *include);
+    }
+
+    content += TEXT("\n");
+
+    // Forward declare if no includes provided
+    if (additional_includes.Num() == 0) {
+        content += FString::Printf(TEXT("class %s;\n\n"), *asset_type_name);
+    }
+
+    // Open namespace if specified
+    bool const has_namespace{!namespace_name.IsEmpty()};
+    if (has_namespace) {
+        content += FString::Printf(TEXT("namespace %s {\n\n"), *namespace_name);
+    }
 
     // Class declaration
     content += TEXT("/**\n");
@@ -120,32 +146,45 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
 
     // Generate accessor function declarations
     for (auto const& asset : assets) {
-        content += FString::Printf(
-            TEXT("    static %s const* %s();\n"), *asset_type_name, *asset.function_name);
+        content +=
+            FString::Printf(TEXT("    static %s* %s();\n"), *asset_type_name, *asset.function_name);
     }
 
     content += TEXT("};\n");
+
+    // Close namespace if specified
+    if (has_namespace) {
+        content += FString::Printf(TEXT("\n}  // namespace %s\n"), *namespace_name);
+    }
 
     return content;
 }
 
 FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& assets,
                                                       FString const& class_name,
-                                                      FString const& asset_type_name) {
+                                                      FString const& asset_type_name,
+                                                      FString const& namespace_name,
+                                                      FString const& relative_header_path) {
     FString content{};
 
     // Includes
-    content += FString::Printf(TEXT("#include \"Sandbox/generated/%s.h\"\n\n"), *class_name);
+    content += FString::Printf(TEXT("#include \"%s\"\n\n"), *relative_header_path);
     content += TEXT("#include \"Engine/StreamableManager.h\"\n");
     content += TEXT("#include \"UObject/ConstructorHelpers.h\"\n\n");
+
+    // Open namespace if specified
+    bool const has_namespace{!namespace_name.IsEmpty()};
+    if (has_namespace) {
+        content += FString::Printf(TEXT("namespace %s {\n\n"), *namespace_name);
+    }
 
     // Generate accessor function implementations
     for (auto const& asset : assets) {
         content += FString::Printf(
-            TEXT("%s const* %s::%s() {\n"), *asset_type_name, *class_name, *asset.function_name);
+            TEXT("%s* %s::%s() {\n"), *asset_type_name, *class_name, *asset.function_name);
 
-        content += FString::Printf(TEXT("    static %s const* cached_asset{nullptr};\n"),
-                                   *asset_type_name);
+        content +=
+            FString::Printf(TEXT("    static %s* cached_asset{nullptr};\n"), *asset_type_name);
 
         content += TEXT("    if (!cached_asset) {\n");
         content +=
@@ -162,12 +201,36 @@ FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& 
         content += TEXT("}\n\n");
     }
 
+    // Close namespace if specified
+    if (has_namespace) {
+        content += FString::Printf(TEXT("}  // namespace %s\n"), *namespace_name);
+    }
+
     return content;
 }
 
-bool FDataAssetCodeGenerator::write_file(FString const& file_path, FString const& content) {
-    constexpr auto logger{NestedLogger<"write_file">()};
+bool FDataAssetCodeGenerator::write_file_if_different(FString const& file_path,
+                                                      FString const& content) {
+    constexpr auto logger{NestedLogger<"write_file_if_different">()};
 
+    // Check if file exists and read its contents
+    if (IFileManager::Get().FileExists(*file_path)) {
+        FString existing_content{};
+        if (FFileHelper::LoadFileToString(existing_content, *file_path)) {
+            // Compare content
+            if (existing_content.Equals(content)) {
+                logger.log_verbose(TEXT("File unchanged, skipping write: '%s'"), *file_path);
+                return true;
+            }
+            logger.log_log(TEXT("File content changed, updating: '%s'"), *file_path);
+        } else {
+            logger.log_warning(TEXT("Failed to read existing file: '%s'"), *file_path);
+        }
+    } else {
+        logger.log_log(TEXT("Creating new file: '%s'"), *file_path);
+    }
+
+    // Write file with new content
     if (FFileHelper::SaveStringToFile(
             content, *file_path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM)) {
         logger.log_log(TEXT("Wrote file '%s'"), *file_path);

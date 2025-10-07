@@ -8,6 +8,7 @@
 
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
+#include "Sandbox/generated/data_asset_registries/BulletAssetRegistry.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
 
@@ -93,18 +94,8 @@ void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 }
 bool UMassBulletSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"handle_assets_ready">()};
-    static FPrimaryAssetId const primary_asset_id{TEXT("Bullet"), TEXT("Standard")};
-    auto& asset_manager{UAssetManager::Get()};
-
-    auto& streamable_manager{UAssetManager::GetStreamableManager()};
-    FSoftObjectPath asset_path{TEXT("/Game/DataAssets/Bullet.Bullet")};
-    auto* loaded_obj{asset_path.TryLoad()};
-
-    // INIT_PTR_OR_RETURN_VALUE(loaded_obj, asset_manager.GetPrimaryAssetObject(primary_asset_id),
-    // false);
-    INIT_PTR_OR_RETURN_VALUE(loaded_data, Cast<UBulletDataAsset>(loaded_obj), false);
+    INIT_PTR_OR_RETURN_VALUE(loaded_data, ml::BulletAssetRegistry::get_bullet(), false);
     bullet_data = loaded_data;
-
     return true;
 }
 void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_manager,
