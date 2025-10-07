@@ -69,15 +69,19 @@ void ABenchmarkOrchestratorActor::EndPlay(EEndPlayReason::Type const EndPlayReas
 
 void ABenchmarkOrchestratorActor::start_trace() {
 #if UE_TRACE_ENABLED
-    auto const timestamp{FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"))};
+    auto const timestamp{FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S"))};
 
     FString trace_filename{};
 
     if (benchmark_name.IsNone()) {
         trace_filename = FString::Printf(TEXT("benchmark_%s"), *timestamp);
     } else {
-        trace_filename =
-            FString::Printf(TEXT("benchmark_%s_%s"), *timestamp, *benchmark_name.ToString());
+        constexpr int32 min_time_decimal_places{0};
+        auto duration{FString::SanitizeFloat(benchmark_duration_seconds, min_time_decimal_places)};
+        duration.ReplaceCharInline(TEXT('.'), TEXT('p'));
+
+        trace_filename = FString::Printf(
+            TEXT("benchmark_%s_%s_%ss"), *timestamp, *benchmark_name.ToString(), *duration);
     }
 
     FTraceAuxiliary::FOptions tracing_options;
