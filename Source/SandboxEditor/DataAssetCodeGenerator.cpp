@@ -9,26 +9,24 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
                                                       UClass* asset_class,
                                                       FString const& generated_class_name,
                                                       FString const& output_directory) {
+    constexpr auto logger{NestedLogger<"generate_asset_registry">()};
+
     if (!asset_class) {
-        UE_LOG(LogTemp, Error, TEXT("DataAssetCodeGenerator: Invalid asset class"));
+        logger.log_error(TEXT("Invalid asset class"));
         return false;
     }
 
-    UE_LOG(LogTemp,
-           Log,
-           TEXT("DataAssetCodeGenerator: Scanning '%s' for assets of type '%s'"),
-           *scan_path,
-           *asset_class->GetName());
+    logger.log_log(
+        TEXT("Scanning '%s' for assets of type '%s'"), *scan_path, *asset_class->GetName());
 
     // Scan for assets
     auto const assets{scan_assets(scan_path, asset_class)};
     if (assets.Num() == 0) {
-        UE_LOG(
-            LogTemp, Warning, TEXT("DataAssetCodeGenerator: No assets found in '%s'"), *scan_path);
+        logger.log_warning(TEXT("No assets found in '%s'"), *scan_path);
         return false;
     }
 
-    UE_LOG(LogTemp, Log, TEXT("DataAssetCodeGenerator: Found %d assets"), assets.Num());
+    logger.log_log(TEXT("Found %d assets"), assets.Num());
 
     // Generate code content
     auto const asset_type_name{asset_class->GetName()};
@@ -39,15 +37,9 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
     // Ensure output directory exists
     auto const full_output_path{FPaths::ConvertRelativePathToFull(output_directory)};
     if (!IFileManager::Get().DirectoryExists(*full_output_path)) {
-        UE_LOG(LogTemp,
-               Log,
-               TEXT("DataAssetCodeGenerator: Creating directory '%s'"),
-               *full_output_path);
+        logger.log_log(TEXT("Creating directory '%s'"), *full_output_path);
         if (!IFileManager::Get().MakeDirectory(*full_output_path, true)) {
-            UE_LOG(LogTemp,
-                   Error,
-                   TEXT("DataAssetCodeGenerator: Failed to create directory '%s'"),
-                   *full_output_path);
+            logger.log_error(TEXT("Failed to create directory '%s'"), *full_output_path);
             return false;
         }
     }
@@ -57,26 +49,23 @@ bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
     auto const cpp_path{full_output_path / generated_class_name + TEXT(".cpp")};
 
     if (!write_file(header_path, header_content)) {
-        UE_LOG(LogTemp, Error, TEXT("DataAssetCodeGenerator: Failed to write header file"));
+        logger.log_error(TEXT("Failed to write header file"));
         return false;
     }
 
     if (!write_file(cpp_path, cpp_content)) {
-        UE_LOG(LogTemp, Error, TEXT("DataAssetCodeGenerator: Failed to write cpp file"));
+        logger.log_error(TEXT("Failed to write cpp file"));
         return false;
     }
 
-    UE_LOG(LogTemp,
-           Log,
-           TEXT("DataAssetCodeGenerator: Successfully generated files:\n  %s\n  %s"),
-           *header_path,
-           *cpp_path);
+    logger.log_log(TEXT("Successfully generated files:\n  %s\n  %s"), *header_path, *cpp_path);
 
     return true;
 }
 
 TArray<FDataAssetCodeGenerator::FAssetInfo>
     FDataAssetCodeGenerator::scan_assets(FString const& scan_path, UClass* asset_class) {
+    constexpr auto logger{NestedLogger<"scan_assets">()};
     TArray<FAssetInfo> result{};
 
     // Get the asset registry module
@@ -103,12 +92,10 @@ TArray<FDataAssetCodeGenerator::FAssetInfo>
         info.function_name = sanitize_function_name(info.asset_name);
         result.Add(info);
 
-        UE_LOG(LogTemp,
-               Verbose,
-               TEXT("  Found: %s (%s) -> %s()"),
-               *info.asset_name,
-               *info.asset_path,
-               *info.function_name);
+        logger.log_verbose(TEXT("Found: %s (%s) -> %s()"),
+                           *info.asset_name,
+                           *info.asset_path,
+                           *info.function_name);
     }
 
     return result;
@@ -181,13 +168,15 @@ FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& 
 }
 
 bool FDataAssetCodeGenerator::write_file(FString const& file_path, FString const& content) {
+    constexpr auto logger{NestedLogger<"write_file">()};
+
     if (FFileHelper::SaveStringToFile(
             content, *file_path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM)) {
-        UE_LOG(LogTemp, Log, TEXT("DataAssetCodeGenerator: Wrote file '%s'"), *file_path);
+        logger.log_log(TEXT("Wrote file '%s'"), *file_path);
         return true;
     }
 
-    UE_LOG(LogTemp, Error, TEXT("DataAssetCodeGenerator: Failed to write file '%s'"), *file_path);
+    logger.log_error(TEXT("Failed to write file '%s'"), *file_path);
     return false;
 }
 

@@ -7,7 +7,8 @@
 #include "SandboxEditor/DataAssetCodeGenerator.h"
 
 void FSandboxEditorModule::StartupModule() {
-    UE_LOG(LogTemp, Verbose, TEXT("SandboxEditor module starting up!"));
+    constexpr auto logger{NestedLogger<"StartupModule">()};
+    logger.log_verbose(TEXT("Module starting up!"));
     // No factory registration needed - MaterialExpressions control their own UI
 
     // Register menu extensions after ToolMenus module is loaded
@@ -28,16 +29,18 @@ void FSandboxEditorModule::ShutdownModule() {
 }
 
 void FSandboxEditorModule::register_menu_extensions() {
+    constexpr auto logger{NestedLogger<"register_menu_extensions">()};
+
     auto* tool_menus{UToolMenus::Get()};
     if (!tool_menus) {
-        UE_LOG(LogTemp, Error, TEXT("SandboxEditor: Failed to get UToolMenus"));
+        logger.log_error(TEXT("Failed to get UToolMenus"));
         return;
     }
 
     // Extend the Level Editor toolbar
     auto* menu{tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User")};
     if (!menu) {
-        UE_LOG(LogTemp, Error, TEXT("SandboxEditor: Failed to extend LevelEditor toolbar"));
+        logger.log_error(TEXT("Failed to extend LevelEditor toolbar"));
         return;
     }
 
@@ -53,11 +56,12 @@ void FSandboxEditorModule::register_menu_extensions() {
         FText::FromString("Generate C++ accessor code for data assets"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
 
-    UE_LOG(LogTemp, Log, TEXT("SandboxEditor: Registered menu extensions"));
+    logger.log_log(TEXT("Registered menu extensions"));
 }
 
 void FSandboxEditorModule::on_generate_data_asset_code() {
-    UE_LOG(LogTemp, Log, TEXT("SandboxEditor: Generating data asset code..."));
+    constexpr auto logger{NestedLogger<"on_generate_data_asset_code">()};
+    logger.log_log(TEXT("Generating data asset code..."));
 
     // Configuration for bullet data assets
     FString const scan_path{TEXT("/Game/DataAssets/Bullets")};
@@ -70,10 +74,10 @@ void FSandboxEditorModule::on_generate_data_asset_code() {
         scan_path, asset_class, generated_class_name, output_directory)};
 
     if (success) {
-        UE_LOG(LogTemp, Log, TEXT("SandboxEditor: Code generation completed successfully!"));
+        logger.log_log(TEXT("Code generation completed successfully!"));
         // TODO: Show notification to user
     } else {
-        UE_LOG(LogTemp, Error, TEXT("SandboxEditor: Code generation failed!"));
+        logger.log_error(TEXT("Code generation failed!"));
         // TODO: Show error notification to user
     }
 }
