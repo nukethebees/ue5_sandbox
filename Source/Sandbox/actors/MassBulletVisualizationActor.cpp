@@ -22,6 +22,10 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     ismc->SetEnableGravity(false);
     ismc->SetCanEverAffectNavigation(false);
 
+    ismc->SetCastShadow(false);
+    ismc->bCastDynamicShadow = false;
+    ismc->bAffectDistanceFieldLighting = false;
+
     (void)transform_queue.logged_init(transform_queue_capacity, "MassBulletVisualizationActor");
 }
 
