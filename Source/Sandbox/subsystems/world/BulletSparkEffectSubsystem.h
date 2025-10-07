@@ -32,7 +32,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem"> {
     GENERATED_BODY()
   public:
-    static constexpr std::size_t n_queue_elements{3000};
+    static constexpr std::size_t n_queue_elements{10000};
 
     template <typename... Args>
     void add_impact(Args&&... args);
