@@ -31,30 +31,31 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         auto const states{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const& hidden_transform{viz_fragment.actor->get_hidden_transform()};
-
+        auto& transform_queue{viz_fragment.actor->get_transform_queue()};
         for (int32 i{0}; i < n; ++i) {
             auto const& transform{states[i].hit_occurred ? hidden_transform
                                                          : transforms[i].transform};
-            entity_data_array.Add({indices[i].instance_index, transform});
+            // entity_data_array.Add({indices[i].instance_index, transform});
+            (void)transform_queue.enqueue(transform);
         }
     }};
 
     ForEachEntityChunk(context, accessors, std::move(collector));
 
-    // Sort by instance index
-    entity_data_array.Sort([](EntityData const& a, EntityData const& b) {
-        return a.instance_index < b.instance_index;
-    });
-
-    // Enqueue transforms in instance index order
-    auto const viz_fragment{
-        context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
-    if (viz_fragment.actor) {
-        auto& transform_queue{viz_fragment.actor->get_transform_queue()};
-        for (auto const& data : entity_data_array) {
-            (void)transform_queue.enqueue(data.transform);
-        }
-    }
+    //// Sort by instance index
+    // entity_data_array.Sort([](EntityData const& a, EntityData const& b) {
+    //     return a.instance_index < b.instance_index;
+    // });
+    //
+    //// Enqueue transforms in instance index order
+    // auto const viz_fragment{
+    //     context.GetConstSharedFragment<FMassBulletVisualizationActorFragment>()};
+    // if (viz_fragment.actor) {
+    //     auto& transform_queue{viz_fragment.actor->get_transform_queue()};
+    //     for (auto const& data : entity_data_array) {
+    //         (void)transform_queue.enqueue(data.transform);
+    //     }
+    // }
 }
 
 UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()
@@ -64,6 +65,8 @@ UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionHandling);
+    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionVisualization;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         bRequiresGameThreadExecution = true;

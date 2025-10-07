@@ -45,6 +45,8 @@ UMassBulletCollisionHandlingProcessor::UMassBulletCollisionHandlingProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionDetection);
+    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionHandling;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         bRequiresGameThreadExecution = true;
