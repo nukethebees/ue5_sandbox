@@ -31,16 +31,6 @@ struct SANDBOX_API FMassBulletVelocityFragment : public FMassFragment {
 };
 
 USTRUCT()
-struct SANDBOX_API FMassBulletInstanceIndexFragment : public FMassFragment {
-    GENERATED_BODY()
-
-    FMassBulletInstanceIndexFragment() = default;
-
-    UPROPERTY()
-    int32 instance_index{-1};
-};
-
-USTRUCT()
 struct SANDBOX_API FMassBulletLastPositionFragment : public FMassFragment {
     GENERATED_BODY()
 

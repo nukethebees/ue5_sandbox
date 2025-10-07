@@ -54,42 +54,30 @@ void AMassBulletVisualizationActor::handle_assets_ready(FPrimaryAssetId primary_
     handle_preallocation();
 }
 
-std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform const& transform) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::add_instance"))
-    if (!ismc || !bullet_data) {
-        return std::nullopt;
-    }
-
-    if (free_indices.IsEmpty()) {
-        grow_instances();
-    }
-
-    return free_indices.Pop();
-}
-
 void AMassBulletVisualizationActor::handle_preallocation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         TEXT("Sandbox::AMassBulletVisualizationActor::handle_preallocation"))
     if (preallocate_isms > 0) {
         log_display(TEXT("Preallocating %d ISM instances."), preallocate_isms);
-        free_indices = create_instances(preallocate_isms);
+        create_instances(preallocate_isms);
+        current_instance_count = preallocate_isms;
     }
 }
-TArray<int32> AMassBulletVisualizationActor::create_instances(int32 n) {
+void AMassBulletVisualizationActor::create_instances(int32 n) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::create_instances"))
     TArray<FTransform> transforms;
     transforms.Init(get_hidden_transform(), n);
 
-    constexpr bool bShouldReturnIndices{true};
+    constexpr bool bShouldReturnIndices{false};
     constexpr bool bWorldSpace{true};
     constexpr bool bUpdateNavigation{false};
 
-    return ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
+    ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
 }
 void AMassBulletVisualizationActor::add_instances(int32 n) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::add_instances"))
-    auto indexes{create_instances(n)};
-    free_indices.Append(std::move(indexes));
+    create_instances(n);
+    current_instance_count += n;
 }
 void AMassBulletVisualizationActor::grow_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::grow_instances"))
@@ -97,7 +85,7 @@ void AMassBulletVisualizationActor::grow_instances() {
 
     constexpr int32 small_num{8};
 
-    auto const n_ismcs{FMath::Max(ismc->GetNumInstances(), 1)};
+    auto const n_ismcs{current_instance_count};
     auto const target{(n_ismcs < small_num)
                           ? small_num
                           : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
@@ -139,10 +127,20 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
 
     RETURN_IF_NULLPTR(ismc);
 
-    auto n_transforms{result.view.size()};
+    auto const n_transforms{static_cast<int32>(result.view.size())};
     if (n_transforms == 0) {
         return;
     }
+
+    if (n_transforms > current_instance_count) {
+        auto const to_add{n_transforms - current_instance_count};
+        logger.log_display(TEXT("Growing instances from %d to %d to accommodate %d transforms."),
+                           current_instance_count,
+                           n_transforms,
+                           n_transforms);
+        add_instances(to_add);
+    }
+
     logger.log_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
 
     constexpr int32 start_index{0};

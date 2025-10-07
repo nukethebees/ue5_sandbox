@@ -20,7 +20,6 @@ struct FMassBulletVisualizationExecutor
 
     using Query = UE::Mass::FQueryDefinition<
         UE::Mass::FConstFragmentAccess<FMassBulletTransformFragment>,
-        UE::Mass::FConstFragmentAccess<FMassBulletInstanceIndexFragment>,
         UE::Mass::FConstSharedFragmentAccess<FMassBulletVisualizationActorFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>>;
 

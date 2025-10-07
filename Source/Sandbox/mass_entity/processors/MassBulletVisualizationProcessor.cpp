@@ -24,7 +24,6 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
 
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const states{context.GetFragmentView<FMassBulletStateFragment>()};
-        auto const indices{context.GetFragmentView<FMassBulletInstanceIndexFragment>()};
         auto const& hidden_transform{viz_fragment.actor->get_hidden_transform()};
         for (int32 i{0}; i < n; ++i) {
             auto const& transform{states[i].hit_occurred ? hidden_transform

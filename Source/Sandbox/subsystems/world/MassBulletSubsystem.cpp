@@ -83,8 +83,7 @@ bool UMassBulletSubsystem::initialise_asset_data() {
 void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_manager,
                                                    FMassEntityHandle entity,
                                                    FTransform const& transform,
-                                                   float bullet_speed,
-                                                   int32 ismc_index) {
+                                                   float bullet_speed) {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         TEXT("Sandbox::UMassBulletSubsystem::add_bullet::configure_active_bullet"))
     constexpr auto logger{NestedLogger<"configure_active_bullet">()};
@@ -98,10 +97,6 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
         entity_manager.GetFragmentDataChecked<FMassBulletVelocityFragment>(entity);
     auto const velocity{transform.Rotator().Vector().GetSafeNormal() * bullet_speed};
     velocity_frag.velocity = velocity;
-
-    auto& index_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletInstanceIndexFragment>(entity);
-    index_frag.instance_index = ismc_index;
 
     auto& last_pos_frag =
         entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);
@@ -166,10 +161,8 @@ void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const&
         auto const& spawn_transform{requests.transforms[i]};
         auto const bullet_speed{requests.speeds[i]};
 
-        TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
-
         auto entity{free_list.Pop()};
-        configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed, *idx);
+        configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed);
     }
 
     // Phase 2: Batch create remaining entities
@@ -180,22 +173,8 @@ void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const&
 
     logger.log_verbose(TEXT("Batch creating %d entities."), remaining_count);
 
-    // Pre-allocate ISMC instances for remaining bullets
-    TArray<int32> batch_ismc_indices{};
-    batch_ismc_indices.Reserve(remaining_count);
-
-    for (int32 i{free_list_count}; i < n; ++i) {
-        auto const& spawn_transform{requests.transforms[i]};
-        TRY_INIT_OPTIONAL(idx, visualization_actor->add_instance(spawn_transform));
-        batch_ismc_indices.Add(*idx);
-    }
-
     cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
-        [requests,
-         batch_ismc_indices = MoveTemp(batch_ismc_indices),
-         free_list_count,
-         remaining_count,
-         this](FMassEntityManager& entity_manager) {
+        [requests, free_list_count, remaining_count, this](FMassEntityManager& entity_manager) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 TEXT("Sandbox::UMassBulletSubsystem::consume_spawn_requests::BatchCreate"))
             constexpr auto logger{NestedLogger<"consume_spawn_requests">()};
@@ -212,8 +191,7 @@ void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const&
                 configure_active_bullet(entity_manager,
                                         new_entities[i],
                                         requests.transforms[request_idx],
-                                        requests.speeds[request_idx],
-                                        batch_ismc_indices[i]);
+                                        requests.speeds[request_idx]);
             }
         });
 }
