@@ -6,6 +6,7 @@
 
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
