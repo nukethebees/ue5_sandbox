@@ -20,7 +20,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     GENERATED_BODY()
   public:
     static constexpr float growth_factor{1.5};
-    static constexpr std::size_t transform_queue_capacity{10000};
+    static constexpr std::size_t transform_queue_capacity{100000};
 
     AMassBulletVisualizationActor();
 
