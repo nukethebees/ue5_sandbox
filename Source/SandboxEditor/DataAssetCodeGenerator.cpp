@@ -5,16 +5,14 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,
                                                       UClass* asset_class,
                                                       FString const& generated_class_name,
                                                       FString const& output_directory) {
     constexpr auto logger{NestedLogger<"generate_asset_registry">()};
-
-    if (!asset_class) {
-        logger.log_error(TEXT("Invalid asset class"));
-        return false;
-    }
+    RETURN_VALUE_IF_NULLPTR(asset_class, false);
 
     logger.log_log(
         TEXT("Scanning '%s' for assets of type '%s'"), *scan_path, *asset_class->GetName());
