@@ -4,6 +4,7 @@
 #include "MassExecutionContext.h"
 
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 #include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
