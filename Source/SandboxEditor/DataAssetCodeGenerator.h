@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 class UClass;
 
 /**
@@ -9,7 +11,7 @@ class UClass;
  * Scans a directory for UPrimaryDataAsset instances and generates a static
  * accessor class with functions that return references to these assets.
  */
-class FDataAssetCodeGenerator {
+class FDataAssetCodeGenerator : public ml::LogMsgMixin<"FDataAssetCodeGenerator"> {
   public:
     /**
      * Generate C++ code files for data asset accessors.

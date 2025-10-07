@@ -3,7 +3,11 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-class FSandboxEditorModule : public IModuleInterface {
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
+class FSandboxEditorModule
+    : public IModuleInterface
+    , public ml::LogMsgMixin<"FSandboxEditorModule"> {
   public:
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
