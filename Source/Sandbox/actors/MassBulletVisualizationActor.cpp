@@ -64,9 +64,7 @@ std::optional<int32> AMassBulletVisualizationActor::add_instance(FTransform cons
         grow_instances();
     }
 
-    auto const index{free_indices.Pop()};
-    // update_transform(*ismc, index, transform);
-    return index;
+    return free_indices.Pop();
 }
 
 void AMassBulletVisualizationActor::update_instance(int32 instance_index,
