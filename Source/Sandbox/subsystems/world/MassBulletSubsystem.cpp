@@ -14,11 +14,6 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-void UMassBulletSubsystem::add_bullet(FTransform const& spawn_transform, float bullet_speed) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::add_bullet"))
-
-    (void)queue.enqueue(spawn_transform, bullet_speed);
-}
 void UMassBulletSubsystem::return_bullet(FMassEntityHandle handle) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::return_bullet"))
     constexpr auto logger{NestedLogger<"return_bullet">()};

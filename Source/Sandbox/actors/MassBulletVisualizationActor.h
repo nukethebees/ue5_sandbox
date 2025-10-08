@@ -44,7 +44,6 @@ class SANDBOX_API AMassBulletVisualizationActor
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
     int32 preallocate_isms{0};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
     int32 cull_min_distance{0};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")

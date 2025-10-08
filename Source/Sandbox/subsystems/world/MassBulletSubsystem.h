@@ -44,7 +44,9 @@ class SANDBOX_API UMassBulletSubsystem
   public:
     static constexpr std::size_t n_queue_elements{30000};
 
-    void add_bullet(FTransform const& transform, float bullet_speed);
+    void add_bullet(FTransform const& spawn_transform, float bullet_speed) {
+        (void)queue.enqueue(spawn_transform, bullet_speed);
+    }
     void return_bullet(FMassEntityHandle handle);
   protected:
     virtual void OnWorldBeginPlay(UWorld& in_world) override;
