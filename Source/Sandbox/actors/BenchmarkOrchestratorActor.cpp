@@ -87,8 +87,23 @@ void ABenchmarkOrchestratorActor::start_trace() {
     FTraceAuxiliary::FOptions tracing_options;
     tracing_options.bExcludeTail = true;
 
+    channels.Reset(0);
+    bool first{true};
+    for (auto const& ch : trace_channels) {
+        if (!first) {
+            channels += TEXT(',');
+        }
+
+        channels += ch;
+        first = false;
+    }
+
+    if (trace_none) {
+        channels = TEXT("");
+    }
+
     FTraceAuxiliary::Start(
-        FTraceAuxiliary::EConnectionType::File, *trace_filename, nullptr, &tracing_options);
+        FTraceAuxiliary::EConnectionType::File, *trace_filename, *channels, &tracing_options);
 
     UE_LOG(LogTemp, Display, TEXT("Benchmark trace started: %s.utrace"), *trace_filename);
 #endif
