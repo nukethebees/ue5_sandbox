@@ -3,7 +3,10 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "EnhancedInputComponent.h"
+
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+
+#include "Sandbox/constants/collision_channels.h"
 
 #include "InteractorComponent.generated.h"
 
@@ -31,7 +34,7 @@ class SANDBOX_API UInteractorComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float capsule_half_height{80.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    TEnumAsByte<ECollisionChannel> collision_channel{ECC_GameTraceChannel1};
+    TEnumAsByte<ECollisionChannel> collision_channel{ml::collision::interaction};
   private:
     bool cooling_down{false};
     FTimerHandle cooldown_handle;
