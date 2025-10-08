@@ -15,10 +15,6 @@ ABenchmarkOrchestratorActor::ABenchmarkOrchestratorActor() {
 void ABenchmarkOrchestratorActor::BeginPlay() {
     Super::BeginPlay();
 
-    if (!run_benchmark) {
-        return;
-    }
-
     if (benchmark_camera) {
         if (auto* pc{UGameplayStatics::GetPlayerController(this, 0)}) {
             pc->SetViewTarget(benchmark_camera);
@@ -27,6 +23,10 @@ void ABenchmarkOrchestratorActor::BeginPlay() {
         }
     } else {
         UE_LOG(LogTemp, Warning, TEXT("benchmark_camera is nullptr"));
+    }
+
+    if (!run_benchmark) {
+        return;
     }
 
     constexpr float minimum_print_time{5.0f};
