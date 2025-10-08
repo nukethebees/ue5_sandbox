@@ -99,16 +99,7 @@ void UBulletSparkEffectSubsystem::on_end_frame() {
     }
 
     queue.swap_and_visit([this](auto const& result) {
-        constexpr auto logger{NestedLogger<"on_end_frame">()};
-
-        if (result.full_count > 0) {
-            logger.log_warning(TEXT("Queue was full %zu times."), result.full_count);
-        }
-        if (result.uninitialised_count > 0) {
-            logger.log_error(TEXT("Queue was uninitialised %zu times."),
-                             result.uninitialised_count);
-        }
-
+        result.log_results(TEXT("UBulletSparkEffectSubsystem"));
         if (result.view.locations.empty()) {
             return;
         }
