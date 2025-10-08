@@ -6,6 +6,7 @@
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
+#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -13,7 +14,10 @@ void FMassBulletDestructionExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletDestructionExecutor::Execute"))
     constexpr auto logger{NestedLogger<"Execute">()};
 
-    auto executor{[](FMassExecutionContext& context, auto& Data) {
+    TRY_INIT_PTR(world, context.GetWorld());
+    TRY_INIT_PTR(bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+
+    auto executor{[bullet_subsystem](FMassExecutionContext& context, auto& Data) {
         auto const n{context.GetNumEntities()};
         auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
 
@@ -23,7 +27,7 @@ void FMassBulletDestructionExecutor::Execute(FMassExecutionContext& context) {
             }
 
             auto entity{context.GetEntity(i)};
-            context.Defer().DestroyEntity(entity);
+            bullet_subsystem->destroy_bullet(entity);
         }
     }};
 

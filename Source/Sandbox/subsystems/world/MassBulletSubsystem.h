@@ -9,6 +9,7 @@
 #include "MassEntityTypes.h"
 #include "MassSubsystemBase.h"
 
+#include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
@@ -45,9 +46,9 @@ class SANDBOX_API UMassBulletSubsystem
     static constexpr std::size_t n_queue_elements{30000};
 
     void add_bullet(FTransform const& spawn_transform, float bullet_speed) {
-        (void)queue.enqueue(spawn_transform, bullet_speed);
+        (void)spawn_queue.enqueue(spawn_transform, bullet_speed);
     }
-    void return_bullet(FMassEntityHandle handle);
+    void destroy_bullet(FMassEntityHandle handle) { (void)destroy_queue.enqueue(handle); }
   protected:
     virtual void OnWorldBeginPlay(UWorld& in_world) override;
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
@@ -59,7 +60,7 @@ class SANDBOX_API UMassBulletSubsystem
                                  FTransform const& transform,
                                  float bullet_speed);
     void on_end_frame();
-    void consume_spawn_requests(FBulletSpawnRequestView const& requests);
+    void consume_lifecycle_requests(FBulletSpawnRequestView const& spawn_requests);
 
     TArray<FMassEntityHandle> free_list;
     FMassArchetypeHandle bullet_archetype;
@@ -69,5 +70,6 @@ class SANDBOX_API UMassBulletSubsystem
 
     ml::MonitoredLockFreeMPSCQueue<
         ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView, FTransform, float>>
-        queue;
+        spawn_queue;
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FMassEntityHandle>> destroy_queue;
 };
