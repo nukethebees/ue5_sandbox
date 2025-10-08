@@ -1,165 +1,169 @@
 {
-    "FileVersion": 3,
-    "EngineAssociation": "5.6",
-    "Category": "",
-    "Description": "",
-    "Modules": [
-        {
-            "Name": "Sandbox",
-            "Type": "Runtime",
-            "LoadingPhase": "Default",
-            "AdditionalDependencies": [
-                "Engine",
-                "UMG",
-                "Slate",
-                "SlateCore",
-                "AIModule"
-            ]
-        },
-        {
-            "Name": "SandboxEditor",
-            "Type": "Editor",
-            "LoadingPhase": "Default"
-        }
-    ],
-    "Plugins": [
-        {
-            "Name": "ModelingToolsEditorMode",
-            "Enabled": true
-        },
-        {
-            "Name": "VisualStudioTools",
-            "Enabled": true,
-            "SupportedTargetPlatforms": [
-                "Win64"
-            ],
-            "MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/362651520df94e4fa65492dbcba44ae2"
-        },
-        {
-            "Name": "Water",
-            "Enabled": true
-        },
-        {
-            "Name": "Landmass",
-            "Enabled": true
-        },
-        {
-            "Name": "FunctionalTestingEditor",
-            "Enabled": true
-        },
-        {
-            "Name": "N10XSourceCodeAccess",
-            "Enabled": false
-        },
-        {
-            "Name": "AlembicImporter",
-            "Enabled": false
-        },
-        {
-            "Name": "AndroidDeviceProfileSelector",
-            "Enabled": false
-        },
-        {
-            "Name": "AndroidMedia",
-            "Enabled": false
-        },
-        {
-            "Name": "AndroidMoviePlayer",
-            "Enabled": false
-        },
-        {
-            "Name": "OnlineSubsystemGooglePlay",
-            "Enabled": false,
-            "SupportedTargetPlatforms": [
-                "Android"
-            ]
-        },
-        {
-            "Name": "AndroidPermission",
-            "Enabled": false
-        },
-        {
-            "Name": "AndroidFileServer",
-            "Enabled": false
-        },
-        {
-            "Name": "AppleImageUtils",
-            "Enabled": false
-        },
-        {
-            "Name": "AppleMoviePlayer",
-            "Enabled": false
-        },
-        {
-            "Name": "BackChannel",
-            "Enabled": false
-        },
-        {
-            "Name": "CableComponent",
-            "Enabled": false
-        },
-        {
-            "Name": "CameraShakePreviewer",
-            "Enabled": false
-        },
-        {
-            "Name": "CLionSourceCodeAccess",
-            "Enabled": false
-        },
-        {
-            "Name": "CodeLiteSourceCodeAccess",
-            "Enabled": false
-        },
-        {
-            "Name": "GLTFExporter",
-            "Enabled": false
-        },
-        {
-            "Name": "GoogleCloudMessaging",
-            "Enabled": false
-        },
-        {
-            "Name": "GooglePAD",
-            "Enabled": false
-        },
-        {
-            "Name": "NFORDenoise",
-            "Enabled": false,
-            "SupportedTargetPlatforms": [
-                "Win64",
-                "Linux"
-            ]
-        },
-        {
-            "Name": "PerforceSourceControl",
-            "Enabled": false
-        },
-        {
-            "Name": "ResonanceAudio",
-            "Enabled": false
-        },
-        {
-            "Name": "RiderSourceCodeAccess",
-            "Enabled": false
-        },
-        {
-            "Name": "SubversionSourceControl",
-            "Enabled": false
-        },
-        {
-            "Name": "WindowsMoviePlayer",
-            "Enabled": false
-        },
-        {
-            "Name": "WmfMedia",
-            "Enabled": false
-        },
-        {
-            "Name": "MassGameplay",
-            "Enabled": true
-        }
-    ],
-    "TargetPlatforms": [
-        "Windows"
-    ]
+	"FileVersion": 3,
+	"EngineAssociation": "5.6",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Sandbox",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"UMG",
+				"Slate",
+				"SlateCore",
+				"AIModule"
+			]
+		},
+		{
+			"Name": "SandboxEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true
+		},
+		{
+			"Name": "VisualStudioTools",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64"
+			],
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/362651520df94e4fa65492dbcba44ae2"
+		},
+		{
+			"Name": "Water",
+			"Enabled": true
+		},
+		{
+			"Name": "Landmass",
+			"Enabled": true
+		},
+		{
+			"Name": "FunctionalTestingEditor",
+			"Enabled": true
+		},
+		{
+			"Name": "N10XSourceCodeAccess",
+			"Enabled": false
+		},
+		{
+			"Name": "AlembicImporter",
+			"Enabled": false
+		},
+		{
+			"Name": "AndroidDeviceProfileSelector",
+			"Enabled": false
+		},
+		{
+			"Name": "AndroidMedia",
+			"Enabled": false
+		},
+		{
+			"Name": "AndroidMoviePlayer",
+			"Enabled": false
+		},
+		{
+			"Name": "OnlineSubsystemGooglePlay",
+			"Enabled": false,
+			"SupportedTargetPlatforms": [
+				"Android"
+			]
+		},
+		{
+			"Name": "AndroidPermission",
+			"Enabled": false
+		},
+		{
+			"Name": "AndroidFileServer",
+			"Enabled": false
+		},
+		{
+			"Name": "AppleImageUtils",
+			"Enabled": false
+		},
+		{
+			"Name": "AppleMoviePlayer",
+			"Enabled": false
+		},
+		{
+			"Name": "BackChannel",
+			"Enabled": false
+		},
+		{
+			"Name": "CableComponent",
+			"Enabled": false
+		},
+		{
+			"Name": "CameraShakePreviewer",
+			"Enabled": false
+		},
+		{
+			"Name": "CLionSourceCodeAccess",
+			"Enabled": false
+		},
+		{
+			"Name": "CodeLiteSourceCodeAccess",
+			"Enabled": false
+		},
+		{
+			"Name": "GLTFExporter",
+			"Enabled": false
+		},
+		{
+			"Name": "GoogleCloudMessaging",
+			"Enabled": false
+		},
+		{
+			"Name": "GooglePAD",
+			"Enabled": false
+		},
+		{
+			"Name": "NFORDenoise",
+			"Enabled": false,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux"
+			]
+		},
+		{
+			"Name": "PerforceSourceControl",
+			"Enabled": false
+		},
+		{
+			"Name": "ResonanceAudio",
+			"Enabled": false
+		},
+		{
+			"Name": "RiderSourceCodeAccess",
+			"Enabled": false
+		},
+		{
+			"Name": "SubversionSourceControl",
+			"Enabled": false
+		},
+		{
+			"Name": "WindowsMoviePlayer",
+			"Enabled": false
+		},
+		{
+			"Name": "WmfMedia",
+			"Enabled": false
+		},
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "SlateInsights",
+			"Enabled": true
+		}
+	],
+	"TargetPlatforms": [
+		"Windows"
+	]
 }
