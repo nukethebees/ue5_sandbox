@@ -139,7 +139,8 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
 
     // Header guard and includes
     content += TEXT("#pragma once\n\n");
-    content += TEXT("#include \"CoreMinimal.h\"\n");
+    content += TEXT("#include \"CoreMinimal.h\"\n\n");
+    content += TEXT("#include \"Subsystems/GameInstanceSubsystem.h\"\n");
 
     // Add additional includes
     for (auto const& include : additional_includes) {
@@ -153,33 +154,48 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
         content += FString::Printf(TEXT("class %s;\n\n"), *asset_type_name);
     }
 
-    // Open namespace if specified
-    bool const has_namespace{!namespace_name.IsEmpty()};
-    if (has_namespace) {
-        content += FString::Printf(TEXT("namespace %s {\n\n"), *namespace_name);
-    }
-
     // Class declaration
     content += TEXT("/**\n");
     content += TEXT(" * GENERATED CODE - DO NOT EDIT MANUALLY\n");
-    content += TEXT(" * Auto-generated accessor functions for data assets.\n");
+    content += TEXT(" * Auto-generated subsystem for accessing data assets.\n");
+    content +=
+        TEXT(" * Assets are loaded once on initialization and held by UPROPERTY to prevent GC.\n");
     content += TEXT(" * Regenerate using the SandboxEditor toolbar button.\n");
-    content += TEXT(" */\n");
-    content += FString::Printf(TEXT("class %s {\n"), *generated_class_name);
+    content += TEXT(" *\n");
+    content += TEXT(" * Usage: UGameInstance::GetSubsystem<");
+    content += generated_class_name;
+    content += TEXT(">(GameInstance)->");
+    if (assets.Num() > 0) {
+        content += assets[0].function_name;
+        content += TEXT("()");
+    }
+    content += TEXT("\n */\n");
+    content += TEXT("UCLASS()\n");
+    content += FString::Printf(TEXT("class %s : public UGameInstanceSubsystem {\n"),
+                               *generated_class_name);
+    content += TEXT("    GENERATED_BODY()\n\n");
     content += TEXT("  public:\n");
+    content +=
+        TEXT("    virtual void Initialize(FSubsystemCollectionBase& Collection) override;\n\n");
 
     // Generate accessor function declarations
     for (auto const& asset : assets) {
-        content +=
-            FString::Printf(TEXT("    static %s* %s();\n"), *asset_type_name, *asset.function_name);
+        content += FString::Printf(TEXT("    %s* %s() const { return %s_ptr; }\n"),
+                                   *asset_type_name,
+                                   *asset.function_name,
+                                   *asset.function_name);
+    }
+
+    content += TEXT("\n  private:\n");
+
+    // Generate UPROPERTY member variables
+    for (auto const& asset : assets) {
+        content += TEXT("    UPROPERTY()\n");
+        content += FString::Printf(
+            TEXT("    TObjectPtr<%s> %s_ptr{nullptr};\n"), *asset_type_name, *asset.function_name);
     }
 
     content += TEXT("};\n");
-
-    // Close namespace if specified
-    if (has_namespace) {
-        content += FString::Printf(TEXT("\n}  // namespace %s\n"), *namespace_name);
-    }
 
     return content;
 }
@@ -192,41 +208,26 @@ FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& 
     content += TEXT("#include \"Engine/StreamableManager.h\"\n");
     content += TEXT("#include \"UObject/ConstructorHelpers.h\"\n\n");
 
-    // Open namespace if specified
-    bool const has_namespace{!namespace_name.IsEmpty()};
-    if (has_namespace) {
-        content += FString::Printf(TEXT("namespace %s {\n\n"), *namespace_name);
-    }
+    // Generate Initialize() implementation
+    content +=
+        FString::Printf(TEXT("void %s::Initialize(FSubsystemCollectionBase& Collection) {\n"),
+                        *generated_class_name);
+    content += TEXT("    Super::Initialize(Collection);\n\n");
 
-    // Generate accessor function implementations
+    // Load all assets
     for (auto const& asset : assets) {
-        content += FString::Printf(TEXT("%s* %s::%s() {\n"),
+        content += FString::Printf(TEXT("    %s_ptr = LoadObject<%s>(nullptr, TEXT(\"%s\"));\n"),
+                                   *asset.function_name,
                                    *asset_type_name,
-                                   *generated_class_name,
-                                   *asset.function_name);
-
-        content +=
-            FString::Printf(TEXT("    static %s* cached_asset{nullptr};\n"), *asset_type_name);
-
-        content += TEXT("    if (!cached_asset) {\n");
-        content +=
-            FString::Printf(TEXT("        cached_asset = LoadObject<%s>(nullptr, TEXT(\"%s\"));\n"),
-                            *asset_type_name,
-                            *asset.asset_path);
-        content += TEXT("        if (!cached_asset) {\n");
+                                   *asset.asset_path);
+        content += FString::Printf(TEXT("    if (!%s_ptr) {\n"), *asset.function_name);
         content += FString::Printf(
-            TEXT("            UE_LOG(LogTemp, Error, TEXT(\"Failed to load asset: %s\"));\n"),
+            TEXT("        UE_LOG(LogTemp, Error, TEXT(\"Failed to load asset: %s\"));\n"),
             *asset.asset_path);
-        content += TEXT("        }\n");
-        content += TEXT("    }\n");
-        content += TEXT("    return cached_asset;\n");
-        content += TEXT("}\n\n");
+        content += TEXT("    }\n\n");
     }
 
-    // Close namespace if specified
-    if (has_namespace) {
-        content += FString::Printf(TEXT("}  // namespace %s\n"), *namespace_name);
-    }
+    content += TEXT("}\n");
 
     return content;
 }
