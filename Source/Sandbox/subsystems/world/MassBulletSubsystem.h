@@ -68,6 +68,7 @@ class SANDBOX_API UMassBulletSubsystem
     AMassBulletVisualizationActor* visualization_actor{nullptr};
     FMassArchetypeSharedFragmentValues shared_values{};
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
+    TArray<FMassEntityHandle> new_entities{};
 
     ml::MonitoredLockFreeMPSCQueue<
         ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView, FTransform, float>>

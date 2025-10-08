@@ -166,7 +166,7 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
                     TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests::BatchCreate"))
                 constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
 
-                TArray<FMassEntityHandle> new_entities{};
+                new_entities.Reset(0);
                 entity_manager.BatchCreateEntities(
                     bullet_archetype, shared_values, remaining_spawn_requests, new_entities);
 
@@ -185,5 +185,5 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
     }
 
     entity_manager.FlushCommands();
-    free_list.Empty();
+    free_list.Reset(0);
 }
