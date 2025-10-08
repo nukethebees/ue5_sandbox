@@ -17,13 +17,13 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
     FName id{NAME_None};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-    UNiagaraSystem* impact_effect{nullptr};
+    TObjectPtr<UNiagaraSystem> impact_effect{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-    UStaticMesh* mesh{nullptr};
+    TObjectPtr<UStaticMesh> mesh{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-    UNiagaraDataChannelAsset* ndc_asset{nullptr};
+    TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
 
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         FPrimaryAssetType const asset_type{TEXT("Bullet")};
