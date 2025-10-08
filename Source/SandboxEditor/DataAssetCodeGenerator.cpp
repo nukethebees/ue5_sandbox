@@ -93,7 +93,8 @@ bool FDataAssetCodeGenerator::generate() {
         relative_output_dir = output_directory.RightChop(project_dir.Len());
     }
 
-    logger.log_log(TEXT("Generated %s in %s"), *prefixed_generated_class_name, *relative_output_dir);
+    logger.log_log(
+        TEXT("Generated %s in %s"), *prefixed_generated_class_name, *relative_output_dir);
 
     return true;
 }
@@ -149,8 +150,7 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     }
 
     content += TEXT("\n");
-    content +=
-        FString::Printf(TEXT("#include \"%s.generated.h\"\n"), *generated_class_name);
+    content += FString::Printf(TEXT("#include \"%s.generated.h\"\n"), *generated_class_name);
     content += TEXT("\n");
 
     // Forward declare if no includes provided

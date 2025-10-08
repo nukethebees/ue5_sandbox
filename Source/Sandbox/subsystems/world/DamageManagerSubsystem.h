@@ -1,8 +1,13 @@
 #pragma once
 
+#include <cstddef>
+
 #include "CoreMinimal.h"
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/containers/LockFreeMPSCQueue.h"
+#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/data/health/HealthChange.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Subsystems/WorldSubsystem.h"
 
 #include "DamageManagerSubsystem.generated.h"
@@ -15,19 +20,22 @@ struct FQueuedHealthChange {
     FHealthChange Change;
 };
 
-// Handles all health changes for a given tick
-// It doesn't tick by default
-// When damage dealing actors apply damage, the ticking is enabled
-// The tick clears the queue of health changes in a single loop
+// Handles all health changes for a given tick using a lock-free queue
+// Thread-safe: can be called from any thread including Mass parallel processors
 UCLASS()
-class SANDBOX_API UDamageManagerSubsystem : public UTickableWorldSubsystem {
+class SANDBOX_API UDamageManagerSubsystem
+    : public UTickableWorldSubsystem
+    , public ml::LogMsgMixin<"UDamageManagerSubsystem"> {
     GENERATED_BODY()
   public:
+    static constexpr std::size_t n_queue_elements{10000};
+
     void queue_health_change(UHealthComponent* receiver, FHealthChange const& change);
+    virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;
   private:
-    TArray<FQueuedHealthChange> pending_changes;
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FQueuedHealthChange>> damage_queue;
     bool tick_enabled{false};
 };

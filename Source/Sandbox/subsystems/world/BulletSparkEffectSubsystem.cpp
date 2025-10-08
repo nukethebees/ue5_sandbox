@@ -13,7 +13,7 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase & collection) {
+void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
     (void)queue.logged_init(n_queue_elements, "BulletSparkEffectSubsystem");
@@ -22,7 +22,7 @@ void UBulletSparkEffectSubsystem::Deinitialize() {
     FCoreDelegates::OnEndFrame.RemoveAll(this);
     Super::Deinitialize();
 }
-void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld & world) {
+void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld& world) {
     constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
     Super::OnWorldBeginPlay(world);
 
@@ -33,7 +33,6 @@ void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld & world) {
 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
 }
-
 
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};

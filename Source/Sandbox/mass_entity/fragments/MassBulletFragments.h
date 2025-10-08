@@ -5,10 +5,13 @@
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
 
+#include "Sandbox/data/health/HealthChange.h"
+
 #include "MassBulletFragments.generated.h"
 
 class UNiagaraSystem;
 class AMassBulletVisualizationActor;
+struct FHealthChange;
 
 USTRUCT()
 struct SANDBOX_API FMassBulletTransformFragment : public FMassFragment {
@@ -51,6 +54,9 @@ struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
 
     UPROPERTY()
     FVector hit_normal{FVector::ZeroVector};
+
+    UPROPERTY()
+    TWeakObjectPtr<AActor> hit_actor{nullptr};
 };
 
 USTRUCT()
@@ -85,4 +91,16 @@ struct SANDBOX_API FMassBulletVisualizationActorFragment : public FMassConstShar
 
     UPROPERTY()
     AMassBulletVisualizationActor* actor{nullptr};
+};
+
+USTRUCT()
+struct SANDBOX_API FMassBulletDamageFragment : public FMassConstSharedFragment {
+    GENERATED_BODY()
+
+    FMassBulletDamageFragment() = default;
+    FMassBulletDamageFragment(FHealthChange const& damage)
+        : damage(damage) {}
+
+    UPROPERTY()
+    FHealthChange damage{};
 };
