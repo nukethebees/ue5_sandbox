@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/GridPanel.h"
+
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/LoadLevelButtonWidget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
@@ -10,7 +12,9 @@
 #include "LevelSelect2Widget.generated.h"
 
 UCLASS()
-class SANDBOX_API ULevelSelect2Widget : public UUserWidget {
+class SANDBOX_API ULevelSelect2Widget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"ULevelSelect2Widget"> {
     GENERATED_BODY()
   public:
     UPROPERTY(BlueprintAssignable)
