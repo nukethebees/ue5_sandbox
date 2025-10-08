@@ -48,7 +48,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
     int32 cull_min_distance{0};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
-    int32 cull_max_distance{5000};
+    int32 cull_max_distance{50000};
   protected:
     virtual void BeginPlay() override;
   private:
