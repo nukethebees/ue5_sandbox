@@ -14,6 +14,16 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
+void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))
+    Super::Initialize(collection);
+
+    collection.InitializeDependency(UMassArchetypeSubsystem::StaticClass());
+    collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
+
+    (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
+    (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
+}
 void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::OnWorldBeginPlay"))
     constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
@@ -53,23 +63,17 @@ void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
 }
-void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))
-    Super::Initialize(collection);
-
-    collection.InitializeDependency(UMassArchetypeSubsystem::StaticClass());
-    collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
-
-    (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
-    (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
-}
 void UMassBulletSubsystem::Deinitialize() {
     FCoreDelegates::OnEndFrame.RemoveAll(this);
     Super::Deinitialize();
 }
 bool UMassBulletSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"handle_assets_ready">()};
-    INIT_PTR_OR_RETURN_VALUE(loaded_data, ml::BulletAssetRegistry::get_bullet(), false);
+
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+    INIT_PTR_OR_RETURN_VALUE(gi, world->GetGameInstance(), false);
+    INIT_PTR_OR_RETURN_VALUE(ss, gi->GetSubsystem<UBulletAssetRegistry>(), false);
+    INIT_PTR_OR_RETURN_VALUE(loaded_data, ss->get_bullet(), false);
     bullet_data = loaded_data;
     return true;
 }

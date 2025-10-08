@@ -34,6 +34,7 @@ FDataAssetCodeGenerator::FDataAssetCodeGenerator(FString const& scan_path,
                                                  FString const& namespace_name)
     : scan_path(scan_path)
     , asset_class(asset_class)
+    , prefixed_generated_class_name(TEXT("U") + generated_class_name)
     , generated_class_name(generated_class_name)
     , output_directory(output_directory)
     , additional_includes(additional_includes)
@@ -92,7 +93,7 @@ bool FDataAssetCodeGenerator::generate() {
         relative_output_dir = output_directory.RightChop(project_dir.Len());
     }
 
-    logger.log_log(TEXT("Generated %s in %s"), *generated_class_name, *relative_output_dir);
+    logger.log_log(TEXT("Generated %s in %s"), *prefixed_generated_class_name, *relative_output_dir);
 
     return true;
 }
@@ -148,6 +149,9 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     }
 
     content += TEXT("\n");
+    content +=
+        FString::Printf(TEXT("#include \"%s.generated.h\"\n"), *generated_class_name);
+    content += TEXT("\n");
 
     // Forward declare if no includes provided
     if (additional_includes.Num() == 0) {
@@ -163,7 +167,7 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     content += TEXT(" * Regenerate using the SandboxEditor toolbar button.\n");
     content += TEXT(" *\n");
     content += TEXT(" * Usage: UGameInstance::GetSubsystem<");
-    content += generated_class_name;
+    content += prefixed_generated_class_name;
     content += TEXT(">(GameInstance)->");
     if (assets.Num() > 0) {
         content += assets[0].function_name;
@@ -172,7 +176,7 @@ FString FDataAssetCodeGenerator::generate_header_content(TArray<FAssetInfo> cons
     content += TEXT("\n */\n");
     content += TEXT("UCLASS()\n");
     content += FString::Printf(TEXT("class %s : public UGameInstanceSubsystem {\n"),
-                               *generated_class_name);
+                               *prefixed_generated_class_name);
     content += TEXT("    GENERATED_BODY()\n\n");
     content += TEXT("  public:\n");
     content +=
@@ -211,7 +215,7 @@ FString FDataAssetCodeGenerator::generate_cpp_content(TArray<FAssetInfo> const& 
     // Generate Initialize() implementation
     content +=
         FString::Printf(TEXT("void %s::Initialize(FSubsystemCollectionBase& Collection) {\n"),
-                        *generated_class_name);
+                        *prefixed_generated_class_name);
     content += TEXT("    Super::Initialize(Collection);\n\n");
 
     // Load all assets
