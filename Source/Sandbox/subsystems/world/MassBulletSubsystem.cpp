@@ -37,6 +37,7 @@ void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
     }
     RETURN_IF_NULLPTR(visualization_actor);
     RETURN_IF_NULLPTR(bullet_data);
+    RETURN_IF_NULLPTR(bullet_data->impact_effect);
 
     auto impact_effect_handle{
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
