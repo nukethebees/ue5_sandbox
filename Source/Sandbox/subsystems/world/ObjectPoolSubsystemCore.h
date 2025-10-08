@@ -47,7 +47,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
 
         // Lazy spawn if free list is empty
         if (subclass_data.freelist.IsEmpty()) {
-            logger.log_warning(TEXT("Free list is empty."));
+            logger.log_display(TEXT("Free list is empty, extending."));
             if (!extend_pool<Config>(actor_class, subclass_data.freelist)) {
                 logger.log_warning(TEXT("Couldn't extend the pool."));
                 return nullptr;
