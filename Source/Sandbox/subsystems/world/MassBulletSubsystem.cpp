@@ -155,6 +155,10 @@ void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const&
     // Phase 1: Process entities from free list
     auto const free_list_count{FMath::Min(free_list.Num(), n)};
 
+    if (free_list_count) {
+        logger.log_verbose(TEXT("Popping %d entities from the free list"), free_list_count);
+    }
+
     for (int32 i{0}; i < free_list_count; ++i) {
         auto const& spawn_transform{requests.transforms[i]};
         auto const bullet_speed{requests.speeds[i]};
@@ -192,4 +196,5 @@ void UMassBulletSubsystem::consume_spawn_requests(FBulletSpawnRequestView const&
                                         requests.speeds[request_idx]);
             }
         });
+    entity_manager.FlushCommands();
 }
