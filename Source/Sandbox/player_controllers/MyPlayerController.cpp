@@ -121,8 +121,8 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
                       2.0f,  // Duration in seconds
                       0,     // Depth priority
                       1.0f   // Thickness
-#endif
         );
+#endif
         if (hit_result.bBlockingHit) {
             DrawDebugSphere(GetWorld(),
                             hit_result.ImpactPoint,
