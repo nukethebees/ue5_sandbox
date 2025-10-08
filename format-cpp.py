@@ -47,6 +47,9 @@ def find_files(directory: Path, extensions: set[str]) -> list[Path]:
 
     try:
         for file_path in directory.rglob('*'):
+            # Skip the generated directory
+            if 'generated' in file_path.parts:
+                continue
             if file_path.is_file() and file_path.suffix.lower() in extensions:
                 files.append(file_path)
     except PermissionError as e:
