@@ -75,6 +75,7 @@ class LockFreeMPSCQueueSoA {
         layout_ = BufferLayout::compute(n);
         capacity_per_buffer_ = n;
 
+#if 0
         try {
             buffer_ =
                 static_cast<std::byte*>(alloc_.allocate_bytes(layout_.total_bytes, max_alignment));
@@ -82,6 +83,10 @@ class LockFreeMPSCQueueSoA {
             capacity_per_buffer_ = 0;
             return ELockFreeMPSCQueueInitResult::AllocationFailed;
         }
+#else
+        buffer_ =
+            static_cast<std::byte*>(alloc_.allocate_bytes(layout_.total_bytes, max_alignment));
+#endif
 
         return ELockFreeMPSCQueueInitResult::Success;
     }

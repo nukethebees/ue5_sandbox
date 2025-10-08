@@ -70,6 +70,7 @@ class LockFreeMPSCQueue {
             return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
         }
 
+#if 0
         try {
             capacity_per_buffer_ = n;
             data_ = AllocTraits::allocate(allocator_, full_capacity());
@@ -77,6 +78,10 @@ class LockFreeMPSCQueue {
             capacity_per_buffer_ = 0;
             return ELockFreeMPSCQueueInitResult::AllocationFailed;
         }
+#else
+        capacity_per_buffer_ = n;
+        data_ = AllocTraits::allocate(allocator_, full_capacity());
+#endif
 
         return ELockFreeMPSCQueueInitResult::Success;
     }
