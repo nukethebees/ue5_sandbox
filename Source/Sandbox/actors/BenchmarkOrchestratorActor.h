@@ -51,24 +51,22 @@ class SANDBOX_API ABenchmarkOrchestratorActor
     EBenchmarkEndState benchmark_end{EBenchmarkEndState::Quit};
 
     UPROPERTY(EditAnywhere, Category = "Benchmark|Tracing")
-    TArray<FString> trace_channels{
-        TEXT("CPU"), 
-        TEXT("Callstack"), 
-        TEXT("Counter"), 
-        TEXT("File"), 
-        TEXT("Frame"), 
-        TEXT("GPU"), 
-        TEXT("Log"), 
-        TEXT("Memory"), 
-        TEXT("Niagara"), 
-        TEXT("Physics"), 
-        TEXT("RenderCommands"), 
-        TEXT("RHICommands"), 
-        TEXT("Stats"), 
-        TEXT("Task"), 
-        TEXT("Slate"), 
-        TEXT("SlateWidgets")
-    };
+    TArray<FString> trace_channels{TEXT("CPU"),
+                                   TEXT("Callstack"),
+                                   TEXT("Counter"),
+                                   TEXT("File"),
+                                   TEXT("Frame"),
+                                   TEXT("GPU"),
+                                   TEXT("Log"),
+                                   TEXT("Memory"),
+                                   TEXT("Niagara"),
+                                   TEXT("Physics"),
+                                   TEXT("RenderCommands"),
+                                   TEXT("RHICommands"),
+                                   TEXT("Stats"),
+                                   TEXT("Task"),
+                                   TEXT("Slate"),
+                                   TEXT("SlateWidgets")};
   private:
     void start_trace();
     void stop_trace();
