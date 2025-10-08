@@ -60,10 +60,6 @@ void ABenchmarkOrchestratorActor::EndPlay(EEndPlayReason::Type const EndPlayReas
         return;
     }
 
-    if (trace_timer_handle.IsValid()) {
-        GetWorldTimerManager().ClearTimer(trace_timer_handle);
-        GetWorldTimerManager().ClearTimer(log_timer_handle);
-    }
     stop_trace();
 }
 
@@ -110,6 +106,11 @@ void ABenchmarkOrchestratorActor::start_trace() {
 }
 
 void ABenchmarkOrchestratorActor::stop_trace() {
+    if (trace_timer_handle.IsValid()) {
+        GetWorldTimerManager().ClearTimer(trace_timer_handle);
+        GetWorldTimerManager().ClearTimer(log_timer_handle);
+    }
+
 #if UE_TRACE_ENABLED
     FTraceAuxiliary::Stop();
     UE_LOG(LogTemp, Display, TEXT("Benchmark trace stopped. File saved to Saved/Profiling/"));
