@@ -51,6 +51,7 @@ void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& conte
                     hit_infos[i].hit_location = hit_result.ImpactPoint;
                     hit_infos[i].hit_normal = FMath::GetReflectionVector(
                         velocities[i].velocity.GetSafeNormal(), hit_result.ImpactNormal);
+                    hit_infos[i].hit_actor = hit_result.GetActor();
 
                     state_fragments[i].hit_occurred = true;
 

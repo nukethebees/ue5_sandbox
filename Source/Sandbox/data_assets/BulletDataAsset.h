@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
+#include "Sandbox/data/health/HealthChange.h"
+
 #include "BulletDataAsset.generated.h"
 
 class UNiagaraSystem;
@@ -24,6 +26,9 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    FHealthChange damage{10.0f, EHealthChangeType::Damage};
 
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         FPrimaryAssetType const asset_type{TEXT("Bullet")};

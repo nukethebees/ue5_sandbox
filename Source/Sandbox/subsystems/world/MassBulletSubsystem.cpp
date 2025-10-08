@@ -57,8 +57,12 @@ void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
         entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
             visualization_actor)};
 
+    auto damage_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDamageFragment>(
+        bullet_data->damage)};
+
     shared_values.Add(impact_effect_handle);
     shared_values.Add(viz_actor_handle);
+    shared_values.Add(damage_handle);
     shared_values.Sort();
 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
@@ -99,6 +103,7 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
     auto& hit_info_frag = entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
     hit_info_frag.hit_location = FVector::ZeroVector;
     hit_info_frag.hit_normal = FVector::ZeroVector;
+    hit_info_frag.hit_actor = nullptr;
 
     auto& state_frag = entity_manager.GetFragmentDataChecked<FMassBulletStateFragment>(entity);
     state_frag.hit_occurred = false;
