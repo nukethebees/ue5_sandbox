@@ -56,6 +56,9 @@ void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))
     Super::Initialize(collection);
 
+    collection.InitializeDependency(UMassArchetypeSubsystem::StaticClass());
+    collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
+
     (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
     (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
 }

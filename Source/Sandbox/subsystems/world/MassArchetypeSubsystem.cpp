@@ -12,6 +12,8 @@ void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     constexpr auto logger{NestedLogger<"Initialize">()};
 
+    collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
+
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
 
