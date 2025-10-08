@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
+
+#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/widgets/LevelSelect2Widget.h"
 #include "Sandbox/widgets/options_menu/OptionsWidget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"
@@ -15,7 +17,9 @@ UENUM(BlueprintType)
 enum class EMainMenu2MenuPage : uint8 { Main = 0, LevelSelect = 1, Options = 2 };
 
 UCLASS()
-class SANDBOX_API UMainMenu2Widget : public UUserWidget {
+class SANDBOX_API UMainMenu2Widget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UMainMenu2Widget"> {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;

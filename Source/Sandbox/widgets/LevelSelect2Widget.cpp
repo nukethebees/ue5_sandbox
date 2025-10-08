@@ -5,6 +5,7 @@
 
 void ULevelSelect2Widget::NativeConstruct() {
     Super::NativeConstruct();
+    constexpr auto logger{NestedLogger<"NativeConstruct">()};
 
     if (back_button) {
         back_button->on_clicked.AddDynamic(this, &ULevelSelect2Widget::handle_back);
@@ -18,14 +19,16 @@ void ULevelSelect2Widget::handle_back() {
     back_requested.Broadcast();
 }
 void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_names) {
+    constexpr auto logger{NestedLogger<"populate_level_buttons">()};
     if (!level_select_grid) {
-        UE_LOGFMT(LogTemp, Warning, "No grid.");
+        logger.log_warning(TEXT("No grid."));
         return;
     }
     if (!load_level_button_class) {
-        UE_LOGFMT(LogTemp, Warning, "No load_level_button_class.");
+        logger.log_warning(TEXT("No load_level_button_class."));
         return;
     }
+    logger.log_verbose(TEXT("Populating main menu with %d levels."), level_names.Num());
 
     int32 row{0};
     int32 col{0};
