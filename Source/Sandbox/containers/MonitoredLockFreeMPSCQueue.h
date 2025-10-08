@@ -31,6 +31,20 @@ class MonitoredLockFreeMPSCQueue : public QueueType {
         size_type success_count;
         size_type full_count;
         size_type uninitialised_count;
+
+        void log_results(FString const& queue_name) const {
+            if (full_count > 0) {
+                UE_LOG(
+                    LogTemp, Error, TEXT("%s queue was full %zu times"), *queue_name, full_count);
+            }
+            if (uninitialised_count > 0) {
+                UE_LOG(LogTemp,
+                       Error,
+                       TEXT("%s queue was uninitialised %zu times"),
+                       *queue_name,
+                       uninitialised_count);
+            }
+        }
     };
 
     [[nodiscard]] auto logged_init(size_type n, std::string_view queue_name = "") {
