@@ -135,7 +135,9 @@ void ABenchmarkOrchestratorActor::stop_trace() {
             break;
         }
     }
-
+#else
+    log_display(TEXT("Quitting game after benchmark."));
+    UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, true);
 #endif
 }
 void ABenchmarkOrchestratorActor::log_time() {
