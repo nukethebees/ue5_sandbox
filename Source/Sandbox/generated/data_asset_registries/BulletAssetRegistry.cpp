@@ -8,8 +8,7 @@ namespace ml {
 UBulletDataAsset* BulletAssetRegistry::get_bullet() {
     static UBulletDataAsset* cached_asset{nullptr};
     if (!cached_asset) {
-        cached_asset =
-            LoadObject<UBulletDataAsset>(nullptr, TEXT("/Game/DataAssets/Bullet.Bullet"));
+        cached_asset = LoadObject<UBulletDataAsset>(nullptr, TEXT("/Game/DataAssets/Bullet.Bullet"));
         if (!cached_asset) {
             UE_LOG(LogTemp, Error, TEXT("Failed to load asset: /Game/DataAssets/Bullet.Bullet"));
         }
@@ -17,4 +16,4 @@ UBulletDataAsset* BulletAssetRegistry::get_bullet() {
     return cached_asset;
 }
 
-} // namespace ml
+}  // namespace ml

@@ -15,4 +15,4 @@ class BulletAssetRegistry {
     static UBulletDataAsset* get_bullet();
 };
 
-} // namespace ml
+}  // namespace ml
