@@ -106,27 +106,17 @@ void UMassBulletSubsystem::on_end_frame() {
         }
     }
 
-    spawn_queue.swap_and_visit([this](auto const& result) {
-        constexpr auto logger{NestedLogger<"on_end_frame">()};
+    auto spawns{spawn_queue.swap_and_consume()};
+    spawns.log_results(TEXT("UMassBulletSubsystem::create"));
 
-        if (result.full_count > 0) {
-            logger.log_warning(TEXT("Spawn queue was full %zu times."), result.full_count);
-        }
-        if (result.uninitialised_count > 0) {
-            logger.log_error(TEXT("Spawn queue was uninitialised %zu times."),
-                             result.uninitialised_count);
-        }
+    auto destroys{destroy_queue.swap_and_consume()};
+    destroys.log_results(TEXT("UMassBulletSubsystem::destroys"));
 
-        if (result.view.transforms.empty()) {
-            return;
-        }
-
-        consume_lifecycle_requests(result.view);
-    });
+    consume_lifecycle_requests(spawns.view, destroys.view);
 }
 
 void UMassBulletSubsystem::consume_lifecycle_requests(
-    FBulletSpawnRequestView const& spawn_requests) {
+    FBulletSpawnRequestView const& spawn_requests, std::span<FMassEntityHandle> destroy_requests) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests"))
     constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
 
@@ -138,85 +128,62 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
     RETURN_IF_NULLPTR(visualization_actor);
     RETURN_IF_INVALID(bullet_archetype);
 
-    // Phase 1: Dequeue destruction requests into free_list
-    destroy_queue.swap_and_visit([this, &logger](auto const& result) {
-        if (result.full_count > 0) {
-            logger.log_warning(TEXT("Destroy queue was full %zu times."), result.full_count);
-        }
-        if (result.uninitialised_count > 0) {
-            logger.log_error(TEXT("Destroy queue was uninitialised %zu times."),
-                             result.uninitialised_count);
-        }
-
-        auto const& handles{result.view};
-        if (!handles.empty()) {
-            logger.log_verbose(TEXT("Adding %zu entities to free_list from destroy queue."),
-                               handles.size());
-            free_list.Append(handles.data(), static_cast<int32>(handles.size()));
-        }
-    });
+    // Dequeue destruction requests into free_list
+    if (!destroy_requests.empty()) {
+        logger.log_verbose(TEXT("Adding %zu entities to free_list from destroy queue."),
+                           destroy_requests.size());
+        free_list.Append(destroy_requests.data(), static_cast<int32>(destroy_requests.size()));
+    }
 
     auto const n_spawn_requests{static_cast<int32>(spawn_requests.transforms.size())};
     logger.log_verbose(TEXT("Processing %d spawn requests."), n_spawn_requests);
 
-    // Phase 2: Reuse entities from free_list for spawn requests
-    auto const reuse_count{FMath::Min(free_list.Num(), n_spawn_requests)};
-
-    if (reuse_count > 0) {
-        logger.log_verbose(TEXT("Reusing %d entities from free_list."), reuse_count);
+    // Reuse entities from free_list for spawn requests
+    auto const entity_reuse_count{FMath::Min(free_list.Num(), n_spawn_requests)};
+    if (entity_reuse_count > 0) {
+        logger.log_verbose(TEXT("Reusing %d entities from free_list."), entity_reuse_count);
     }
 
-    for (int32 i{0}; i < reuse_count; ++i) {
-        auto const& spawn_transform{spawn_requests.transforms[i]};
-        auto const bullet_speed{spawn_requests.speeds[i]};
-
+    for (int32 i{0}; i < entity_reuse_count; ++i) {
         auto entity{free_list.Pop()};
-        configure_active_bullet(entity_manager, entity, spawn_transform, bullet_speed);
+        configure_active_bullet(
+            entity_manager, entity, spawn_requests.transforms[i], spawn_requests.speeds[i]);
     }
 
-    // Phase 3: Destroy remaining entities in free_list
-    auto const remaining_in_free_list{free_list.Num()};
-    if (remaining_in_free_list > 0) {
-        cmd_buffer.PushCommand<FMassDeferredDestroyCommand>(
-            [&](FMassEntityManager& entity_manager) {
-                logger.log_verbose(TEXT("Destroying %d remaining entities from free_list."),
-                                   remaining_in_free_list);
-                for (auto const& entity : free_list) {
-                    cmd_buffer.DestroyEntity(entity);
+    // Destroy remaining entities in free_list
+    cmd_buffer.PushCommand<FMassDeferredDestroyCommand>([&](FMassEntityManager& entity_manager) {
+        entity_manager.BatchDestroyEntities(free_list);
+    });
+
+    // Batch create new entities for unfulfilled spawn requests
+    auto const remaining_spawn_requests{n_spawn_requests - entity_reuse_count};
+    if (remaining_spawn_requests > 0) {
+        logger.log_verbose(TEXT("Batch creating %d new entities."), remaining_spawn_requests);
+        cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
+            [spawn_requests, entity_reuse_count, remaining_spawn_requests, this](
+                FMassEntityManager& entity_manager) {
+                TRACE_CPUPROFILER_EVENT_SCOPE(
+                    TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests::BatchCreate"))
+                constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
+
+                TArray<FMassEntityHandle> new_entities{};
+                entity_manager.BatchCreateEntities(
+                    bullet_archetype, shared_values, remaining_spawn_requests, new_entities);
+
+                logger.log_verbose(TEXT("Configuring %d batch created entities."),
+                                   new_entities.Num());
+
+                auto const n{new_entities.Num()};
+                for (int32 i{0}; i < n; ++i) {
+                    auto const request_idx{entity_reuse_count + i};
+                    configure_active_bullet(entity_manager,
+                                            new_entities[i],
+                                            spawn_requests.transforms[request_idx],
+                                            spawn_requests.speeds[request_idx]);
                 }
             });
-        free_list.Empty();
     }
 
-    // Phase 4: Batch create new entities for unfulfilled spawn requests
-    auto const remaining_spawn_requests{n_spawn_requests - reuse_count};
-    if (remaining_spawn_requests <= 0) {
-        return;
-    }
-
-    logger.log_verbose(TEXT("Batch creating %d new entities."), remaining_spawn_requests);
-
-    cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
-        [spawn_requests, reuse_count, remaining_spawn_requests, this](
-            FMassEntityManager& entity_manager) {
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests::BatchCreate"))
-            constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
-
-            TArray<FMassEntityHandle> new_entities{};
-            entity_manager.BatchCreateEntities(
-                bullet_archetype, shared_values, remaining_spawn_requests, new_entities);
-
-            logger.log_verbose(TEXT("Configuring %d batch created entities."), new_entities.Num());
-
-            auto const n{new_entities.Num()};
-            for (int32 i{0}; i < n; ++i) {
-                auto const request_idx{reuse_count + i};
-                configure_active_bullet(entity_manager,
-                                        new_entities[i],
-                                        spawn_requests.transforms[request_idx],
-                                        spawn_requests.speeds[request_idx]);
-            }
-        });
     entity_manager.FlushCommands();
+    free_list.Empty();
 }

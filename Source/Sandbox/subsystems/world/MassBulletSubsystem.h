@@ -60,7 +60,8 @@ class SANDBOX_API UMassBulletSubsystem
                                  FTransform const& transform,
                                  float bullet_speed);
     void on_end_frame();
-    void consume_lifecycle_requests(FBulletSpawnRequestView const& spawn_requests);
+    void consume_lifecycle_requests(FBulletSpawnRequestView const& spawn_requests,
+                                    std::span<FMassEntityHandle> destroy_requests);
 
     TArray<FMassEntityHandle> free_list;
     FMassArchetypeHandle bullet_archetype;
