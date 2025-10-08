@@ -13,6 +13,28 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
+void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase & collection) {
+    Super::Initialize(collection);
+
+    (void)queue.logged_init(n_queue_elements, "BulletSparkEffectSubsystem");
+}
+void UBulletSparkEffectSubsystem::Deinitialize() {
+    FCoreDelegates::OnEndFrame.RemoveAll(this);
+    Super::Deinitialize();
+}
+void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld & world) {
+    constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
+    Super::OnWorldBeginPlay(world);
+
+    if (!initialise_asset_data()) {
+        logger.log_warning(TEXT("Failed to load the asset data."));
+        return;
+    }
+
+    FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
+}
+
+
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
 
@@ -57,31 +79,12 @@ UNiagaraDataChannelWriter*
     return writer;
 }
 
-void UBulletSparkEffectSubsystem::Initialize(FSubsystemCollectionBase& collection) {
-    Super::Initialize(collection);
-
-    (void)queue.logged_init(n_queue_elements, "BulletSparkEffectSubsystem");
-}
-
-void UBulletSparkEffectSubsystem::Deinitialize() {
-    FCoreDelegates::OnEndFrame.RemoveAll(this);
-    Super::Deinitialize();
-}
-void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld& world) {
-    constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
-    Super::OnWorldBeginPlay(world);
-
-    if (!initialise_asset_data()) {
-        logger.log_warning(TEXT("Failed to load the asset data."));
-        return;
-    }
-
-    FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
-}
-
 bool UBulletSparkEffectSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"initialise_asset_data">()};
-    INIT_PTR_OR_RETURN_VALUE(loaded_data, ml::BulletAssetRegistry::get_bullet(), false);
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+    INIT_PTR_OR_RETURN_VALUE(gi, world->GetGameInstance(), false);
+    INIT_PTR_OR_RETURN_VALUE(ss, gi->GetSubsystem<UBulletAssetRegistry>(), false);
+    INIT_PTR_OR_RETURN_VALUE(loaded_data, ss->get_bullet(), false);
     bullet_data = loaded_data;
     return true;
 }

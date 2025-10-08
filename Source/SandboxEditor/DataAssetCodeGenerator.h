@@ -59,6 +59,7 @@ class FDataAssetCodeGenerator : public ml::LogMsgMixin<"FDataAssetCodeGenerator"
     // Member variables
     FString scan_path;
     UClass* asset_class;
+    FString prefixed_generated_class_name;
     FString generated_class_name;
     FString output_directory;
     TArray<FString> additional_includes;

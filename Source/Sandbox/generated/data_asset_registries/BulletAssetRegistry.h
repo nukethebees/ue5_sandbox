@@ -1,18 +1,30 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "Subsystems/GameInstanceSubsystem.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
 
-namespace ml {
+#include "BulletAssetRegistry.generated.h"
 
 /**
  * GENERATED CODE - DO NOT EDIT MANUALLY
- * Auto-generated accessor functions for data assets.
+ * Auto-generated subsystem for accessing data assets.
+ * Assets are loaded once on initialization and held by UPROPERTY to prevent GC.
  * Regenerate using the SandboxEditor toolbar button.
+ *
+ * Usage: UGameInstance::GetSubsystem<UBulletAssetRegistry>(GameInstance)->get_bullet()
  */
-class BulletAssetRegistry {
-  public:
-    static UBulletDataAsset* get_bullet();
-};
+UCLASS()
+class UBulletAssetRegistry : public UGameInstanceSubsystem {
+    GENERATED_BODY()
 
-}  // namespace ml
+  public:
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
+    UBulletDataAsset* get_bullet() const { return get_bullet_ptr; }
+
+  private:
+    UPROPERTY()
+    TObjectPtr<UBulletDataAsset> get_bullet_ptr{nullptr};
+};
