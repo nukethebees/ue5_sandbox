@@ -8,6 +8,7 @@
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& context) {
@@ -43,7 +44,7 @@ void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& conte
                                                                     last_position,
                                                                     current_position,
                                                                     FQuat::Identity,
-                                                                    ECC_GameTraceChannel1,
+                                                                    ml::collision::projectile,
                                                                     collision_shape,
                                                                     query_params)};
 
