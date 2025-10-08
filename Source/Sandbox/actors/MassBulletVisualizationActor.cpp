@@ -149,15 +149,28 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         add_instances(to_add);
     }
 
-    logger.log_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
+    logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
 
     constexpr int32 start_index{0};
     constexpr bool world_space{true};
-    constexpr bool mark_dirty{true};
+    constexpr bool mark_dirty{false};
     constexpr bool teleport{true};
 
-    TArrayView<FTransform const> transform_view(result.view.data(), result.view.size());
+    TArrayView<FTransform const> transform_view(result.view.data(), n_transforms);
 
     ismc->BatchUpdateInstancesTransforms(
         start_index, transform_view, world_space, mark_dirty, teleport);
+
+    // For safety, null out the remaining transforms
+    if (auto const remaining_to_null_out{current_instance_count - n_transforms};
+        remaining_to_null_out > 0) {
+        ismc->BatchUpdateInstancesTransform(n_transforms,
+                                            remaining_to_null_out,
+                                            get_hidden_transform(),
+                                            world_space,
+                                            mark_dirty,
+                                            teleport);
+    }
+
+    ismc->MarkRenderStateDirty();
 }
