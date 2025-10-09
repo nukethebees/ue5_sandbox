@@ -27,12 +27,14 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
     virtual EAmmoType get_ammo_type() const override;
     virtual FAmmo get_current_ammo() const override;
     virtual FAmmo get_max_ammo() const override;
+
+    virtual UStaticMesh* get_display_mesh() const override;
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     FAmmo ammo{0};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
-    UStaticMeshComponent* gun_mesh{nullptr};
+    UStaticMeshComponent* gun_mesh_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UArrowComponent* fire_point_arrow{nullptr};

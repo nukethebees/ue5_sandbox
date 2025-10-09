@@ -3,14 +3,19 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+
 #include "WeaponPickup.generated.h"
 
 class URotatingActorComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+class AWeaponBase;
 
 UCLASS()
-class SANDBOX_API AWeaponPickup : public AActor {
+class SANDBOX_API AWeaponPickup
+    : public AActor
+    , public ml::LogMsgMixin<"AWeaponPickup"> {
     GENERATED_BODY()
   public:
     AWeaponPickup();
@@ -25,6 +30,8 @@ class SANDBOX_API AWeaponPickup : public AActor {
                           bool from_sweep,
                           FHitResult const& sweep_result);
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    TSubclassOf<AWeaponBase> weapon_class{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UStaticMeshComponent* weapon_mesh{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
