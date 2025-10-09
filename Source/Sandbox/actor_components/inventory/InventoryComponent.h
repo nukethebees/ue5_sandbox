@@ -18,5 +18,5 @@ class SANDBOX_API UInventoryComponent : public UActorComponent {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    FDimensions dimensions{};
+    FDimensions dimensions{0, 0};
 };

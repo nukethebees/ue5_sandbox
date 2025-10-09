@@ -18,16 +18,25 @@ class UWeaponInterface : public UInterface {
 class IWeaponInterface {
     GENERATED_BODY()
   public:
+    UFUNCTION()
     virtual void start_firing() = 0;
+    UFUNCTION()
     virtual void sustain_firing(float DeltaTime) = 0;
+    UFUNCTION()
     virtual void stop_firing() = 0;
 
+    UFUNCTION()
     virtual void reload() = 0;
+    UFUNCTION()
     virtual bool can_reload() const = 0;
 
+    UFUNCTION()
     virtual bool can_fire() const = 0;
 
+    UFUNCTION()
     virtual EAmmoType get_ammo_type() const = 0;
+    UFUNCTION()
     virtual FAmmo get_current_ammo() const = 0;
+    UFUNCTION()
     virtual FAmmo get_max_ammo() const = 0;
 };
