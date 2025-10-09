@@ -10,6 +10,8 @@
 
 #include "WeaponInterface.generated.h"
 
+class UStaticMesh;
+
 UINTERFACE(BlueprintType)
 class UWeaponInterface : public UInterface {
     GENERATED_BODY()
@@ -39,4 +41,7 @@ class IWeaponInterface {
     virtual FAmmo get_current_ammo() const = 0;
     UFUNCTION()
     virtual FAmmo get_max_ammo() const = 0;
+
+    UFUNCTION()
+    virtual UStaticMesh* get_display_mesh() const = 0;
 };

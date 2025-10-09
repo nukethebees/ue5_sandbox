@@ -4,12 +4,14 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 ATestPistol::ATestPistol() {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent->SetMobility(EComponentMobility::Movable);
 
-    gun_mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMesh"));
-    gun_mesh->SetupAttachment(RootComponent);
+    gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
+    gun_mesh_component->SetupAttachment(RootComponent);
 
     fire_point_arrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"));
     fire_point_arrow->SetupAttachment(RootComponent);
@@ -36,4 +38,9 @@ FAmmo ATestPistol::get_current_ammo() const {
 }
 FAmmo ATestPistol::get_max_ammo() const {
     return FAmmo{};
+}
+
+UStaticMesh* ATestPistol::get_display_mesh() const {
+    RETURN_VALUE_IF_NULLPTR(gun_mesh_component, nullptr);
+    return gun_mesh_component->GetStaticMesh();
 }

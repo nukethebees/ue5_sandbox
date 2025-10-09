@@ -32,4 +32,7 @@ class SANDBOX_API AWeaponBase
     virtual FAmmo get_current_ammo() const override { return FAmmo{}; };
     UFUNCTION()
     virtual FAmmo get_max_ammo() const override { return FAmmo{}; };
+
+    UFUNCTION()
+    virtual UStaticMesh* get_display_mesh() const { return nullptr; };
 };
