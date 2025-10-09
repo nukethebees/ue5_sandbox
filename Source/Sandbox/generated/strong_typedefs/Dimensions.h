@@ -6,6 +6,9 @@
  * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
  */
 
+#include <concepts>
+#include <utility>
+
 #include "CoreMinimal.h"
 
 #include "Dimensions.generated.h"
@@ -13,13 +16,15 @@
 USTRUCT(BlueprintType)
 struct FDimensions {
     GENERATED_BODY()
-
   private:
-    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     FIntPoint value{};
 
   public:
     explicit FDimensions(FIntPoint v = {}) : value(v) {}
+    template <typename... Args>
+        requires std::constructible_from<FIntPoint, Args...>
+    explicit FDimensions(Args&&... args) : value(std::forward<Args>(args)...) {}
 
     explicit operator FIntPoint() const { return value; }
 

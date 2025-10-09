@@ -17,7 +17,7 @@ USTRUCT(BlueprintType)
 struct FStackSize {
     GENERATED_BODY()
   private:
-    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     int32 value{};
 
   public:

@@ -67,7 +67,7 @@ class StrongTypedefGenerator:
         ustruct_specifier = f"USTRUCT(BlueprintType)" if spec.config.is_bp_struct else "USTRUCT()"
 
         uproperty_line = (
-            "    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess=\"true\"))" 
+            "    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess=\"true\"))" 
             if spec.config.is_bp_struct 
             else  "    UPROPERTY()")
 
