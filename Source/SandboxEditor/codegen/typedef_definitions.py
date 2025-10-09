@@ -36,7 +36,7 @@ def make_typedefs():
 
     point.name = "Coord"
     typedefs.append(point)
-    point.name = "Coord"
+    point.name = "Dimensions"
     typedefs.append(point)
 
     typedefs.append(

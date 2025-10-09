@@ -17,7 +17,7 @@ USTRUCT(BlueprintType)
 struct FAmmo {
     GENERATED_BODY()
   private:
-    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     float value{};
 
   public:
