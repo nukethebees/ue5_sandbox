@@ -19,9 +19,9 @@ class SANDBOX_API UWarpToPlayerStartActorComponent : public UActorComponent {
 
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
-                        AActor* OtherActor,
+                        AActor* other_actor,
                         UPrimitiveComponent* OtherComp,
-                        int32 OtherBodyIndex,
-                        bool bFromSweep,
-                        FHitResult const& SweepResult);
+                        int32 other_body_index,
+                        bool from_sweep,
+                        FHitResult const& sweep_result);
 };

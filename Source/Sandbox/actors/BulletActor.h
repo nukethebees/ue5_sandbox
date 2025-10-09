@@ -29,8 +29,8 @@ class SANDBOX_API ABulletActor
 
     UFUNCTION()
     void on_hit(UPrimitiveComponent* HitComponent,
-                AActor* OtherActor,
-                UPrimitiveComponent* OtherComponent,
+                AActor* other_actor,
+                UPrimitiveComponent* other_component,
                 FVector NormalImpulse,
                 FHitResult const& Hit);
 

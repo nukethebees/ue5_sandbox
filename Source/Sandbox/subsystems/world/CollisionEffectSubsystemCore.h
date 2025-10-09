@@ -127,22 +127,22 @@ class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSu
 
     template <typename Self>
     void handle_collision_event_(this Self&& self,
-                                 UPrimitiveComponent* OverlappedComponent,
-                                 AActor* OtherActor,
+                                 UPrimitiveComponent* overlapped_component,
+                                 AActor* other_actor,
                                  UPrimitiveComponent* OtherComp,
-                                 int32 OtherBodyIndex,
-                                 bool bFromSweep,
-                                 FHitResult const& SweepResult) {
+                                 int32 other_body_index,
+                                 bool from_sweep,
+                                 FHitResult const& sweep_result) {
         static constexpr auto logger{NestedLogger<"handle_collision_event_">()};
 
         logger.log_verbose(TEXT("handle_collision_event"));
 
-        if (!OtherActor || !OverlappedComponent) {
-            logger.log_warning(TEXT("No OtherActor or OverlappedComponent in collision event."));
+        if (!other_actor || !overlapped_component) {
+            logger.log_warning(TEXT("No other_actor or overlapped_component in collision event."));
             return;
         }
 
-        auto const* index_ptr{self.collision_ids.Find(OverlappedComponent)};
+        auto const* index_ptr{self.collision_ids.Find(overlapped_component)};
         if (!index_ptr) {
             logger.log_warning(TEXT("No collision entry in collision event."));
             return;
@@ -161,13 +161,13 @@ class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSu
             return;
         }
 
-        auto collision_context{FCollisionContext(*world, *OtherActor)};
+        auto collision_context{FCollisionContext(*world, *other_actor)};
 
         // Should have already been validated
         auto& collision_owner{*Cast<ICollisionOwner>(owner)};
 
         // Execute the effects
-        collision_owner.on_pre_collision_effect(*OtherActor);
+        collision_owner.on_pre_collision_effect(*other_actor);
 
         auto& payload_indexes{self.actor_payload_indexes[index]};
 
@@ -190,7 +190,7 @@ class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSu
             }
         }
 
-        collision_owner.on_post_collision_effect(*OtherActor);
+        collision_owner.on_post_collision_effect(*other_actor);
 
         if (collision_owner.should_destroy_after_collision()) {
             if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {

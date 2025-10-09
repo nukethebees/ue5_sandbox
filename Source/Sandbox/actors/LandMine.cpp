@@ -145,24 +145,24 @@ void ALandMine::change_state(ELandMineState new_state) {
     }
 }
 
-void ALandMine::on_warning_enter(UPrimitiveComponent* OverlappedComponent,
-                                 AActor* OtherActor,
+void ALandMine::on_warning_enter(UPrimitiveComponent* overlapped_component,
+                                 AActor* other_actor,
                                  UPrimitiveComponent* OtherComp,
-                                 int32 OtherBodyIndex,
-                                 bool bFromSweep,
-                                 FHitResult const& SweepResult) {
-    if (current_state == ELandMineState::Active && OtherActor) {
-        log_verbose(TEXT("Warning zone entered by actor: %s"), *OtherActor->GetName());
+                                 int32 other_body_index,
+                                 bool from_sweep,
+                                 FHitResult const& sweep_result) {
+    if (current_state == ELandMineState::Active && other_actor) {
+        log_verbose(TEXT("Warning zone entered by actor: %s"), *other_actor->GetName());
         change_state(ELandMineState::Warning);
     }
 }
 
-void ALandMine::on_warning_exit(UPrimitiveComponent* OverlappedComponent,
-                                AActor* OtherActor,
+void ALandMine::on_warning_exit(UPrimitiveComponent* overlapped_component,
+                                AActor* other_actor,
                                 UPrimitiveComponent* OtherComp,
-                                int32 OtherBodyIndex) {
-    if (current_state == ELandMineState::Warning && OtherActor) {
-        log_verbose(TEXT("Warning zone exited by actor: %s"), *OtherActor->GetName());
+                                int32 other_body_index) {
+    if (current_state == ELandMineState::Warning && other_actor) {
+        log_verbose(TEXT("Warning zone exited by actor: %s"), *other_actor->GetName());
         change_state(ELandMineState::Active);
     }
 }

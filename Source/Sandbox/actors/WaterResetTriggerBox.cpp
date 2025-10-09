@@ -13,9 +13,9 @@ void AWaterResetTriggerBox::BeginPlay() {
 
     OnActorBeginOverlap.AddDynamic(this, &AWaterResetTriggerBox::OnOverlapBegin);
 }
-void AWaterResetTriggerBox::OnOverlapBegin(AActor* OverlappedActor, AActor* OtherActor) {
+void AWaterResetTriggerBox::OnOverlapBegin(AActor* OverlappedActor, AActor* other_actor) {
     if (player_start) {
-        if (auto* character{Cast<ACharacter>(OtherActor)}) {
+        if (auto* character{Cast<ACharacter>(other_actor)}) {
             character->SetActorLocation(player_start->GetActorLocation());
         }
     }
