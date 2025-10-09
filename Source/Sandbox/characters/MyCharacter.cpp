@@ -14,7 +14,18 @@
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 #include "Sandbox/huds/MyHud.h"
 
-AMyCharacter::AMyCharacter() {
+#include "Sandbox/macros/null_checks.hpp"
+
+AMyCharacter::AMyCharacter()
+    : coins(CreateDefaultSubobject<UCoinCollectorActorComponent>(TEXT("Coins")))
+    , interactor(CreateDefaultSubobject<UInteractorComponent>(TEXT("Interactor")))
+    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
+    , speed_boost(CreateDefaultSubobject<USpeedBoostComponent>(TEXT("SpeedBoost")))
+    , jetpack(CreateDefaultSubobject<UJetpackComponent>(TEXT("Jetpack")))
+    , torch(CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch")))
+    , warp(CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent")))
+    , weapon(CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("PawnWeapon")))
+    , inventory(CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"))) {
     PrimaryActorTick.bCanEverTick = false;
 
     // Initialise arrays
@@ -41,16 +52,7 @@ AMyCharacter::AMyCharacter() {
         }
     }
 
-    coins = CreateDefaultSubobject<UCoinCollectorActorComponent>(TEXT("Coins"));
-    interactor = CreateDefaultSubobject<UInteractorComponent>(TEXT("Interactor"));
-    health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
-    speed_boost = CreateDefaultSubobject<USpeedBoostComponent>(TEXT("SpeedBoost"));
-    jetpack = CreateDefaultSubobject<UJetpackComponent>(TEXT("Jetpack"));
-    torch = CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch"));
     torch->SetupAttachment(RootComponent);
-    warp = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
-    weapon = CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("Weapon"));
-    inventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 }
 
 void AMyCharacter::BeginPlay() {
@@ -184,33 +186,14 @@ void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
 
-void AMyCharacter::attack(FRotator attack_direction) {
-    log_verbose(TEXT("Attacking."));
-
-    if (ammo <= 0) {
-        return;
-    }
-
-    if (!bullet_class) {
-        log_warning(TEXT("No bullet class."));
-        return;
-    }
-
-    auto const current_location{GetActorLocation()};
-    auto const fwd{GetActorForwardVector()};
-    constexpr float spawn_disance_cm{50.0f};
-    auto const spawn_location{current_location + fwd * spawn_disance_cm};
-
-    FActorSpawnParameters spawn_params{};
-    spawn_params.Owner = this;
-
-    auto const bullet{GetWorld()->SpawnActor<AActor>(
-        bullet_class, spawn_location, attack_direction, spawn_params)};
-    --ammo;
-
-    if (hud) {
-        hud->update_ammo(ammo);
-    }
+void AMyCharacter::attack_started() {
+    RETURN_IF_NULLPTR(weapon);
+}
+void AMyCharacter::attack_continued() {
+    RETURN_IF_NULLPTR(weapon);
+}
+void AMyCharacter::attack_ended() {
+    RETURN_IF_NULLPTR(weapon);
 }
 
 // Torch

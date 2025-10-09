@@ -155,7 +155,11 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void cycle_camera();
     UFUNCTION()
-    void attack(FRotator attack_direction);
+    void attack_started();
+    UFUNCTION()
+    void attack_continued();
+    UFUNCTION()
+    void attack_ended();
 
     // Torch
     UFUNCTION()

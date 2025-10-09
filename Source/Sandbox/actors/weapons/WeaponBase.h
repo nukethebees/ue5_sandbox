@@ -13,9 +13,11 @@ class SANDBOX_API AWeaponBase
     GENERATED_BODY()
   public:
     UFUNCTION()
+    virtual bool can_fire() const override { return false; };
+    UFUNCTION()
     virtual void start_firing() override {};
     UFUNCTION()
-    virtual void sustain_firing(float DeltaTime) override {};
+    virtual void sustain_firing(float delta_time) override {};
     UFUNCTION()
     virtual void stop_firing() override {};
 
@@ -23,9 +25,6 @@ class SANDBOX_API AWeaponBase
     virtual void reload() override {};
     UFUNCTION()
     virtual bool can_reload() const override { return false; };
-
-    UFUNCTION()
-    virtual bool can_fire() const override { return false; };
 
     UFUNCTION()
     virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; };

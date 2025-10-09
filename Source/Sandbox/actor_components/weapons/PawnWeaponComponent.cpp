@@ -1,15 +1,32 @@
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 
 #include "Sandbox/actor_components/weapons/WeaponComponent.h"
+#include "Sandbox/actors/weapons/WeaponBase.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
-UPawnWeaponComponent::UPawnWeaponComponent()
-    : weapon_component{CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComponent"), false)} {}
-
-void UPawnWeaponComponent::OnRegister() {
-    Super::OnRegister();
+bool UPawnWeaponComponent::can_fire() const {
+    RETURN_VALUE_IF_NULLPTR(active_weapon, false);
+    return active_weapon->can_fire();
 }
-void UPawnWeaponComponent::OnUnregister() {
-    Super::OnUnregister();
+void UPawnWeaponComponent::start_firing() {
+    RETURN_IF_NULLPTR(active_weapon);
+    return active_weapon->start_firing();
+}
+void UPawnWeaponComponent::sustain_firing(float delta_time) {
+    RETURN_IF_NULLPTR(active_weapon);
+    return active_weapon->sustain_firing(delta_time);
+}
+void UPawnWeaponComponent::stop_firing() {
+    RETURN_IF_NULLPTR(active_weapon);
+    return active_weapon->stop_firing();
+}
+
+void UPawnWeaponComponent::reload() {
+    RETURN_IF_NULLPTR(active_weapon);
+    return active_weapon->reload();
+}
+bool UPawnWeaponComponent::can_reload() const {
+    RETURN_VALUE_IF_NULLPTR(active_weapon, false);
+    return active_weapon->can_reload();
 }
