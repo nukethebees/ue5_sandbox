@@ -6,6 +6,9 @@
  * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
  */
 
+#include <concepts>
+#include <utility>
+
 #include "CoreMinimal.h"
 
 #include "StackSize.generated.h"
@@ -13,13 +16,15 @@
 USTRUCT(BlueprintType)
 struct FStackSize {
     GENERATED_BODY()
-
   private:
     UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     int32 value{};
 
   public:
     explicit FStackSize(int32 v = 0) : value(v) {}
+    template <typename... Args>
+        requires std::constructible_from<int32, Args...>
+    explicit FStackSize(Args&&... args) : value(std::forward<Args>(args)...) {}
 
     explicit operator int32() const { return value; }
 

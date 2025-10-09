@@ -6,6 +6,9 @@
  * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
  */
 
+#include <concepts>
+#include <utility>
+
 #include "CoreMinimal.h"
 
 #include "Ammo.generated.h"
@@ -13,13 +16,15 @@
 USTRUCT(BlueprintType)
 struct FAmmo {
     GENERATED_BODY()
-
   private:
     UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     float value{};
 
   public:
     explicit FAmmo(float v = 0.0f) : value(v) {}
+    template <typename... Args>
+        requires std::constructible_from<float, Args...>
+    explicit FAmmo(Args&&... args) : value(std::forward<Args>(args)...) {}
 
     explicit operator float() const { return value; }
 

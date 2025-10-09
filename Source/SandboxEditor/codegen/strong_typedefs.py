@@ -126,6 +126,9 @@ class StrongTypedefGenerator:
  * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
  */
 
+#include <concepts>
+#include <utility>
+
 #include "CoreMinimal.h"
 {includes_section}
 #include "{spec.name}.generated.h"
@@ -133,13 +136,15 @@ class StrongTypedefGenerator:
 {ustruct_specifier}
 struct {struct_name} {{
     GENERATED_BODY()
-
   private:
 {uproperty_line}
     {spec.underlying_type} value{{}};
 
   public:
     {explicit_keyword}{struct_name}({spec.underlying_type} v = {default_value}) : value(v) {{}}
+    template <typename... Args>
+        requires std::constructible_from<{spec.underlying_type}, Args...>
+    {explicit_keyword}{struct_name}(Args&&... args) : value(std::forward<Args>(args)...) {{}}
 
 {conversion_operator}
 
