@@ -50,13 +50,13 @@ void UAntigravLiftActorComponent::TickComponent(float DeltaTime,
 }
 
 void UAntigravLiftActorComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
-                                                 AActor* OtherActor,
+                                                 AActor* other_actor,
                                                  UPrimitiveComponent* OtherComp,
-                                                 int32 OtherBodyIndex,
-                                                 bool bFromSweep,
-                                                 FHitResult const& SweepResult) {
+                                                 int32 other_body_index,
+                                                 bool from_sweep,
+                                                 FHitResult const& sweep_result) {
 
-    if (auto* character{Cast<ACharacter>(OtherActor)}) {
+    if (auto* character{Cast<ACharacter>(other_actor)}) {
         floating_characters.Add(character);
         if (auto* movement{character->GetCharacterMovement()}) {
             movement->SetMovementMode(MOVE_Flying);
@@ -69,10 +69,10 @@ void UAntigravLiftActorComponent::OnOverlapBegin(UPrimitiveComponent* Overlapped
 }
 
 void UAntigravLiftActorComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp,
-                                               AActor* OtherActor,
+                                               AActor* other_actor,
                                                UPrimitiveComponent* OtherComp,
-                                               int32 OtherBodyIndex) {
-    if (auto* character{Cast<ACharacter>(OtherActor)}) {
+                                               int32 other_body_index) {
+    if (auto* character{Cast<ACharacter>(other_actor)}) {
         floating_characters.Remove(character);
         if (auto* movement{character->GetCharacterMovement()}) {
             movement->SetMovementMode(MOVE_Walking);

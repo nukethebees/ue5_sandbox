@@ -31,15 +31,15 @@ void UTeleporterActorComponent::BeginPlay() {
     }
 }
 void UTeleporterActorComponent::HandleOverlap(UPrimitiveComponent* OverlappedComp,
-                                              AActor* OtherActor,
+                                              AActor* other_actor,
                                               UPrimitiveComponent* OtherComp,
-                                              int32 OtherBodyIndex,
-                                              bool bFromSweep,
-                                              FHitResult const& SweepResult) {
-    if (!target_location || !OtherActor || OtherActor == GetOwner()) {
+                                              int32 other_body_index,
+                                              bool from_sweep,
+                                              FHitResult const& sweep_result) {
+    if (!target_location || !other_actor || other_actor == GetOwner()) {
         UE_LOG(LogTemp, Warning, TEXT("Teleport failed."));
         return;
     }
 
-    OtherActor->SetActorLocation(target_location->GetComponentLocation());
+    other_actor->SetActorLocation(target_location->GetComponentLocation());
 }

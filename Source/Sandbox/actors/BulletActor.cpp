@@ -53,8 +53,8 @@ void ABulletActor::BeginPlay() {
 }
 
 void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
-                          AActor* OtherActor,
-                          UPrimitiveComponent* OtherComponent,
+                          AActor* other_actor,
+                          UPrimitiveComponent* other_component,
                           FVector NormalImpulse,
                           FHitResult const& Hit) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::on_hit"))
@@ -70,14 +70,14 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
             GetWorld(), impact_effect, impact_location, impact_rotation);
     }
 
-    if (OtherActor) {
-        if (auto* actor_health{OtherActor->FindComponentByClass<UHealthComponent>()}) {
+    if (other_actor) {
+        if (auto* actor_health{other_actor->FindComponentByClass<UHealthComponent>()}) {
             if (auto* manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
                 manager->queue_health_change(actor_health, damage);
             }
         }
     } else {
-        LOG.log_warning(TEXT("No OtherActor"));
+        LOG.log_warning(TEXT("No other_actor"));
     }
 
     if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {

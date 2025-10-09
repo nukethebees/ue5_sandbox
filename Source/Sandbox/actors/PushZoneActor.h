@@ -59,18 +59,18 @@ class SANDBOX_API APushZoneActor
 
     // Overlap event handlers
     UFUNCTION()
-    void on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
-                          AActor* OtherActor,
-                          UPrimitiveComponent* OtherComponent,
-                          int32 OtherBodyIndex,
-                          bool bFromSweep,
-                          FHitResult const& SweepResult);
+    void on_overlap_begin(UPrimitiveComponent* overlapped_component,
+                          AActor* other_actor,
+                          UPrimitiveComponent* other_component,
+                          int32 other_body_index,
+                          bool from_sweep,
+                          FHitResult const& sweep_result);
 
     UFUNCTION()
-    void on_overlap_end(UPrimitiveComponent* OverlappedComponent,
-                        AActor* OtherActor,
-                        UPrimitiveComponent* OtherComponent,
-                        int32 OtherBodyIndex);
+    void on_overlap_end(UPrimitiveComponent* overlapped_component,
+                        AActor* other_actor,
+                        UPrimitiveComponent* other_component,
+                        int32 other_body_index);
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
     UBoxComponent* collision_box;

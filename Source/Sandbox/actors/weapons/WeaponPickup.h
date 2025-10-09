@@ -18,12 +18,12 @@ class SANDBOX_API AWeaponPickup : public AActor {
     virtual void BeginPlay() override;
 
     UFUNCTION()
-    void on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
-                          AActor* OtherActor,
-                          UPrimitiveComponent* OtherComponent,
-                          int32 OtherBodyIndex,
-                          bool bFromSweep,
-                          FHitResult const& SweepResult);
+    void on_overlap_begin(UPrimitiveComponent* overlapped_component,
+                          AActor* other_actor,
+                          UPrimitiveComponent* other_component,
+                          int32 other_body_index,
+                          bool from_sweep,
+                          FHitResult const& sweep_result);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UStaticMeshComponent* weapon_mesh{nullptr};

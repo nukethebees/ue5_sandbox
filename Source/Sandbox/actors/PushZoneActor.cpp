@@ -129,28 +129,28 @@ void APushZoneActor::Tick(float DeltaTime) {
     }
 }
 
-void APushZoneActor::on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
-                                      AActor* OtherActor,
-                                      UPrimitiveComponent* OtherComponent,
-                                      int32 OtherBodyIndex,
-                                      bool bFromSweep,
-                                      FHitResult const& SweepResult) {
-    if (!OtherActor || OtherActor == this) {
+void APushZoneActor::on_overlap_begin(UPrimitiveComponent* overlapped_component,
+                                      AActor* other_actor,
+                                      UPrimitiveComponent* other_component,
+                                      int32 other_body_index,
+                                      bool from_sweep,
+                                      FHitResult const& sweep_result) {
+    if (!other_actor || other_actor == this) {
         log_warning(TEXT("Overlap begin - invalid actor or self-overlap"));
         return;
     }
 
     // Only affect pawns (characters, vehicles, etc.)
-    if (!Cast<APawn>(OtherActor)) {
+    if (!Cast<APawn>(other_actor)) {
         log_warning(TEXT("Overlap begin - actor %s is not a pawn, ignoring"),
-                    *OtherActor->GetName());
+                    *other_actor->GetName());
         return;
     }
 
-    log_verbose(TEXT("Actor %s entered push zone"), *OtherActor->GetName());
+    log_verbose(TEXT("Actor %s entered push zone"), *other_actor->GetName());
 
     // Add to our tracking list
-    overlapping_actors.AddUnique(TWeakObjectPtr<AActor>(OtherActor));
+    overlapping_actors.AddUnique(TWeakObjectPtr<AActor>(other_actor));
 
     // Start ticking if this is the first actor
     if (!is_zone_occupied) {
@@ -158,17 +158,17 @@ void APushZoneActor::on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
     }
 }
 
-void APushZoneActor::on_overlap_end(UPrimitiveComponent* OverlappedComponent,
-                                    AActor* OtherActor,
-                                    UPrimitiveComponent* OtherComponent,
-                                    int32 OtherBodyIndex) {
-    if (!OtherActor || OtherActor == this) {
+void APushZoneActor::on_overlap_end(UPrimitiveComponent* overlapped_component,
+                                    AActor* other_actor,
+                                    UPrimitiveComponent* other_component,
+                                    int32 other_body_index) {
+    if (!other_actor || other_actor == this) {
         return;
     }
 
     // Remove from tracking list
-    overlapping_actors.RemoveAll([OtherActor](TWeakObjectPtr<AActor> const& WeakActor) {
-        return !WeakActor.IsValid() || WeakActor.Get() == OtherActor;
+    overlapping_actors.RemoveAll([other_actor](TWeakObjectPtr<AActor> const& WeakActor) {
+        return !WeakActor.IsValid() || WeakActor.Get() == other_actor;
     });
 
     // Stop ticking if no actors remain

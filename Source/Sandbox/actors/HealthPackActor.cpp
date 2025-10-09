@@ -35,18 +35,18 @@ void AHealthPackActor::BeginPlay() {
     }
 }
 
-void AHealthPackActor::on_overlap_begin(UPrimitiveComponent* OverlappedComponent,
-                                        AActor* OtherActor,
-                                        UPrimitiveComponent* OtherComponent,
-                                        int32 OtherBodyIndex,
-                                        bool bFromSweep,
-                                        FHitResult const& SweepResult) {
-    if (!OtherActor) {
-        log_warning(TEXT("No OtherActor in overlap"));
+void AHealthPackActor::on_overlap_begin(UPrimitiveComponent* overlapped_component,
+                                        AActor* other_actor,
+                                        UPrimitiveComponent* other_component,
+                                        int32 other_body_index,
+                                        bool from_sweep,
+                                        FHitResult const& sweep_result) {
+    if (!other_actor) {
+        log_warning(TEXT("No other_actor in overlap"));
         return;
     }
 
-    auto* health_component{OtherActor->FindComponentByClass<UHealthComponent>()};
+    auto* health_component{other_actor->FindComponentByClass<UHealthComponent>()};
     if (!health_component) {
         log_warning(TEXT("Actor has no HealthComponent, not consuming health pack"));
         return;

@@ -14,11 +14,11 @@ class SANDBOX_API UTeleporterActorComponent : public UActorComponent {
 
     UFUNCTION()
     void HandleOverlap(UPrimitiveComponent* OverlappedComp,
-                       AActor* OtherActor,
+                       AActor* other_actor,
                        UPrimitiveComponent* OtherComp,
-                       int32 OtherBodyIndex,
-                       bool bFromSweep,
-                       FHitResult const& SweepResult);
+                       int32 other_body_index,
+                       bool from_sweep,
+                       FHitResult const& sweep_result);
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Teleport")
     UPrimitiveComponent* collision_trigger;

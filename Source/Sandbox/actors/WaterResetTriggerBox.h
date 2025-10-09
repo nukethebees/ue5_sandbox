@@ -15,7 +15,7 @@ class SANDBOX_API AWaterResetTriggerBox : public ATriggerBox {
     virtual void BeginPlay() override;
   public:
     UFUNCTION()
-    void OnOverlapBegin(AActor* OverlappedActor, AActor* OtherActor);
+    void OnOverlapBegin(AActor* OverlappedActor, AActor* other_actor);
   private:
     APlayerStart* player_start;
 };

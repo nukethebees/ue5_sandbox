@@ -55,12 +55,12 @@ void UHorizAntigravLiftComponent::TickComponent(float DeltaTime,
 }
 
 void UHorizAntigravLiftComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
-                                                 AActor* OtherActor,
+                                                 AActor* other_actor,
                                                  UPrimitiveComponent* OtherComp,
-                                                 int32 OtherBodyIndex,
-                                                 bool bFromSweep,
-                                                 FHitResult const& SweepResult) {
-    if (auto* character{Cast<AMyCharacter>(OtherActor)}) {
+                                                 int32 other_body_index,
+                                                 bool from_sweep,
+                                                 FHitResult const& sweep_result) {
+    if (auto* character{Cast<AMyCharacter>(other_actor)}) {
         character->is_forced_movement = true;
 
         floating_characters.Add(character);
@@ -74,10 +74,10 @@ void UHorizAntigravLiftComponent::OnOverlapBegin(UPrimitiveComponent* Overlapped
     }
 }
 void UHorizAntigravLiftComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp,
-                                               AActor* OtherActor,
+                                               AActor* other_actor,
                                                UPrimitiveComponent* OtherComp,
-                                               int32 OtherBodyIndex) {
-    if (auto* character{Cast<AMyCharacter>(OtherActor)}) {
+                                               int32 other_body_index) {
+    if (auto* character{Cast<AMyCharacter>(other_actor)}) {
         character->is_forced_movement = false;
         floating_characters.Remove(character);
         if (auto* movement{character->GetCharacterMovement()}) {

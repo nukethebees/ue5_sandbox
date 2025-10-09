@@ -86,18 +86,18 @@ class SANDBOX_API ALandMine
     void change_state(ELandMineState new_state);
 
     UFUNCTION()
-    void on_warning_enter(UPrimitiveComponent* OverlappedComponent,
-                          AActor* OtherActor,
+    void on_warning_enter(UPrimitiveComponent* overlapped_component,
+                          AActor* other_actor,
                           UPrimitiveComponent* OtherComp,
-                          int32 OtherBodyIndex,
-                          bool bFromSweep,
-                          FHitResult const& SweepResult);
+                          int32 other_body_index,
+                          bool from_sweep,
+                          FHitResult const& sweep_result);
 
     UFUNCTION()
-    void on_warning_exit(UPrimitiveComponent* OverlappedComponent,
-                         AActor* OtherActor,
+    void on_warning_exit(UPrimitiveComponent* overlapped_component,
+                         AActor* other_actor,
                          UPrimitiveComponent* OtherComp,
-                         int32 OtherBodyIndex);
+                         int32 other_body_index);
   private:
     void update_debug_sphere();
 };
