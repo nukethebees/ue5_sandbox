@@ -1,4 +1,4 @@
-#include "SandboxEditor/DataAssetCodeGenerator.h"
+#include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "HAL/FileManager.h"
