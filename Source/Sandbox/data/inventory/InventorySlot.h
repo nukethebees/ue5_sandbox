@@ -4,12 +4,16 @@
 
 #include "Sandbox/typedefs/Inventory.h"
 
+#include "InventorySlot.generated.h"
+
+USTRUCT(BlueprintType)
 struct FInventorySlot {
-    using ItemPtr = ml::inventory::ItemPtr;
+    GENERATED_BODY()
 
     FInventorySlot() = default;
 
-    ItemPtr item{nullptr};
+    UPROPERTY()
+    FItemPtr item{nullptr};
     UPROPERTY()
     FStackSize stack_size{};
     UPROPERTY()

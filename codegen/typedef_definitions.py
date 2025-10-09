@@ -15,7 +15,7 @@ wrappers["FIntPoint"] = TypedefSpec(
 )
 
 def make_typedefs():
-    TYPEDEFS = [
+    typedefs = [
         TypedefSpec(
             name="Ammo",
             underlying_type="float",
@@ -35,10 +35,23 @@ def make_typedefs():
     point = wrappers["FIntPoint"]
 
     point.name = "Coord"
-    TYPEDEFS.append(point)
+    typedefs.append(point)
     point.name = "Coord"
-    TYPEDEFS.append(point)
+    typedefs.append(point)
 
-    return TYPEDEFS;
+    typedefs.append(
+        TypedefSpec(
+            name="ItemPtr",
+            underlying_type="TScriptInterface<IInventoryItem>",
+            ops=["dereference"],
+            members=[],
+            includes=["Sandbox/interfaces/inventory/InventoryItem.h"],
+            config=ConfigOptions(),
+        )
+    )
+
+    
+
+    return typedefs;
 
 TYPEDEFS = make_typedefs()

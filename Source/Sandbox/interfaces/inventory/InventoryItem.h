@@ -3,8 +3,6 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
-#include "Sandbox/typedefs/Inventory.h"
-
 #include "InventoryItem.generated.h"
 
 UINTERFACE(MinimalAPI)

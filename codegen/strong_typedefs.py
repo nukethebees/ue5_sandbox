@@ -26,6 +26,7 @@ class TypedefSpec:
     underlying_type: str                                # "float", "uint32", etc.
     ops: List[str] = field(default_factory=list)        # ["comparison", "arithmetic"]
     members: List[str] = field(default_factory=list)    # ["clamp", "sqrt"]
+    includes: List[str] = field(default_factory=list)   # ["Sandbox/interfaces/inventory/InventoryItem.h"]
     config: ConfigOptions = field(default_factory=ConfigOptions)
 
 
@@ -110,6 +111,12 @@ class StrongTypedefGenerator:
 
 """
 
+        # Generate includes section
+        includes_section = ""
+        if spec.includes:
+            includes_lines = [f'#include "{inc}"' for inc in spec.includes]
+            includes_section = "\n" + "\n".join(includes_lines) + "\n"
+
         # Generate complete header using multiline f-string
         content = f"""#pragma once
 
@@ -120,7 +127,7 @@ class StrongTypedefGenerator:
  */
 
 #include "CoreMinimal.h"
-
+{includes_section}
 #include "{spec.name}.generated.h"
 
 {ustruct_specifier}
@@ -225,10 +232,10 @@ struct {struct_name} {{
 
     def _generate_dereference_ops(self, spec: TypedefSpec) -> str:
         """Generate dereference operators for pointer types."""
-        # Strip pointer/const from type to get pointee type
-        pointee_type = spec.underlying_type.rstrip('*').strip()
-        return f"""    {pointee_type}* operator->() const {{ return value; }}
-    {pointee_type}& operator*() const {{ check(value); return *value; }}"""
+        return """    auto* operator->() { return &value; }
+    auto& operator*() { return *value; }
+    auto* operator->() const { return &value; }
+    auto& operator*() const { return *value; }"""
 
     def _get_default_value(self, type_name: str) -> str:
         """Get appropriate default value for a type."""
