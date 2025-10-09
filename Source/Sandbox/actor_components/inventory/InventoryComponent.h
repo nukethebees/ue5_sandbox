@@ -15,6 +15,8 @@ class SANDBOX_API UInventoryComponent : public UActorComponent {
   public:
     UInventoryComponent();
   protected:
+    UPROPERTY()
     TArray<FInventorySlot> slots{};
+    UPROPERTY()
     FDimensions dimensions{};
 };
