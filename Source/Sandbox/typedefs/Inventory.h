@@ -2,12 +2,12 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/generated/strong_typedefs/Coord.h"
+#include "Sandbox/generated/strong_typedefs/Dimensions.h"
 #include "Sandbox/generated/strong_typedefs/StackSize.h"
 
 class IInventoryItem;
 
 namespace ml::inventory {
-using Coord = FIntPoint;
-using Dimensions = FIntPoint;
 using ItemPtr = TScriptInterface<IInventoryItem>;
 }

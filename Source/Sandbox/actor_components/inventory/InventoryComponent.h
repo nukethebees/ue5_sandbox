@@ -16,5 +16,5 @@ class SANDBOX_API UInventoryComponent : public UActorComponent {
     UInventoryComponent();
   protected:
     TArray<FInventorySlot> slots{};
-    ml::inventory::Dimensions dimensions{};
+    FDimensions dimensions{};
 };
