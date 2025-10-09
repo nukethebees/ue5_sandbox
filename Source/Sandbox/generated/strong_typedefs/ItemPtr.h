@@ -6,6 +6,9 @@
  * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
  */
 
+#include <concepts>
+#include <utility>
+
 #include "CoreMinimal.h"
 
 #include "Sandbox/interfaces/inventory/InventoryItem.h"
@@ -15,13 +18,15 @@
 USTRUCT(BlueprintType)
 struct FItemPtr {
     GENERATED_BODY()
-
   private:
     UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
     TScriptInterface<IInventoryItem> value{};
 
   public:
     explicit FItemPtr(TScriptInterface<IInventoryItem> v = {}) : value(v) {}
+    template <typename... Args>
+        requires std::constructible_from<TScriptInterface<IInventoryItem>, Args...>
+    explicit FItemPtr(Args&&... args) : value(std::forward<Args>(args)...) {}
 
     explicit operator TScriptInterface<IInventoryItem>() const { return value; }
 
