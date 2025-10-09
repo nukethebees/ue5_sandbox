@@ -22,6 +22,6 @@ class SANDBOX_API UPawnWeaponComponent : public UActorComponent {
     void reload();
     bool can_reload() const;
   protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};
 };
