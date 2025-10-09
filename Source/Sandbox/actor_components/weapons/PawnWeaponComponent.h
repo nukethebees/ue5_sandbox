@@ -16,6 +16,6 @@ class SANDBOX_API UPawnWeaponComponent : public UActorComponent {
     virtual void OnRegister() override;
     virtual void OnUnregister() override;
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
     UWeaponComponent* weapon_component{nullptr};
 };

@@ -39,6 +39,8 @@ class USpeedBoostComponent;
 class UJetpackComponent;
 class UHealthComponent;
 class UCoinCollectorActorComponent;
+class UPawnWeaponComponent;
+class UInventoryComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
@@ -202,6 +204,12 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
     UWarpComponent* warp{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
+    UPawnWeaponComponent* weapon{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UInventoryComponent* inventory{nullptr};
 
     // Camera components
     static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
