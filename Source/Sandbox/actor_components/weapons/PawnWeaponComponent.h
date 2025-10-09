@@ -6,16 +6,22 @@
 #include "PawnWeaponComponent.generated.h"
 
 class UWeaponComponent;
+class AWeaponBase;
 
 UCLASS()
 class SANDBOX_API UPawnWeaponComponent : public UActorComponent {
     GENERATED_BODY()
   public:
-    UPawnWeaponComponent();
-  protected:
-    virtual void OnRegister() override;
-    virtual void OnUnregister() override;
+    UPawnWeaponComponent() = default;
 
+    bool can_fire() const;
+    void start_firing();
+    void sustain_firing(float delta_time);
+    void stop_firing();
+
+    void reload();
+    bool can_reload() const;
+  protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
-    UWeaponComponent* weapon_component{nullptr};
+    AWeaponBase* active_weapon{nullptr};
 };

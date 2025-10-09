@@ -4,6 +4,8 @@
 #include "Sandbox/actors/TalkingPillar.h"
 #include "Sandbox/huds/MyHud.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
 
@@ -71,11 +73,14 @@ void AMyPlayerController::SetupInputComponent() {
         auto bind{make_input_binder(eic)};
 
         bind(input.look, Triggered, &AMyPlayerController::look);
-        bind(input.attack, Started, &AMyPlayerController::attack);
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
         bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
         bind(input.interact, ETriggerEvent::Started, &AMyPlayerController::interact);
+
+        bind(input.attack, Started, &AMyPlayerController::attack_started);
+        bind(input.attack, Ongoing, &AMyPlayerController::attack_continued);
+        bind(input.attack, Completed, &AMyPlayerController::attack_ended);
     } else {
         log_warning(TEXT("Did not get the UEnhancedInputComponent."));
     }
@@ -86,12 +91,19 @@ void AMyPlayerController::look(FInputActionValue const& value) {
         controlled_character->look(value);
     }
 }
-void AMyPlayerController::attack() {
-    if (controlled_character) {
-        controlled_character->attack(GetControlRotation());
-    } else {
-        log_warning(TEXT("No controlled character."));
-    }
+void AMyPlayerController::attack_started() {
+    RETURN_IF_NULLPTR(controlled_character);
+    log_verbose(TEXT("attack_started"));
+    controlled_character->attack_started();
+}
+void AMyPlayerController::attack_continued() {
+    RETURN_IF_NULLPTR(controlled_character);
+    controlled_character->attack_continued();
+}
+void AMyPlayerController::attack_ended() {
+    RETURN_IF_NULLPTR(controlled_character);
+    log_verbose(TEXT("attack_ended"));
+    controlled_character->attack_ended();
 }
 void AMyPlayerController::toggle_mouse() {
     if (bShowMouseCursor) {
