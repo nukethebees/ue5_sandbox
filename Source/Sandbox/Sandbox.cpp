@@ -3,6 +3,8 @@
 
 #include "Sandbox/utilities/SandboxStyle.h"
 
+#include "PropertyEditorModule.h"
+
 #define LOCTEXT_NAMESPACE "FSandboxModule"
 
 void FSandboxModule::StartupModule() {
@@ -13,12 +15,11 @@ void FSandboxModule::StartupModule() {
 
     UE_LOG(LogTemp, Verbose, TEXT("Mapped /Project to: %s"), *shader_dir);
 
-    // Initialize style set
     ml::SandboxStyle::initialize();
 }
 
 void FSandboxModule::ShutdownModule() {
-    // Cleanup style set
+
     ml::SandboxStyle::shutdown();
 }
 
