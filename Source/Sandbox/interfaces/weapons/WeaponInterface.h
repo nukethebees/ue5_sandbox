@@ -28,6 +28,6 @@ class IWeaponInterface {
     virtual bool can_fire() const = 0;
 
     virtual EAmmoType get_ammo_type() const = 0;
-    virtual Ammo get_current_ammo() const = 0;
-    virtual Ammo get_max_ammo() const = 0;
+    virtual FAmmo get_current_ammo() const = 0;
+    virtual FAmmo get_max_ammo() const = 0;
 };

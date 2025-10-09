@@ -16,11 +16,11 @@ class UAmmoSource : public UInterface {
 class IAmmoSource {
     GENERATED_BODY()
   public:
-    virtual Ammo get_current_ammo() const = 0;
-    virtual Ammo get_max_ammo() const = 0;
+    virtual FAmmo get_current_ammo() const = 0;
+    virtual FAmmo get_max_ammo() const = 0;
 
-    virtual bool can_consume(Ammo amount) const = 0;
-    virtual void consume(Ammo amount) = 0;
+    virtual bool can_consume(FAmmo amount) const = 0;
+    virtual void consume(FAmmo amount) = 0;
 
     virtual EAmmoType get_ammo_type() const = 0;
 };

@@ -2,10 +2,11 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/generated/strong_typedefs/StackSize.h"
+
 class IInventoryItem;
 
 namespace ml::inventory {
-using StackSize = uint32;
 using Coord = FIntPoint;
 using Dimensions = FIntPoint;
 using ItemPtr = TScriptInterface<IInventoryItem>;

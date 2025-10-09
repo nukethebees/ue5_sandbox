@@ -38,21 +38,13 @@ struct FAmmo {
     FAmmo operator-(FAmmo const& rhs) const { return FAmmo{value - rhs.value}; }
     FAmmo operator*(FAmmo const& rhs) const { return FAmmo{value * rhs.value}; }
     FAmmo operator/(FAmmo const& rhs) const { return FAmmo{value / rhs.value}; }
-    FAmmo operator%(FAmmo const& rhs) const { return FAmmo{value % rhs.value}; }
 
     FAmmo& operator+=(FAmmo const& rhs) { value += rhs.value; return *this; }
     FAmmo& operator-=(FAmmo const& rhs) { value -= rhs.value; return *this; }
     FAmmo& operator*=(FAmmo const& rhs) { value *= rhs.value; return *this; }
     FAmmo& operator/=(FAmmo const& rhs) { value /= rhs.value; return *this; }
-    FAmmo& operator%=(FAmmo const& rhs) { value %= rhs.value; return *this; }
 
     FAmmo operator-() const { return FAmmo{-value}; }
-
-    // Increment operators
-    FAmmo& operator++() { ++value; return *this; }
-    FAmmo operator++(int) { return FAmmo{value++}; }
-    FAmmo& operator--() { --value; return *this; }
-    FAmmo operator--(int) { return FAmmo{value--}; }
 
     // Hash support for TMap/TSet
     friend uint32 GetTypeHash(FAmmo const& obj) {

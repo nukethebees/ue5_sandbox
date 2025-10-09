@@ -164,6 +164,8 @@ class StrongTypedefGenerator:
             lines.extend(self._generate_comparison_ops(struct_name))
         elif op_group == "arithmetic":
             lines.extend(self._generate_arithmetic_ops(spec, struct_name))
+        elif op_group == "modulo":
+            lines.extend(self._generate_modulo_ops(spec, struct_name))
         elif op_group == "increment":
             lines.extend(self._generate_increment_ops(struct_name))
         elif op_group == "bitwise":
@@ -189,21 +191,27 @@ class StrongTypedefGenerator:
         ]
 
     def _generate_arithmetic_ops(self, spec: TypedefSpec, struct_name: str) -> List[str]:
-        """Generate arithmetic operators."""
+        """Generate arithmetic operators (excluding modulo)."""
         return [
             f"    {struct_name} operator+({struct_name} const& rhs) const {{ return {struct_name}{{value + rhs.value}}; }}",
             f"    {struct_name} operator-({struct_name} const& rhs) const {{ return {struct_name}{{value - rhs.value}}; }}",
             f"    {struct_name} operator*({struct_name} const& rhs) const {{ return {struct_name}{{value * rhs.value}}; }}",
             f"    {struct_name} operator/({struct_name} const& rhs) const {{ return {struct_name}{{value / rhs.value}}; }}",
-            f"    {struct_name} operator%({struct_name} const& rhs) const {{ return {struct_name}{{value % rhs.value}}; }}",
             "",
             f"    {struct_name}& operator+=({struct_name} const& rhs) {{ value += rhs.value; return *this; }}",
             f"    {struct_name}& operator-=({struct_name} const& rhs) {{ value -= rhs.value; return *this; }}",
             f"    {struct_name}& operator*=({struct_name} const& rhs) {{ value *= rhs.value; return *this; }}",
             f"    {struct_name}& operator/=({struct_name} const& rhs) {{ value /= rhs.value; return *this; }}",
-            f"    {struct_name}& operator%=({struct_name} const& rhs) {{ value %= rhs.value; return *this; }}",
             "",
             f"    {struct_name} operator-() const {{ return {struct_name}{{-value}}; }}",
+        ]
+
+    def _generate_modulo_ops(self, spec: TypedefSpec, struct_name: str) -> List[str]:
+        """Generate modulo operators (for integral types only)."""
+        return [
+            f"    {struct_name} operator%({struct_name} const& rhs) const {{ return {struct_name}{{value % rhs.value}}; }}",
+            "",
+            f"    {struct_name}& operator%=({struct_name} const& rhs) {{ value %= rhs.value; return *this; }}",
         ]
 
     def _generate_increment_ops(self, struct_name: str) -> List[str]:
