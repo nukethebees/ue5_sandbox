@@ -1,3 +1,3 @@
 #pragma once
 
-using Ammo = float;
+#include "Sandbox/generated/strong_typedefs/Ammo.h"

@@ -38,13 +38,11 @@ struct FStackSize {
     FStackSize operator-(FStackSize const& rhs) const { return FStackSize{value - rhs.value}; }
     FStackSize operator*(FStackSize const& rhs) const { return FStackSize{value * rhs.value}; }
     FStackSize operator/(FStackSize const& rhs) const { return FStackSize{value / rhs.value}; }
-    FStackSize operator%(FStackSize const& rhs) const { return FStackSize{value % rhs.value}; }
 
     FStackSize& operator+=(FStackSize const& rhs) { value += rhs.value; return *this; }
     FStackSize& operator-=(FStackSize const& rhs) { value -= rhs.value; return *this; }
     FStackSize& operator*=(FStackSize const& rhs) { value *= rhs.value; return *this; }
     FStackSize& operator/=(FStackSize const& rhs) { value /= rhs.value; return *this; }
-    FStackSize& operator%=(FStackSize const& rhs) { value %= rhs.value; return *this; }
 
     FStackSize operator-() const { return FStackSize{-value}; }
 
@@ -53,6 +51,11 @@ struct FStackSize {
     FStackSize operator++(int) { return FStackSize{value++}; }
     FStackSize& operator--() { --value; return *this; }
     FStackSize operator--(int) { return FStackSize{value--}; }
+
+    // Modulo operators
+    FStackSize operator%(FStackSize const& rhs) const { return FStackSize{value % rhs.value}; }
+
+    FStackSize& operator%=(FStackSize const& rhs) { value %= rhs.value; return *this; }
 
     // Hash support for TMap/TSet
     friend uint32 GetTypeHash(FStackSize const& obj) {
