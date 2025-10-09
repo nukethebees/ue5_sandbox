@@ -4,8 +4,8 @@
 #include "ToolMenus.h"
 
 #include "Sandbox/data_assets/BulletDataAsset.h"
-#include "SandboxEditor/DataAssetCodeGenerator.h"
-#include "SandboxEditor/TypedefCodeGenerator.h"
+#include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
+#include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 

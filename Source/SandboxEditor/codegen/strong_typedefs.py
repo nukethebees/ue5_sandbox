@@ -273,7 +273,7 @@ def main():
     """Main entry point for the generator."""
     # Find project root
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent
+    project_root = script_dir.parent.parent.parent  # codegen -> SandboxEditor -> Source -> Project root
 
     # Import typedef definitions
     sys.path.insert(0, str(script_dir))

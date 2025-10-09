@@ -1,4 +1,4 @@
-#include "SandboxEditor/TypedefCodeGenerator.h"
+#include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 
 #include "HAL/PlatformProcess.h"
 #include "Misc/Paths.h"
@@ -30,7 +30,8 @@ FString FTypedefCodeGenerator::get_python_script_path() {
     constexpr auto logger{NestedLogger<"get_python_script_path">()};
 
     FString const project_dir{FPaths::ProjectDir()};
-    FString const script_path{project_dir / TEXT("codegen/strong_typedefs.py")};
+    FString const script_path{project_dir /
+                              TEXT("Source/SandboxEditor/codegen/strong_typedefs.py")};
 
     if (!FPaths::FileExists(script_path)) {
         logger.log_error(TEXT("Python script not found at: %s"), *script_path);
