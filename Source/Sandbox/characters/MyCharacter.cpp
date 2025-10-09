@@ -3,13 +3,16 @@
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "UObject/ScriptInterface.h"
+
 #include "Sandbox/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/actor_components/InteractorComponent.h"
+#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 #include "Sandbox/huds/MyHud.h"
-#include "UObject/ScriptInterface.h"
 
 AMyCharacter::AMyCharacter() {
     PrimaryActorTick.bCanEverTick = false;
@@ -46,6 +49,8 @@ AMyCharacter::AMyCharacter() {
     torch = CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch"));
     torch->SetupAttachment(RootComponent);
     warp = CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent"));
+    weapon = CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("Weapon"));
+    inventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 }
 
 void AMyCharacter::BeginPlay() {

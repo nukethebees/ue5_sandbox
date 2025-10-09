@@ -1,12 +1,15 @@
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 
-UPawnWeaponComponent::UPawnWeaponComponent() {}
+#include "Sandbox/actor_components/weapons/WeaponComponent.h"
+
+#include "Sandbox/macros/null_checks.hpp"
+
+UPawnWeaponComponent::UPawnWeaponComponent()
+    : weapon_component{CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComponent"), false)} {}
 
 void UPawnWeaponComponent::OnRegister() {
     Super::OnRegister();
-    // Register weapon_component with the parent
 }
 void UPawnWeaponComponent::OnUnregister() {
     Super::OnUnregister();
-    // Unregister weapon_component with the parent
 }
