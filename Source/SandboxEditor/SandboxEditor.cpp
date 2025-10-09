@@ -5,6 +5,7 @@
 
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "SandboxEditor/DataAssetCodeGenerator.h"
+#include "SandboxEditor/TypedefCodeGenerator.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -46,6 +47,13 @@ void FSandboxEditorModule::register_menu_extensions() {
         FText::FromString("Generate C++ accessor code for data assets"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
 
+    section.AddEntry(FToolMenuEntry::InitToolBarButton(
+        "GenerateTypedefs",
+        FUIAction(FExecuteAction::CreateRaw(this, &FSandboxEditorModule::on_generate_typedefs)),
+        FText::FromString("Generate Typedefs"),
+        FText::FromString("Generate strong typedef wrapper structs"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
+
     logger.log_log(TEXT("Registered menu extensions"));
 }
 
@@ -74,6 +82,19 @@ void FSandboxEditorModule::on_generate_data_asset_code() {
         logger.log_log(TEXT("Code generation completed successfully!"));
     } else {
         logger.log_error(TEXT("Code generation failed!"));
+    }
+}
+
+void FSandboxEditorModule::on_generate_typedefs() {
+    constexpr auto logger{NestedLogger<"on_generate_typedefs">()};
+    logger.log_log(TEXT("Generating strong typedefs..."));
+
+    bool const success{FTypedefCodeGenerator::generate_typedefs()};
+
+    if (success) {
+        logger.log_log(TEXT("Typedef generation completed successfully!"));
+    } else {
+        logger.log_error(TEXT("Typedef generation failed!"));
     }
 }
 

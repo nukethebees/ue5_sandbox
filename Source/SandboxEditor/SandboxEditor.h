@@ -14,4 +14,5 @@ class FSandboxEditorModule
   private:
     void register_menu_extensions();
     void on_generate_data_asset_code();
+    void on_generate_typedefs();
 };
