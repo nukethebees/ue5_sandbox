@@ -62,198 +62,173 @@ class StrongTypedefGenerator:
 
     def _generate_header_content(self, spec: TypedefSpec, struct_name: str) -> str:
         """Generate the complete header file content."""
-        lines = []
+        # Pre-compute conditional strings
+        ustruct_specifier = f"USTRUCT(BlueprintType)" if spec.config.is_bp_struct else "USTRUCT()"
 
-        # Header guard and comment
-        lines.append("#pragma once")
-        lines.append("")
-        lines.append("/**")
-        lines.append(" * GENERATED CODE - DO NOT EDIT MANUALLY")
-        lines.append(f" * Strong typedef wrapper for {spec.underlying_type}")
-        lines.append(" * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button")
-        lines.append(" */")
-        lines.append("")
+        uproperty_line = (
+            "    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess=\"true\"))" 
+            if spec.config.is_bp_struct 
+            else  "    UPROPERTY()")
 
-        # Includes
-        lines.append("#include \"CoreMinimal.h\"")
-        lines.append("")
-        lines.append(f"#include \"{spec.name}.generated.h\"")
-        lines.append("")
-
-        # Struct declaration
-        bp_type = "BlueprintType" if spec.config.is_bp_struct else ""
-        if bp_type:
-            lines.append(f"USTRUCT({bp_type})")
-        else:
-            lines.append("USTRUCT()")
-        lines.append(f"struct {struct_name} {{")
-        lines.append("    GENERATED_BODY()")
-        lines.append("")
-
-        # Private value member
-        lines.append("  private:")
-        if spec.config.is_bp_struct:
-            lines.append("    UPROPERTY(BlueprintReadOnly, meta=(AllowPrivateAccess=\"true\"))")
-        else:
-            lines.append("    UPROPERTY()")
-        lines.append(f"    {spec.underlying_type} value{{}};")
-        lines.append("")
-
-        # Public interface
-        lines.append("  public:")
-
-        # Constructor
         explicit_keyword = "explicit " if spec.config.explicit_construction else ""
         default_value = self._get_default_value(spec.underlying_type)
-        lines.append(f"    {explicit_keyword}{struct_name}({spec.underlying_type} v = {default_value}) : value(v) {{}}")
-        lines.append("")
 
-        # Conversion operator
-        if spec.config.explicit_conversion:
-            lines.append(f"    explicit operator {spec.underlying_type}() const {{ return value; }}")
-        else:
-            lines.append(f"    operator {spec.underlying_type}() const {{ return value; }}")
-        lines.append("")
+        conversion_operator = (f"    explicit operator {spec.underlying_type}() const {{ return value; }}"
+                               if spec.config.explicit_conversion
+                               else f"    operator {spec.underlying_type}() const {{ return value; }}")
 
-        # Getter for explicit access
-        lines.append(f"    {spec.underlying_type} get_value() const {{ return value; }}")
-        lines.append("")
-
-        # Generate operators
+        # Generate operators section
+        operators_section = ""
         for op_group in spec.ops:
             operator_lines = self._generate_operators(op_group, spec, struct_name)
-            lines.extend(operator_lines)
             if operator_lines:
-                lines.append("")
+                operators_section += "\n".join(operator_lines) + "\n\n"
 
-        # Generate member function forwarding
+        # Generate member function forwarding section
+        members_section = ""
         if spec.members:
-            lines.append("    // Forwarded member functions")
+            members_parts = ["    // Forwarded member functions"]
             for member in spec.members:
-                lines.append(f"    template<typename... Args>")
-                lines.append(f"    auto {member}(Args&&... args) -> decltype(auto) {{")
-                lines.append(f"        return value.{member}(std::forward<Args>(args)...);")
-                lines.append("    }")
-                lines.append("")
-                lines.append(f"    template<typename... Args>")
-                lines.append(f"    auto {member}(Args&&... args) const -> decltype(auto) {{")
-                lines.append(f"        return value.{member}(std::forward<Args>(args)...);")
-                lines.append("    }")
-                lines.append("")
+                members_parts.append(f"""    template<typename... Args>
+    auto {member}(Args&&... args) -> decltype(auto) {{
+        return value.{member}(std::forward<Args>(args)...);
+    }}
 
-        # Hash function
+    template<typename... Args>
+    auto {member}(Args&&... args) const -> decltype(auto) {{
+        return value.{member}(std::forward<Args>(args)...);
+    }}""")
+            members_section = "\n".join(members_parts) + "\n\n"
+
+        # Generate hash function section
+        hash_section = ""
         if spec.config.hash_fn:
-            lines.append("    // Hash support for TMap/TSet")
-            lines.append(f"    friend uint32 GetTypeHash({struct_name} const& obj) {{")
-            lines.append("        return GetTypeHash(obj.value);")
-            lines.append("    }")
-            lines.append("")
+            hash_section = f"""    // Hash support for TMap/TSet
+    friend uint32 GetTypeHash({struct_name} const& obj) {{
+        return GetTypeHash(obj.value);
+    }}
 
-        # Close struct
-        lines.append("};")
-        lines.append("")
+"""
 
-        return "\n".join(lines)
+        # Generate complete header using multiline f-string
+        content = f"""#pragma once
+
+/**
+ * GENERATED CODE - DO NOT EDIT MANUALLY
+ * Strong typedef wrapper for {spec.underlying_type}
+ * Regenerate using the SandboxEditor 'Generate Typedefs' toolbar button
+ */
+
+#include "CoreMinimal.h"
+
+#include "{spec.name}.generated.h"
+
+{ustruct_specifier}
+struct {struct_name} {{
+    GENERATED_BODY()
+
+  private:
+{uproperty_line}
+    {spec.underlying_type} value{{}};
+
+  public:
+    {explicit_keyword}{struct_name}({spec.underlying_type} v = {default_value}) : value(v) {{}}
+
+{conversion_operator}
+
+    {spec.underlying_type} get_value() const {{ return value; }}
+
+{operators_section}{members_section}{hash_section}}};
+"""
+
+        return content
 
     def _generate_operators(self, op_group: str, spec: TypedefSpec, struct_name: str) -> List[str]:
         """Generate operators for a specific operator group."""
-        lines = []
-        lines.append(f"    // {op_group.capitalize()} operators")
+        comment = f"    // {op_group.capitalize()} operators"
 
+        ops_content = ""
         if op_group == "comparison":
-            lines.extend(self._generate_comparison_ops(struct_name))
+            ops_content = self._generate_comparison_ops(struct_name)
         elif op_group == "arithmetic":
-            lines.extend(self._generate_arithmetic_ops(spec, struct_name))
+            ops_content = self._generate_arithmetic_ops(spec, struct_name)
         elif op_group == "modulo":
-            lines.extend(self._generate_modulo_ops(spec, struct_name))
+            ops_content = self._generate_modulo_ops(spec, struct_name)
         elif op_group == "increment":
-            lines.extend(self._generate_increment_ops(struct_name))
+            ops_content = self._generate_increment_ops(struct_name)
         elif op_group == "bitwise":
-            lines.extend(self._generate_bitwise_ops(spec, struct_name))
+            ops_content = self._generate_bitwise_ops(spec, struct_name)
         elif op_group == "boolean":
-            lines.extend(self._generate_boolean_ops(struct_name))
+            ops_content = self._generate_boolean_ops(struct_name)
         elif op_group == "dereference":
-            lines.extend(self._generate_dereference_ops(spec))
+            ops_content = self._generate_dereference_ops(spec)
         else:
             print(f"Warning: Unknown operator group '{op_group}'")
+            return []
 
-        return lines
+        return [comment] + ops_content.split('\n')
 
-    def _generate_comparison_ops(self, struct_name: str) -> List[str]:
+    def _generate_comparison_ops(self, struct_name: str) -> str:
         """Generate comparison operators."""
-        return [
-            f"    bool operator==({struct_name} const& rhs) const {{ return value == rhs.value; }}",
-            f"    bool operator!=({struct_name} const& rhs) const {{ return value != rhs.value; }}",
-            f"    bool operator<({struct_name} const& rhs) const {{ return value < rhs.value; }}",
-            f"    bool operator<=({struct_name} const& rhs) const {{ return value <= rhs.value; }}",
-            f"    bool operator>({struct_name} const& rhs) const {{ return value > rhs.value; }}",
-            f"    bool operator>=({struct_name} const& rhs) const {{ return value >= rhs.value; }}",
-        ]
+        return f"""    bool operator==({struct_name} const& rhs) const {{ return value == rhs.value; }}
+    bool operator!=({struct_name} const& rhs) const {{ return value != rhs.value; }}
+    bool operator<({struct_name} const& rhs) const {{ return value < rhs.value; }}
+    bool operator<=({struct_name} const& rhs) const {{ return value <= rhs.value; }}
+    bool operator>({struct_name} const& rhs) const {{ return value > rhs.value; }}
+    bool operator>=({struct_name} const& rhs) const {{ return value >= rhs.value; }}"""
 
-    def _generate_arithmetic_ops(self, spec: TypedefSpec, struct_name: str) -> List[str]:
+    def _generate_arithmetic_ops(self, spec: TypedefSpec, struct_name: str) -> str:
         """Generate arithmetic operators (excluding modulo)."""
-        return [
-            f"    {struct_name} operator+({struct_name} const& rhs) const {{ return {struct_name}{{value + rhs.value}}; }}",
-            f"    {struct_name} operator-({struct_name} const& rhs) const {{ return {struct_name}{{value - rhs.value}}; }}",
-            f"    {struct_name} operator*({struct_name} const& rhs) const {{ return {struct_name}{{value * rhs.value}}; }}",
-            f"    {struct_name} operator/({struct_name} const& rhs) const {{ return {struct_name}{{value / rhs.value}}; }}",
-            "",
-            f"    {struct_name}& operator+=({struct_name} const& rhs) {{ value += rhs.value; return *this; }}",
-            f"    {struct_name}& operator-=({struct_name} const& rhs) {{ value -= rhs.value; return *this; }}",
-            f"    {struct_name}& operator*=({struct_name} const& rhs) {{ value *= rhs.value; return *this; }}",
-            f"    {struct_name}& operator/=({struct_name} const& rhs) {{ value /= rhs.value; return *this; }}",
-            "",
-            f"    {struct_name} operator-() const {{ return {struct_name}{{-value}}; }}",
-        ]
+        return f"""    {struct_name} operator+({struct_name} const& rhs) const {{ return {struct_name}{{value + rhs.value}}; }}
+    {struct_name} operator-({struct_name} const& rhs) const {{ return {struct_name}{{value - rhs.value}}; }}
+    {struct_name} operator*({struct_name} const& rhs) const {{ return {struct_name}{{value * rhs.value}}; }}
+    {struct_name} operator/({struct_name} const& rhs) const {{ return {struct_name}{{value / rhs.value}}; }}
 
-    def _generate_modulo_ops(self, spec: TypedefSpec, struct_name: str) -> List[str]:
+    {struct_name}& operator+=({struct_name} const& rhs) {{ value += rhs.value; return *this; }}
+    {struct_name}& operator-=({struct_name} const& rhs) {{ value -= rhs.value; return *this; }}
+    {struct_name}& operator*=({struct_name} const& rhs) {{ value *= rhs.value; return *this; }}
+    {struct_name}& operator/=({struct_name} const& rhs) {{ value /= rhs.value; return *this; }}
+
+    {struct_name} operator-() const {{ return {struct_name}{{-value}}; }}"""
+
+    def _generate_modulo_ops(self, spec: TypedefSpec, struct_name: str) -> str:
         """Generate modulo operators (for integral types only)."""
-        return [
-            f"    {struct_name} operator%({struct_name} const& rhs) const {{ return {struct_name}{{value % rhs.value}}; }}",
-            "",
-            f"    {struct_name}& operator%=({struct_name} const& rhs) {{ value %= rhs.value; return *this; }}",
-        ]
+        return f"""    {struct_name} operator%({struct_name} const& rhs) const {{ return {struct_name}{{value % rhs.value}}; }}
 
-    def _generate_increment_ops(self, struct_name: str) -> List[str]:
+    {struct_name}& operator%=({struct_name} const& rhs) {{ value %= rhs.value; return *this; }}"""
+
+    def _generate_increment_ops(self, struct_name: str) -> str:
         """Generate increment/decrement operators."""
-        return [
-            f"    {struct_name}& operator++() {{ ++value; return *this; }}",
-            f"    {struct_name} operator++(int) {{ return {struct_name}{{value++}}; }}",
-            f"    {struct_name}& operator--() {{ --value; return *this; }}",
-            f"    {struct_name} operator--(int) {{ return {struct_name}{{value--}}; }}",
-        ]
+        return f"""    {struct_name}& operator++() {{ ++value; return *this; }}
+    {struct_name} operator++(int) {{ return {struct_name}{{value++}}; }}
+    {struct_name}& operator--() {{ --value; return *this; }}
+    {struct_name} operator--(int) {{ return {struct_name}{{value--}}; }}"""
 
-    def _generate_bitwise_ops(self, spec: TypedefSpec, struct_name: str) -> List[str]:
+    def _generate_bitwise_ops(self, spec: TypedefSpec, struct_name: str) -> str:
         """Generate bitwise operators."""
-        return [
-            f"    {struct_name} operator&({struct_name} const& rhs) const {{ return {struct_name}{{value & rhs.value}}; }}",
-            f"    {struct_name} operator|({struct_name} const& rhs) const {{ return {struct_name}{{value | rhs.value}}; }}",
-            f"    {struct_name} operator^({struct_name} const& rhs) const {{ return {struct_name}{{value ^ rhs.value}}; }}",
-            f"    {struct_name} operator~() const {{ return {struct_name}{{~value}}; }}",
-            f"    {struct_name} operator<<(int32 shift) const {{ return {struct_name}{{value << shift}}; }}",
-            f"    {struct_name} operator>>(int32 shift) const {{ return {struct_name}{{value >> shift}}; }}",
-            "",
-            f"    {struct_name}& operator&=({struct_name} const& rhs) {{ value &= rhs.value; return *this; }}",
-            f"    {struct_name}& operator|=({struct_name} const& rhs) {{ value |= rhs.value; return *this; }}",
-            f"    {struct_name}& operator^=({struct_name} const& rhs) {{ value ^= rhs.value; return *this; }}",
-            f"    {struct_name}& operator<<=(int32 shift) {{ value <<= shift; return *this; }}",
-            f"    {struct_name}& operator>>=(int32 shift) {{ value >>= shift; return *this; }}",
-        ]
+        return f"""    {struct_name} operator&({struct_name} const& rhs) const {{ return {struct_name}{{value & rhs.value}}; }}
+    {struct_name} operator|({struct_name} const& rhs) const {{ return {struct_name}{{value | rhs.value}}; }}
+    {struct_name} operator^({struct_name} const& rhs) const {{ return {struct_name}{{value ^ rhs.value}}; }}
+    {struct_name} operator~() const {{ return {struct_name}{{~value}}; }}
+    {struct_name} operator<<(int32 shift) const {{ return {struct_name}{{value << shift}}; }}
+    {struct_name} operator>>(int32 shift) const {{ return {struct_name}{{value >> shift}}; }}
 
-    def _generate_boolean_ops(self, struct_name: str) -> List[str]:
+    {struct_name}& operator&=({struct_name} const& rhs) {{ value &= rhs.value; return *this; }}
+    {struct_name}& operator|=({struct_name} const& rhs) {{ value |= rhs.value; return *this; }}
+    {struct_name}& operator^=({struct_name} const& rhs) {{ value ^= rhs.value; return *this; }}
+    {struct_name}& operator<<=(int32 shift) {{ value <<= shift; return *this; }}
+    {struct_name}& operator>>=(int32 shift) {{ value >>= shift; return *this; }}"""
+
+    def _generate_boolean_ops(self, struct_name: str) -> str:
         """Generate boolean conversion operator."""
-        return [
-            "    explicit operator bool() const { return static_cast<bool>(value); }",
-        ]
+        return "    explicit operator bool() const { return static_cast<bool>(value); }"
 
-    def _generate_dereference_ops(self, spec: TypedefSpec) -> List[str]:
+    def _generate_dereference_ops(self, spec: TypedefSpec) -> str:
         """Generate dereference operators for pointer types."""
         # Strip pointer/const from type to get pointee type
         pointee_type = spec.underlying_type.rstrip('*').strip()
-        return [
-            f"    {pointee_type}* operator->() const {{ return value; }}",
-            f"    {pointee_type}& operator*() const {{ check(value); return *value; }}",
-        ]
+        return f"""    {pointee_type}* operator->() const {{ return value; }}
+    {pointee_type}& operator*() const {{ check(value); return *value; }}"""
 
     def _get_default_value(self, type_name: str) -> str:
         """Get appropriate default value for a type."""
