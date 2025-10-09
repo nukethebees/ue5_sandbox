@@ -2,9 +2,35 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/interfaces/weapons/WeaponInterface.h"
+
 #include "WeaponBase.generated.h"
 
 UCLASS(Abstract)
-class SANDBOX_API AWeaponBase : public AActor {
+class SANDBOX_API AWeaponBase
+    : public AActor
+    , public IWeaponInterface {
     GENERATED_BODY()
+  public:
+    UFUNCTION()
+    virtual void start_firing() override {};
+    UFUNCTION()
+    virtual void sustain_firing(float DeltaTime) override {};
+    UFUNCTION()
+    virtual void stop_firing() override {};
+
+    UFUNCTION()
+    virtual void reload() override {};
+    UFUNCTION()
+    virtual bool can_reload() const override { return false; };
+
+    UFUNCTION()
+    virtual bool can_fire() const override { return false; };
+
+    UFUNCTION()
+    virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; };
+    UFUNCTION()
+    virtual FAmmo get_current_ammo() const override { return FAmmo{}; };
+    UFUNCTION()
+    virtual FAmmo get_max_ammo() const override { return FAmmo{}; };
 };
