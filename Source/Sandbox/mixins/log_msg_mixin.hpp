@@ -65,90 +65,69 @@ struct LogMsgMixin {
         log_to<verbosity, GLOBAL_CATEGORY>(std::move(fmt), std::forward<Args>(args)...);
     }
 
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_fatal_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG_TO(Fatal);
-    }
-
-    template <typename... Args>
-    void log_fatal(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG(Fatal);
-    }
-
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_error_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG_TO(Error);
-    }
-
-    template <typename... Args>
-    void log_error(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG(Error);
-    }
-
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_warning_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG_TO(Warning);
-    }
-
-    template <typename... Args>
-    void log_warning(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG(Warning);
-    }
-
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_display_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG_TO(Display);
-    }
-
-    template <typename... Args>
-    void log_display(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        LOG_MSG(Display);
-    }
-
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_log_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
+    // Helper macro for development-only code
 #if UE_BUILD_DEVELOPMENT
-        LOG_MSG_TO(Log);
+#define LOG_DEV_CODE(code) code
+#else
+#define LOG_DEV_CODE(code)
 #endif
+
+    // Macro to generate logging functions
+#define LOG_X_FN(LOWERCASE, VERBOSITY)                                               \
+    template <typename... Args>                                                      \
+    void log_##LOWERCASE(DecayedFormatString<Args...>&& fmt, Args&&... args) const { \
+        LOG_MSG(VERBOSITY);                                                          \
     }
 
-    template <typename... Args>
-    void log_log(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#if UE_BUILD_DEVELOPMENT
-        LOG_MSG(Log);
-#endif
+    // Macro to generate _to variant logging functions
+#define LOG_X_TO_FN(LOWERCASE, VERBOSITY)                                                 \
+    template <auto& LOCAL_CATEGORY, typename... Args>                                     \
+    void log_##LOWERCASE##_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const { \
+        LOG_MSG_TO(VERBOSITY);                                                            \
     }
 
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_verbose_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#if UE_BUILD_DEVELOPMENT
-        LOG_MSG_TO(Verbose);
-#endif
+    // Development-only variants
+#define LOG_X_FN_DEV(LOWERCASE, VERBOSITY)                                           \
+    template <typename... Args>                                                      \
+    void log_##LOWERCASE(DecayedFormatString<Args...>&& fmt, Args&&... args) const { \
+        LOG_DEV_CODE(LOG_MSG(VERBOSITY);)                                            \
     }
 
-    template <typename... Args>
-    void log_verbose(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#if UE_BUILD_DEVELOPMENT
-        LOG_MSG(Verbose);
-#endif
+#define LOG_X_TO_FN_DEV(LOWERCASE, VERBOSITY)                                             \
+    template <auto& LOCAL_CATEGORY, typename... Args>                                     \
+    void log_##LOWERCASE##_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const { \
+        LOG_DEV_CODE(LOG_MSG_TO(VERBOSITY);)                                              \
     }
 
-    template <auto& LOCAL_CATEGORY, typename... Args>
-    void log_very_verbose_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#if UE_BUILD_DEVELOPMENT
-        LOG_MSG_TO(VeryVerbose);
-#endif
-    }
+    // Generate all logging functions
+    LOG_X_TO_FN(fatal, Fatal);
+    LOG_X_FN(fatal, Fatal);
 
-    template <typename... Args>
-    void log_very_verbose(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#if UE_BUILD_DEVELOPMENT
-        LOG_MSG(VeryVerbose);
-#endif
-    }
-};
-}
+    LOG_X_TO_FN(error, Error);
+    LOG_X_FN(error, Error);
 
+    LOG_X_TO_FN(warning, Warning);
+    LOG_X_FN(warning, Warning);
+
+    LOG_X_TO_FN(display, Display);
+    LOG_X_FN(display, Display);
+
+    LOG_X_TO_FN_DEV(log, Log);
+    LOG_X_FN_DEV(log, Log);
+
+    LOG_X_TO_FN_DEV(verbose, Verbose);
+    LOG_X_FN_DEV(verbose, Verbose);
+
+    LOG_X_TO_FN_DEV(very_verbose, VeryVerbose);
+    LOG_X_FN_DEV(very_verbose, VeryVerbose);
+
+#undef LOG_X_FN
+#undef LOG_X_TO_FN
+#undef LOG_X_FN_DEV
+#undef LOG_X_TO_FN_DEV
+#undef LOG_DEV_CODE
 #undef LOG_MSG
 #undef GLOBAL_CATEGORY
 #undef LOCAL_CATEGORY
+};
+}
