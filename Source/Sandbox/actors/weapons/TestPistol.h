@@ -29,6 +29,10 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
     virtual FAmmo get_max_ammo() const override;
 
     virtual UStaticMesh* get_display_mesh() const override;
+    virtual FString const& get_name() const {
+        static FString const default_name{TEXT("ATestPistol")};
+        return default_name;
+    };
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     FAmmo ammo{0};

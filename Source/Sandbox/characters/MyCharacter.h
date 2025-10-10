@@ -227,7 +227,7 @@ class SANDBOX_API AMyCharacter
     UWarpComponent* warp{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapons")
-    UPawnWeaponComponent* weapon{nullptr};
+    UPawnWeaponComponent* weapon_component{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UInventoryComponent* inventory{nullptr};
