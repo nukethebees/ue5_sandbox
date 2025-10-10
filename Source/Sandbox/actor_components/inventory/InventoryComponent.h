@@ -14,6 +14,8 @@ class SANDBOX_API UInventoryComponent : public UActorComponent {
     GENERATED_BODY()
   public:
     UInventoryComponent();
+  
+    bool add_item(IInventoryItem& item);
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
