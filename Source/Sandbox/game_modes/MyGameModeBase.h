@@ -10,13 +10,14 @@
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MyGameModeBase.generated.h"
 
 UCLASS()
 class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
-    , public ml::LogMsgMixin<"AMyGameModeBase"> {
+    , public ml::LogMsgMixin<"AMyGameModeBase", LogSandboxCore> {
     GENERATED_BODY()
   public:
     AMyGameModeBase();
