@@ -21,6 +21,7 @@ class SANDBOX_API AWeaponPickup
   public:
     AWeaponPickup();
   protected:
+    virtual void OnConstruction(FTransform const& Transform);
     virtual void BeginPlay() override;
 
     UFUNCTION()
