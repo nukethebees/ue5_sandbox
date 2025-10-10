@@ -14,6 +14,7 @@
 #include "Sandbox/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MyPlayerController.generated.h"
 
@@ -53,6 +54,8 @@ struct FMyPlayerControllerInputActions {
     UInputAction* cycle_prev_weapon{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* unequip_weapon{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+    UInputAction* drop_weapon{nullptr};
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* interact{nullptr};
@@ -62,7 +65,7 @@ UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
     , public print_msg_mixin
-    , public ml::LogMsgMixin<"MyPlayerController">
+    , public ml::LogMsgMixin<"MyPlayerController", LogSandboxActor>
     , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
@@ -97,6 +100,8 @@ class SANDBOX_API AMyPlayerController
     void cycle_prev_weapon();
     UFUNCTION()
     void unequip_weapon();
+    UFUNCTION()
+    void drop_weapon();
 
     // Interaction
     UFUNCTION()

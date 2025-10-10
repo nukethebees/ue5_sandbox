@@ -211,6 +211,11 @@ void AMyCharacter::cycle_prev_weapon() {
 }
 void AMyCharacter::unequip_weapon() {
     RETURN_IF_NULLPTR(inventory);
+    log_display(TEXT("unequip_weapon"));
+}
+void AMyCharacter::drop_weapon() {
+    RETURN_IF_NULLPTR(inventory);
+    log_display(TEXT("drop_weapon"));
 }
 
 // Torch

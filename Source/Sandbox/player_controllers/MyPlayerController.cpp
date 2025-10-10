@@ -88,9 +88,10 @@ void AMyPlayerController::SetupInputComponent() {
         bind(input.attack, Completed, &AMyPlayerController::attack_ended);
 
         // Inventory
-        bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
-        bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
-        bind(input.unequip_weapon, Started, &AMyPlayerController::unequip_weapon);
+        bind(input.cycle_next_weapon, Triggered, &AMyPlayerController::cycle_next_weapon);
+        bind(input.cycle_prev_weapon, Triggered, &AMyPlayerController::cycle_prev_weapon);
+        bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
+        bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
 
         // Interaction
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
@@ -155,6 +156,9 @@ void AMyPlayerController::cycle_prev_weapon() {
 }
 void AMyPlayerController::unequip_weapon() {
     FORWARD_CALL_TO_CHARACTER(unequip_weapon);
+}
+void AMyPlayerController::drop_weapon() {
+    FORWARD_CALL_TO_CHARACTER(drop_weapon);
 }
 
 // Interaction
