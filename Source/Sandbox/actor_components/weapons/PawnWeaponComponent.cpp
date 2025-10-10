@@ -33,10 +33,24 @@ bool UPawnWeaponComponent::can_reload() const {
 
 void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
     RETURN_IF_NULLPTR(weapon);
+    TRY_INIT_PTR(world, GetWorld());
 
     log_display(TEXT("Equipping %s"), *weapon->get_name());
 
-    active_weapon = weapon;
+    auto translation{FVector::OneVector};
+    auto rotation{FRotator{}};
+    auto scale{FVector::OneVector};
+    FTransform transform{rotation, translation, scale};
+
+    FActorSpawnParameters spawn_parameters{};
+    spawn_parameters.Name = TEXT("SpawnedGun");
+    spawn_parameters.Owner = GetOwner();
+
+    TRY_INIT_PTR(spawned_weapon,
+                 world->SpawnActor(weapon->GetClass(), &transform, spawn_parameters));
+
+    active_weapon = Cast<AWeaponBase>(spawned_weapon);
+    RETURN_IF_NULLPTR(active_weapon);
 }
 
 void UPawnWeaponComponent::unequip_weapon() {
