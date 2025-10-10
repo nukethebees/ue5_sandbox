@@ -36,6 +36,7 @@ class UInputComponent;
 class AMyPlayerController;
 class AMyHUD;
 
+class UArrowComponent;
 class UInteractorComponent;
 class USpeedBoostComponent;
 class UJetpackComponent;
@@ -231,6 +232,9 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UInventoryComponent* inventory{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UArrowComponent* weapon_attach_point{nullptr};
 
     // Camera components
     static constexpr int32 camera_count{ml::AMyCharacter::camera_count};

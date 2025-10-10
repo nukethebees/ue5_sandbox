@@ -9,6 +9,7 @@
 
 #include "PawnWeaponComponent.generated.h"
 
+class USceneComponent;
 class UWeaponComponent;
 class AWeaponBase;
 
@@ -38,9 +39,15 @@ class SANDBOX_API UPawnWeaponComponent
 
     void set_spawn_transform(FTransform new_value) { spawn_transform = new_value; }
     auto get_spawn_transform() const { return spawn_transform; }
+
+    void set_attach_location(USceneComponent* new_value);
+    auto get_attach_location() const { return attach_location; }
   protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
+    USceneComponent* attach_location{nullptr};
 
     FActorSpawnParameters spawn_parameters;
 

@@ -5,6 +5,8 @@
 
 #include "Sandbox/data/inventory/InventorySlot.h"
 #include "Sandbox/interfaces/inventory/InventoryItem.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/typedefs/Inventory.h"
 
 #include "InventoryComponent.generated.h"
@@ -12,7 +14,9 @@
 class AWeaponBase;
 
 UCLASS()
-class SANDBOX_API UInventoryComponent : public UActorComponent {
+class SANDBOX_API UInventoryComponent
+    : public UActorComponent
+    , public ml::LogMsgMixin<"UInventoryComponent", LogSandboxInventory> {
     GENERATED_BODY()
   public:
     UInventoryComponent();
