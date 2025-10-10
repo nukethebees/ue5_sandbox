@@ -217,7 +217,10 @@ void AMyCharacter::cycle_prev_weapon() {
 }
 void AMyCharacter::unequip_weapon() {
     RETURN_IF_NULLPTR(inventory);
+    RETURN_IF_NULLPTR(weapon_component);
     log_display(TEXT("unequip_weapon"));
+
+    weapon_component->unequip_weapon();
 }
 void AMyCharacter::drop_weapon() {
     RETURN_IF_NULLPTR(inventory);

@@ -17,4 +17,5 @@ class SANDBOX_API IInventoryItem {
   public:
     virtual FDimensions get_size() const = 0;
     virtual bool is_weapon() const = 0;
+    virtual FString const& get_name() const = 0;
 };

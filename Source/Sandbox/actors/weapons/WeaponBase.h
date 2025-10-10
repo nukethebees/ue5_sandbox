@@ -38,14 +38,14 @@ class SANDBOX_API AWeaponBase
 
     UFUNCTION()
     virtual UStaticMesh* get_display_mesh() const { return nullptr; };
-    UFUNCTION()
-    virtual FString const& get_name() const {
-        static FString const default_name{TEXT("WeaponBaseDefaultValue")};
-        return default_name;
-    };
 
     // IInventoryItem
     UFUNCTION()
     virtual FDimensions get_size() const override { return FDimensions{1000000, 1000000}; };
     virtual bool is_weapon() const override final { return true; };
+    UFUNCTION()
+    virtual FString const& get_name() const {
+        static FString const default_name{TEXT("WeaponBaseDefaultValue")};
+        return default_name;
+    };
 };
