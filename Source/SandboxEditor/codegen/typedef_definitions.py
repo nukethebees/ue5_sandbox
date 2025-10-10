@@ -39,16 +39,16 @@ def make_typedefs():
     point.name = "Dimensions"
     typedefs.append(point)
 
-    typedefs.append(
-        TypedefSpec(
-            name="ItemPtr",
-            underlying_type="TScriptInterface<IInventoryItem>",
-            ops=["dereference"],
-            members=[],
-            includes=["Sandbox/interfaces/inventory/InventoryItem.h"],
-            config=ConfigOptions(),
-        )
-    )
+    #typedefs.append(
+    #    TypedefSpec(
+    #        name="ItemPtr",
+    #        underlying_type="TScriptInterface<IInventoryItem>",
+    #        ops=["dereference"],
+    #        members=[],
+    #        includes=["Sandbox/interfaces/inventory/InventoryItem.h"],
+    #        config=ConfigOptions(),
+    #    )
+    #)
 
     
 

@@ -56,7 +56,7 @@ void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
 
     TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
 
-    if (inventory_component->add_item(*weapon_cdo)) {
+    if (inventory_component->add_item(weapon_cdo)) {
         Destroy();
     }
 }
