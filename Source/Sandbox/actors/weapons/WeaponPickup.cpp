@@ -10,32 +10,35 @@
 
 AWeaponPickup::AWeaponPickup()
     : weapon_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh")))
-    , collision_component(CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent")))
-    , rotation_component(
-          CreateDefaultSubobject<URotatingActorComponent>(TEXT("RotationComponent"))) {
+    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent")))
+    , rotator(CreateDefaultSubobject<URotatingActorComponent>(TEXT("RotationComponent"))) {
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent->SetMobility(EComponentMobility::Movable);
 
     weapon_mesh->SetupAttachment(RootComponent);
-    collision_component->SetupAttachment(RootComponent);
+    collision_box->SetupAttachment(RootComponent);
+
+    rotator->autoregster_parent_root = false;
 
     PrimaryActorTick.bCanEverTick = false;
 }
 
 void AWeaponPickup::BeginPlay() {
     Super::BeginPlay();
-
     constexpr auto logger{NestedLogger<"BeginPlay">()};
 
-    RETURN_IF_NULLPTR(collision_component);
-    collision_component->OnComponentBeginOverlap.AddDynamic(this, &AWeaponPickup::on_overlap_begin);
-
+    RETURN_IF_NULLPTR(collision_box);
     RETURN_IF_NULLPTR(weapon_class);
+    RETURN_IF_NULLPTR(rotator);
+
+    collision_box->OnComponentBeginOverlap.AddDynamic(this, &AWeaponPickup::on_overlap_begin);
+
     TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
     TRY_INIT_PTR(display_mesh, weapon_cdo->get_display_mesh());
 
     weapon_mesh->SetStaticMesh(display_mesh);
+    rotator->register_scene_component(*weapon_mesh);
 }
 
 void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
