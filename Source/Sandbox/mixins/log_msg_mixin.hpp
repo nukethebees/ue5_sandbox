@@ -52,14 +52,7 @@ struct LogMsgMixin {
             return;
         }
 
-        FString msg{};
-        if constexpr (sizeof...(args)) {
-            msg = FString::Printf(std::move(fmt), std::forward<Args>(args)...);
-        } else {
-            using CharT = std::remove_cvref_t<decltype(*fmt.FormatString)>;
-            msg.Reserve(TCString<CharT>::Strlen(fmt.FormatString));
-            msg += *fmt.FormatString;
-        }
+        auto msg{FString::Printf(std::move(fmt), std::forward<Args>(args)...)};
 
         LOG_BRANCH(Fatal)
         LOG_ELSE_BRANCH(Error)
