@@ -42,6 +42,15 @@ struct LogMsgMixin {
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
     }
 
+    template <auto& log_category, typename... Args>
+    void log_error_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
+        UE_LOG(log_category,
+               Warning,
+               TEXT("%s: %s"),
+               get_tag(),
+               *FString::Printf(std::move(fmt), std::forward<Args>(args)...));
+    }
+
     template <typename... Args>
     void log_warning(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
         UE_LOG(LogTemp,
