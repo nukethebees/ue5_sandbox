@@ -4,6 +4,8 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
+#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
+
 #include "Sandbox/macros/null_checks.hpp"
 
 ATestPistol::ATestPistol() {
@@ -18,8 +20,20 @@ ATestPistol::ATestPistol() {
 }
 
 void ATestPistol::start_firing() {
-    
+    RETURN_IF_NULLPTR(fire_point_arrow);
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+
+    constexpr float bullet_speed{5000.0f};
+
+    auto const spawn_rotation{fire_point_arrow->GetComponentRotation()};
+    auto const spawn_location{fire_point_arrow->GetComponentLocation()};
+    auto const spawn_scale{FVector::OneVector};
+
+    FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
+    mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
 }
+
 void ATestPistol::sustain_firing(float delta_time) {
     return;
 }
