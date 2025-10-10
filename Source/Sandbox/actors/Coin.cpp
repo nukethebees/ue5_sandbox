@@ -5,6 +5,8 @@
 #include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
 #include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 ACoin::ACoin() {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -26,19 +28,12 @@ ACoin::ACoin() {
 void ACoin::BeginPlay() {
     Super::BeginPlay();
 
-    auto* world{GetWorld()};
-    if (!world) {
-        return;
-    }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
+    RETURN_IF_NULLPTR(mesh_component);
 
-    if (auto* manager{world->GetSubsystem<URotationManagerSubsystem>()};
-        manager && mesh_component) {
-        manager->add(*mesh_component, rotation_speed);
-    } else {
-        UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
-    }
+    rotation_manager->add(*mesh_component, rotation_speed);
 
-    if (auto* manager{world->GetSubsystem<UCollisionEffectSubsystem>()}) {
-        manager->add_payload(this, FCoinPayload(coin_value));
-    }
+    TRY_INIT_PTR(collision_manager, world->GetSubsystem<UCollisionEffectSubsystem>());
+    collision_manager->add_payload(this, FCoinPayload(coin_value));
 }
