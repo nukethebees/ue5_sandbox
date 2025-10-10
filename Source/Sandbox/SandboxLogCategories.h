@@ -9,3 +9,4 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSandboxWeapon, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxActor, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxActorComponent, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInput, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInventory, Log, All);

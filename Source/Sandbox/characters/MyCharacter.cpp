@@ -25,7 +25,8 @@ AMyCharacter::AMyCharacter()
     , torch(CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch")))
     , warp(CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent")))
     , weapon_component(CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("PawnWeapon")))
-    , inventory(CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"))) {
+    , inventory(CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory")))
+    , weapon_attach_point(CreateDefaultSubobject<UArrowComponent>(TEXT("WeaponAttachPoint"))) {
     PrimaryActorTick.bCanEverTick = false;
 
     // Initialise arrays
@@ -54,6 +55,7 @@ AMyCharacter::AMyCharacter()
     }
 
     torch->SetupAttachment(RootComponent);
+    weapon_attach_point->SetupAttachment(RootComponent);
 }
 
 void AMyCharacter::BeginPlay() {
@@ -96,6 +98,11 @@ void AMyCharacter::BeginPlay() {
             hud->update_ammo(ammo);
         }
     }
+
+    RETURN_IF_NULLPTR(weapon_attach_point);
+    RETURN_IF_NULLPTR(weapon_component);
+
+    weapon_component->set_attach_location(weapon_attach_point);
 }
 
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
