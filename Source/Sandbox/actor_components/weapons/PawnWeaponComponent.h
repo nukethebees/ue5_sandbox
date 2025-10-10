@@ -28,6 +28,7 @@ class SANDBOX_API UPawnWeaponComponent
     bool can_reload() const;
 
     void equip_weapon(AWeaponBase* weapon);
+    void unequip_weapon();
   protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};

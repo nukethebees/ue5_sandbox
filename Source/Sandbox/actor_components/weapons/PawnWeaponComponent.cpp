@@ -38,3 +38,13 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
 
     active_weapon = weapon;
 }
+
+void UPawnWeaponComponent::unequip_weapon() {
+    RETURN_IF_NULLPTR(active_weapon);
+
+    if (!active_weapon->HasAnyFlags(RF_ClassDefaultObject)) {
+        active_weapon->Destroy();
+    }
+
+    active_weapon = nullptr;
+}
