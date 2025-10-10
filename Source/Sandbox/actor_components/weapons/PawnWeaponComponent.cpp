@@ -1,5 +1,6 @@
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 
+#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/actor_components/weapons/WeaponComponent.h"
 #include "Sandbox/actors/weapons/WeaponBase.h"
 
@@ -54,41 +55,61 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
     constexpr auto logger{NestedLogger<"equip_weapon">()};
 
     RETURN_IF_NULLPTR(weapon);
-    RETURN_IF_NULLPTR(attach_location);
-    TRY_INIT_PTR(world, GetWorld());
-
-    unequip_weapon();
 
     logger.log_display(TEXT("Equipping %s"), *weapon->get_name());
+    unequip_weapon();
 
-    TRY_INIT_PTR(spawned_weapon,
-                 world->SpawnActor(weapon->GetClass(), &spawn_transform, spawn_parameters));
+    active_weapon = weapon;
+    active_weapon->show_weapon();
 
-    log_display(TEXT("Spawning weapon to %s"), *spawn_transform.ToString());
-
-    active_weapon = Cast<AWeaponBase>(spawned_weapon);
-    RETURN_IF_NULLPTR(active_weapon);
-
-    TRY_INIT_PTR(owner, GetOwner());
-    active_weapon->SetOwner(owner);
-
-    constexpr bool weld_to_parent{false};
-    active_weapon->AttachToComponent(
-        attach_location, FAttachmentTransformRules(EAttachmentRule::KeepRelative, weld_to_parent));
-
-    logger.log_display(TEXT("Attached weapon: %s"), *active_weapon->GetName());
+    logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 }
-
 void UPawnWeaponComponent::unequip_weapon() {
     if (!active_weapon) {
         return;
     }
 
-    if (!active_weapon->HasAnyFlags(RF_ClassDefaultObject)) {
-        active_weapon->Destroy();
+    active_weapon->hide_weapon();
+    active_weapon = nullptr;
+}
+bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class) {
+    constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
+
+    logger.log_display(TEXT("Picking up new weapon"));
+
+    RETURN_VALUE_IF_NULLPTR(attach_location, false);
+    INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+    INIT_PTR_OR_RETURN_VALUE(
+        inventory_component, owner->GetComponentByClass<UInventoryComponent>(), false);
+    INIT_PTR_OR_RETURN_VALUE(weapon, spawn_weapon(weapon_class, *owner, *world), false);
+
+    attach_weapon(*weapon, *attach_location);
+    weapon->hide_weapon();
+
+    if (!inventory_component->add_item(weapon)) {
+        weapon->Destroy();
+        return false;
     }
 
-    active_weapon = nullptr;
+    logger.log_display(TEXT("Picked up weapon: %s"), *weapon->get_name());
+    return true;
+}
+
+void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {
+    constexpr bool weld_to_parent{false};
+    weapon.AttachToComponent(
+        &location, FAttachmentTransformRules(EAttachmentRule::KeepRelative, weld_to_parent));
+}
+AWeaponBase* UPawnWeaponComponent::spawn_weapon(TSubclassOf<AWeaponBase> weapon_class,
+                                                AActor& owner,
+                                                UWorld& world) {
+    auto* spawned_weapon{
+        world.SpawnActor<AWeaponBase>(weapon_class, spawn_transform, spawn_parameters)};
+    RETURN_VALUE_IF_NULLPTR(spawned_weapon, nullptr);
+    spawned_weapon->SetOwner(&owner);
+
+    return spawned_weapon;
 }
 
 void UPawnWeaponComponent::set_attach_location(USceneComponent* new_value) {

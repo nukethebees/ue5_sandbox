@@ -33,6 +33,7 @@ class SANDBOX_API UPawnWeaponComponent
 
     void equip_weapon(AWeaponBase* weapon);
     void unequip_weapon();
+    bool pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class);
 
     void set_spawn_parameters(FActorSpawnParameters new_value) { spawn_parameters = new_value; }
     auto get_spawn_parameters() const { return spawn_parameters; }
@@ -42,6 +43,9 @@ class SANDBOX_API UPawnWeaponComponent
 
     void set_attach_location(USceneComponent* new_value);
     auto get_attach_location() const { return attach_location; }
+  private:
+    AWeaponBase* spawn_weapon(TSubclassOf<AWeaponBase> weapon_class, AActor& owner, UWorld& world);
+    void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
   protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};
