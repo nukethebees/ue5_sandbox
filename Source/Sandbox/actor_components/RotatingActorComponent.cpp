@@ -12,16 +12,10 @@ URotatingActorComponent::URotatingActorComponent() {
 void URotatingActorComponent::BeginPlay() {
     Super::BeginPlay();
 
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(owner, GetOwner());
-    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
-    TRY_INIT_PTR(root, owner->GetRootComponent());
-
-    register_scene_component(*rotation_manager, *root);
-
-    if (destroy_component_after_static_registration) {
-        TRY_INIT_PTR(destruction_manager, world->GetSubsystem<UDestructionManagerSubsystem>());
-        destruction_manager->queue_destruction(this);
+    if (autoregster_parent_root) {
+        TRY_INIT_PTR(owner, GetOwner());
+        TRY_INIT_PTR(root, owner->GetRootComponent());
+        register_scene_component(*root);
     }
 }
 
@@ -40,10 +34,22 @@ void URotatingActorComponent::unregister_from_subsystem() {
     rotation_manager->remove(*this);
 }
 void URotatingActorComponent::register_scene_component(URotationManagerSubsystem& rotation_manager,
+                                                       UWorld& world,
                                                        USceneComponent& scene_component) {
     if (rotation_type == ERotationType::STATIC) {
         rotation_manager.add(scene_component, speed);
     } else {
         rotation_manager.add(scene_component, *this);
     }
+
+    if (destroy_component_after_static_registration) {
+        TRY_INIT_PTR(destruction_manager, world.GetSubsystem<UDestructionManagerSubsystem>());
+        destruction_manager->queue_destruction(this);
+    }
+}
+void URotatingActorComponent::register_scene_component(USceneComponent& scene_component) {
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
+
+    register_scene_component(*rotation_manager, *world, scene_component);
 }
