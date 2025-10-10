@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "WeaponPickup.generated.h"
 
@@ -15,7 +16,7 @@ class AWeaponBase;
 UCLASS()
 class SANDBOX_API AWeaponPickup
     : public AActor
-    , public ml::LogMsgMixin<"AWeaponPickup"> {
+    , public ml::LogMsgMixin<"AWeaponPickup", LogSandboxGuns> {
     GENERATED_BODY()
   public:
     AWeaponPickup();

@@ -3,6 +3,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 
+#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/actors/weapons/WeaponBase.h"
 
@@ -48,6 +49,14 @@ void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
                                      bool from_sweep,
                                      FHitResult const& sweep_result) {
     constexpr auto logger{NestedLogger<"on_overlap_begin">()};
+    logger.log_display(TEXT("Picking up weapon"));
 
-    logger.log_display(TEXT("picking up weapon"));
+    RETURN_IF_NULLPTR(other_actor);
+    TRY_INIT_PTR(inventory_component, other_actor->GetComponentByClass<UInventoryComponent>());
+
+    TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
+
+    if (inventory_component->add_item(*weapon_cdo)) {
+        Destroy();
+    }
 }

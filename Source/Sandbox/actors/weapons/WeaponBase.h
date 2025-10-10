@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/interfaces/inventory/InventoryItem.h"
 #include "Sandbox/interfaces/weapons/WeaponInterface.h"
 
 #include "WeaponBase.generated.h"
@@ -9,9 +10,11 @@
 UCLASS(Abstract)
 class SANDBOX_API AWeaponBase
     : public AActor
-    , public IWeaponInterface {
+    , public IWeaponInterface
+    , public IInventoryItem {
     GENERATED_BODY()
   public:
+    // IWeaponInterface
     UFUNCTION()
     virtual bool can_fire() const override { return false; };
     UFUNCTION()
@@ -35,4 +38,8 @@ class SANDBOX_API AWeaponBase
 
     UFUNCTION()
     virtual UStaticMesh* get_display_mesh() const { return nullptr; };
+
+    // IInventoryItem
+    UFUNCTION()
+    virtual FDimensions get_size() const override { return FDimensions{1000000, 1000000}; };
 };
