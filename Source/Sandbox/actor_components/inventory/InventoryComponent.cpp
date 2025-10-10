@@ -6,6 +6,7 @@ UInventoryComponent::UInventoryComponent() {}
 
 bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     if (!item_fits(*item)) {
+        log_error(TEXT("Failed to add item to inventory."));
         return false;
     }
 

@@ -3,8 +3,8 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
+#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 #include "Sandbox/actors/weapons/WeaponBase.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -56,11 +56,11 @@ void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
     logger.log_display(TEXT("Picking up weapon"));
 
     RETURN_IF_NULLPTR(other_actor);
-    TRY_INIT_PTR(inventory_component, other_actor->GetComponentByClass<UInventoryComponent>());
+    TRY_INIT_PTR(weapon_component, other_actor->GetComponentByClass<UPawnWeaponComponent>());
 
-    TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
-
-    if (inventory_component->add_item(weapon_cdo)) {
+    if (weapon_component->pickup_new_weapon(weapon_class)) {
         Destroy();
+    } else {
+        logger.log_error(TEXT("Failed to pickup weapon"));
     }
 }
