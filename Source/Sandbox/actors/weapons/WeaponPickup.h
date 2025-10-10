@@ -35,7 +35,7 @@ class SANDBOX_API AWeaponPickup
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UStaticMeshComponent* weapon_mesh{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-    UBoxComponent* collision_component{nullptr};
+    UBoxComponent* collision_box{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-    URotatingActorComponent* rotation_component{nullptr};
+    URotatingActorComponent* rotator{nullptr};
 };
