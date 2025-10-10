@@ -6,6 +6,8 @@
 #include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 ABulletSpawner::ABulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;
 }
@@ -29,14 +31,8 @@ void ABulletSpawner::Tick(float DeltaTime) {
 void ABulletSpawner::spawn_bullet() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletSpawner::spawn_bullet"))
 
-    if (!bullet_class) {
-        log_warning(TEXT("bullet_class is nullptr."));
-        return;
-    }
-    if (!fire_point) {
-        log_warning(TEXT("fire_point is nullptr."));
-        return;
-    }
+    RETURN_IF_NULLPTR(bullet_class);
+    RETURN_IF_NULLPTR(fire_point);
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
@@ -57,23 +53,16 @@ void ABulletSpawner::spawn_bullet() {
             bullet_class, spawn_location, spawn_rotation, spawn_params);
     }
 
-    if (bullet) {
-        bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
+    RETURN_IF_NULLPTR(bullet);
+    TRY_INIT_PTR(movement, bullet->FindComponentByClass<UProjectileMovementComponent>());
 
-        if (auto* movement{bullet->FindComponentByClass<UProjectileMovementComponent>()}) {
-            movement->InitialSpeed = bullet_speed;
-            movement->MaxSpeed = bullet_speed;
+    bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
 
-            auto velocity_unit{spawn_rotation.Vector()};
-            velocity_unit.Normalize();
+    movement->InitialSpeed = bullet_speed;
+    movement->MaxSpeed = bullet_speed;
 
-            movement->Velocity = velocity_unit * bullet_speed;
+    auto velocity_unit{spawn_rotation.Vector()};
+    velocity_unit.Normalize();
 
-            // log_very_verbose(TEXT("Setting velocity to %s"), *movement->Velocity.ToString());
-        } else {
-            log_warning(TEXT("UProjectileMovementComponent is nullptr"));
-        }
-    } else {
-        log_warning(TEXT("No bullet to move."));
-    }
+    movement->Velocity = velocity_unit * bullet_speed;
 }
