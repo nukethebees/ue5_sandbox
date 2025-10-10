@@ -6,6 +6,9 @@
 
 #include "RotatingActorComponent.generated.h"
 
+class USceneComponent;
+class URotationManagerSubsystem;
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API URotatingActorComponent : public UActorComponent {
     GENERATED_BODY()
@@ -25,4 +28,6 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
     bool destroy_component_after_static_registration{true};
   private:
     void unregister_from_subsystem();
+    void register_scene_component(URotationManagerSubsystem& rotation_manager,
+                                  USceneComponent& scene_component);
 };
