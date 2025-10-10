@@ -36,7 +36,8 @@ AMyCharacter::AMyCharacter()
     int32 spring_arm_index{0};
     for (auto const& config : ml::AMyCharacter::camera_configs) {
         auto& cc{cameras[config.camera_index]};
-        cc = CreateDefaultSubobject<UCameraComponent>(ANSI_TO_TCHAR(config.component_name));
+        cc = CreateDefaultSubobject<UCameraComponent>(
+            StringCast<TCHAR>(config.component_name).Get());
         cc->bUsePawnControlRotation = config.use_pawn_control_rotation;
 
         if (config.needs_spring_arm) {
