@@ -38,13 +38,9 @@ struct LogMsgMixin {
     template <ELogVerbosity::Type verbosity, auto& LOCAL_CATEGORY, typename... Args>
         requires (verbosity < ELogVerbosity::NumVerbosity)
     void log_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-#define LOG_BRANCH(VERBOSITY)                                                 \
-    if constexpr (verbosity == ELogVerbosity::VERBOSITY) {                    \
-        UE_LOG(LOCAL_CATEGORY,                                                \
-               VERBOSITY,                                                     \
-               TEXT("%s: %s"),                                                \
-               get_tag(),                                                     \
-               *FString::Printf(std::move(fmt), std::forward<Args>(args)...)) \
+#define LOG_BRANCH(VERBOSITY)                                              \
+    if constexpr (verbosity == ELogVerbosity::VERBOSITY) {                 \
+        UE_LOG(LOCAL_CATEGORY, VERBOSITY, TEXT("%s: %s"), get_tag(), *msg) \
     }
 #define LOG_ELSE_BRANCH(VERBOSITY) else LOG_BRANCH(VERBOSITY)
 
@@ -54,6 +50,15 @@ struct LogMsgMixin {
 
         if (LOCAL_CATEGORY.IsSuppressed(verbosity)) {
             return;
+        }
+
+        FString msg{};
+        if constexpr (sizeof...(args)) {
+            msg = FString::Printf(std::move(fmt), std::forward<Args>(args)...);
+        } else {
+            using CharT = std::remove_cvref_t<decltype(*fmt.FormatString)>;
+            msg.Reserve(TCString<CharT>::Strlen(fmt.FormatString));
+            msg += *fmt.FormatString;
         }
 
         LOG_BRANCH(Fatal)
