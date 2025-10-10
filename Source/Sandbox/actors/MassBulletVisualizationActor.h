@@ -10,6 +10,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MassBulletVisualizationActor.generated.h"
 
@@ -18,7 +19,7 @@ class UBulletDataAsset;
 UCLASS()
 class SANDBOX_API AMassBulletVisualizationActor
     : public AActor
-    , public ml::LogMsgMixin<"AMassBulletVisualizationActor"> {
+    , public ml::LogMsgMixin<"AMassBulletVisualizationActor", LogSandboxMassEntity> {
     GENERATED_BODY()
   public:
     static constexpr float growth_factor{1.5};
