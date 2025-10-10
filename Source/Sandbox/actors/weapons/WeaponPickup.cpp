@@ -24,21 +24,25 @@ AWeaponPickup::AWeaponPickup()
 
     PrimaryActorTick.bCanEverTick = false;
 }
-
-void AWeaponPickup::BeginPlay() {
-    Super::BeginPlay();
-    constexpr auto logger{NestedLogger<"BeginPlay">()};
-
-    RETURN_IF_NULLPTR(collision_box);
+void AWeaponPickup::OnConstruction(FTransform const& Transform) {
     RETURN_IF_NULLPTR(weapon_class);
-    RETURN_IF_NULLPTR(rotator);
-
-    collision_box->OnComponentBeginOverlap.AddDynamic(this, &AWeaponPickup::on_overlap_begin);
+    RETURN_IF_NULLPTR(weapon_mesh);
 
     TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
     TRY_INIT_PTR(display_mesh, weapon_cdo->get_display_mesh());
 
     weapon_mesh->SetStaticMesh(display_mesh);
+}
+void AWeaponPickup::BeginPlay() {
+    Super::BeginPlay();
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
+
+    RETURN_IF_NULLPTR(collision_box);
+    collision_box->OnComponentBeginOverlap.AddDynamic(this, &AWeaponPickup::on_overlap_begin);
+
+    RETURN_IF_NULLPTR(weapon_mesh);
+    RETURN_IF_NULLPTR(rotator);
+
     rotator->register_scene_component(*weapon_mesh);
 }
 
