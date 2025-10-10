@@ -9,14 +9,17 @@
 
 #include "InventoryComponent.generated.h"
 
+class AWeaponBase;
+
 UCLASS()
 class SANDBOX_API UInventoryComponent : public UActorComponent {
     GENERATED_BODY()
   public:
     UInventoryComponent();
 
-    bool add_item(TScriptInterface<IInventoryItem> item);    
+    bool add_item(TScriptInterface<IInventoryItem> item);
     bool item_fits(IInventoryItem const& item) const;
+    AWeaponBase* get_random_weapon();
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};

@@ -30,3 +30,11 @@ bool UPawnWeaponComponent::can_reload() const {
     RETURN_VALUE_IF_NULLPTR(active_weapon, false);
     return active_weapon->can_reload();
 }
+
+void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
+    RETURN_IF_NULLPTR(weapon);
+
+    log_display(TEXT("Equipping %s"), *weapon->get_name());
+
+    active_weapon = weapon;
+}

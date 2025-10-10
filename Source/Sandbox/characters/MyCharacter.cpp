@@ -24,7 +24,7 @@ AMyCharacter::AMyCharacter()
     , jetpack(CreateDefaultSubobject<UJetpackComponent>(TEXT("Jetpack")))
     , torch(CreateDefaultSubobject<USpotLightComponent>(TEXT("Torch")))
     , warp(CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent")))
-    , weapon(CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("PawnWeapon")))
+    , weapon_component(CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("PawnWeapon")))
     , inventory(CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"))) {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -193,21 +193,27 @@ void AMyCharacter::cycle_camera() {
 
 // Combat
 void AMyCharacter::attack_started() {
-    RETURN_IF_NULLPTR(weapon);
+    RETURN_IF_NULLPTR(weapon_component);
 }
 void AMyCharacter::attack_continued() {
-    RETURN_IF_NULLPTR(weapon);
+    RETURN_IF_NULLPTR(weapon_component);
 }
 void AMyCharacter::attack_ended() {
-    RETURN_IF_NULLPTR(weapon);
+    RETURN_IF_NULLPTR(weapon_component);
 }
 
 // Inventory
 void AMyCharacter::cycle_next_weapon() {
     RETURN_IF_NULLPTR(inventory);
+    RETURN_IF_NULLPTR(weapon_component);
+    log_display(TEXT("cycle_next_weapon"));
+
+    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
+    weapon_component->equip_weapon(weapon);
 }
 void AMyCharacter::cycle_prev_weapon() {
     RETURN_IF_NULLPTR(inventory);
+    log_display(TEXT("cycle_prev_weapon"));
 }
 void AMyCharacter::unequip_weapon() {
     RETURN_IF_NULLPTR(inventory);

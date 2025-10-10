@@ -88,8 +88,8 @@ void AMyPlayerController::SetupInputComponent() {
         bind(input.attack, Completed, &AMyPlayerController::attack_ended);
 
         // Inventory
-        bind(input.cycle_next_weapon, Triggered, &AMyPlayerController::cycle_next_weapon);
-        bind(input.cycle_prev_weapon, Triggered, &AMyPlayerController::cycle_prev_weapon);
+        bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
+        bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
         bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
         bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
 
