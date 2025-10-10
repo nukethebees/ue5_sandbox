@@ -42,11 +42,11 @@ class SANDBOX_API AMassBulletVisualizationActor
         return transform;
     }
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     int32 preallocate_isms{0};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     int32 cull_min_distance{0};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ISM")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     int32 cull_max_distance{50000};
   protected:
     virtual void BeginPlay() override;
@@ -59,13 +59,14 @@ class SANDBOX_API AMassBulletVisualizationActor
     void register_phase_end_callback();
     void on_phase_end(float delta_time);
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Bullets")
     UInstancedStaticMeshComponent* ismc{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, Category = "Bullets")
     UBulletDataAsset* bullet_data;
 
     ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
+    UPROPERTY(VisibleAnywhere, Category = "Bullets")
     int32 current_instance_count{0};
 };
