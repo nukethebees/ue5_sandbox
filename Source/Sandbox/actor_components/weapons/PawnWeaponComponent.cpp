@@ -5,6 +5,24 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
+UPawnWeaponComponent::UPawnWeaponComponent()
+    : spawn_parameters() {
+    FVector const translation{0.0f, 0.0f, 200.0f};
+    auto const rotation{FRotator{}};
+    auto const scale{FVector::OneVector};
+    spawn_transform = FTransform{rotation, translation, scale};
+
+    spawn_parameters.Name = TEXT("SpawnedGun");
+    spawn_parameters.Owner = GetOwner();
+}
+
+void UPawnWeaponComponent::BeginPlay() {
+    Super::BeginPlay();
+
+    spawn_parameters.Name = TEXT("SpawnedGun");
+    spawn_parameters.Owner = GetOwner();
+}
+
 bool UPawnWeaponComponent::can_fire() const {
     RETURN_VALUE_IF_NULLPTR(active_weapon, false);
     return active_weapon->can_fire();
@@ -39,17 +57,8 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
 
     log_display(TEXT("Equipping %s"), *weapon->get_name());
 
-    FVector const translation{0.0f, 0.0f, 200.0f};
-    auto const rotation{FRotator{}};
-    auto const scale{FVector::OneVector};
-    FTransform transform{rotation, translation, scale};
-
-    FActorSpawnParameters spawn_parameters{};
-    spawn_parameters.Name = TEXT("SpawnedGun");
-    spawn_parameters.Owner = GetOwner();
-
     TRY_INIT_PTR(spawned_weapon,
-                 world->SpawnActor(weapon->GetClass(), &transform, spawn_parameters));
+                 world->SpawnActor(weapon->GetClass(), &spawn_transform, spawn_parameters));
 
     active_weapon = Cast<AWeaponBase>(spawned_weapon);
     RETURN_IF_NULLPTR(active_weapon);
