@@ -48,4 +48,10 @@ class SANDBOX_API AWeaponBase
         static FString const default_name{TEXT("WeaponBaseDefaultValue")};
         return default_name;
     };
+
+    // AWeaponBase
+    UFUNCTION()
+    void hide_weapon();
+    UFUNCTION()
+    void show_weapon();
 };
