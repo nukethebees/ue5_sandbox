@@ -15,6 +15,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
+
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/data/HumanoidMovement.h"
 #include "Sandbox/interfaces/DeathHandler.h"
@@ -23,6 +24,7 @@
 #include "Sandbox/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/utilities/enums.h"
 
 #include "MyCharacter.generated.h"
@@ -120,7 +122,7 @@ UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
     , public print_msg_mixin
-    , public ml::LogMsgMixin<"MyCharacter">
+    , public ml::LogMsgMixin<"MyCharacter", LogSandboxActor>
     , public IDeathHandler
     , public IMaxSpeedChangeListener
     , public IMovementMultiplierReceiver
@@ -173,6 +175,8 @@ class SANDBOX_API AMyCharacter
     void cycle_prev_weapon();
     UFUNCTION()
     void unequip_weapon();
+    UFUNCTION()
+    void drop_weapon();
 
     // Torch
     UFUNCTION()

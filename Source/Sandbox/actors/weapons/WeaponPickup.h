@@ -16,7 +16,7 @@ class AWeaponBase;
 UCLASS()
 class SANDBOX_API AWeaponPickup
     : public AActor
-    , public ml::LogMsgMixin<"AWeaponPickup", LogSandboxGuns> {
+    , public ml::LogMsgMixin<"AWeaponPickup", LogSandboxGun> {
     GENERATED_BODY()
   public:
     AWeaponPickup();
