@@ -7,6 +7,7 @@
 #include "RotatingActorComponent.generated.h"
 
 class USceneComponent;
+class UWorld;
 class URotationManagerSubsystem;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -18,6 +19,11 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
     virtual void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
   public:
+    void register_scene_component(URotationManagerSubsystem& rotation_manager,
+                                  UWorld& world,
+                                  USceneComponent& scene_component);
+    void register_scene_component(USceneComponent& scene_component);
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float speed{50.0f};
 
@@ -26,8 +32,9 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     bool destroy_component_after_static_registration{true};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    bool autoregster_parent_root{true};
   private:
     void unregister_from_subsystem();
-    void register_scene_component(URotationManagerSubsystem& rotation_manager,
-                                  USceneComponent& scene_component);
 };
