@@ -134,11 +134,11 @@ class SANDBOX_API AMyCharacter
     // Camera
     UCameraComponent const* get_active_camera() const;
 
-    // Input
+    // Input Binding
+    // -----------------------
+    // Movement
     UFUNCTION()
     void move(FInputActionValue const& value);
-    UFUNCTION()
-    void look(FInputActionValue const& value);
     UFUNCTION()
     void start_jetpack();
     UFUNCTION()
@@ -152,14 +152,27 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void stop_sprint();
 
+    // Vision
     UFUNCTION()
     void cycle_camera();
+    UFUNCTION()
+    void look(FInputActionValue const& value);
+
+    // Combat
     UFUNCTION()
     void attack_started();
     UFUNCTION()
     void attack_continued();
     UFUNCTION()
     void attack_ended();
+
+    // Inventory
+    UFUNCTION()
+    void cycle_next_weapon();
+    UFUNCTION()
+    void cycle_prev_weapon();
+    UFUNCTION()
+    void unequip_weapon();
 
     // Torch
     UFUNCTION()
