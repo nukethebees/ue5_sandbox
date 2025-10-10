@@ -1,12 +1,15 @@
 #include "Sandbox/utilities/logging.h"
 
-#define RETURN_VALUE_IF_BANG_VAR_BASE_MACRO(VAR_NAME, NULL_FORM, RETURN_VALUE) \
-    do {                                                                       \
-        if (!VAR_NAME) {                                                       \
-            ml::log_value_is_x(TEXT(#VAR_NAME), NULL_FORM);                    \
-            return RETURN_VALUE;                                               \
-        }                                                                      \
+#define RETURN_VALUE_IF_EXPR_BASE_MACRO(VAR_NAME, BOOL_EXPR, NULL_FORM, RETURN_VALUE) \
+    do {                                                                              \
+        if (BOOL_EXPR) {                                                              \
+            ml::log_value_is_x(TEXT(#VAR_NAME), NULL_FORM);                           \
+            return RETURN_VALUE;                                                      \
+        }                                                                             \
     } while (0)
+
+#define RETURN_VALUE_IF_BANG_VAR_BASE_MACRO(VAR_NAME, NULL_FORM, RETURN_VALUE) \
+    RETURN_VALUE_IF_EXPR_BASE_MACRO(VAR_NAME, !VAR_NAME, NULL_FORM, RETURN_VALUE)
 
 #define RETURN_VALUE_IF_NULLPTR(PTR_NAME, VALUE) \
     RETURN_VALUE_IF_BANG_VAR_BASE_MACRO(PTR_NAME, TEXT("nullptr"), VALUE)
@@ -30,13 +33,8 @@
     INIT_PTR_OR_RETURN_VALUE(PTR_NAME, PTR_EXPR, EBTNodeResult::Failed)
 
 // For objects that require calls to IsValid()
-#define RETURN_IF_INVALID(VAR_NAME)                               \
-    do {                                                          \
-        if (!VAR_NAME.IsValid()) {                                \
-            ml::log_value_is_x(TEXT(#VAR_NAME), TEXT("invalid")); \
-            return;                                               \
-        }                                                         \
-    } while (0)
+#define RETURN_IF_INVALID(VAR_NAME) \
+    RETURN_VALUE_IF_EXPR_BASE_MACRO(VAR_NAME, !VAR_NAME.IsValid(), TEXT("invalid"), )
 
 #define TRY_INIT_VALID(VAR_NAME, VAR_EXPR) \
     auto VAR_NAME{VAR_EXPR};               \
