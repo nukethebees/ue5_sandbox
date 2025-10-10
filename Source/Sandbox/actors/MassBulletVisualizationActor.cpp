@@ -136,6 +136,11 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     RETURN_IF_NULLPTR(ismc);
 
     auto const n_transforms{static_cast<int32>(result.view.size())};
+
+#if WITH_EDITOR
+    num_flying = n_transforms;
+#endif
+
     if (n_transforms == 0) {
         return;
     }

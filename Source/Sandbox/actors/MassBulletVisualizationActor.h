@@ -69,4 +69,10 @@ class SANDBOX_API AMassBulletVisualizationActor
     FDelegateHandle phase_end_delegate_handle{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     int32 current_instance_count{0};
+
+// Debug properties
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Bullets")
+    int32 num_flying{0};
+#endif
 };
