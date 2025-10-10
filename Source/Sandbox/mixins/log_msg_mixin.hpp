@@ -48,6 +48,14 @@ struct LogMsgMixin {
     }
 #define LOG_ELSE_BRANCH(VERBOSITY) else LOG_BRANCH(VERBOSITY)
 
+        if constexpr (verbosity > LOCAL_CATEGORY.GetCompileTimeVerbosity()) {
+            return;
+        }
+
+        if (LOCAL_CATEGORY.IsSuppressed(verbosity)) {
+            return;
+        }
+
         LOG_BRANCH(Fatal)
         LOG_ELSE_BRANCH(Error)
         LOG_ELSE_BRANCH(Warning)
