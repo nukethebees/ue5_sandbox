@@ -35,11 +35,13 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
     RETURN_IF_NULLPTR(weapon);
     TRY_INIT_PTR(world, GetWorld());
 
+    unequip_weapon();
+
     log_display(TEXT("Equipping %s"), *weapon->get_name());
 
-    auto translation{FVector::OneVector};
-    auto rotation{FRotator{}};
-    auto scale{FVector::OneVector};
+    FVector const translation{0.0f, 0.0f, 200.0f};
+    auto const rotation{FRotator{}};
+    auto const scale{FVector::OneVector};
     FTransform transform{rotation, translation, scale};
 
     FActorSpawnParameters spawn_parameters{};
@@ -54,7 +56,9 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
 }
 
 void UPawnWeaponComponent::unequip_weapon() {
-    RETURN_IF_NULLPTR(active_weapon);
+    if (!active_weapon) {
+        return;
+    }
 
     if (!active_weapon->HasAnyFlags(RF_ClassDefaultObject)) {
         active_weapon->Destroy();
