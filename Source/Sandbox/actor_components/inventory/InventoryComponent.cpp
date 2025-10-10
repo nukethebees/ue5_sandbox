@@ -2,6 +2,8 @@
 
 UInventoryComponent::UInventoryComponent() {}
 
-bool UInventoryComponent::add_item(IInventoryItem& item) {
+bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
+    slots.Add({item});
+
     return true;
 }

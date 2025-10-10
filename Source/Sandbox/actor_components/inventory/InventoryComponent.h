@@ -15,10 +15,10 @@ class SANDBOX_API UInventoryComponent : public UActorComponent {
   public:
     UInventoryComponent();
   
-    bool add_item(IInventoryItem& item);
+    bool add_item(TScriptInterface<IInventoryItem> item);
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    FDimensions dimensions{0, 0};
+    FDimensions dimensions{100, 100};
 };
