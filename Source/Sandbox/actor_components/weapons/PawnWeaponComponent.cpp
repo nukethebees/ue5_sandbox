@@ -34,11 +34,15 @@ void UPawnWeaponComponent::start_firing() {
     return active_weapon->start_firing();
 }
 void UPawnWeaponComponent::sustain_firing(float delta_time) {
-    RETURN_IF_NULLPTR(active_weapon);
+    if (!active_weapon) {
+        return;
+    }
     return active_weapon->sustain_firing(delta_time);
 }
 void UPawnWeaponComponent::stop_firing() {
-    RETURN_IF_NULLPTR(active_weapon);
+    if (!active_weapon) {
+        return;
+    }
     return active_weapon->stop_firing();
 }
 
@@ -56,9 +60,7 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
 
     RETURN_IF_NULLPTR(weapon);
 
-    logger.log_display(TEXT("Equipping %s"), *weapon->get_name());
     unequip_weapon();
-
     active_weapon = weapon;
     active_weapon->show_weapon();
 
