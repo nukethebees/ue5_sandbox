@@ -103,6 +103,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         using enum ETriggerEvent;
         auto bind{make_input_binder(eic)};
 
+        // Movement
         bind(input_actions.move, Triggered, &AMyCharacter::move);
 
         bind(input_actions.jump, Started, &ACharacter::Jump);
@@ -117,8 +118,10 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         bind(input_actions.jetpack, Triggered, &AMyCharacter::start_jetpack);
         bind(input_actions.jetpack, Completed, &AMyCharacter::stop_jetpack);
 
+        // Vision
         bind(input_actions.cycle_camera, Started, &AMyCharacter::cycle_camera);
 
+        // Torch
         bind(input_actions.toggle_torch, Started, &AMyCharacter::toggle_torch);
         bind(input_actions.scroll_torch_cone, Triggered, &AMyCharacter::scroll_torch_cone);
     }
@@ -134,6 +137,7 @@ UCameraComponent const* AMyCharacter::get_active_camera() const {
     return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
 }
 
+// Movement
 void AMyCharacter::move(FInputActionValue const& value) {
     auto const movement_value{value.Get<FVector>()};
 
@@ -147,14 +151,6 @@ void AMyCharacter::move(FInputActionValue const& value) {
         // to allow the characters to get unstuck if needed
         auto const z_scale{is_forced_movement ? 0.2f : 1.0f};
         AddMovementInput(GetActorUpVector(), movement_value.Z * z_scale);
-    }
-}
-void AMyCharacter::look(FInputActionValue const& value) {
-    auto const look_axis_value{value.Get<FVector2D>()};
-
-    if (Controller) {
-        AddControllerYawInput(look_axis_value.X);
-        AddControllerPitchInput(look_axis_value.Y);
     }
 }
 void AMyCharacter::start_crouch() {
@@ -171,7 +167,6 @@ void AMyCharacter::stop_sprint() {
     movement.is_running = false;
     update_speed();
 }
-
 void AMyCharacter::start_jetpack() {
     if (jetpack != nullptr) {
         jetpack->start_jetpack();
@@ -183,10 +178,20 @@ void AMyCharacter::stop_jetpack() {
     }
 }
 
+// Vision
+void AMyCharacter::look(FInputActionValue const& value) {
+    auto const look_axis_value{value.Get<FVector2D>()};
+
+    if (Controller) {
+        AddControllerYawInput(look_axis_value.X);
+        AddControllerPitchInput(look_axis_value.Y);
+    }
+}
 void AMyCharacter::cycle_camera() {
     change_camera_to(get_next(camera_mode));
 }
 
+// Combat
 void AMyCharacter::attack_started() {
     RETURN_IF_NULLPTR(weapon);
 }
@@ -195,6 +200,17 @@ void AMyCharacter::attack_continued() {
 }
 void AMyCharacter::attack_ended() {
     RETURN_IF_NULLPTR(weapon);
+}
+
+// Inventory
+void AMyCharacter::cycle_next_weapon() {
+    RETURN_IF_NULLPTR(inventory);
+}
+void AMyCharacter::cycle_prev_weapon() {
+    RETURN_IF_NULLPTR(inventory);
+}
+void AMyCharacter::unequip_weapon() {
+    RETURN_IF_NULLPTR(inventory);
 }
 
 // Torch

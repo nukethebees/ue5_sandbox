@@ -30,18 +30,23 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* cursor_mode_context{nullptr};
 
+    // Movement
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* warp_to_cursor{nullptr};
+
+    // Vision
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* look{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_mouse{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* mouse_click{nullptr};
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputAction* warp_to_cursor{nullptr};
 
     // Weapons
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* attack{nullptr};
+
+    // Inventory
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* cycle_next_weapon{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
@@ -69,20 +74,35 @@ class SANDBOX_API AMyPlayerController
   public:
     virtual void SetupInputComponent() override;
 
+    // Movement
+    UFUNCTION()
+    void warp_to_cursor(FInputActionValue const& value);
+
+    // Vision
     UFUNCTION()
     void look(FInputActionValue const& value);
+
+    // Combat
     UFUNCTION()
     void attack_started();
     UFUNCTION()
     void attack_continued();
     UFUNCTION()
     void attack_ended();
+
+    // Inventory
+    UFUNCTION()
+    void cycle_next_weapon();
+    UFUNCTION()
+    void cycle_prev_weapon();
+    UFUNCTION()
+    void unequip_weapon();
+
+    // Interaction
     UFUNCTION()
     void toggle_mouse();
     UFUNCTION()
     void mouse_click(FInputActionValue const& value);
-    UFUNCTION()
-    void warp_to_cursor(FInputActionValue const& value);
     UFUNCTION()
     void interact();
 
