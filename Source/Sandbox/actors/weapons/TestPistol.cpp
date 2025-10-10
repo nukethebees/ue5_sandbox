@@ -17,9 +17,15 @@ ATestPistol::ATestPistol() {
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 
-void ATestPistol::start_firing() {}
-void ATestPistol::sustain_firing(float DeltaTime) {}
-void ATestPistol::stop_firing() {}
+void ATestPistol::start_firing() {
+    
+}
+void ATestPistol::sustain_firing(float delta_time) {
+    return;
+}
+void ATestPistol::stop_firing() {
+    return;
+}
 
 void ATestPistol::reload() {}
 bool ATestPistol::can_reload() const {
