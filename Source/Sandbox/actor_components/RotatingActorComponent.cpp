@@ -3,6 +3,8 @@
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 URotatingActorComponent::URotatingActorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }
@@ -10,33 +12,16 @@ URotatingActorComponent::URotatingActorComponent() {
 void URotatingActorComponent::BeginPlay() {
     Super::BeginPlay();
 
-    auto* world{GetWorld()};
-    if (!world) {
-        UE_LOGFMT(LogTemp, Warning, "Couldn't get world in in BeginPlay.");
-        return;
-    }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(owner, GetOwner());
+    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
+    TRY_INIT_PTR(root, owner->GetRootComponent());
 
-    if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-        if (auto* owner{GetOwner()}) {
-            if (auto* root{owner->GetRootComponent()}) {
-                if (rotation_type == ERotationType::STATIC) {
-                    rotation_manager->add(*root, speed);
-                } else {
-                    rotation_manager->add(*root, *this);
-                }
-            }
-        }
-
-    } else {
-        UE_LOGFMT(LogTemp, Warning, "Couldn't get URotationManagerSubsystem.");
-    }
+    register_scene_component(*rotation_manager, *root);
 
     if (destroy_component_after_static_registration) {
-        if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {
-            destruction_manager->queue_destruction(this);
-        } else {
-            UE_LOGFMT(LogTemp, Warning, "Couldn't get UDestructionManagerSubsystem in BeginPlay.");
-        }
+        TRY_INIT_PTR(destruction_manager, world->GetSubsystem<UDestructionManagerSubsystem>());
+        destruction_manager->queue_destruction(this);
     }
 }
 
@@ -49,13 +34,16 @@ void URotatingActorComponent::EndPlay(EEndPlayReason::Type EndPlayReason) {
 }
 
 void URotatingActorComponent::unregister_from_subsystem() {
-    if (auto* world{GetWorld()}) {
-        if (auto* rotation_manager{world->GetSubsystem<URotationManagerSubsystem>()}) {
-            rotation_manager->remove(*this);
-        } else {
-            UE_LOGFMT(LogTemp, Warning, "Couldn't get UDestructionManagerSubsystem in EndPlay.");
-        }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
+
+    rotation_manager->remove(*this);
+}
+void URotatingActorComponent::register_scene_component(URotationManagerSubsystem& rotation_manager,
+                                                       USceneComponent& scene_component) {
+    if (rotation_type == ERotationType::STATIC) {
+        rotation_manager.add(scene_component, speed);
     } else {
-        UE_LOGFMT(LogTemp, Warning, "Couldn't get world in in BeginPlay.");
+        rotation_manager.add(scene_component, *this);
     }
 }
