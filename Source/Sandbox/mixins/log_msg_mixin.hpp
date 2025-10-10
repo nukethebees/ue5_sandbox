@@ -39,30 +39,30 @@ struct LogMsgMixin {
         requires (verbosity < ELogVerbosity::NumVerbosity)
     void log_to(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
 #define LOG_BRANCH(VERBOSITY)                                                 \
-    else if constexpr (verbosity == ELogVerbosity::VERBOSITY) {               \
+    if constexpr (verbosity == ELogVerbosity::VERBOSITY) {                    \
         UE_LOG(LOCAL_CATEGORY,                                                \
                VERBOSITY,                                                     \
                TEXT("%s: %s"),                                                \
                get_tag(),                                                     \
                *FString::Printf(std::move(fmt), std::forward<Args>(args)...)) \
     }
+#define LOG_ELSE_BRANCH(VERBOSITY) else LOG_BRANCH(VERBOSITY)
 
-        if constexpr (verbosity == ELogVerbosity::Fatal) {
-            LOG_MSG(Fatal);
-        }
-        LOG_BRANCH(Error)
-        LOG_BRANCH(Warning)
-        LOG_BRANCH(Log)
-        LOG_BRANCH(Display)
-        LOG_BRANCH(Verbose)
-        LOG_BRANCH(VeryVerbose)
+        LOG_BRANCH(Fatal)
+        LOG_ELSE_BRANCH(Error)
+        LOG_ELSE_BRANCH(Warning)
+        LOG_ELSE_BRANCH(Log)
+        LOG_ELSE_BRANCH(Display)
+        LOG_ELSE_BRANCH(Verbose)
+        LOG_ELSE_BRANCH(VeryVerbose)
 #undef LOG_BRANCH
+#undef LOG_ELSE_BRANCH
     }
 
-    template <ELogVerbosity::Type verbosity, auto& LOCAL_CATEGORY, typename... Args>
+    template <ELogVerbosity::Type verbosity, typename... Args>
         requires (verbosity < ELogVerbosity::NumVerbosity)
     void log(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
-        log_to<verbosity, LOCAL_CATEGORY>(std::move(fmt), std::forward<Args>(args)...);
+        log_to<verbosity, GLOBAL_CATEGORY>(std::move(fmt), std::forward<Args>(args)...);
     }
 
     template <auto& LOCAL_CATEGORY, typename... Args>
@@ -114,7 +114,9 @@ struct LogMsgMixin {
 
     template <typename... Args>
     void log_log(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
+#if UE_BUILD_DEVELOPMENT
         LOG_MSG(Log);
+#endif
     }
 
     template <auto& LOCAL_CATEGORY, typename... Args>
@@ -126,7 +128,9 @@ struct LogMsgMixin {
 
     template <typename... Args>
     void log_verbose(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
+#if UE_BUILD_DEVELOPMENT
         LOG_MSG(Verbose);
+#endif
     }
 
     template <auto& LOCAL_CATEGORY, typename... Args>
@@ -138,7 +142,9 @@ struct LogMsgMixin {
 
     template <typename... Args>
     void log_very_verbose(DecayedFormatString<Args...>&& fmt, Args&&... args) const {
+#if UE_BUILD_DEVELOPMENT
         LOG_MSG(VeryVerbose);
+#endif
     }
 };
 }
