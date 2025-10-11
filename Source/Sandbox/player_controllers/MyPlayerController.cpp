@@ -216,7 +216,7 @@ void AMyPlayerController::interact() {
     FVector view_location;
     FRotator view_rotation;
     GetPlayerViewPoint(view_location, view_rotation);
-    controlled_character->interact(view_location, view_rotation.Vector());
+    controlled_character->interact(view_location, view_rotation);
 }
 
 void AMyPlayerController::set_game_input_mode() {

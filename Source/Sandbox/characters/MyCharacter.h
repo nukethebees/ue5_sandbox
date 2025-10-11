@@ -201,7 +201,7 @@ class SANDBOX_API AMyCharacter
 
     // Interaction
     UFUNCTION()
-    void interact(FVector sweep_origin, FVector sweep_direction);
+    void interact(FVector sweep_origin, FRotator sweep_direction);
 
     UPROPERTY()
     bool is_forced_movement{false};
