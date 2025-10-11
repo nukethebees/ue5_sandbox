@@ -4,6 +4,7 @@
 #include "MassSimulationSubsystem.h"
 
 #include "Sandbox/data_assets/BulletDataAsset.h"
+#include "Sandbox/data_assets/BulletDataAssetIds.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -36,10 +37,9 @@ void AMassBulletVisualizationActor::BeginPlay() {
 
     ismc->SetCullDistances(cull_min_distance, cull_max_distance);
 
-    FPrimaryAssetId const primary_asset_id{TEXT("Bullet"), TEXT("Standard")};
     auto& asset_manager{UAssetManager::Get()};
     asset_manager.CallOrRegister_OnCompletedInitialScan(FSimpleDelegate::CreateUObject(
-        this, &AMassBulletVisualizationActor::handle_assets_ready, primary_asset_id));
+        this, &AMassBulletVisualizationActor::handle_assets_ready, ml::bullet_ids::standard));
 
     register_phase_end_callback();
 }
