@@ -50,3 +50,10 @@
 #define TRY_INIT_OPTIONAL(VAR_NAME, VAR_EXPR) \
     auto VAR_NAME{VAR_EXPR};                  \
     RETURN_IF_NULLOPT(VAR_NAME)
+
+// Boolean
+// -------------------------------------------------------------------------------------------------
+#define RETURN_IF_TRUE(BOOLEAN_EXPR) \
+    RETURN_VALUE_AND_WARN_IF_EXPR(#BOOLEAN_EXPR, BOOLEAN_EXPR, "true", )
+#define RETURN_IF_FALSE(BOOLEAN_EXPR) \
+    RETURN_VALUE_AND_WARN_IF_EXPR(#BOOLEAN_EXPR, !BOOLEAN_EXPR, "true", )
