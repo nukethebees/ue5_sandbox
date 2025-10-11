@@ -51,8 +51,8 @@ class SANDBOX_API UMassBulletSubsystem
     }
     void destroy_bullet(FMassEntityHandle handle) { (void)destroy_queue.enqueue(handle); }
   protected:
-    virtual void OnWorldBeginPlay(UWorld& in_world) override;
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
+    virtual void OnWorldBeginPlay(UWorld& in_world) override;
     virtual void Deinitialize() override;
   private:
     [[nodiscard]] bool initialise_asset_data();
