@@ -9,10 +9,8 @@ UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UInteractorComponent::try_interact(FVector sweep_origin, FVector sweep_direction) {
+void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) {
     static constexpr auto LOG{NestedLogger<"try_interact">()};
-
-    LOG.log_verbose(TEXT("Start."));
 
     if (cooling_down) {
         LOG.log_verbose(TEXT("Cooling down. Cannot interact."));
@@ -22,17 +20,11 @@ void UInteractorComponent::try_interact(FVector sweep_origin, FVector sweep_dire
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(owner, GetOwner());
 
-    auto const forward{sweep_direction};
-    FVector const vertical_offset{0.0f, 0.0f, height_offset};
-    auto const start{sweep_origin + forward * forward_offset + vertical_offset};
-    auto const end{start + forward * interaction_range};
-
     TArray<FHitResult> hit_results;
-
     bool const hit{world->SweepMultiByChannel(
         hit_results,
-        start,
-        end,
+        sweep_start,
+        sweep_end,
         FQuat::Identity,
         collision_channel,
         FCollisionShape::MakeCapsule(capsule_radius, capsule_half_height))};
@@ -42,10 +34,10 @@ void UInteractorComponent::try_interact(FVector sweep_origin, FVector sweep_dire
     constexpr float debug_capsule_duration{2.0f};
     constexpr bool debug_capsule_persistent_lines{false};
     DrawDebugCapsule(world,
-                     (start + end) * debug_sweep_centre_point,
+                     (sweep_start + sweep_end) * debug_sweep_centre_point,
                      capsule_half_height,
                      capsule_radius,
-                     FRotationMatrix::MakeFromZ(end - start).ToQuat(),
+                     FRotationMatrix::MakeFromZ(sweep_end - sweep_start).ToQuat(),
                      FColor::Green,
                      debug_capsule_persistent_lines,
                      debug_capsule_duration);
@@ -102,7 +94,15 @@ void UInteractorComponent::try_interact(FVector sweep_origin, FVector sweep_dire
         }
     }
 }
+void UInteractorComponent::try_interact(FVector sweep_origin, FRotator sweep_direction) {
+    TRY_INIT_PTR(owner, GetOwner());
+    auto const forward{sweep_direction.Vector()};
+    FVector const vertical_offset{0.0f, 0.0f, height_offset};
+    auto const start{sweep_origin + forward * forward_offset + vertical_offset};
+    auto const end{start + forward * interaction_range};
 
+    try_interact(start, end);
+}
 void UInteractorComponent::try_interact() {
     TRY_INIT_PTR(owner, GetOwner());
     try_interact(owner->GetActorLocation(), owner->GetActorForwardVector());
