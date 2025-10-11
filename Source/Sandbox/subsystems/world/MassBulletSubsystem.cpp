@@ -46,16 +46,11 @@ void UMassBulletSubsystem::on_begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::on_begin_play"))
     constexpr auto logger{NestedLogger<"on_begin_play">()};
 
-    if (!initialise_asset_data()) {
-        logger.log_warning(TEXT("Failed to load the asset data."));
-        return;
-    }
+    RETURN_IF_FALSE(initialise_asset_data());
 
-    TRY_INIT_PTR(world_ptr, GetWorld());
-    auto& world{*world_ptr};
-
-    TRY_INIT_PTR(mass_subsystem, world.GetSubsystem<UMassEntitySubsystem>());
-    TRY_INIT_PTR(archetype_subsystem, world.GetSubsystem<UMassArchetypeSubsystem>());
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
+    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
     RETURN_IF_NULLPTR(bullet_data);
 
     TRY_INIT_OPTIONAL(entity_def,
