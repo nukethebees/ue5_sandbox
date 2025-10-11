@@ -110,13 +110,13 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
 }
 
 void UMassBulletSubsystem::on_end_frame() {
-    if (auto* world{GetWorld()}) {
-        if (!world->IsGameWorld()) {
-            return;
-        }
-        if (world->IsPaused()) {
-            return;
-        }
+    TRY_INIT_PTR(world, GetWorld());
+
+    if (!world->IsGameWorld()) {
+        return;
+    }
+    if (world->IsPaused()) {
+        return;
     }
 
     auto spawns{spawn_queue.swap_and_consume()};
@@ -133,47 +133,44 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests"))
     constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
 
+    auto const n_destroy_requests{static_cast<int32>(destroy_requests.size())};
+    auto const n_spawn_requests{static_cast<int32>(spawn_requests.transforms.size())};
+
+    if ((n_spawn_requests + n_destroy_requests) == 0) {
+        return;
+    }
+
+    RETURN_IF_NULLPTR(visualization_actor);
+    RETURN_IF_INVALID(bullet_archetype);
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
     auto& cmd_buffer{entity_manager.Defer()};
 
-    RETURN_IF_NULLPTR(visualization_actor);
-    RETURN_IF_INVALID(bullet_archetype);
-
     // Dequeue destruction requests into free_list
-    if (!destroy_requests.empty()) {
-        logger.log_verbose(TEXT("Adding %zu entities to free_list from destroy queue."),
-                           destroy_requests.size());
-        free_list.Append(destroy_requests.data(), static_cast<int32>(destroy_requests.size()));
-    }
-
-    auto const n_spawn_requests{static_cast<int32>(spawn_requests.transforms.size())};
-    logger.log_verbose(TEXT("Processing %d spawn requests."), n_spawn_requests);
+    free_list.Append(destroy_requests.data(), n_destroy_requests);
 
     // Reuse entities from free_list for spawn requests
-    auto const entity_reuse_count{FMath::Min(free_list.Num(), n_spawn_requests)};
-    if (entity_reuse_count > 0) {
-        logger.log_verbose(TEXT("Reusing %d entities from free_list."), entity_reuse_count);
-    }
-
-    for (int32 i{0}; i < entity_reuse_count; ++i) {
-        auto entity{free_list.Pop()};
-        configure_active_bullet(
-            entity_manager, entity, spawn_requests.transforms[i], spawn_requests.speeds[i]);
+    auto const n_reused{FMath::Min(free_list.Num(), n_spawn_requests)};
+    for (int32 i{0}; i < n_reused; ++i) {
+        configure_active_bullet(entity_manager,
+                                free_list.Pop(),
+                                spawn_requests.transforms[i],
+                                spawn_requests.speeds[i]);
     }
 
     // Destroy remaining entities in free_list
+    auto const n_destroyed{free_list.Num()};
     cmd_buffer.PushCommand<FMassDeferredDestroyCommand>([&](FMassEntityManager& entity_manager) {
         entity_manager.BatchDestroyEntities(free_list);
     });
 
     // Batch create new entities for unfulfilled spawn requests
-    auto const remaining_spawn_requests{n_spawn_requests - entity_reuse_count};
+    auto const remaining_spawn_requests{n_spawn_requests - n_reused};
     if (remaining_spawn_requests > 0) {
         logger.log_verbose(TEXT("Batch creating %d new entities."), remaining_spawn_requests);
         cmd_buffer.PushCommand<FMassDeferredCreateCommand>(
-            [spawn_requests, entity_reuse_count, remaining_spawn_requests, this](
+            [spawn_requests, n_reused, remaining_spawn_requests, this](
                 FMassEntityManager& entity_manager) {
                 TRACE_CPUPROFILER_EVENT_SCOPE(
                     TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests::BatchCreate"))
@@ -183,12 +180,9 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
                 entity_manager.BatchCreateEntities(
                     bullet_archetype, shared_values, remaining_spawn_requests, new_entities);
 
-                logger.log_verbose(TEXT("Configuring %d batch created entities."),
-                                   new_entities.Num());
-
                 auto const n{new_entities.Num()};
                 for (int32 i{0}; i < n; ++i) {
-                    auto const request_idx{entity_reuse_count + i};
+                    auto const request_idx{n_reused + i};
                     configure_active_bullet(entity_manager,
                                             new_entities[i],
                                             spawn_requests.transforms[request_idx],
@@ -196,6 +190,12 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
                 }
             });
     }
+
+    logger.log_verbose(TEXT("Entities: %d created (%d reused, %d created), %d destroyed."),
+                       n_spawn_requests,
+                       n_reused,
+                       remaining_spawn_requests,
+                       n_destroyed);
 
     entity_manager.FlushCommands();
     free_list.Reset(0);
