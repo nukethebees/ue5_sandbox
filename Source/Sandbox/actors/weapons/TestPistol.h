@@ -17,17 +17,20 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
     ATestPistol();
 
     virtual void start_firing() override;
-    virtual void sustain_firing(float DeltaTime) override;
-    virtual void stop_firing() override;
+    virtual void sustain_firing(float delta_time) override { return; }
+    virtual void stop_firing() override { return; }
+    virtual bool can_fire() const override { return true; }
 
-    virtual void reload() override;
-    virtual bool can_reload() const override;
+    virtual void reload() override {
+        if (!can_reload()) {
+            return;
+        }
+    }
+    virtual bool can_reload() const override { return ammo < max_ammo; }
 
-    virtual bool can_fire() const override;
-
-    virtual EAmmoType get_ammo_type() const override;
-    virtual FAmmo get_current_ammo() const override;
-    virtual FAmmo get_max_ammo() const override;
+    virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; }
+    virtual FAmmo get_current_ammo() const override { return ammo; }
+    virtual FAmmo get_max_ammo() const override { return max_ammo; }
 
     virtual UStaticMesh* get_display_mesh() const override;
     virtual FString const& get_name() const {
@@ -35,6 +38,9 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
         return default_name;
     };
   protected:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    FAmmo max_ammo{10};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     FAmmo ammo{0};
 
