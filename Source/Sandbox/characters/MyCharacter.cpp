@@ -288,6 +288,32 @@ void AMyCharacter::scroll_torch_cone(FInputActionValue const& value) {
     torch->SetInnerConeAngle(new_inner);
 }
 
+// Jumping
+void AMyCharacter::reset_max_jump_count() {
+    this->JumpMaxCount = default_max_jump_count;
+}
+void AMyCharacter::increase_max_jump_count(int32 jumps) {
+    this->JumpMaxCount += jumps;
+}
+void AMyCharacter::OnJumped_Implementation() {
+    Super::OnJumped_Implementation();
+    if (hud) {
+        hud->update_jump(JumpCurrentCount);
+    }
+}
+void AMyCharacter::Landed(FHitResult const& Hit) {
+    Super::Landed(Hit);
+    if (hud) {
+        hud->update_jump(0);
+    }
+}
+
+// Interaction
+void AMyCharacter::interact(FVector sweep_origin, FVector sweep_direction) {
+    RETURN_IF_NULLPTR(interactor);
+    interactor->try_interact(sweep_origin, sweep_direction);
+}
+
 void AMyCharacter::handle_death() {
     if (auto const* world{GetWorld()}) {
         UGameplayStatics::OpenLevel(world, "MainMenu");
@@ -329,24 +355,6 @@ void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
     }
 }
 
-void AMyCharacter::OnJumped_Implementation() {
-    Super::OnJumped_Implementation();
-    if (hud) {
-        hud->update_jump(JumpCurrentCount);
-    }
-}
-void AMyCharacter::Landed(FHitResult const& Hit) {
-    Super::Landed(Hit);
-    if (hud) {
-        hud->update_jump(0);
-    }
-}
-void AMyCharacter::reset_max_jump_count() {
-    this->JumpMaxCount = default_max_jump_count;
-}
-void AMyCharacter::increase_max_jump_count(int32 jumps) {
-    this->JumpMaxCount += jumps;
-}
 void AMyCharacter::update_speed() {
     auto const base_speed{movement.is_running ? movement.run_speed : movement.walk_speed};
     set_speed(base_speed);

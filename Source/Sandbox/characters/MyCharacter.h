@@ -199,6 +199,10 @@ class SANDBOX_API AMyCharacter
     virtual void OnJumped_Implementation() override;
     virtual void Landed(FHitResult const& Hit) override;
 
+    // Interaction
+    UFUNCTION()
+    void interact(FVector sweep_origin, FVector sweep_direction);
+
     UPROPERTY()
     bool is_forced_movement{false};
 

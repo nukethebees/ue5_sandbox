@@ -211,9 +211,12 @@ void AMyPlayerController::mouse_click(FInputActionValue const& value) {
     }
 }
 void AMyPlayerController::interact() {
-    if (controlled_character && controlled_character->interactor) {
-        controlled_character->interactor->try_interact();
-    }
+    RETURN_IF_NULLPTR(controlled_character);
+
+    FVector view_location;
+    FRotator view_rotation;
+    GetPlayerViewPoint(view_location, view_rotation);
+    controlled_character->interact(view_location, view_rotation.Vector());
 }
 
 void AMyPlayerController::set_game_input_mode() {
