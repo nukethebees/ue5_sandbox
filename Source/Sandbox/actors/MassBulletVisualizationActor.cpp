@@ -147,14 +147,15 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
 
     if (n_transforms > current_instance_count) {
         auto const to_add{n_transforms - current_instance_count};
-        logger.log_display(TEXT("Growing instances from %d to %d to accommodate %d transforms."),
-                           current_instance_count,
-                           n_transforms,
-                           n_transforms);
+        logger.log_display(
+            TEXT("Growing from %d to %d."), current_instance_count, n_transforms, to_add);
         add_instances(to_add);
     }
 
     logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
+    for (auto const& xform : result.view) {
+        logger.log_very_verbose(TEXT("%s\n"), *xform.ToString());
+    }
 
     constexpr int32 start_index{0};
     constexpr bool world_space{true};
