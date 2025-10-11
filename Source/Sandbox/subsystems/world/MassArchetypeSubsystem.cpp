@@ -18,6 +18,7 @@ void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
 
     build_archetypes(entity_subsystem->GetMutableEntityManager());
+    build_definitions();
 }
 
 void UMassArchetypeSubsystem::Deinitialize() {
@@ -31,6 +32,7 @@ auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHand
 }
 void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manager) {
     constexpr auto logger{NestedLogger<"build_archetypes">()};
+
     {
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
         descriptor.Fragments.Add(*FMassBulletTransformFragment::StaticStruct());
@@ -49,3 +51,4 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         bullet_archetype = entity_manager.CreateArchetype(descriptor, creation_params);
     }
 }
+void UMassArchetypeSubsystem::build_definitions() {}
