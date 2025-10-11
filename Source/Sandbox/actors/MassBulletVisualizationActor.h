@@ -31,6 +31,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     void enqueue_transform(FTransform const& transform) {
         (void)transform_queue.enqueue(transform);
     }
+    void increment_killed_count() { to_be_hidden.fetch_add(1, std::memory_order_relaxed); }
     FTransform const& get_hidden_transform() const {
         static auto const transform{[]() -> FTransform {
             FRotator const rotation{};
@@ -59,6 +60,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     void grow_instances();
     void register_phase_end_callback();
     void on_phase_end(float delta_time);
+    int32 consume_killed_count() { return to_be_hidden.exchange(0, std::memory_order_relaxed); }
 
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     UInstancedStaticMeshComponent* ismc{nullptr};
@@ -70,6 +72,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     FDelegateHandle phase_end_delegate_handle{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     int32 current_instance_count{0};
+    std::atomic<int32> to_be_hidden{0};
 
 // Debug properties
 #if WITH_EDITORONLY_DATA
