@@ -25,7 +25,8 @@ class SANDBOX_API UMassArchetypeSubsystem
     virtual void Deinitialize() override;
   private:
     void build_archetypes(FMassEntityManager& entity_manager);
-    void build_definitions();
+    void build_definitions(FMassEntityManager & entity_manager);
+    int32 add_definition(FEntityDefinition definition, FPrimaryAssetId id);
 
     TArray<FEntityDefinition> definitions{};
     TMap<FPrimaryAssetId, int32> definition_indexes{};
