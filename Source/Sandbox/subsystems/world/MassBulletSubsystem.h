@@ -13,6 +13,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MassBulletSubsystem.generated.h"
 
@@ -40,7 +41,7 @@ struct FBulletSpawnRequestView {
 UCLASS()
 class SANDBOX_API UMassBulletSubsystem
     : public UMassSubsystemBase
-    , public ml::LogMsgMixin<"UMassBulletSubsystem"> {
+    , public ml::LogMsgMixin<"UMassBulletSubsystem", LogSandboxMassEntity> {
     GENERATED_BODY()
   public:
     static constexpr std::size_t n_queue_elements{30000};

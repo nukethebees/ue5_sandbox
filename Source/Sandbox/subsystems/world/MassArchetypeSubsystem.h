@@ -5,6 +5,7 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MassArchetypeSubsystem.generated.h"
 
@@ -12,7 +13,7 @@
 UCLASS()
 class SANDBOX_API UMassArchetypeSubsystem
     : public UWorldSubsystem
-    , public ml::LogMsgMixin<"UMassArchetypeSubsystem"> {
+    , public ml::LogMsgMixin<"UMassArchetypeSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     auto get_bullet_archetype() const -> FMassArchetypeHandle;

@@ -2,9 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Subsystems/WorldSubsystem.h"
 #include "TimerManager.h"
+
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "DestructionManagerSubsystem.generated.h"
 
@@ -15,7 +17,7 @@
 UCLASS()
 class SANDBOX_API UDestructionManagerSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"UDestructionManagerSubsystem"> {
+    , public ml::LogMsgMixin<"UDestructionManagerSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     void queue_destruction(AActor* actor);

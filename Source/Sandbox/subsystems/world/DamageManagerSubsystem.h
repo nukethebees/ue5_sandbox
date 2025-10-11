@@ -3,12 +3,14 @@
 #include <cstddef>
 
 #include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
-#include "Subsystems/WorldSubsystem.h"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "DamageManagerSubsystem.generated.h"
 
@@ -25,7 +27,7 @@ struct FQueuedHealthChange {
 UCLASS()
 class SANDBOX_API UDamageManagerSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"UDamageManagerSubsystem"> {
+    , public ml::LogMsgMixin<"UDamageManagerSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     static constexpr std::size_t n_queue_elements{10000};

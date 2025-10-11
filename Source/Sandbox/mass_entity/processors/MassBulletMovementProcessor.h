@@ -9,12 +9,13 @@
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/mixins/MassProcessorMixins.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "MassBulletMovementProcessor.generated.h"
 
 struct FMassBulletMovementExecutor
     : public UE::Mass::FQueryExecutor
-    , public ml::LogMsgMixin<"FMassBulletMovementExecutor"> {
+    , public ml::LogMsgMixin<"FMassBulletMovementExecutor", LogSandboxMassEntity> {
     FMassBulletMovementExecutor() = default;
 
     using Query =
