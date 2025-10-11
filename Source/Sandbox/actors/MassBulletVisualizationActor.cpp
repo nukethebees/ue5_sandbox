@@ -152,9 +152,11 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         add_instances(to_add);
     }
 
-    logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
-    for (auto const& xform : result.view) {
-        logger.log_very_verbose(TEXT("%s\n"), *xform.ToString());
+    if (!logger.log_category.IsSuppressed(ELogVerbosity::VeryVerbose)) {
+        logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
+        for (auto const& xform : result.view) {
+            logger.log_very_verbose(TEXT("%s\n"), *xform.ToString());
+        }
     }
 
     constexpr int32 start_index{0};
