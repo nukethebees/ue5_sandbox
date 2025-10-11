@@ -11,8 +11,6 @@ void AMyGameModeBase::BeginPlay() {
     Super::BeginPlay();
     constexpr auto logger{NestedLogger<"BeginPlay">()};
 
-    logger.log_display(TEXT("Starting!"));
-
     TRY_INIT_PTR(pc, UGameplayStatics::GetPlayerController(this, 0));
     TRY_INIT_PTR(character_actor,
                  UGameplayStatics::GetActorOfClass(this, AMyCharacter::StaticClass()));
