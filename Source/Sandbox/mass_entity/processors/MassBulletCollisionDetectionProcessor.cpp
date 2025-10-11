@@ -5,10 +5,10 @@
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 
-#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/macros/null_checks.hpp"
 
 void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& context) {
@@ -74,8 +74,9 @@ UMassBulletCollisionDetectionProcessor::UMassBulletCollisionDetectionProcessor()
           entity_query, this)) {
     AutoExecuteQuery = executor;
 
-    SetProcessingPhase(EMassProcessingPhase::EndPhysics);
+    SetProcessingPhase(EMassProcessingPhase::PrePhysics);
     ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionDetection;
+    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::Movement);
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         set_execution_flags(EProcessorExecutionFlags::All);

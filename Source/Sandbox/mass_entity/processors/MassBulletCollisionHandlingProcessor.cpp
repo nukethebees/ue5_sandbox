@@ -53,7 +53,7 @@ UMassBulletCollisionHandlingProcessor::UMassBulletCollisionHandlingProcessor()
         entity_query, this);
     AutoExecuteQuery = executor;
 
-    SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+    SetProcessingPhase(EMassProcessingPhase::PrePhysics);
     ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionDetection);
     ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionHandling;
 
