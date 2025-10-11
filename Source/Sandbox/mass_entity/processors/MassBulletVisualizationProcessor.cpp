@@ -41,7 +41,7 @@ UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()
         UE::Mass::FQueryExecutor::CreateQuery<FMassBulletVisualizationExecutor>(entity_query, this);
     AutoExecuteQuery = executor;
 
-    SetProcessingPhase(EMassProcessingPhase::FrameEnd);
+    SetProcessingPhase(EMassProcessingPhase::PostPhysics);
     ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionHandling);
     ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionVisualization;
 

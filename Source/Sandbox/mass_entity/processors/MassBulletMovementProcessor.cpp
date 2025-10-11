@@ -3,7 +3,9 @@
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 
 void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletMovementExecutor::Execute"))
@@ -30,6 +32,7 @@ UMassBulletMovementProcessor::UMassBulletMovementProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::PrePhysics);
+    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::Movement;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         set_execution_flags(EProcessorExecutionFlags::All);

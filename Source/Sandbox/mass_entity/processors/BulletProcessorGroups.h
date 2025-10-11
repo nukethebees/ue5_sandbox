@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 namespace ml::ProcessorGroupNames {
+inline FName const Movement = FName(TEXT("Movement"));
 inline FName const CollisionDetection = FName(TEXT("CollisionDetection"));
 inline FName const CollisionHandling = FName(TEXT("CollisionHandling"));
 inline FName const CollisionVisualization = FName(TEXT("CollisionVisualization"));
