@@ -17,59 +17,54 @@
 void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))
     Super::Initialize(collection);
+    constexpr auto logger{NestedLogger<"Initialize">()};
 
     collection.InitializeDependency(UMassArchetypeSubsystem::StaticClass());
     collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
 
     (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
     (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
+    archetype_subsystem->on_mass_archetype_subsystem_ready.AddUObject(
+        this, &UMassBulletSubsystem::on_begin_play);
+
+    logger.log_display(TEXT("Initialised."));
 }
 void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::OnWorldBeginPlay"))
     constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
     Super::OnWorldBeginPlay(world);
+}
+void UMassBulletSubsystem::Deinitialize() {
+    FCoreDelegates::OnEndFrame.RemoveAll(this);
+    Super::Deinitialize();
+}
+
+void UMassBulletSubsystem::on_begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::on_begin_play"))
+    constexpr auto logger{NestedLogger<"on_begin_play">()};
 
     if (!initialise_asset_data()) {
         logger.log_warning(TEXT("Failed to load the asset data."));
         return;
     }
 
+    TRY_INIT_PTR(world_ptr, GetWorld());
+    auto& world{*world_ptr};
+
     TRY_INIT_PTR(mass_subsystem, world.GetSubsystem<UMassEntitySubsystem>());
     TRY_INIT_PTR(archetype_subsystem, world.GetSubsystem<UMassArchetypeSubsystem>());
-    auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
-
-    bullet_archetype = archetype_subsystem->get_bullet_archetype();
-    RETURN_IF_INVALID(bullet_archetype);
-
-    for (auto it{TActorIterator<AMassBulletVisualizationActor>(&world)}; it; ++it) {
-        visualization_actor = *it;
-        break;
-    }
-    RETURN_IF_NULLPTR(visualization_actor);
     RETURN_IF_NULLPTR(bullet_data);
-    RETURN_IF_NULLPTR(bullet_data->impact_effect);
 
-    auto impact_effect_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
-            bullet_data->impact_effect)};
-
-    auto viz_actor_handle{
-        entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
-            visualization_actor)};
-
-    auto damage_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDamageFragment>(
-        bullet_data->damage)};
-
-    shared_values.Add(impact_effect_handle);
-    shared_values.Add(viz_actor_handle);
-    shared_values.Add(damage_handle);
-    shared_values.Sort();
+    TRY_INIT_OPTIONAL(entity_def,
+                      archetype_subsystem->get_definition(bullet_data->GetPrimaryAssetId()));
+    bullet_definition = *entity_def;
 
     FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
-}
-void UMassBulletSubsystem::Deinitialize() {
-    FCoreDelegates::OnEndFrame.RemoveAll(this);
-    Super::Deinitialize();
+
+    logger.log_display(TEXT("Ready."));
 }
 bool UMassBulletSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"handle_assets_ready">()};
@@ -108,7 +103,6 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
     auto& state_frag = entity_manager.GetFragmentDataChecked<FMassBulletStateFragment>(entity);
     state_frag.hit_occurred = false;
 }
-
 void UMassBulletSubsystem::on_end_frame() {
     TRY_INIT_PTR(world, GetWorld());
 
@@ -127,7 +121,6 @@ void UMassBulletSubsystem::on_end_frame() {
 
     consume_lifecycle_requests(spawns.view, destroys.view);
 }
-
 void UMassBulletSubsystem::consume_lifecycle_requests(
     FBulletSpawnRequestView const& spawn_requests, std::span<FMassEntityHandle> destroy_requests) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::consume_lifecycle_requests"))
@@ -141,8 +134,7 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
         return;
     }
 
-    RETURN_IF_NULLPTR(visualization_actor);
-    RETURN_IF_INVALID(bullet_archetype);
+    RETURN_IF_INVALID(bullet_definition);
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
     auto& entity_manager{mass_subsystem->GetMutableEntityManager()};
@@ -178,8 +170,10 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
                 constexpr auto logger{NestedLogger<"consume_lifecycle_requests">()};
 
                 new_entities.Reset(0);
-                entity_manager.BatchCreateEntities(
-                    bullet_archetype, shared_values, remaining_spawn_requests, new_entities);
+                entity_manager.BatchCreateEntities(bullet_definition.archetype,
+                                                   bullet_definition.shared_fragments,
+                                                   remaining_spawn_requests,
+                                                   new_entities);
 
                 auto const n{new_entities.Num()};
                 for (int32 i{0}; i < n; ++i) {

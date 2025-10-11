@@ -13,9 +13,11 @@ struct FEntityDefinition {
     FEntityDefinition() = default;
     FEntityDefinition(FMassArchetypeHandle handle,
                       FMassArchetypeSharedFragmentValues shared_fragments)
-        : handle(handle)
+        : archetype(handle)
         , shared_fragments(shared_fragments) {}
 
-    FMassArchetypeHandle handle{};
+    FMassArchetypeHandle archetype{};
     FMassArchetypeSharedFragmentValues shared_fragments{};
+
+    bool IsValid() const { return archetype.IsValid(); }
 };
