@@ -3,7 +3,10 @@
 #include "CoreMinimal.h"
 #include "MassArchetypeTypes.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "UObject/PrimaryAssetId.h"
 
+#include "Sandbox/data_assets/BulletDataAssetIds.h"
+#include "Sandbox/mass_entity/EntityDefinition.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
@@ -22,6 +25,9 @@ class SANDBOX_API UMassArchetypeSubsystem
     virtual void Deinitialize() override;
   private:
     void build_archetypes(FMassEntityManager& entity_manager);
+    void build_definitions();
 
+    TArray<FEntityDefinition> definitions{};
+    TMap<FPrimaryAssetId, int32> definition_indexes{};
     FMassArchetypeHandle bullet_archetype;
 };
