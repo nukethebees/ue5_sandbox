@@ -26,10 +26,17 @@ class SANDBOX_API URotationManagerSubsystem
     void add(USceneComponent& scene_component, URotatingActorComponent& component);
     void add(USceneComponent& scene_component, float speed);
     void remove(URotatingActorComponent& component);
-    virtual void Tick(float DeltaTime) override;
+    void remove(USceneComponent& component);
+
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;
+  protected:
+    virtual void Tick(float DeltaTime) override;
   private:
+    void update_tick_enabled() {
+        tick_enabled = dynamic_components.IsEmpty() && static_scene_components.IsEmpty();
+    }
+
     // Dynamic rotation arrays - components can change speed
     TArray<TWeakObjectPtr<USceneComponent>> dynamic_scene_components;
     TArray<URotatingActorComponent*> dynamic_components;

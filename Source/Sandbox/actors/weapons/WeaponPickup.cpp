@@ -6,32 +6,38 @@
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
 #include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
 AWeaponPickup::AWeaponPickup()
-    : weapon_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh")))
-    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent")))
+    : collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent")))
     , rotator(CreateDefaultSubobject<URotatingActorComponent>(TEXT("RotationComponent"))) {
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent->SetMobility(EComponentMobility::Movable);
 
-    weapon_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
 
     rotator->autoregster_parent_root = false;
 
     PrimaryActorTick.bCanEverTick = false;
+
+    spawn_parameters.Name = TEXT("Weapon");
+    spawn_parameters.Owner = this;
+    spawn_parameters.NameMode = FActorSpawnParameters::ESpawnActorNameMode::Requested;
 }
 void AWeaponPickup::OnConstruction(FTransform const& Transform) {
-    RETURN_IF_NULLPTR(weapon_class);
-    RETURN_IF_NULLPTR(weapon_mesh);
+    Super::OnConstruction(Transform);
 
-    TRY_INIT_PTR(weapon_cdo, weapon_class->GetDefaultObject<AWeaponBase>());
-    TRY_INIT_PTR(display_mesh, weapon_cdo->get_display_mesh());
+#if WITH_EDITOR
+    if (this->bIsEditorPreviewActor) {
+        return;
+    }
+#endif
 
-    weapon_mesh->SetStaticMesh(display_mesh);
+    TRY_INIT_PTR(world, GetWorld());
+    update_weapon(*world);
 }
 void AWeaponPickup::BeginPlay() {
     Super::BeginPlay();
@@ -40,12 +46,33 @@ void AWeaponPickup::BeginPlay() {
     RETURN_IF_NULLPTR(collision_box);
     collision_box->OnComponentBeginOverlap.AddDynamic(this, &AWeaponPickup::on_overlap_begin);
 
-    RETURN_IF_NULLPTR(weapon_mesh);
     RETURN_IF_NULLPTR(rotator);
+    RETURN_IF_NULLPTR(spawned_weapon);
 
-    rotator->register_scene_component(*weapon_mesh);
+    rotator->register_scene_component(*spawned_weapon->GetRootComponent());
 }
+void AWeaponPickup::spawn_weapon(UWorld& world) {
+    spawned_weapon = world.SpawnActor<AWeaponBase>(weapon_class, FTransform{}, spawn_parameters);
+    RETURN_IF_NULLPTR(spawned_weapon);
+    attach_weapon();
+}
+void AWeaponPickup::update_weapon(UWorld& world) {
+    RETURN_IF_NULLPTR(weapon_class);
+    RETURN_IF_NULLPTR(weapon_class);
 
+    if (!spawned_weapon || (spawned_weapon->GetClass() != weapon_class)) {
+        spawn_weapon(world);
+        return;
+    }
+
+    attach_weapon();
+}
+void AWeaponPickup::attach_weapon() {
+    constexpr bool weld_to_parent{false};
+    spawned_weapon->SetOwner(this);
+    spawned_weapon->AttachToActor(
+        this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, weld_to_parent));
+}
 void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
                                      AActor* other_actor,
                                      UPrimitiveComponent* other_component,
@@ -53,12 +80,17 @@ void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
                                      bool from_sweep,
                                      FHitResult const& sweep_result) {
     constexpr auto logger{NestedLogger<"on_overlap_begin">()};
-    logger.log_display(TEXT("Picking up weapon"));
+    logger.log_verbose(TEXT("Picking up weapon"));
 
     RETURN_IF_NULLPTR(other_actor);
+    RETURN_IF_NULLPTR(spawned_weapon);
+    TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(weapon_component, other_actor->GetComponentByClass<UPawnWeaponComponent>());
+    TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
 
-    if (weapon_component->pickup_new_weapon(weapon_class)) {
+    spawned_weapon->DetachFromActor(FDetachmentTransformRules::KeepRelativeTransform);
+    if (weapon_component->pickup_new_weapon(*spawned_weapon)) {
+        rotation_manager->remove(*spawned_weapon->GetRootComponent());
         Destroy();
     } else {
         logger.log_error(TEXT("Failed to pickup weapon"));
