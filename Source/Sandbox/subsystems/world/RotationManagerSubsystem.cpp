@@ -10,6 +10,11 @@ void URotationManagerSubsystem::add(USceneComponent& scene_component,
 
     tick_enabled = true;
 }
+void URotationManagerSubsystem::add(USceneComponent& scene_component, float speed) {
+    static_scene_components.Add(&scene_component);
+    static_speeds.Add(speed);
+    tick_enabled = true;
+}
 
 void URotationManagerSubsystem::remove(URotatingActorComponent& rotating_component) {
     // Remove from dynamic arrays
@@ -21,15 +26,31 @@ void URotationManagerSubsystem::remove(URotatingActorComponent& rotating_compone
         }
     }
 
-    // Check if we should disable ticking
-    tick_enabled = dynamic_components.IsEmpty() && static_scene_components.IsEmpty();
+    update_tick_enabled();
 }
-void URotationManagerSubsystem::add(USceneComponent& scene_component, float speed) {
-    static_scene_components.Add(&scene_component);
-    static_speeds.Add(speed);
-    tick_enabled = true;
+void URotationManagerSubsystem::remove(USceneComponent& component) {
+    for (int32 i{dynamic_scene_components.Num() - 1}; i >= 0; --i) {
+        if (dynamic_scene_components[i] == &component) {
+            dynamic_scene_components.RemoveAtSwap(i);
+            dynamic_components.RemoveAtSwap(i);
+            break;
+        }
+    }
+
+    for (int32 i{static_scene_components.Num() - 1}; i >= 0; --i) {
+        if (static_scene_components[i] == &component) {
+            static_scene_components.RemoveAtSwap(i);
+            static_speeds.RemoveAtSwap(i);
+            break;
+        }
+    }
+
+    update_tick_enabled();
 }
 
+TStatId URotationManagerSubsystem::GetStatId() const {
+    RETURN_QUICK_DECLARE_CYCLE_STAT(URotationManagerSubsystem, STATGROUP_Tickables);
+}
 void URotationManagerSubsystem::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
@@ -64,8 +85,4 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
     if (!has_valid_actors) {
         tick_enabled = false;
     }
-}
-
-TStatId URotationManagerSubsystem::GetStatId() const {
-    RETURN_QUICK_DECLARE_CYCLE_STAT(URotationManagerSubsystem, STATGROUP_Tickables);
 }

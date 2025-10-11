@@ -21,9 +21,12 @@ class SANDBOX_API AWeaponPickup
   public:
     AWeaponPickup();
   protected:
-    virtual void OnConstruction(FTransform const& Transform);
+    virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
+    void spawn_weapon(UWorld& world);
+    void update_weapon(UWorld& world);
+    void attach_weapon();
     UFUNCTION()
     void on_overlap_begin(UPrimitiveComponent* overlapped_component,
                           AActor* other_actor,
@@ -32,12 +35,14 @@ class SANDBOX_API AWeaponPickup
                           bool from_sweep,
                           FHitResult const& sweep_result);
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     TSubclassOf<AWeaponBase> weapon_class{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-    UStaticMeshComponent* weapon_mesh{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     UBoxComponent* collision_box{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
     URotatingActorComponent* rotator{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+    AWeaponBase* spawned_weapon{nullptr};
+
+    FActorSpawnParameters spawn_parameters{};
 };

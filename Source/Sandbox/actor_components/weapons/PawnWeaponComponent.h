@@ -12,6 +12,7 @@
 class USceneComponent;
 class UWeaponComponent;
 class AWeaponBase;
+class UInventoryComponent;
 
 UCLASS()
 class SANDBOX_API UPawnWeaponComponent
@@ -34,6 +35,7 @@ class SANDBOX_API UPawnWeaponComponent
     void equip_weapon(AWeaponBase* weapon);
     void unequip_weapon();
     bool pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class);
+    bool pickup_new_weapon(AWeaponBase& weapon);
 
     void set_spawn_parameters(FActorSpawnParameters new_value) { spawn_parameters = new_value; }
     auto get_spawn_parameters() const { return spawn_parameters; }
@@ -44,17 +46,20 @@ class SANDBOX_API UPawnWeaponComponent
     void set_attach_location(USceneComponent* new_value);
     auto get_attach_location() const { return attach_location; }
   private:
+    bool pickup_new_weapon(AWeaponBase& weapon,
+                           UInventoryComponent& inventory_component,
+                           USceneComponent& location);
     AWeaponBase* spawn_weapon(TSubclassOf<AWeaponBase> weapon_class, AActor& owner, UWorld& world);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
   protected:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     USceneComponent* attach_location{nullptr};
 
     FActorSpawnParameters spawn_parameters;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapons")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     FTransform spawn_transform{};
 };
