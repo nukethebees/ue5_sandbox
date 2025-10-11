@@ -123,48 +123,62 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::on_phase_end"))
     constexpr auto logger{NestedLogger<"on_phase_end">()};
 
-    auto result{transform_queue.swap_and_consume()};
+    static FString const queue_name{TEXT("Transform")};
 
-    if (result.full_count > 0) {
-        logger.log_warning(TEXT("Transform queue was full %zu times."), result.full_count);
-    }
-    if (result.uninitialised_count > 0) {
-        logger.log_error(TEXT("Transform queue was uninitialised %zu times."),
-                         result.uninitialised_count);
-    }
+    auto const transform_result{transform_queue.swap_and_consume()};
+    transform_result.log_results(queue_name);
+    auto const n_to_hide{consume_killed_count()};
 
     RETURN_IF_NULLPTR(ismc);
 
-    auto const n_transforms{static_cast<int32>(result.view.size())};
+    auto const n_to_transform{static_cast<int32>(transform_result.view.size())};
+    auto const n_changes{n_to_hide + n_to_transform};
 
 #if WITH_EDITOR
-    num_flying = n_transforms;
+    num_flying = n_to_transform;
 #endif
 
-    if (n_transforms == 0) {
+    if (n_changes == 0) {
         return;
     }
 
-    if (n_transforms > current_instance_count) {
-        auto const to_add{n_transforms - current_instance_count};
+    if (n_to_transform > current_instance_count) {
+        auto const to_add{n_to_transform - current_instance_count};
         logger.log_display(
-            TEXT("Growing from %d to %d."), current_instance_count, n_transforms, to_add);
+            TEXT("Growing from %d to %d."), current_instance_count, n_to_transform, to_add);
         add_instances(to_add);
     }
 
     if (!logger.log_category.IsSuppressed(ELogVerbosity::VeryVerbose)) {
-        logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_transforms);
-        for (auto const& xform : result.view) {
+        logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_to_transform);
+        for (auto const& xform : transform_result.view) {
             logger.log_very_verbose(TEXT("%s\n"), *xform.ToString());
         }
     }
 
     constexpr int32 start_index{0};
     constexpr bool world_space{true};
-    constexpr bool mark_dirty{true};
     constexpr bool teleport{true};
+    bool const mark_dirty_on_active_update{n_to_transform && !n_to_hide};
+    bool const mark_dirty_on_hidden_update{!n_to_transform && n_to_hide};
+    bool const mark_dirty_at_end{n_to_transform && n_to_hide};
 
-    TArrayView<FTransform const> transform_view(result.view.data(), n_transforms);
-    ismc->BatchUpdateInstancesTransforms(
-        start_index, transform_view, world_space, mark_dirty, teleport);
+    if (n_to_transform) {
+        TArrayView<FTransform const> transform_view(transform_result.view.data(), n_to_transform);
+        ismc->BatchUpdateInstancesTransforms(
+            start_index, transform_view, world_space, mark_dirty_on_active_update, teleport);
+    }
+
+    if (n_to_hide) {
+        ismc->BatchUpdateInstancesTransform(n_to_transform,
+                                            n_to_hide,
+                                            get_hidden_transform(),
+                                            world_space,
+                                            mark_dirty_on_hidden_update,
+                                            teleport);
+    }
+
+    if (mark_dirty_at_end) {
+        ismc->MarkRenderInstancesDirty();
+    }
 }
