@@ -92,11 +92,12 @@ void AMyPlayerController::SetupInputComponent() {
         bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
         bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
         bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
+        bind(input.reload_weapon, Started, &AMyPlayerController::reload_weapon);
 
         // Interaction
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
-        bind(input.interact, ETriggerEvent::Started, &AMyPlayerController::interact);
+        bind(input.interact, Started, &AMyPlayerController::interact);
     } else {
         log_warning(TEXT("Did not get the UEnhancedInputComponent."));
     }
@@ -159,6 +160,9 @@ void AMyPlayerController::unequip_weapon() {
 }
 void AMyPlayerController::drop_weapon() {
     FORWARD_CALL_TO_CHARACTER(drop_weapon);
+}
+void AMyPlayerController::reload_weapon() {
+    FORWARD_CALL_TO_CHARACTER(reload_weapon);
 }
 
 // Interaction

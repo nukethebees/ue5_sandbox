@@ -178,6 +178,8 @@ class SANDBOX_API AMyCharacter
     void unequip_weapon();
     UFUNCTION()
     void drop_weapon();
+    UFUNCTION()
+    void reload_weapon();
 
     // Torch
     UFUNCTION()

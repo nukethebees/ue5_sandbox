@@ -5,6 +5,7 @@
 
 #include "UObject/Interface.h"
 
+#include "Sandbox/data/weapons/AmmoReloadResult.h"
 #include "Sandbox/enums/AmmoType.h"
 #include "Sandbox/typedefs/Ammo.h"
 
@@ -28,7 +29,7 @@ class IWeaponInterface {
     virtual void stop_firing() = 0;
 
     UFUNCTION()
-    virtual void reload() = 0;
+    virtual FAmmoReloadResult reload(FAmmo ammo_offered) = 0;
     UFUNCTION()
     virtual bool can_reload() const = 0;
 

@@ -47,7 +47,7 @@ void UPawnWeaponComponent::stop_firing() {
 
 void UPawnWeaponComponent::reload() {
     RETURN_IF_NULLPTR(active_weapon);
-    return active_weapon->reload();
+    active_weapon->reload(FAmmo{1000.0f});
 }
 bool UPawnWeaponComponent::can_reload() const {
     RETURN_VALUE_IF_NULLPTR(active_weapon, false);

@@ -56,6 +56,8 @@ struct FMyPlayerControllerInputActions {
     UInputAction* unequip_weapon{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* drop_weapon{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+    UInputAction* reload_weapon{nullptr};
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* interact{nullptr};
@@ -102,6 +104,8 @@ class SANDBOX_API AMyPlayerController
     void unequip_weapon();
     UFUNCTION()
     void drop_weapon();
+    UFUNCTION()
+    void reload_weapon();
 
     // Interaction
     UFUNCTION()
