@@ -14,7 +14,6 @@ UPawnWeaponComponent::UPawnWeaponComponent()
     spawn_transform = FTransform{rotation, translation, scale};
 
     spawn_parameters.Name = TEXT("SpawnedGun");
-    spawn_parameters.Owner = GetOwner();
     spawn_parameters.NameMode = FActorSpawnParameters::ESpawnActorNameMode::Requested;
 }
 
