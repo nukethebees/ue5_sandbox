@@ -26,11 +26,11 @@ class SANDBOX_API UInteractorComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float interaction_range{200.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    float forward_offset{50.0f};
+    float forward_offset{00.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    float height_offset{50.0f};
+    float height_offset{00.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    float capsule_radius{40.0f};
+    float capsule_radius{5.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float capsule_half_height{80.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
