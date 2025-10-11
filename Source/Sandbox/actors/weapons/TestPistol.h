@@ -19,7 +19,7 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
     virtual void start_firing() override;
     virtual void sustain_firing(float delta_time) override { return; }
     virtual void stop_firing() override { return; }
-    virtual bool can_fire() const override { return true; }
+    virtual bool can_fire() const override { return ammo > FAmmo{0}; }
 
     virtual void reload() override {
         if (!can_reload()) {
