@@ -4,12 +4,13 @@
 #include <cstddef>
 
 #include "CoreMinimal.h"
+#include "NiagaraDataChannelPublic.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "NiagaraDataChannelPublic.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "BulletSparkEffectSubsystem.generated.h"
 
@@ -30,7 +31,7 @@ struct FSparkEffectView {
 UCLASS()
 class SANDBOX_API UBulletSparkEffectSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem"> {
+    , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     static constexpr std::size_t n_queue_elements{30000};

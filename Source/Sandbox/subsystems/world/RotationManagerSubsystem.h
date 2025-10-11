@@ -1,8 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/enums/RotationType.h"
 #include "Subsystems/WorldSubsystem.h"
+
+#include "Sandbox/enums/RotationType.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "RotationManagerSubsystem.generated.h"
 
@@ -15,7 +18,9 @@ class URotatingActorComponent;
 // Dynamic rotations: can change speed, components remain alive
 // Static rotations: fixed speed, components can be destroyed after registration
 UCLASS()
-class SANDBOX_API URotationManagerSubsystem : public UTickableWorldSubsystem {
+class SANDBOX_API URotationManagerSubsystem
+    : public UTickableWorldSubsystem
+    , public ml::LogMsgMixin<"URotationManagerSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     void add(USceneComponent& scene_component, URotatingActorComponent& component);

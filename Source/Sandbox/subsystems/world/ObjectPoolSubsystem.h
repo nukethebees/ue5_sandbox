@@ -1,14 +1,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystemCore.h"
 #include "Subsystems/WorldSubsystem.h"
+
+#include "Sandbox/data/pool/PoolConfig.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/subsystems/world/ObjectPoolSubsystemCore.h"
 
 #include "ObjectPoolSubsystem.generated.h"
 
 UCLASS()
-class SANDBOX_API UObjectPoolSubsystem : public UWorldSubsystem {
+class SANDBOX_API UObjectPoolSubsystem
+    : public UWorldSubsystem
+    , public ml::LogMsgMixin<"UObjectPoolSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     using pool_type = UObjectPoolSubsystemCore<FBulletPoolConfig>;
