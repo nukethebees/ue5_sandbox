@@ -18,7 +18,7 @@ class SANDBOX_API UInteractorComponent
   public:
     UInteractorComponent();
   public:
-    UFUNCTION(BlueprintCallable)
+    void try_interact(FVector sweep_origin, FVector sweep_direction);
     void try_interact();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
