@@ -3,11 +3,13 @@
 #include "Sandbox/data/trigger/TriggerCapabilities.h"
 #include "Sandbox/subsystems/world/TriggerSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UInteractorComponent::try_interact() {
+void UInteractorComponent::try_interact(FVector sweep_origin, FVector sweep_direction) {
     static constexpr auto LOG{NestedLogger<"try_interact">()};
 
     LOG.log_verbose(TEXT("Start."));
@@ -17,16 +19,12 @@ void UInteractorComponent::try_interact() {
         return;
     }
 
-    auto* const world{GetWorld()};
-    auto* const owner{GetOwner()};
-    if (!world) {
-        LOG.log_warning(TEXT("Could not get world pointer."));
-        return;
-    }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(owner, GetOwner());
 
-    auto const forward{owner->GetActorForwardVector()};
+    auto const forward{sweep_direction};
     FVector const vertical_offset{0.0f, 0.0f, height_offset};
-    auto const start{owner->GetActorLocation() + forward * forward_offset + vertical_offset};
+    auto const start{sweep_origin + forward * forward_offset + vertical_offset};
     auto const end{start + forward * interaction_range};
 
     TArray<FHitResult> hit_results;
@@ -73,7 +71,7 @@ void UInteractorComponent::try_interact() {
     }
 
     // Try new trigger system first
-    auto* subsystem{world->GetSubsystem<UTriggerSubsystem>()};
+    TRY_INIT_PTR(subsystem, world->GetSubsystem<UTriggerSubsystem>());
     if (subsystem) {
         FTriggeringSource source{.type = ETriggerSourceType::PlayerInteraction,
                                  .capabilities = {},
@@ -102,8 +100,10 @@ void UInteractorComponent::try_interact() {
         } else {
             LOG.log_verbose(TEXT("No actors triggered."));
         }
-
-    } else {
-        LOG.log_warning(TEXT("No UTriggerSubsystem found"));
     }
+}
+
+void UInteractorComponent::try_interact() {
+    TRY_INIT_PTR(owner, GetOwner());
+    try_interact(owner->GetActorLocation(), owner->GetActorForwardVector());
 }
