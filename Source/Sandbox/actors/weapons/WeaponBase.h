@@ -25,7 +25,7 @@ class SANDBOX_API AWeaponBase
     virtual void stop_firing() override {};
 
     UFUNCTION()
-    virtual void reload() override {};
+    virtual FAmmoReloadResult reload(FAmmo ammo_offered) override { return {}; };
     UFUNCTION()
     virtual bool can_reload() const override { return false; };
 

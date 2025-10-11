@@ -236,6 +236,11 @@ void AMyCharacter::drop_weapon() {
     RETURN_IF_NULLPTR(inventory);
     log_display(TEXT("drop_weapon"));
 }
+void AMyCharacter::reload_weapon() {
+    RETURN_IF_NULLPTR(weapon_component);
+    log_display(TEXT("reload_weapon"));
+    weapon_component->reload();
+}
 
 // Torch
 void AMyCharacter::aim_torch(FVector const& world_location) {
