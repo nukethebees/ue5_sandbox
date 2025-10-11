@@ -135,8 +135,9 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
 
     auto const n_destroy_requests{static_cast<int32>(destroy_requests.size())};
     auto const n_spawn_requests{static_cast<int32>(spawn_requests.transforms.size())};
+    auto const n_requests{n_spawn_requests + n_destroy_requests};
 
-    if ((n_spawn_requests + n_destroy_requests) == 0) {
+    if (n_requests == 0) {
         return;
     }
 
