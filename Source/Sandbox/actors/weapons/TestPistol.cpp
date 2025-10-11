@@ -34,32 +34,6 @@ void ATestPistol::start_firing() {
     mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
 }
 
-void ATestPistol::sustain_firing(float delta_time) {
-    return;
-}
-void ATestPistol::stop_firing() {
-    return;
-}
-
-void ATestPistol::reload() {}
-bool ATestPistol::can_reload() const {
-    return false;
-}
-
-bool ATestPistol::can_fire() const {
-    return false;
-}
-EAmmoType ATestPistol::get_ammo_type() const {
-    return EAmmoType::Bullets;
-}
-
-FAmmo ATestPistol::get_current_ammo() const {
-    return FAmmo{};
-}
-FAmmo ATestPistol::get_max_ammo() const {
-    return FAmmo{};
-}
-
 UStaticMesh* ATestPistol::get_display_mesh() const {
     RETURN_VALUE_IF_NULLPTR(gun_mesh_component, nullptr);
     return gun_mesh_component->GetStaticMesh();
