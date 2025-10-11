@@ -12,6 +12,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
+#include "Sandbox/mass_entity/EntityDefinition.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
@@ -55,6 +56,8 @@ class SANDBOX_API UMassBulletSubsystem
     virtual void OnWorldBeginPlay(UWorld& in_world) override;
     virtual void Deinitialize() override;
   private:
+    void on_begin_play();
+
     [[nodiscard]] bool initialise_asset_data();
     void configure_active_bullet(FMassEntityManager& entity_manager,
                                  FMassEntityHandle entity,
@@ -65,9 +68,8 @@ class SANDBOX_API UMassBulletSubsystem
                                     std::span<FMassEntityHandle> destroy_requests);
 
     TArray<FMassEntityHandle> free_list;
-    FMassArchetypeHandle bullet_archetype;
+    FEntityDefinition bullet_definition{};
     AMassBulletVisualizationActor* visualization_actor{nullptr};
-    FMassArchetypeSharedFragmentValues shared_values{};
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
     TArray<FMassEntityHandle> new_entities{};
 

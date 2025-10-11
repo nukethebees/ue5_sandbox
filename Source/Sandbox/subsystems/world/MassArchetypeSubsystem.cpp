@@ -19,12 +19,26 @@ void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
-
     auto& entity_manager{entity_subsystem->GetMutableEntityManager()};
-    build_archetypes(entity_manager);
-    build_definitions(entity_manager);
-}
 
+    build_archetypes(entity_manager);
+
+    logger.log_display(TEXT("Finished."));
+}
+void UMassArchetypeSubsystem::OnWorldBeginPlay(UWorld& in_world) {
+    Super::OnWorldBeginPlay(in_world);
+    constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
+    auto& entity_manager{entity_subsystem->GetMutableEntityManager()};
+
+    build_definitions(entity_manager);
+
+    on_mass_archetype_subsystem_ready.Broadcast();
+
+    logger.log_display(TEXT("Ready."));
+}
 void UMassArchetypeSubsystem::Deinitialize() {
     Super::Deinitialize();
 
@@ -34,6 +48,14 @@ void UMassArchetypeSubsystem::Deinitialize() {
 auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHandle {
     return bullet_archetype;
 }
+auto UMassArchetypeSubsystem::get_definition(FPrimaryAssetId id)
+    -> std::optional<FEntityDefinition> {
+    if (auto i{definition_indexes.Find(id)}) {
+        return definitions[*i];
+    }
+    return {};
+}
+
 void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manager) {
     constexpr auto logger{NestedLogger<"build_archetypes">()};
 
