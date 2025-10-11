@@ -8,7 +8,8 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-ATestPistol::ATestPistol() {
+ATestPistol::ATestPistol()
+    : ammo{max_ammo} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent->SetMobility(EComponentMobility::Movable);
 
@@ -20,6 +21,10 @@ ATestPistol::ATestPistol() {
 }
 
 void ATestPistol::start_firing() {
+    if (!can_fire()) {
+        return;
+    }
+
     RETURN_IF_NULLPTR(fire_point_arrow);
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
@@ -32,6 +37,8 @@ void ATestPistol::start_firing() {
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
     mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
+
+    ammo -= FAmmo{1.0f};
 }
 
 UStaticMesh* ATestPistol::get_display_mesh() const {
