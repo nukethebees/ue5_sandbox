@@ -1,5 +1,7 @@
 #include "Sandbox/actor_components/inventory/InventoryComponent.h"
 
+#include "Algo/RandomShuffle.h"
+
 #include "Sandbox/actors/weapons/WeaponBase.h"
 
 UInventoryComponent::UInventoryComponent() {}
@@ -20,7 +22,16 @@ bool UInventoryComponent::item_fits(IInventoryItem const& item) const {
 AWeaponBase* UInventoryComponent::get_random_weapon() {
     log_display(TEXT("Getting random weapon."));
 
-    for (auto& slot : slots) {
+    TArray<int32> indexes;
+    auto const n{slots.Num()};
+    indexes.Reserve(n);
+    for (int32 i{0}; i < n; ++i) {
+        indexes.Add(i);
+    }
+    Algo::RandomShuffle(indexes);
+
+    for (int32 i : indexes) {
+        auto& slot{slots[i]};
         if (slot.item->is_weapon()) {
             return Cast<AWeaponBase>(slot.item.GetObject());
         }
