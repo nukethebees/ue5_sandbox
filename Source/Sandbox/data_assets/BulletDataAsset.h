@@ -30,6 +30,9 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     FHealthChange damage{10.0f, EHealthChangeType::Damage};
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    float default_speed{5000.0f};
+
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         FPrimaryAssetType const asset_type{TEXT("Bullet")};
         FName const asset_name{id.IsNone() ? GetFName() : id};
