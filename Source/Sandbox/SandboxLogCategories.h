@@ -2,6 +2,8 @@
 
 #include "Logging/LogMacros.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxFrameCount, Log, All);
+
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxCore, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxUI, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxMassEntity, Log, All);

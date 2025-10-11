@@ -65,7 +65,8 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
     }};
 
     if (valid_verbosity) {
-        set(LogSandboxCore,
+        set(LogSandboxFrameCount,
+            LogSandboxCore,
             LogSandboxUI,
             LogSandboxMassEntity,
             LogSandboxActor,
