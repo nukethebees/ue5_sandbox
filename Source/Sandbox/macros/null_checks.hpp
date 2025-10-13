@@ -14,20 +14,26 @@
         }                                                                           \
     } while (0)
 
+#define CONTINUE_AND_WARN_IF_EXPR(VAR_NAME, BOOL_EXPR, NULL_FORM) \
+    if (BOOL_EXPR) {                                              \
+        ml::log_value_is_x(TEXT(#VAR_NAME), TEXT(NULL_FORM));     \
+        continue;                                                 \
+    }
+
 // Pointers
 // -------------------------------------------------------------------------------------------------
 #define RETURN_IF_NULLPTR(VAR_NAME) RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !VAR_NAME, "nullptr", )
-
 #define RETURN_VALUE_IF_NULLPTR(VAR_NAME, RETURN_VALUE) \
     RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !VAR_NAME, "nullptr", RETURN_VALUE)
 
 #define TRY_INIT_PTR(VAR_NAME, PTR_EXPR) \
     auto VAR_NAME{PTR_EXPR};             \
     RETURN_IF_NULLPTR(VAR_NAME)
-
 #define INIT_PTR_OR_RETURN_VALUE(VAR_NAME, PTR_EXPR, RETURN_VALUE) \
     auto VAR_NAME{PTR_EXPR};                                       \
     RETURN_VALUE_IF_NULLPTR(VAR_NAME, RETURN_VALUE)
+
+#define CONTINUE_IF_NULLPTR(VAR_NAME) CONTINUE_AND_WARN_IF_EXPR(VAR_NAME, !VAR_NAME, "nullptr")
 
 // Behaviour Tree tasks
 // -------------------------------------------------------------------------------------------------
