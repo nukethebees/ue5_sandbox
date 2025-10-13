@@ -77,26 +77,26 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
                                                    float bullet_speed) {
     constexpr auto logger{NestedLogger<"configure_active_bullet">()};
 
-    auto& transform_frag{
-        entity_manager.GetFragmentDataChecked<FMassBulletTransformFragment>(entity)};
+    auto get_frag{
+        [&]<typename T>() -> auto& { return entity_manager.GetFragmentDataChecked<T>(entity); }};
+#define GET_FRAG(T) get_frag.operator()<T>()
+
+    auto& transform_frag{GET_FRAG(FMassBulletTransformFragment)};
     transform_frag.transform = transform;
 
-    auto& velocity_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletVelocityFragment>(entity);
+    auto& velocity_frag{GET_FRAG(FMassBulletVelocityFragment)};
     auto const velocity{transform.Rotator().Vector().GetSafeNormal() * bullet_speed};
     velocity_frag.velocity = velocity;
 
-    auto& last_pos_frag =
-        entity_manager.GetFragmentDataChecked<FMassBulletLastPositionFragment>(entity);
+    auto& last_pos_frag{GET_FRAG(FMassBulletLastPositionFragment)};
     last_pos_frag.last_position = transform.GetLocation();
 
-    auto& hit_info_frag = entity_manager.GetFragmentDataChecked<FMassBulletHitInfoFragment>(entity);
-    hit_info_frag.hit_location = FVector::ZeroVector;
-    hit_info_frag.hit_normal = FVector::ZeroVector;
-    hit_info_frag.hit_actor = nullptr;
+    auto& hit_info_frag{GET_FRAG(FMassBulletHitInfoFragment)};
+    hit_info_frag = {FVector::ZeroVector, FVector::ZeroVector, nullptr};
 
-    auto& state_frag = entity_manager.GetFragmentDataChecked<FMassBulletStateFragment>(entity);
+    auto& state_frag{GET_FRAG(FMassBulletStateFragment)};
     state_frag.hit_occurred = false;
+#undef GET_FRAG
 }
 void UMassBulletSubsystem::on_end_frame() {
     TRY_INIT_PTR(world, GetWorld());
