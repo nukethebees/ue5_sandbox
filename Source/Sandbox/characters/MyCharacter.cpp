@@ -203,7 +203,7 @@ void AMyCharacter::attack_started() {
     RETURN_IF_NULLPTR(weapon_component);
     weapon_component->start_firing();
 }
-void AMyCharacter::attack_continued() {
+void AMyCharacter::attack_continued(float delta_time) {
     RETURN_IF_NULLPTR(weapon_component);
     weapon_component->sustain_firing(0.1f);
 }
