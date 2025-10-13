@@ -61,10 +61,9 @@ int32 AMassBulletVisualizationActor::add_new_mesh(UBulletDataAsset& bullet_data)
     ismc->SetCullDistances(cull_min_distance, cull_max_distance);
 
     RETURN_VALUE_IF_NULLPTR(bullet_data.mesh, -1);
-    auto& mesh{*bullet_data.mesh};
-
-    ismc->SetStaticMesh(&mesh);
-    ismc->SetMaterial(0, mesh.GetMaterial(0));
+    RETURN_VALUE_IF_NULLPTR(bullet_data.material, -1);
+    ismc->SetStaticMesh(bullet_data.mesh);
+    ismc->SetMaterial(0, bullet_data.material);
 
     // Add the other elements to the arrays
     auto& queue{transform_queues.Emplace_GetRef()};
