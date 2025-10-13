@@ -65,9 +65,6 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     UInstancedStaticMeshComponent* ismc{nullptr};
 
-    UPROPERTY(VisibleAnywhere, Category = "Bullets")
-    UBulletDataAsset* bullet_data;
-
     ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
