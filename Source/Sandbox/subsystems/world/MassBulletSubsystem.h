@@ -9,12 +9,14 @@
 #include "MassEntityTypes.h"
 #include "MassSubsystemBase.h"
 
+#include "Sandbox/actors/MassBulletSubsystemData.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/utilities/world.h"
 
 #include "MassBulletSubsystem.generated.h"
 
@@ -60,6 +62,12 @@ class SANDBOX_API UMassBulletSubsystem
     }
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
         (void)destroy_queue.enqueue(handle, bullet_type);
+    }
+    auto* get_data_actor() {
+        if (auto* world{GetWorld()}) {
+            return ml::get_first_actor<AMassBulletSubsystemData>(*world)
+        }
+        return nullptr;
     }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;

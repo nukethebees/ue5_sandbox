@@ -6,7 +6,6 @@
 #include "MassCommands.h"
 #include "MassEntitySubsystem.h"
 
-#include "Sandbox/actors/MassBulletSubsystemData.h"
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
@@ -50,28 +49,11 @@ bool UMassBulletSubsystem::initialise_asset_data() {
     INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
     INIT_PTR_OR_RETURN_VALUE(
         archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>(), false);
-
-    AMassBulletSubsystemData* data_actor{nullptr};
-    for (TActorIterator<AMassBulletSubsystemData> it{world}; it; ++it) {
-        data_actor = *it;
-        break;
-    }
-
-    if (!data_actor) {
-        logger.log_error(TEXT("MassBulletSubsystemData actor not found in level."));
-        return false;
-    }
-
-    if (data_actor->bullet_types.IsEmpty()) {
-        logger.log_warning(TEXT("MassBulletSubsystemData has no bullet types configured."));
-        return false;
-    }
+    INIT_PTR_OR_RETURN_VALUE(data_actor, get_data_actor(), false);
+    RETURN_VALUE_IF_TRUE(data_actor->bullet_types.IsEmpty(), false);
 
     for (auto const& bullet_data : data_actor->bullet_types) {
-        if (!bullet_data) {
-            logger.log_warning(TEXT("Null bullet data asset in MassBulletSubsystemData."));
-            continue;
-        }
+        CONTINUE_IF_NULLPTR(bullet_data);
 
         FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
         INIT_OPTIONAL_OR_RETURN_VALUE(
@@ -81,10 +63,7 @@ bool UMassBulletSubsystem::initialise_asset_data() {
         logger.log_display(TEXT("Loaded bullet type: %s"), *asset_id.ToString());
     }
 
-    if (bullet_definitions.IsEmpty()) {
-        logger.log_error(TEXT("No valid bullet definitions loaded."));
-        return false;
-    }
+    RETURN_VALUE_IF_TRUE(bullet_definitions.IsEmpty(), false);
 
     return true;
 }
