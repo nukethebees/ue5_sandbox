@@ -19,3 +19,6 @@
 
 #undef RETURN_IF_TRUE
 #undef RETURN_IF_FALSE
+
+#undef CONTINUE_IF_TRUE
+#undef CONTINUE_IF_FALSE
