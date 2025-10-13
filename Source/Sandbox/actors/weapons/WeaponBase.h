@@ -25,16 +25,16 @@ class SANDBOX_API AWeaponBase
     virtual void stop_firing() override {};
 
     UFUNCTION()
-    virtual FAmmoReloadResult reload(FAmmo ammo_offered) override { return {}; };
+    virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) override { return {}; };
     UFUNCTION()
     virtual bool can_reload() const override { return false; };
 
     UFUNCTION()
     virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; };
     UFUNCTION()
-    virtual FAmmo get_current_ammo() const override { return FAmmo{}; };
+    virtual FAmmoData get_current_ammo() const override { return FAmmoData{}; };
     UFUNCTION()
-    virtual FAmmo get_max_ammo() const override { return FAmmo{}; };
+    virtual FAmmoData get_max_ammo() const override { return FAmmoData{}; };
 
     UFUNCTION()
     virtual UStaticMesh* get_display_mesh() const { return nullptr; };
