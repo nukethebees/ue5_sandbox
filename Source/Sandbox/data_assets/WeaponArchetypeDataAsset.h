@@ -15,10 +15,8 @@ class SANDBOX_API UWeaponArchetypeDataAsset : public UPrimaryDataAsset {
   public:
     UWeaponArchetypeDataAsset() = default;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    FGuid id;
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FString name{};
+    FName name{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     UStaticMesh* weapon_mesh{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -29,4 +27,12 @@ class SANDBOX_API UWeaponArchetypeDataAsset : public UPrimaryDataAsset {
     float reload_time{0.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TOptional<float> magazine_size{};
+
+    virtual FPrimaryAssetId GetPrimaryAssetId() const override {
+        static FPrimaryAssetType const asset_type{TEXT("Weapon")};
+        FName const asset_name{name.IsNone() ? GetFName() : name};
+        FPrimaryAssetId const full_id{asset_type, asset_name};
+
+        return full_id;
+    }
 };
