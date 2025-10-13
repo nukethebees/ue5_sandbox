@@ -48,6 +48,12 @@ struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
     GENERATED_BODY()
 
     FMassBulletHitInfoFragment() = default;
+    FMassBulletHitInfoFragment(FVector const& hit_location,
+                               FVector const& hit_normal,
+                               TWeakObjectPtr<AActor> const& hit_actor)
+        : hit_location(hit_location)
+        , hit_normal(hit_normal)
+        , hit_actor(hit_actor) {}
 
     UPROPERTY()
     FVector hit_location{FVector::ZeroVector};
