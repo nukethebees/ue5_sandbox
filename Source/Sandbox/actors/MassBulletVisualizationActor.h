@@ -69,7 +69,7 @@ class SANDBOX_API AMassBulletVisualizationActor
   protected:
     virtual void BeginPlay() override;
   private:
-    int32 add_new_mesh(UBulletDataAsset& bullet_data);
+    int32 register_new_projectile(UBulletDataAsset& bullet_data);
 
     int32 get_num_ismcs() const { return ismcs.Num(); }
     void handle_preallocation();

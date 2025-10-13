@@ -27,14 +27,14 @@ void AMassBulletVisualizationActor::BeginPlay() {
     for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
         auto const& bullet_type{data_actor->bullet_types[i]};
         CONTINUE_IF_NULLPTR(bullet_type);
-        add_new_mesh(*bullet_type);
+        register_new_projectile(*bullet_type);
     }
 
     handle_preallocation();
     register_phase_end_callback();
 }
 
-int32 AMassBulletVisualizationActor::add_new_mesh(UBulletDataAsset& bullet_data) {
+int32 AMassBulletVisualizationActor::register_new_projectile(UBulletDataAsset& bullet_data) {
     constexpr auto logger{NestedLogger<"add_new_mesh">()};
     auto const i{get_num_ismcs()};
     lookup.Add(bullet_data.GetPrimaryAssetId(), i);
