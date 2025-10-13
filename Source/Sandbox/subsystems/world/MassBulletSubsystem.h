@@ -63,9 +63,10 @@ class SANDBOX_API UMassBulletSubsystem
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
         (void)destroy_queue.enqueue(handle, bullet_type);
     }
-    auto* get_data_actor() {
+
+    AMassBulletSubsystemData* get_data_actor() {
         if (auto* world{GetWorld()}) {
-            return ml::get_first_actor<AMassBulletSubsystemData>(*world)
+            return ml::get_first_actor<AMassBulletSubsystemData>(*world);
         }
         return nullptr;
     }
