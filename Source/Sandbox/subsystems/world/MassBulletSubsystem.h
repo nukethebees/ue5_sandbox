@@ -63,10 +63,9 @@ class SANDBOX_API UMassBulletSubsystem
     }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
-    virtual void OnWorldBeginPlay(UWorld& in_world) override;
     virtual void Deinitialize() override;
   private:
-    void on_begin_play();
+    void on_archetypes_ready();
 
     [[nodiscard]] bool initialise_asset_data();
     void configure_active_bullet(FMassEntityManager& entity_manager,
