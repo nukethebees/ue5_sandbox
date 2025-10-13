@@ -13,7 +13,7 @@ UCLASS()
 class SANDBOX_API UWeaponArchetypeDataAsset : public UPrimaryDataAsset {
     GENERATED_BODY()
   public:
-    UWeaponArchetypeDataAsset();
+    UWeaponArchetypeDataAsset() = default;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     FGuid id;
