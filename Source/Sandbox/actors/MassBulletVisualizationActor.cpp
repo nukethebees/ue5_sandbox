@@ -133,10 +133,6 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
     auto const n_to_transform{static_cast<int32>(transform_result.view.size())};
     auto const n_changes{n_to_hide + n_to_transform};
 
-#if WITH_EDITOR
-    num_flying = n_to_transform;
-#endif
-
     if (n_changes == 0) {
         return;
     }

@@ -65,15 +65,10 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     UInstancedStaticMeshComponent* ismc{nullptr};
 
-    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     FDelegateHandle phase_end_delegate_handle{};
+
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     int32 current_instance_count{0};
     std::atomic<int32> to_be_hidden{0};
-
-// Debug properties
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(VisibleAnywhere, Category = "Bullets")
-    int32 num_flying{0};
-#endif
 };
