@@ -24,19 +24,25 @@ class UBulletDataAsset;
 struct FBulletSpawnRequest {
     FTransform transform;
     float speed;
+    FPrimaryAssetId bullet_type;
 
-    FBulletSpawnRequest(FTransform const& t, float s)
+    FBulletSpawnRequest(FTransform const& t, float s, FPrimaryAssetId const& bt)
         : transform(t)
-        , speed(s) {}
+        , speed(s)
+        , bullet_type(bt) {}
 };
 
 struct FBulletSpawnRequestView {
     std::span<FTransform> transforms;
     std::span<float> speeds;
+    std::span<FPrimaryAssetId> bullet_types;
 
-    FBulletSpawnRequestView(std::span<FTransform> t, std::span<float> s)
+    FBulletSpawnRequestView(std::span<FTransform> t,
+                            std::span<float> s,
+                            std::span<FPrimaryAssetId> bt)
         : transforms(t)
-        , speeds(s) {}
+        , speeds(s)
+        , bullet_types(bt) {}
 };
 
 UCLASS()
@@ -47,10 +53,14 @@ class SANDBOX_API UMassBulletSubsystem
   public:
     static constexpr std::size_t n_queue_elements{30000};
 
-    void add_bullet(FTransform const& spawn_transform, float bullet_speed) {
-        (void)spawn_queue.enqueue(spawn_transform, bullet_speed);
+    void add_bullet(FTransform const& spawn_transform,
+                    float bullet_speed,
+                    FPrimaryAssetId const& bullet_type) {
+        (void)spawn_queue.enqueue(spawn_transform, bullet_speed, bullet_type);
     }
-    void destroy_bullet(FMassEntityHandle handle) { (void)destroy_queue.enqueue(handle); }
+    void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
+        (void)destroy_queue.enqueue(handle, bullet_type);
+    }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void OnWorldBeginPlay(UWorld& in_world) override;
@@ -63,18 +73,32 @@ class SANDBOX_API UMassBulletSubsystem
                                  FMassEntityHandle entity,
                                  FTransform const& transform,
                                  float bullet_speed);
+    struct FBulletDestroyRequest {
+        FMassEntityHandle entity;
+        FPrimaryAssetId bullet_type;
+    };
+    struct FBulletDestroyRequestView {
+        std::span<FMassEntityHandle> entities;
+        std::span<FPrimaryAssetId> bullet_types;
+
+        FBulletDestroyRequestView(std::span<FMassEntityHandle> e, std::span<FPrimaryAssetId> bt)
+            : entities(e)
+            , bullet_types(bt) {}
+    };
+
     void on_end_frame();
     void consume_lifecycle_requests(FBulletSpawnRequestView const& spawn_requests,
-                                    std::span<FMassEntityHandle> destroy_requests);
+                                    FBulletDestroyRequestView const& destroy_requests);
 
     TArray<FMassEntityHandle> free_list;
-    FEntityDefinition bullet_definition{};
+    TMap<FPrimaryAssetId, FEntityDefinition> bullet_definitions;
     AMassBulletVisualizationActor* visualization_actor{nullptr};
-    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
     TArray<FMassEntityHandle> new_entities{};
 
     ml::MonitoredLockFreeMPSCQueue<
-        ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView, FTransform, float>>
+        ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView, FTransform, float, FPrimaryAssetId>>
         spawn_queue;
-    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FMassEntityHandle>> destroy_queue;
+    ml::MonitoredLockFreeMPSCQueue<
+        ml::LockFreeMPSCQueueSoA<FBulletDestroyRequestView, FMassEntityHandle, FPrimaryAssetId>>
+        destroy_queue;
 };

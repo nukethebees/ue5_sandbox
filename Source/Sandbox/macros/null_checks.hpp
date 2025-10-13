@@ -51,6 +51,13 @@
     auto VAR_NAME{VAR_EXPR};                  \
     RETURN_IF_NULLOPT(VAR_NAME)
 
+#define RETURN_VALUE_IF_NULLOPT(VAR_NAME, RETURN_VALUE) \
+    RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !VAR_NAME, "nullopt", RETURN_VALUE)
+
+#define INIT_OPTIONAL_OR_RETURN_VALUE(VAR_NAME, PTR_EXPR, RETURN_VALUE) \
+    auto VAR_NAME{PTR_EXPR};                                            \
+    RETURN_VALUE_IF_NULLOPT(VAR_NAME, RETURN_VALUE)
+
 // Boolean
 // -------------------------------------------------------------------------------------------------
 #define RETURN_IF_TRUE(BOOLEAN_EXPR) \

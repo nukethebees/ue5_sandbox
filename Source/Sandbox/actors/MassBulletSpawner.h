@@ -29,6 +29,8 @@ class SANDBOX_API AMassBulletSpawner
     float bullets_per_second{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     float bullet_speed{5000.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
   protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;

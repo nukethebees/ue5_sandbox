@@ -110,3 +110,15 @@ struct SANDBOX_API FMassBulletDamageFragment : public FMassConstSharedFragment {
     UPROPERTY()
     FHealthChange damage{};
 };
+
+USTRUCT()
+struct SANDBOX_API FMassBulletDataFragment : public FMassConstSharedFragment {
+    GENERATED_BODY()
+
+    FMassBulletDataFragment() = default;
+    FMassBulletDataFragment(FPrimaryAssetId const& bullet_type)
+        : bullet_type(bullet_type) {}
+
+    UPROPERTY()
+    FPrimaryAssetId bullet_type{};
+};

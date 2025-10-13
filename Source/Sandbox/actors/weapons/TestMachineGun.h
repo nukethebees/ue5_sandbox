@@ -9,6 +9,7 @@
 
 class UStaticMeshComponent;
 class UArrowComponent;
+class UBulletDataAsset;
 
 UCLASS()
 class SANDBOX_API ATestMachineGun : public AWeaponBase {
@@ -46,6 +47,9 @@ class SANDBOX_API ATestMachineGun : public AWeaponBase {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     float bullet_speed{5000.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UStaticMeshComponent* gun_mesh_component{nullptr};
