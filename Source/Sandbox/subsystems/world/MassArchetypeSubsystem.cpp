@@ -5,8 +5,9 @@
 #include "MassEntitySubsystem.h"
 #include "MassEntityTypes.h"
 
+#include "Sandbox/actors/MassBulletSubsystemData.h"
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
-#include "Sandbox/generated/data_asset_registries/BulletAssetRegistry.h"
+#include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -70,6 +71,7 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         descriptor.ConstSharedFragments.Add(*FMassBulletImpactEffectFragment::StaticStruct());
         descriptor.ConstSharedFragments.Add(*FMassBulletVisualizationActorFragment::StaticStruct());
         descriptor.ConstSharedFragments.Add(*FMassBulletDamageFragment::StaticStruct());
+        descriptor.ConstSharedFragments.Add(*FMassBulletDataFragment::StaticStruct());
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));
@@ -78,9 +80,9 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
     }
 }
 void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manager) {
+    constexpr auto logger{NestedLogger<"build_definitions">()};
+
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(gi, world->GetGameInstance());
-    TRY_INIT_PTR(ss, gi->GetSubsystem<UBulletAssetRegistry>());
 
     AMassBulletVisualizationActor* visualization_actor{nullptr};
     {
@@ -91,10 +93,33 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
     }
     RETURN_IF_NULLPTR(visualization_actor);
 
+    AMassBulletSubsystemData* data_actor{nullptr};
     {
-        TRY_INIT_PTR(bullet_data, ss->get_bullet());
+        for (auto it{TActorIterator<AMassBulletSubsystemData>(world)}; it; ++it) {
+            data_actor = *it;
+            break;
+        }
+    }
+
+    if (!data_actor) {
+        logger.log_error(TEXT("MassBulletSubsystemData actor not found in level."));
+        return;
+    }
+
+    if (data_actor->bullet_types.IsEmpty()) {
+        logger.log_warning(TEXT("MassBulletSubsystemData has no bullet types configured."));
+        return;
+    }
+
+    for (auto const& bullet_data : data_actor->bullet_types) {
+        if (!bullet_data) {
+            logger.log_warning(TEXT("Null bullet data asset in MassBulletSubsystemData."));
+            continue;
+        }
+
         RETURN_IF_NULLPTR(bullet_data->impact_effect);
 
+        FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
         FMassArchetypeSharedFragmentValues shared_values{};
 
         auto impact_effect_handle{
@@ -108,12 +133,17 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         auto damage_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDamageFragment>(
             bullet_data->damage)};
 
+        auto data_handle{
+            entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(asset_id)};
+
         shared_values.Add(impact_effect_handle);
         shared_values.Add(viz_actor_handle);
         shared_values.Add(damage_handle);
+        shared_values.Add(data_handle);
         shared_values.Sort();
 
-        add_definition({bullet_archetype, shared_values}, bullet_data->GetPrimaryAssetId());
+        add_definition({bullet_archetype, shared_values}, asset_id);
+        logger.log_display(TEXT("Created definition for bullet type: %s"), *asset_id.ToString());
     }
 }
 int32 UMassArchetypeSubsystem::add_definition(FEntityDefinition definition, FPrimaryAssetId id) {

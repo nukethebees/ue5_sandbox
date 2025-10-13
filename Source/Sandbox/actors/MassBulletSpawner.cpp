@@ -51,8 +51,10 @@ void AMassBulletSpawner::Tick(float DeltaTime) {
 void AMassBulletSpawner::spawn_bullet(UMassBulletSubsystem& mass_bullet_subsystem,
                                       UArrowComponent const& fire_point,
                                       float travel_time) {
+    RETURN_IF_NULLPTR(bullet_data);
     FTransform const spawn_transform{get_spawn_transform(fire_point, travel_time)};
-    mass_bullet_subsystem.add_bullet(spawn_transform, bullet_speed);
+    mass_bullet_subsystem.add_bullet(
+        spawn_transform, bullet_speed, bullet_data->GetPrimaryAssetId());
 }
 FTransform AMassBulletSpawner::get_spawn_transform(UArrowComponent const& fire_point,
                                                    float travel_time) const {

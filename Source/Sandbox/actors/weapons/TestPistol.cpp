@@ -4,6 +4,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
+#include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/subsystems/world/MassBulletSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -69,6 +70,7 @@ void ATestPistol::start_firing() {
     }
 
     RETURN_IF_NULLPTR(fire_point_arrow);
+    RETURN_IF_NULLPTR(bullet_data);
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
@@ -77,7 +79,8 @@ void ATestPistol::start_firing() {
     auto const spawn_scale{FVector::OneVector};
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
-    mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
+    mass_bullet_subsystem->add_bullet(
+        spawn_transform, bullet_speed, bullet_data->GetPrimaryAssetId());
 
     ammo -= 1;
 }

@@ -19,7 +19,8 @@ struct FMassBulletDestructionExecutor
     FMassBulletDestructionExecutor() = default;
 
     using Query =
-        UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>>;
+        UE::Mass::FQueryDefinition<UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>,
+                                   UE::Mass::FConstSharedFragmentAccess<FMassBulletDataFragment>>;
 
     Query accessors{*this};
 
