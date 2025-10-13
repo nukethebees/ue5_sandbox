@@ -21,6 +21,17 @@ ATestPistol::ATestPistol()
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 
+void ATestPistol::BeginPlay() {
+    Super::BeginPlay();
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+    RETURN_IF_NULLPTR(bullet_data);
+
+    cached_bullet_type_index =
+        mass_bullet_subsystem->get_bullet_type_index(bullet_data->GetPrimaryAssetId());
+}
+
 bool ATestPistol::can_fire() const {
     return ammo > 0;
 }
@@ -70,7 +81,6 @@ void ATestPistol::start_firing() {
     }
 
     RETURN_IF_NULLPTR(fire_point_arrow);
-    RETURN_IF_NULLPTR(bullet_data);
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
@@ -79,8 +89,15 @@ void ATestPistol::start_firing() {
     auto const spawn_scale{FVector::OneVector};
 
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
-    mass_bullet_subsystem->add_bullet(
-        spawn_transform, bullet_speed, bullet_data->GetPrimaryAssetId());
+
+    if (cached_bullet_type_index.IsSet()) {
+        mass_bullet_subsystem->add_bullet(
+            spawn_transform, bullet_speed, cached_bullet_type_index.GetValue());
+    } else {
+        RETURN_IF_NULLPTR(bullet_data);
+        mass_bullet_subsystem->add_bullet(
+            spawn_transform, bullet_speed, bullet_data->GetPrimaryAssetId());
+    }
 
     ammo -= 1;
 }

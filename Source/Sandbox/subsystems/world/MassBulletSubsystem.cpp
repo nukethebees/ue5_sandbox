@@ -52,7 +52,10 @@ bool UMassBulletSubsystem::initialise_asset_data() {
     INIT_PTR_OR_RETURN_VALUE(data_actor, get_data_actor(), false);
     RETURN_VALUE_IF_TRUE(data_actor->bullet_types.IsEmpty(), false);
 
-    for (auto const& bullet_data : data_actor->bullet_types) {
+    indexed_bullet_types.Reserve(data_actor->bullet_types.Num());
+
+    for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
+        auto const& bullet_data{data_actor->bullet_types[i]};
         CONTINUE_IF_NULLPTR(bullet_data);
 
         FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
@@ -60,7 +63,9 @@ bool UMassBulletSubsystem::initialise_asset_data() {
             entity_def, archetype_subsystem->get_definition(asset_id), false);
 
         bullet_definitions.Add(asset_id, *entity_def);
-        logger.log_display(TEXT("Loaded bullet type: %s"), *asset_id.ToString());
+        bullet_type_indices.Add(asset_id, FBulletTypeIndex{i});
+        indexed_bullet_types.Add(asset_id);
+        logger.log_display(TEXT("Loaded bullet type: %s (index %d)"), *asset_id.ToString(), i);
     }
 
     RETURN_VALUE_IF_TRUE(bullet_definitions.IsEmpty(), false);

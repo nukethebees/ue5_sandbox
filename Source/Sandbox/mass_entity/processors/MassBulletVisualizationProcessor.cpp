@@ -30,9 +30,9 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
 
         for (int32 i{0}; i < n; ++i) {
             if (states[i].hit_occurred) {
-                viz_fragment.actor->increment_killed_count(data_fragment.bullet_type);
+                viz_fragment.actor->increment_killed_count(data_fragment.bullet_type_index);
             } else {
-                viz_fragment.actor->enqueue_transform(data_fragment.bullet_type,
+                viz_fragment.actor->enqueue_transform(data_fragment.bullet_type_index,
                                                       transforms[i].transform);
             }
         }

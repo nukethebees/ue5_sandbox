@@ -17,16 +17,16 @@ wrappers["FIntPoint"] = TypedefSpec(
 def make_typedefs():
     typedefs = [
         TypedefSpec(
-            name="Ammo",
-            underlying_type="float",
-            ops=["comparison", "arithmetic"],
+            name="StackSize",
+            underlying_type="int32",
+            ops=["comparison", "arithmetic", "increment", "modulo"],
             members=[],
             config=ConfigOptions(),
         ),
         TypedefSpec(
-            name="StackSize",
+            name="BulletTypeIndex",
             underlying_type="int32",
-            ops=["comparison", "arithmetic", "increment", "modulo"],
+            ops=["comparison"],
             members=[],
             config=ConfigOptions(),
         )
@@ -38,19 +38,6 @@ def make_typedefs():
     typedefs.append(point)
     point.name = "Dimensions"
     typedefs.append(point)
-
-    #typedefs.append(
-    #    TypedefSpec(
-    #        name="ItemPtr",
-    #        underlying_type="TScriptInterface<IInventoryItem>",
-    #        ops=["dereference"],
-    #        members=[],
-    #        includes=["Sandbox/interfaces/inventory/InventoryItem.h"],
-    #        config=ConfigOptions(),
-    #    )
-    #)
-
-    
 
     return typedefs;
 

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 #include "Sandbox/SandboxLogCategories.h"
 
 #include "TestPistol.generated.h"
@@ -36,6 +37,7 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
         return default_name;
     };
   protected:
+    virtual void BeginPlay() override;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     int32 max_ammo{10};
 
@@ -53,4 +55,6 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UArrowComponent* fire_point_arrow{nullptr};
+
+    TOptional<FBulletTypeIndex> cached_bullet_type_index;
 };
