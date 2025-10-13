@@ -73,8 +73,8 @@ class SANDBOX_API AMassBulletVisualizationActor
 
     int32 get_num_ismcs() const { return ismcs.Num(); }
     void handle_preallocation();
-    void add_instances(int32 n);
-    void grow_instances();
+    void add_instances(int32 mesh_index, int32 n);
+    void grow_instances(int32 mesh_index, int32 min_required);
     void register_phase_end_callback();
     void on_phase_end(float delta_time);
     int32 consume_killed_count(int32 i) {
