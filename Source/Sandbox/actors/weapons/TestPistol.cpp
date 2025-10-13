@@ -72,8 +72,6 @@ void ATestPistol::start_firing() {
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
-    constexpr float bullet_speed{5000.0f};
-
     auto const spawn_rotation{fire_point_arrow->GetComponentRotation()};
     auto const spawn_location{fire_point_arrow->GetComponentLocation()};
     auto const spawn_scale{FVector::OneVector};

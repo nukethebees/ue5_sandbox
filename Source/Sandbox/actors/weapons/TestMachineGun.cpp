@@ -96,8 +96,6 @@ void ATestMachineGun::fire_single_bullet(float travel_time) {
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
-    constexpr float bullet_speed{5000.0f};
-
     FTransform const spawn_transform{get_spawn_transform(travel_time)};
     mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
 
@@ -106,7 +104,7 @@ void ATestMachineGun::fire_single_bullet(float travel_time) {
 
 FTransform ATestMachineGun::get_spawn_transform(float travel_time) const {
     auto const spawn_rotation{fire_point_arrow->GetComponentRotation()};
-    auto const travel_offset{spawn_rotation.Vector() * 5000.0f * travel_time};
+    auto const travel_offset{spawn_rotation.Vector() * bullet_speed * travel_time};
     auto const spawn_location{fire_point_arrow->GetComponentLocation() + travel_offset};
     auto const spawn_scale{FVector::OneVector};
 

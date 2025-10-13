@@ -45,6 +45,9 @@ class SANDBOX_API ATestMachineGun : public AWeaponBase {
     float fire_rate{10.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    float bullet_speed{5000.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UStaticMeshComponent* gun_mesh_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
