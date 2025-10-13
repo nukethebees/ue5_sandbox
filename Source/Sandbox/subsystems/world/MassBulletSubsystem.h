@@ -13,6 +13,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
+#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -60,8 +61,44 @@ class SANDBOX_API UMassBulletSubsystem
                     FPrimaryAssetId const& bullet_type) {
         (void)spawn_queue.enqueue(spawn_transform, bullet_speed, bullet_type);
     }
+    void add_bullet(FTransform const& spawn_transform,
+                    float bullet_speed,
+                    FBulletTypeIndex bullet_type_index) {
+        auto const i{bullet_type_index.get_value()};
+        check(i >= 0 && i < indexed_bullet_types.Num());
+        add_bullet(spawn_transform, bullet_speed, indexed_bullet_types[i]);
+    }
+    bool add_bullet_checked(FTransform const& spawn_transform,
+                            float bullet_speed,
+                            FBulletTypeIndex bullet_type_index) {
+        auto const i{bullet_type_index.get_value()};
+        if (i < 0 || i >= indexed_bullet_types.Num()) {
+            log_error(TEXT("Invalid bullet type index: %d (valid range: 0-%d)"),
+                      i,
+                      indexed_bullet_types.Num() - 1);
+            return false;
+        }
+        add_bullet(spawn_transform, bullet_speed, indexed_bullet_types[i]);
+        return true;
+    }
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
         (void)destroy_queue.enqueue(handle, bullet_type);
+    }
+    void destroy_bullet(FMassEntityHandle handle, FBulletTypeIndex bullet_type_index) {
+        auto const i{bullet_type_index.get_value()};
+        check(i >= 0 && i < indexed_bullet_types.Num());
+        destroy_bullet(handle, indexed_bullet_types[i]);
+    }
+    bool destroy_bullet_checked(FMassEntityHandle handle, FBulletTypeIndex bullet_type_index) {
+        auto const i{bullet_type_index.get_value()};
+        if (i < 0 || i >= indexed_bullet_types.Num()) {
+            log_error(TEXT("Invalid bullet type index: %d (valid range: 0-%d)"),
+                      i,
+                      indexed_bullet_types.Num() - 1);
+            return false;
+        }
+        destroy_bullet(handle, indexed_bullet_types[i]);
+        return true;
     }
 
     AMassBulletSubsystemData* get_data_actor() {
@@ -69,6 +106,13 @@ class SANDBOX_API UMassBulletSubsystem
             return ml::get_first_actor<AMassBulletSubsystemData>(*world);
         }
         return nullptr;
+    }
+
+    FBulletTypeIndex get_bullet_type_index(FPrimaryAssetId const& bullet_type) const {
+        if (auto const* index{bullet_type_indices.Find(bullet_type)}) {
+            return *index;
+        }
+        return FBulletTypeIndex{-1};
     }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
@@ -100,6 +144,8 @@ class SANDBOX_API UMassBulletSubsystem
 
     TArray<FMassEntityHandle> free_list;
     TMap<FPrimaryAssetId, FEntityDefinition> bullet_definitions;
+    TMap<FPrimaryAssetId, FBulletTypeIndex> bullet_type_indices;
+    TArray<FPrimaryAssetId> indexed_bullet_types;
     AMassBulletVisualizationActor* visualization_actor{nullptr};
     TArray<FMassEntityHandle> new_entities{};
 

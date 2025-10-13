@@ -89,9 +89,9 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
 
     RETURN_IF_TRUE(data_actor->bullet_types.IsEmpty());
 
-    for (auto const& bullet_data : data_actor->bullet_types) {
+    for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
+        auto const& bullet_data{data_actor->bullet_types[i]};
         CONTINUE_IF_NULLPTR(bullet_data);
-        CONTINUE_IF_NULLPTR(bullet_data->impact_effect);
 
         FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
         FMassArchetypeSharedFragmentValues shared_values{};
@@ -107,8 +107,8 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         auto damage_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDamageFragment>(
             bullet_data->damage)};
 
-        auto data_handle{
-            entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(asset_id)};
+        auto data_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(
+            asset_id, FBulletTypeIndex{i})};
 
         shared_values.Add(impact_effect_handle);
         shared_values.Add(viz_actor_handle);
@@ -117,7 +117,8 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         shared_values.Sort();
 
         add_definition({bullet_archetype, shared_values}, asset_id);
-        logger.log_display(TEXT("Created definition for bullet type: %s"), *asset_id.ToString());
+        logger.log_display(
+            TEXT("Created definition for bullet type: %s (index %d)"), *asset_id.ToString(), i);
     }
 }
 int32 UMassArchetypeSubsystem::add_definition(FEntityDefinition definition, FPrimaryAssetId id) {

@@ -9,6 +9,7 @@
 
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
+#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
@@ -27,14 +28,24 @@ class SANDBOX_API AMassBulletVisualizationActor
 
     AMassBulletVisualizationActor();
 
+    void enqueue_transform(FBulletTypeIndex index, FTransform const& transform) {
+        auto const i{index.get_value()};
+        check(i >= 0 && i < transform_queues.Num());
+        (void)transform_queues[i].enqueue(transform);
+    }
     void enqueue_transform(FPrimaryAssetId id, FTransform const& transform) {
         if (auto* i{lookup.Find(id)}) {
-            (void)transform_queues[*i].enqueue(transform);
+            enqueue_transform(FBulletTypeIndex{*i}, transform);
         }
+    }
+    void increment_killed_count(FBulletTypeIndex index) {
+        auto const i{index.get_value()};
+        check(i >= 0 && i < to_be_hidden.Num());
+        to_be_hidden[i].fetch_add(1, std::memory_order_relaxed);
     }
     void increment_killed_count(FPrimaryAssetId id) {
         if (auto* i{lookup.Find(id)}) {
-            to_be_hidden[*i].fetch_add(1, std::memory_order_relaxed);
+            increment_killed_count(FBulletTypeIndex{*i});
         }
     }
     FTransform const& get_hidden_transform() const {

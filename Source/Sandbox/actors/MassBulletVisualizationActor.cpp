@@ -24,7 +24,8 @@ void AMassBulletVisualizationActor::BeginPlay() {
     TRY_INIT_PTR(data_actor, ml::get_first_actor<AMassBulletSubsystemData>(*world));
 
     logger.log_display(TEXT("Registering %d bullet types."), data_actor->bullet_types.Num());
-    for (auto const& bullet_type : data_actor->bullet_types) {
+    for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
+        auto const& bullet_type{data_actor->bullet_types[i]};
         CONTINUE_IF_NULLPTR(bullet_type);
         add_new_mesh(*bullet_type);
     }

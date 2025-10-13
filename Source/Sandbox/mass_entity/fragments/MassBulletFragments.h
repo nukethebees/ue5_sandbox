@@ -6,6 +6,7 @@
 #include "MassEntityTypes.h"
 
 #include "Sandbox/data/health/HealthChange.h"
+#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 
 #include "MassBulletFragments.generated.h"
 
@@ -116,9 +117,13 @@ struct SANDBOX_API FMassBulletDataFragment : public FMassConstSharedFragment {
     GENERATED_BODY()
 
     FMassBulletDataFragment() = default;
-    FMassBulletDataFragment(FPrimaryAssetId const& bullet_type)
-        : bullet_type(bullet_type) {}
+    FMassBulletDataFragment(FPrimaryAssetId const& bullet_type, FBulletTypeIndex bullet_type_index)
+        : bullet_type(bullet_type)
+        , bullet_type_index(bullet_type_index) {}
 
     UPROPERTY()
     FPrimaryAssetId bullet_type{};
+
+    UPROPERTY()
+    FBulletTypeIndex bullet_type_index{};
 };
