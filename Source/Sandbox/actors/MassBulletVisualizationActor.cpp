@@ -14,8 +14,6 @@ AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     PrimaryActorTick.bCanEverTick = false;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-
-    //(void)transform_queue.logged_init(transform_queue_capacity, "MassBulletVisualizationActor");
 }
 
 void AMassBulletVisualizationActor::BeginPlay() {
