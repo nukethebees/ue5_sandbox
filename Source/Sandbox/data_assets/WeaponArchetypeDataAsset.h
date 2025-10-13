@@ -26,7 +26,11 @@ class SANDBOX_API UWeaponArchetypeDataAsset : public UPrimaryDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float reload_time{0.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TOptional<float> magazine_size{};
+    EAmmoType ammo_type;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float max_ammo_continuous{0.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 max_ammo_discrete{0};
 
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         static FPrimaryAssetType const asset_type{TEXT("Weapon")};
