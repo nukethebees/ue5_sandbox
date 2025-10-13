@@ -50,8 +50,7 @@ void AMassBulletVisualizationActor::handle_assets_ready(FPrimaryAssetId primary_
 
     TRY_INIT_PTR(loaded_obj, asset_manager.GetPrimaryAssetObject(primary_asset_id));
     TRY_INIT_PTR(loaded_data, Cast<UBulletDataAsset>(loaded_obj));
-    bullet_data = loaded_data;
-    TRY_INIT_PTR(mesh_component, bullet_data->mesh);
+    TRY_INIT_PTR(mesh_component, loaded_data->mesh);
 
     RETURN_IF_NULLPTR(ismc);
 
