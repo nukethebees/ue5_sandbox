@@ -55,7 +55,7 @@ AMyCharacter::AMyCharacter()
     }
 
     torch->SetupAttachment(RootComponent);
-    weapon_attach_point->SetupAttachment(RootComponent);
+    weapon_attach_point->SetupAttachment(cameras[0]);
 }
 
 void AMyCharacter::BeginPlay() {

@@ -114,7 +114,7 @@ void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& l
     constexpr bool weld_to_parent{false};
     weapon.AttachToComponent(
         &location, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, weld_to_parent));
-    weapon.SetActorRelativeTransform(location.GetRelativeTransform());
+    weapon.SetActorRelativeTransform(FTransform{});
 }
 AWeaponBase* UPawnWeaponComponent::spawn_weapon(TSubclassOf<AWeaponBase> weapon_class,
                                                 AActor& owner,
