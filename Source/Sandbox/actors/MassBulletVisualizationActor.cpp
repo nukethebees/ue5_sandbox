@@ -80,12 +80,17 @@ void AMassBulletVisualizationActor::handle_preallocation() {
         TEXT("Sandbox::AMassBulletVisualizationActor::handle_preallocation"))
     if (preallocate_isms > 0) {
         log_display(TEXT("Preallocating %d ISM instances."), preallocate_isms);
-        add_instances(preallocate_isms);
+        auto const n{get_num_ismcs()};
+        for (int32 i{0}; i < n; ++i) {
+            add_instances(i, preallocate_isms);
+        }
     }
 }
-void AMassBulletVisualizationActor::add_instances(int32 n) {
+void AMassBulletVisualizationActor::add_instances(int32 mesh_index, int32 n) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::add_instances"))
     constexpr auto logger{NestedLogger<"add_instances">()};
+
+    check(mesh_index >= 0 && mesh_index < get_num_ismcs());
 
     TArray<FTransform> transforms;
     transforms.Init(get_hidden_transform(), n);
@@ -94,35 +99,39 @@ void AMassBulletVisualizationActor::add_instances(int32 n) {
     constexpr bool bWorldSpace{true};
     constexpr bool bUpdateNavigation{false};
 
-    auto const n_components{get_num_ismcs()};
-    for (int32 i{0}; i < n_components; ++i) {
-        TRY_INIT_PTR(ismc, ismcs[i]);
-        ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
-        current_instance_counts[i] += n;
-    }
+    TRY_INIT_PTR(ismc, ismcs[mesh_index]);
+    ismc->AddInstances(transforms, bShouldReturnIndices, bWorldSpace, bUpdateNavigation);
+    current_instance_counts[mesh_index] += n;
 
-    logger.log_display(TEXT("Added %d instances."), n);
+    logger.log_display(TEXT("Added %d instances to mesh %d."), n, mesh_index);
 }
-void AMassBulletVisualizationActor::grow_instances() {
+void AMassBulletVisualizationActor::grow_instances(int32 mesh_index, int32 min_required) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::AMassBulletVisualizationActor::grow_instances"))
     constexpr auto logger{NestedLogger<"grow_instances">()};
 
+    check(mesh_index >= 0 && mesh_index < get_num_ismcs());
+
     constexpr int32 small_num{8};
-    auto const n{get_num_ismcs()};
+    auto const current_count{current_instance_counts[mesh_index]};
 
-    for (int32 i{0}; i < n; ++i) {
-        TRY_INIT_PTR(ismc, ismcs[i]);
-
-        auto const n_ismcs{current_instance_counts[i]};
-        auto const target{(n_ismcs < small_num)
-                              ? small_num
-                              : static_cast<int32>(static_cast<float>(n_ismcs) * growth_factor)};
-        auto const to_add{target - n_ismcs};
-
-        logger.log_display(TEXT("Increasing ISM instances from %d to %d."), n_ismcs, target);
-
-        add_instances(to_add);
+    auto target{current_count};
+    if (target < small_num) {
+        target = small_num;
     }
+
+    while (target < min_required) {
+        target = static_cast<int32>(static_cast<float>(target) * growth_factor);
+    }
+
+    auto const to_add{target - current_count};
+    logger.log_display(TEXT("Growing mesh %d from %d to %d instances (required %d, adding %d)."),
+                       mesh_index,
+                       current_count,
+                       target,
+                       min_required,
+                       to_add);
+
+    add_instances(mesh_index, to_add);
 }
 
 void AMassBulletVisualizationActor::register_phase_end_callback() {
@@ -162,10 +171,7 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         }
 
         if (n_to_transform > current_instance_count) {
-            auto const to_add{n_to_transform - current_instance_count};
-            logger.log_display(
-                TEXT("Growing from %d to %d."), current_instance_count, n_to_transform, to_add);
-            add_instances(to_add);
+            grow_instances(i, n_to_transform);
         }
 
         if (!logger.log_category.IsSuppressed(ELogVerbosity::VeryVerbose)) {
