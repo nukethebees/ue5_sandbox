@@ -20,6 +20,49 @@ ATestPistol::ATestPistol()
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 
+bool ATestPistol::can_fire() const {
+    return ammo > 0;
+}
+
+bool ATestPistol::can_reload() const {
+    return ammo < max_ammo;
+}
+
+int32 ATestPistol::get_ammo_needed() const {
+    return max_ammo - ammo;
+}
+
+FAmmoData ATestPistol::get_current_ammo() const {
+    return FAmmoData::make_discrete(EAmmoType::Bullets, ammo);
+}
+
+FAmmoData ATestPistol::get_max_ammo() const {
+    return FAmmoData::make_discrete(EAmmoType::Bullets, max_ammo);
+}
+
+FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
+    FAmmoReloadResult result;
+    result.AmmoOfferedRemaining = offered;
+
+    if (offered.type != get_ammo_type()) {
+        return result;
+    }
+
+    if (!can_reload()) {
+        return result;
+    }
+
+    auto const needed{get_ammo_needed()};
+    auto const taken{FMath::Min(needed, offered.discrete_amount)};
+
+    ammo += taken;
+
+    result.AmmoTaken = FAmmoData::make_discrete(EAmmoType::Bullets, taken);
+    result.AmmoOfferedRemaining.discrete_amount -= taken;
+
+    return result;
+}
+
 void ATestPistol::start_firing() {
     if (!can_fire()) {
         return;
@@ -38,7 +81,7 @@ void ATestPistol::start_firing() {
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
     mass_bullet_subsystem->add_bullet(spawn_transform, bullet_speed);
 
-    ammo -= FAmmo{1.0f};
+    ammo -= 1;
 }
 
 UStaticMesh* ATestPistol::get_display_mesh() const {

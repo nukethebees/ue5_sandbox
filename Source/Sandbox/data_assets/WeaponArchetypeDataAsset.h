@@ -4,7 +4,6 @@
 #include "Engine/DataAsset.h"
 
 #include "Sandbox/enums/AmmoType.h"
-#include "Sandbox/typedefs/Ammo.h"
 
 #include "WeaponArchetypeDataAsset.generated.h"
 
