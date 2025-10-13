@@ -6,9 +6,9 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-#define FORWARD_CALL_TO_CHARACTER(METHOD_CALL) \
-    RETURN_IF_NULLPTR(controlled_character);   \
-    controlled_character->METHOD_CALL();
+#define FORWARD_CALL_TO_CHARACTER(METHOD_CALL, ...) \
+    RETURN_IF_NULLPTR(controlled_character);        \
+    controlled_character->METHOD_CALL(__VA_ARGS__);
 
 void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
@@ -140,9 +140,14 @@ void AMyPlayerController::look(FInputActionValue const& value) {
 // Combat
 void AMyPlayerController::attack_started() {
     FORWARD_CALL_TO_CHARACTER(attack_started);
+    attack_elapsed_time = 0.0f;
 }
-void AMyPlayerController::attack_continued() {
-    FORWARD_CALL_TO_CHARACTER(attack_continued);
+void AMyPlayerController::attack_continued(FInputActionInstance const& instance) {
+    auto const now_elapsed{instance.GetElapsedTime()};
+    auto const delta_time{now_elapsed - attack_elapsed_time};
+    attack_elapsed_time = now_elapsed;
+
+    FORWARD_CALL_TO_CHARACTER(attack_continued, delta_time);
 }
 void AMyPlayerController::attack_ended() {
     FORWARD_CALL_TO_CHARACTER(attack_ended);

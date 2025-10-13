@@ -165,7 +165,7 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void attack_started();
     UFUNCTION()
-    void attack_continued();
+    void attack_continued(float delta_time);
     UFUNCTION()
     void attack_ended();
 

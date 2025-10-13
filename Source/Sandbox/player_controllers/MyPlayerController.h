@@ -91,7 +91,7 @@ class SANDBOX_API AMyPlayerController
     UFUNCTION()
     void attack_started();
     UFUNCTION()
-    void attack_continued();
+    void attack_continued(FInputActionInstance const& instance);
     UFUNCTION()
     void attack_ended();
 
@@ -127,4 +127,6 @@ class SANDBOX_API AMyPlayerController
     bool tick_no_controller_character_warning_fired{false};
     void add_input_mapping_context(UInputMappingContext* context);
     void swap_input_mapping_context(UInputMappingContext* to_remove, UInputMappingContext* to_add);
+
+    float attack_elapsed_time{0.0f};
 };
