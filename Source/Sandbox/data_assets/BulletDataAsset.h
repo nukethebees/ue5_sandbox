@@ -10,6 +10,7 @@
 class UNiagaraSystem;
 class UStaticMesh;
 class UNiagaraDataChannelAsset;
+class UMaterial;
 
 UCLASS()
 class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
@@ -23,6 +24,9 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     TObjectPtr<UStaticMesh> mesh{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    TObjectPtr<UMaterial> material{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};

@@ -11,4 +11,9 @@ void UBulletAssetRegistry::Initialize(FSubsystemCollectionBase& Collection) {
         UE_LOG(LogTemp, Error, TEXT("Failed to load asset: /Game/DataAssets/Bullet.Bullet"));
     }
 
+    get_laserbullet_ptr = LoadObject<UBulletDataAsset>(nullptr, TEXT("/Game/DataAssets/LaserBullet.LaserBullet"));
+    if (!get_laserbullet_ptr) {
+        UE_LOG(LogTemp, Error, TEXT("Failed to load asset: /Game/DataAssets/LaserBullet.LaserBullet"));
+    }
+
 }

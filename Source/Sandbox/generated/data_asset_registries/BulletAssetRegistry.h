@@ -23,8 +23,11 @@ class UBulletAssetRegistry : public UGameInstanceSubsystem {
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
     UBulletDataAsset* get_bullet() const { return get_bullet_ptr; }
+    UBulletDataAsset* get_laserbullet() const { return get_laserbullet_ptr; }
 
   private:
     UPROPERTY()
     TObjectPtr<UBulletDataAsset> get_bullet_ptr{nullptr};
+    UPROPERTY()
+    TObjectPtr<UBulletDataAsset> get_laserbullet_ptr{nullptr};
 };
