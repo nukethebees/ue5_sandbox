@@ -25,11 +25,15 @@ void FMassBulletVisualizationExecutor::Execute(FMassExecutionContext& context) {
         auto const transforms{context.GetFragmentView<FMassBulletTransformFragment>()};
         auto const states{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const& hidden_transform{viz_fragment.actor->get_hidden_transform()};
+
+        auto const& data_fragment{context.GetConstSharedFragment<FMassBulletDataFragment>()};
+
         for (int32 i{0}; i < n; ++i) {
             if (states[i].hit_occurred) {
-                viz_fragment.actor->increment_killed_count();
+                viz_fragment.actor->increment_killed_count(data_fragment.bullet_type);
             } else {
-                viz_fragment.actor->enqueue_transform(transforms[i].transform);
+                viz_fragment.actor->enqueue_transform(data_fragment.bullet_type,
+                                                      transforms[i].transform);
             }
         }
     }};

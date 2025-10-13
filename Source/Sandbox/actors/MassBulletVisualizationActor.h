@@ -27,11 +27,16 @@ class SANDBOX_API AMassBulletVisualizationActor
 
     AMassBulletVisualizationActor();
 
-    UInstancedStaticMeshComponent* get_ismc() const { return ismc; }
-    void enqueue_transform(FTransform const& transform) {
-        (void)transform_queue.enqueue(transform);
+    void enqueue_transform(FPrimaryAssetId id, FTransform const& transform) {
+        if (auto* i{lookup.Find(id)}) {
+            (void)transform_queues[*i].enqueue(transform);
+        }
     }
-    void increment_killed_count() { to_be_hidden.fetch_add(1, std::memory_order_relaxed); }
+    void increment_killed_count(FPrimaryAssetId id) {
+        if (auto* i{lookup.Find(id)}) {
+            to_be_hidden[*i].fetch_add(1, std::memory_order_relaxed);
+        }
+    }
     FTransform const& get_hidden_transform() const {
         static auto const transform{[]() -> FTransform {
             FRotator const rotation{};
@@ -53,22 +58,28 @@ class SANDBOX_API AMassBulletVisualizationActor
   protected:
     virtual void BeginPlay() override;
   private:
-    void handle_assets_ready(FPrimaryAssetId primary_asset_id);
+    int32 add_new_mesh(UBulletDataAsset& bullet_data);
+
+    int32 get_num_ismcs() const { return ismcs.Num(); }
     void handle_preallocation();
-    void create_instances(int32 n);
     void add_instances(int32 n);
     void grow_instances();
     void register_phase_end_callback();
     void on_phase_end(float delta_time);
-    int32 consume_killed_count() { return to_be_hidden.exchange(0, std::memory_order_relaxed); }
+    int32 consume_killed_count(int32 i) {
+        return to_be_hidden[i].exchange(0, std::memory_order_relaxed);
+    }
 
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
-    UInstancedStaticMeshComponent* ismc{nullptr};
+    TMap<FPrimaryAssetId, int32> lookup;
+
+    UPROPERTY(VisibleAnywhere, Category = "Bullets")
+    TArray<UInstancedStaticMeshComponent*> ismcs;
 
     FDelegateHandle phase_end_delegate_handle{};
 
-    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>> transform_queue{};
+    TArray<ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>>> transform_queues{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
-    int32 current_instance_count{0};
-    std::atomic<int32> to_be_hidden{0};
+    TArray<int32> current_instance_counts{};
+    TArray<std::atomic<int32>> to_be_hidden{};
 };
