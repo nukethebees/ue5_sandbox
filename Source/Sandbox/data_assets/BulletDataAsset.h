@@ -34,17 +34,9 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
     float default_speed{5000.0f};
 
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
-        FPrimaryAssetType const asset_type{TEXT("Bullet")};
+        static FPrimaryAssetType const asset_type{TEXT("Bullet")};
         FName const asset_name{id.IsNone() ? GetFName() : id};
         FPrimaryAssetId const full_id{asset_type, asset_name};
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-        UE_LOG(LogTemp,
-               Verbose,
-               TEXT("Asset name is %s, %s"),
-               *asset_type.GetName().ToString(),
-               *asset_name.ToString());
-#endif
 
         return full_id;
     }
