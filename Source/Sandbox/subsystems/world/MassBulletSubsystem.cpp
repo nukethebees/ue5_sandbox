@@ -28,28 +28,20 @@ void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
     archetype_subsystem->on_mass_archetype_subsystem_ready.AddUObject(
-        this, &UMassBulletSubsystem::on_begin_play);
+        this, &UMassBulletSubsystem::on_archetypes_ready);
 
     logger.log_display(TEXT("Initialised."));
-}
-void UMassBulletSubsystem::OnWorldBeginPlay(UWorld& world) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::OnWorldBeginPlay"))
-    constexpr auto logger{NestedLogger<"OnWorldBeginPlay">()};
-    Super::OnWorldBeginPlay(world);
 }
 void UMassBulletSubsystem::Deinitialize() {
     FCoreDelegates::OnEndFrame.RemoveAll(this);
     Super::Deinitialize();
 }
 
-void UMassBulletSubsystem::on_begin_play() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::on_begin_play"))
-    constexpr auto logger{NestedLogger<"on_begin_play">()};
-
+void UMassBulletSubsystem::on_archetypes_ready() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::on_archetypes_ready"))
+    constexpr auto logger{NestedLogger<"on_archetypes_ready">()};
     RETURN_IF_FALSE(initialise_asset_data());
-
     FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
-
     logger.log_display(TEXT("Ready."));
 }
 bool UMassBulletSubsystem::initialise_asset_data() {
