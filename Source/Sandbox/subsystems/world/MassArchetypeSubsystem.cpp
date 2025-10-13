@@ -9,6 +9,7 @@
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/utilities/world.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -83,41 +84,14 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
     constexpr auto logger{NestedLogger<"build_definitions">()};
 
     TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(visualization_actor, ml::get_first_actor<AMassBulletVisualizationActor>(*world));
+    TRY_INIT_PTR(data_actor, ml::get_first_actor<AMassBulletSubsystemData>(*world));
 
-    AMassBulletVisualizationActor* visualization_actor{nullptr};
-    {
-        for (auto it{TActorIterator<AMassBulletVisualizationActor>(world)}; it; ++it) {
-            visualization_actor = *it;
-            break;
-        }
-    }
-    RETURN_IF_NULLPTR(visualization_actor);
-
-    AMassBulletSubsystemData* data_actor{nullptr};
-    {
-        for (auto it{TActorIterator<AMassBulletSubsystemData>(world)}; it; ++it) {
-            data_actor = *it;
-            break;
-        }
-    }
-
-    if (!data_actor) {
-        logger.log_error(TEXT("MassBulletSubsystemData actor not found in level."));
-        return;
-    }
-
-    if (data_actor->bullet_types.IsEmpty()) {
-        logger.log_warning(TEXT("MassBulletSubsystemData has no bullet types configured."));
-        return;
-    }
+    RETURN_IF_TRUE(data_actor->bullet_types.IsEmpty());
 
     for (auto const& bullet_data : data_actor->bullet_types) {
-        if (!bullet_data) {
-            logger.log_warning(TEXT("Null bullet data asset in MassBulletSubsystemData."));
-            continue;
-        }
-
-        RETURN_IF_NULLPTR(bullet_data->impact_effect);
+        CONTINUE_IF_NULLPTR(bullet_data);
+        CONTINUE_IF_NULLPTR(bullet_data->impact_effect);
 
         FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
         FMassArchetypeSharedFragmentValues shared_values{};
