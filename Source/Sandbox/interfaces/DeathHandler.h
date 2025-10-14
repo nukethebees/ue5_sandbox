@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
+#include "Sandbox/SandboxLogCategories.h"
+
 #include "DeathHandler.generated.h"
 
 UINTERFACE(MinimalAPI)
@@ -15,11 +17,27 @@ class SANDBOX_API IDeathHandler {
   public:
     virtual void handle_death() = 0;
 
+    static bool killable(auto* target) {
+        return target->GetClass()->ImplementsInterface(UDeathHandler::StaticClass());
+    }
+
     template <typename T>
-    static void try_kill(T* target) {
-        if (target->GetClass()->ImplementsInterface(UDeathHandler::StaticClass())) {
+    static bool kill(T* target) {
+        if (killable(target)) {
             auto const dying{TScriptInterface<IDeathHandler>(target)};
             dying->handle_death();
+            return true;
         }
+        UE_LOG(LogSandboxHealth, Warning, TEXT("Target does not implement a death handler."));
+        return false;
+    }
+    template <typename T>
+    static bool try_kill(T* target) {
+        if (killable(target)) {
+            auto const dying{TScriptInterface<IDeathHandler>(target)};
+            dying->handle_death();
+            return true;
+        }
+        return false;
     }
 };
