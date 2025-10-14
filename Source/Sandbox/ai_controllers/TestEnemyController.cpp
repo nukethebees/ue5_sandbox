@@ -54,7 +54,8 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
 
     blackboard_component->SetValueAsFloat("acceptable_radius",
                                           mob_interface->get_acceptable_radius());
-    blackboard_component->SetValueAsFloat("attack_radius", mob_interface->get_attack_radius());
+    blackboard_component->SetValueAsFloat("attack_acceptable_radius",
+                                          mob_interface->get_attack_acceptable_radius());
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
