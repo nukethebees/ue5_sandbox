@@ -35,11 +35,6 @@
 
 #define CONTINUE_IF_NULLPTR(VAR_NAME) CONTINUE_AND_WARN_IF_EXPR(VAR_NAME, !VAR_NAME, "nullptr")
 
-// Behaviour Tree tasks
-// -------------------------------------------------------------------------------------------------
-#define TRY_INIT_BTTASK_PTR(VAR_NAME, PTR_EXPR) \
-    INIT_PTR_OR_RETURN_VALUE(VAR_NAME, PTR_EXPR, EBTNodeResult::Failed)
-
 // Objects with IsValid()
 // -------------------------------------------------------------------------------------------------
 #define RETURN_IF_INVALID(VAR_NAME) \
