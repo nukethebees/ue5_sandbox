@@ -13,6 +13,7 @@
 #include "Sandbox/data/ai/CombatProfile.h"
 #include "Sandbox/enums/MobAttackMode.h"
 #include "Sandbox/enums/TeamID.h"
+#include "Sandbox/interfaces/CombatActor.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/SandboxMobInterface.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
@@ -26,6 +27,7 @@ UCLASS()
 class SANDBOX_API ATestEnemy
     : public ACharacter
     , public ml::LogMsgMixin<"ATestEnemy", LogSandboxCharacter>
+    , public ICombatActor
     , public IDeathHandler
     , public IGenericTeamAgentInterface
     , public ISandboxMobInterface {
@@ -48,6 +50,9 @@ class SANDBOX_API ATestEnemy
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
+
+    // ICombatActor
+    virtual void attack_actor(AActor* target) override;
 
     // ISandboxMobInterface
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;

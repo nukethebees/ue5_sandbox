@@ -58,6 +58,14 @@ void ATestEnemy::SetGenericTeamId(FGenericTeamId const& TeamID) {
     team_id = static_cast<ETeamID>(TeamID.GetId());
 }
 
+void ATestEnemy::attack_actor(AActor* target) {
+    constexpr auto logger{NestedLogger<"attack_actor">()};
+
+    RETURN_IF_NULLPTR(target);
+    logger.log_verbose(TEXT("Attacking actor: %s"), *target->GetName());
+    // TODO: Implement actual attack logic
+}
+
 UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
     return behaviour_tree_asset;
 }
