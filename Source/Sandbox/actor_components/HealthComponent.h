@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "components/ActorComponent.h"
+
 #include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/data/health/HealthData.h"
 #include "Sandbox/interfaces/DeathHandler.h"
+#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "HealthComponent.generated.h"
 
@@ -14,7 +17,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthPercentChanged, FHealthData
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SANDBOX_API UHealthComponent : public UActorComponent {
+class SANDBOX_API UHealthComponent
+    : public UActorComponent
+    , public ml::LogMsgMixin<"UHealthComponent", LogSandboxHealth> {
     GENERATED_BODY()
   public:
     UHealthComponent();
@@ -26,7 +31,7 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
     float max_health{100.0f};
     UPROPERTY(EditAnywhere, Category = "Health")
-    float initial_health{NO_INITIAL_HEALTH};
+    float initial_health;
     UPROPERTY(BlueprintAssignable, Category = "Health")
     FOnHealthPercentChanged on_health_percent_changed;
     UPROPERTY(BlueprintAssignable, Category = "Health")
@@ -38,6 +43,7 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
     bool at_max_health() const { return FMath::IsNearlyEqual(health_, max_health); }
     UFUNCTION(BlueprintCallable, Category = "Health")
     void modify_health(FHealthChange change) {
+        constexpr auto logger{NestedLogger<"modify_health">()};
         float new_health = health_;
 
         switch (change.type) {
@@ -70,6 +76,10 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
   private:
     void kill() { set_health(0.0f); }
     void set_health(float new_health) {
+        constexpr auto logger{NestedLogger<"modify_health">()};
+
+        logger.log_verbose(TEXT("Changing health by %.2f"), new_health);
+
         auto const clamped_health{FMath::Clamp(new_health, 0.0f, max_health)};
         if (FMath::IsNearlyEqual(clamped_health, health_)) {
             return;
@@ -92,7 +102,7 @@ class SANDBOX_API UHealthComponent : public UActorComponent {
                 IDeathHandler::try_kill(comp);
             }
 
-            IDeathHandler::try_kill(owner);
+            IDeathHandler::kill(owner);
         }
     }
 };

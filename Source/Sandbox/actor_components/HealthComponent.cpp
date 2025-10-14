@@ -2,11 +2,12 @@
 
 #include "Sandbox/actor_components/HealthComponent.h"
 
-UHealthComponent::UHealthComponent() {
+UHealthComponent::UHealthComponent()
+    : initial_health(max_health) {
     PrimaryComponentTick.bCanEverTick = false;
 }
 void UHealthComponent::BeginPlay() {
     Super::BeginPlay();
 
-    set_health(initial_health == NO_INITIAL_HEALTH ? max_health : initial_health);
+    set_health(initial_health < 0.0f ? max_health : initial_health);
 }
