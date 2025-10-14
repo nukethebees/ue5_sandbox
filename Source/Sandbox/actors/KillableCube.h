@@ -4,12 +4,16 @@
 #include "components/StaticMeshComponent.h"
 #include "engine/World.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/interfaces/DeathHandler.h"
 
 #include "KillableCube.generated.h"
 
 UCLASS()
-class SANDBOX_API AKillableCube : public AActor {
+class SANDBOX_API AKillableCube
+    : public AActor
+    , public IDeathHandler {
     GENERATED_BODY()
   public:
     AKillableCube();
@@ -21,5 +25,5 @@ class SANDBOX_API AKillableCube : public AActor {
     UHealthComponent* health_component_{nullptr};
   private:
     UFUNCTION()
-    void on_death();
+    virtual void handle_death() override;
 };

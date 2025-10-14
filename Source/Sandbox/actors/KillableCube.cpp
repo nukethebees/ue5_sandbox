@@ -16,10 +16,8 @@ AKillableCube::AKillableCube() {
     // Create health component
     health_component_ = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
     health_component_->max_health = 100.0f;
-    health_component_->on_death.AddDynamic(this, &AKillableCube::on_death);
 }
 
-void AKillableCube::on_death() {
-    // Simple death behavior - destroy the actor after a short delay
+void AKillableCube::handle_death() {
     SetLifeSpan(0.1f);
 }
