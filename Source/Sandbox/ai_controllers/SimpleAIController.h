@@ -42,4 +42,7 @@ class SANDBOX_API ASimpleAIController
 
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UAISenseConfig_Sight* sight_config;
+
+    UPROPERTY(VisibleAnywhere, Category = "AI")
+    float acceptable_radius{100.0f};
 };

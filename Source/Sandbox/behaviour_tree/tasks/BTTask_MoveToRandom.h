@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTTaskNode.h"
+#include "BehaviorTree/ValueOrBBKey.h"
 
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -20,8 +21,8 @@ class SANDBOX_API UBTTask_MoveToRandom
                                             uint8* NodeMemory) override;
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float radius{1000.0f};
+    FValueOrBBKey_Float radius{1000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float acceptable_radius{5.0f};
+    FValueOrBBKey_Float acceptable_radius{5.0f};
 };
