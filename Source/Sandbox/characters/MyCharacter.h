@@ -273,7 +273,7 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     FHumanoidMovement movement{};
   private:
-    virtual void handle_death();
+    virtual void handle_death() override;
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
     void set_speed(float new_speed);
