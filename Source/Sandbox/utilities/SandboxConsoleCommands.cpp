@@ -66,15 +66,19 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
 
     if (valid_verbosity) {
         set(LogSandboxFrameCount,
+            // Systems
             LogSandboxCore,
             LogSandboxUI,
             LogSandboxMassEntity,
+            LogSandboxCharacter,
             LogSandboxActor,
             LogSandboxActorComponent,
             LogSandboxSubsystem,
+            // Gameplay
             LogSandboxWeapon,
             LogSandboxInput,
-            LogSandboxInventory);
+            LogSandboxInventory,
+            LogSandboxHealth);
 
         UE_LOG(LogSandboxCore,
                Display,
