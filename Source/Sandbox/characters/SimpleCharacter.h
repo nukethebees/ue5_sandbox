@@ -2,8 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Components/PointLightComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
@@ -30,7 +33,16 @@ class SANDBOX_API ASimpleCharacter
     ASimpleCharacter();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ESimpleCharacterAttackMode atatck_mode{ESimpleCharacterAttackMode::None};
+    ESimpleCharacterAttackMode attack_mode{ESimpleCharacterAttackMode::None};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FLinearColor mesh_base_colour{FLinearColor::Green};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FLinearColor mesh_emissive_colour{FLinearColor::Black};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FLinearColor light_colour{FLinearColor::White};
   protected:
     virtual void BeginPlay() override;
 
@@ -38,8 +50,19 @@ class SANDBOX_API ASimpleCharacter
     TSubclassOf<AAIController> controller_class{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UStaticMeshComponent* body_mesh{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPointLightComponent* light{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UHealthComponent* health{nullptr};
   private:
     // IDeathHandler
     virtual void handle_death() override;
+
+    void apply_material_colours();
+    void apply_light_colours();
+
+    UMaterialInstanceDynamic* dynamic_material{nullptr};
 };
