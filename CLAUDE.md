@@ -48,6 +48,7 @@ The main game module is located in `Source/Sandbox/` with organized subdirectori
 ### Custom Code Standards
 - **snake_case**: For new methods and variables
 - **TitleCase**: For class names
+- **British English spelling**: Use British English spelling (colour, not color) for custom code
 - **Brace initialization**: ALWAYS use `{}` for ALL local variable definitions - `int x{0};` instead of `int x = 0;`, `auto State{IsAdvancedViewChecked()};` instead of `auto State = IsAdvancedViewChecked();`, `TSharedPtr<SVerticalBox> PreviewBox{};` instead of `TSharedPtr<SVerticalBox> PreviewBox;`
 - **Const placement**: Right of type - `int* const x{nullptr};`
 - **auto usage**: Use everywhere unless explicit type is genuinely needed for a particular reason
