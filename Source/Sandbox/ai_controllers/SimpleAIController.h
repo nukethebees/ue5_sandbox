@@ -2,8 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+
 #include "Sandbox/data/SimpleAIState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "SimpleAIController.generated.h"
 
@@ -16,7 +18,7 @@ class UAISenseConfig_Sight;
 UCLASS()
 class SANDBOX_API ASimpleAIController
     : public AAIController
-    , public ml::LogMsgMixin<"ASimpleAIController"> {
+    , public ml::LogMsgMixin<"ASimpleAIController", LogSandboxController> {
     GENERATED_BODY()
   public:
     ASimpleAIController();
