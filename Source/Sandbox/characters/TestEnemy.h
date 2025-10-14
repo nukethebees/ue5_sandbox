@@ -33,16 +33,16 @@ class SANDBOX_API ATestEnemy
   public:
     ATestEnemy();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_base_colour{FLinearColor::Green};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_emissive_colour{FLinearColor::Black};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor light_colour{FLinearColor::White};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Enemy};
 
     // IGenericTeamAgentInterface
@@ -57,22 +57,22 @@ class SANDBOX_API ATestEnemy
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     TSubclassOf<AAIController> controller_class{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     UBehaviorTree* behaviour_tree_asset{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     FCombatProfile combat_profile{EMobAttackMode::None, 150.0f, 1000.0f};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
     UStaticMeshComponent* body_mesh{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
     UPointLightComponent* light{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UHealthComponent* health{nullptr};
   private:
     // IDeathHandler
