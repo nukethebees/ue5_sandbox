@@ -10,6 +10,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+#include "Sandbox/data/ai/CombatProfile.h"
 #include "Sandbox/enums/MobAttackMode.h"
 #include "Sandbox/enums/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
@@ -31,9 +32,6 @@ class SANDBOX_API ATestEnemy
     GENERATED_BODY()
   public:
     ATestEnemy();
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    EMobAttackMode attack_mode{EMobAttackMode::None};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FLinearColor mesh_base_colour{FLinearColor::Green};
@@ -65,7 +63,7 @@ class SANDBOX_API ATestEnemy
     UBehaviorTree* behaviour_tree_asset{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float acceptable_radius{100.0f};
+    FCombatProfile combat_profile{EMobAttackMode::None, 150.0f, 1000.0f};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UStaticMeshComponent* body_mesh{nullptr};
