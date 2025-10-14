@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include "Sandbox/data/TeamID.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "PawnSpawner.generated.h"
@@ -29,6 +31,9 @@ class SANDBOX_API APawnSpawner
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
     bool spawn_at_start{true};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+    ETeamID spawned_pawn_team_id{ETeamID::Enemy};
   protected:
     virtual void BeginPlay() override;
   public:

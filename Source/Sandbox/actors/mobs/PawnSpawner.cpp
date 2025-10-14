@@ -4,6 +4,7 @@
 
 #include "AIController.h"
 #include "GameFramework/Pawn.h"
+#include "GenericTeamAgentInterface.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -53,6 +54,11 @@ void APawnSpawner::spawn_pawn() {
     spawned_pawn->AIControllerClass = ai_controller_class;
     spawned_pawn->AutoPossessAI = EAutoPossessAI::Spawned;
     spawned_pawn->SpawnDefaultController();
+
+    // Set team ID if the pawn implements IGenericTeamAgentInterface
+    if (auto* team_agent{Cast<IGenericTeamAgentInterface>(spawned_pawn)}) {
+        team_agent->SetGenericTeamId(FGenericTeamId(static_cast<uint8>(spawned_pawn_team_id)));
+    }
 
     log_verbose(TEXT("Spawned pawn at location: %s"), *spawn_location.ToString());
 }
