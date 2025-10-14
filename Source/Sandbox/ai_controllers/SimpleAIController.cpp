@@ -7,6 +7,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
+#include "Sandbox/interfaces/SandboxMobInterface.h"
 #include "Sandbox/macros/null_checks.hpp"
 
 ASimpleAIController::ASimpleAIController()
@@ -37,14 +38,33 @@ ASimpleAIController::ASimpleAIController()
 
 void ASimpleAIController::BeginPlay() {
     Super::BeginPlay();
+}
 
-    RETURN_IF_NULLPTR(behavior_tree);
+void ASimpleAIController::OnPossess(APawn* InPawn) {
+    Super::OnPossess(InPawn);
+
+    RETURN_IF_NULLPTR(InPawn);
     RETURN_IF_NULLPTR(blackboard_component);
 
+    auto const mob_interface{Cast<ISandboxMobInterface>(InPawn)};
+    RETURN_IF_NULLPTR(mob_interface);
+
+    auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
+    RETURN_IF_NULLPTR(behavior_tree);
+
+    auto const acceptable_radius{mob_interface->get_acceptable_radius()};
     blackboard_component->SetValueAsFloat("acceptable_radius", acceptable_radius);
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
+}
+
+void ASimpleAIController::OnUnPossess() {
+    Super::OnUnPossess();
+
+    if (behavior_tree_component) {
+        behavior_tree_component->StopTree();
+    }
 }
 
 void ASimpleAIController::on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus) {

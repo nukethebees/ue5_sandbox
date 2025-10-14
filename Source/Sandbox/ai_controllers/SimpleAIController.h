@@ -24,6 +24,8 @@ class SANDBOX_API ASimpleAIController
     ASimpleAIController();
   protected:
     virtual void BeginPlay() override;
+    virtual void OnPossess(APawn* InPawn) override;
+    virtual void OnUnPossess() override;
 
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
@@ -37,12 +39,6 @@ class SANDBOX_API ASimpleAIController
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBlackboardComponent* blackboard_component{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
-    UBehaviorTree* behavior_tree{nullptr};
-
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UAISenseConfig_Sight* sight_config;
-
-    UPROPERTY(VisibleAnywhere, Category = "AI")
-    float acceptable_radius{100.0f};
 };
