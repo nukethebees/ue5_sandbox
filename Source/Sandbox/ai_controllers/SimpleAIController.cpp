@@ -9,15 +9,13 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-ASimpleAIController::ASimpleAIController() {
-    behavior_tree_component =
-        CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
-    blackboard_component =
-        CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
-
-    ai_perception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
-
-    sight_config = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
+ASimpleAIController::ASimpleAIController()
+    : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
+    , behavior_tree_component(
+          CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent")))
+    , blackboard_component(
+          CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent")))
+    , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
     sight_config->PeripheralVisionAngleDegrees = 270.0f;
@@ -40,25 +38,17 @@ ASimpleAIController::ASimpleAIController() {
 void ASimpleAIController::BeginPlay() {
     Super::BeginPlay();
 
-    if (behavior_tree) {
-        UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
-        RunBehaviorTree(behavior_tree);
-    } else {
-        log_warning(TEXT("behavior_tree is nullptr."));
-    }
+    RETURN_IF_NULLPTR(behavior_tree);
+
+    UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
+    RunBehaviorTree(behavior_tree);
 }
 
 void ASimpleAIController::on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus) {
     constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
 
-    if (!Actor) {
-        LOG.log_warning(TEXT("Actor is nullptr."));
-        return;
-    }
-    if (!blackboard_component) {
-        LOG.log_warning(TEXT("GetBlackboardComponent is nullptr."));
-        return;
-    }
+    RETURN_IF_NULLPTR(Actor);
+    RETURN_IF_NULLPTR(blackboard_component);
 
     static auto const target_name{TEXT("target_actor")};
 
