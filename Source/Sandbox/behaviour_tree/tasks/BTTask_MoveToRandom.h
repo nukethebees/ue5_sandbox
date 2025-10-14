@@ -12,7 +12,7 @@
 UCLASS()
 class SANDBOX_API UBTTask_MoveToRandom
     : public UBTTaskNode
-    , public ml::LogMsgMixin<"ASimpleAIController", LogSandboxAI> {
+    , public ml::LogMsgMixin<"UBTTask_MoveToRandom", LogSandboxAI> {
     GENERATED_BODY()
   public:
     UBTTask_MoveToRandom();
