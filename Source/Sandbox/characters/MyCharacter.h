@@ -19,7 +19,7 @@
 
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/data/HumanoidMovement.h"
-#include "Sandbox/data/TeamID.h"
+#include "Sandbox/enums/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/interfaces/MovementMultiplierReceiver.h"
