@@ -2,6 +2,7 @@
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
+#include "GenericTeamAgentInterface.h"
 #include "TimerManager.h"
 
 #include "Sandbox/actor_components/HealthComponent.h"
@@ -48,13 +49,14 @@ void UDamageAuraComponent::on_overlap_end(UPrimitiveComponent* overlapped_comp,
                                           AActor* other_actor,
                                           UPrimitiveComponent* other_comp,
                                           int32 other_body_index) {
-    RETURN_IF_NULLPTR(other_actor);
     actors_in_aura.Remove(other_actor);
     update_timer();
 }
 
 void UDamageAuraComponent::apply_damage() {
     TArray<TWeakObjectPtr<AActor>> actors_to_remove{};
+
+    TRY_INIT_PTR(owner, GetOwner());
 
     for (auto const& weak_actor : actors_in_aura) {
         auto* actor{weak_actor.Get()};
@@ -67,6 +69,14 @@ void UDamageAuraComponent::apply_damage() {
         if (!health_component) {
             actors_to_remove.Add(weak_actor);
             continue;
+        }
+
+        // Check team attitude if only_damage_enemies is enabled
+        if (only_damage_enemies) {
+            auto const owner_attitude{FGenericTeamId::GetAttitude(owner, actor)};
+            if (owner_attitude != ETeamAttitude::Hostile) {
+                continue;
+            }
         }
 
         auto const damage_amount{damage_per_second * tick_interval};

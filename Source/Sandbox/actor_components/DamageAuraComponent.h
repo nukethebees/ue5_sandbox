@@ -37,6 +37,9 @@ class SANDBOX_API UDamageAuraComponent : public UActorComponent {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage Aura")
     float tick_interval{0.1f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage Aura")
+    bool only_damage_enemies{true};
   private:
     UPROPERTY()
     UBoxComponent* collision_box{nullptr};
