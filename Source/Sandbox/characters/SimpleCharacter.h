@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "BehaviorTree/BehaviorTree.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
@@ -11,6 +12,7 @@
 
 #include "Sandbox/data/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
+#include "Sandbox/interfaces/SandboxMobInterface.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
@@ -30,7 +32,8 @@ class SANDBOX_API ASimpleCharacter
     : public ACharacter
     , public ml::LogMsgMixin<"ASimpleCharacter", LogSandboxCharacter>
     , public IDeathHandler
-    , public IGenericTeamAgentInterface {
+    , public IGenericTeamAgentInterface
+    , public ISandboxMobInterface {
     GENERATED_BODY()
   public:
     ASimpleCharacter();
@@ -53,12 +56,22 @@ class SANDBOX_API ASimpleCharacter
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
+
+    // ISandboxMobInterface
+    virtual UBehaviorTree* get_behaviour_tree_asset() const override;
+    virtual float get_acceptable_radius() const override;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TSubclassOf<AAIController> controller_class{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UBehaviorTree* behaviour_tree_asset{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float acceptable_radius{100.0f};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UStaticMeshComponent* body_mesh{nullptr};
