@@ -19,4 +19,7 @@ class SANDBOX_API UBTTask_AttackEnemy
 
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp,
                                             uint8* NodeMemory) override;
+
+    UPROPERTY(EditAnywhere, Category = "Blackboard")
+    FValueOrBBKey_Object target_actor;
 };
