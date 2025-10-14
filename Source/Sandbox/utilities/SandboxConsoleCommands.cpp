@@ -71,6 +71,8 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             LogSandboxUI,
             LogSandboxMassEntity,
             LogSandboxCharacter,
+            LogSandboxController,
+            LogSandboxAI,
             LogSandboxActor,
             LogSandboxActorComponent,
             LogSandboxSubsystem,
