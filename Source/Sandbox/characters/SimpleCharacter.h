@@ -44,6 +44,7 @@ class SANDBOX_API ASimpleCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FLinearColor light_colour{FLinearColor::White};
   protected:
+    virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

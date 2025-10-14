@@ -26,13 +26,8 @@ ASimpleCharacter::ASimpleCharacter()
     }
 }
 
-void ASimpleCharacter::BeginPlay() {
-    constexpr auto logger{NestedLogger<"BeginPlay">()};
-    Super::BeginPlay();
-
-    if (!Controller && AIControllerClass) {
-        SpawnDefaultController();
-    }
+void ASimpleCharacter::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
 
     apply_light_colours();
 
@@ -41,6 +36,14 @@ void ASimpleCharacter::BeginPlay() {
 
     dynamic_material = body_mesh->CreateDynamicMaterialInstance(0);
     apply_material_colours();
+}
+void ASimpleCharacter::BeginPlay() {
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
+    Super::BeginPlay();
+
+    if (!Controller && AIControllerClass) {
+        SpawnDefaultController();
+    }
 }
 
 void ASimpleCharacter::handle_death() {
