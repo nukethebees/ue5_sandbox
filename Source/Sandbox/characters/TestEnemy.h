@@ -52,7 +52,7 @@ class SANDBOX_API ATestEnemy
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
 
     // ICombatActor
-    virtual void attack_actor(AActor* target) override;
+    virtual bool attack_actor(AActor* target) override;
 
     // ISandboxMobInterface
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
@@ -87,4 +87,5 @@ class SANDBOX_API ATestEnemy
     void apply_light_colours();
 
     UMaterialInstanceDynamic* dynamic_material{nullptr};
+    float last_attack_time{0.0f};
 };

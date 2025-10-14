@@ -13,5 +13,5 @@ class UCombatActor : public UInterface {
 class SANDBOX_API ICombatActor {
     GENERATED_BODY()
   public:
-    virtual void attack_actor(AActor* target) = 0;
+    virtual bool attack_actor(AActor* target) = 0;
 };

@@ -30,7 +30,7 @@ EBTNodeResult::Type UBTTask_AttackEnemy::ExecuteTask(UBehaviorTreeComponent& own
         EBTNodeResult::Failed);
     INIT_PTR_OR_RETURN_VALUE(combat_actor, Cast<ICombatActor>(pawn), EBTNodeResult::Failed);
 
-    combat_actor->attack_actor(target);
+    auto const attack_succeeded{combat_actor->attack_actor(target)};
 
-    return EBTNodeResult::Succeeded;
+    return attack_succeeded ? EBTNodeResult::Succeeded : EBTNodeResult::Failed;
 }
