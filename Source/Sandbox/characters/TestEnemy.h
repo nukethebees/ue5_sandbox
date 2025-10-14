@@ -11,26 +11,26 @@
 #include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/data/TeamID.h"
+#include "Sandbox/enums/MobAttackMode.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/SandboxMobInterface.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/enums/MobAttackMode.h"
 
-#include "SimpleCharacter.generated.h"
+#include "TestEnemy.generated.h"
 
 class UHealthComponent;
 
 UCLASS()
-class SANDBOX_API ASimpleCharacter
+class SANDBOX_API ATestEnemy
     : public ACharacter
-    , public ml::LogMsgMixin<"ASimpleCharacter", LogSandboxCharacter>
+    , public ml::LogMsgMixin<"ATestEnemy", LogSandboxCharacter>
     , public IDeathHandler
     , public IGenericTeamAgentInterface
     , public ISandboxMobInterface {
     GENERATED_BODY()
   public:
-    ASimpleCharacter();
+    ATestEnemy();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     EMobAttackMode attack_mode{EMobAttackMode::None};
