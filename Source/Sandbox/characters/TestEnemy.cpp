@@ -65,6 +65,9 @@ UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
 float ATestEnemy::get_acceptable_radius() const {
     return combat_profile.get_attack_range();
 }
+float ATestEnemy::get_attack_radius() const {
+    return combat_profile.get_attack_range();
+}
 
 void ATestEnemy::apply_material_colours() {
     constexpr auto logger{NestedLogger<"apply_material_colours">()};
