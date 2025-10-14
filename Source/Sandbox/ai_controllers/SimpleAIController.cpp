@@ -39,6 +39,9 @@ void ASimpleAIController::BeginPlay() {
     Super::BeginPlay();
 
     RETURN_IF_NULLPTR(behavior_tree);
+    RETURN_IF_NULLPTR(blackboard_component);
+
+    blackboard_component->SetValueAsFloat("acceptable_radius", acceptable_radius);
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
