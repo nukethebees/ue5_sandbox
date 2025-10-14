@@ -11,6 +11,13 @@
 
 #include "SimpleCharacter.generated.h"
 
+UENUM(BlueprintType)
+enum class ESimpleCharacterAttackMode : uint8 {
+    None UMETA(DisplayName = "None"),
+    Melee UMETA(DisplayName = "Melee"),
+    Ranged UMETA(DisplayName = "Ranged")
+};
+
 class UHealthComponent;
 
 UCLASS()
@@ -21,6 +28,9 @@ class SANDBOX_API ASimpleCharacter
     GENERATED_BODY()
   public:
     ASimpleCharacter();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    ESimpleCharacterAttackMode atatck_mode{ESimpleCharacterAttackMode::None};
   protected:
     virtual void BeginPlay() override;
 
