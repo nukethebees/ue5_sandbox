@@ -14,3 +14,4 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSandboxSubsystem, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxWeapon, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInput, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInventory, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxHealth, Log, All);
