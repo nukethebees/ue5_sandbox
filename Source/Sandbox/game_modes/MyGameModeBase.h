@@ -8,7 +8,7 @@
 
 #include "Sandbox/actor_components/RemoveGhostsOnStartComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/data/TeamID.h"
+#include "Sandbox/enums/TeamID.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"

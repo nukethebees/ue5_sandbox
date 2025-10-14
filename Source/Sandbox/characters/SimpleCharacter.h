@@ -10,12 +10,12 @@
 #include "GenericTeamAgentInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/data/TeamID.h"
+#include "Sandbox/enums/MobAttackMode.h"
+#include "Sandbox/enums/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/SandboxMobInterface.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/enums/MobAttackMode.h"
 
 #include "SimpleCharacter.generated.h"
 

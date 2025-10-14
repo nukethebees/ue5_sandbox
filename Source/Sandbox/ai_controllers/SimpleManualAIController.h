@@ -7,7 +7,7 @@
 #include "AIController.h"
 #include "Misc/Optional.h"
 
-#include "Sandbox/data/SimpleAIState.h"
+#include "Sandbox/enums/SimpleAIState.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 
 #include "SimpleManualAIController.generated.h"
