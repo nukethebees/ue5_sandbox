@@ -123,7 +123,7 @@ UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
     , public print_msg_mixin
-    , public ml::LogMsgMixin<"MyCharacter", LogSandboxActor>
+    , public ml::LogMsgMixin<"MyCharacter", LogSandboxCharacter>
     , public IDeathHandler
     , public IMaxSpeedChangeListener
     , public IMovementMultiplierReceiver
@@ -273,9 +273,14 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     FHumanoidMovement movement{};
   private:
+    // IDeathHandler
     virtual void handle_death() override;
+    
+    // Cameras
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
+
+    // Movement
     void set_speed(float new_speed);
     void update_speed();
 
