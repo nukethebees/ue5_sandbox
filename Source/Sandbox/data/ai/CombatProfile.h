@@ -16,14 +16,20 @@ struct FCombatProfile {
         , melee_range(melee_range)
         , ranged_range(ranged_range) {}
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     EMobAttackMode attack_mode{EMobAttackMode::None};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float melee_range{150.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float ranged_range{800.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float melee_damage{20.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float melee_cooldown{1.0f};
 
     float get_attack_range() const {
         switch (attack_mode) {

@@ -6,6 +6,7 @@
 
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/ai_controllers/SimpleAIController.h"
+#include "Sandbox/data/health/HealthChange.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -58,12 +59,39 @@ void ATestEnemy::SetGenericTeamId(FGenericTeamId const& TeamID) {
     team_id = static_cast<ETeamID>(TeamID.GetId());
 }
 
-void ATestEnemy::attack_actor(AActor* target) {
+bool ATestEnemy::attack_actor(AActor* target) {
     constexpr auto logger{NestedLogger<"attack_actor">()};
 
-    RETURN_IF_NULLPTR(target);
-    logger.log_verbose(TEXT("Attacking actor: %s"), *target->GetName());
-    // TODO: Implement actual attack logic
+    RETURN_VALUE_IF_NULLPTR(target, false);
+
+    // Check cooldown
+    auto const current_time{GetWorld()->GetTimeSeconds()};
+    if (current_time - last_attack_time < combat_profile.melee_cooldown) {
+        logger.log_verbose(TEXT("Attack on cooldown"));
+        return false;
+    }
+
+    // Check distance
+    auto const distance{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
+    auto const attack_radius{get_attack_radius()};
+    if (distance > attack_radius) {
+        logger.log_verbose(
+            TEXT("Target out of attack range: %.2f > %.2f"), distance, attack_radius);
+        return false;
+    }
+
+    // Find health component
+    INIT_PTR_OR_RETURN_VALUE(
+        target_health, target->FindComponentByClass<UHealthComponent>(), false);
+
+    // Apply damage
+    logger.log_verbose(
+        TEXT("Attacking %s for %.2f damage"), *target->GetName(), combat_profile.melee_damage);
+    target_health->modify_health(
+        FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
+    last_attack_time = current_time;
+
+    return true;
 }
 
 UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
