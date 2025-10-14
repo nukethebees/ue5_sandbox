@@ -7,8 +7,6 @@
 
 #undef CONTINUE_IF_NULLPTR
 
-#undef TRY_INIT_BTTASK_PTR
-
 #undef RETURN_IF_INVALID
 #undef TRY_INIT_VALID
 
