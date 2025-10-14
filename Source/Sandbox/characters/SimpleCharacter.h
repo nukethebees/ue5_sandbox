@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -21,6 +22,11 @@ class SANDBOX_API ASimpleCharacter
   public:
     ASimpleCharacter();
   protected:
+    virtual void BeginPlay() override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TSubclassOf<AAIController> controller_class{nullptr};
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     UHealthComponent* health{nullptr};
   private:
