@@ -1,5 +1,7 @@
 #include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 void UDamageManagerSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::Initialize"))
     Super::Initialize(collection);
@@ -10,25 +12,27 @@ void UDamageManagerSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 void UDamageManagerSubsystem::queue_health_change(UHealthComponent* receiver,
                                                   FHealthChange const& change) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::queue_health_change"))
-    if (!receiver) {
-        return;
-    }
+    constexpr auto logger{NestedLogger<"queue_health_change">()};
+    logger.log_very_verbose(TEXT("Queuing health change."));
+
+    RETURN_IF_NULLPTR(receiver);
 
     (void)damage_queue.enqueue(FQueuedHealthChange{receiver, change});
     tick_enabled = true;
 }
 
-void UDamageManagerSubsystem::Tick(float DeltaTime) {
+void UDamageManagerSubsystem::Tick(float delta_time) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::Tick"))
-    Super::Tick(DeltaTime);
+    constexpr auto logger{NestedLogger<"Tick">()};
+    Super::Tick(delta_time);
 
     auto changes{damage_queue.swap_and_consume()};
     changes.log_results(TEXT("UDamageManagerSubsystem::Tick"));
 
+    logger.log_verbose(TEXT("Processing %d damage events."), changes.view.size());
     for (auto const& change : changes.view) {
-        if (change.Receiver.IsValid()) {
-            change.Receiver->modify_health(change.Change);
-        }
+        CONTINUE_IF_FALSE(change.Receiver.IsValid())
+        change.Receiver->modify_health(change.Change);
     }
 
     if (changes.view.empty()) {
