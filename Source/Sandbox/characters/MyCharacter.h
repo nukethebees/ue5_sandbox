@@ -14,10 +14,12 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GenericTeamAgentInterface.h"
 #include "InputActionValue.h"
 
 #include "Sandbox/actor_components/WarpComponent.h"
 #include "Sandbox/data/HumanoidMovement.h"
+#include "Sandbox/data/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/interfaces/MovementMultiplierReceiver.h"
@@ -127,7 +129,8 @@ class SANDBOX_API AMyCharacter
     , public IDeathHandler
     , public IMaxSpeedChangeListener
     , public IMovementMultiplierReceiver
-    , public ml::EnhancedInputMixin {
+    , public ml::EnhancedInputMixin
+    , public IGenericTeamAgentInterface {
     GENERATED_BODY()
   public:
     static constexpr int32 default_max_jump_count{2};
@@ -258,6 +261,13 @@ class SANDBOX_API AMyCharacter
     TSubclassOf<AActor> bullet_class;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     int32 ammo{10};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+    ETeamID team_id{ETeamID::Player};
+
+    // IGenericTeamAgentInterface
+    virtual FGenericTeamId GetGenericTeamId() const override;
+    virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
   protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

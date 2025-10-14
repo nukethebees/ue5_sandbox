@@ -50,6 +50,14 @@ void ASimpleCharacter::handle_death() {
     SetLifeSpan(0.1f);
 }
 
+FGenericTeamId ASimpleCharacter::GetGenericTeamId() const {
+    return FGenericTeamId(static_cast<uint8>(team_id));
+}
+
+void ASimpleCharacter::SetGenericTeamId(FGenericTeamId const& TeamID) {
+    team_id = static_cast<ETeamID>(TeamID.GetId());
+}
+
 void ASimpleCharacter::apply_material_colours() {
     constexpr auto logger{NestedLogger<"apply_material_colours">()};
 
