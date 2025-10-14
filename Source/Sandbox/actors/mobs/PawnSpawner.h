@@ -33,6 +33,9 @@ class SANDBOX_API APawnSpawner
     bool spawn_at_start{true};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+    bool enabled{true};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
     ETeamID spawned_pawn_team_id{ETeamID::Enemy};
   protected:
     virtual void BeginPlay() override;

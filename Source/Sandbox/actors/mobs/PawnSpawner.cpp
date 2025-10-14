@@ -15,6 +15,11 @@ APawnSpawner::APawnSpawner() {
 void APawnSpawner::BeginPlay() {
     Super::BeginPlay();
 
+    if (!enabled) {
+        SetActorTickEnabled(false);
+        return;
+    }
+
     if (spawn_at_start) {
         spawn_pawn();
     }
