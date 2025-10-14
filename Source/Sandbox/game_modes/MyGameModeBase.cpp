@@ -7,6 +7,17 @@ AMyGameModeBase::AMyGameModeBase() {
         CreateDefaultSubobject<URemoveGhostsOnStartComponent>(TEXT("GhostCleanupComponent"));
 }
 
+void AMyGameModeBase::InitGame(FString const& MapName,
+                               FString const& Options,
+                               FString& ErrorMessage) {
+    Super::InitGame(MapName, Options, ErrorMessage);
+    constexpr auto logger{NestedLogger<"InitGame">()};
+
+    // Set up team attitude solver for AI perception
+    FGenericTeamId::SetAttitudeSolver(&GetTeamAttitude);
+    logger.log_verbose(TEXT("Team attitude solver initialized"));
+}
+
 void AMyGameModeBase::BeginPlay() {
     Super::BeginPlay();
     constexpr auto logger{NestedLogger<"BeginPlay">()};
