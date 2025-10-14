@@ -7,6 +7,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 APushZoneActor::APushZoneActor() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -45,29 +47,12 @@ void APushZoneActor::OnConstruction(FTransform const& Transform) {
 
     LOGGER.log_verbose(TEXT("Start"));
 
-    // Explicit null checks with error messages
-    if (!collision_box) {
-        LOGGER.log_error(TEXT("collision_box is null - this should never happen"));
-        return;
-    }
-
-    if (!visual_mesh_outer) {
-        LOGGER.log_error(TEXT("visual_mesh_outer is null - this should never happen"));
-        return;
-    }
-
-    if (!visual_mesh_inner) {
-        LOGGER.log_error(TEXT("visual_mesh_inner is null - this should never happen"));
-        return;
-    }
-
-    if (!visual_mesh_outer->GetStaticMesh()) {
-        LOGGER.log_error(TEXT("visual_mesh_outer has no static mesh - set mesh in Blueprint"));
-        return;
-    }
+    RETURN_IF_NULLPTR(collision_box);
+    RETURN_IF_NULLPTR(visual_mesh_outer);
+    RETURN_IF_NULLPTR(visual_mesh_inner);
+    RETURN_IF_NULLPTR(visual_mesh_outer->GetStaticMesh());
 
     // Position and scale outer mesh to match collision box
-
     LOGGER.log_verbose(TEXT("Position and scale outer mesh"));
 
     // Match position and rotation of collision box
