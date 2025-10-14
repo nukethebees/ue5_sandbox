@@ -8,6 +8,7 @@
 
 #include "Sandbox/actor_components/RemoveGhostsOnStartComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/data/TeamID.h"
 #include "Sandbox/huds/MyHud.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -22,6 +23,8 @@ class SANDBOX_API AMyGameModeBase
   public:
     AMyGameModeBase();
   protected:
+    virtual void
+        InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
     virtual void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Mode")
