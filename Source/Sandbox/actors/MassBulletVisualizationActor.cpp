@@ -174,12 +174,14 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
             grow_instances(i, n_to_transform);
         }
 
+#if 0
         if (!logger.log_category.IsSuppressed(ELogVerbosity::VeryVerbose)) {
             logger.log_very_verbose(TEXT("Batching %d transforms.\n"), n_to_transform);
             for (auto const& xform : transform_result.view) {
                 logger.log_very_verbose(TEXT("%s\n"), *xform.ToString());
             }
         }
+#endif
 
         constexpr int32 start_index{0};
         constexpr bool world_space{true};
