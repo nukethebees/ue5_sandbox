@@ -18,10 +18,14 @@ UBTTask_MoveToRandom::UBTTask_MoveToRandom() {
 
 EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
                                                       uint8* NodeMemory) {
-    TRY_INIT_BTTASK_PTR(ai_controller, OwnerComp.GetAIOwner());
-    auto const random_point{ml::get_random_nav_point(ai_controller->GetPawn(), radius)};
+    constexpr auto logger{NestedLogger<"ExecuteTask">()};
+
+    INIT_PTR_OR_RETURN_VALUE(ai_controller, OwnerComp.GetAIOwner(), EBTNodeResult::Failed);
+    INIT_PTR_OR_RETURN_VALUE(pawn, ai_controller->GetPawn(), EBTNodeResult::Failed);
+
+    auto const random_point{ml::get_random_nav_point(pawn, radius)};
     if (!random_point) {
-        UE_LOG(LogTemp, Warning, TEXT("No point found."));
+        logger.log_warning(TEXT("No point found."));
         return EBTNodeResult::Failed;
     }
 
@@ -33,6 +37,6 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& Ow
         return EBTNodeResult::Succeeded;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("Task failed."));
+    logger.log_warning(TEXT("Task failed."));
     return EBTNodeResult::Failed;
 }
