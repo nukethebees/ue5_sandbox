@@ -6,8 +6,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GenericTeamAgentInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+#include "Sandbox/data/TeamID.h"
 #include "Sandbox/interfaces/DeathHandler.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -27,7 +29,8 @@ UCLASS()
 class SANDBOX_API ASimpleCharacter
     : public ACharacter
     , public ml::LogMsgMixin<"ASimpleCharacter", LogSandboxCharacter>
-    , public IDeathHandler {
+    , public IDeathHandler
+    , public IGenericTeamAgentInterface {
     GENERATED_BODY()
   public:
     ASimpleCharacter();
@@ -43,6 +46,13 @@ class SANDBOX_API ASimpleCharacter
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FLinearColor light_colour{FLinearColor::White};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    ETeamID team_id{ETeamID::Enemy};
+
+    // IGenericTeamAgentInterface
+    virtual FGenericTeamId GetGenericTeamId() const override;
+    virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;

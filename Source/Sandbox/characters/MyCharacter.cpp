@@ -326,6 +326,14 @@ void AMyCharacter::handle_death() {
     }
 }
 
+FGenericTeamId AMyCharacter::GetGenericTeamId() const {
+    return FGenericTeamId(static_cast<uint8>(team_id));
+}
+
+void AMyCharacter::SetGenericTeamId(FGenericTeamId const& TeamID) {
+    team_id = static_cast<ETeamID>(TeamID.GetId());
+}
+
 void AMyCharacter::on_speed_changed(float new_speed) {
     OnMaxSpeedChanged.Broadcast(new_speed);
 }
