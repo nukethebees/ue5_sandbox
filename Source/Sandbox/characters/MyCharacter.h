@@ -275,7 +275,7 @@ class SANDBOX_API AMyCharacter
   private:
     // IDeathHandler
     virtual void handle_death() override;
-    
+
     // Cameras
     void disable_all_cameras();
     void change_camera_to(ECharacterCameraMode mode);
