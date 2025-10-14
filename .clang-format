@@ -107,3 +107,5 @@ SpaceInEmptyBlock: false
 SpacesInAngles: false
 SpacesInContainerLiterals: false
 SpacesInParens: Never
+
+StatementMacros: ['UPROPERTY', 'UCLASS', 'USTRUCT', 'GENERATED_BODY', 'UENUM']

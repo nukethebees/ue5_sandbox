@@ -52,6 +52,7 @@ class SANDBOX_API ATestEnemy
     // ISandboxMobInterface
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
+    virtual float get_attack_radius() const override;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
