@@ -20,11 +20,6 @@ ATestEnemy::ATestEnemy()
     light->SetupAttachment(body_mesh);
 
     AutoPossessAI = EAutoPossessAI::Spawned;
-    if (controller_class) {
-        AIControllerClass = controller_class;
-    } else {
-        AIControllerClass = ASimpleAIController::StaticClass();
-    }
 }
 
 void ATestEnemy::OnConstruction(FTransform const& transform) {
@@ -42,7 +37,12 @@ void ATestEnemy::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};
     Super::BeginPlay();
 
-    if (!Controller && AIControllerClass) {
+    if (controller_class) {
+        AIControllerClass = controller_class;
+    }
+
+    if (!Controller) {
+        RETURN_IF_NULLPTR(AIControllerClass);
         SpawnDefaultController();
     }
 }
@@ -73,7 +73,7 @@ bool ATestEnemy::attack_actor(AActor* target) {
 
     // Check distance
     auto const distance{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
-    auto const attack_radius{get_attack_radius()};
+    auto const attack_radius{combat_profile.melee_range};
     if (distance > attack_radius) {
         logger.log_verbose(
             TEXT("Target out of attack range: %.2f > %.2f"), distance, attack_radius);
@@ -101,8 +101,8 @@ UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
 float ATestEnemy::get_acceptable_radius() const {
     return combat_profile.get_attack_range();
 }
-float ATestEnemy::get_attack_radius() const {
-    return combat_profile.get_attack_range();
+float ATestEnemy::get_attack_acceptable_radius() const {
+    return combat_profile.get_attack_range() / 2.0f;
 }
 
 void ATestEnemy::apply_material_colours() {
