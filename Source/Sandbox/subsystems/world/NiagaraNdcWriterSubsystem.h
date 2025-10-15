@@ -24,17 +24,17 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
 
     UNiagaraNdcWriterSubsystem() = default;
 
-    FNdcWriterIndex register_asset(UNiagaraDataChannelAsset& asset);
+    auto register_asset(NdcAsset& asset) -> FNdcWriterIndex;
+    auto get_asset(FNdcWriterIndex index) -> NdcAsset*;
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
     virtual void OnWorldBeginPlay(UWorld& world) override;
   private:
     void flush_ndc_writes();
-    NdcWriter* create_data_channel_writer(NdcAsset& asset, int32 n);
+    auto create_data_channel_writer(NdcAsset& asset, int32 n) -> NdcWriter*;
 
-
-    TArray<TWeakObjectPtr<UNiagaraDataChannelAsset>> assets_;
+    TArray<TWeakObjectPtr<NdcAsset>> assets_;
     TMap<FName, FNdcWriterIndex> asset_lookup_;
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters{};
