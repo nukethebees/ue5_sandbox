@@ -75,9 +75,8 @@ void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impact
         writer->WriteVector(rotation_label, i, impacts.rotations[i]);
     }
 }
-UNiagaraDataChannelWriter*
-    UBulletSparkEffectSubsystem::create_data_channel_writer(UNiagaraDataChannelAsset& asset,
-                                                            int32 n) {
+auto UBulletSparkEffectSubsystem::create_data_channel_writer(NdcAsset& asset, int32 n)
+    -> NdcWriter* {
 
     constexpr bool bVisibleToGame{false};
     constexpr bool bVisibleToCPU{true};
