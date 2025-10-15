@@ -44,7 +44,7 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
     auto register_asset(NdcAsset& asset, std::size_t queue_size = n_queue_elements_default)
         -> FNdcWriterIndex;
     auto get_asset(FNdcWriterIndex index) -> NdcAsset*;
-    auto num_assets() const { return assets_.Num(); }
+    auto num_assets() const { return num_assets_; }
     template <typename... Args>
     void add_payload(FNdcWriterIndex index, Args&&... args);
   protected:
@@ -58,6 +58,7 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
     TArray<TWeakObjectPtr<NdcAsset>> assets_;
     TMap<FName, FNdcWriterIndex> asset_lookup_;
     TArray<MonitoredQueue> queues_;
+    int32 num_assets_{0};
 
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters_{};
@@ -66,6 +67,6 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
 template <typename... Args>
 void UNiagaraNdcWriterSubsystem::add_payload(FNdcWriterIndex index, Args&&... args) {
     auto const i{index.get_value()};
-    check((i > 0) && (i < queues_.Num()));
+    check((i > 0) && (i < num_assets()));
     (void)queues_[i].enqueue(std::forward<Args>(args)...);
 }
