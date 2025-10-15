@@ -32,6 +32,8 @@ class MonitoredLockFreeMPSCQueue : public QueueType {
         size_type full_count;
         size_type uninitialised_count;
 
+        bool is_empty() const { return !success_count; }
+
         void log_results(FString const& queue_name) const {
             if (full_count > 0) {
                 UE_LOG(
