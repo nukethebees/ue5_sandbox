@@ -34,6 +34,26 @@ void UBulletSparkEffectSubsystem::OnWorldBeginPlay(UWorld& world) {
     FCoreDelegates::OnEndFrame.AddUObject(this, &UBulletSparkEffectSubsystem::on_end_frame);
 }
 
+bool UBulletSparkEffectSubsystem::initialise_asset_data() {
+    constexpr auto logger{NestedLogger<"initialise_asset_data">()};
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+    INIT_PTR_OR_RETURN_VALUE(gi, world->GetGameInstance(), false);
+    INIT_PTR_OR_RETURN_VALUE(ss, gi->GetSubsystem<UBulletAssetRegistry>(), false);
+    INIT_PTR_OR_RETURN_VALUE(loaded_data, ss->get_bullet(), false);
+    bullet_data = loaded_data;
+    return true;
+}
+void UBulletSparkEffectSubsystem::on_end_frame() {
+    TRY_INIT_PTR(world, GetWorld());
+    RETURN_IF_FALSE(world->IsGameWorld());
+    RETURN_IF_FALSE(world->IsPaused());
+
+    queue.swap_and_visit([this](auto const& result) {
+        result.log_results(TEXT("UBulletSparkEffectSubsystem"));
+        RETURN_IF_TRUE(result.view.locations.empty());
+        consume_impacts(result.view);
+    });
+}
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
 
@@ -48,7 +68,6 @@ void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impact
     logger.log_verbose(TEXT("Writing %d impacts."), n);
 
     auto* writer{create_data_channel_writer(*bullet_data->ndc_asset, n)};
-
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
     for (int32 i{0}; i < n; ++i) {
@@ -56,7 +75,6 @@ void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impact
         writer->WriteVector(rotation_label, i, impacts.rotations[i]);
     }
 }
-
 UNiagaraDataChannelWriter*
     UBulletSparkEffectSubsystem::create_data_channel_writer(UNiagaraDataChannelAsset& asset,
                                                             int32 n) {
@@ -76,38 +94,6 @@ UNiagaraDataChannelWriter*
                                                                        bVisibleToGPU,
                                                                        DebugSource)};
     return writer;
-}
-
-bool UBulletSparkEffectSubsystem::initialise_asset_data() {
-    constexpr auto logger{NestedLogger<"initialise_asset_data">()};
-    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
-    INIT_PTR_OR_RETURN_VALUE(gi, world->GetGameInstance(), false);
-    INIT_PTR_OR_RETURN_VALUE(ss, gi->GetSubsystem<UBulletAssetRegistry>(), false);
-    INIT_PTR_OR_RETURN_VALUE(loaded_data, ss->get_bullet(), false);
-    bullet_data = loaded_data;
-    return true;
-}
-
-void UBulletSparkEffectSubsystem::Tick(float DeltaTime) {}
-
-void UBulletSparkEffectSubsystem::on_end_frame() {
-    if (auto* world{GetWorld()}) {
-        if (!world->IsGameWorld()) {
-            return;
-        }
-        if (world->IsPaused()) {
-            return;
-        }
-    }
-
-    queue.swap_and_visit([this](auto const& result) {
-        result.log_results(TEXT("UBulletSparkEffectSubsystem"));
-        if (result.view.locations.empty()) {
-            return;
-        }
-
-        consume_impacts(result.view);
-    });
 }
 
 TStatId UBulletSparkEffectSubsystem::GetStatId() const {
