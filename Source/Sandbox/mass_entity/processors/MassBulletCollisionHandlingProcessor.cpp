@@ -6,7 +6,6 @@
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
-#include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 #include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
 #include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
 
@@ -17,30 +16,29 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
     constexpr auto logger{NestedLogger<"Execute">()};
 
     TRY_INIT_PTR(world, context.GetWorld());
-    TRY_INIT_PTR(spark_effect_subsystem, world->GetSubsystem<UBulletSparkEffectSubsystem>());
-    TRY_INIT_PTR(ndc_subsystem, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
-    TRY_INIT_PTR(damage_manager, world->GetSubsystem<UDamageManagerSubsystem>());
+    TRY_INIT_PTR(ndc_subsystem_ptr, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
+    TRY_INIT_PTR(damage_manager_ptr, world->GetSubsystem<UDamageManagerSubsystem>());
 
-    auto executor{[spark_effect_subsystem, damage_manager, ndc_subsystem](
+    auto executor{[&damage_manager = *damage_manager_ptr, &ndc_subsystem = *ndc_subsystem_ptr](
                       FMassExecutionContext& context, auto& Data) {
         auto const n{context.GetNumEntities()};
         auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
-        auto const impact_effect_fragment{
+        auto const& impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
-        auto const damage_fragment{context.GetConstSharedFragment<FMassBulletDamageFragment>()};
+        auto const& damage_fragment{context.GetConstSharedFragment<FMassBulletDamageFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
             if (!state_fragments[i].hit_occurred) {
                 continue;
             }
-            ndc_subsystem->add_payload(impact_effect_fragment.effect_index,
-                                       hit_infos[i].hit_location,
-                                       hit_infos[i].hit_normal);
+            ndc_subsystem.add_payload(impact_effect_fragment.effect_index,
+                                      hit_infos[i].hit_location,
+                                      hit_infos[i].hit_normal);
 
             if (auto* hit_actor{hit_infos[i].hit_actor.Get()}) {
                 if (auto* health_component{hit_actor->FindComponentByClass<UHealthComponent>()}) {
-                    damage_manager->queue_health_change(health_component, damage_fragment.damage);
+                    damage_manager.queue_health_change(health_component, damage_fragment.damage);
                 }
             }
         }
