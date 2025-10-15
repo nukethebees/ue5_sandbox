@@ -7,7 +7,8 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset) -> FNdcWriterIndex {
+auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t queue_size)
+    -> FNdcWriterIndex {
     auto const asset_name{asset.GetFName()};
     if (auto i{asset_lookup_.Find(asset_name)}) {
         return *i;
@@ -16,7 +17,8 @@ auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset) -> FNdcWriterIn
     FNdcWriterIndex i{assets_.Emplace(&asset)};
     asset_lookup_.Add(asset_name, i);
 
-    queues_.Emplace();
+    auto& queue{queues_.Emplace_GetRef()};
+    (void)queue.logged_init(queue_size, "UNiagaraNdcWriterSubsystem");
 
     return i;
 }

@@ -41,7 +41,8 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
 
     UNiagaraNdcWriterSubsystem() = default;
 
-    auto register_asset(NdcAsset& asset) -> FNdcWriterIndex;
+    auto register_asset(NdcAsset& asset, std::size_t queue_size = n_queue_elements_default)
+        -> FNdcWriterIndex;
     auto get_asset(FNdcWriterIndex index) -> NdcAsset*;
     auto num_assets() const { return assets_.Num(); }
   protected:
