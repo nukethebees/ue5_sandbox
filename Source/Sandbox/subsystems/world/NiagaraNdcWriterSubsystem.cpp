@@ -6,7 +6,7 @@
 
 #include "Sandbox/macros/null_checks.hpp"
 
-FNdcWriterIndex UNiagaraNdcWriterSubsystem::register_asset(UNiagaraDataChannelAsset& asset) {
+auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset) -> FNdcWriterIndex {
     auto const asset_name{asset.GetFName()};
     if (auto i{asset_lookup_.Find(asset_name)}) {
         return *i;
@@ -16,6 +16,15 @@ FNdcWriterIndex UNiagaraNdcWriterSubsystem::register_asset(UNiagaraDataChannelAs
     asset_lookup_.Add(asset_name, i);
 
     return i;
+}
+auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
+    auto const i{index.get_value()};
+    check((i > 0) && (i < assets_.Num()));
+    auto& asset{assets_[i]};
+    if (asset.IsValid()) {
+        return asset.Get();
+    }
+    return nullptr;
 }
 
 void UNiagaraNdcWriterSubsystem::Initialize(FSubsystemCollectionBase& collection) {
