@@ -39,7 +39,7 @@ auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
 
 void UNiagaraNdcWriterSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-
+    log_display(TEXT("Initialized"));
     writer_debug_source = TEXT("UNiagaraNdcWriterSubsystem");
 }
 void UNiagaraNdcWriterSubsystem::Deinitialize() {

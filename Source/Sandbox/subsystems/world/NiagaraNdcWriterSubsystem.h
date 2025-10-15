@@ -68,6 +68,7 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
 template <typename... Args>
 void UNiagaraNdcWriterSubsystem::add_payload(FNdcWriterIndex index, Args&&... args) {
     auto const i{index.get_value()};
-    check((i > 0) && (i < num_assets()));
+    check(i >= 0);
+    check(i < num_assets());
     (void)queues_[i].enqueue(std::forward<Args>(args)...);
 }

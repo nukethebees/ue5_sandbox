@@ -7,6 +7,7 @@
 
 #include "Sandbox/data/health/HealthChange.h"
 #include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
+#include "Sandbox/generated/strong_typedefs/NdcWriterIndex.h"
 
 #include "MassBulletFragments.generated.h"
 
@@ -81,11 +82,11 @@ struct SANDBOX_API FMassBulletImpactEffectFragment : public FMassConstSharedFrag
     GENERATED_BODY()
 
     FMassBulletImpactEffectFragment() = default;
-    FMassBulletImpactEffectFragment(UNiagaraSystem* impact_effect)
-        : impact_effect(impact_effect) {}
+    FMassBulletImpactEffectFragment(FNdcWriterIndex effect_index)
+        : effect_index(effect_index) {}
 
     UPROPERTY()
-    UNiagaraSystem* impact_effect{nullptr};
+    FNdcWriterIndex effect_index;
 };
 
 USTRUCT()

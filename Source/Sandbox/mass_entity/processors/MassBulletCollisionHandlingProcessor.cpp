@@ -8,6 +8,7 @@
 #include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 #include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 #include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -17,10 +18,11 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
 
     TRY_INIT_PTR(world, context.GetWorld());
     TRY_INIT_PTR(spark_effect_subsystem, world->GetSubsystem<UBulletSparkEffectSubsystem>());
+    TRY_INIT_PTR(ndc_subsystem, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
     TRY_INIT_PTR(damage_manager, world->GetSubsystem<UDamageManagerSubsystem>());
 
-    auto executor{[spark_effect_subsystem, damage_manager](FMassExecutionContext& context,
-                                                           auto& Data) {
+    auto executor{[spark_effect_subsystem, damage_manager, ndc_subsystem](
+                      FMassExecutionContext& context, auto& Data) {
         auto const n{context.GetNumEntities()};
         auto const state_fragments{context.GetFragmentView<FMassBulletStateFragment>()};
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
@@ -28,13 +30,13 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
         auto const damage_fragment{context.GetConstSharedFragment<FMassBulletDamageFragment>()};
 
-        RETURN_IF_NULLPTR(impact_effect_fragment.impact_effect);
-
         for (int32 i{0}; i < n; ++i) {
             if (!state_fragments[i].hit_occurred) {
                 continue;
             }
-            spark_effect_subsystem->add_impact(hit_infos[i].hit_location, hit_infos[i].hit_normal);
+            ndc_subsystem->add_payload(impact_effect_fragment.effect_index,
+                                       hit_infos[i].hit_location,
+                                       hit_infos[i].hit_normal);
 
             if (auto* hit_actor{hit_infos[i].hit_actor.Get()}) {
                 if (auto* health_component{hit_actor->FindComponentByClass<UHealthComponent>()}) {
