@@ -29,6 +29,13 @@ def make_typedefs():
             ops=["comparison"],
             members=[],
             config=ConfigOptions(),
+        ),
+        TypedefSpec(
+            name="NdcWriterIndex",
+            underlying_type="int32",
+            ops=["comparison"],
+            members=[],
+            config=ConfigOptions(),
         )
     ]
 
