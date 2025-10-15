@@ -4,7 +4,7 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "BehaviorTree/ValueOrBBKey.h"
 
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
 #include "BTTask_MoveToRandom.generated.h"

@@ -4,7 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/slate_widgets/NumWidget.h"
 #include "Sandbox/widgets/HealthWidget.h"
 #include "Sandbox/widgets/ValueWidget.h"

@@ -6,7 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/widgets/LevelSelect2Widget.h"
 #include "Sandbox/widgets/options_menu/OptionsWidget.h"
 #include "Sandbox/widgets/TextButtonWidget.h"

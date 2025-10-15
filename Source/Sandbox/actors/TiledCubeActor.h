@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "TiledCubeActor.generated.h"
 

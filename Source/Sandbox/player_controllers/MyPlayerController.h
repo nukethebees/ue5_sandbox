@@ -12,7 +12,7 @@
 
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/mixins/EnhancedInputMixin.hpp"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/mixins/print_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
