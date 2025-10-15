@@ -51,23 +51,19 @@ void UNiagaraNdcWriterSubsystem::Deinitialize() {
 void UNiagaraNdcWriterSubsystem::OnWorldBeginPlay(UWorld& world) {
     Super::OnWorldBeginPlay(world);
     FCoreDelegates::OnEndFrame.AddUObject(this, &UNiagaraNdcWriterSubsystem::flush_ndc_writes);
+    update_owning_component(world);
 }
 
 void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
     auto const n_assets{num_assets()};
 
     TRY_INIT_PTR(world, GetWorld());
+    if (!search_parameters_.OwningComponent) {
+        update_owning_component(*world);
+    }
+
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
-
-    // This is important
-    // Without this the emitter will be spawned at the origin and particles
-    // will be culled unless you were looking at the origin
-    search_parameters_.bOverrideLocation = false;
-    if (auto* character{UGameplayStatics::GetPlayerCharacter(world, 0)}) {
-        search_parameters_.bOverrideLocation = true;
-        search_parameters_.Location = character->GetActorLocation();
-    }
 
     for (int32 asset_idx{0}; asset_idx < n_assets; ++asset_idx) {
         auto& queue{queues_[asset_idx]};
@@ -106,4 +102,12 @@ auto UNiagaraNdcWriterSubsystem::create_data_channel_writer(UWorld& world, NdcAs
                                                                        visible_to_gpu,
                                                                        writer_debug_source)};
     return writer;
+}
+void UNiagaraNdcWriterSubsystem::update_owning_component(UWorld& world) {
+    // This is important
+    // Without this the emitter will be spawned at the origin and particles
+    // will be culled unless you were looking at the origin
+    if (auto* character{UGameplayStatics::GetPlayerCharacter(&world, 0)}) {
+        search_parameters_.OwningComponent = character->GetRootComponent();
+    }
 }
