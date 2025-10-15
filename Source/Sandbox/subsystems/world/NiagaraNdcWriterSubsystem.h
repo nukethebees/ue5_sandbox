@@ -53,12 +53,13 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
     virtual void OnWorldBeginPlay(UWorld& world) override;
   private:
     void flush_ndc_writes();
-    auto create_data_channel_writer(NdcAsset& asset, int32 n) -> NdcWriter*;
+    auto create_data_channel_writer(UWorld& world, NdcAsset& asset, int32 n) -> NdcWriter*;
 
     TArray<TWeakObjectPtr<NdcAsset>> assets_;
     TMap<FName, FNdcWriterIndex> asset_lookup_;
     TArray<MonitoredQueue> queues_;
     int32 num_assets_{0};
+    FString writer_debug_source;
 
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters_{};
