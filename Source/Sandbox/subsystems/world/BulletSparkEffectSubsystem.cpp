@@ -44,15 +44,12 @@ bool UBulletSparkEffectSubsystem::initialise_asset_data() {
     return true;
 }
 void UBulletSparkEffectSubsystem::on_end_frame() {
-    TRY_INIT_PTR(world, GetWorld());
-    RETURN_IF_FALSE(world->IsGameWorld());
-    RETURN_IF_FALSE(world->IsPaused());
-
-    queue.swap_and_visit([this](auto const& result) {
-        result.log_results(TEXT("UBulletSparkEffectSubsystem"));
-        RETURN_IF_TRUE(result.view.locations.empty());
-        consume_impacts(result.view);
-    });
+    auto result{queue.swap_and_consume()};
+    result.log_results(TEXT("UBulletSparkEffectSubsystem"));
+    if (result.view.locations.empty()) {
+        return;
+    }
+    consume_impacts(result.view);
 }
 void UBulletSparkEffectSubsystem::consume_impacts(FSparkEffectView const& impacts) {
     constexpr auto logger{NestedLogger<"consume_impacts">()};
