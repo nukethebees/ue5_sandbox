@@ -8,7 +8,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/generated/strong_typedefs/NdcWriterIndex.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
 #include "NiagaraNdcWriterSubsystem.generated.h"

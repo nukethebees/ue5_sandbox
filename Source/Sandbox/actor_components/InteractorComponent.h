@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EnhancedInputComponent.h"
 
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "Sandbox/constants/collision_channels.h"
 

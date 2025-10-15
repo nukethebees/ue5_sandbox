@@ -10,7 +10,7 @@
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/enums/TeamID.h"
 #include "Sandbox/huds/MyHud.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
 #include "MyGameModeBase.generated.h"

@@ -5,7 +5,7 @@
 
 #include "Sandbox/data/inventory/InventorySlot.h"
 #include "Sandbox/interfaces/inventory/InventoryItem.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/typedefs/Inventory.h"
 

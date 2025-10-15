@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/widgets/CommonMenuDelegates.h"
 #include "Sandbox/widgets/options_menu/AudioOptionsWidget.h"
 #include "Sandbox/widgets/options_menu/ControlsOptionsWidget.h"

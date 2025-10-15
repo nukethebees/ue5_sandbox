@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/enums/TeamID.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "PawnSpawner.generated.h"
 

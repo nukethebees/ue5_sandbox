@@ -8,7 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "Sandbox/actor_components/RotatingActorComponent.h"
 #include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "HealthPackActor.generated.h"
 

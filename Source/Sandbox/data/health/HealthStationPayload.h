@@ -5,7 +5,7 @@
 #include "Sandbox/data/health/StationStateData.h"
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "HealthStationPayload.generated.h"
 

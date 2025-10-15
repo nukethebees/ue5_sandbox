@@ -15,7 +15,7 @@
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/utilities/world.h"
 

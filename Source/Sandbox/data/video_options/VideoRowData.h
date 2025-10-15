@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/concepts/concepts.h"
 #include "Sandbox/data/video_options/VisualQualityLevel.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 // Row data structure for variant-based storage
 template <typename Config>

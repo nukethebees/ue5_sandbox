@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "TimerManager.h"
 
 #include "LandMinePayload.generated.h"

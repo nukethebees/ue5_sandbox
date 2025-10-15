@@ -7,7 +7,7 @@
 #include "Sandbox/data/collision/CollisionContext.h"
 #include "Sandbox/data/LandMinePayload.h"
 #include "Sandbox/data/SpeedBoost.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 
 struct FSpeedBoostPayload {

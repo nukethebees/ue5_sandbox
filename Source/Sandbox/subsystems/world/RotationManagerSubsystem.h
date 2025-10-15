@@ -4,7 +4,7 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "Sandbox/enums/RotationType.h"
-#include "Sandbox/mixins/log_msg_mixin.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 
 #include "RotationManagerSubsystem.generated.h"
