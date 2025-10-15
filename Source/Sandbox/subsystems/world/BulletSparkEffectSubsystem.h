@@ -67,7 +67,5 @@ class SANDBOX_API UBulletSparkEffectSubsystem
 
 template <typename... Args>
 void UBulletSparkEffectSubsystem::add_impact(Args&&... args) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UBulletSparkEffectSubsystem::add_impact"))
-
     (void)queue.enqueue(std::forward<Args>(args)...);
 }
