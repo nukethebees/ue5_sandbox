@@ -8,6 +8,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 
 #include "Sandbox/interfaces/SandboxMobInterface.h"
+
 #include "Sandbox/macros/null_checks.hpp"
 
 ATestEnemyController::ATestEnemyController()
