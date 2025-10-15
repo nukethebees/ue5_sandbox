@@ -1,5 +1,7 @@
 #include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
 
+#include "GameFramework/Character.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/CoreDelegates.h"
 #include "NiagaraDataChannel.h"
 #include "NiagaraDataChannelAccessor.h"
@@ -58,6 +60,15 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
 
+    // This is important
+    // Without this the emitter will be spawned at the origin and particles
+    // will be culled unless you were looking at the origin
+    search_parameters_.bOverrideLocation = false;
+    if (auto* character{UGameplayStatics::GetPlayerCharacter(world, 0)}) {
+        search_parameters_.bOverrideLocation = true;
+        search_parameters_.Location = character->GetActorLocation();
+    }
+
     for (int32 asset_idx{0}; asset_idx < n_assets; ++asset_idx) {
         auto& queue{queues_[asset_idx]};
         auto& asset_wptr{assets_[asset_idx]};
@@ -72,8 +83,8 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         }
 
         auto const n_effects{static_cast<int32>(flushed_result.success_count)};
-        auto* writer{create_data_channel_writer(*world, asset, n_effects)};
         auto view{flushed_result.view};
+        auto* writer{create_data_channel_writer(*world, asset, n_effects)};
         for (int32 effect_idx{0}; effect_idx < n_effects; ++effect_idx) {
             writer->WritePosition(position_label, effect_idx, view.locations[effect_idx]);
             writer->WriteVector(rotation_label, effect_idx, view.rotations[effect_idx]);
