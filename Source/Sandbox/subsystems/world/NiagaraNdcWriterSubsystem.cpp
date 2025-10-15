@@ -21,7 +21,7 @@ auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t que
     (void)queue.logged_init(queue_size, "UNiagaraNdcWriterSubsystem");
 
     // Defer incrementing the count until we're fully initialised
-    ++num_assets_;
+    num_assets_ = i.get_value() + 1;
 
     return i;
 }
