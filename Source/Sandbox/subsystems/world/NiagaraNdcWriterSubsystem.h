@@ -1,8 +1,12 @@
 #pragma once
 
+#include <span>
+
 #include "CoreMinimal.h"
 #include "NiagaraDataChannelPublic.h"
 
+#include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
+#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/generated/strong_typedefs/NdcWriterIndex.h"
 #include "Sandbox/mixins/log_msg_mixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -19,13 +23,27 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
     , public ml::LogMsgMixin<"UNiagaraNdcWriterSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
+    struct QueueView {
+        std::span<FVector> locations;
+        std::span<FVector> rotations;
+
+        QueueView(std::span<FVector> locs, std::span<FVector> rots)
+            : locations(locs)
+            , rotations(rots) {}
+    };
+
     using NdcAsset = UNiagaraDataChannelAsset;
     using NdcWriter = UNiagaraDataChannelWriter;
+    using Queue = ml::LockFreeMPSCQueueSoA<QueueView, FVector, FVector>;
+    using MonitoredQueue = ml::MonitoredLockFreeMPSCQueue<Queue>;
+
+    static constexpr std::size_t n_queue_elements_default{5000};
 
     UNiagaraNdcWriterSubsystem() = default;
 
     auto register_asset(NdcAsset& asset) -> FNdcWriterIndex;
     auto get_asset(FNdcWriterIndex index) -> NdcAsset*;
+    auto num_assets() const { return assets_.Num(); }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
@@ -36,6 +54,8 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
 
     TArray<TWeakObjectPtr<NdcAsset>> assets_;
     TMap<FName, FNdcWriterIndex> asset_lookup_;
+    TArray<MonitoredQueue> queues_;
+
     UPROPERTY()
-    FNiagaraDataChannelSearchParameters search_parameters{};
+    FNiagaraDataChannelSearchParameters search_parameters_{};
 };
