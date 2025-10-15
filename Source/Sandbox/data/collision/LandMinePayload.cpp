@@ -1,4 +1,4 @@
-#include "Sandbox/data/LandMinePayload.h"
+#include "Sandbox/data/collision/LandMinePayload.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "Engine/OverlapResult.h"

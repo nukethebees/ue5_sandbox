@@ -7,7 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/LandMinePayload.h"
+#include "Sandbox/data/collision/LandMinePayload.h"
 #include "Sandbox/enums/LandMineState.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
