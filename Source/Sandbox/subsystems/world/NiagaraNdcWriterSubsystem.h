@@ -54,6 +54,7 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
   private:
     void flush_ndc_writes();
     auto create_data_channel_writer(UWorld& world, NdcAsset& asset, int32 n) -> NdcWriter*;
+    void update_owning_component(UWorld & world);
 
     TArray<TWeakObjectPtr<NdcAsset>> assets_;
     TMap<FName, FNdcWriterIndex> asset_lookup_;
