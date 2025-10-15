@@ -65,7 +65,8 @@ class SANDBOX_API UMassBulletSubsystem
                     float bullet_speed,
                     FBulletTypeIndex bullet_type_index) {
         auto const i{bullet_type_index.get_value()};
-        check(i >= 0 && i < indexed_bullet_types.Num());
+        check(i >= 0);
+        check(i < indexed_bullet_types.Num());
         add_bullet(spawn_transform, bullet_speed, indexed_bullet_types[i]);
     }
     bool add_bullet_checked(FTransform const& spawn_transform,
