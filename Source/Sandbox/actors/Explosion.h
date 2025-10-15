@@ -18,9 +18,6 @@ class SANDBOX_API AExplosion
     GENERATED_BODY()
   public:
     AExplosion();
-  protected:
-    virtual void BeginPlay() override;
-    virtual void Tick(float delta_time) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosion")
     FHealthChange damage_config{25.0f, EHealthChangeType::Damage};
@@ -30,6 +27,9 @@ class SANDBOX_API AExplosion
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosion")
     float explosion_force{5000.0f};
+  protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float delta_time) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosion")
     TObjectPtr<UNiagaraDataChannelAsset> explosion_channel{};

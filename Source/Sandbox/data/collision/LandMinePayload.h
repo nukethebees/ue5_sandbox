@@ -1,10 +1,14 @@
 #pragma once
 
-#include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "CoreMinimal.h"
 #include "TimerManager.h"
 
+#include "Sandbox/data/collision/CollisionContext.h"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
+
 #include "LandMinePayload.generated.h"
+
+class AExplosion;
 
 USTRUCT(BlueprintType)
 struct FLandMinePayload {
@@ -19,8 +23,6 @@ struct FLandMinePayload {
         , detonation_delay(delay) {}
 
     void execute(FCollisionContext context);
-    void explode(FCollisionContext context);
-    FVector calculate_impulse(FVector target_location, float target_distance);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float damage{25.0f};
@@ -31,6 +33,8 @@ struct FLandMinePayload {
     FVector mine_location{FVector::ZeroVector};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float detonation_delay{2.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    TSubclassOf<AExplosion> explosion_class;
   private:
     FTimerHandle timer_handle{};
 
