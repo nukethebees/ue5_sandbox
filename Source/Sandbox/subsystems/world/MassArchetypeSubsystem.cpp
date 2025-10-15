@@ -9,6 +9,7 @@
 #include "Sandbox/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/data_assets/BulletDataAsset.h"
 #include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
 #include "Sandbox/utilities/world.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -18,6 +19,7 @@ void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     constexpr auto logger{NestedLogger<"Initialize">()};
 
     collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
+    collection.InitializeDependency(UNiagaraNdcWriterSubsystem::StaticClass());
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(entity_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
@@ -84,6 +86,7 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
     constexpr auto logger{NestedLogger<"build_definitions">()};
 
     TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(ndc_subsystem, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
     TRY_INIT_PTR(visualization_actor, ml::get_first_actor<AMassBulletVisualizationActor>(*world));
     TRY_INIT_PTR(data_actor, ml::get_first_actor<AMassBulletSubsystemData>(*world));
 
@@ -92,13 +95,17 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
     for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
         auto const& bullet_data{data_actor->bullet_types[i]};
         CONTINUE_IF_NULLPTR(bullet_data);
+        CONTINUE_IF_NULLPTR(bullet_data->impact_effect);
+        CONTINUE_IF_NULLPTR(bullet_data->ndc_asset);
 
         FPrimaryAssetId const asset_id{bullet_data->GetPrimaryAssetId()};
         FMassArchetypeSharedFragmentValues shared_values{};
 
+        auto ndc_idx{ndc_subsystem->register_asset(*bullet_data->ndc_asset, 50000)};
+
         auto impact_effect_handle{
             entity_manager.GetOrCreateConstSharedFragment<FMassBulletImpactEffectFragment>(
-                bullet_data->impact_effect)};
+                ndc_idx)};
 
         auto viz_actor_handle{
             entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
