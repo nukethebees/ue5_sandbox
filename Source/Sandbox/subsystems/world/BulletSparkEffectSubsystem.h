@@ -34,6 +34,9 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     , public ml::LogMsgMixin<"UBulletSparkEffectSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
+    using NdcAsset = UNiagaraDataChannelAsset;
+    using NdcWriter = UNiagaraDataChannelWriter;
+
     static constexpr std::size_t n_queue_elements{30000};
 
     template <typename... Args>
@@ -49,7 +52,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     [[nodiscard]] bool initialise_asset_data();
     void on_end_frame();
     void consume_impacts(FSparkEffectView const& impacts);
-    UNiagaraDataChannelWriter* create_data_channel_writer(UNiagaraDataChannelAsset& asset, int32 n);
+    NdcWriter* create_data_channel_writer(NdcAsset& asset, int32 n);
 
     UPROPERTY()
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
