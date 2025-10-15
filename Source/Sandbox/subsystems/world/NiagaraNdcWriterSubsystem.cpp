@@ -20,11 +20,14 @@ auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t que
     auto& queue{queues_.Emplace_GetRef()};
     (void)queue.logged_init(queue_size, "UNiagaraNdcWriterSubsystem");
 
+    // Defer incrementing the count until we're fully initialised
+    ++num_assets_;
+
     return i;
 }
 auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
     auto const i{index.get_value()};
-    check((i > 0) && (i < assets_.Num()));
+    check((i > 0) && (i < num_assets()));
     auto& asset{assets_[i]};
     if (asset.IsValid()) {
         return asset.Get();
