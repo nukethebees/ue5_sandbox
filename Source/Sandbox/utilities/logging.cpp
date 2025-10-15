@@ -8,7 +8,7 @@ void log_value_is_x(FString const& var_name,
     FString const file_name{StringCast<TCHAR>(loc.file_name())};
     UE_LOGFMT(LogTemp,
               Warning,
-              "{0} is {1}. [{2}, {3}, {4}]",
+              "{0} is {1}.\n    File: {4}\n    Line: {3}\n    Function: {2}",
               *var_name,
               *null_form,
               *fn_name,
