@@ -60,6 +60,7 @@ class SANDBOX_API UBulletSparkEffectSubsystem
     UPROPERTY()
     FNiagaraDataChannelSearchParameters search_parameters{};
 
+    // Position, rotation
     ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueueSoA<FSparkEffectView, FVector, FVector>>
         queue;
 };
