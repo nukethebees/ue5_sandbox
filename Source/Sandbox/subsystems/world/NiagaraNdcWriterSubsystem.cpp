@@ -37,6 +37,8 @@ auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
 
 void UNiagaraNdcWriterSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
+
+    writer_debug_source = TEXT("UNiagaraNdcWriterSubsystem");
 }
 void UNiagaraNdcWriterSubsystem::Deinitialize() {
     FCoreDelegates::OnEndFrame.RemoveAll(this);
@@ -50,7 +52,7 @@ void UNiagaraNdcWriterSubsystem::OnWorldBeginPlay(UWorld& world) {
 void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
     auto const n_assets{num_assets()};
 
-    FString const queue_name{TEXT("UNiagaraNdcWriterSubsystem")};
+    TRY_INIT_PTR(world, GetWorld());
     static auto const position_label{FName("position")};
     static auto const rotation_label{FName("rotation")};
 
@@ -61,14 +63,14 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         auto& asset{*asset_wptr.Get()};
 
         auto flushed_result{queue.swap_and_consume()};
-        flushed_result.log_results(queue_name);
+        flushed_result.log_results(writer_debug_source);
 
         if (flushed_result.is_empty()) {
             continue;
         }
 
         auto const n_effects{static_cast<int32>(flushed_result.success_count)};
-        auto* writer{create_data_channel_writer(asset, n_effects)};
+        auto* writer{create_data_channel_writer(*world, asset, n_effects)};
         auto view{flushed_result.view};
         for (int32 effect_idx{0}; effect_idx < n_effects; ++effect_idx) {
             writer->WritePosition(position_label, effect_idx, view.locations[effect_idx]);
@@ -76,22 +78,19 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         }
     }
 }
-auto UNiagaraNdcWriterSubsystem::create_data_channel_writer(NdcAsset& asset, int32 n)
+auto UNiagaraNdcWriterSubsystem::create_data_channel_writer(UWorld& world, NdcAsset& asset, int32 n)
     -> NdcWriter* {
-    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), nullptr);
-
     constexpr bool visible_to_game{false};
     constexpr bool visible_to_cpu{true};
     constexpr bool visible_to_gpu{true};
-    FString debug_source{};
 
-    auto* writer{UNiagaraDataChannelLibrary::WriteToNiagaraDataChannel(world,
+    auto* writer{UNiagaraDataChannelLibrary::WriteToNiagaraDataChannel(&world,
                                                                        &asset,
                                                                        search_parameters_,
                                                                        n,
                                                                        visible_to_game,
                                                                        visible_to_cpu,
                                                                        visible_to_gpu,
-                                                                       debug_source)};
+                                                                       writer_debug_source)};
     return writer;
 }
