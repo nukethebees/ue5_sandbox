@@ -5,7 +5,7 @@
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/characters/MyCharacter.h"
 #include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/data/LandMinePayload.h"
+#include "Sandbox/data/collision/LandMinePayload.h"
 #include "Sandbox/data/SpeedBoost.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
