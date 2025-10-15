@@ -23,6 +23,8 @@ auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t que
     // Defer incrementing the count until we're fully initialised
     num_assets_ = i.get_value() + 1;
 
+    log_display(TEXT("Registered asset: %s"), *asset_name.ToString());
+
     return i;
 }
 auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
