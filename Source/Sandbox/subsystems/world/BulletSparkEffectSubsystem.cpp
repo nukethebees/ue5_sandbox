@@ -1,7 +1,7 @@
 #include "Sandbox/subsystems/world/BulletSparkEffectSubsystem.h"
 
-#include "Delegates/DelegateInstancesImpl.h"
 #include "Engine/AssetManager.h"
+#include "Misc/CoreDelegates.h"
 #include "NiagaraDataChannel.h"
 #include "NiagaraDataChannelAccessor.h"
 #include "NiagaraDataInterface.h"
