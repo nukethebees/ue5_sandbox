@@ -13,10 +13,12 @@ class STextPopupWidget
     // clang-format off
     SLATE_BEGIN_ARGS(STextPopupWidget) {}
         SLATE_ARGUMENT(FText, msg)
+        SLATE_EVENT(FOnClicked, OnDismissed)
     SLATE_END_ARGS()
     // clang-format on
 
     void Construct(FArguments const& InArgs);
   private:
     FText msg_;
+    FOnClicked on_dismissed_;
 };

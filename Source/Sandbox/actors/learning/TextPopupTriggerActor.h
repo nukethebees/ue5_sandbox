@@ -43,5 +43,7 @@ class SANDBOX_API ATextPopupTriggerActor
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
     FText popup_message{FText::FromString(TEXT("Hello! You've entered the trigger."))};
   private:
+    void remove_popup_widget();
+
     TSharedPtr<STextPopupWidget> popup_widget{};
 };
