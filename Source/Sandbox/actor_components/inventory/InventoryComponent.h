@@ -37,4 +37,6 @@ class SANDBOX_API UInventoryComponent
     TArray<FInventorySlot> slots{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     FDimensions dimensions{100, 100};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    int32 money{0};
 };
