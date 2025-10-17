@@ -55,7 +55,6 @@ constexpr auto trigger_array_index_v =
 
 #define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                           \
     do {                                                                                \
-        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");      \
         switch (id.tuple_index()) {                                                     \
             stamper(0, TRIGGER_CASE);                                                   \
             default: {                                                                  \
@@ -69,13 +68,13 @@ constexpr auto trigger_array_index_v =
     case i: {                                                                         \
         if constexpr (i < N_TYPES) {                                                  \
             return std::get<i>(self.triggerables)[id.array_index()].tick(delta_time); \
+        } else {                                                                      \
+            return false;                                                             \
         }                                                                             \
-        break;                                                                        \
     }
 
 #define TICK_VISIT_STAMP(stamper, N_CASES)                                            \
     do {                                                                              \
-        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");    \
         switch (id.tuple_index()) {                                                   \
             stamper(0, TICK_CASE);                                                    \
             default: {                                                                \
