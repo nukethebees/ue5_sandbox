@@ -2,10 +2,13 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/data/trigger/WeaponPickupPayload.h"
 #include "Sandbox/interfaces/inventory/InventoryItem.h"
 #include "Sandbox/interfaces/weapons/WeaponInterface.h"
 
 #include "WeaponBase.generated.h"
+
+class UBoxComponent;
 
 UCLASS(Abstract)
 class SANDBOX_API AWeaponBase
@@ -14,6 +17,10 @@ class SANDBOX_API AWeaponBase
     , public IInventoryItem {
     GENERATED_BODY()
   public:
+    AWeaponBase();
+
+    void set_pickup_collision(bool enabled);
+
     // IWeaponInterface
     UFUNCTION()
     virtual bool can_fire() const override { return false; };
@@ -54,4 +61,13 @@ class SANDBOX_API AWeaponBase
     void hide_weapon();
     UFUNCTION()
     void show_weapon();
+  protected:
+    virtual void BeginPlay() override;
+    virtual void EndPlay(EEndPlayReason::Type reason) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    UBoxComponent* collision_box{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+    FWeaponPickupPayload trigger_payload;
 };

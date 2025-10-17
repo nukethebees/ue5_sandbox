@@ -11,9 +11,6 @@
 
 ATestPistol::ATestPistol()
     : ammo{max_ammo} {
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-    RootComponent->SetMobility(EComponentMobility::Movable);
-
     gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
     gun_mesh_component->SetupAttachment(RootComponent);
 
