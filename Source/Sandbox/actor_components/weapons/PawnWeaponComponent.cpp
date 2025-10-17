@@ -20,8 +20,13 @@ UPawnWeaponComponent::UPawnWeaponComponent()
 void UPawnWeaponComponent::BeginPlay() {
     Super::BeginPlay();
 
+    TRY_INIT_PTR(owner, GetOwner());
+
     spawn_parameters.Name = TEXT("SpawnedGun");
-    spawn_parameters.Owner = GetOwner();
+    spawn_parameters.Owner = owner;
+
+    inventory = owner->GetComponentByClass<UInventoryComponent>();
+    check(inventory);
 }
 
 bool UPawnWeaponComponent::can_fire() const {
@@ -91,10 +96,9 @@ bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_cla
 bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon) {
     INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
     RETURN_VALUE_IF_NULLPTR(attach_location, false);
-    INIT_PTR_OR_RETURN_VALUE(
-        inventory_component, owner->GetComponentByClass<UInventoryComponent>(), false);
+    RETURN_VALUE_IF_NULLPTR(inventory, false);
 
-    return pickup_new_weapon(weapon, *inventory_component, *attach_location);
+    return pickup_new_weapon(weapon, *inventory, *attach_location);
 }
 bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
                                              UInventoryComponent& inventory_component,
