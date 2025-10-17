@@ -3,5 +3,5 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/generated/strong_typedefs/Coord.h"
-#include "Sandbox/generated/strong_typedefs/Dimensions.h"
+#include "Sandbox/data/inventory/Dimensions.h"
 #include "Sandbox/generated/strong_typedefs/StackSize.h"
