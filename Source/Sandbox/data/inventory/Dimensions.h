@@ -25,6 +25,8 @@ struct FDimensions {
 
     FIntPoint get_value() const { return value; }
 
+    auto area() const { return value.X * value.Y; }
+
     // Hash support for TMap/TSet
     friend uint32 GetTypeHash(FDimensions const& obj) { return GetTypeHash(obj.value); }
 };
