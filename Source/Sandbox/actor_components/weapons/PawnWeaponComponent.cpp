@@ -91,7 +91,12 @@ bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_cla
     INIT_PTR_OR_RETURN_VALUE(
         inventory_component, owner->GetComponentByClass<UInventoryComponent>(), false);
 
-    return pickup_new_weapon(*weapon, *inventory_component, *attach_location);
+    if (!pickup_new_weapon(*weapon, *inventory_component, *attach_location)) {
+        weapon->Destroy();
+        return false;
+    }
+
+    return true;
 }
 bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon) {
     INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
@@ -105,13 +110,12 @@ bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
                                              USceneComponent& location) {
     constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
 
-    attach_weapon(weapon, location);
-    weapon.hide_weapon();
-
     if (!inventory_component.add_item(&weapon)) {
-        weapon.Destroy();
         return false;
     }
+
+    attach_weapon(weapon, location);
+    weapon.hide_weapon();
 
     log_display(TEXT("Picked up weapon: %s"), *weapon.get_name());
 
