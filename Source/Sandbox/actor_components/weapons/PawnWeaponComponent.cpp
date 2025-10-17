@@ -99,6 +99,8 @@ bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon) {
 bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
                                              UInventoryComponent& inventory_component,
                                              USceneComponent& location) {
+    constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
+
     attach_weapon(weapon, location);
     weapon.hide_weapon();
 
@@ -108,6 +110,28 @@ bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
     }
 
     log_display(TEXT("Picked up weapon: %s"), *weapon.get_name());
+
+    switch (weapon_pickup_action) {
+        using enum EWeaponPickupAction;
+        case Nothing: {
+            break;
+        }
+        case EquipIfNothingEquipped: {
+            if (!active_weapon) {
+                equip_weapon(&weapon);
+            }
+            break;
+        }
+        case Equip: {
+            equip_weapon(&weapon);
+            break;
+        }
+        default: {
+            logger.log_warning(TEXT("Unhandled enum value"));
+            break;
+        }
+    }
+
     return true;
 }
 void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {
