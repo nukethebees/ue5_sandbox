@@ -58,7 +58,7 @@ void AExplosion::explode() {
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     {
-        constexpr bool persistent_lines{true};
+        constexpr bool persistent_lines{false};
         constexpr int32 segments{16};
         constexpr auto lifetime{5.0f};
         constexpr uint8 depth_priority{0};
