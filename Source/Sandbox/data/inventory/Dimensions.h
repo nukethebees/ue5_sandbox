@@ -26,8 +26,14 @@ struct FDimensions {
     FIntPoint get_value() const { return value; }
 
     auto area() const { return value.X * value.Y; }
-    auto x() const { return value.X; }
-    auto y() const { return value.Y; }
+    template <typename Self>
+    auto&& x(this Self&& self) {
+        return std::forward_like<Self>(self.value.X);
+    }
+    template <typename Self>
+    auto&& y(this Self&& self) {
+        return std::forward_like<Self>(self.value.Y);
+    }
 
     // Hash support for TMap/TSet
     friend uint32 GetTypeHash(FDimensions const& obj) { return GetTypeHash(obj.value); }
