@@ -75,9 +75,6 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
         bool any_triggered{false};
         for (auto* actor : hit_actors) {
-            LOG.log_verbose(TEXT("Trying to trigger actor: %s"),
-                            *ActorUtils::GetBestDisplayName(actor));
-
             any_triggered |= subsystem->trigger(*actor, source) == ETriggerOccurred::yes;
         }
 

@@ -60,7 +60,7 @@ class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCor
         actor->Activate();
 
         logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d (%d free)"),
-                                *ActorUtils::GetBestDisplayName(actor),
+                                *ml::get_best_display_name(*actor),
                                 pool_idx,
                                 subclass_data.freelist.Num());
 

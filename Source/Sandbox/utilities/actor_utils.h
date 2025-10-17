@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-namespace ActorUtils {
+namespace ml {
 
 /**
  * Returns the best available display name for an actor.
@@ -14,16 +14,12 @@ namespace ActorUtils {
  * @return Human-readable name in editor builds, object name in shipping builds, or "null" if actor
  * is null
  */
-inline FString GetBestDisplayName(AActor const* actor) {
-    if (!actor) {
-        return TEXT("null");
-    }
-
+inline FString get_best_display_name(AActor const& actor) {
 #if WITH_EDITOR
-    return actor->GetActorLabel();
+    return actor.GetActorLabel();
 #else
-    return actor->GetName();
+    return actor.GetName();
 #endif
 }
 
-} // namespace ActorUtils
+} // namespace ml

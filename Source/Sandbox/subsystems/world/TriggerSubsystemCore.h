@@ -107,7 +107,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
                     if (range->length > 0) {
                         self.log_error(TEXT("Actor %s already finished registration - cannot add "
                                             "more triggerables"),
-                                       *ActorUtils::GetBestDisplayName(&actor));
+                                       *ml::get_best_display_name(actor));
                         return std::nullopt;
                     }
                 }
@@ -133,7 +133,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
         self.id_to_actor.Add(id.as_combined_id(), &actor);
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
-                         *ActorUtils::GetBestDisplayName(&actor),
+                         *ml::get_best_display_name(actor),
                          id.tuple_index(),
                          id.array_index());
 
@@ -161,7 +161,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
         }
 
         self.log_verbose(TEXT("Deregistered triggerable for actor %s"),
-                         *ActorUtils::GetBestDisplayName(&actor));
+                         *ml::get_best_display_name(actor));
     }
 
     template <typename Self>
@@ -322,7 +322,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
         LOG.log_verbose(TEXT("Created actor ID %llu for actor %s"),
                         new_id.get(),
-                        *ActorUtils::GetBestDisplayName(&actor));
+                        *ml::get_best_display_name(actor));
         return new_id;
     }
 
