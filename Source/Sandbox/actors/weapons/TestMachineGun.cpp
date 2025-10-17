@@ -18,6 +18,10 @@ ATestMachineGun::ATestMachineGun()
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 
+FDimensions ATestMachineGun::get_size() const {
+    return FDimensions{5, 2};
+};
+
 bool ATestMachineGun::can_fire() const {
     return ammo > 0;
 }

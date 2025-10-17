@@ -18,60 +18,14 @@ ATestPistol::ATestPistol()
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 
-void ATestPistol::BeginPlay() {
-    Super::BeginPlay();
+FDimensions ATestPistol::get_size() const {
+    return FDimensions{4, 1};
+};
 
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
-    RETURN_IF_NULLPTR(bullet_data);
-
-    cached_bullet_type_index =
-        mass_bullet_subsystem->get_bullet_type_index(bullet_data->GetPrimaryAssetId());
-}
-
+// IWeaponInterface
 bool ATestPistol::can_fire() const {
     return ammo > 0;
 }
-
-bool ATestPistol::can_reload() const {
-    return ammo < max_ammo;
-}
-
-int32 ATestPistol::get_ammo_needed() const {
-    return max_ammo - ammo;
-}
-
-FAmmoData ATestPistol::get_current_ammo() const {
-    return FAmmoData::make_discrete(EAmmoType::Bullets, ammo);
-}
-
-FAmmoData ATestPistol::get_max_ammo() const {
-    return FAmmoData::make_discrete(EAmmoType::Bullets, max_ammo);
-}
-
-FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
-    FAmmoReloadResult result;
-    result.AmmoOfferedRemaining = offered;
-
-    if (offered.type != get_ammo_type()) {
-        return result;
-    }
-
-    if (!can_reload()) {
-        return result;
-    }
-
-    auto const needed{get_ammo_needed()};
-    auto const taken{FMath::Min(needed, offered.discrete_amount)};
-
-    ammo += taken;
-
-    result.AmmoTaken = FAmmoData::make_discrete(EAmmoType::Bullets, taken);
-    result.AmmoOfferedRemaining.discrete_amount -= taken;
-
-    return result;
-}
-
 void ATestPistol::start_firing() {
     if (!can_fire()) {
         return;
@@ -99,7 +53,56 @@ void ATestPistol::start_firing() {
     ammo -= 1;
 }
 
+FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
+    FAmmoReloadResult result;
+    result.AmmoOfferedRemaining = offered;
+
+    if (offered.type != get_ammo_type()) {
+        return result;
+    }
+
+    if (!can_reload()) {
+        return result;
+    }
+
+    auto const needed{get_ammo_needed()};
+    auto const taken{FMath::Min(needed, offered.discrete_amount)};
+
+    ammo += taken;
+
+    result.AmmoTaken = FAmmoData::make_discrete(EAmmoType::Bullets, taken);
+    result.AmmoOfferedRemaining.discrete_amount -= taken;
+
+    return result;
+}
+bool ATestPistol::can_reload() const {
+    return ammo < max_ammo;
+}
+
+FAmmoData ATestPistol::get_current_ammo() const {
+    return FAmmoData::make_discrete(EAmmoType::Bullets, ammo);
+}
+FAmmoData ATestPistol::get_max_ammo() const {
+    return FAmmoData::make_discrete(EAmmoType::Bullets, max_ammo);
+}
+
 UStaticMesh* ATestPistol::get_display_mesh() const {
     RETURN_VALUE_IF_NULLPTR(gun_mesh_component, nullptr);
     return gun_mesh_component->GetStaticMesh();
+}
+
+// IInventoryItem
+int32 ATestPistol::get_ammo_needed() const {
+    return max_ammo - ammo;
+}
+
+void ATestPistol::BeginPlay() {
+    Super::BeginPlay();
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
+    RETURN_IF_NULLPTR(bullet_data);
+
+    cached_bullet_type_index =
+        mass_bullet_subsystem->get_bullet_type_index(bullet_data->GetPrimaryAssetId());
 }
