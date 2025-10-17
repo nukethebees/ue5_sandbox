@@ -14,6 +14,14 @@ class UWeaponComponent;
 class AWeaponBase;
 class UInventoryComponent;
 
+UENUM(BlueprintType)
+enum class EWeaponPickupAction : uint8 {
+    // Discrete ammo types (countable)
+    Nothing UMETA(DisplayName = "Nothing"),
+    EquipIfNothingEquipped UMETA(DisplayName = "EquipIfNothingEquipped"),
+    Equip UMETA(DisplayName = "Equip")
+};
+
 UCLASS()
 class SANDBOX_API UPawnWeaponComponent
     : public UActorComponent
@@ -45,6 +53,9 @@ class SANDBOX_API UPawnWeaponComponent
 
     void set_attach_location(USceneComponent* new_value);
     auto get_attach_location() const { return attach_location; }
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
+    EWeaponPickupAction weapon_pickup_action{EWeaponPickupAction::EquipIfNothingEquipped};
   private:
     bool pickup_new_weapon(AWeaponBase& weapon,
                            UInventoryComponent& inventory_component,
