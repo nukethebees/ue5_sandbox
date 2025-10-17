@@ -105,7 +105,10 @@ void AMyHUD::toggle_in_game_menu() {
         is_in_game_menu_open = false;
     } else {
         if (!in_game_menu_widget.IsValid()) {
-            in_game_menu_widget = SNew(SInGameMenuWidget);
+            in_game_menu_widget = SNew(SInGameMenuWidget).OnExitClicked_Lambda([this]() {
+                toggle_in_game_menu();
+                return FReply::Handled();
+            });
         }
 
         constexpr int32 z_order{100};
