@@ -5,6 +5,7 @@
 #include "Widgets/SWeakWidget.h"
 
 #include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/game_states/PlatformerGameState.h"
 #include "Sandbox/player_controllers/MyPlayerController.h"
@@ -105,10 +106,16 @@ void AMyHUD::toggle_in_game_menu() {
         is_in_game_menu_open = false;
     } else {
         if (!in_game_menu_widget.IsValid()) {
-            in_game_menu_widget = SNew(SInGameMenuWidget).OnExitClicked_Lambda([this]() {
-                toggle_in_game_menu();
-                return FReply::Handled();
-            });
+            // Get inventory component from player
+            TRY_INIT_PTR(pawn, player_controller->GetPawn());
+            TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+
+            in_game_menu_widget = SNew(SInGameMenuWidget)
+                                      .OnExitClicked_Lambda([this]() {
+                                          toggle_in_game_menu();
+                                          return FReply::Handled();
+                                      })
+                                      .InventoryComponent(inventory_comp);
         }
 
         constexpr int32 z_order{100};
