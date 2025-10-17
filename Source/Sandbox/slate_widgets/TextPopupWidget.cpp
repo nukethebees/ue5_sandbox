@@ -12,9 +12,14 @@ void STextPopupWidget::Construct(FArguments const& InArgs) {
 
     // clang-format off
     ChildSlot[
-        SNew(STextBlock)
-            .Text(msg_)
-            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+        SNew(SBox)
+            .HAlign(HAlign_Center)
+            .VAlign(VAlign_Center)
+            [
+                SNew(STextBlock)
+                    .Text(msg_)
+                    .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+            ]
     ];
     // clang-format on
 }
