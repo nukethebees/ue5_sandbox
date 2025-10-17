@@ -2,6 +2,7 @@
 
 #include "Sandbox/data/trigger/TriggerCapabilities.h"
 #include "Sandbox/subsystems/world/TriggerSubsystem.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Sandbox/macros/null_checks.hpp"
 
@@ -19,28 +20,26 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(owner, GetOwner());
-
     TArray<FHitResult> hit_results;
-    bool const hit{world->SweepMultiByChannel(
-        hit_results,
-        sweep_start,
-        sweep_end,
-        FQuat::Identity,
-        collision_channel,
-        FCollisionShape::MakeCapsule(capsule_radius, capsule_half_height))};
+
+    bool const hit{
+        world->LineTraceMultiByChannel(hit_results, sweep_start, sweep_end, collision_channel)};
 
 #if WITH_EDITOR
     constexpr float debug_sweep_centre_point{0.5f};
     constexpr float debug_capsule_duration{2.0f};
     constexpr bool debug_capsule_persistent_lines{false};
-    DrawDebugCapsule(world,
-                     (sweep_start + sweep_end) * debug_sweep_centre_point,
-                     capsule_half_height,
-                     capsule_radius,
-                     FRotationMatrix::MakeFromZ(sweep_end - sweep_start).ToQuat(),
-                     FColor::Green,
-                     debug_capsule_persistent_lines,
-                     debug_capsule_duration);
+    constexpr int32 depth_priority{0};
+    constexpr float debug_line_thickness{2.5f};
+
+    DrawDebugLine(world,
+                  sweep_start,
+                  sweep_end,
+                  FColor::Green,
+                  debug_capsule_persistent_lines,
+                  debug_capsule_duration,
+                  depth_priority,
+                  debug_line_thickness);
 #endif
 
     if (!hit) {
@@ -57,8 +56,9 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
         }
     }
 
-    if (hit_actors.IsEmpty()) {
-        LOG.log_verbose(TEXT("No valid hit actors."));
+    auto const n_hit_actors{hit_actors.Num()};
+    LOG.log_verbose(TEXT("%d valid hit actors."), n_hit_actors);
+    if (!n_hit_actors) {
         return;
     }
 
@@ -75,6 +75,9 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
         bool any_triggered{false};
         for (auto* actor : hit_actors) {
+            LOG.log_verbose(TEXT("Trying to trigger actor: %s"),
+                            *ActorUtils::GetBestDisplayName(actor));
+
             any_triggered |= subsystem->trigger(*actor, source) == ETriggerOccurred::yes;
         }
 

@@ -4,16 +4,16 @@
 #include "Components/ActorComponent.h"
 #include "EnhancedInputComponent.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-
 #include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "InteractorComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UInteractorComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"InteractorComponent"> {
+    , public ml::LogMsgMixin<"InteractorComponent", LogSandboxCharacter> {
     GENERATED_BODY()
   public:
     UInteractorComponent();
@@ -30,10 +30,6 @@ class SANDBOX_API UInteractorComponent
     float forward_offset{00.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float height_offset{00.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    float capsule_radius{5.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    float capsule_half_height{80.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     TEnumAsByte<ECollisionChannel> collision_channel{ml::collision::interaction};
   private:
