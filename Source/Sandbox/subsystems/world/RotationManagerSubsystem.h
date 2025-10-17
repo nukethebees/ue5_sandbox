@@ -34,7 +34,7 @@ class SANDBOX_API URotationManagerSubsystem
     virtual void Tick(float DeltaTime) override;
   private:
     void update_tick_enabled() {
-        tick_enabled = dynamic_components.IsEmpty() && static_scene_components.IsEmpty();
+        tick_enabled = !dynamic_components.IsEmpty() || !static_scene_components.IsEmpty();
     }
 
     // Dynamic rotation arrays - components can change speed
