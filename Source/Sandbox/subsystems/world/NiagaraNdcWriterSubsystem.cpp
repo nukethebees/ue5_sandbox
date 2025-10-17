@@ -62,8 +62,8 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         update_owning_component(*world);
     }
 
-    static auto const position_label{FName("position")};
-    static auto const rotation_label{FName("rotation")};
+    static auto const position_label{FName("spawn_position")};
+    static auto const rotation_label{FName("spawn_rotation")};
 
     for (int32 asset_idx{0}; asset_idx < n_assets; ++asset_idx) {
         auto& queue{queues_[asset_idx]};
