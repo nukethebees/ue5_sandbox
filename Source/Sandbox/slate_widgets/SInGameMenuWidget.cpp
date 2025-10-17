@@ -5,6 +5,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
@@ -15,6 +16,8 @@
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SInGameMenuWidget::Construct(FArguments const& InArgs) {
+    on_exit_clicked_ = InArgs._OnExitClicked;
+
     // clang-format off
     ChildSlot[
         SNew(SBox)
@@ -55,6 +58,19 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                                                     .Text(FText::FromString(TEXT("Inventory")))
                                             ]
                                     ]
+                                + SHorizontalBox::Slot()
+                                    .FillWidth(1.0f) [SNew(SSpacer)]
+                                + SHorizontalBox::Slot()
+                                    .AutoWidth()
+                                    .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+                                    [
+                                        SNew(SButton)
+                                            .OnClicked(on_exit_clicked_)
+                                            [
+                                                SNew(STextBlock)
+                                                    .Text(FText::FromString(TEXT("Exit")))
+                                            ]
+                                    ]
                             ]
                         // Tab content
                         + SVerticalBox::Slot()
@@ -62,14 +78,8 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                             [
                                 SAssignNew(widget_switcher, SWidgetSwitcher)
                                     .WidgetIndex(static_cast<int32>(EInGameMenuTab::Stats))
-                                + SWidgetSwitcher::Slot()
-                                    [
-                                        SNew(SStatsTabWidget)
-                                    ]
-                                + SWidgetSwitcher::Slot()
-                                    [
-                                        SNew(SInventoryTabWidget)
-                                    ]
+                                + SWidgetSwitcher::Slot() [SNew(SStatsTabWidget)]
+                                + SWidgetSwitcher::Slot() [SNew(SInventoryTabWidget)]
                             ]
                     ]
             ]

@@ -16,12 +16,14 @@ class SInGameMenuWidget
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SInGameMenuWidget) {}
+        SLATE_EVENT(FOnClicked, OnExitClicked)
     SLATE_END_ARGS()
     // clang-format on
 
     void Construct(FArguments const& InArgs);
   private:
     TSharedPtr<SWidgetSwitcher> widget_switcher;
+    FOnClicked on_exit_clicked_;
 
     FReply on_stats_tab_clicked();
     FReply on_inventory_tab_clicked();
