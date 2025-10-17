@@ -1,21 +1,19 @@
 #include "MyHUD.h"
 
 #include "GameFramework/PlayerController.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Widgets/SWeakWidget.h"
+
 #include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/game_states/PlatformerGameState.h"
-#include "UObject/ConstructorHelpers.h"
+#include "Sandbox/player_controllers/MyPlayerController.h"
+#include "Sandbox/slate_widgets/SInGameMenuWidget.h"
+
+#include "Sandbox/macros/null_checks.hpp"
 
 template <typename T>
 using CFinder = ConstructorHelpers::FClassFinder<T>;
-
-#define MAIN_WIDGET_NULL_CHECK()                                          \
-    do {                                                                  \
-        if (!main_widget) {                                               \
-            UE_LOGFMT(LogTemp, Error, "AMyHUD: main_widget not present"); \
-            return;                                                       \
-        }                                                                 \
-    } while (0)
 
 AMyHUD::AMyHUD() {
     PrimaryActorTick.bCanEverTick = false;
@@ -69,27 +67,67 @@ void AMyHUD::BeginPlay() {
 }
 
 void AMyHUD::update_fuel(FJetpackState const& jetpack_state) {
-    MAIN_WIDGET_NULL_CHECK();
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->fuel_widget);
 
-    if (main_widget->fuel_widget) {
-        main_widget->fuel_widget->update(jetpack_state.fuel_remaining);
-    }
+    main_widget->fuel_widget->update(jetpack_state.fuel_remaining);
 }
 void AMyHUD::update_jump(int32 new_jump) {
-    MAIN_WIDGET_NULL_CHECK();
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->jump_widget);
 
-    if (main_widget->jump_widget) {
-        main_widget->jump_widget->update(new_jump);
-    }
+    main_widget->jump_widget->update(new_jump);
 }
 void AMyHUD::update_health(FHealthData health_data) {
-    MAIN_WIDGET_NULL_CHECK();
+    RETURN_IF_NULLPTR(main_widget);
     main_widget->update_health(health_data);
 }
 void AMyHUD::update_ammo(int32 ammo_count) {
-    MAIN_WIDGET_NULL_CHECK();
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_widget);
 
-    if (main_widget->ammo_widget) {
-        main_widget->ammo_widget->set_value(ammo_count);
+    main_widget->ammo_widget->set_value(ammo_count);
+}
+
+void AMyHUD::toggle_in_game_menu() {
+    constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};
+    logger.log_display(TEXT("Toggling menu."));
+
+    TRY_INIT_PTR(player_controller, GetOwningPlayerController());
+    TRY_INIT_PTR(pc, Cast<AMyPlayerController>(player_controller));
+    TRY_INIT_PTR(game_viewport, GetWorld()->GetGameViewport());
+
+    if (is_in_game_menu_open) {
+        // Close the menu
+        if (in_game_menu_widget.IsValid()) {
+            game_viewport->RemoveViewportWidgetContent(in_game_menu_widget.ToSharedRef());
+        }
+
+        // Restore game input mode
+        // auto input_mode{FInputModeGameOnly()};
+        // pc->SetInputMode(input_mode);
+        // pc->bShowMouseCursor = false;
+        // pc->set_game_input_mode();
+
+        //pc->SetPause(false);
+        is_in_game_menu_open = false;
+    } else {
+        // Open the menu
+        if (!in_game_menu_widget.IsValid()) {
+            in_game_menu_widget = SNew(SInGameMenuWidget);
+        }
+
+        constexpr int32 z_order{100};
+        game_viewport->AddViewportWidgetContent(in_game_menu_widget.ToSharedRef(), z_order);
+
+        // Set UI input mode
+        // auto input_mode{FInputModeGameAndUI()};
+        // input_mode.SetWidgetToFocus(in_game_menu_widget);
+        // pc->SetInputMode(input_mode);
+        pc->bShowMouseCursor = true;
+        // pc->set_mouse_input_mode();
+
+        //pc->SetPause(true);
+        is_in_game_menu_open = true;
     }
 }
