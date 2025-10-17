@@ -50,6 +50,7 @@ void AWeaponPickup::BeginPlay() {
     RETURN_IF_NULLPTR(spawned_weapon);
 
     rotator->register_scene_component(*spawned_weapon->GetRootComponent());
+    spawned_weapon->set_pickup_collision(false);
 }
 void AWeaponPickup::spawn_weapon(UWorld& world) {
     spawned_weapon = world.SpawnActor<AWeaponBase>(weapon_class, FTransform{}, spawn_parameters);
