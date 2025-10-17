@@ -73,4 +73,7 @@ class SANDBOX_API UPawnWeaponComponent
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     FTransform spawn_transform{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interface")
+    TScriptInterface<UInventoryComponent> inventory;
 };
