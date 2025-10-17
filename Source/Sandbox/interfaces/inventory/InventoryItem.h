@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
-#include "Sandbox/generated/strong_typedefs/Dimensions.h"
+#include "Sandbox/data/inventory/Dimensions.h"
 
 #include "InventoryItem.generated.h"
 
