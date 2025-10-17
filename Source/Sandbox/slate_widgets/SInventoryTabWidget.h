@@ -12,8 +12,11 @@ class SInventoryTabWidget
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SInventoryTabWidget) {}
+        SLATE_ATTRIBUTE(int32, Money)
     SLATE_END_ARGS()
     // clang-format on
 
     void Construct(FArguments const& InArgs);
+  private:
+    TAttribute<int32> money_;
 };

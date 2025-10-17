@@ -10,6 +10,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
+#include "Sandbox/actor_components/inventory/InventoryComponent.h"
 #include "Sandbox/slate_widgets/SInventoryTabWidget.h"
 #include "Sandbox/slate_widgets/SStatsTabWidget.h"
 #include "Sandbox/utilities/SandboxStyle.h"
@@ -17,6 +18,7 @@
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SInGameMenuWidget::Construct(FArguments const& InArgs) {
     on_exit_clicked_ = InArgs._OnExitClicked;
+    inventory_component_ = InArgs._InventoryComponent;
 
     // clang-format off
     ChildSlot[
@@ -78,8 +80,17 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                             [
                                 SAssignNew(widget_switcher, SWidgetSwitcher)
                                     .WidgetIndex(static_cast<int32>(EInGameMenuTab::Stats))
-                                + SWidgetSwitcher::Slot() [SNew(SStatsTabWidget)]
-                                + SWidgetSwitcher::Slot() [SNew(SInventoryTabWidget)]
+                                + SWidgetSwitcher::Slot()
+                                    [
+                                        SNew(SStatsTabWidget)
+                                    ]
+                                + SWidgetSwitcher::Slot()
+                                    [
+                                        SNew(SInventoryTabWidget)
+                                            .Money_Lambda([this]() {
+                                                return inventory_component_ ? inventory_component_->money : 0;
+                                            })
+                                    ]
                             ]
                     ]
             ]
