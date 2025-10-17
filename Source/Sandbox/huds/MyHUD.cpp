@@ -98,36 +98,19 @@ void AMyHUD::toggle_in_game_menu() {
     TRY_INIT_PTR(game_viewport, GetWorld()->GetGameViewport());
 
     if (is_in_game_menu_open) {
-        // Close the menu
         if (in_game_menu_widget.IsValid()) {
             game_viewport->RemoveViewportWidgetContent(in_game_menu_widget.ToSharedRef());
         }
-
-        // Restore game input mode
-        // auto input_mode{FInputModeGameOnly()};
-        // pc->SetInputMode(input_mode);
-        // pc->bShowMouseCursor = false;
-        // pc->set_game_input_mode();
-
-        //pc->SetPause(false);
+        pc->set_game_input_mode();
         is_in_game_menu_open = false;
     } else {
-        // Open the menu
         if (!in_game_menu_widget.IsValid()) {
             in_game_menu_widget = SNew(SInGameMenuWidget);
         }
 
         constexpr int32 z_order{100};
         game_viewport->AddViewportWidgetContent(in_game_menu_widget.ToSharedRef(), z_order);
-
-        // Set UI input mode
-        // auto input_mode{FInputModeGameAndUI()};
-        // input_mode.SetWidgetToFocus(in_game_menu_widget);
-        // pc->SetInputMode(input_mode);
-        pc->bShowMouseCursor = true;
-        // pc->set_mouse_input_mode();
-
-        //pc->SetPause(true);
+        pc->set_mouse_input_mode();
         is_in_game_menu_open = true;
     }
 }
