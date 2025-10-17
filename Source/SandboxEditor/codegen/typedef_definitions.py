@@ -41,9 +41,6 @@ def make_typedefs():
 
     point = wrappers["FIntPoint"]
 
-    point.name = "Coord"
-    typedefs.append(point)
-
     return typedefs;
 
 TYPEDEFS = make_typedefs()

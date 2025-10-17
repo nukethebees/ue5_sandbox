@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
@@ -22,11 +24,17 @@ class SANDBOX_API UInventoryComponent
     UInventoryComponent();
 
     bool add_item(TScriptInterface<IInventoryItem> item);
-    bool item_fits(IInventoryItem const& item) const;
-    AWeaponBase* get_random_weapon();
+    auto find_free_point(IInventoryItem const& item) const -> std::optional<FCoord>;
+    auto get_random_weapon() -> AWeaponBase*;
+    auto get_n_rows() const { return dimensions.y(); }
+    auto get_n_columns() const { return dimensions.x(); }
+    bool is_free(FCoord coord, FDimensions item_dimensions) const;
+
+    auto get_width() const { return dimensions.x(); }
+    auto get_height() const { return dimensions.y(); }
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     FDimensions dimensions{100, 100};
 };

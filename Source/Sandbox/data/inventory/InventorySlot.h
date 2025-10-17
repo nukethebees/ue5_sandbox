@@ -35,6 +35,10 @@ struct FInventorySlot {
         }
         return item_dimensions;
     }
+    auto const& name() const {
+        check(item);
+        return item->get_name();
+    }
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TScriptInterface<IInventoryItem> item{nullptr};
