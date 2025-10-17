@@ -9,6 +9,7 @@
 #include "Sandbox/data/trigger/ForcefieldPayload.h"
 #include "Sandbox/data/trigger/RotatePayload.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
+#include "Sandbox/data/trigger/WeaponPickupPayload.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/mixins/TriggerSubsystemMixins.hpp"
 #include "Sandbox/SandboxLogCategories.h"
@@ -32,6 +33,7 @@ class SANDBOX_API UTriggerSubsystem
     TriggerSubsystemCore<FTriggerOtherPayload,
                          FHealthStationPayload,
                          FRotatePayload,
+                         FWeaponPickupPayload,
                          FForcefieldPayload>
         core_{};
 };
