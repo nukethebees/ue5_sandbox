@@ -8,8 +8,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/Widget.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Widgets/SCompoundWidget.h"
+
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 
 #include "NumWidget.generated.h"
 
