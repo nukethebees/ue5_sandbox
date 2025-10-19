@@ -2,6 +2,15 @@
 
 #include "Sandbox/subsystems/world/TriggerSubsystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
+bool FTriggerOtherPayload::add_target_actor(ActorId actor_id) {
+    RETURN_VALUE_IF_FALSE(n_targets < MAX_TARGETS, false);
+
+    target_actor_ids[n_targets++] = actor_id;
+    return true;
+}
+
 FTriggerResult FTriggerOtherPayload::trigger(FTriggerContext context) {
     static constexpr auto LOG{NestedLogger<"trigger">()};
 

@@ -3,6 +3,7 @@
 #include <array>
 
 #include "CoreMinimal.h"
+
 #include "Sandbox/data/trigger/StrongIds.h"
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/data/trigger/TriggerContext.h"
@@ -16,11 +17,7 @@ struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     uint8 n_targets{0};
     float activation_delay{0.0f};
 
-    void add_target_actor(ActorId actor_id) {
-        if (n_targets < MAX_TARGETS && actor_id.get() != 0) {
-            target_actor_ids[n_targets++] = actor_id;
-        }
-    }
+    [[nodiscard]] bool add_target_actor(ActorId actor_id);
 
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time) { return false; } // No ticking needed
