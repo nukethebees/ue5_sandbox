@@ -8,11 +8,13 @@
 
 #include "Sandbox/data/pool/PoolConfig.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/utilities/actor_utils.h"
 
 template <typename... Configs>
     requires (IsPoolConfig<Configs> && ...)
-class UObjectPoolSubsystemCore : public ml::LogMsgMixin<"UObjectPoolSubsystemCore"> {
+class UObjectPoolSubsystemCore
+    : public ml::LogMsgMixin<"UObjectPoolSubsystemCore", LogSandboxSubsystem> {
   public:
     using free_list_type = TArray<int32>;
 
