@@ -7,6 +7,7 @@
 
 #include "Sandbox/data/collision/CollisionPayloads.h"
 #include "Sandbox/mixins/CollisionEffectSubsystemMixins.hpp"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
 #include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/subsystems/world/CollisionEffectSubsystemCore.h"
 
