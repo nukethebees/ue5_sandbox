@@ -231,7 +231,7 @@ class LockFreeMPSCQueueSoA {
 
     template <typename Container, typename Fn, std::size_t... Is>
     constexpr auto map_index_impl(Fn&& fn, std::index_sequence<Is...>) {
-        return Container { fn.template operator()<Is>()... };
+        return Container{fn.template operator()<Is>()...};
     }
 
     template <typename Container, typename Fn>
