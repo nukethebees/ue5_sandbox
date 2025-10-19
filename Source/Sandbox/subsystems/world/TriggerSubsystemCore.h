@@ -14,9 +14,11 @@
 #include "Sandbox/data/trigger/TriggerContext.h"
 #include "Sandbox/data/trigger/TriggerResult.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/tuple.h"
 
+#include "Sandbox/macros/null_checks.hpp"
 #include "Sandbox/macros/switch_stamping.hpp"
 
 struct FTriggerableRange {
@@ -85,7 +87,7 @@ constexpr auto trigger_array_index_v =
     } while (0)
 
 template <typename... Types>
-class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
+class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogSandboxSubsystem> {
   public:
     using TriggerableTupleT = ml::TriggerTuple<Types...>;
     static constexpr std::size_t N_TYPES{sizeof...(Types)};
@@ -206,16 +208,9 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 
         // Get first triggerable to obtain actor and world for context creation
         auto const first_triggerable_id{self.triggerable_ids[range->offset]};
-        auto* actor{self.get_actor(first_triggerable_id)};
-        if (!actor) {
-            return ETriggerOccurred::no;
-        }
 
-        auto* world{actor->GetWorld()};
-        if (!world) {
-            LOG.log_warning(TEXT("Actor has no world"));
-            return ETriggerOccurred::no;
-        }
+        INIT_PTR_OR_RETURN_VALUE(actor, self.get_actor(first_triggerable_id), ETriggerOccurred::no);
+        INIT_PTR_OR_RETURN_VALUE(world, actor->GetWorld(), ETriggerOccurred::no);
 
         // Create context once for all triggerables of this actor
         constexpr float trigger_strength{1.0f};
@@ -392,4 +387,5 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore"> {
 #undef TICK_CASE
 #undef TICK_VISIT_STAMP
 
+#include "Sandbox/macros/null_checks_undef.hpp"
 #include "Sandbox/macros/switch_stamping_undef.hpp"
