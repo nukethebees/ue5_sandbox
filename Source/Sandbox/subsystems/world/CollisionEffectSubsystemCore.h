@@ -12,6 +12,7 @@
 #include "Sandbox/data/PayloadIndex.h"
 #include "Sandbox/interfaces/CollisionOwner.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
 
@@ -66,7 +67,8 @@ constexpr auto tuple_array_index_v =
     } while (0)
 
 template <typename... Types>
-class UCollisionEffectSubsystemCore : public ml::LogMsgMixin<"UCollisionEffectSubsystemCore"> {
+class UCollisionEffectSubsystemCore
+    : public ml::LogMsgMixin<"UCollisionEffectSubsystemCore", LogSandboxSubsystem> {
   public:
     using PayloadsT = ml::ArrayTuple<Types...>;
     static constexpr std::size_t N_TYPES = sizeof...(Types);
