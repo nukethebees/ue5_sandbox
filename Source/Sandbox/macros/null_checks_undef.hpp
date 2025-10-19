@@ -1,5 +1,7 @@
 #undef RETURN_VALUE_AND_WARN_IF_EXPR
+#undef CONTINUE_AND_WARN_IF_EXPR
 
+// Pointers
 #undef RETURN_IF_NULLPTR
 #undef RETURN_VALUE_IF_NULLPTR
 #undef TRY_INIT_PTR
@@ -7,14 +9,17 @@
 
 #undef CONTINUE_IF_NULLPTR
 
+// IsValid()
 #undef RETURN_IF_INVALID
 #undef TRY_INIT_VALID
 
+// std::optional
 #undef RETURN_IF_NULLOPT
 #undef TRY_INIT_OPTIONAL
 #undef RETURN_VALUE_IF_NULLOPT
 #undef INIT_OPTIONAL_OR_RETURN_VALUE
 
+// Boolean
 #undef RETURN_IF_TRUE
 #undef RETURN_IF_FALSE
 
