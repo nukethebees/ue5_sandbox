@@ -2,9 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/data/trigger/TriggerableId.h"
 #include "Sandbox/data/trigger/TriggerOtherPayload.h"
 #include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "TriggerButtonActor.generated.h"
 
@@ -14,7 +16,7 @@ class UTriggerSubsystem;
 UCLASS(BlueprintType, Blueprintable)
 class SANDBOX_API ATriggerButtonActor
     : public AActor
-    , public ml::LogMsgMixin<"ATriggerButtonActor"> {
+    , public ml::LogMsgMixin<"ATriggerButtonActor", LogSandboxActor> {
     GENERATED_BODY()
   public:
     ATriggerButtonActor();
