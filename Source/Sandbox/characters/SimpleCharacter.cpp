@@ -76,8 +76,6 @@ void ASimpleCharacter::apply_material_colours() {
 void ASimpleCharacter::apply_light_colours() {
     constexpr auto logger{NestedLogger<"apply_light_colours">()};
 
-    logger.log_verbose(TEXT("Setting light colour."));
-
     RETURN_IF_NULLPTR(light);
     light->SetLightColor(light_colour);
 }
