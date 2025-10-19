@@ -10,6 +10,13 @@
 class UMaterialInstanceDynamic;
 class UStaticMeshComponent;
 
+UENUM(BlueprintType)
+enum class EWallDirection : uint8 {
+    Width UMETA(DisplayName = "Width"),
+    Height UMETA(DisplayName = "Height"),
+    Depth UMETA(DisplayName = "Depth"),
+};
+
 USTRUCT(BlueprintType)
 struct FTiledCubeActorMaterialParams {
     GENERATED_BODY()
@@ -57,10 +64,13 @@ class SANDBOX_API ATiledCubeActor
     }
         MAKE_CONST(tiling_u)
         MAKE_CONST(tiling_v)
+
         MAKE_CONST(face_texture)
+
         MAKE_CONST(metallic)
         MAKE_CONST(specular)
         MAKE_CONST(roughness)
+
         MAKE_CONST(base_colour)
         MAKE_CONST(emissive_colour)
 #undef MAKE_CONST
@@ -68,18 +78,22 @@ class SANDBOX_API ATiledCubeActor
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float tile_width{1.0f};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float tile_height{1.0f};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float tile_depth{1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float n_tiles_width{1.0f};
-
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    float n_tiles_depth{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     float n_tiles_height{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    EWallDirection u_direction{EWallDirection::Width};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
+    EWallDirection v_direction{EWallDirection::Height};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiled Cube")
     FTiledCubeActorMaterialParams material{};
@@ -90,6 +104,22 @@ class SANDBOX_API ATiledCubeActor
     UPROPERTY(Transient)
     UMaterialInstanceDynamic* face_material_inst;
   private:
+    auto get_n(EWallDirection dir) {
+        switch (dir) {
+            using enum EWallDirection;
+            case Width:
+                return n_tiles_width;
+            case Depth:
+                return n_tiles_depth;
+            case Height:
+                return n_tiles_height;
+            default:
+                break;
+        }
+
+        return 0.0f;
+    }
+
     static FName const face_material_name;
     static FName const edge_material_name;
 };
