@@ -1,8 +1,11 @@
 #include "Sandbox/actors/TriggerButtonActor.h"
 
 #include "Components/SceneComponent.h"
+
 #include "Sandbox/subsystems/world/TriggerSubsystem.h"
 #include "Sandbox/utilities/actor_utils.h"
+
+#include "Sandbox/macros/null_checks.hpp"
 
 ATriggerButtonActor::ATriggerButtonActor() {
     PrimaryActorTick.bCanEverTick = false;
@@ -20,11 +23,11 @@ void ATriggerButtonActor::BeginPlay() {
     register_targets_with_payload();
 
     // Register with trigger subsystem
-    auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
-    if (subsystem) {
-        if (auto const id{subsystem->register_triggerable(*this, std::move(trigger_payload))}) {
-            my_trigger_id = *id;
-        }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(subsystem, world->GetSubsystem<UTriggerSubsystem>());
+
+    if (auto const id{subsystem->register_triggerable(*this, std::move(trigger_payload))}) {
+        my_trigger_id = *id;
     }
 }
 
@@ -36,30 +39,29 @@ void ATriggerButtonActor::EndPlay(EEndPlayReason::Type reason) {
 }
 
 void ATriggerButtonActor::register_targets_with_payload() {
+    constexpr auto logger{NestedLogger<"register_targets_with_payload">()};
+
     // Clear existing targets
     trigger_payload.target_actor_ids = {};
     trigger_payload.n_targets = 0;
 
-    auto* subsystem{GetWorld()->GetSubsystem<UTriggerSubsystem>()};
-    if (!subsystem) {
-        log_warning(TEXT("No UTriggerSubsystem found for target registration"));
-        return;
-    }
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(subsystem, world->GetSubsystem<UTriggerSubsystem>());
 
     for (auto* target_actor : target_actors) {
-        if (!target_actor) {
-            continue;
-        }
+        CONTINUE_IF_FALSE(target_actor);
 
         // Get or create actor ID for this target
         auto const actor_id{subsystem->get_or_create_actor_id(*target_actor)};
-        trigger_payload.add_target_actor(actor_id);
-        log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
-                    actor_id.get(),
-                    *ml::get_best_display_name(*target_actor));
+
+        CONTINUE_IF_FALSE(trigger_payload.add_target_actor(actor_id));
+
+        logger.log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
+                           actor_id.get(),
+                           *ml::get_best_display_name(*target_actor));
     }
 
-    log_log(TEXT("Registered %d target actors with trigger button: %s"),
-            trigger_payload.n_targets,
-            *ml::get_best_display_name(*this));
+    logger.log_log(TEXT("Registered %d target actors with trigger button: %s"),
+                   trigger_payload.n_targets,
+                   *ml::get_best_display_name(*this));
 }
