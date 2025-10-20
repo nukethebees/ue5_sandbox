@@ -13,6 +13,7 @@ FTriggerResult FWeaponPickupPayload::trigger(FTriggerContext context) {
                              context.source.instigator->GetComponentByClass<UPawnWeaponComponent>(),
                              FTriggerResult{});
 
+    logger.log_verbose(TEXT("Weapon being picked up."));
     if (weapon_component->pickup_new_weapon(*weapon)) {
         weapon->set_pickup_collision(false);
     }
