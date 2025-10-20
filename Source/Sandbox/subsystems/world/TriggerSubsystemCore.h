@@ -189,7 +189,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         if (auto* const id{self.actor_to_actor_id.Find(&actor)}) {
             return self.trigger(*id, source);
         } else {
-            LOG.log_warning(TEXT("Actor is not registered."));
+            LOG.log_warning(TEXT("Actor is not registered: %s"), *ml::get_best_display_name(actor));
             return ETriggerOccurred::no;
         }
     }
