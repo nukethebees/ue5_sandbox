@@ -317,7 +317,8 @@ void AMyCharacter::Landed(FHitResult const& Hit) {
 void AMyCharacter::interact(FVector sweep_origin, FRotator sweep_direction) {
     RETURN_IF_NULLPTR(interactor);
     RETURN_IF_NULLPTR(weapon_attach_point);
-    interactor->try_interact(weapon_attach_point->GetComponentLocation(), sweep_direction);
+
+    interactor->try_interact(sweep_origin, sweep_direction);
 }
 
 void AMyCharacter::handle_death() {
