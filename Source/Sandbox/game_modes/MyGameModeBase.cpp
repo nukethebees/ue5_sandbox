@@ -32,6 +32,8 @@ void AMyGameModeBase::BeginPlay() {
     pc->Possess(my_character);
 
 #if WITH_EDITOR
-    pc->ConsoleCommand(TEXT("show collision"));
+    if (show_collision) {
+        pc->ConsoleCommand(TEXT("show collision"));
+    }
 #endif
 }
