@@ -3,6 +3,9 @@
 #include "Sandbox/macros/null_checks.hpp"
 
 AMyGameModeBase::AMyGameModeBase() {
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
+
     ghost_cleanup_component =
         CreateDefaultSubobject<URemoveGhostsOnStartComponent>(TEXT("GhostCleanupComponent"));
 }
