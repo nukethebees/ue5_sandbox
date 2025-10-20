@@ -8,8 +8,8 @@
 #include "Sandbox/combat/weapons/data/AmmoData.h"
 #include "Sandbox/health/data/HealthData.h"
 #include "Sandbox/players/playable/data/JetpackState.h"
+#include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/widgets/slate/NumWidget.h"
-#include "Sandbox/ui/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/widgets/umg/ValueWidget.h"
 
 #include "MyHUD.generated.h"

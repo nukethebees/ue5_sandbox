@@ -1,4 +1,4 @@
-#include "Sandbox/ui/widgets/umg/options_menu/GameplayOptionsWidget.h"
+#include "Sandbox/ui/options_menu/widgets/umg/GameplayOptionsWidget.h"
 
 void UGameplayOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();

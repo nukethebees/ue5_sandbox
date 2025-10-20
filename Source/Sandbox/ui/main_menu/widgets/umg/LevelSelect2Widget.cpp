@@ -1,4 +1,4 @@
-#include "Sandbox/ui/widgets/umg/LevelSelect2Widget.h"
+#include "Sandbox/ui/main_menu/widgets/umg/LevelSelect2Widget.h"
 
 #include "Components/GridSlot.h"
 #include "Sandbox/core/levels/levels.h"

@@ -5,8 +5,8 @@
 #include "Components/GridPanel.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/ui/widgets/umg/CommonMenuDelegates.h"
-#include "Sandbox/ui/widgets/umg/LoadLevelButtonWidget.h"
+#include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
+#include "Sandbox/ui/main_menu/widgets/umg/LoadLevelButtonWidget.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "LevelSelect2Widget.generated.h"

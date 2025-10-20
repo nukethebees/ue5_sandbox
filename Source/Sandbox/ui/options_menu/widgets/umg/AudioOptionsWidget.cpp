@@ -1,4 +1,4 @@
-#include "Sandbox/ui/widgets/umg/options_menu/AudioOptionsWidget.h"
+#include "Sandbox/ui/options_menu/widgets/umg/AudioOptionsWidget.h"
 
 void UAudioOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();

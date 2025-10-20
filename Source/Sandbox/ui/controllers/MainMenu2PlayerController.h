@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "Sandbox/ui/widgets/umg/MainMenu2Widget.h"
+#include "Sandbox/ui/main_menu/widgets/umg/MainMenu2Widget.h"
 
 #include "MainMenu2PlayerController.generated.h"
 

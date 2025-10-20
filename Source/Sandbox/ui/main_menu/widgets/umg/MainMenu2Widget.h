@@ -7,8 +7,8 @@
 #include "Components/WidgetSwitcher.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/ui/widgets/umg/LevelSelect2Widget.h"
-#include "Sandbox/ui/widgets/umg/options_menu/OptionsWidget.h"
+#include "Sandbox/ui/main_menu/widgets/umg/LevelSelect2Widget.h"
+#include "Sandbox/ui/options_menu/widgets/umg/OptionsWidget.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "MainMenu2Widget.generated.h"

@@ -1,7 +1,8 @@
-#include "Sandbox/ui/widgets/umg/HealthStationWidget.h"
+#include "Sandbox/ui/in_world/widgets/umg/HealthStationWidget.h"
 
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+
 #include "Sandbox/health/data/StationStateData.h"
 
 UFUNCTION()

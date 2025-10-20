@@ -2,8 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/ProgressBar.h"
-#include "Components/TextBlock.h"
+
 #include "Sandbox/health/data/HealthData.h"
 
 #include "HealthWidget.generated.h"
