@@ -5,6 +5,7 @@
 #include "Sandbox/actors/weapons/WeaponBase.h"
 #include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
 #include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/utilities/string_literal_wrapper.h"
 
 #include "TestPistol.generated.h"
 
@@ -16,6 +17,8 @@ UCLASS()
 class SANDBOX_API ATestPistol : public AWeaponBase {
     GENERATED_BODY()
   public:
+    static constexpr StaticTCharString tag{"ATestPistol"};
+
     ATestPistol();
 
     virtual FDimensions get_size() const override;

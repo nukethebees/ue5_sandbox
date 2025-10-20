@@ -1,10 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "Sandbox/data/trigger/WeaponPickupPayload.h"
 #include "Sandbox/interfaces/inventory/InventoryItem.h"
 #include "Sandbox/interfaces/weapons/WeaponInterface.h"
+#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/SandboxLogCategories.h"
 
 #include "WeaponBase.generated.h"
 
@@ -14,7 +17,8 @@ UCLASS(Abstract)
 class SANDBOX_API AWeaponBase
     : public AActor
     , public IWeaponInterface
-    , public IInventoryItem {
+    , public IInventoryItem
+    , public ml::LogMsgMixin<"AWeaponBase", LogSandboxWeapon> {
     GENERATED_BODY()
   public:
     AWeaponBase();
