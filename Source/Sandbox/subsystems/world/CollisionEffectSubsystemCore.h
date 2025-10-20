@@ -16,6 +16,7 @@
 #include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
 #include "Sandbox/utilities/tuple.h"
 
+#include "Sandbox/macros/null_checks.hpp"
 #include "Sandbox/macros/switch_stamping.hpp"
 
 namespace ml {
@@ -76,9 +77,7 @@ class UCollisionEffectSubsystemCore
     template <typename Self, typename Payload>
     void add_payload(this Self&& self, AActor* actor, Payload&& payload, auto* top_subsystem) {
         auto const actor_index{self.register_actor(actor, top_subsystem)};
-        if (!actor_index) {
-            return;
-        }
+        RETURN_IF_FALSE(actor_index);
 
         auto& payload_array{ml::ArrayGet<Payload>(self.payloads)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
@@ -93,23 +92,18 @@ class UCollisionEffectSubsystemCore
     std::optional<int32> register_actor(this Self&& self, AActor* actor, auto* top_subsystem) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::UCollisionEffectSubsystemCore::register_actor"))
-        if (!actor) {
-            return std::nullopt;
-        }
+
+        RETURN_VALUE_IF_NULLPTR(actor, {});
 
         if (auto const* i{self.actor_ids.Find(actor)}) {
             return *i;
         }
 
         auto* collision_owner{Cast<ICollisionOwner>(actor)};
-        if (!collision_owner) {
-            return std::nullopt;
-        }
+        RETURN_VALUE_IF_NULLPTR(collision_owner, {});
 
         auto* collision_comp{collision_owner->get_collision_component()};
-        if (!collision_comp) {
-            return std::nullopt;
-        }
+        RETURN_VALUE_IF_NULLPTR(collision_comp, {});
 
         collision_comp->OnComponentBeginOverlap.AddDynamic(
             top_subsystem, &std::remove_cvref_t<decltype(*top_subsystem)>::handle_collision_event);
@@ -139,29 +133,18 @@ class UCollisionEffectSubsystemCore
 
         logger.log_verbose(TEXT("handle_collision_event"));
 
-        if (!other_actor || !overlapped_component) {
-            logger.log_warning(TEXT("No other_actor or overlapped_component in collision event."));
-            return;
-        }
+        RETURN_IF_NULLPTR(other_actor);
+        RETURN_IF_NULLPTR(overlapped_component);
 
         auto const* index_ptr{self.collision_ids.Find(overlapped_component)};
-        if (!index_ptr) {
-            logger.log_warning(TEXT("No collision entry in collision event."));
-            return;
-        }
+        RETURN_IF_NULLPTR(index_ptr);
 
         int32 const index{*index_ptr};
         auto* owner{self.actors[index].Get()};
-        if (!owner) {
-            logger.log_warning(TEXT("No owner in collision event."));
-            return;
-        }
+        RETURN_IF_NULLPTR(owner);
 
         auto* world{owner->GetWorld()};
-        if (!world) {
-            logger.log_warning(TEXT("No world in collision event."));
-            return;
-        }
+        RETURN_IF_NULLPTR(world);
 
         auto collision_context{FCollisionContext(*world, *other_actor)};
 
@@ -195,16 +178,14 @@ class UCollisionEffectSubsystemCore
         collision_owner.on_post_collision_effect(*other_actor);
 
         if (collision_owner.should_destroy_after_collision()) {
-            if (auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()}) {
-                auto const delay{collision_owner.get_destruction_delay()};
-                if (delay > 0.0f) {
-                    destruction_manager->queue_destruction_with_delay(owner, delay);
-                } else {
-                    destruction_manager->queue_destruction(owner);
-                }
+            TRY_INIT_PTR(destruction_manager, world->GetSubsystem<UDestructionManagerSubsystem>());
+
+            auto const delay{collision_owner.get_destruction_delay()};
+            if (delay > 0.0f) {
+                destruction_manager->queue_destruction_with_delay(owner, delay);
+            } else {
+                destruction_manager->queue_destruction(owner);
             }
-        } else {
-            logger.log_warning(TEXT("Couldn't get UDestructionManagerSubsystem"));
         }
     }
   private:
@@ -220,4 +201,5 @@ class UCollisionEffectSubsystemCore
 #undef COLLISION_CASE
 #undef COLLISION_VISIT_STAMP
 
+#include "Sandbox/macros/null_checks_undef.hpp"
 #include "Sandbox/macros/switch_stamping_undef.hpp"
