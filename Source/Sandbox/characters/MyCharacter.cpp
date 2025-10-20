@@ -12,6 +12,7 @@
 #include "Sandbox/actor_components/JetpackComponent.h"
 #include "Sandbox/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/huds/MyHud.h"
 
 #include "Sandbox/macros/null_checks.hpp"
@@ -56,6 +57,11 @@ AMyCharacter::AMyCharacter()
 
     torch->SetupAttachment(RootComponent);
     weapon_attach_point->SetupAttachment(cameras[0]);
+
+    TRY_INIT_PTR(capsule, GetCapsuleComponent());
+
+    capsule->SetCollisionResponseToChannel(ml::collision::interaction,
+                                           ECollisionResponse::ECR_Ignore);
 }
 
 void AMyCharacter::BeginPlay() {
