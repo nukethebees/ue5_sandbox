@@ -75,7 +75,7 @@ class UCollisionEffectSubsystemCore
     static constexpr std::size_t N_TYPES = sizeof...(Types);
 
     template <typename Self, typename Payload>
-    void add_payload(this Self&& self, AActor* actor, Payload&& payload, auto* top_subsystem) {
+    void add_payload(this Self& self, AActor& actor, Payload&& payload, auto* top_subsystem) {
         auto const actor_index{self.register_actor(actor, top_subsystem)};
         RETURN_IF_FALSE(actor_index);
 
@@ -83,40 +83,36 @@ class UCollisionEffectSubsystemCore
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
         constexpr auto payload_array_index{ml::tuple_array_index_v<Payload, Self>};
 
-        auto& payload_indexes{std::forward<Self>(self).actor_payload_indexes[*actor_index].indexes};
+        auto& payload_indexes{self.actor_payload_indexes[*actor_index].indexes};
         payload_indexes.Add(FPayloadIndex(static_cast<uint8>(payload_array_index),
                                           static_cast<uint8>(payload_element_index)));
     }
 
     template <typename Self>
-    std::optional<int32> register_actor(this Self&& self, AActor* actor, auto* top_subsystem) {
+    std::optional<int32> register_actor(this Self& self, AActor& actor, auto* top_subsystem) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::UCollisionEffectSubsystemCore::register_actor"))
 
-        RETURN_VALUE_IF_NULLPTR(actor, {});
-
-        if (auto const* i{self.actor_ids.Find(actor)}) {
+        if (auto const* i{self.actor_ids.Find(&actor)}) {
             return *i;
         }
 
-        auto* collision_owner{Cast<ICollisionOwner>(actor)};
-        RETURN_VALUE_IF_NULLPTR(collision_owner, {});
-
-        auto* collision_comp{collision_owner->get_collision_component()};
-        RETURN_VALUE_IF_NULLPTR(collision_comp, {});
+        INIT_OR_RETURN_VALUE_IF_FALSE(auto*, collision_owner, Cast<ICollisionOwner>(&actor), {});
+        INIT_OR_RETURN_VALUE_IF_FALSE(
+            auto*, collision_comp, collision_owner->get_collision_component(), {});
 
         collision_comp->OnComponentBeginOverlap.AddDynamic(
             top_subsystem, &std::remove_cvref_t<decltype(*top_subsystem)>::handle_collision_event);
 
-        auto const actor_i{self.actors.Add(actor)};
+        auto const actor_i{self.actors.Add(&actor)};
         auto const collision_i{self.collision_boxes.Add(collision_comp)};
 
         check(actor_i == collision_i);
 
-        self.actor_ids.Add(actor, actor_i);
+        self.actor_ids.Add(&actor, actor_i);
         self.collision_ids.Add(collision_comp, actor_i);
 
-        std::forward<Self>(self).actor_payload_indexes.AddDefaulted();
+        self.actor_payload_indexes.AddDefaulted();
 
         return actor_i;
     }
