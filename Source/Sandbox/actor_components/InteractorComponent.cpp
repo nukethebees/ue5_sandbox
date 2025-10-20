@@ -51,9 +51,12 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
     TArray<AActor*> hit_actors{};
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
-        if (actor && actor != owner) {
-            hit_actors.Add(actor);
+        if (actor != owner) {
+            continue;
         }
+
+        CONTINUE_IF_FALSE(actor);
+        hit_actors.Add(actor);
     }
 
     auto const n_hit_actors{hit_actors.Num()};
@@ -64,34 +67,26 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
     // Try new trigger system first
     TRY_INIT_PTR(subsystem, world->GetSubsystem<UTriggerSubsystem>());
-    if (subsystem) {
-        FTriggeringSource source{.type = ETriggerSourceType::PlayerInteraction,
-                                 .capabilities = {},
-                                 .instigator = owner,
-                                 .source_location = owner->GetActorLocation(),
-                                 .source_triggerable = std::nullopt};
+    FTriggeringSource source{.type = ETriggerSourceType::PlayerInteraction,
+                             .capabilities = {},
+                             .instigator = owner,
+                             .source_location = owner->GetActorLocation(),
+                             .source_triggerable = std::nullopt};
 
-        source.capabilities.add_capability(ETriggerSourceCapability::Humanoid);
+    source.capabilities.add_capability(ETriggerSourceCapability::Humanoid);
 
-        bool any_triggered{false};
-        for (auto* actor : hit_actors) {
-            any_triggered |= subsystem->trigger(*actor, source) == ETriggerOccurred::yes;
-        }
+    bool any_triggered{false};
+    for (auto* actor : hit_actors) {
+        any_triggered |= subsystem->trigger(*actor, source) == ETriggerOccurred::yes;
+    }
 
-        if (any_triggered) {
-            LOG.log_verbose(TEXT("At least one actor was triggered."));
+    if (any_triggered) {
+        LOG.log_verbose(TEXT("At least one actor was triggered."));
 
-            cooling_down = true;
-            constexpr bool loop_timer{false};
-            world->GetTimerManager().SetTimer(
-                cooldown_handle,
-                [this]() { cooling_down = false; },
-                interaction_cooldown,
-                loop_timer);
-            return;
-        } else {
-            LOG.log_verbose(TEXT("No actors triggered."));
-        }
+        cooling_down = true;
+        constexpr bool loop_timer{false};
+        world->GetTimerManager().SetTimer(
+            cooldown_handle, [this]() { cooling_down = false; }, interaction_cooldown, loop_timer);
     }
 }
 void UInteractorComponent::try_interact(FVector sweep_origin, FRotator sweep_direction) {
