@@ -4,6 +4,8 @@
 
 #include "Sandbox/core/levels/levels.h"
 
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
 void UMainMenu2Widget::NativeConstruct() {
     Super::NativeConstruct();
 
@@ -44,9 +46,6 @@ void UMainMenu2Widget::return_to_main_page() {
     set_active_page(EMainMenu2MenuPage::Main);
 }
 void UMainMenu2Widget::set_active_page(EMainMenu2MenuPage page) {
-    if (widget_switcher) {
-        widget_switcher->SetActiveWidgetIndex(static_cast<int32>(page));
-    } else {
-        UE_LOGFMT(LogTemp, Warning, "widget_switcher is nullptr.");
-    }
+    RETURN_IF_NULLPTR(widget_switcher);
+    widget_switcher->SetActiveWidgetIndex(static_cast<int32>(page));
 }

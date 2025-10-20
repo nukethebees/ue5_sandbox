@@ -3,6 +3,8 @@
 #include "Components/GridSlot.h"
 #include "Sandbox/core/levels/levels.h"
 
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
 void ULevelSelect2Widget::NativeConstruct() {
     Super::NativeConstruct();
     constexpr auto logger{NestedLogger<"NativeConstruct">()};
@@ -11,23 +13,15 @@ void ULevelSelect2Widget::NativeConstruct() {
         back_button->on_clicked.AddDynamic(this, &ULevelSelect2Widget::handle_back);
     }
 
-    if (!level_select_grid) {
-        return;
-    }
+    RETURN_IF_NULLPTR(level_select_grid);
 }
 void ULevelSelect2Widget::handle_back() {
     back_requested.Broadcast();
 }
 void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_names) {
     constexpr auto logger{NestedLogger<"populate_level_buttons">()};
-    if (!level_select_grid) {
-        logger.log_warning(TEXT("No grid."));
-        return;
-    }
-    if (!load_level_button_class) {
-        logger.log_warning(TEXT("No load_level_button_class."));
-        return;
-    }
+    RETURN_IF_NULLPTR(level_select_grid);
+    RETURN_IF_NULLPTR(load_level_button_class);
     logger.log_verbose(TEXT("Populating main menu with %d levels."), level_names.Num());
 
     int32 row{0};
@@ -35,10 +29,7 @@ void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_name
 
     for (auto const& level_name : level_names) {
         auto* button{CreateWidget<ULoadLevelButtonWidget>(GetWorld(), load_level_button_class)};
-
-        if (!button) {
-            continue;
-        }
+        CONTINUE_IF_FALSE(button);
 
         button->set_level_path(level_name);
         button->set_level_display_name(

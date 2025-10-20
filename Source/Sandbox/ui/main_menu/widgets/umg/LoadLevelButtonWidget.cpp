@@ -4,6 +4,8 @@
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
 void ULoadLevelButtonWidget::NativeConstruct() {
     Super::NativeConstruct();
 
@@ -26,11 +28,9 @@ void ULoadLevelButtonWidget::set_level_display_name(FText value) {
     update_display_name_text_box();
 }
 void ULoadLevelButtonWidget::load_level() {
-    if (!level_path_.IsNone()) {
-        UGameplayStatics::OpenLevel(GetWorld(), level_path_);
-    } else {
-        UE_LOGFMT(LogTemp, Warning, "Level path is empty.");
-    }
+    RETURN_IF_TRUE(level_path_.IsNone());
+    TRY_INIT_PTR(world, GetWorld());
+    UGameplayStatics::OpenLevel(world, level_path_);
 }
 DisplayNameChanged ULoadLevelButtonWidget::set_level_display_name_to_path_if_unset() {
     if (level_display_name_.IsEmpty()) {
@@ -40,7 +40,6 @@ DisplayNameChanged ULoadLevelButtonWidget::set_level_display_name_to_path_if_uns
     return DisplayNameChanged::no;
 }
 void ULoadLevelButtonWidget::update_display_name_text_box() {
-    if (level_text_block) {
-        level_text_block->SetText(level_display_name_);
-    }
+    RETURN_IF_NULLPTR(level_text_block);
+    level_text_block->SetText(level_display_name_);
 }
