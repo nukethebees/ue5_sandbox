@@ -6,10 +6,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/widgets/LevelSelect2Widget.h"
-#include "Sandbox/widgets/options_menu/OptionsWidget.h"
-#include "Sandbox/widgets/TextButtonWidget.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/ui/widgets/umg/LevelSelect2Widget.h"
+#include "Sandbox/ui/widgets/umg/options_menu/OptionsWidget.h"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "MainMenu2Widget.generated.h"
 

@@ -1,9 +1,9 @@
 #include "MyHUD.h"
 
 #include "GameFramework/PlayerController.h"
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/actor_components/JetpackComponent.h"
-#include "Sandbox/game_states/PlatformerGameState.h"
+#include "Sandbox/game_flow/game_states/PlatformerGameState.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
 template <typename T>

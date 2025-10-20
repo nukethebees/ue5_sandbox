@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/enums/MobAttackMode.h"
+#include "Sandbox/players/npcs/enums/MobAttackMode.h"
 
 #include "CombatProfile.generated.h"
 

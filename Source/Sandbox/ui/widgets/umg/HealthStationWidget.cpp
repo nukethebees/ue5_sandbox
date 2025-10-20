@@ -1,8 +1,8 @@
-#include "Sandbox/widgets/HealthStationWidget.h"
+#include "Sandbox/ui/widgets/umg/HealthStationWidget.h"
 
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
-#include "Sandbox/data/health/StationStateData.h"
+#include "Sandbox/health/data/StationStateData.h"
 
 UFUNCTION()
 void UHealthStationWidget::update(FStationStateData const& state_data) {

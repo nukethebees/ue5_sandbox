@@ -5,7 +5,8 @@
 #include <compare>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/trigger/StrongIds.h"
+
+#include "Sandbox/interaction/StrongIds.h"
 
 struct TriggerableId {
   public:

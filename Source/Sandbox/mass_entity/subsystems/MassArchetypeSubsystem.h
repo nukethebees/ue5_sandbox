@@ -7,10 +7,10 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/PrimaryAssetId.h"
 
-#include "Sandbox/data_assets/BulletDataAssetIds.h"
-#include "Sandbox/mass_entity/EntityDefinition.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAssetIds.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/mass_entity/data/EntityDefinition.h"
 
 #include "MassArchetypeSubsystem.generated.h"
 

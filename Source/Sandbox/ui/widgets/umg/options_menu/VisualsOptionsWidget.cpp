@@ -1,9 +1,9 @@
-#include "Sandbox/widgets/options_menu/VisualsOptionsWidget.h"
+#include "Sandbox/ui/widgets/umg/options_menu/VisualsOptionsWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
-#include "Sandbox/widgets/options_menu/VideoSettingRowWidget.h"
+#include "Sandbox/ui/widgets/umg/options_menu/VideoSettingRowWidget.h"
 
 void UVisualsOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();

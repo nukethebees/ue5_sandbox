@@ -4,9 +4,10 @@
 #include <variant>
 
 #include "CoreMinimal.h"
-#include "Sandbox/concepts/concepts.h"
-#include "Sandbox/data/video_options/VisualQualityLevel.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+
+#include "Sandbox/core/video_settings/VisualQualityLevel.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/utilities/concepts/concepts.h"
 
 // Row data structure for variant-based storage
 template <typename Config>

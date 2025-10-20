@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "WeaponPickup.generated.h"
 

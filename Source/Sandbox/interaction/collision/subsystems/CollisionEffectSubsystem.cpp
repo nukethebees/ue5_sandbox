@@ -1,3 +1,3 @@
-#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
+#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 
-#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
+#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"

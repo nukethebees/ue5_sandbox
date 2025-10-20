@@ -2,9 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/data/trigger/RotatePayload.h"
-#include "Sandbox/data/trigger/TriggerableId.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/environment/effects/data/RotatePayload.h"
+#include "Sandbox/interaction/triggering/data/TriggerableId.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "InteractRotateComponent.generated.h"
 

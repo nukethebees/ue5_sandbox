@@ -10,7 +10,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "PushZoneActor.generated.h"
 

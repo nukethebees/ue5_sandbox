@@ -1,1 +1,1 @@
-#include "Sandbox/data/inventory/InventorySlot.h"
+#include "Sandbox/inventory/data/InventorySlot.h"

@@ -1,9 +1,9 @@
-#include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
 
 #include "Components/BoxComponent.h"
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AWeaponBase::AWeaponBase()
     : collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"))} {

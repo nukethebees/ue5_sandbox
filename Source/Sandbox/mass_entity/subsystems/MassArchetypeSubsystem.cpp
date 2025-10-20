@@ -1,18 +1,18 @@
-#include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
+#include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
 
 #include "EngineUtils.h"
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"
 #include "MassEntityTypes.h"
 
-#include "Sandbox/actors/MassBulletSubsystemData.h"
-#include "Sandbox/actors/MassBulletVisualizationActor.h"
-#include "Sandbox/data_assets/BulletDataAsset.h"
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
-#include "Sandbox/utilities/world.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletSubsystemData.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/environment/utilities/world.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UMassArchetypeSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);

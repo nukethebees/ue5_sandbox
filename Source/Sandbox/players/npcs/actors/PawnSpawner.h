@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/enums/TeamID.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/players/common/enums/TeamID.h"
 
 #include "PawnSpawner.generated.h"
 

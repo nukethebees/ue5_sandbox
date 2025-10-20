@@ -1,1 +1,1 @@
-#include "Sandbox/data/inventory/Coord.h"
+#include "Sandbox/inventory/data/Coord.h"

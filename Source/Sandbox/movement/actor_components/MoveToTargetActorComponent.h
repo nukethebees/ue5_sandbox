@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/interfaces/clickable.h"
+#include "Sandbox/environment/interactive/interfaces/Clickable.h"
 
 #include "MoveToTargetActorComponent.generated.h"
 

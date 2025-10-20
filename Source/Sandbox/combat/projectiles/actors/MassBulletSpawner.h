@@ -7,7 +7,7 @@
 #include "MassArchetypeTypes.h"
 #include "MassEntityTypes.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "MassBulletSpawner.generated.h"
 

@@ -1,4 +1,4 @@
-#include "Sandbox/ai_controllers/TestEnemyController.h"
+#include "Sandbox/players/npcs/ai_controllers/TestEnemyController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
@@ -7,9 +7,9 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
-#include "Sandbox/interfaces/SandboxMobInterface.h"
+#include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))

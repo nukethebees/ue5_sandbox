@@ -4,8 +4,8 @@
 #include "Components/ActorComponent.h"
 #include "Engine/World.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "PawnWeaponComponent.generated.h"
 

@@ -1,8 +1,9 @@
-#include "Sandbox/utilities/SandboxStyle.h"
+#include "Sandbox/ui/styles//SandboxStyle.h"
 
 #include "Fonts/CompositeFont.h"
-#include "Sandbox/utilities/ui.h"
 #include "Styling/SlateStyleRegistry.h"
+
+#include "Sandbox/ui/utilities/ui.h"
 
 namespace ml {
 

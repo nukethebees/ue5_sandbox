@@ -7,7 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 APushZoneActor::APushZoneActor() {
     PrimaryActorTick.bCanEverTick = true;

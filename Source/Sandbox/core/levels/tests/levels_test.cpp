@@ -1,4 +1,4 @@
-#include "Sandbox/utilities/levels.h"
+#include "Sandbox/core/levels/levels.h"
 
 BEGIN_DEFINE_SPEC(FFormatLevelDisplayNameSpec,
                   "Sandbox.levels.format_level_display_name 1",

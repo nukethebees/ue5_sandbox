@@ -1,11 +1,11 @@
-#include "Sandbox/data/collision/LandMinePayload.h"
+#include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 
 #include "Engine/World.h"
 
-#include "Sandbox/actors/Explosion.h"
-#include "Sandbox/data/health/HealthChange.h"
+#include "Sandbox/combat/effects/actors/Explosion.h"
+#include "Sandbox/health/data/HealthChange.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void FLandMinePayload::execute(FCollisionContext context) {
     static constexpr auto logger{log.NestedLogger<"execute">()};

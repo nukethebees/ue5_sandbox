@@ -1,14 +1,14 @@
-#include "Sandbox/actors/weapons/WeaponPickup.h"
+#include "Sandbox/combat/weapons/actors/WeaponPickup.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/actor_components/RotatingActorComponent.h"
-#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
-#include "Sandbox/actors/weapons/WeaponBase.h"
-#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AWeaponPickup::AWeaponPickup()
     : collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent")))

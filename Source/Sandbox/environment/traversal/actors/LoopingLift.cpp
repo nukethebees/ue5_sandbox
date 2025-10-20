@@ -1,4 +1,4 @@
-#include "Sandbox/actors/LoopingLift.h"
+#include "Sandbox/environment/traversal/actors/LoopingLift.h"
 
 ALoopingLift::ALoopingLift() {
     PrimaryActorTick.bCanEverTick = true;

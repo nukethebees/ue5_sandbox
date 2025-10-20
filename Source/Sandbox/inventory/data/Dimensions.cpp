@@ -1,1 +1,1 @@
-#include "Sandbox/data/inventory/Dimensions.h"
+#include "Sandbox/inventory/data/Dimensions.h"

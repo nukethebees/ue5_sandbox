@@ -5,9 +5,9 @@
 
 #include "UObject/Interface.h"
 
-#include "Sandbox/data/weapons/AmmoData.h"
-#include "Sandbox/data/weapons/AmmoReloadResult.h"
-#include "Sandbox/enums/AmmoType.h"
+#include "Sandbox/combat/weapons/data/AmmoData.h"
+#include "Sandbox/combat/weapons/data/AmmoReloadResult.h"
+#include "Sandbox/combat/weapons/enums/AmmoType.h"
 
 #include "WeaponInterface.generated.h"
 

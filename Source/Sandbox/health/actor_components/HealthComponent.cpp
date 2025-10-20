@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actor_components/HealthComponent.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
 
 UHealthComponent::UHealthComponent()
     : initial_health(max_health) {

@@ -3,11 +3,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/trigger/WeaponPickupPayload.h"
-#include "Sandbox/interfaces/inventory/InventoryItem.h"
-#include "Sandbox/interfaces/weapons/WeaponInterface.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
+#include "Sandbox/combat/weapons/interfaces/WeaponInterface.h"
+#include "Sandbox/inventory/interfaces/InventoryItem.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "WeaponBase.generated.h"
 

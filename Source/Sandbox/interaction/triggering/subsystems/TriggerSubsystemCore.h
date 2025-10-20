@@ -8,18 +8,18 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/concepts/TriggerPayloadConcept.h"
-#include "Sandbox/data/trigger/StrongIds.h"
-#include "Sandbox/data/trigger/TriggerableId.h"
-#include "Sandbox/data/trigger/TriggerContext.h"
-#include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/interaction/StrongIds.h"
+#include "Sandbox/interaction/triggering/concepts/TriggerPayloadConcept.h"
+#include "Sandbox/interaction/triggering/data/TriggerableId.h"
+#include "Sandbox/interaction/triggering/data/TriggerContext.h"
+#include "Sandbox/interaction/triggering/data/TriggerResult.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/tuple.h"
 
-#include "Sandbox/macros/null_checks.hpp"
-#include "Sandbox/macros/switch_stamping.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/switch_stamping.hpp"
 
 struct FTriggerableRange {
     uint32 offset{0};
@@ -387,5 +387,5 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
 #undef TICK_CASE
 #undef TICK_VISIT_STAMP
 
-#include "Sandbox/macros/null_checks_undef.hpp"
-#include "Sandbox/macros/switch_stamping_undef.hpp"
+#include "Sandbox/utilities/macros/null_checks_undef.hpp"
+#include "Sandbox/utilities/macros/switch_stamping_undef.hpp"

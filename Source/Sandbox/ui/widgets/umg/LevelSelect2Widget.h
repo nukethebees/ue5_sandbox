@@ -4,10 +4,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/GridPanel.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/widgets/CommonMenuDelegates.h"
-#include "Sandbox/widgets/LoadLevelButtonWidget.h"
-#include "Sandbox/widgets/TextButtonWidget.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/ui/widgets/umg/CommonMenuDelegates.h"
+#include "Sandbox/ui/widgets/umg/LoadLevelButtonWidget.h"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "LevelSelect2Widget.generated.h"
 

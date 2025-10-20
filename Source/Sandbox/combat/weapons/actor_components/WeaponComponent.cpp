@@ -1,3 +1,3 @@
-#include "Sandbox/actor_components/weapons/WeaponComponent.h"
+#include "Sandbox/combat/weapons/actor_components/WeaponComponent.h"
 
 UWeaponComponent::UWeaponComponent() {}

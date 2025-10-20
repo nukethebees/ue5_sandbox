@@ -1,5 +1,5 @@
-#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
-#include "Sandbox/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 
 void URotationManagerSubsystem::add(USceneComponent& scene_component,
                                     URotatingActorComponent& component) {

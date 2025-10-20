@@ -5,7 +5,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 // Static method - creates instance and calls generate()
 bool FDataAssetCodeGenerator::generate_asset_registry(FString const& scan_path,

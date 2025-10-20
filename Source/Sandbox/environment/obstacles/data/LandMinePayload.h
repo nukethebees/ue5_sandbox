@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "TimerManager.h"
 
-#include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/collision/data/CollisionContext.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "LandMinePayload.generated.h"
 

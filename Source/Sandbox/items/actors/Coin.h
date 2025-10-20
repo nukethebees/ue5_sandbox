@@ -4,8 +4,8 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/data/collision/CollisionPayloads.h"
-#include "Sandbox/interfaces/CollisionOwner.h"
+#include "Sandbox/interaction/collision/data/CollisionPayloads.h"
+#include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
 
 #include "Coin.generated.h"
 

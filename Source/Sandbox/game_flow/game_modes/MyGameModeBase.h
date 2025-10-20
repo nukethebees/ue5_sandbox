@@ -6,12 +6,12 @@
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Sandbox/actor_components/RemoveGhostsOnStartComponent.h"
-#include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/enums/TeamID.h"
-#include "Sandbox/huds/MyHud.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/core/destruction/actor_components/RemoveGhostsOnStartComponent.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/ui/hud/huds/MyHud.h"
 
 #include "MyGameModeBase.generated.h"
 

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
-#include "Sandbox/enums/AmmoType.h"
+#include "Sandbox/combat/weapons/enums/AmmoType.h"
 
 #include "WeaponArchetypeDataAsset.generated.h"
 

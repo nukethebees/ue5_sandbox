@@ -1,10 +1,10 @@
 #include "MyPlayerController.h"
 
-#include "Sandbox/actor_components/InteractorComponent.h"
-#include "Sandbox/actors/TalkingPillar.h"
-#include "Sandbox/huds/MyHud.h"
+#include "Sandbox/misc/learning/actors/TalkingPillar.h"
+#include "Sandbox/players/playable/actor_components/InteractorComponent.h"
+#include "Sandbox/ui/hud/huds/MyHud.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 #define FORWARD_CALL_TO_CHARACTER(METHOD_CALL, ...) \
     RETURN_IF_NULLPTR(controlled_character);        \

@@ -1,4 +1,4 @@
-#include "Sandbox/actors/Explosion.h"
+#include "Sandbox/combat/effects/actors/Explosion.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
@@ -7,12 +7,12 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
-#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 #include "Sandbox/utilities/math.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AExplosion::AExplosion() {
     PrimaryActorTick.bCanEverTick = true;

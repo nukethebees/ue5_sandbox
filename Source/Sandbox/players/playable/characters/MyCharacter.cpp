@@ -5,17 +5,17 @@
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ScriptInterface.h"
 
-#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/actor_components/InteractorComponent.h"
-#include "Sandbox/actor_components/inventory/InventoryComponent.h"
-#include "Sandbox/actor_components/JetpackComponent.h"
-#include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/huds/MyHud.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/actor_components/InteractorComponent.h"
+#include "Sandbox/players/playable/actor_components/JetpackComponent.h"
+#include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/ui/hud/huds/MyHud.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AMyCharacter::AMyCharacter()
     : coins(CreateDefaultSubobject<UCoinCollectorActorComponent>(TEXT("Coins")))

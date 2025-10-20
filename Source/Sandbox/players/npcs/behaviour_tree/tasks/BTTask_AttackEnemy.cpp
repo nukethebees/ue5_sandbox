@@ -1,13 +1,13 @@
-#include "Sandbox/behaviour_tree/tasks/BTTask_AttackEnemy.h"
+#include "Sandbox/players/npcs/behaviour_tree/tasks/BTTask_AttackEnemy.h"
 
 #include "AIController.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
-#include "Sandbox/interfaces/CombatActor.h"
-#include "Sandbox/utilities/navigation.h"
+#include "Sandbox/players/common/utilities/navigation.h"
+#include "Sandbox/players/npcs/interfaces/CombatActor.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 UBTTask_AttackEnemy::UBTTask_AttackEnemy() {
     NodeName = TEXT("Attack enemy");

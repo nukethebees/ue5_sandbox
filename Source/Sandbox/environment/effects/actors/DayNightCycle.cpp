@@ -1,4 +1,4 @@
-#include "Sandbox/actors/DayNightCycle.h"
+#include "Sandbox/environment/effects/actors/DayNightCycle.h"
 
 ADayNightCycle::ADayNightCycle() {
     PrimaryActorTick.bCanEverTick = true;

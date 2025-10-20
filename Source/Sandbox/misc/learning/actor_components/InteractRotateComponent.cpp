@@ -1,7 +1,7 @@
-#include "Sandbox/actor_components/InteractRotateComponent.h"
+#include "Sandbox/misc/learning/actor_components/InteractRotateComponent.h"
 
-#include "Sandbox/data/trigger/TriggerCapabilities.h"
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
+#include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
 UInteractRotateComponent::UInteractRotateComponent() {
     PrimaryComponentTick.bCanEverTick = false;

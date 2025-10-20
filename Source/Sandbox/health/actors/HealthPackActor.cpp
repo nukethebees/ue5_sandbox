@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actors/HealthPackActor.h"
+#include "Sandbox/health/actors/HealthPackActor.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
 AHealthPackActor::AHealthPackActor() {
     PrimaryActorTick.bCanEverTick = false;

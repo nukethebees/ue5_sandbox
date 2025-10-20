@@ -9,8 +9,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NiagaraSystem.h"
 
-#include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "BulletActor.generated.h"
 

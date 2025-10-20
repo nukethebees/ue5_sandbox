@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/TextButtonWidget.h"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"

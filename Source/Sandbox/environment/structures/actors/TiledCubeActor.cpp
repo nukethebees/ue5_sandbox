@@ -1,10 +1,10 @@
-#include "Sandbox/actors/TiledCubeActor.h"
+#include "Sandbox/environment/structures/actors/TiledCubeActor.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 FName const ATiledCubeActor::face_material_name{TEXT("Face")};
 FName const ATiledCubeActor::edge_material_name{TEXT("Edge")};

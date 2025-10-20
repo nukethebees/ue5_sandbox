@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/actors/weapons/WeaponBase.h"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "TestMachineGun.generated.h"
 

@@ -1,15 +1,15 @@
-#include "Sandbox/mass_entity/processors/MassBulletCollisionHandlingProcessor.h"
+#include "Sandbox/combat/projectiles/mass_entity/processors/MassBulletCollisionHandlingProcessor.h"
 
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
-#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/combat/projectiles/mass_entity/processors/BulletProcessorGroups.h"
+#include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionHandlingExecutor::Execute"))

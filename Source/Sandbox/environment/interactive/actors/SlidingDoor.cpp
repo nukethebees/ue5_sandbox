@@ -1,8 +1,8 @@
-#include "Sandbox/actors/doors/SlidingDoor.h"
+#include "Sandbox/environment/interactive/actors/SlidingDoor.h"
 
 #include "Components/PrimitiveComponent.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ASlidingDoor::ASlidingDoor() {
     PrimaryActorTick.bCanEverTick = true;

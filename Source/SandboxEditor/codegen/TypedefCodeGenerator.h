@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 /**
  * Editor utility for generating strong typedef wrapper structs.

@@ -1,4 +1,4 @@
-#include "Sandbox/utilities/logging.h"
+#include "Sandbox/logging/functions/logging.h"
 
 // Macros for testing if variables are in a valid state
 // If not, the function returns early and logs a warning

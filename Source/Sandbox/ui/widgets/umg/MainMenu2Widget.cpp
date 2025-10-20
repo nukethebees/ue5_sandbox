@@ -1,7 +1,7 @@
-#include "Sandbox/widgets/MainMenu2Widget.h"
+#include "Sandbox/ui/widgets/umg/MainMenu2Widget.h"
 
 #include "Kismet/KismetSystemLibrary.h"
-#include "Sandbox/utilities/levels.h"
+#include "Sandbox/core/levels/levels.h"
 
 void UMainMenu2Widget::NativeConstruct() {
     Super::NativeConstruct();

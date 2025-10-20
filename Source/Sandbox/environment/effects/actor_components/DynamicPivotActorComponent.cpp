@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/DynamicPivotActorComponent.h"
+#include "Sandbox/environment/effects/actor_components/DynamicPivotActorComponent.h"
 
 #include "Camera/CameraActor.h"
 

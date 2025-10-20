@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "DeathHandler.generated.h"
 

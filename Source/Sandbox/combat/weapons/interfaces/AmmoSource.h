@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
-#include "Sandbox/data/weapons/AmmoData.h"
-#include "Sandbox/enums/AmmoType.h"
+#include "Sandbox/combat/weapons/data/AmmoData.h"
+#include "Sandbox/combat/weapons/enums/AmmoType.h"
 
 #include "AmmoSource.generated.h"
 

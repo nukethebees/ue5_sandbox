@@ -5,9 +5,9 @@
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
 
-#include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
-#include "Sandbox/generated/strong_typedefs/NdcWriterIndex.h"
+#include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
+#include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
+#include "Sandbox/health/data/HealthChange.h"
 
 #include "MassBulletFragments.generated.h"
 

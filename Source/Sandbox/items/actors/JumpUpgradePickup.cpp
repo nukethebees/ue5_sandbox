@@ -1,8 +1,8 @@
-#include "Sandbox/actors/JumpUpgradePickup.h"
+#include "Sandbox/items/actors/JumpUpgradePickup.h"
 
-#include "Sandbox/actor_components/RotatingActorComponent.h"
-#include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
+#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
+#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 
 AJumpUpgradePickup::AJumpUpgradePickup() {
     // Create mesh component for visual representation

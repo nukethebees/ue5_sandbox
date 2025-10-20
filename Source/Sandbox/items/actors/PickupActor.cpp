@@ -1,6 +1,6 @@
-#include "Sandbox/actors/PickupActor.h"
+#include "Sandbox/items/actors/PickupActor.h"
 
-#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
+#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;

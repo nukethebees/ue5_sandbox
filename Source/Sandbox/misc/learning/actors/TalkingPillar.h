@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/interfaces/Clickable.h"
-#include "Sandbox/mixins/print_msg_mixin.hpp"
+#include "Sandbox/environment/interactive/interfaces/Clickable.h"
+#include "Sandbox/logging/mixins/print_msg_mixin.hpp"
 
 #include "TalkingPillar.generated.h"
 

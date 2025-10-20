@@ -1,6 +1,6 @@
 #include "MyGameModeBase.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AMyGameModeBase::AMyGameModeBase()
     : ghost_cleanup_component{

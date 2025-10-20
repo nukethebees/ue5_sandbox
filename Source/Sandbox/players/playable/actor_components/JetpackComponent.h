@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/data/JetpackState.h"
+#include "Sandbox/players/playable/data/JetpackState.h"
 
 #include "JetpackComponent.generated.h"
 

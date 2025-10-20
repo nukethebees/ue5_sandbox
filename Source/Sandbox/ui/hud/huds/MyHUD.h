@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
-#include "Sandbox/data/health/HealthData.h"
-#include "Sandbox/data/JetpackState.h"
-#include "Sandbox/widgets/MainHUDWidget.h"
+#include "Sandbox/health/data/HealthData.h"
+#include "Sandbox/players/playable/data/JetpackState.h"
+#include "Sandbox/ui/widgets/umg/MainHUDWidget.h"
 
 #include "MyHUD.generated.h"
 

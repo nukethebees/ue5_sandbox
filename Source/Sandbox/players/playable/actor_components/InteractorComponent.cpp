@@ -1,12 +1,12 @@
-#include "Sandbox/actor_components/InteractorComponent.h"
+#include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 
 #include "Engine/CollisionProfile.h"
 
-#include "Sandbox/data/trigger/TriggerCapabilities.h"
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 UInteractorComponent::UInteractorComponent() {
     PrimaryComponentTick.bCanEverTick = false;

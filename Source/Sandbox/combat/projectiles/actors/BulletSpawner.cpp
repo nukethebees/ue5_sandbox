@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actors/BulletSpawner.h"
+#include "Sandbox/combat/projectiles/actors/BulletSpawner.h"
 
-#include "Sandbox/actors/BulletActor.h"
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ABulletSpawner::ABulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;

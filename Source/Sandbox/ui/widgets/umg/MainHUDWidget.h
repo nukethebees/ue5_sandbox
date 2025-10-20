@@ -4,10 +4,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/slate_widgets/NumWidget.h"
-#include "Sandbox/widgets/HealthWidget.h"
-#include "Sandbox/widgets/ValueWidget.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/ui/widgets/slate/NumWidget.h"
+#include "Sandbox/ui/widgets/umg/HealthWidget.h"
+#include "Sandbox/ui/widgets/umg/ValueWidget.h"
 
 #include "MainHUDWidget.generated.h"
 

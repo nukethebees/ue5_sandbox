@@ -1,15 +1,15 @@
-#include "Sandbox/mass_entity/processors/MassBulletCollisionDetectionProcessor.h"
+#include "Sandbox/combat/projectiles/mass_entity/processors/MassBulletCollisionDetectionProcessor.h"
 
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/combat/projectiles/mass_entity/processors/BulletProcessorGroups.h"
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/mass_entity/processors/BulletProcessorGroups.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& context) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::FMassBulletCollisionDetectionExecutor::Execute"))

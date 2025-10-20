@@ -5,8 +5,8 @@
 #include "engine/World.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/interfaces/DeathHandler.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/interfaces/DeathHandler.h"
 
 #include "KillableCube.generated.h"
 

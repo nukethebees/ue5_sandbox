@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/LoadLevelButtonWidget.h"
+#include "Sandbox/ui/widgets/umg/LoadLevelButtonWidget.h"
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"

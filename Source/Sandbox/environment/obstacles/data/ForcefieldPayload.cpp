@@ -1,6 +1,6 @@
 #include "ForcefieldPayload.h"
 
-#include "Sandbox/actors/ForcefieldActor.h"
+#include "Sandbox/environment/obstacles/actors/ForcefieldActor.h"
 
 FTriggerResult FForcefieldPayload::trigger(FTriggerContext context) {
     logger.log_verbose(TEXT("Triggering forcefield for actor %s"),

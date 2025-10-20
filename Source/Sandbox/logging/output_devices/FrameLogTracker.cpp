@@ -1,4 +1,4 @@
-#include "Sandbox/logging/FrameLogTracker.h"
+#include "Sandbox/logging/output_devices/FrameLogTracker.h"
 
 int32 FFrameLogTracker::get_and_reset_log_count() {
     // Atomically read and reset the counter to ensure thread safety,

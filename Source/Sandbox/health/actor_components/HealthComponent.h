@@ -5,11 +5,11 @@
 #include "CoreMinimal.h"
 #include "components/ActorComponent.h"
 
-#include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/data/health/HealthData.h"
-#include "Sandbox/interfaces/DeathHandler.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/health/data/HealthData.h"
+#include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "HealthComponent.generated.h"
 

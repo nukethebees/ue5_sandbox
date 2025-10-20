@@ -1,8 +1,8 @@
-#include "Sandbox/subsystems/game_instance/FrameLogFooterSubsystem.h"
+#include "Sandbox/logging/subsystems/FrameLogFooterSubsystem.h"
 
 #include "Misc/CoreDelegates.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);

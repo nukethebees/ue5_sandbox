@@ -1,9 +1,9 @@
-#include "Sandbox/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 
-#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
-#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
+#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 URotatingActorComponent::URotatingActorComponent() {
     PrimaryComponentTick.bCanEverTick = false;

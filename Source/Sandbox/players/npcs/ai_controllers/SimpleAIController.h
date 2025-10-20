@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 
-#include "Sandbox/enums/SimpleAIState.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/npcs/enums/SimpleAIState.h"
 
 #include "SimpleAIController.generated.h"
 

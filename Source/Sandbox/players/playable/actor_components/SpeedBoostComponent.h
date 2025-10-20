@@ -4,8 +4,9 @@
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Sandbox/data/SpeedBoost.h"
-#include "Sandbox/interfaces/MovementMultiplierReceiver.h"
+
+#include "Sandbox/items/data/SpeedBoost.h"
+#include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
 
 #include "SpeedBoostComponent.generated.h"
 

@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "DamageManagerSubsystem.generated.h"
 

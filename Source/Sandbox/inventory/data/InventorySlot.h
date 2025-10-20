@@ -2,9 +2,9 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/interfaces/inventory/InventoryItem.h"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/typedefs/Inventory.h"
+#include "Sandbox/inventory/interfaces/InventoryItem.h"
+#include "Sandbox/inventory/Inventory.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InventorySlot.generated.h"
 

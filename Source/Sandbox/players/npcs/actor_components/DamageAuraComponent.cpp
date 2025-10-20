@@ -1,14 +1,14 @@
-#include "Sandbox/actor_components/DamageAuraComponent.h"
+#include "Sandbox/players/npcs/actor_components/DamageAuraComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
 #include "GenericTeamAgentInterface.h"
 #include "TimerManager.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/data/health/HealthChange.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/data/HealthChange.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 UDamageAuraComponent::UDamageAuraComponent() {
     PrimaryComponentTick.bCanEverTick = false;

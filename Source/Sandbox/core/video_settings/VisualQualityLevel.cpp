@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/data/video_options/VisualQualityLevel.h"
+#include "Sandbox/core/video_settings/VisualQualityLevel.h"
 
 FText const& GetQualityLevelDisplayName(EVisualQualityLevel level) {
     static FText const auto_text{FText::FromString(TEXT("Auto"))};

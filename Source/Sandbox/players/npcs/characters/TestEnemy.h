@@ -10,14 +10,14 @@
 #include "GenericTeamAgentInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/data/ai/CombatProfile.h"
-#include "Sandbox/enums/MobAttackMode.h"
-#include "Sandbox/enums/TeamID.h"
-#include "Sandbox/interfaces/CombatActor.h"
-#include "Sandbox/interfaces/DeathHandler.h"
-#include "Sandbox/interfaces/SandboxMobInterface.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/npcs/data/CombatProfile.h"
+#include "Sandbox/players/npcs/enums/MobAttackMode.h"
+#include "Sandbox/players/npcs/interfaces/CombatActor.h"
+#include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "TestEnemy.generated.h"
 

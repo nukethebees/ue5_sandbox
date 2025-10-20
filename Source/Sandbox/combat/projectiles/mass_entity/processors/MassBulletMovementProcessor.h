@@ -6,10 +6,10 @@
 #include "MassProcessor.h"
 #include "MassQueryExecutor.h"
 
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/mixins/MassProcessorMixins.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/mass_entity/mixins/MassProcessorMixins.hpp"
 
 #include "MassBulletMovementProcessor.generated.h"
 

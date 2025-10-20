@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/MoveToTargetActorComponent.h"
+#include "Sandbox/movement/actor_components/MoveToTargetActorComponent.h"
 
 UMoveToTargetActorComponent::UMoveToTargetActorComponent() {
     PrimaryComponentTick.bCanEverTick = true;

@@ -5,11 +5,11 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/data/collision/CollisionPayloads.h"
-#include "Sandbox/mixins/CollisionEffectSubsystemMixins.hpp"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/subsystems/world/CollisionEffectSubsystemCore.h"
+#include "Sandbox/interaction/collision/data/CollisionPayloads.h"
+#include "Sandbox/interaction/collision/mixins/CollisionEffectSubsystemMixins.hpp"
+#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystemCore.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "CollisionEffectSubsystem.generated.h"
 

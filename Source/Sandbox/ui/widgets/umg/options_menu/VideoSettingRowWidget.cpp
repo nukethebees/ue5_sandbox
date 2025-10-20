@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/options_menu/VideoSettingRowWidget.h"
+#include "Sandbox/ui/widgets/umg/options_menu/VideoSettingRowWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBoxSlot.h"

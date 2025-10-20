@@ -5,8 +5,8 @@
 #include "EnhancedInputComponent.h"
 
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InteractorComponent.generated.h"
 

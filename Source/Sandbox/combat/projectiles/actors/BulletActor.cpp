@@ -1,17 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actors/BulletActor.h"
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
 
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ABulletActor::ABulletActor() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))

@@ -9,15 +9,15 @@
 #include "MassEntityTypes.h"
 #include "MassSubsystemBase.h"
 
-#include "Sandbox/actors/MassBulletSubsystemData.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletSubsystemData.h"
+#include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
-#include "Sandbox/mass_entity/EntityDefinition.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/utilities/world.h"
+#include "Sandbox/environment/utilities/world.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/mass_entity/data/EntityDefinition.h"
 
 #include "MassBulletSubsystem.generated.h"
 

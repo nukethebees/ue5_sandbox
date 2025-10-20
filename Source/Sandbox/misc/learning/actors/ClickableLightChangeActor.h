@@ -7,7 +7,7 @@
 #include "CoreMinimal.h"
 #include "Components/PointLightComponent.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/interfaces/Clickable.h"
+#include "Sandbox/environment/interactive/interfaces/Clickable.h"
 
 #include "ClickableLightChangeActor.generated.h"
 

@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/AntigravLiftActorComponent.h"
+#include "Sandbox/environment/traversal/actor_components/AntigravLiftActorComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"

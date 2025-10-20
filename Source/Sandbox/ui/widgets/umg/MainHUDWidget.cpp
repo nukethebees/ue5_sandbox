@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/MainHUDWidget.h"
+#include "Sandbox/ui/widgets/umg/MainHUDWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/VerticalBoxSlot.h"

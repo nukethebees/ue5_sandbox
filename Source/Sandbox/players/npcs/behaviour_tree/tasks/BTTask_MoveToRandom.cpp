@@ -1,12 +1,12 @@
-#include "Sandbox/behaviour_tree/tasks/BTTask_MoveToRandom.h"
+#include "Sandbox/players/npcs/behaviour_tree/tasks/BTTask_MoveToRandom.h"
 
 #include "AIController.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
-#include "Sandbox/utilities/navigation.h"
+#include "Sandbox/players/common/utilities/navigation.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 UBTTask_MoveToRandom::UBTTask_MoveToRandom() {
     NodeName = TEXT("Move To Random");

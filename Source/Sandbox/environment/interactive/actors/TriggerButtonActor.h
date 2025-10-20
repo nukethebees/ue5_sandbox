@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/trigger/TriggerableId.h"
-#include "Sandbox/data/trigger/TriggerOtherPayload.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/interaction/triggering/data/TriggerableId.h"
+#include "Sandbox/interaction/triggering/data/TriggerOtherPayload.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "TriggerButtonActor.generated.h"
 

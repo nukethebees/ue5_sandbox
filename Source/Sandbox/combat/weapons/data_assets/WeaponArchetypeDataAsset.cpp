@@ -1,1 +1,1 @@
-#include "Sandbox/data_assets/WeaponArchetypeDataAsset.h"
+#include "Sandbox/combat/weapons/data_assets/WeaponArchetypeDataAsset.h"

@@ -1,6 +1,6 @@
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UDamageManagerSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::Initialize"))

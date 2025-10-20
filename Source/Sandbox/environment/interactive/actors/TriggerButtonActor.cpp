@@ -1,11 +1,11 @@
-#include "Sandbox/actors/TriggerButtonActor.h"
+#include "Sandbox/environment/interactive/actors/TriggerButtonActor.h"
 
 #include "Components/SceneComponent.h"
 
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATriggerButtonActor::ATriggerButtonActor() {
     PrimaryActorTick.bCanEverTick = false;

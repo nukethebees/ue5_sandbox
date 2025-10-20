@@ -1,9 +1,9 @@
-#include "Sandbox/data/trigger/WeaponPickupPayload.h"
+#include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
 
-#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
-#include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 FTriggerResult FWeaponPickupPayload::trigger(FTriggerContext context) {
     RETURN_VALUE_IF_FALSE(weapon, FTriggerResult{});

@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/HealthWidget.h"
+#include "Sandbox/ui/widgets/umg/HealthWidget.h"
 
 #include "Sandbox/utilities/math.h"
 

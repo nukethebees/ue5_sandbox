@@ -1,4 +1,4 @@
-#include "Sandbox/widgets/options_menu/ControlsOptionsWidget.h"
+#include "Sandbox/ui/widgets/umg/options_menu/ControlsOptionsWidget.h"
 
 void UControlsOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();

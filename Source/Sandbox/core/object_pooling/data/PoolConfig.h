@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/actors/BulletActor.h"
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
 
 template <typename T>
 concept IsPoolableActor = std::derived_from<T, AActor> && requires(T* t) {

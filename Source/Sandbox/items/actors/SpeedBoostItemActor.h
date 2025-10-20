@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/StaticMeshComponent.h"
-#include "Sandbox/actors/PickupActor.h"
+#include "Sandbox/items/actors/PickupActor.h"
 
 #include "SpeedBoostItemActor.generated.h"
 

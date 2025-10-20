@@ -1,4 +1,4 @@
-#include "Sandbox/actors/MassBulletSpawner.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletSpawner.h"
 
 #include "Components/ArrowComponent.h"
 #include "Engine/AssetManager.h"
@@ -7,16 +7,16 @@
 #include "MassCommands.h"
 #include "MassEntitySubsystem.h"
 
-#include "Sandbox/actors/BulletActor.h"
-#include "Sandbox/actors/MassBulletVisualizationActor.h"
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/data_assets/BulletDataAsset.h"
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
-#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/combat/projectiles/subsystems/MassBulletSubsystem.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AMassBulletSpawner::AMassBulletSpawner() {
     PrimaryActorTick.bCanEverTick = true;

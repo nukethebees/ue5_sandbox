@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/LoopingLiftComponent.h"
+#include "Sandbox/environment/traversal/actor_components/LoopingLiftComponent.h"
 
 ULoopingLiftComponent::ULoopingLiftComponent() {
     PrimaryComponentTick.bCanEverTick = true;

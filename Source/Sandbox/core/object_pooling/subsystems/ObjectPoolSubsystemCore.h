@@ -6,10 +6,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 template <typename... Configs>
     requires (IsPoolConfig<Configs> && ...)

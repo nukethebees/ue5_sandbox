@@ -5,8 +5,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "TimerManager.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "DestructionManagerSubsystem.generated.h"
 

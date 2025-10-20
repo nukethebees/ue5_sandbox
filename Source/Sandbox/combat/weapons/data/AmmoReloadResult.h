@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/data/weapons/AmmoData.h"
+#include "Sandbox/combat/weapons/data/AmmoData.h"
 
 #include "AmmoReloadResult.generated.h"
 

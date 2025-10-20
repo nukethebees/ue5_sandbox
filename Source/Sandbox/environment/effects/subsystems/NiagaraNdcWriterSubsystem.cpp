@@ -1,4 +1,4 @@
-#include "Sandbox/subsystems/world/NiagaraNdcWriterSubsystem.h"
+#include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
 
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
@@ -7,7 +7,7 @@
 #include "NiagaraDataChannelAccessor.h"
 #include "NiagaraDataChannelPublic.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t queue_size)
     -> FNdcWriterIndex {

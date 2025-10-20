@@ -2,8 +2,8 @@
 
 #include <concepts>
 
-#include "Sandbox/data/trigger/TriggerContext.h"
-#include "Sandbox/data/trigger/TriggerResult.h"
+#include "Sandbox/interaction/triggering/data/TriggerContext.h"
+#include "Sandbox/interaction/triggering/data/TriggerResult.h"
 
 namespace ml {
 template <typename T>

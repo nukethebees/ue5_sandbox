@@ -1,6 +1,6 @@
-#include "Sandbox/actors/SpeedBoostItemActor.h"
+#include "Sandbox/items/actors/SpeedBoostItemActor.h"
 
-#include "Sandbox/actor_components/SpeedBoostItemComponent.h"
+#include "Sandbox/items/actor_components/SpeedBoostItemComponent.h"
 
 ASpeedBoostItemActor::ASpeedBoostItemActor() {
     // Create mesh component for visual representation

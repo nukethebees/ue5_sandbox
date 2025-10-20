@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 class UClass;
 
@@ -21,7 +21,7 @@ class FDataAssetCodeGenerator : public ml::LogMsgMixin<"FDataAssetCodeGenerator"
      * @param output_directory Directory for generated files (e.g.,
      * "Source/Sandbox/generated/data_asset_registries/")
      * @param additional_includes Array of additional includes for the generated header (e.g.,
-     * {"Sandbox/data_assets/BulletDataAsset.h"})
+     * {"Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"})
      * @param namespace_name Optional namespace to wrap the generated class (e.g., "sandbox")
      * @return true if generation succeeded, false otherwise
      */

@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/enums/AmmoType.h"
+#include "Sandbox/combat/weapons/enums/AmmoType.h"
 
 #include "AmmoData.generated.h"
 

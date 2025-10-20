@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/enums/RotationType.h"
+#include "Sandbox/environment/effects/enums/RotationType.h"
 
 #include "RotatingActorComponent.generated.h"
 

@@ -3,12 +3,12 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "ToolMenus.h"
 
-#include "Sandbox/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
 #include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void FSandboxEditorModule::StartupModule() {
     constexpr auto logger{NestedLogger<"StartupModule">()};
@@ -81,7 +81,8 @@ void FSandboxEditorModule::on_generate_data_asset_code() {
     FString const generated_class_name{TEXT("BulletAssetRegistry")};
     FString const output_directory{FPaths::ProjectDir() /
                                    TEXT("Source/Sandbox/generated/data_asset_registries/")};
-    TArray<FString> const additional_includes{TEXT("Sandbox/data_assets/BulletDataAsset.h")};
+    TArray<FString> const additional_includes{
+        TEXT("Sandbox/combat/projectiles/data_assets/BulletDataAsset.h")};
     FString const namespace_name{TEXT("ml")};
 
     // Generate the code

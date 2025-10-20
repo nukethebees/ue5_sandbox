@@ -7,11 +7,11 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/generated/strong_typedefs/BulletTypeIndex.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "MassBulletVisualizationActor.generated.h"
 

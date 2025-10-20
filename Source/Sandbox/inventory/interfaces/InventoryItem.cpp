@@ -1,1 +1,1 @@
-#include "Sandbox/interfaces/inventory/InventoryItem.h"
+#include "Sandbox/inventory/interfaces/InventoryItem.h"

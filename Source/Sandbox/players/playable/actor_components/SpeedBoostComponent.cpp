@@ -1,9 +1,9 @@
-#include "Sandbox/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
 
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Sandbox/interfaces/MaxSpeedChangeListener.h"
-#include "Sandbox/interfaces/MovementMultiplierReceiver.h"
+#include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
+#include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
 #include "TimerManager.h"
 
 USpeedBoostComponent::USpeedBoostComponent() {

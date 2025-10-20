@@ -1,4 +1,4 @@
-#include "Sandbox/actors/WaterResetTriggerBox.h"
+#include "Sandbox/misc/learning/actors/WaterResetTriggerBox.h"
 
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"

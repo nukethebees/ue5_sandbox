@@ -1,9 +1,9 @@
-#include "Sandbox/actor_components/HorizAntigravLiftComponent.h"
+#include "Sandbox/environment/traversal/actor_components/HorizAntigravLiftComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Sandbox/characters/MyCharacter.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 
 UHorizAntigravLiftComponent::UHorizAntigravLiftComponent() {
     PrimaryComponentTick.bCanEverTick = true;

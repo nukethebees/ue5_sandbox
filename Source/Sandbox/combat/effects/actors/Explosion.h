@@ -4,10 +4,10 @@
 #include "GameFramework/Actor.h"
 #include "NiagaraDataChannel.h"
 
-#include "Sandbox/data/health/HealthChange.h"
-#include "Sandbox/generated/strong_typedefs/NdcWriterIndex.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
+#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Explosion.generated.h"
 

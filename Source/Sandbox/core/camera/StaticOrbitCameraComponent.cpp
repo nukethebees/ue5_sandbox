@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/StaticOrbitCameraComponent.h"
+#include "Sandbox/core/camera/StaticOrbitCameraComponent.h"
 
 #include "Camera/CameraActor.h"
 

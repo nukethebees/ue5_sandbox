@@ -1,13 +1,13 @@
-#include "Sandbox/actors/weapons/TestPistol.h"
+#include "Sandbox/combat/weapons/actors/TestPistol.h"
 
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/data_assets/BulletDataAsset.h"
-#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/subsystems/MassBulletSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestPistol::ATestPistol()
     : ammo{max_ammo} {

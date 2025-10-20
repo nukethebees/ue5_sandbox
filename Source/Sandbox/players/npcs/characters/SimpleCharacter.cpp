@@ -1,13 +1,13 @@
-#include "Sandbox/characters/SimpleCharacter.h"
+#include "Sandbox/players/npcs/characters/SimpleCharacter.h"
 
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/ai_controllers/SimpleAIController.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ASimpleCharacter::ASimpleCharacter()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))

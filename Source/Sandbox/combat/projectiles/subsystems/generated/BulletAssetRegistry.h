@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "Sandbox/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
 
 #include "BulletAssetRegistry.generated.h"
 

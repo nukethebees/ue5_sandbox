@@ -1,4 +1,4 @@
-#include "Sandbox/generated/data_asset_registries/BulletAssetRegistry.h"
+#include "Sandbox/combat/projectiles/subsystems/generated/BulletAssetRegistry.h"
 
 #include "Engine/StreamableManager.h"
 #include "UObject/ConstructorHelpers.h"

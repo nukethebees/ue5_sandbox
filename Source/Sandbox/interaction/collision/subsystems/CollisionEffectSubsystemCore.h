@@ -8,16 +8,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/data/PayloadIndex.h"
-#include "Sandbox/interfaces/CollisionOwner.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
+#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/interaction/collision/data/CollisionContext.h"
+#include "Sandbox/interaction/collision/data/PayloadIndex.h"
+#include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/tuple.h"
 
-#include "Sandbox/macros/null_checks.hpp"
-#include "Sandbox/macros/switch_stamping.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/switch_stamping.hpp"
 
 namespace ml {
 template <typename T>
@@ -197,5 +197,5 @@ class UCollisionEffectSubsystemCore
 #undef COLLISION_CASE
 #undef COLLISION_VISIT_STAMP
 
-#include "Sandbox/macros/null_checks_undef.hpp"
-#include "Sandbox/macros/switch_stamping_undef.hpp"
+#include "Sandbox/utilities/macros/null_checks_undef.hpp"
+#include "Sandbox/utilities/macros/switch_stamping_undef.hpp"

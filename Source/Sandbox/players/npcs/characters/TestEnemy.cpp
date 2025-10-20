@@ -1,14 +1,14 @@
-#include "Sandbox/characters/TestEnemy.h"
+#include "Sandbox/players/npcs/characters/TestEnemy.h"
 
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/actor_components/HealthComponent.h"
-#include "Sandbox/ai_controllers/SimpleAIController.h"
-#include "Sandbox/data/health/HealthChange.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestEnemy::ATestEnemy()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))

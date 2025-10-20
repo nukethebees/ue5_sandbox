@@ -1,4 +1,4 @@
-#include "Sandbox/subsystems/world/MassBulletSubsystem.h"
+#include "Sandbox/combat/projectiles/subsystems/MassBulletSubsystem.h"
 
 #include "Engine/AssetManager.h"
 #include "EngineUtils.h"
@@ -6,12 +6,12 @@
 #include "MassCommands.h"
 #include "MassEntitySubsystem.h"
 
-#include "Sandbox/actors/MassBulletVisualizationActor.h"
-#include "Sandbox/data_assets/BulletDataAsset.h"
-#include "Sandbox/mass_entity/fragments/MassBulletFragments.h"
-#include "Sandbox/subsystems/world/MassArchetypeSubsystem.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
+#include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::Initialize"))

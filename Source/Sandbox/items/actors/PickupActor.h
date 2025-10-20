@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
-#include "Sandbox/interfaces/CollisionOwner.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "PickupActor.generated.h"
 

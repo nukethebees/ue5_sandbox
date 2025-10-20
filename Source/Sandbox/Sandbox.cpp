@@ -1,7 +1,7 @@
 // Sandbox.cpp
 #include "Sandbox/Sandbox.h"
 
-#include "Sandbox/utilities/SandboxStyle.h"
+#include "Sandbox/ui/styles//SandboxStyle.h"
 
 #include "PropertyEditorModule.h"
 

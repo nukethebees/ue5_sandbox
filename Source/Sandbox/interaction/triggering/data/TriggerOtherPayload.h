@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/data/trigger/StrongIds.h"
-#include "Sandbox/data/trigger/TriggerableId.h"
-#include "Sandbox/data/trigger/TriggerContext.h"
-#include "Sandbox/data/trigger/TriggerResult.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/StrongIds.h"
+#include "Sandbox/interaction/triggering/data/TriggerableId.h"
+#include "Sandbox/interaction/triggering/data/TriggerContext.h"
+#include "Sandbox/interaction/triggering/data/TriggerResult.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     static constexpr uint8 MAX_TARGETS{8};

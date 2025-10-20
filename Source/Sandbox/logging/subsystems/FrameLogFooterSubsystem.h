@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
-#include "Sandbox/logging/FrameLogTracker.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/output_devices/FrameLogTracker.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "FrameLogFooterSubsystem.generated.h"
 

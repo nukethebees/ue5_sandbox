@@ -1,6 +1,6 @@
-#include "Sandbox/utilities/logging.h"
+#include "Sandbox/logging/functions/logging.h"
 
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 namespace ml {
 void log_value_is_x(FString const& var_name,

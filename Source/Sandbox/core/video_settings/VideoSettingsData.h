@@ -5,9 +5,9 @@
 #include <utility>
 
 #include "CoreMinimal.h"
-#include "Sandbox/data/video_options/VideoRowData.h"
-#include "Sandbox/data/video_options/VideoSettingConfig.h"
-#include "Sandbox/data/video_options/VideoSettingRange.h"
+#include "Sandbox/core/video_settings/VideoRowData.h"
+#include "Sandbox/core/video_settings/VideoSettingConfig.h"
+#include "Sandbox/core/video_settings/VideoSettingRange.h"
 
 template <template <typename...> class T>
 using ExpandedSettingsT =

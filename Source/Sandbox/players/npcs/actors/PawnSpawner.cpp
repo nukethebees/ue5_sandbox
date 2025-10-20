@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actors/mobs/PawnSpawner.h"
+#include "Sandbox/players/npcs/actors/PawnSpawner.h"
 
 #include "AIController.h"
 #include "GameFramework/Pawn.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 APawnSpawner::APawnSpawner() {
     PrimaryActorTick.bCanEverTick = true;

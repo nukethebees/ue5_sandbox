@@ -1,6 +1,6 @@
-#include "Sandbox/data/health/HealthStationPayload.h"
+#include "Sandbox/health/data/HealthStationPayload.h"
 
-#include "Sandbox/subsystems/world/DamageManagerSubsystem.h"
+#include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
 FTriggerResult FHealthStationPayload::trigger(FTriggerContext context) {
     if (!can_trigger(context)) {

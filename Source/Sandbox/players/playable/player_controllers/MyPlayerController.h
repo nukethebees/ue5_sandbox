@@ -10,11 +10,11 @@
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 
-#include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/mixins/EnhancedInputMixin.hpp"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/mixins/print_msg_mixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/mixins/print_msg_mixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 
 #include "MyPlayerController.generated.h"
 

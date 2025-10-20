@@ -1,8 +1,8 @@
-#include "Sandbox/actors/HealthStationActor.h"
+#include "Sandbox/health/actors/HealthStationActor.h"
 
 #include "Components/WidgetComponent.h"
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
-#include "Sandbox/widgets/HealthStationWidget.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+#include "Sandbox/ui/widgets/umg/HealthStationWidget.h"
 
 AHealthStationActor::AHealthStationActor() {
     PrimaryActorTick.bCanEverTick = false;

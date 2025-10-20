@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/RandLaunchpadComponent.h"
+#include "Sandbox/environment/traversal/actor_components/RandLaunchpadComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"

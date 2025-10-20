@@ -1,10 +1,10 @@
-#include "Sandbox/actor_components/weapons/PawnWeaponComponent.h"
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 
-#include "Sandbox/actor_components/inventory/InventoryComponent.h"
-#include "Sandbox/actor_components/weapons/WeaponComponent.h"
-#include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/combat/weapons/actor_components/WeaponComponent.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 UPawnWeaponComponent::UPawnWeaponComponent()
     : spawn_parameters() {

@@ -1,6 +1,6 @@
 #include "HAL/IConsoleManager.h"
 
-#include "Sandbox/SandboxLogCategories.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 static void cmd_sandbox_log(TArray<FString> const& args) {
     if (args.Num() != 1) {

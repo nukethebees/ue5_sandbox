@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/data/health/HealthStationPayload.h"
-#include "Sandbox/data/trigger/TriggerableId.h"
+#include "Sandbox/health/data/HealthStationPayload.h"
+#include "Sandbox/interaction/triggering/data/TriggerableId.h"
 
 #include "HealthStationActor.generated.h"
 

@@ -2,6 +2,6 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/data/inventory/Coord.h"
-#include "Sandbox/data/inventory/Dimensions.h"
-#include "Sandbox/generated/strong_typedefs/StackSize.h"
+#include "Sandbox/inventory/data/Coord.h"
+#include "Sandbox/inventory/data/Dimensions.h"
+#include "Sandbox/inventory/data/generated/StackSize.h"

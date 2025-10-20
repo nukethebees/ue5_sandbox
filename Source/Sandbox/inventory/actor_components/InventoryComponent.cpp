@@ -1,8 +1,8 @@
-#include "Sandbox/actor_components/inventory/InventoryComponent.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 
 #include "Algo/RandomShuffle.h"
 
-#include "Sandbox/actors/weapons/WeaponBase.h"
+#include "Sandbox/combat/weapons/actors/WeaponBase.h"
 
 UInventoryComponent::UInventoryComponent() {}
 

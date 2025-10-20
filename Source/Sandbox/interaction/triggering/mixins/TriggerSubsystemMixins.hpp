@@ -1,4 +1,4 @@
-#include "Sandbox/macros/create_forwarding_fn.hpp"
+#include "Sandbox/utilities/macros/create_forwarding_fn.hpp"
 
 class UTriggerSubsystemMixins {
   public:
@@ -10,4 +10,4 @@ class UTriggerSubsystemMixins {
     FORWARDING_FN(core_, get_actor_id);
 };
 
-#include "Sandbox/macros/create_forwarding_fn_undef.hpp"
+#include "Sandbox/utilities/macros/create_forwarding_fn_undef.hpp"

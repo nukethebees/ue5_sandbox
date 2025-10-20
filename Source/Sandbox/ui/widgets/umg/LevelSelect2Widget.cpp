@@ -1,7 +1,7 @@
-#include "Sandbox/widgets/LevelSelect2Widget.h"
+#include "Sandbox/ui/widgets/umg/LevelSelect2Widget.h"
 
 #include "Components/GridSlot.h"
-#include "Sandbox/utilities/levels.h"
+#include "Sandbox/core/levels/levels.h"
 
 void ULevelSelect2Widget::NativeConstruct() {
     Super::NativeConstruct();

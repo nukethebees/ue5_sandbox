@@ -1,4 +1,4 @@
-#include "Sandbox/ai_controllers/SimpleAIController.h"
+#include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
@@ -7,8 +7,8 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
-#include "Sandbox/interfaces/SandboxMobInterface.h"
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ASimpleAIController::ASimpleAIController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))

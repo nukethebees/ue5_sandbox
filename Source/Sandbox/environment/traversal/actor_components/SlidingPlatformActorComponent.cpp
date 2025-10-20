@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/SlidingPlatformActorComponent.h"
+#include "Sandbox/environment/traversal/actor_components/SlidingPlatformActorComponent.h"
 
 USlidingPlatformActorComponent::USlidingPlatformActorComponent() {
     PrimaryComponentTick.bCanEverTick = true;

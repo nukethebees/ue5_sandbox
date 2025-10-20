@@ -5,11 +5,11 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
-#include "Sandbox/data/inventory/InventorySlot.h"
-#include "Sandbox/interfaces/inventory/InventoryItem.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/typedefs/Inventory.h"
+#include "Sandbox/inventory/data/InventorySlot.h"
+#include "Sandbox/inventory/interfaces/InventoryItem.h"
+#include "Sandbox/inventory/Inventory.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InventoryComponent.generated.h"
 

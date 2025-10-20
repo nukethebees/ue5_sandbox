@@ -1,8 +1,8 @@
-#include "Sandbox/utilities/navigation.h"
+#include "Sandbox/players/common/utilities/navigation.h"
 
 #include "NavigationSystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 namespace ml {
 auto get_random_nav_point(AActor* actor, float radius) -> std::optional<FNavLocation> {

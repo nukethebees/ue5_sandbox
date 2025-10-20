@@ -1,8 +1,8 @@
-#include "Sandbox/data/trigger/TriggerOtherPayload.h"
+#include "Sandbox/interaction/triggering/data/TriggerOtherPayload.h"
 
-#include "Sandbox/subsystems/world/TriggerSubsystem.h"
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 bool FTriggerOtherPayload::add_target_actor(ActorId actor_id) {
     RETURN_VALUE_IF_FALSE(n_targets < MAX_TARGETS, false);

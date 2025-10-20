@@ -1,11 +1,11 @@
-#include "Sandbox/actors/Coin.h"
+#include "Sandbox/items/actors/Coin.h"
 
-#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
-#include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/subsystems/world/CollisionEffectSubsystem.h"
-#include "Sandbox/subsystems/world/RotationManagerSubsystem.h"
+#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ACoin::ACoin() {
     PrimaryActorTick.bCanEverTick = false;

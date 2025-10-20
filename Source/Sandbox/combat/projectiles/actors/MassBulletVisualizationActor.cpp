@@ -1,14 +1,14 @@
-#include "Sandbox/actors/MassBulletVisualizationActor.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
 
 #include "Engine/AssetManager.h"
 #include "MassSimulationSubsystem.h"
 
-#include "Sandbox/actors/MassBulletSubsystemData.h"
-#include "Sandbox/data_assets/BulletDataAsset.h"
-#include "Sandbox/data_assets/BulletDataAssetIds.h"
-#include "Sandbox/utilities/world.h"
+#include "Sandbox/combat/projectiles/actors/MassBulletSubsystemData.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/projectiles/data_assets/BulletDataAssetIds.h"
+#include "Sandbox/environment/utilities/world.h"
 
-#include "Sandbox/macros/null_checks.hpp"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AMassBulletVisualizationActor::AMassBulletVisualizationActor() {
     PrimaryActorTick.bCanEverTick = false;

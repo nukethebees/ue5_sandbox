@@ -2,7 +2,7 @@
 
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/macros/create_forwarding_fn.hpp"
+#include "Sandbox/utilities/macros/create_forwarding_fn.hpp"
 
 class UCollisionEffectSubsystemMixins {
   public:
@@ -30,4 +30,4 @@ inline void try_emplace_subsystem_payload(AActor& actor, Args&&... args) {
     }
 }
 
-#include "Sandbox/macros/create_forwarding_fn_undef.hpp"
+#include "Sandbox/utilities/macros/create_forwarding_fn_undef.hpp"

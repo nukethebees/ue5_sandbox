@@ -1,14 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/actor_components/CoinCollectorActorComponent.h"
-#include "Sandbox/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/characters/MyCharacter.h"
-#include "Sandbox/data/collision/CollisionContext.h"
-#include "Sandbox/data/collision/LandMinePayload.h"
-#include "Sandbox/data/SpeedBoost.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/subsystems/world/DestructionManagerSubsystem.h"
+#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/environment/obstacles/data/LandMinePayload.h"
+#include "Sandbox/interaction/collision/data/CollisionContext.h"
+#include "Sandbox/items/data/SpeedBoost.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 
 struct FSpeedBoostPayload {
     FSpeedBoostPayload() = default;

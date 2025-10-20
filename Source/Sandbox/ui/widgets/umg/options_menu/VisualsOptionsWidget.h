@@ -8,9 +8,9 @@
 #include "Components/ScrollBox.h"
 #include "Components/VerticalBox.h"
 #include "GameFramework/GameUserSettings.h"
-#include "Sandbox/data/video_options/VideoSettingsData.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/widgets/TextButtonWidget.h"
+#include "Sandbox/core/video_settings/VideoSettingsData.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "VisualsOptionsWidget.generated.h"
 

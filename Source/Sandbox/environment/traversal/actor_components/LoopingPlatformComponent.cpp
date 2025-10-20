@@ -1,4 +1,4 @@
-#include "Sandbox/actor_components/LoopingPlatformComponent.h"
+#include "Sandbox/environment/traversal/actor_components/LoopingPlatformComponent.h"
 
 #include "Components/SceneComponent.h"
 

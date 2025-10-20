@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Sandbox/data/SpeedBoost.h"
+#include "Sandbox/items/data/SpeedBoost.h"
 
 #include "SpeedBoostItemComponent.generated.h"
 

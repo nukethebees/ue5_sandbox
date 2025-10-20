@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/mixins/LogMsgMixin.hpp"
-#include "Sandbox/SandboxLogCategories.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystemCore.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystemCore.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "ObjectPoolSubsystem.generated.h"
 

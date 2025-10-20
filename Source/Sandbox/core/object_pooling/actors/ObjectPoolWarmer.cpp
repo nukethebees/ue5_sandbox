@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Sandbox/actors/ObjectPoolWarmer.h"
+#include "Sandbox/core/object_pooling/actors/ObjectPoolWarmer.h"
 
-#include "Sandbox/data/pool/PoolConfig.h"
-#include "Sandbox/subsystems/world/ObjectPoolSubsystem.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
 
 AObjectPoolWarmer::AObjectPoolWarmer() {
     PrimaryActorTick.bCanEverTick = false;
