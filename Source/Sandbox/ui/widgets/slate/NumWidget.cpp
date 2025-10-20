@@ -25,7 +25,6 @@ template <typename T>
 void SNumWidget<T>::set_label(FText const& new_label) {
     if (!label_.EqualTo(new_label)) {
         label_ = new_label;
-        is_display_text_dirty_ = true;
         update_display_text();
     }
 }
@@ -34,7 +33,6 @@ void SNumWidget<T>::set_value(T const& new_value) {
     log_verbose(TEXT("set_value"));
     if (value_ != new_value) {
         value_ = new_value;
-        is_display_text_dirty_ = true;
         update_display_text();
     }
 }
@@ -42,28 +40,25 @@ template <typename T>
 void SNumWidget<T>::set_max_value(std::optional<T> const& new_max_value) {
     if (max_value_ != new_max_value) {
         max_value_ = new_max_value;
-        is_display_text_dirty_ = true;
         update_display_text();
     }
 }
 
 template <typename T>
 void SNumWidget<T>::update_display_text() const {
-    if (is_display_text_dirty_) {
-        if (max_value_) {
-            cached_display_text_ =
-                FText::Format(NSLOCTEXT("StatWidget", "ValueWithMax", "{0}: {1} / {2}"),
-                              label_,
-                              FText::AsNumber(value_),
-                              FText::AsNumber(*max_value_));
-        } else {
-            cached_display_text_ = FText::Format(
-                NSLOCTEXT("StatWidget", "ValueOnly", "{0}: {1}"), label_, FText::AsNumber(value_));
-        }
+    FText text{};
 
-        text_block_->SetText(cached_display_text_);
-        is_display_text_dirty_ = false;
+    if (max_value_) {
+        text = FText::Format(NSLOCTEXT("StatWidget", "ValueWithMax", "{0}: {1} / {2}"),
+                             label_,
+                             FText::AsNumber(value_),
+                             FText::AsNumber(*max_value_));
+    } else {
+        text = FText::Format(
+            NSLOCTEXT("StatWidget", "ValueOnly", "{0}: {1}"), label_, FText::AsNumber(value_));
     }
+
+    text_block_->SetText(text);
 }
 
 void UFloatNumWidget::ReleaseSlateResources(bool bReleaseChildren) {

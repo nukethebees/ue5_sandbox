@@ -46,10 +46,6 @@ class SNumWidget
     FText label_{};
     T value_{};
     std::optional<T> max_value_{std::nullopt};
-
-    // Caching members for expensive text formatting
-    mutable FText cached_display_text_;
-    mutable bool is_display_text_dirty_{true};
 };
 
 extern template class SNumWidget<float>;
