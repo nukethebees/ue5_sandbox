@@ -8,15 +8,17 @@
 
 #include "CoreMinimal.h"
 #include "Components/Widget.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Widgets/SCompoundWidget.h"
+
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "NumWidget.generated.h"
 
 template <typename T>
 class SNumWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"SNumWidget"> {
+    , public ml::LogMsgMixin<"SNumWidget", LogSandboxUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SNumWidget) {}
@@ -37,13 +39,13 @@ class SNumWidget
     void set_label(FText const& new_label);
     void set_value(T const& new_value);
     void set_max_value(std::optional<T> const& new_max_value);
-
-    // Data display
-    FText get_display_text() const;
   private:
-    FText label_;
-    T value_;
-    std::optional<T> max_value_;
+    void update_display_text() const;
+
+    TSharedPtr<STextBlock> text_block_{nullptr};
+    FText label_{};
+    T value_{};
+    std::optional<T> max_value_{std::nullopt};
 
     // Caching members for expensive text formatting
     mutable FText cached_display_text_;

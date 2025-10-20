@@ -14,8 +14,7 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
 
     // clang-format off
     ChildSlot[
-        SNew(STextBlock)
-            .Text(this, &SNumWidget::get_display_text)
+        SAssignNew(text_block_, STextBlock)
             .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
     ];
     // clang-format on
@@ -27,6 +26,7 @@ void SNumWidget<T>::set_label(FText const& new_label) {
     if (!label_.EqualTo(new_label)) {
         label_ = new_label;
         is_display_text_dirty_ = true;
+        update_display_text();
     }
 }
 template <typename T>
@@ -35,6 +35,7 @@ void SNumWidget<T>::set_value(T const& new_value) {
     if (value_ != new_value) {
         value_ = new_value;
         is_display_text_dirty_ = true;
+        update_display_text();
     }
 }
 template <typename T>
@@ -42,11 +43,12 @@ void SNumWidget<T>::set_max_value(std::optional<T> const& new_max_value) {
     if (max_value_ != new_max_value) {
         max_value_ = new_max_value;
         is_display_text_dirty_ = true;
+        update_display_text();
     }
 }
 
 template <typename T>
-FText SNumWidget<T>::get_display_text() const {
+void SNumWidget<T>::update_display_text() const {
     if (is_display_text_dirty_) {
         if (max_value_) {
             cached_display_text_ =
@@ -58,9 +60,10 @@ FText SNumWidget<T>::get_display_text() const {
             cached_display_text_ = FText::Format(
                 NSLOCTEXT("StatWidget", "ValueOnly", "{0}: {1}"), label_, FText::AsNumber(value_));
         }
+
+        text_block_->SetText(cached_display_text_);
         is_display_text_dirty_ = false;
     }
-    return cached_display_text_;
 }
 
 void UFloatNumWidget::ReleaseSlateResources(bool bReleaseChildren) {
