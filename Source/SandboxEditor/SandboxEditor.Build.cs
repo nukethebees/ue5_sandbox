@@ -5,6 +5,7 @@ public class SandboxEditor : ModuleRules
     public SandboxEditor(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        CppStandard = CppStandardVersion.Latest;
 
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]
