@@ -2,28 +2,23 @@
 
 #include "NavigationSystem.h"
 
+#include "Sandbox/macros/null_checks.hpp"
+
 namespace ml {
 auto get_random_nav_point(AActor* actor, float radius) -> std::optional<FNavLocation> {
-    if (!actor) {
-        return {};
-    }
+    RETURN_VALUE_IF_FALSE(actor, {});
 
     auto* world{actor->GetWorld()};
-    if (!world) {
-        return {};
-    }
+    RETURN_VALUE_IF_FALSE(world, {});
 
     auto* nav_sys{UNavigationSystemV1::GetCurrent(world)};
-    if (!nav_sys) {
-        return {};
-    }
+    RETURN_VALUE_IF_FALSE(nav_sys, {});
 
     auto const actor_location{actor->GetActorLocation()};
     FNavLocation random_point{};
 
-    if (!nav_sys->GetRandomReachablePointInRadius(actor_location, radius, random_point)) {
-        return {};
-    }
+    RETURN_VALUE_IF_FALSE(
+        nav_sys->GetRandomReachablePointInRadius(actor_location, radius, random_point), {});
 
     return random_point;
 }
