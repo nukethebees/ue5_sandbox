@@ -1,5 +1,7 @@
 #include "Sandbox/actor_components/InteractorComponent.h"
 
+#include "Engine/CollisionProfile.h"
+
 #include "Sandbox/data/trigger/TriggerCapabilities.h"
 #include "Sandbox/subsystems/world/TriggerSubsystem.h"
 #include "Sandbox/utilities/actor_utils.h"
@@ -21,6 +23,10 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(owner, GetOwner());
     TArray<FHitResult> hit_results;
+
+    auto channel_name{
+        UCollisionProfile::Get()->ReturnChannelNameFromContainerIndex(collision_channel)};
+    LOG.log_verbose(TEXT("Doing interaction trace on channel: %s."), *channel_name.ToString());
 
     bool const hit{
         world->LineTraceMultiByChannel(hit_results, sweep_start, sweep_end, collision_channel)};
@@ -51,7 +57,7 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
     TArray<AActor*> hit_actors{};
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
-        if (actor != owner) {
+        if (actor == owner) {
             continue;
         }
 
