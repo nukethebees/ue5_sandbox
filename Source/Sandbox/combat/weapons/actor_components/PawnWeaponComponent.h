@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Engine/World.h"
 
+#include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -56,12 +57,18 @@ class SANDBOX_API UPawnWeaponComponent
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     EWeaponPickupAction weapon_pickup_action{EWeaponPickupAction::EquipIfNothingEquipped};
+
+    UPROPERTY(BlueprintAssignable, Category = "Weapons")
+    FOnAmmoChanged on_weapon_ammo_changed;
   private:
     bool pickup_new_weapon(AWeaponBase& weapon,
                            UInventoryComponent& inventory_component,
                            USceneComponent& location);
     AWeaponBase* spawn_weapon(TSubclassOf<AWeaponBase> weapon_class, AActor& owner, UWorld& world);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
+
+    UFUNCTION()
+    void on_active_weapon_ammo_changed(FAmmoData current_ammo);
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};

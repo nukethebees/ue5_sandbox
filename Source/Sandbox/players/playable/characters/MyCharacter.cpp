@@ -101,7 +101,6 @@ void AMyCharacter::BeginPlay() {
 
         if (hud) {
             hud->update_jump(JumpCurrentCount);
-            hud->update_ammo(ammo);
         }
     }
 

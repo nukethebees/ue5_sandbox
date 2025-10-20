@@ -51,6 +51,7 @@ void ATestPistol::start_firing() {
     }
 
     ammo -= 1;
+    on_ammo_changed.Broadcast(get_current_ammo());
 }
 
 FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
@@ -72,6 +73,8 @@ FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
 
     result.AmmoTaken = FAmmoData::make_discrete(EAmmoType::Bullets, taken);
     result.AmmoOfferedRemaining.discrete_amount -= taken;
+
+    on_ammo_changed.Broadcast(get_current_ammo());
 
     return result;
 }
@@ -105,4 +108,6 @@ void ATestPistol::BeginPlay() {
 
     cached_bullet_type_index =
         mass_bullet_subsystem->get_bullet_type_index(bullet_data->GetPrimaryAssetId());
+
+    on_ammo_changed.Broadcast(get_current_ammo());
 }

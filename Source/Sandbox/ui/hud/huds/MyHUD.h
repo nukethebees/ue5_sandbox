@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
 
+#include "Sandbox/combat/weapons/data/AmmoData.h"
 #include "Sandbox/health/data/HealthData.h"
 #include "Sandbox/players/playable/data/JetpackState.h"
 #include "Sandbox/ui/widgets/slate/NumWidget.h"
@@ -50,5 +51,5 @@ class SANDBOX_API AMyHUD : public AHUD {
         }
     }
     UFUNCTION()
-    void update_ammo(int32 ammo_count);
+    void update_ammo(FAmmoData ammo_data);
 };

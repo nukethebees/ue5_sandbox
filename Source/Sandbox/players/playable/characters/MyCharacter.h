@@ -259,8 +259,6 @@ class SANDBOX_API AMyCharacter
     // Bullets
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TSubclassOf<AActor> bullet_class;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    int32 ammo{10};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
     ETeamID team_id{ETeamID::Player};

@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
+#include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
 #include "Sandbox/combat/weapons/interfaces/WeaponInterface.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -65,6 +66,9 @@ class SANDBOX_API AWeaponBase
     void hide_weapon();
     UFUNCTION()
     void show_weapon();
+
+    UPROPERTY(BlueprintAssignable, Category = "Weapon")
+    FOnAmmoChanged on_ammo_changed;
   protected:
     virtual void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type reason) override;

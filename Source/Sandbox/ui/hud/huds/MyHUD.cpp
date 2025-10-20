@@ -3,6 +3,7 @@
 #include "GameFramework/PlayerController.h"
 #include "UObject/ConstructorHelpers.h"
 
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
@@ -42,6 +43,9 @@ void AMyHUD::BeginPlay() {
     TRY_INIT_PTR(jetpack_component, player_pawn->FindComponentByClass<UJetpackComponent>());
     jetpack_component->on_fuel_changed.AddDynamic(this, &AMyHUD::update_fuel);
     jetpack_component->broadcast_fuel_state();
+
+    TRY_INIT_PTR(weapon_component, player_pawn->FindComponentByClass<UPawnWeaponComponent>());
+    weapon_component->on_weapon_ammo_changed.AddDynamic(this, &AMyHUD::update_ammo);
 }
 
 void AMyHUD::update_fuel(FJetpackState const& jetpack_state) {
@@ -60,9 +64,9 @@ void AMyHUD::update_health(FHealthData health_data) {
     RETURN_IF_NULLPTR(main_widget);
     main_widget->update_health(health_data);
 }
-void AMyHUD::update_ammo(int32 ammo_count) {
+void AMyHUD::update_ammo(FAmmoData ammo_data) {
     RETURN_IF_NULLPTR(main_widget);
     RETURN_IF_NULLPTR(main_widget->ammo_widget);
 
-    main_widget->ammo_widget->set_value(ammo_count);
+    main_widget->ammo_widget->set_value(ammo_data.discrete_amount);
 }

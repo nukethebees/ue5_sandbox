@@ -68,6 +68,10 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
     active_weapon = weapon;
     active_weapon->show_weapon();
 
+    active_weapon->on_ammo_changed.AddDynamic(this,
+                                              &UPawnWeaponComponent::on_active_weapon_ammo_changed);
+    on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
+
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 }
 void UPawnWeaponComponent::unequip_weapon() {
@@ -75,6 +79,8 @@ void UPawnWeaponComponent::unequip_weapon() {
         return;
     }
 
+    active_weapon->on_ammo_changed.RemoveDynamic(
+        this, &UPawnWeaponComponent::on_active_weapon_ammo_changed);
     active_weapon->hide_weapon();
     active_weapon = nullptr;
 }
@@ -165,4 +171,8 @@ void UPawnWeaponComponent::set_attach_location(USceneComponent* new_value) {
     RETURN_IF_NULLPTR(new_value);
     attach_location = new_value;
     spawn_transform.SetLocation(attach_location->GetRelativeLocation());
+}
+
+void UPawnWeaponComponent::on_active_weapon_ammo_changed(FAmmoData current_ammo) {
+    on_weapon_ammo_changed.Broadcast(current_ammo);
 }
