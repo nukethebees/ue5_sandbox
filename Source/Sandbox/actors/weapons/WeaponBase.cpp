@@ -11,7 +11,6 @@ AWeaponBase::AWeaponBase()
     RootComponent->SetMobility(EComponentMobility::Movable);
 
     collision_box->SetupAttachment(RootComponent);
-    set_pickup_collision(true);
 }
 
 void AWeaponBase::set_pickup_collision(bool enabled) {
@@ -32,6 +31,7 @@ void AWeaponBase::show_weapon() {
 void AWeaponBase::BeginPlay() {
     Super::BeginPlay();
 
+    set_pickup_collision(true);
     trigger_payload.weapon = this;
 
     TRY_INIT_PTR(world, GetWorld());
