@@ -6,11 +6,11 @@
 
 // INIT macros initialise variables and then perform a null checks
 
-#define WARN_IF_EXPR(BOOL_EXPR, NULL_FORM)                         \
-    do {                                                           \
-        if ((BOOL_EXPR)) {                                         \
-            ml::log_value_is_x(TEXT(#BOOL_EXPR), TEXT(NULL_FORM)); \
-        }                                                          \
+#define WARN_IF_EXPR(BOOL_EXPR)                                 \
+    do {                                                        \
+        if ((BOOL_EXPR)) {                                      \
+            ml::log_value_is_x(TEXT(#BOOL_EXPR), TEXT("true")); \
+        }                                                       \
     } while (0)
 
 #define RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, BOOL_EXPR, NULL_FORM, RETURN_VALUE) \

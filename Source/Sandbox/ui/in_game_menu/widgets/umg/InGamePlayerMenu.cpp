@@ -1,7 +1,18 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
 void UInGamePlayerMenu::NativeConstruct() {
     Super::NativeConstruct();
+
+    WARN_IF_EXPR(!powers_tab_button);
+    WARN_IF_EXPR(!stats_tab_button);
+    WARN_IF_EXPR(!logs_tab_button);
+    WARN_IF_EXPR(!objectives_tab_button);
+    WARN_IF_EXPR(!map_tab_button);
+    WARN_IF_EXPR(!research_tab_button);
+    WARN_IF_EXPR(!inventory_tab_button);
+    WARN_IF_EXPR(!close_button);
 
     // Bind tab button clicks
     if (powers_tab_button) {
@@ -33,7 +44,7 @@ void UInGamePlayerMenu::NativeConstruct() {
     }
 
     // Set initial tab
-    set_active_tab(EInGameMenuTab::Powers);
+    set_active_tab(EInGameMenuTab::Inventory);
 }
 
 void UInGamePlayerMenu::handle_powers_tab() {
@@ -71,11 +82,39 @@ void UInGamePlayerMenu::handle_close() {
 void UInGamePlayerMenu::set_active_tab(EInGameMenuTab tab) {
     current_tab = tab;
 
-    if (tab_switcher) {
-        tab_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
-    }
+    RETURN_IF_NULLPTR(tab_switcher);
+    tab_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
 
     update_tab_button_states(tab);
+}
+void UInGamePlayerMenu::NativeDestruct() {
+    if (powers_tab_button) {
+        powers_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (stats_tab_button) {
+        stats_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (logs_tab_button) {
+        logs_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (objectives_tab_button) {
+        objectives_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (map_tab_button) {
+        map_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (research_tab_button) {
+        research_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (inventory_tab_button) {
+        inventory_tab_button->on_clicked.RemoveAll(this);
+    }
+
+    if (close_button) {
+        close_button->on_clicked.RemoveAll(this);
+    }
+
+    Super::NativeDestruct();
 }
 
 void UInGamePlayerMenu::update_tab_button_states(EInGameMenuTab active_tab) {

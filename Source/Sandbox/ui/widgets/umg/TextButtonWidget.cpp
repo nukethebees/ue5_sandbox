@@ -16,6 +16,13 @@ void UTextButtonWidget::NativeConstruct() {
 
     set_label();
 }
+void UTextButtonWidget::NativeDestruct() {
+    if (button_widget) {
+        button_widget->OnClicked.RemoveAll(this);
+    }
+
+    Super::NativeDestruct();
+}
 void UTextButtonWidget::SynchronizeProperties() {
     Super::SynchronizeProperties();
     set_label();

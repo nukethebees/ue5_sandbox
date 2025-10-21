@@ -80,10 +80,7 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                             [
                                 SAssignNew(widget_switcher, SWidgetSwitcher)
                                     .WidgetIndex(static_cast<int32>(EInGameMenuTab::Stats))
-                                + SWidgetSwitcher::Slot()
-                                    [
-                                        SNew(SStatsTabWidget)
-                                    ]
+                                // Inventory
                                 + SWidgetSwitcher::Slot()
                                     [
                                         SNew(SInventoryTabWidget)
@@ -91,6 +88,21 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                                                 return inventory_component_ ? inventory_component_->money : 0;
                                             })
                                     ]
+                                // Powers
+                                + SWidgetSwitcher::Slot() [ SNew(SSpacer) ]
+                                // Stats
+                                + SWidgetSwitcher::Slot()
+                                    [
+                                        SNew(SStatsTabWidget)
+                                    ]
+                                // Logs
+                                + SWidgetSwitcher::Slot() [ SNew(SSpacer) ]
+                                // Objectives
+                                + SWidgetSwitcher::Slot() [ SNew(SSpacer) ]
+                                // Map
+                                + SWidgetSwitcher::Slot() [ SNew(SSpacer) ]
+                                // Research
+                                + SWidgetSwitcher::Slot() [ SNew(SSpacer) ]
                             ]
                     ]
             ]

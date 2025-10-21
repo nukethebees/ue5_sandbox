@@ -17,6 +17,7 @@
 #include "MyHUD.generated.h"
 
 class SInGameMenuWidget;
+class UInGamePlayerMenu;
 
 UCLASS()
 class SANDBOX_API AMyHUD
@@ -32,13 +33,22 @@ class SANDBOX_API AMyHUD
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UMainHUDWidget> main_widget_class;
 
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UInGamePlayerMenu> umg_player_menu_class;
+
     // Widget instances
     UPROPERTY()
     UMainHUDWidget* main_widget;
 
+    UPROPERTY()
+    UInGamePlayerMenu* umg_player_menu{nullptr};
+
     // Slate widgets
     TSharedPtr<SInGameMenuWidget> in_game_menu_widget;
     bool is_in_game_menu_open{false};
+
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    bool use_umg_player_menu{true};
   public:
     UFUNCTION()
     void toggle_in_game_menu();

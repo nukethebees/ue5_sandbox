@@ -5,11 +5,10 @@
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 
 class SWidgetSwitcher;
 class UInventoryComponent;
-
-enum class EInGameMenuTab : uint8 { Stats = 0, Inventory = 1 };
 
 class SInGameMenuWidget
     : public SCompoundWidget

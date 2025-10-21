@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 
+#include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/LogsMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/MapMenuWidget.h"
@@ -16,22 +17,12 @@
 
 #include "InGamePlayerMenu.generated.h"
 
-UENUM(BlueprintType)
-enum class EInGameMenuTab : uint8 {
-    Powers = 0,
-    Stats = 1,
-    Logs = 2,
-    Objectives = 3,
-    Map = 4,
-    Research = 5,
-    Inventory = 6
-};
-
 UCLASS()
 class SANDBOX_API UInGamePlayerMenu : public UUserWidget {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* tab_switcher{nullptr};

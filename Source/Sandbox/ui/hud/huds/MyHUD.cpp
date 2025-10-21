@@ -11,6 +11,7 @@
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/player_controllers/MyPlayerController.h"
 #include "Sandbox/ui/in_game_menu/widgets/slate/SInGameMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -61,30 +62,53 @@ void AMyHUD::toggle_in_game_menu() {
     TRY_INIT_PTR(pc, Cast<AMyPlayerController>(player_controller));
     TRY_INIT_PTR(game_viewport, GetWorld()->GetGameViewport());
 
-    if (is_in_game_menu_open) {
-        if (in_game_menu_widget.IsValid()) {
-            game_viewport->RemoveViewportWidgetContent(in_game_menu_widget.ToSharedRef());
+    if (use_umg_player_menu) {
+        // UMG version
+        if (is_in_game_menu_open) {
+            RETURN_IF_NULLPTR(umg_player_menu);
+            umg_player_menu->RemoveFromParent();
+            pc->set_game_input_mode();
+            is_in_game_menu_open = false;
+        } else {
+            if (!umg_player_menu) {
+                TRY_INIT_PTR(world, GetWorld());
+                umg_player_menu = CreateWidget<UInGamePlayerMenu>(world, umg_player_menu_class);
+                RETURN_IF_NULLPTR(umg_player_menu);
+                umg_player_menu->back_requested.AddDynamic(this, &AMyHUD::toggle_in_game_menu);
+            }
+
+            RETURN_IF_NULLPTR(umg_player_menu);
+            umg_player_menu->AddToViewport();
+            pc->set_mouse_input_mode();
+            is_in_game_menu_open = true;
         }
-        pc->set_game_input_mode();
-        is_in_game_menu_open = false;
     } else {
-        if (!in_game_menu_widget.IsValid()) {
-            // Get inventory component from player
-            TRY_INIT_PTR(pawn, player_controller->GetPawn());
-            TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+        // Slate version
+        if (is_in_game_menu_open) {
+            if (in_game_menu_widget.IsValid()) {
+                game_viewport->RemoveViewportWidgetContent(in_game_menu_widget.ToSharedRef());
+            }
+            pc->set_game_input_mode();
+            is_in_game_menu_open = false;
+        } else {
+            if (!in_game_menu_widget.IsValid()) {
+                // Get inventory component from player
+                TRY_INIT_PTR(pawn, player_controller->GetPawn());
+                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
 
-            in_game_menu_widget = SNew(SInGameMenuWidget)
-                                      .OnExitClicked_Lambda([this]() {
-                                          toggle_in_game_menu();
-                                          return FReply::Handled();
-                                      })
-                                      .InventoryComponent(inventory_comp);
+                in_game_menu_widget = SNew(SInGameMenuWidget)
+                                          .OnExitClicked_Lambda([this]() {
+                                              toggle_in_game_menu();
+                                              return FReply::Handled();
+                                          })
+                                          .InventoryComponent(inventory_comp);
+            }
+
+            constexpr int32 z_order{100};
+            game_viewport->AddViewportWidgetContent(in_game_menu_widget.ToSharedRef(), z_order);
+            pc->set_mouse_input_mode();
+            is_in_game_menu_open = true;
         }
-
-        constexpr int32 z_order{100};
-        game_viewport->AddViewportWidgetContent(in_game_menu_widget.ToSharedRef(), z_order);
-        pc->set_mouse_input_mode();
-        is_in_game_menu_open = true;
     }
 }
 void AMyHUD::update_fuel(FJetpackState const& jetpack_state) {
