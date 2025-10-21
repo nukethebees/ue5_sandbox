@@ -1,5 +1,14 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 
+#include "Sandbox/ui/in_game_menu/widgets/umg/InventoryMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/LogsMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/MapMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/ObjectivesMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/PowersMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/ResearchMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/StatsMenuWidget.h"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
+
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UInGamePlayerMenu::NativeConstruct() {
@@ -73,6 +82,8 @@ void UInGamePlayerMenu::handle_research_tab() {
 
 void UInGamePlayerMenu::handle_inventory_tab() {
     set_active_tab(EInGameMenuTab::Inventory);
+    RETURN_IF_NULLPTR(inventory_tab);
+    inventory_tab->on_widget_selected();
 }
 
 void UInGamePlayerMenu::handle_close() {

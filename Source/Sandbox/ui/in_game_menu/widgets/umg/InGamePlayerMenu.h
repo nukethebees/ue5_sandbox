@@ -5,17 +5,18 @@
 #include "Components/WidgetSwitcher.h"
 
 #include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/InventoryMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/LogsMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/MapMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/ObjectivesMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/PowersMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/ResearchMenuWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/StatsMenuWidget.h"
 #include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
-#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "InGamePlayerMenu.generated.h"
+
+class UTextButtonWidget;
+class UPowersMenuWidget;
+class UStatsMenuWidget;
+class ULogsMenuWidget;
+class UObjectivesMenuWidget;
+class UMapMenuWidget;
+class UResearchMenuWidget;
+class UInventoryMenuWidget;
 
 UCLASS()
 class SANDBOX_API UInGamePlayerMenu : public UUserWidget {

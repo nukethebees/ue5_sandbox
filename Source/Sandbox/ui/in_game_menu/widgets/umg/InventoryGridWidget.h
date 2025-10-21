@@ -2,16 +2,33 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/UniformGridPanel.h"
+
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InventoryGridWidget.generated.h"
 
+class UUniformGridPanel;
+
+class UInventoryComponent;
+
 UCLASS()
-class SANDBOX_API UInventoryGridWidget : public UUserWidget {
+class SANDBOX_API UInventoryGridWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UInventoryGridWidget", LogSandboxUI> {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UUniformGridPanel* item_grid{nullptr};
+
+    UPROPERTY()
+    UInventoryComponent* inventory{nullptr};
+  public:
+    UFUNCTION()
+    void on_visibility_changed(ESlateVisibility new_visibility);
+
+    void refresh_grid();
 };
