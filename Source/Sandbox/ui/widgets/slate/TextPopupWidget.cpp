@@ -22,31 +22,31 @@ void STextPopupWidget::Construct(FArguments const& InArgs) {
             .HAlign(HAlign_Center)
             .VAlign(VAlign_Center)
             [
-                SNew(SBorder)
-                    .BorderImage(FCoreStyle::Get().GetBrush("ToolPanel.GroupBorder"))
-                    .Padding(FMargin{20.0f})
-                    [
-                        SNew(SVerticalBox)
-                        + SVerticalBox::Slot()
-                            .AutoHeight()
-                            .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+            SNew(SBorder)
+                .BorderImage(FCoreStyle::Get().GetBrush("ToolPanel.GroupBorder"))
+                .Padding(FMargin{20.0f})
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot()
+                        .AutoHeight()
+                        .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+                        [
+                            SNew(STextBlock)
+                            .Text(msg_)
+                            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                        ]
+                    + SVerticalBox::Slot()
+                        .AutoHeight()
+                        .HAlign(HAlign_Center)
+                        [
+                            SNew(SButton)
+                            .OnClicked(on_dismissed_)
                             [
                                 SNew(STextBlock)
-                                    .Text(msg_)
-                                    .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                                    .Text(FText::FromString(TEXT("OK")))
                             ]
-                        + SVerticalBox::Slot()
-                            .AutoHeight()
-                            .HAlign(HAlign_Center)
-                            [
-                                SNew(SButton)
-                                    .OnClicked(on_dismissed_)
-                                    [
-                                        SNew(STextBlock)
-                                            .Text(FText::FromString(TEXT("OK")))
-                                    ]
-                            ]
-                    ]
+                        ]
+                ]
             ]
     ];
     // clang-format on
