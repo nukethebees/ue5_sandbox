@@ -25,13 +25,10 @@ void AMyPlayerController::BeginPlay() {
 
     add_input_mapping_context(input.base_context);
 
-    if (auto* character{Cast<AMyCharacter>(GetPawn())}) {
-        if (auto* hud{Cast<AMyHUD>(GetHUD())}) {
-            character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
-        }
-    } else {
-        log_warning(TEXT("Could not cast to AMyCharacter."));
-    }
+    TRY_INIT_PTR(pawn, GetPawn());
+    TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
+    TRY_INIT_PTR(hud, Cast<AMyHUD>(GetHUD()));
+    character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
 }
 void AMyPlayerController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
@@ -74,47 +71,43 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
 void AMyPlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
 
-    if (auto* eic{Cast<UEnhancedInputComponent>(InputComponent)}) {
-        using enum ETriggerEvent;
+    TRY_INIT_PTR(eic, Cast<UEnhancedInputComponent>(InputComponent));
 
-        auto bind{make_input_binder(eic)};
+    using enum ETriggerEvent;
 
-        // Movement
-        bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
+    auto bind{make_input_binder(eic)};
 
-        // Vision
-        bind(input.look, Triggered, &AMyPlayerController::look);
+    // Movement
+    bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
 
-        // Combat
-        bind(input.attack, Started, &AMyPlayerController::attack_started);
-        bind(input.attack, Ongoing, &AMyPlayerController::attack_continued);
-        bind(input.attack, Completed, &AMyPlayerController::attack_ended);
+    // Vision
+    bind(input.look, Triggered, &AMyPlayerController::look);
 
-        // Inventory
-        bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
-        bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
-        bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
-        bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
-        bind(input.reload_weapon, Started, &AMyPlayerController::reload_weapon);
+    // Combat
+    bind(input.attack, Started, &AMyPlayerController::attack_started);
+    bind(input.attack, Ongoing, &AMyPlayerController::attack_continued);
+    bind(input.attack, Completed, &AMyPlayerController::attack_ended);
 
-        // Interaction
-        bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
-        bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
-        bind(input.interact, Started, &AMyPlayerController::interact);
+    // Inventory
+    bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
+    bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
+    bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
+    bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
+    bind(input.reload_weapon, Started, &AMyPlayerController::reload_weapon);
 
-        // UI
-        bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
-    } else {
-        log_warning(TEXT("Did not get the UEnhancedInputComponent."));
-    }
+    // Interaction
+    bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
+    bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
+    bind(input.interact, Started, &AMyPlayerController::interact);
+
+    // UI
+    bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
 }
 
 // Movement
 void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
-    if (!controlled_character) {
-        log_warning(TEXT("No char to warp"));
-        return;
-    }
+    RETURN_IF_NULLPTR(controlled_character);
+
     if (!bShowMouseCursor) {
         return;
     }
@@ -138,9 +131,8 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
 
 // Vision
 void AMyPlayerController::look(FInputActionValue const& value) {
-    if (controlled_character) {
-        controlled_character->look(value);
-    }
+    RETURN_IF_NULLPTR(controlled_character);
+    controlled_character->look(value);
 }
 
 // Combat
@@ -244,9 +236,8 @@ void AMyPlayerController::set_game_input_mode() {
     SetInputMode(input_mode);
     bShowMouseCursor = false;
     swap_input_mapping_context(input.cursor_mode_context, input.direct_mode_context);
-    if (controlled_character) {
-        controlled_character->reset_torch_position();
-    }
+
+    RETURN_IF_NULLPTR(controlled_character);
 }
 void AMyPlayerController::set_mouse_input_mode() {
     auto input_mode{FInputModeGameAndUI()};
@@ -256,28 +247,16 @@ void AMyPlayerController::set_mouse_input_mode() {
 }
 
 void AMyPlayerController::add_input_mapping_context(UInputMappingContext* context) {
-    if (auto* local_player{GetLocalPlayer()}) {
-        if (auto* subsystem{
-                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
-            subsystem->AddMappingContext(context, 0);
-        } else {
-            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
-        }
-    } else {
-        log_warning(TEXT("Could not get local player."));
-    }
+    TRY_INIT_PTR(local_player, GetLocalPlayer());
+    TRY_INIT_PTR(subsystem,
+                 ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
+    subsystem->AddMappingContext(context, 0);
 }
 void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_remove,
                                                      UInputMappingContext* to_add) {
-    if (auto* local_player{GetLocalPlayer()}) {
-        if (auto* subsystem{
-                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
-            subsystem->RemoveMappingContext(to_remove);
-            subsystem->AddMappingContext(to_add, 0);
-        } else {
-            log_warning(TEXT("Could not get UEnhancedInputLocalPlayerSubsystem."));
-        }
-    } else {
-        log_warning(TEXT("Could not get local player."));
-    }
+    TRY_INIT_PTR(local_player, GetLocalPlayer());
+    TRY_INIT_PTR(subsystem,
+                 ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
+    subsystem->RemoveMappingContext(to_remove);
+    subsystem->AddMappingContext(to_add, 0);
 }
