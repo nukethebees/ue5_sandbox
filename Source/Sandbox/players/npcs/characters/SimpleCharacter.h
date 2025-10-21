@@ -14,6 +14,7 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/npcs/enums/DefaultAIState.h"
 #include "Sandbox/players/npcs/enums/MobAttackMode.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
@@ -32,19 +33,19 @@ class SANDBOX_API ASimpleCharacter
   public:
     ASimpleCharacter();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     EMobAttackMode attack_mode{EMobAttackMode::None};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     FLinearColor mesh_base_colour{FLinearColor::Green};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     FLinearColor mesh_emissive_colour{FLinearColor::Black};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     FLinearColor light_colour{FLinearColor::White};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     ETeamID team_id{ETeamID::Enemy};
 
     // IGenericTeamAgentInterface
@@ -54,27 +55,31 @@ class SANDBOX_API ASimpleCharacter
     // ISandboxMobInterface
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
+    virtual EDefaultAIState get_default_ai_state() const override { return default_ai_state; }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     TSubclassOf<AAIController> controller_class{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     UBehaviorTree* behaviour_tree_asset{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     float acceptable_radius{100.0f};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character")
     UStaticMeshComponent* body_mesh{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character")
     UPointLightComponent* light{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character")
     UHealthComponent* health{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
+    EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
   private:
     // IDeathHandler
     virtual void handle_death() override;

@@ -15,6 +15,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/npcs/data/CombatProfile.h"
+#include "Sandbox/players/npcs/enums/DefaultAIState.h"
 #include "Sandbox/players/npcs/enums/MobAttackMode.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
@@ -58,6 +59,7 @@ class SANDBOX_API ATestEnemy
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
+    virtual EDefaultAIState get_default_ai_state() const override { return default_ai_state; }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
@@ -79,6 +81,9 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UHealthComponent* health{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
   private:
     // IDeathHandler
     virtual void handle_death() override;
