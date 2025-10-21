@@ -1,7 +1,10 @@
 #include "MyPlayerController.h"
 
+#include "Camera/CameraComponent.h"
+
 #include "Sandbox/misc/learning/actors/TalkingPillar.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
+#include "Sandbox/players/playable/actor_components/WarpComponent.h"
 #include "Sandbox/ui/hud/huds/MyHud.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

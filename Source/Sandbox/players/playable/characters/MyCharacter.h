@@ -6,14 +6,7 @@
 #include <utility>
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
-#include "Camera/CameraComponent.h"
-#include "Components/SpotLightComponent.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/SpringArmComponent.h"
 #include "GenericTeamAgentInterface.h"
 #include "InputActionValue.h"
 
@@ -33,11 +26,16 @@
 class UInputMappingContext;
 class UInputAction;
 class UInputComponent;
+class USpotLightComponent;
+class UCameraComponent;
 
 class AMyPlayerController;
 class AMyHUD;
 
 class UArrowComponent;
+class USpringArmComponent;
+class UCharacterMovementComponent;
+
 class UInteractorComponent;
 class USpeedBoostComponent;
 class UJetpackComponent;
