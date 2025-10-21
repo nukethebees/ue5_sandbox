@@ -101,6 +101,9 @@ void AMyPlayerController::SetupInputComponent() {
         bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
         bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
         bind(input.interact, Started, &AMyPlayerController::interact);
+
+        // UI
+        bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
     } else {
         log_warning(TEXT("Did not get the UEnhancedInputComponent."));
     }
@@ -231,6 +234,11 @@ void AMyPlayerController::interact() {
     controlled_character->interact(view_location, view_rotation);
 }
 
+// UI
+void AMyPlayerController::toggle_in_game_menu() {
+    TRY_INIT_PTR(hud, Cast<AMyHUD>(GetHUD()));
+    hud->toggle_in_game_menu();
+}
 void AMyPlayerController::set_game_input_mode() {
     auto input_mode{FInputModeGameOnly()};
     SetInputMode(input_mode);

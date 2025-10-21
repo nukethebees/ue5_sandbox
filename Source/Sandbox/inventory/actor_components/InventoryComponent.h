@@ -32,6 +32,9 @@ class SANDBOX_API UInventoryComponent
 
     auto get_width() const { return dimensions.x(); }
     auto get_height() const { return dimensions.y(); }
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    int32 money{0};
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};

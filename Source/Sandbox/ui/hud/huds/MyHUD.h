@@ -7,6 +7,8 @@
 
 #include "Sandbox/combat/weapons/data/AmmoData.h"
 #include "Sandbox/health/data/HealthData.h"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/data/JetpackState.h"
 #include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/widgets/slate/NumWidget.h"
@@ -14,8 +16,12 @@
 
 #include "MyHUD.generated.h"
 
+class SInGameMenuWidget;
+
 UCLASS()
-class SANDBOX_API AMyHUD : public AHUD {
+class SANDBOX_API AMyHUD
+    : public AHUD
+    , public ml::LogMsgMixin<"AMyHUD", LogSandboxUI> {
     GENERATED_BODY()
   public:
     AMyHUD();
@@ -29,7 +35,13 @@ class SANDBOX_API AMyHUD : public AHUD {
     // Widget instances
     UPROPERTY()
     UMainHUDWidget* main_widget;
+
+    // Slate widgets
+    TSharedPtr<SInGameMenuWidget> in_game_menu_widget;
+    bool is_in_game_menu_open{false};
   public:
+    UFUNCTION()
+    void toggle_in_game_menu();
     UFUNCTION()
     void update_fuel(FJetpackState const& jetpack_state);
     UFUNCTION()
