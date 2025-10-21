@@ -40,6 +40,8 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
                 if (auto* health_component{hit_actor->FindComponentByClass<UHealthComponent>()}) {
                     damage_manager.queue_health_change(health_component, damage_fragment.damage);
                 }
+            } else {
+                logger.log_warning(TEXT("hit_actor is null"));
             }
         }
     }};
