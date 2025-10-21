@@ -6,6 +6,8 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
+class SBox;
+
 class STextPopupWidget
     : public SCompoundWidget
     , public ml::LogMsgMixin<"STextPopupWidget", LogSandboxUI> {
@@ -18,6 +20,13 @@ class STextPopupWidget
     // clang-format on
 
     void Construct(FArguments const& InArgs);
+  protected:
+    virtual FReply OnMouseButtonDown(FGeometry const& MyGeometry,
+                                     FPointerEvent const& MouseEvent) override;
+    virtual FReply OnMouseMove(FGeometry const& MyGeometry,
+                               FPointerEvent const& MouseEvent) override;
+    virtual FReply OnMouseButtonUp(FGeometry const& MyGeometry,
+                                   FPointerEvent const& MouseEvent) override;
   private:
     FText msg_;
     FOnClicked on_dismissed_;

@@ -1,6 +1,7 @@
 #include "Sandbox/ui/widgets/slate/TextPopupWidget.h"
 
 #include "Fonts/CompositeFont.h"
+#include "Misc/Optional.h"
 #include "SlateOptMacros.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
@@ -10,6 +11,7 @@
 
 #include "Sandbox/ui/styles/SandboxStyle.h"
 #include "Sandbox/ui/utilities/ui.h"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void STextPopupWidget::Construct(FArguments const& InArgs) {
@@ -52,3 +54,35 @@ void STextPopupWidget::Construct(FArguments const& InArgs) {
     // clang-format on
 }
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+FReply STextPopupWidget::OnMouseButtonDown(FGeometry const& MyGeometry,
+                                           FPointerEvent const& MouseEvent) {
+    constexpr auto logger{NestedLogger<"OnMouseButtonDown">()};
+
+    if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+        return FReply::Handled().CaptureMouse(SharedThis(this));
+    }
+
+    return FReply::Unhandled();
+}
+FReply STextPopupWidget::OnMouseMove(FGeometry const& MyGeometry, FPointerEvent const& MouseEvent) {
+    constexpr auto logger{NestedLogger<"OnMouseMove">()};
+
+    if (MouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton) && HasMouseCapture()) {
+        auto const mouse_delta{MouseEvent.GetCursorDelta()};
+        FTransform2D xform{GetRenderTransform().Get({})};
+        xform.SetTranslation(xform.GetTranslation() + mouse_delta);
+        SetRenderTransform(xform);
+
+        return FReply::Handled();
+    }
+
+    return FReply::Unhandled();
+}
+FReply STextPopupWidget::OnMouseButtonUp(FGeometry const& MyGeometry,
+                                         FPointerEvent const& MouseEvent) {
+    if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+        return FReply::Handled().ReleaseMouseCapture();
+    }
+    return FReply::Unhandled();
+}
