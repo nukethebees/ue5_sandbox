@@ -5,7 +5,6 @@
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/npcs/enums/SimpleAIState.h"
 
 #include "SimpleAIController.generated.h"
 
@@ -18,7 +17,7 @@ class UAISenseConfig_Sight;
 UCLASS()
 class SANDBOX_API ASimpleAIController
     : public AAIController
-    , public ml::LogMsgMixin<"ASimpleAIController", LogSandboxController> {
+    , public ml::LogMsgMixin<"ASimpleAIController", LogSandboxAI> {
     GENERATED_BODY()
   public:
     ASimpleAIController();
@@ -33,12 +32,12 @@ class SANDBOX_API ASimpleAIController
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
     UBehaviorTreeComponent* behavior_tree_component{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
     UBlackboardComponent* blackboard_component{nullptr};
 
-    UPROPERTY(VisibleAnywhere, Category = "AI")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAISenseConfig_Sight* sight_config;
 };
