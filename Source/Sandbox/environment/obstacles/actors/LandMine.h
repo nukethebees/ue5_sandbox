@@ -11,6 +11,7 @@
 #include "Sandbox/environment/obstacles/enums/LandMineState.h"
 #include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "LandMine.generated.h"
 
@@ -35,7 +36,7 @@ UCLASS()
 class SANDBOX_API ALandMine
     : public AActor
     , public ICollisionOwner
-    , public ml::LogMsgMixin<"ALandMine"> {
+    , public ml::LogMsgMixin<"ALandMine", LogSandboxActor> {
     GENERATED_BODY()
   public:
     ALandMine();
