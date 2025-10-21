@@ -1,4 +1,4 @@
-#include "Sandbox/ui/in_game_menu/widgets/slate/TextPopupWidget.h"
+#include "Sandbox/ui/widgets/slate/TextPopupWidget.h"
 
 #include "Fonts/CompositeFont.h"
 #include "SlateOptMacros.h"

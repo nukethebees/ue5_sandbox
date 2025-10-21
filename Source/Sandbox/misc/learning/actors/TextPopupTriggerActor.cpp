@@ -3,7 +3,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 
-#include "Sandbox/ui/in_game_menu/widgets/slate/TextPopupWidget.h"
+#include "Sandbox/ui/widgets/slate/TextPopupWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
