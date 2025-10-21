@@ -48,23 +48,20 @@ class SANDBOX_API ALandMine
     virtual bool should_destroy_after_collision() const override { return true; }
     virtual float get_destruction_delay() const override { return payload_config.detonation_delay; }
     virtual void on_pre_collision_effect(AActor& other_actor) override;
-
-#if WITH_EDITOR
-    virtual void OnConstruction(const FTransform& Transform) override;
-#endif
   protected:
+    virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mine")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UCapsuleComponent* warning_collision_component{};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mine")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UCapsuleComponent* trigger_collision_component{};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mine")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UStaticMeshComponent* mesh_component{};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mine")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UPointLightComponent* light_component{};
 
 #if WITH_EDITORONLY_DATA
@@ -79,10 +76,16 @@ class SANDBOX_API ALandMine
     FLandMineColours colours;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    class UParticleSystem* explosion_effect{};
+    ELandMineState current_state{ELandMineState::Active};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    ELandMineState current_state{ELandMineState::Active};
+    float collision_half_height{15.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    float warning_radius{150.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    float trigger_radius{50.0f};
   public:
     void change_state(ELandMineState new_state);
 
@@ -101,4 +104,5 @@ class SANDBOX_API ALandMine
                          int32 other_body_index);
   private:
     void update_debug_sphere();
+    void update_trigger_sizes();
 };

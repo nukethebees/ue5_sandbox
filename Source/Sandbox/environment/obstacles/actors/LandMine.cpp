@@ -4,37 +4,45 @@
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
+
+#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 
-ALandMine::ALandMine() {
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
+ALandMine::ALandMine()
+    : warning_collision_component{CreateDefaultSubobject<UCapsuleComponent>(
+          TEXT("WarningCollisionComponent"))}
+    , trigger_collision_component{CreateDefaultSubobject<UCapsuleComponent>(
+          TEXT("CollisionComponent"))}
+    , mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))}
+    , light_component{CreateDefaultSubobject<UPointLightComponent>(TEXT("LightComponent"))}
+
+{
     PrimaryActorTick.bCanEverTick = false;
 
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
     // Create warning collision component as root (outer detection zone)
-    warning_collision_component =
-        CreateDefaultSubobject<UCapsuleComponent>(TEXT("WarningCollisionComponent"));
-    RootComponent = warning_collision_component;
+    warning_collision_component->SetupAttachment(RootComponent);
     warning_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     warning_collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
     warning_collision_component->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-    warning_collision_component->SetCapsuleSize(75.0f, 15.0f); // Larger warning radius
 
     // Create inner collision component for detonation
-    trigger_collision_component =
-        CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
     trigger_collision_component->SetupAttachment(RootComponent);
     trigger_collision_component->SetCollisionEnabled(
         ECollisionEnabled::NoCollision); // Disabled initially
     trigger_collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
     trigger_collision_component->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-    trigger_collision_component->SetCapsuleSize(25.0f, 10.0f); // Smaller detonation trigger
+
+    update_trigger_sizes();
 
     // Create mesh component
-    mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     // Create light component
-    light_component = CreateDefaultSubobject<UPointLightComponent>(TEXT("LightComponent"));
     light_component->SetupAttachment(RootComponent);
     light_component->SetLightColor(colours.active);
     light_component->SetIntensity(100.0f);
@@ -55,17 +63,36 @@ ALandMine::ALandMine() {
     update_debug_sphere();
 }
 
+void ALandMine::on_pre_collision_effect(AActor& other_actor) {
+    constexpr auto logger{NestedLogger<"on_pre_collision_effect">()};
+    logger.log_verbose(TEXT("Landmine triggered by actor: %s"), *other_actor.GetName());
+
+    // Change state to detonating
+    change_state(ELandMineState::Detonating);
+}
+
+void ALandMine::OnConstruction(FTransform const& Transform) {
+    Super::OnConstruction(Transform);
+#if WITH_EDITOR
+    update_debug_sphere();
+#endif
+    update_trigger_sizes();
+}
 void ALandMine::BeginPlay() {
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
     Super::BeginPlay();
 
     change_state(current_state);
 
     // Bind warning collision events
+    check(warning_collision_component);
     if (warning_collision_component) {
         warning_collision_component->OnComponentBeginOverlap.AddDynamic(
             this, &ALandMine::on_warning_enter);
         warning_collision_component->OnComponentEndOverlap.AddDynamic(this,
                                                                       &ALandMine::on_warning_exit);
+    } else {
+        logger.log_warning(TEXT("warning_collision_component is nullptr"));
     }
 
     // Set runtime location in payload config
@@ -75,24 +102,16 @@ void ALandMine::BeginPlay() {
                                                                                payload_config);
 }
 
-void ALandMine::on_pre_collision_effect(AActor& other_actor) {
-    log_verbose(TEXT("Landmine triggered by actor: %s"), *other_actor.GetName());
-
-    // Change state to detonating
-    change_state(ELandMineState::Detonating);
-
-    // Spawn explosion particle effect if configured
-    if (explosion_effect) {
-        if (auto* world{GetWorld()}) {
-            FVector const location{GetActorLocation()};
-            FRotator const rotation{GetActorRotation()};
-            UGameplayStatics::SpawnEmitterAtLocation(world, explosion_effect, location, rotation);
-        }
-    }
-}
-
 void ALandMine::change_state(ELandMineState new_state) {
+    constexpr auto logger{NestedLogger<"change_state">()};
+
     current_state = new_state;
+
+#if !UE_BUILD_SHIPPING
+    logger.log_verbose(TEXT("Setting mine %s to %s state."),
+                       *ml::get_best_display_name(*this),
+                       *UEnum::GetValueAsString(current_state));
+#endif
 
     // Update light color based on state
     FLinearColor target_color{FLinearColor::White};
@@ -117,30 +136,33 @@ void ALandMine::change_state(ELandMineState new_state) {
 
     if (light_component) {
         light_component->SetLightColor(target_color);
+    } else {
+        logger.log_warning(TEXT("light_component is nullptr"));
     }
 
+    RETURN_IF_NULLPTR(trigger_collision_component);
+    RETURN_IF_NULLPTR(warning_collision_component);
+
     // Manage collision component states
-    if (trigger_collision_component && warning_collision_component) {
-        switch (current_state) {
-            case ELandMineState::Active: {
-                warning_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-                trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-                break;
-            }
-            case ELandMineState::Warning: {
-                warning_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-                trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-                break;
-            }
-            case ELandMineState::Detonating: {
-                // Keep collisions active during detonation
-                break;
-            }
-            case ELandMineState::Deactivated: {
-                warning_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-                trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-                break;
-            }
+    switch (current_state) {
+        case ELandMineState::Active: {
+            warning_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            break;
+        }
+        case ELandMineState::Warning: {
+            warning_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            break;
+        }
+        case ELandMineState::Detonating: {
+            // Keep collisions active during detonation
+            break;
+        }
+        case ELandMineState::Deactivated: {
+            warning_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            trigger_collision_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            break;
         }
     }
 }
@@ -151,9 +173,14 @@ void ALandMine::on_warning_enter(UPrimitiveComponent* overlapped_component,
                                  int32 other_body_index,
                                  bool from_sweep,
                                  FHitResult const& sweep_result) {
-    if (current_state == ELandMineState::Active && other_actor) {
-        log_verbose(TEXT("Warning zone entered by actor: %s"), *other_actor->GetName());
+    constexpr auto logger{NestedLogger<"change_state">()};
+    RETURN_IF_NULLPTR(other_actor);
+
+    if (current_state == ELandMineState::Active) {
+        logger.log_verbose(TEXT("Warning zone entered by actor: %s"), *other_actor->GetName());
         change_state(ELandMineState::Warning);
+    } else {
+        logger.log_verbose(TEXT("Not in active state."));
     }
 }
 
@@ -175,10 +202,7 @@ void ALandMine::update_debug_sphere() {
     }
 #endif
 }
-
-#if WITH_EDITOR
-void ALandMine::OnConstruction(const FTransform& Transform) {
-    Super::OnConstruction(Transform);
-    update_debug_sphere();
+void ALandMine::update_trigger_sizes() {
+    warning_collision_component->SetCapsuleSize(warning_radius, collision_half_height);
+    trigger_collision_component->SetCapsuleSize(trigger_radius, collision_half_height);
 }
-#endif
