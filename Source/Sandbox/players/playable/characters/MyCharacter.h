@@ -23,7 +23,6 @@
 #include "Sandbox/logging/mixins/print_msg_mixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
-#include "Sandbox/players/playable/actor_components/WarpComponent.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
 #include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
@@ -46,6 +45,7 @@ class UHealthComponent;
 class UCoinCollectorActorComponent;
 class UPawnWeaponComponent;
 class UInventoryComponent;
+class UWarpComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 

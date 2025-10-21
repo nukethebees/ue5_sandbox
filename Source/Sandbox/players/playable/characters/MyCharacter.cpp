@@ -13,6 +13,7 @@
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
+#include "Sandbox/players/playable/actor_components/WarpComponent.h"
 #include "Sandbox/ui/hud/huds/MyHud.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
