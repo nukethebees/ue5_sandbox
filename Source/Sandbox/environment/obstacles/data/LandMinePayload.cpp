@@ -8,9 +8,12 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 void FLandMinePayload::execute(FCollisionContext context) {
-    static constexpr auto logger{log.NestedLogger<"execute">()};
+    explode(context.world);
+}
+void FLandMinePayload::explode(UWorld& world) {
+    static constexpr auto logger{log.NestedLogger<"explode">()};
 
-    auto spawn_explosion{[&world = context.world, *this]() {
+    auto spawn_explosion{[&world, *this]() {
         FActorSpawnParameters spawn_params;
         spawn_params.SpawnCollisionHandlingOverride =
             ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -29,8 +32,7 @@ void FLandMinePayload::execute(FCollisionContext context) {
 
     // Start timer to trigger explosion after delay to synchronize with destruction
     if (detonation_delay > 0.0f) {
-        context.world.GetTimerManager().SetTimer(
-            timer_handle, spawn_explosion, detonation_delay, false);
+        world.GetTimerManager().SetTimer(timer_handle, spawn_explosion, detonation_delay, false);
     } else {
         // No delay, spawn immediately
         spawn_explosion();

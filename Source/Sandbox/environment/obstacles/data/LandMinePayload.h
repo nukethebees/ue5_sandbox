@@ -23,6 +23,7 @@ struct FLandMinePayload {
         , detonation_delay(delay) {}
 
     void execute(FCollisionContext context);
+    void explode(UWorld& world);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float damage{25.0f};

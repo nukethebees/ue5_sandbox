@@ -9,11 +9,14 @@
 
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 #include "Sandbox/environment/obstacles/enums/LandMineState.h"
+#include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "LandMine.generated.h"
+
+class UHealthComponent;
 
 USTRUCT(BlueprintType)
 struct FLandMineColours {
@@ -36,6 +39,7 @@ UCLASS()
 class SANDBOX_API ALandMine
     : public AActor
     , public ICollisionOwner
+    , public IDeathHandler
     , public ml::LogMsgMixin<"ALandMine", LogSandboxActor> {
     GENERATED_BODY()
   public:
@@ -63,6 +67,9 @@ class SANDBOX_API ALandMine
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UPointLightComponent* light_component{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
+    UHealthComponent* health_component{};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mine")
@@ -102,6 +109,9 @@ class SANDBOX_API ALandMine
                          AActor* other_actor,
                          UPrimitiveComponent* OtherComp,
                          int32 other_body_index);
+
+    // IDeathHandler
+    virtual void handle_death() override;
   private:
     void update_debug_sphere();
     void update_trigger_sizes();

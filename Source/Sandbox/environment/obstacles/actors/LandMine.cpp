@@ -5,7 +5,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -17,8 +19,7 @@ ALandMine::ALandMine()
           TEXT("CollisionComponent"))}
     , mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))}
     , light_component{CreateDefaultSubobject<UPointLightComponent>(TEXT("LightComponent"))}
-
-{
+    , health_component{CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))} {
     PrimaryActorTick.bCanEverTick = false;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -40,7 +41,9 @@ ALandMine::ALandMine()
 
     // Create mesh component
     mesh_component->SetupAttachment(RootComponent);
-    mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    mesh_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    // Allow destruction from bullets
+    mesh_component->SetCollisionResponseToChannel(ml::collision::projectile, ECR_Block);
 
     // Create light component
     light_component->SetupAttachment(RootComponent);
@@ -60,14 +63,16 @@ ALandMine::ALandMine()
     explosion_radius_debug->bDrawOnlyIfSelected = true;
 #endif
 
+    constexpr float max_health{1.0f};
+    health_component->max_health = max_health;
+    health_component->initial_health = max_health;
+
     update_debug_sphere();
 }
 
 void ALandMine::on_pre_collision_effect(AActor& other_actor) {
     constexpr auto logger{NestedLogger<"on_pre_collision_effect">()};
     logger.log_verbose(TEXT("Landmine triggered by actor: %s"), *other_actor.GetName());
-
-    // Change state to detonating
     change_state(ELandMineState::Detonating);
 }
 
@@ -192,6 +197,14 @@ void ALandMine::on_warning_exit(UPrimitiveComponent* overlapped_component,
         log_verbose(TEXT("Warning zone exited by actor: %s"), *other_actor->GetName());
         change_state(ELandMineState::Active);
     }
+}
+
+void ALandMine::handle_death() {
+    TRY_INIT_PTR(world, GetWorld());
+    payload_config.detonation_delay = 0.0f;
+    payload_config.explode(*world);
+    change_state(ELandMineState::Detonating);
+    Destroy();
 }
 
 void ALandMine::update_debug_sphere() {
