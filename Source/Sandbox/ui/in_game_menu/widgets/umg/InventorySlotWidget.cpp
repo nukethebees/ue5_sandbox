@@ -6,6 +6,8 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 
+#include "Sandbox/ui/in_game_menu/misc/InventorySlotDragDropOperation.h"
+
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UInventorySlotWidget::set_image(UTexture2D& img) {
@@ -52,6 +54,11 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
                                                 UDragDropOperation*& OutOperation) {
     Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
     log_verbose(TEXT("NativeOnDragDetected"));
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    auto* drag_operation{NewObject<UInventorySlotDragDropOperation>(this)};
+    OutOperation = drag_operation;
 }
 void UInventorySlotWidget::NativeOnDragEnter(FGeometry const& InGeometry,
                                              FDragDropEvent const& InDragDropEvent,
