@@ -11,6 +11,8 @@
 #include "TextPopupTriggerActor.generated.h"
 
 class STextPopupWidget;
+class SCompoundWidget;
+class SBox;
 
 UCLASS()
 class SANDBOX_API ATextPopupTriggerActor
@@ -47,5 +49,5 @@ class SANDBOX_API ATextPopupTriggerActor
   private:
     void remove_popup_widget();
 
-    TSharedPtr<STextPopupWidget> popup_widget{nullptr};
+    TSharedPtr<SBox> popup_widget{nullptr};
 };

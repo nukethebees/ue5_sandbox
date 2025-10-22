@@ -53,12 +53,17 @@ void ATextPopupTriggerActor::on_overlap_begin(UPrimitiveComponent* overlapped_co
 
     // clang-format off
     popup_widget =
-        SNew(STextPopupWidget)
-        .msg(popup_message)
-        .OnDismissed(FOnClicked::CreateLambda([this]() {
-            remove_popup_widget();
-            return FReply::Handled();
-        }));
+        SNew(SBox)
+        .HAlign(HAlign_Center)
+        .VAlign(VAlign_Center)
+        [
+            SNew(STextPopupWidget)
+            .msg(popup_message)
+            .OnDismissed(FOnClicked::CreateLambda([this]() {
+                remove_popup_widget();
+                return FReply::Handled();
+            }))
+        ];
     // clang-format on
     RETURN_IF_FALSE(popup_widget.IsValid());
 
