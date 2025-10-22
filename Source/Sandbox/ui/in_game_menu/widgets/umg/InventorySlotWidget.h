@@ -17,7 +17,7 @@ class USizeBox;
 UCLASS()
 class SANDBOX_API UInventorySlotWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UInventoryGridWidget", LogSandboxUI> {
+    , public ml::LogMsgMixin<"UInventorySlotWidget", LogSandboxUI> {
     GENERATED_BODY()
   public:
     void set_image(UTexture2D& img);
@@ -29,23 +29,12 @@ class SANDBOX_API UInventorySlotWidget
     void set_image_visibility(bool vis);
   protected:
     virtual void NativeConstruct() override;
+
     virtual void NativeOnDragDetected(FGeometry const& InGeometry,
                                       FPointerEvent const& InMouseEvent,
                                       UDragDropOperation*& OutOperation) override;
-    virtual void NativeOnDragEnter(FGeometry const& InGeometry,
-                                   FDragDropEvent const& InDragDropEvent,
-                                   UDragDropOperation* InOperation) override;
-    virtual void NativeOnDragLeave(FDragDropEvent const& InDragDropEvent,
-                                   UDragDropOperation* InOperation) override;
-    virtual bool NativeOnDragOver(FGeometry const& InGeometry,
-                                  FDragDropEvent const& InDragDropEvent,
-                                  UDragDropOperation* InOperation) override;
-    virtual FReply NativeOnMouseMove(FGeometry const& InGeometry,
-                                     FPointerEvent const& InMouseEvent) override;
     virtual FReply NativeOnMouseButtonDown(FGeometry const& InGeometry,
                                            FPointerEvent const& InMouseEvent) override;
-    virtual FReply NativeOnMouseButtonUp(FGeometry const& InGeometry,
-                                         FPointerEvent const& InMouseEvent) override;
 
     static void align_stack_text(UTextBlock& tb);
     static void align_fallback_text(UTextBlock& tb);

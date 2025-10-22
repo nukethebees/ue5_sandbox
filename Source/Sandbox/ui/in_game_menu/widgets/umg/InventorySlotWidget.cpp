@@ -60,29 +60,6 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
     auto* drag_operation{NewObject<UInventorySlotDragDropOperation>(this)};
     OutOperation = drag_operation;
 }
-void UInventorySlotWidget::NativeOnDragEnter(FGeometry const& InGeometry,
-                                             FDragDropEvent const& InDragDropEvent,
-                                             UDragDropOperation* InOperation) {
-    Super::NativeOnDragEnter(InGeometry, InDragDropEvent, InOperation);
-    log_verbose(TEXT("NativeOnDragEnter"));
-}
-void UInventorySlotWidget::NativeOnDragLeave(FDragDropEvent const& InDragDropEvent,
-                                             UDragDropOperation* InOperation) {
-    Super::NativeOnDragLeave(InDragDropEvent, InOperation);
-    log_verbose(TEXT("NativeOnDragLeave"));
-}
-bool UInventorySlotWidget::NativeOnDragOver(FGeometry const& InGeometry,
-                                            FDragDropEvent const& InDragDropEvent,
-                                            UDragDropOperation* InOperation) {
-    Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
-    log_verbose(TEXT("NativeOnDragOver"));
-    return false;
-}
-FReply UInventorySlotWidget::NativeOnMouseMove(FGeometry const& InGeometry,
-                                               FPointerEvent const& InMouseEvent) {
-    Super::NativeOnMouseMove(InGeometry, InMouseEvent);
-    return FReply::Unhandled();
-}
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(FGeometry const& InGeometry,
                                                      FPointerEvent const& InMouseEvent) {
     Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
@@ -94,12 +71,6 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(FGeometry const& InGeometry
             .NativeReply;
     }
 
-    return FReply::Unhandled();
-}
-FReply UInventorySlotWidget::NativeOnMouseButtonUp(FGeometry const& InGeometry,
-                                                   FPointerEvent const& InMouseEvent) {
-    Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
-    log_verbose(TEXT("NativeOnMouseButtonUp"));
     return FReply::Unhandled();
 }
 
