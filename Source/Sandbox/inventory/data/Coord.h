@@ -44,6 +44,8 @@ struct FCoord {
 
     FString to_string() const { return FString::Printf(TEXT("x=%d, y=%d"), x(), y()); }
 
+    FCoord operator-(FCoord const& other) const { return FCoord{value - other.value}; }
+
     // Hash support for TMap/TSet
     friend uint32 GetTypeHash(FCoord const& obj) { return GetTypeHash(obj.value); }
 };
