@@ -2,14 +2,19 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/Image.h"
-#include "Components/TextBlock.h"
 
 #include "InventorySlotWidget.generated.h"
+
+class UTexture2D;
+
+class UImage;
+class UTextBlock;
 
 UCLASS()
 class SANDBOX_API UInventorySlotWidget : public UUserWidget {
     GENERATED_BODY()
+  public:
+    void set_image(UTexture2D& img);
   protected:
     virtual void NativeConstruct() override;
 

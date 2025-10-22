@@ -8,6 +8,8 @@
 
 #include "InventoryGridWidget.generated.h"
 
+class UTexture2D;
+
 class UGridPanel;
 
 class UInventorySlotWidget;
@@ -31,6 +33,9 @@ class SANDBOX_API UInventoryGridWidget
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     TSubclassOf<UInventorySlotWidget> slot_class;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    UTexture2D* fallback_item_image{nullptr};
   public:
     UFUNCTION()
     void on_visibility_changed(ESlateVisibility new_visibility);

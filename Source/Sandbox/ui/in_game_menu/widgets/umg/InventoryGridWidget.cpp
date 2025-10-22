@@ -1,6 +1,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryGridWidget.h"
 
 #include "Components/GridPanel.h"
+#include "Engine/Texture2D.h"
 
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventorySlotWidget.h"
@@ -37,6 +38,7 @@ void UInventoryGridWidget::refresh_grid() {
     RETURN_IF_NULLPTR(inventory);
     RETURN_IF_NULLPTR(item_grid);
     RETURN_IF_NULLPTR(slot_class);
+    RETURN_IF_NULLPTR(fallback_item_image);
     TRY_INIT_PTR(world, GetWorld());
 
     item_grid->ClearChildren();
@@ -55,6 +57,8 @@ void UInventoryGridWidget::refresh_grid() {
         for (int32 col{0}; col < n_cols; ++col) {
             auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class)};
             check(slot);
+
+            slot->set_image(*fallback_item_image);
 
             item_grid->AddChildToGrid(slot, row, col);
         }
