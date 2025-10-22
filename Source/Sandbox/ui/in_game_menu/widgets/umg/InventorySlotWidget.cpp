@@ -74,7 +74,46 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
     Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
     log_verbose(TEXT("NativeOnDragDetected"));
 
+    if (!inventory_slot) {
+        return;
+    }
+
     TRY_INIT_PTR(world, GetWorld());
+
+    auto const mouse_pos{InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition())};
+    auto const widget_pos{InGeometry.AbsoluteToLocal(InGeometry.GetAbsolutePosition())};
+    auto const widget_size{InGeometry.GetLocalSize()};
+
+    auto const dimensions{inventory_slot->dimensions()};
+    auto const w{static_cast<float>(dimensions.x())};
+    auto const h{static_cast<float>(dimensions.y())};
+
+    auto const cell_width{widget_size.X / w};
+    auto const cell_height{widget_size.Y / h};
+
+    auto const click_col_local{static_cast<int32>(mouse_pos.X / cell_width)};
+    auto const click_row_local{static_cast<int32>(mouse_pos.Y / cell_height)};
+
+    auto const item_origin{inventory_slot->origin};
+    auto const click_col_grid{item_origin.x() + click_col_local};
+    auto const click_row_grid{item_origin.y() + click_row_local};
+
+#if !UE_BUILD_SHIPPING
+    log_verbose(TEXT("\nMouse pos: %s"
+                     "\nWidget pos: %s"
+                     "\nWidget size: %s"
+                     "\ndimensions: %s"
+                     "\nLocal pos: (%d, %d)"
+                     "\nGrid pos: (%d, %d)"),
+                *mouse_pos.ToString(),
+                *widget_pos.ToString(),
+                *widget_size.ToString(),
+                *dimensions.to_string(),
+                click_col_local,
+                click_row_local,
+                click_col_grid,
+                click_row_grid);
+#endif
 
     auto* drag_operation{NewObject<UInventorySlotDragDropOperation>(this)};
     OutOperation = drag_operation;
