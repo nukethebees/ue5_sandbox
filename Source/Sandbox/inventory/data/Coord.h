@@ -35,11 +35,11 @@ struct FCoord {
     }
     template <typename Self>
     auto&& row(this Self&& self) {
-        return std::forward_like<Self>(self.value.X);
+        return std::forward_like<Self>(self.value.Y);
     }
     template <typename Self>
     auto&& column(this Self&& self) {
-        return std::forward_like<Self>(self.value.Y);
+        return std::forward_like<Self>(self.value.X);
     }
 
     FString to_string() const { return FString::Printf(TEXT("x=%d, y=%d"), x(), y()); }
