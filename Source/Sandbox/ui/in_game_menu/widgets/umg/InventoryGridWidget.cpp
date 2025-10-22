@@ -23,6 +23,14 @@ void UInventoryGridWidget::NativeDestruct() {
 
     Super::NativeDestruct();
 }
+
+bool UInventoryGridWidget::NativeOnDrop(FGeometry const& InGeometry,
+                                        FDragDropEvent const& InDragDropEvent,
+                                        UDragDropOperation* InOperation) {
+    log_verbose(TEXT("NativeOnDrop"));
+    return false;
+}
+
 void UInventoryGridWidget::on_visibility_changed(ESlateVisibility new_visibility) {
     switch (new_visibility) {
         case ESlateVisibility::Visible: {

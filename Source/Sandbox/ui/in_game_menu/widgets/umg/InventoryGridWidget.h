@@ -26,6 +26,10 @@ class SANDBOX_API UInventoryGridWidget
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 
+    virtual bool NativeOnDrop(FGeometry const& InGeometry,
+                              FDragDropEvent const& InDragDropEvent,
+                              UDragDropOperation* InOperation) override;
+
     UPROPERTY(meta = (BindWidget))
     UGridPanel* item_grid{nullptr};
 
