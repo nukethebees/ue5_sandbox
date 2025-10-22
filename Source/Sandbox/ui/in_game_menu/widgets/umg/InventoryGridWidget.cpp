@@ -1,6 +1,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryGridWidget.h"
 
 #include "Components/GridPanel.h"
+#include "Components/GridSlot.h"
 #include "Components/SizeBox.h"
 #include "Engine/Texture2D.h"
 
@@ -63,8 +64,50 @@ void UInventoryGridWidget::refresh_grid() {
     TArray<bool> slot_filled;
     slot_filled.Init(false, n_slots);
 
+    constexpr auto make_name{[](auto col, auto row) {
+        auto const str{FString::Printf(TEXT("slot_col_%d_row_%d"), col, row)};
+        return FName(*str);
+    }};
+
     auto const items{inventory->get_slots_view()};
-    for (auto const& item : items) {}
+    for (auto const& item : items) {
+        check(item.item);
+
+        auto const item_origin{item.origin};
+        auto const origin_col{item_origin.x()};
+        auto const origin_row{item_origin.y()};
+
+        auto* slot_widget{CreateWidget<UInventorySlotWidget>(
+            world, slot_class, make_name(origin_col, origin_row))};
+        check(slot_widget);
+
+        if (auto* img{item.item->get_display_image()}) {
+            slot_widget->set_image(*img);
+        } else {
+            log_warning(TEXT("Item %s has no display image."), *item.item->get_name());
+            slot_widget->set_image(*fallback_item_image);
+        }
+
+        slot_widget->set_aspect_ratio(item.aspect_ratio());
+
+        auto const w{item.width()};
+        auto const h{item.height()};
+
+        auto* grid_slot{item_grid->AddChildToGrid(slot_widget, origin_row, origin_col)};
+        check(grid_slot);
+        grid_slot->SetRowSpan(h);
+        grid_slot->SetColumnSpan(w);
+
+        for (int32 x{0}; x < w; ++x) {
+            for (int32 y{0}; y < h; ++y) {
+                auto const row{origin_row + y};
+                auto const col{origin_col + x};
+
+                auto const coord_id{row * n_cols + col};
+                slot_filled[coord_id] = true;
+            }
+        }
+    }
 
     // Add the empty slots
     for (int32 row{0}; row < n_rows; ++row) {
@@ -74,9 +117,7 @@ void UInventoryGridWidget::refresh_grid() {
                 continue;
             }
 
-            auto const widget_name{FString::Printf(TEXT("slot_col_%d_row_%d"), col, row)};
-
-            auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class, FName(*widget_name))};
+            auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class, make_name(col, row))};
             check(slot);
 
             slot->set_image(*fallback_item_image);
