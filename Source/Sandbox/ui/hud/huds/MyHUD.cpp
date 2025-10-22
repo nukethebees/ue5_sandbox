@@ -54,6 +54,11 @@ void AMyHUD::BeginPlay() {
     update_ammo({});
 }
 
+void AMyHUD::set_inventory(UInventoryComponent& inventory) {
+    RETURN_IF_NULLPTR(umg_player_menu);
+    umg_player_menu->set_inventory(inventory);
+}
+
 void AMyHUD::toggle_in_game_menu() {
     constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};
     logger.log_display(TEXT("Toggling menu."));
@@ -75,6 +80,10 @@ void AMyHUD::toggle_in_game_menu() {
                 umg_player_menu = CreateWidget<UInGamePlayerMenu>(world, umg_player_menu_class);
                 RETURN_IF_NULLPTR(umg_player_menu);
                 umg_player_menu->back_requested.AddDynamic(this, &AMyHUD::toggle_in_game_menu);
+
+                TRY_INIT_PTR(pawn, player_controller->GetPawn());
+                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+                set_inventory(*inventory_comp);
             }
 
             RETURN_IF_NULLPTR(umg_player_menu);

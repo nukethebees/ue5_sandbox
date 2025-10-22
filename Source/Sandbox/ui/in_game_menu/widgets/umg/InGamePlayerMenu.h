@@ -2,12 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/WidgetSwitcher.h"
 
 #include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 #include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
 
 #include "InGamePlayerMenu.generated.h"
+
+class UWidgetSwitcher;
+
+class UInventoryComponent;
 
 class UTextButtonWidget;
 class UPowersMenuWidget;
@@ -64,6 +67,8 @@ class SANDBOX_API UInGamePlayerMenu : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UInventoryMenuWidget* inventory_tab{nullptr};
   public:
+    void set_inventory(UInventoryComponent& inventory);
+
     // Close navigation event
     UPROPERTY(BlueprintAssignable)
     FBackRequested back_requested;

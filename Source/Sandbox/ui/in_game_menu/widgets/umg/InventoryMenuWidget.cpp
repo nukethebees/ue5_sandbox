@@ -5,10 +5,15 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-void UInventoryMenuWidget::NativeConstruct() {
-    Super::NativeConstruct();
+void UInventoryMenuWidget::set_inventory(UInventoryComponent& inv) {
+    RETURN_IF_NULLPTR(inventory_grid);
+    inventory_grid->set_inventory(inv);
 }
 void UInventoryMenuWidget::on_widget_selected() {
     RETURN_IF_NULLPTR(inventory_grid);
     inventory_grid->refresh_grid();
+}
+
+void UInventoryMenuWidget::NativeConstruct() {
+    Super::NativeConstruct();
 }

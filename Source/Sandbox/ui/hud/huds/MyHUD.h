@@ -16,6 +16,8 @@
 
 #include "MyHUD.generated.h"
 
+class UInventoryComponent;
+
 class SInGameMenuWidget;
 class UInGamePlayerMenu;
 
@@ -50,6 +52,8 @@ class SANDBOX_API AMyHUD
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     bool use_umg_player_menu{true};
   public:
+    void set_inventory(UInventoryComponent& inventory);
+
     UFUNCTION()
     void toggle_in_game_menu();
     UFUNCTION()

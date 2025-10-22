@@ -1,5 +1,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 
+#include "Components/WidgetSwitcher.h"
+
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/LogsMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/MapMenuWidget.h"
@@ -56,36 +58,34 @@ void UInGamePlayerMenu::NativeConstruct() {
     set_active_tab(EInGameMenuTab::Inventory);
 }
 
+void UInGamePlayerMenu::set_inventory(UInventoryComponent& inventory) {
+    RETURN_IF_NULLPTR(inventory_tab);
+    inventory_tab->set_inventory(inventory);
+}
+
 void UInGamePlayerMenu::handle_powers_tab() {
     set_active_tab(EInGameMenuTab::Powers);
 }
-
 void UInGamePlayerMenu::handle_stats_tab() {
     set_active_tab(EInGameMenuTab::Stats);
 }
-
 void UInGamePlayerMenu::handle_logs_tab() {
     set_active_tab(EInGameMenuTab::Logs);
 }
-
 void UInGamePlayerMenu::handle_objectives_tab() {
     set_active_tab(EInGameMenuTab::Objectives);
 }
-
 void UInGamePlayerMenu::handle_map_tab() {
     set_active_tab(EInGameMenuTab::Map);
 }
-
 void UInGamePlayerMenu::handle_research_tab() {
     set_active_tab(EInGameMenuTab::Research);
 }
-
 void UInGamePlayerMenu::handle_inventory_tab() {
     set_active_tab(EInGameMenuTab::Inventory);
     RETURN_IF_NULLPTR(inventory_tab);
     inventory_tab->on_widget_selected();
 }
-
 void UInGamePlayerMenu::handle_close() {
     back_requested.Broadcast();
 }

@@ -8,7 +8,9 @@
 
 #include "InventoryGridWidget.generated.h"
 
-class UUniformGridPanel;
+class UGridPanel;
+
+class UInventorySlotWidget;
 
 class UInventoryComponent;
 
@@ -22,13 +24,17 @@ class SANDBOX_API UInventoryGridWidget
     virtual void NativeDestruct() override;
 
     UPROPERTY(meta = (BindWidget))
-    UUniformGridPanel* item_grid{nullptr};
+    UGridPanel* item_grid{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UInventoryComponent* inventory{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    TSubclassOf<UInventorySlotWidget> slot_class;
   public:
     UFUNCTION()
     void on_visibility_changed(ESlateVisibility new_visibility);
 
+    void set_inventory(UInventoryComponent& inv) { inventory = &inv; }
     void refresh_grid();
 };
