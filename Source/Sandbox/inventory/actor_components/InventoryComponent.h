@@ -25,7 +25,7 @@ class SANDBOX_API UInventoryComponent
 
     // Item insertion
     bool add_item(TScriptInterface<IInventoryItem> item);
-    bool move_item(FInventorySlot const& slot, FCoord item_offset, FCoord new_location);
+    bool move_item(FInventorySlot const& slot, FCoord item_offset, FCoord drop_location);
     auto find_free_point(IInventoryItem const& item) const -> std::optional<FCoord>;
 
     // Item access
@@ -35,7 +35,9 @@ class SANDBOX_API UInventoryComponent
     auto get_n_rows() const { return dimensions.y(); }
     auto get_n_columns() const { return dimensions.x(); }
     auto get_n_slots() const { return dimensions.area(); }
-    bool is_free(FCoord coord, FDimensions item_dimensions) const;
+    bool is_free(FCoord coord,
+                 FDimensions item_dimensions,
+                 FInventorySlot const* to_ignore = nullptr) const;
 
     auto get_width() const { return dimensions.x(); }
     auto get_height() const { return dimensions.y(); }

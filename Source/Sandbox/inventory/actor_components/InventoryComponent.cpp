@@ -24,9 +24,33 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
 
     return true;
 }
-bool UInventoryComponent::move_item(FInventorySlot const& slot,
+bool UInventoryComponent::move_item(FInventorySlot const& moving_slot,
                                     FCoord item_offset,
-                                    FCoord new_location) {
+                                    FCoord drop_location) {
+    constexpr auto logger{NestedLogger<"move_item">()};
+
+    auto const new_origin{drop_location - item_offset};
+
+#if !UE_BUILD_SHIPPING
+    logger.log_verbose(TEXT("Moving item from %s to %s"),
+                       *moving_slot.origin.to_string(),
+                       *new_origin.to_string());
+#endif
+
+    for (auto& slot : slots) {
+        if (&slot != &moving_slot) {
+            continue;
+        }
+
+        if (!is_free(new_origin, moving_slot.dimensions(), &moving_slot)) {
+            return false;
+        }
+
+        slot.origin = new_origin;
+
+        return true;
+    }
+
     return false;
 }
 auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
@@ -68,7 +92,9 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     return nullptr;
 }
 
-bool UInventoryComponent::is_free(FCoord coord, FDimensions item_dimensions) const {
+bool UInventoryComponent::is_free(FCoord coord,
+                                  FDimensions item_dimensions,
+                                  FInventorySlot const* to_ignore) const {
     constexpr auto logger{NestedLogger<"is_free">()};
 
     auto const item_width{item_dimensions.x()};
@@ -102,6 +128,10 @@ bool UInventoryComponent::is_free(FCoord coord, FDimensions item_dimensions) con
     }
 
     for (auto const& slot : slots) {
+        if (&slot == to_ignore) {
+            continue;
+        }
+
         // AABB collision
         // Check if A's left edge is to the left of B's right edge
         // and if A's right edge is to the right of B's left edge
