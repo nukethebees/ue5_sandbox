@@ -1,6 +1,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryGridWidget.h"
 
 #include "Components/GridPanel.h"
+#include "Components/SizeBox.h"
 #include "Engine/Texture2D.h"
 
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
@@ -35,6 +36,7 @@ void UInventoryGridWidget::on_visibility_changed(ESlateVisibility new_visibility
 void UInventoryGridWidget::refresh_grid() {
     log_verbose(TEXT("Refreshing grid."));
 
+    RETURN_IF_NULLPTR(size_box);
     RETURN_IF_NULLPTR(inventory);
     RETURN_IF_NULLPTR(item_grid);
     RETURN_IF_NULLPTR(slot_class);
@@ -46,6 +48,10 @@ void UInventoryGridWidget::refresh_grid() {
     auto const n_rows{inventory->get_n_rows()};
     auto const n_cols{inventory->get_n_columns()};
 
+    auto const grid_aspect_ratio{static_cast<float>(n_cols) / static_cast<float>(n_rows)};
+    size_box->SetMinAspectRatio(grid_aspect_ratio);
+    size_box->SetMaxAspectRatio(grid_aspect_ratio);
+
     for (int32 col{0}; col < n_cols; ++col) {
         item_grid->SetColumnFill(col, 1.0f);
     }
@@ -55,10 +61,13 @@ void UInventoryGridWidget::refresh_grid() {
 
     for (int32 row{0}; row < n_rows; ++row) {
         for (int32 col{0}; col < n_cols; ++col) {
-            auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class)};
+            auto const widget_name{FString::Printf(TEXT("slot_col_%d_row_%d"), col, row)};
+
+            auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class, FName(*widget_name))};
             check(slot);
 
             slot->set_image(*fallback_item_image);
+            slot->set_aspect_ratio(1.0f);
 
             item_grid->AddChildToGrid(slot, row, col);
         }

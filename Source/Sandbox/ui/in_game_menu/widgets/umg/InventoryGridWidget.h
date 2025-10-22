@@ -10,6 +10,7 @@
 
 class UTexture2D;
 
+class USizeBox;
 class UGridPanel;
 
 class UInventorySlotWidget;
@@ -27,6 +28,9 @@ class SANDBOX_API UInventoryGridWidget
 
     UPROPERTY(meta = (BindWidget))
     UGridPanel* item_grid{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    USizeBox* size_box{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UInventoryComponent* inventory{nullptr};
