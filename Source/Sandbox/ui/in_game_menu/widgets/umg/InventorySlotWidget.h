@@ -16,9 +16,17 @@ class SANDBOX_API UInventorySlotWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_image(UTexture2D& img);
+    void set_stack_text(FText const& text);
+    void set_no_image_fallback_text(FText const& text);
+
     void set_aspect_ratio(float ar);
+    void set_text_visibility(bool vis);
+    void set_image_visibility(bool vis);
   protected:
     virtual void NativeConstruct() override;
+
+    static void align_stack_text(UTextBlock& tb);
+    static void align_fallback_text(UTextBlock& tb);
 
     UPROPERTY(meta = (BindWidget))
     USizeBox* root{nullptr};

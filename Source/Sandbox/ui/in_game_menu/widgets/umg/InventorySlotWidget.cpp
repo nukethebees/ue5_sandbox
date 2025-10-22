@@ -1,6 +1,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventorySlotWidget.h"
 
 #include "Components/Image.h"
+#include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 
@@ -9,15 +10,54 @@
 void UInventorySlotWidget::set_image(UTexture2D& img) {
     RETURN_IF_NULLPTR(icon_image);
 
+    set_image_visibility(true);
     icon_image->SetBrushFromTexture(&img);
 }
+void UInventorySlotWidget::set_stack_text(FText const& text) {
+    check(stack_size_text);
+    set_text_visibility(true);
+    stack_size_text->SetText(text);
+    align_stack_text(*stack_size_text);
+}
+void UInventorySlotWidget::set_no_image_fallback_text(FText const& text) {
+    check(stack_size_text);
+    set_text_visibility(true);
+    stack_size_text->SetText(text);
+    align_fallback_text(*stack_size_text);
+}
+
 void UInventorySlotWidget::set_aspect_ratio(float ar) {
     RETURN_IF_NULLPTR(root);
 
     root->SetMinAspectRatio(ar);
     root->SetMaxAspectRatio(ar);
 }
+void UInventorySlotWidget::set_text_visibility(bool vis) {
+    check(stack_size_text);
+    stack_size_text->SetVisibility(vis ? ESlateVisibility::SelfHitTestInvisible
+                                       : ESlateVisibility::Collapsed);
+}
+void UInventorySlotWidget::set_image_visibility(bool vis) {
+    check(icon_image);
+    icon_image->SetVisibility(vis ? ESlateVisibility::SelfHitTestInvisible
+                                  : ESlateVisibility::Collapsed);
+}
 
 void UInventorySlotWidget::NativeConstruct() {
     Super::NativeConstruct();
+}
+
+void UInventorySlotWidget::align_stack_text(UTextBlock& tb) {
+    if (auto* overlay_slot{Cast<UOverlaySlot>(tb.Slot)}) {
+        overlay_slot->SetHorizontalAlignment(HAlign_Right);
+        overlay_slot->SetVerticalAlignment(VAlign_Bottom);
+        overlay_slot->SetPadding(FMargin(0));
+    }
+}
+void UInventorySlotWidget::align_fallback_text(UTextBlock& tb) {
+    if (auto* overlay_slot{Cast<UOverlaySlot>(tb.Slot)}) {
+        overlay_slot->SetHorizontalAlignment(HAlign_Center);
+        overlay_slot->SetVerticalAlignment(VAlign_Center);
+        overlay_slot->SetPadding(FMargin(0));
+    }
 }

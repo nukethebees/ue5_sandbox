@@ -85,7 +85,7 @@ void UInventoryGridWidget::refresh_grid() {
             slot_widget->set_image(*img);
         } else {
             log_warning(TEXT("Item %s has no display image."), *item.item->get_name());
-            slot_widget->set_image(*fallback_item_image);
+            slot_widget->set_no_image_fallback_text(FText::FromString(item.name()));
         }
 
         slot_widget->set_aspect_ratio(item.aspect_ratio());
