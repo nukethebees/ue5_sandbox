@@ -32,8 +32,14 @@ bool UInventoryComponent::move_item(FInventorySlot const& moving_slot,
     auto const new_origin{drop_location - item_offset};
 
 #if !UE_BUILD_SHIPPING
-    logger.log_verbose(TEXT("Moving item from %s to %s"),
+
+    logger.log_verbose(TEXT("\nOriginal location: %s"
+                            "\nDrop location: %s"
+                            "\nClick offset: %s"
+                            "\nNew location: %s"),
                        *moving_slot.origin.to_string(),
+                       *drop_location.to_string(),
+                       *item_offset.to_string(),
                        *new_origin.to_string());
 #endif
 

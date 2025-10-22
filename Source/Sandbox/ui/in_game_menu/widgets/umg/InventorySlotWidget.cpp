@@ -81,7 +81,6 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
     TRY_INIT_PTR(world, GetWorld());
 
     auto const mouse_pos{InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition())};
-    auto const widget_pos{InGeometry.AbsoluteToLocal(InGeometry.GetAbsolutePosition())};
     auto const widget_size{InGeometry.GetLocalSize()};
 
     auto const dimensions{inventory_slot->dimensions()};
@@ -99,6 +98,7 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
     auto const click_row_grid{item_origin.y() + click_row_local};
 
 #if !UE_BUILD_SHIPPING
+    auto const widget_pos{InGeometry.AbsoluteToLocal(InGeometry.GetAbsolutePosition())};
     log_verbose(TEXT("\nMouse pos: %s"
                      "\nWidget pos: %s"
                      "\nWidget size: %s"

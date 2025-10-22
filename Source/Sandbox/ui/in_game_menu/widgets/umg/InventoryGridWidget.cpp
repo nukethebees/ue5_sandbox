@@ -35,7 +35,22 @@ bool UInventoryGridWidget::NativeOnDrop(FGeometry const& InGeometry,
         logger.log_verbose(TEXT("Cast successful."));
         check(op->inventory_slot);
 
-        FCoord drop_location{};
+        auto const grid_geometry{item_grid->GetTickSpaceGeometry()};
+        auto const widget_size{grid_geometry.GetLocalSize()};
+        auto const mouse_pos{
+            grid_geometry.AbsoluteToLocal(InDragDropEvent.GetScreenSpacePosition())};
+
+        auto const dimensions{inventory->get_dimensions()};
+        auto const w{static_cast<float>(dimensions.x())};
+        auto const h{static_cast<float>(dimensions.y())};
+
+        auto const cell_width{widget_size.X / w};
+        auto const cell_height{widget_size.Y / h};
+
+        auto const click_col{static_cast<int32>(mouse_pos.X / cell_width)};
+        auto const click_row{static_cast<int32>(mouse_pos.Y / cell_height)};
+
+        FCoord drop_location{click_col, click_row};
 
         if (inventory->move_item(*op->inventory_slot, op->click_local_location, drop_location)) {
             refresh_grid();

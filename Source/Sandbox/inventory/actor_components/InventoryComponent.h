@@ -32,6 +32,7 @@ class SANDBOX_API UInventoryComponent
     auto get_random_weapon() -> AWeaponBase*;
 
     // Grid querying
+    auto get_dimensions() const { return dimensions; }
     auto get_n_rows() const { return dimensions.y(); }
     auto get_n_columns() const { return dimensions.x(); }
     auto get_n_slots() const { return dimensions.area(); }
