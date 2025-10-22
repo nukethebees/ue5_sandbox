@@ -47,8 +47,9 @@ void UInventoryGridWidget::refresh_grid() {
 
     auto const n_rows{inventory->get_n_rows()};
     auto const n_cols{inventory->get_n_columns()};
+    auto const n_slots{inventory->get_n_slots()};
 
-    auto const grid_aspect_ratio{static_cast<float>(n_cols) / static_cast<float>(n_rows)};
+    auto const grid_aspect_ratio{inventory->get_aspect_ratio()};
     size_box->SetMinAspectRatio(grid_aspect_ratio);
     size_box->SetMaxAspectRatio(grid_aspect_ratio);
 
@@ -59,8 +60,20 @@ void UInventoryGridWidget::refresh_grid() {
         item_grid->SetRowFill(row, 1.0f);
     }
 
+    TArray<bool> slot_filled;
+    slot_filled.Init(false, n_slots);
+
+    auto const items{inventory->get_slots_view()};
+    for (auto const& item : items) {}
+
+    // Add the empty slots
     for (int32 row{0}; row < n_rows; ++row) {
         for (int32 col{0}; col < n_cols; ++col) {
+            auto const coord_id{row * n_cols + col};
+            if (slot_filled[coord_id]) {
+                continue;
+            }
+
             auto const widget_name{FString::Printf(TEXT("slot_col_%d_row_%d"), col, row)};
 
             auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class, FName(*widget_name))};
