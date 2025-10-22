@@ -49,7 +49,7 @@ void STextPopupWidget::Construct(FArguments const& InArgs) {
                             ]
                         ]
                 ]
-            ]
+        ]
     ];
     // clang-format on
 }
@@ -60,6 +60,9 @@ FReply STextPopupWidget::OnMouseButtonDown(FGeometry const& MyGeometry,
     constexpr auto logger{NestedLogger<"OnMouseButtonDown">()};
 
     if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+        drag_mouse_pos_begin_ = MouseEvent.GetScreenSpacePosition();
+        auto xform{GetRenderTransform().Get({})};
+        drag_translation_begin_ = xform.GetTranslation();
         return FReply::Handled().CaptureMouse(SharedThis(this));
     }
 
@@ -69,10 +72,13 @@ FReply STextPopupWidget::OnMouseMove(FGeometry const& MyGeometry, FPointerEvent 
     constexpr auto logger{NestedLogger<"OnMouseMove">()};
 
     if (MouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton) && HasMouseCapture()) {
-        auto const mouse_delta{MouseEvent.GetCursorDelta()};
+        auto const& abs_mouse_pos{MouseEvent.GetScreenSpacePosition()};
+        auto const local_mouse_cur{MyGeometry.AbsoluteToLocal(abs_mouse_pos)};
+        auto const local_mouse_start{MyGeometry.AbsoluteToLocal(drag_mouse_pos_begin_)};
+        auto const local_mouse_delta{local_mouse_cur - local_mouse_start};
+
         FTransform2D xform{GetRenderTransform().Get({})};
-        xform.SetTranslation(xform.GetTranslation() + mouse_delta);
-        SetRenderTransform(xform);
+        SetRenderTransform(drag_translation_begin_ + local_mouse_delta);
 
         return FReply::Handled();
     }

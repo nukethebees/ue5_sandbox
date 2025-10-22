@@ -30,4 +30,6 @@ class STextPopupWidget
   private:
     FText msg_;
     FOnClicked on_dismissed_;
+    FVector2D drag_mouse_pos_begin_;
+    FVector2D drag_translation_begin_;
 };
