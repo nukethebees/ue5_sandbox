@@ -24,5 +24,5 @@ class SANDBOX_API IInventoryItem {
     virtual FDimensions get_size() const = 0;
 
     // Display
-    virtual UTexture2D const* get_display_image() const { return nullptr; }
+    virtual UTexture2D* get_display_image() const { return nullptr; }
 };
