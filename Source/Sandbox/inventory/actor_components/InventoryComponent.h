@@ -31,6 +31,10 @@ class SANDBOX_API UInventoryComponent
     // Item access
     auto get_random_weapon() -> AWeaponBase*;
 
+    // Money
+    void add_money(int32 new_money) { money += new_money; }
+    auto get_money() const { return money; }
+
     // Grid querying
     auto get_dimensions() const { return dimensions; }
     auto get_n_rows() const { return dimensions.y(); }
@@ -47,12 +51,11 @@ class SANDBOX_API UInventoryComponent
     }
 
     auto get_slots_view() const { return TArrayView<FInventorySlot const>(slots); }
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
-    int32 money{0};
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     FDimensions dimensions{100, 100};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    int32 money{0};
 };

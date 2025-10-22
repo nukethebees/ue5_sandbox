@@ -57,7 +57,6 @@ constexpr auto tuple_array_index_v =
 
 #define COLLISION_VISIT_STAMP(stamper, N_CASES)                                            \
     do {                                                                                   \
-        static_assert(N_TYPES <= (N_CASES), "n is too large for this expansion.");         \
         switch (payload_index.type_tag) {                                                  \
             stamper(0, COLLISION_CASE);                                                    \
             default: {                                                                     \

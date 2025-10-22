@@ -12,6 +12,7 @@
 #include "Sandbox/interaction/triggering/data/TriggerOtherPayload.h"
 #include "Sandbox/interaction/triggering/mixins/TriggerSubsystemMixins.hpp"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystemCore.h"
+#include "Sandbox/items/data/MoneyPickupPayload.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -34,6 +35,7 @@ class SANDBOX_API UTriggerSubsystem
                          FHealthStationPayload,
                          FRotatePayload,
                          FWeaponPickupPayload,
-                         FForcefieldPayload>
+                         FForcefieldPayload,
+                         FMoneyPickupPayload>
         core_{};
 };

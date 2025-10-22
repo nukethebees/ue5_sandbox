@@ -85,7 +85,7 @@ void SInGameMenuWidget::Construct(FArguments const& InArgs) {
                                     [
                                         SNew(SInventoryTabWidget)
                                             .Money_Lambda([this]() {
-                                                return inventory_component_ ? inventory_component_->money : 0;
+                                                return inventory_component_ ? inventory_component_->get_money() : 0;
                                             })
                                     ]
                                 // Powers

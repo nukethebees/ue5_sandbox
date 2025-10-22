@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 #include "Sandbox/interaction/collision/data/CollisionContext.h"

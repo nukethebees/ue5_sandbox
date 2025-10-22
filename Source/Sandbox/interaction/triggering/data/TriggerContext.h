@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "CoreMinimal.h"
+
 #include "Sandbox/interaction/triggering/data/TriggerableId.h"
 #include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
 
