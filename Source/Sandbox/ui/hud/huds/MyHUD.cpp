@@ -87,6 +87,7 @@ void AMyHUD::toggle_in_game_menu() {
             }
 
             RETURN_IF_NULLPTR(umg_player_menu);
+            umg_player_menu->refresh();
             umg_player_menu->AddToViewport();
             pc->set_mouse_input_mode();
             is_in_game_menu_open = true;

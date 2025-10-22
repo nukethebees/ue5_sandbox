@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 #include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
 
@@ -22,7 +24,9 @@ class UResearchMenuWidget;
 class UInventoryMenuWidget;
 
 UCLASS()
-class SANDBOX_API UInGamePlayerMenu : public UUserWidget {
+class SANDBOX_API UInGamePlayerMenu
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UInGamePlayerMenu", LogSandboxUI> {
     GENERATED_BODY()
   protected:
     virtual void NativeConstruct() override;
@@ -68,6 +72,7 @@ class SANDBOX_API UInGamePlayerMenu : public UUserWidget {
     UInventoryMenuWidget* inventory_tab{nullptr};
   public:
     void set_inventory(UInventoryComponent& inventory);
+    void refresh();
 
     // Close navigation event
     UPROPERTY(BlueprintAssignable)

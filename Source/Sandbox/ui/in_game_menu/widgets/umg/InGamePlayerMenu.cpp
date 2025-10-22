@@ -57,6 +57,35 @@ void UInGamePlayerMenu::NativeConstruct() {
     // Set initial tab
     set_active_tab(EInGameMenuTab::Inventory);
 }
+void UInGamePlayerMenu::NativeDestruct() {
+    if (powers_tab_button) {
+        powers_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (stats_tab_button) {
+        stats_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (logs_tab_button) {
+        logs_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (objectives_tab_button) {
+        objectives_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (map_tab_button) {
+        map_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (research_tab_button) {
+        research_tab_button->on_clicked.RemoveAll(this);
+    }
+    if (inventory_tab_button) {
+        inventory_tab_button->on_clicked.RemoveAll(this);
+    }
+
+    if (close_button) {
+        close_button->on_clicked.RemoveAll(this);
+    }
+
+    Super::NativeDestruct();
+}
 
 void UInGamePlayerMenu::set_inventory(UInventoryComponent& inventory) {
     RETURN_IF_NULLPTR(inventory_tab);
@@ -98,37 +127,23 @@ void UInGamePlayerMenu::set_active_tab(EInGameMenuTab tab) {
 
     update_tab_button_states(tab);
 }
-void UInGamePlayerMenu::NativeDestruct() {
-    if (powers_tab_button) {
-        powers_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (stats_tab_button) {
-        stats_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (logs_tab_button) {
-        logs_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (objectives_tab_button) {
-        objectives_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (map_tab_button) {
-        map_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (research_tab_button) {
-        research_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (inventory_tab_button) {
-        inventory_tab_button->on_clicked.RemoveAll(this);
-    }
-
-    if (close_button) {
-        close_button->on_clicked.RemoveAll(this);
-    }
-
-    Super::NativeDestruct();
-}
-
 void UInGamePlayerMenu::update_tab_button_states(EInGameMenuTab active_tab) {
     // Update button appearance to show which tab is active
     // Implementation depends on how TextButtonWidget handles selected states
+}
+void UInGamePlayerMenu::refresh() {
+    constexpr auto logger{NestedLogger<"refresh">()};
+
+    switch (current_tab) {
+        using enum EInGameMenuTab;
+        case Inventory: {
+            check(inventory_tab);
+            inventory_tab->on_widget_selected();
+            break;
+        }
+        default: {
+            logger.log_warning(TEXT("Unhandled case"));
+            break;
+        }
+    }
 }

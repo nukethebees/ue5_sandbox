@@ -9,6 +9,7 @@ class UInventoryComponent;
 
 class UInventoryGridWidget;
 class UItemDetailsWidget;
+class UTextBlock;
 
 UCLASS()
 class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
@@ -16,6 +17,7 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
   public:
     void set_inventory(UInventoryComponent& inv);
     void on_widget_selected();
+    void update_money_display(int32 money);
   protected:
     virtual void NativeConstruct() override;
 
@@ -24,4 +26,10 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UItemDetailsWidget* item_details{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* money_text{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UInventoryComponent* inventory{nullptr};
 };
