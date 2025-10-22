@@ -26,6 +26,7 @@ struct FDimensions {
     FIntPoint get_value() const { return value; }
 
     auto area() const { return value.X * value.Y; }
+    float aspect_ratio() const { return static_cast<float>(value.X) / static_cast<float>(value.Y); }
     template <typename Self>
     auto&& x(this Self&& self) {
         return std::forward_like<Self>(self.value.X);
