@@ -23,15 +23,26 @@ class SANDBOX_API UInventoryComponent
   public:
     UInventoryComponent();
 
+    // Item insertion
     bool add_item(TScriptInterface<IInventoryItem> item);
     auto find_free_point(IInventoryItem const& item) const -> std::optional<FCoord>;
+
+    // Item access
     auto get_random_weapon() -> AWeaponBase*;
+
+    // Grid querying
     auto get_n_rows() const { return dimensions.y(); }
     auto get_n_columns() const { return dimensions.x(); }
+    auto get_n_slots() const { return dimensions.area(); }
     bool is_free(FCoord coord, FDimensions item_dimensions) const;
 
     auto get_width() const { return dimensions.x(); }
     auto get_height() const { return dimensions.y(); }
+    auto get_aspect_ratio() const {
+        return static_cast<float>(dimensions.x()) / static_cast<float>(dimensions.y());
+    }
+
+    auto get_slots_view() const { return TArrayView<FInventorySlot const>(slots); }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     int32 money{0};
