@@ -6,6 +6,7 @@
 #include "Engine/Texture2D.h"
 
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/ui/in_game_menu/misc/InventorySlotDragDropOperation.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventorySlotWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -27,7 +28,14 @@ void UInventoryGridWidget::NativeDestruct() {
 bool UInventoryGridWidget::NativeOnDrop(FGeometry const& InGeometry,
                                         FDragDropEvent const& InDragDropEvent,
                                         UDragDropOperation* InOperation) {
-    log_verbose(TEXT("NativeOnDrop"));
+    constexpr auto logger{NestedLogger<"NativeOnDrop">()};
+
+    logger.log_verbose(TEXT("Start"));
+    if (auto* op{Cast<UInventorySlotDragDropOperation>(InOperation)}) {
+        logger.log_verbose(TEXT("Cast successful."));
+        return true;
+    }
+
     return false;
 }
 
