@@ -12,6 +12,7 @@
 
 #include "WeaponBase.generated.h"
 
+class UTexture2D;
 class UBoxComponent;
 
 UCLASS(Abstract)
@@ -60,10 +61,10 @@ class SANDBOX_API AWeaponBase
         static FString const default_name{TEXT("WeaponBaseDefaultValue")};
         return default_name;
     };
+    virtual UTexture2D* get_display_image() const override { return display_image; }
 
     // AWeaponBase
-    UFUNCTION()
-    void hide_weapon();
+    UFUNCTION() void hide_weapon();
     UFUNCTION()
     void show_weapon();
 
@@ -78,4 +79,7 @@ class SANDBOX_API AWeaponBase
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
     FWeaponPickupPayload trigger_payload;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    UTexture2D* display_image{nullptr};
 };
