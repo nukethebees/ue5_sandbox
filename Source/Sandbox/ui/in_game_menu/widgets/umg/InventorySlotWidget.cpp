@@ -1,5 +1,6 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventorySlotWidget.h"
 
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Image.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
@@ -45,6 +46,54 @@ void UInventorySlotWidget::set_image_visibility(bool vis) {
 
 void UInventorySlotWidget::NativeConstruct() {
     Super::NativeConstruct();
+}
+void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
+                                                FPointerEvent const& InMouseEvent,
+                                                UDragDropOperation*& OutOperation) {
+    Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+    log_verbose(TEXT("NativeOnDragDetected"));
+}
+void UInventorySlotWidget::NativeOnDragEnter(FGeometry const& InGeometry,
+                                             FDragDropEvent const& InDragDropEvent,
+                                             UDragDropOperation* InOperation) {
+    Super::NativeOnDragEnter(InGeometry, InDragDropEvent, InOperation);
+    log_verbose(TEXT("NativeOnDragEnter"));
+}
+void UInventorySlotWidget::NativeOnDragLeave(FDragDropEvent const& InDragDropEvent,
+                                             UDragDropOperation* InOperation) {
+    Super::NativeOnDragLeave(InDragDropEvent, InOperation);
+    log_verbose(TEXT("NativeOnDragLeave"));
+}
+bool UInventorySlotWidget::NativeOnDragOver(FGeometry const& InGeometry,
+                                            FDragDropEvent const& InDragDropEvent,
+                                            UDragDropOperation* InOperation) {
+    Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
+    log_verbose(TEXT("NativeOnDragOver"));
+    return false;
+}
+FReply UInventorySlotWidget::NativeOnMouseMove(FGeometry const& InGeometry,
+                                               FPointerEvent const& InMouseEvent) {
+    Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+    return FReply::Unhandled();
+}
+FReply UInventorySlotWidget::NativeOnMouseButtonDown(FGeometry const& InGeometry,
+                                                     FPointerEvent const& InMouseEvent) {
+    Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+    log_verbose(TEXT("NativeOnMouseButtonDown"));
+
+    if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton)) {
+        return UWidgetBlueprintLibrary::DetectDragIfPressed(
+                   InMouseEvent, this, EKeys::LeftMouseButton)
+            .NativeReply;
+    }
+
+    return FReply::Unhandled();
+}
+FReply UInventorySlotWidget::NativeOnMouseButtonUp(FGeometry const& InGeometry,
+                                                   FPointerEvent const& InMouseEvent) {
+    Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+    log_verbose(TEXT("NativeOnMouseButtonUp"));
+    return FReply::Unhandled();
 }
 
 void UInventorySlotWidget::align_stack_text(UTextBlock& tb) {
