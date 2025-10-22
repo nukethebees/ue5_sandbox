@@ -88,15 +88,7 @@ void UInventoryGridWidget::refresh_grid() {
         auto* slot_widget{CreateWidget<UInventorySlotWidget>(
             world, slot_class, make_name(origin_col, origin_row))};
         check(slot_widget);
-
-        if (auto* img{item.item->get_display_image()}) {
-            slot_widget->set_image(*img);
-        } else {
-            log_warning(TEXT("Item %s has no display image."), *item.item->get_name());
-            slot_widget->set_no_image_fallback_text(FText::FromString(item.name()));
-        }
-
-        slot_widget->set_aspect_ratio(item.aspect_ratio());
+        slot_widget->set_inventory_slot(item);
 
         auto const w{item.width()};
         auto const h{item.height()};

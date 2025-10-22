@@ -6,6 +6,7 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 
+#include "Sandbox/inventory/data/InventorySlot.h"
 #include "Sandbox/ui/in_game_menu/misc/InventorySlotDragDropOperation.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -48,6 +49,24 @@ void UInventorySlotWidget::set_image_visibility(bool vis) {
 
 void UInventorySlotWidget::NativeConstruct() {
     Super::NativeConstruct();
+
+    if (!inventory_slot) {
+        return;
+    }
+
+    RETURN_IF_NULLPTR(stack_size_text);
+    RETURN_IF_NULLPTR(icon_image);
+    RETURN_IF_NULLPTR(inventory_slot->item);
+
+    set_aspect_ratio(inventory_slot->aspect_ratio());
+
+    auto const& item{*inventory_slot->item};
+    if (auto* img{item.get_display_image()}) {
+        set_image(*img);
+    } else {
+        log_warning(TEXT("Item %s has no display image."), *item.get_name());
+        set_no_image_fallback_text(FText::FromString(item.get_name()));
+    }
 }
 void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
                                                 FPointerEvent const& InMouseEvent,
