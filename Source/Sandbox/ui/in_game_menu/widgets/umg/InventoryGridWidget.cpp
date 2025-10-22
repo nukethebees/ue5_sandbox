@@ -33,7 +33,14 @@ bool UInventoryGridWidget::NativeOnDrop(FGeometry const& InGeometry,
     logger.log_verbose(TEXT("Start"));
     if (auto* op{Cast<UInventorySlotDragDropOperation>(InOperation)}) {
         logger.log_verbose(TEXT("Cast successful."));
-        return true;
+        check(op->inventory_slot);
+
+        FCoord drop_location{};
+
+        if (inventory->move_item(*op->inventory_slot, op->click_local_location, drop_location)) {
+            refresh_grid();
+            return true;
+        }
     }
 
     return false;

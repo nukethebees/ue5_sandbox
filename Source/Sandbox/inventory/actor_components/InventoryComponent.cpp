@@ -24,6 +24,11 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
 
     return true;
 }
+bool UInventoryComponent::move_item(FInventorySlot const& slot,
+                                    FCoord item_offset,
+                                    FCoord new_location) {
+    return false;
+}
 auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
     -> std::optional<FCoord> {
     auto const size{item.get_size()};
@@ -41,6 +46,7 @@ auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
 
     return {};
 }
+
 auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     log_display(TEXT("Getting random weapon."));
 
@@ -61,6 +67,7 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
 
     return nullptr;
 }
+
 bool UInventoryComponent::is_free(FCoord coord, FDimensions item_dimensions) const {
     constexpr auto logger{NestedLogger<"is_free">()};
 

@@ -25,6 +25,7 @@ class SANDBOX_API UInventoryComponent
 
     // Item insertion
     bool add_item(TScriptInterface<IInventoryItem> item);
+    bool move_item(FInventorySlot const& slot, FCoord item_offset, FCoord new_location);
     auto find_free_point(IInventoryItem const& item) const -> std::optional<FCoord>;
 
     // Item access

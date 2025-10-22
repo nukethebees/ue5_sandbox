@@ -16,7 +16,10 @@ class UInventorySlotDragDropOperation : public UDragDropOperation {
     UInventorySlotDragDropOperation() = default;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
-    FCoord click_location;
+    FCoord click_global_location;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    FCoord click_local_location;
 
     FInventorySlot const* inventory_slot{nullptr};
 };

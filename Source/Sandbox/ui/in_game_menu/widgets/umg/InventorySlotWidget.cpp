@@ -117,7 +117,8 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
 
     auto* drag_operation{NewObject<UInventorySlotDragDropOperation>(this)};
     check(drag_operation);
-    drag_operation->click_location = FCoord{click_col_grid, click_row_grid};
+    drag_operation->click_global_location = FCoord{click_col_grid, click_row_grid};
+    drag_operation->click_local_location = FCoord{click_col_local, click_row_local};
     drag_operation->inventory_slot = inventory_slot;
 
     OutOperation = drag_operation;
