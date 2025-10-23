@@ -63,7 +63,7 @@ class SANDBOX_API UPawnWeaponComponent
     UPROPERTY(BlueprintAssignable, Category = "Weapons")
     FOnAmmoChanged on_weapon_ammo_changed;
   private:
-    void equip_weapon(AWeaponBase* weapon);
+    void equip_weapon(AWeaponBase& weapon);
 
     bool pickup_new_weapon(AWeaponBase& weapon,
                            UInventoryComponent& inventory_component,

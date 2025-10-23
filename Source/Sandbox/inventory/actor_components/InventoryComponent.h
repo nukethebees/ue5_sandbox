@@ -30,6 +30,10 @@ class SANDBOX_API UInventoryComponent
 
     // Item access
     auto get_random_weapon() -> AWeaponBase*;
+    auto get_first_weapon() -> AWeaponBase*;
+    auto get_last_weapon() -> AWeaponBase*;
+    auto get_weapon_after(AWeaponBase const& weapon) -> AWeaponBase*;
+    auto get_weapon_before(AWeaponBase const& weapon) -> AWeaponBase*;
 
     // Money
     void add_money(int32 new_money) { money += new_money; }

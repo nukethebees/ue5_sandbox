@@ -71,22 +71,30 @@ void UPawnWeaponComponent::unequip_weapon() {
 }
 void UPawnWeaponComponent::cycle_next_weapon() {
     RETURN_IF_NULLPTR(inventory);
-    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
-    equip_weapon(weapon);
+    if (!active_weapon) {
+        if (auto* weapon{inventory->get_first_weapon()}) {
+            equip_weapon(*weapon);
+        }
+    } else if (auto* weapon{inventory->get_weapon_after(*active_weapon)}) {
+        equip_weapon(*weapon);
+    }
 }
 void UPawnWeaponComponent::cycle_prev_weapon() {
     RETURN_IF_NULLPTR(inventory);
-    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
-    equip_weapon(weapon);
+    if (!active_weapon) {
+        if (auto* weapon{inventory->get_last_weapon()}) {
+            equip_weapon(*weapon);
+        }
+    } else if (auto* weapon{inventory->get_weapon_before(*active_weapon)}) {
+        equip_weapon(*weapon);
+    }
 }
 
-void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
+void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
     constexpr auto logger{NestedLogger<"equip_weapon">()};
 
-    RETURN_IF_NULLPTR(weapon);
-
     unequip_weapon();
-    active_weapon = weapon;
+    active_weapon = &weapon;
     active_weapon->show_weapon();
 
     active_weapon->on_ammo_changed.AddDynamic(this,
@@ -144,12 +152,12 @@ bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
         }
         case EquipIfNothingEquipped: {
             if (!active_weapon) {
-                equip_weapon(&weapon);
+                equip_weapon(weapon);
             }
             break;
         }
         case Equip: {
-            equip_weapon(&weapon);
+            equip_weapon(weapon);
             break;
         }
         default: {

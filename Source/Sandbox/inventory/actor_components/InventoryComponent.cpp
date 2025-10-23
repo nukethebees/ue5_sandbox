@@ -77,6 +77,12 @@ auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
     return {};
 }
 
+auto UInventoryComponent::get_first_weapon() -> AWeaponBase* {
+    return nullptr;
+}
+auto UInventoryComponent::get_last_weapon() -> AWeaponBase* {
+    return nullptr;
+}
 auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     log_display(TEXT("Getting random weapon."));
 
@@ -94,6 +100,12 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
         }
     }
 
+    return nullptr;
+}
+auto UInventoryComponent::get_weapon_after(AWeaponBase const& weapon) -> AWeaponBase* {
+    return nullptr;
+}
+auto UInventoryComponent::get_weapon_before(AWeaponBase const& weapon) -> AWeaponBase* {
     return nullptr;
 }
 
