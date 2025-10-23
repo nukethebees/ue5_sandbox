@@ -84,6 +84,17 @@ void UPawnWeaponComponent::unequip_weapon() {
     active_weapon->hide_weapon();
     active_weapon = nullptr;
 }
+void UPawnWeaponComponent::cycle_next_weapon() {
+    RETURN_IF_NULLPTR(inventory);
+    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
+    equip_weapon(weapon);
+}
+void UPawnWeaponComponent::cycle_prev_weapon() {
+    RETURN_IF_NULLPTR(inventory);
+    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
+    equip_weapon(weapon);
+}
+
 bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class) {
     constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
 

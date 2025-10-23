@@ -43,6 +43,9 @@ class SANDBOX_API UPawnWeaponComponent
 
     void equip_weapon(AWeaponBase* weapon);
     void unequip_weapon();
+    void cycle_next_weapon();
+    void cycle_prev_weapon();
+
     bool pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class);
     bool pickup_new_weapon(AWeaponBase& weapon);
 
