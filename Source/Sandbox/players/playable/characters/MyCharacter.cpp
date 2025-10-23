@@ -226,16 +226,12 @@ void AMyCharacter::attack_ended() {
 
 // Inventory
 void AMyCharacter::cycle_next_weapon() {
-    RETURN_IF_NULLPTR(inventory);
     RETURN_IF_NULLPTR(weapon_component);
-    log_display(TEXT("cycle_next_weapon"));
-
-    TRY_INIT_PTR(weapon, inventory->get_random_weapon());
-    weapon_component->equip_weapon(weapon);
+    weapon_component->cycle_next_weapon();
 }
 void AMyCharacter::cycle_prev_weapon() {
-    RETURN_IF_NULLPTR(inventory);
-    log_display(TEXT("cycle_prev_weapon"));
+    RETURN_IF_NULLPTR(weapon_component);
+    weapon_component->cycle_next_weapon();
 }
 void AMyCharacter::unequip_weapon() {
     RETURN_IF_NULLPTR(inventory);
