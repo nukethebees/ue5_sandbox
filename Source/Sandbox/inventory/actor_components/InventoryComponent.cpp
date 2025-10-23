@@ -208,3 +208,6 @@ bool UInventoryComponent::is_free(FCoord coord,
 auto UInventoryComponent::get_item(FCoord coord) -> FInventorySlot* {
     return nullptr;
 }
+auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot* {
+    return nullptr;
+}
