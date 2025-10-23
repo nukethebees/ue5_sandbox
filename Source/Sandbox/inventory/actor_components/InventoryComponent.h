@@ -39,14 +39,17 @@ class SANDBOX_API UInventoryComponent
     void add_money(int32 new_money) { money += new_money; }
     auto get_money() const { return money; }
 
-    // Grid querying
+    // Grid properties
     auto get_dimensions() const { return dimensions; }
     auto get_n_rows() const { return dimensions.y(); }
     auto get_n_columns() const { return dimensions.x(); }
     auto get_n_slots() const { return dimensions.area(); }
+
+    // Grid querying
     bool is_free(FCoord coord,
                  FDimensions item_dimensions,
                  FInventorySlot const* to_ignore = nullptr) const;
+    auto get_item(FCoord coord) -> FInventorySlot*;
 
     auto get_width() const { return dimensions.x(); }
     auto get_height() const { return dimensions.y(); }

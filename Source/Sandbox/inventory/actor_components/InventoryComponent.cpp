@@ -78,9 +78,40 @@ auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
 }
 
 auto UInventoryComponent::get_first_weapon() -> AWeaponBase* {
+    auto const n_rows{get_n_rows()};
+    auto const n_cols{get_n_columns()};
+
+    for (int32 row{0}; row < n_rows; ++row) {
+        for (int32 col{0}; col < n_cols; ++col) {
+            FCoord const coord{col, row};
+            if (auto* item{get_item(coord)}) {
+                if (auto* weapon{item->item->get_weapon()}) {
+                    return weapon;
+                }
+            }
+        }
+    }
+
     return nullptr;
 }
 auto UInventoryComponent::get_last_weapon() -> AWeaponBase* {
+    auto const n_rows{get_n_rows()};
+    auto const n_cols{get_n_columns()};
+
+    check(n_rows > 0);
+    check(n_cols > 0);
+
+    for (int32 row{n_rows - 1}; row >= 0; --row) {
+        for (int32 col{n_cols - 1}; col >= 0; --col) {
+            FCoord const coord{col, row};
+            if (auto* item{get_item(coord)}) {
+                if (auto* weapon{item->item->get_weapon()}) {
+                    return weapon;
+                }
+            }
+        }
+    }
+
     return nullptr;
 }
 auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
@@ -173,4 +204,7 @@ bool UInventoryComponent::is_free(FCoord coord,
     }
 
     return true;
+}
+auto UInventoryComponent::get_item(FCoord coord) -> FInventorySlot* {
+    return nullptr;
 }
