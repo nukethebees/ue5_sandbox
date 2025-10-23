@@ -7,6 +7,7 @@
 
 #include "InventoryItem.generated.h"
 
+class AWeaponBase;
 class UTexture2D;
 
 UINTERFACE(MinimalAPI)
@@ -18,6 +19,7 @@ class SANDBOX_API IInventoryItem {
     GENERATED_BODY()
   public:
     virtual bool is_weapon() const = 0;
+    virtual AWeaponBase* get_weapon() { return nullptr; };
     virtual FString const& get_name() const = 0;
 
     // Grid

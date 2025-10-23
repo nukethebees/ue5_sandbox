@@ -89,9 +89,8 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     Algo::RandomShuffle(indexes);
 
     for (int32 i : indexes) {
-        auto& slot{slots[i]};
-        if (slot.item->is_weapon()) {
-            return Cast<AWeaponBase>(slot.item.GetObject());
+        if (auto* weapon{slots[i].item->get_weapon()}) {
+            return weapon;
         }
     }
 

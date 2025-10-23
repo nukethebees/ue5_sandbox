@@ -56,6 +56,7 @@ class SANDBOX_API AWeaponBase
     UFUNCTION()
     virtual FDimensions get_size() const override { return FDimensions{1000000, 1000000}; };
     virtual bool is_weapon() const override final { return true; };
+    virtual AWeaponBase* get_weapon() override final { return this; };
     UFUNCTION()
     virtual FString const& get_name() const {
         static FString const default_name{TEXT("WeaponBaseDefaultValue")};
