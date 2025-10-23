@@ -59,21 +59,6 @@ bool UPawnWeaponComponent::can_reload() const {
     return active_weapon->can_reload();
 }
 
-void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
-    constexpr auto logger{NestedLogger<"equip_weapon">()};
-
-    RETURN_IF_NULLPTR(weapon);
-
-    unequip_weapon();
-    active_weapon = weapon;
-    active_weapon->show_weapon();
-
-    active_weapon->on_ammo_changed.AddDynamic(this,
-                                              &UPawnWeaponComponent::on_active_weapon_ammo_changed);
-    on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
-
-    logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
-}
 void UPawnWeaponComponent::unequip_weapon() {
     if (!active_weapon) {
         return;
@@ -93,6 +78,22 @@ void UPawnWeaponComponent::cycle_prev_weapon() {
     RETURN_IF_NULLPTR(inventory);
     TRY_INIT_PTR(weapon, inventory->get_random_weapon());
     equip_weapon(weapon);
+}
+
+void UPawnWeaponComponent::equip_weapon(AWeaponBase* weapon) {
+    constexpr auto logger{NestedLogger<"equip_weapon">()};
+
+    RETURN_IF_NULLPTR(weapon);
+
+    unequip_weapon();
+    active_weapon = weapon;
+    active_weapon->show_weapon();
+
+    active_weapon->on_ammo_changed.AddDynamic(this,
+                                              &UPawnWeaponComponent::on_active_weapon_ammo_changed);
+    on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
+
+    logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 }
 
 bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class) {
