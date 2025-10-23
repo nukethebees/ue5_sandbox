@@ -54,7 +54,10 @@ class SANDBOX_API UPawnWeaponComponent
     void set_spawn_transform(FTransform new_value) { spawn_transform = new_value; }
     auto get_spawn_transform() const { return spawn_transform; }
 
-    void set_attach_location(USceneComponent* new_value);
+    void set_attach_location(USceneComponent& new_value) {
+        attach_location = &new_value;
+        spawn_transform.SetLocation(new_value.GetRelativeLocation());
+    }
     auto get_attach_location() const { return attach_location; }
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")

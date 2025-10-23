@@ -114,7 +114,7 @@ void AMyCharacter::BeginPlay() {
     RETURN_IF_NULLPTR(weapon_attach_point);
     RETURN_IF_NULLPTR(weapon_component);
 
-    weapon_component->set_attach_location(weapon_attach_point);
+    weapon_component->set_attach_location(*weapon_attach_point);
 }
 
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {

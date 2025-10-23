@@ -185,14 +185,6 @@ AWeaponBase* UPawnWeaponComponent::spawn_weapon(TSubclassOf<AWeaponBase> weapon_
     return spawned_weapon;
 }
 
-void UPawnWeaponComponent::set_attach_location(USceneComponent* new_value) {
-    constexpr auto logger{NestedLogger<"set_attach_location">()};
-
-    RETURN_IF_NULLPTR(new_value);
-    attach_location = new_value;
-    spawn_transform.SetLocation(attach_location->GetRelativeLocation());
-}
-
 void UPawnWeaponComponent::on_active_weapon_ammo_changed(FAmmoData current_ammo) {
     on_weapon_ammo_changed.Broadcast(current_ammo);
 }
