@@ -231,7 +231,7 @@ void AMyCharacter::cycle_next_weapon() {
 }
 void AMyCharacter::cycle_prev_weapon() {
     RETURN_IF_NULLPTR(weapon_component);
-    weapon_component->cycle_next_weapon();
+    weapon_component->cycle_prev_weapon();
 }
 void AMyCharacter::unequip_weapon() {
     RETURN_IF_NULLPTR(inventory);
