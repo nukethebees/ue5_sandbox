@@ -75,12 +75,14 @@ class UCollisionEffectSubsystemCore
 
     template <typename Self, typename Payload>
     void add_payload(this Self& self, AActor& actor, Payload&& payload, auto* top_subsystem) {
+        using PayloadT = std::remove_cvref_t<Payload>;
+
         auto const actor_index{self.register_actor(actor, top_subsystem)};
         RETURN_IF_FALSE(actor_index);
 
-        auto& payload_array{ml::ArrayGet<Payload>(self.payloads)};
+        auto& payload_array{ml::ArrayGet<PayloadT>(self.payloads)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
-        constexpr auto payload_array_index{ml::tuple_array_index_v<Payload, Self>};
+        constexpr auto payload_array_index{ml::tuple_array_index_v<PayloadT, Self>};
 
         auto& payload_indexes{self.actor_payload_indexes[*actor_index].indexes};
         payload_indexes.Add(FPayloadIndex(static_cast<uint8>(payload_array_index),
