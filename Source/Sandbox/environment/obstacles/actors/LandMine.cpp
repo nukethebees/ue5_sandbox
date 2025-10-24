@@ -103,8 +103,7 @@ void ALandMine::BeginPlay() {
     // Set runtime location in payload config
     payload_config.mine_location = GetActorLocation();
 
-    try_emplace_subsystem_payload<UCollisionEffectSubsystem, FLandMinePayload>(*this,
-                                                                               payload_config);
+    try_add_subsystem_payload<UCollisionEffectSubsystem>(*this, payload_config);
 }
 
 void ALandMine::change_state(ELandMineState new_state) {
