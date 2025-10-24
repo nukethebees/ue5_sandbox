@@ -13,9 +13,10 @@
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/logging/mixins/print_msg_mixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/playable/data/CameraConfig.h"
+#include "Sandbox/players/playable/data/CharacterInputActions.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
 #include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
@@ -48,31 +49,6 @@ class UActorDescriptionScannerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
-UENUM(BlueprintType)
-enum class ECharacterCameraMode : uint8 {
-    FirstPerson UMETA(DisplayName = "First Person"),
-    ThirdPerson UMETA(DisplayName = "Third Person"),
-    MAX UMETA(Hidden)
-};
-
-struct FCameraConfig {
-    constexpr FCameraConfig(ECharacterCameraMode camera_mode,
-                            char const* component_name,
-                            bool needs_spring_arm,
-                            bool use_pawn_control_rotation)
-        : camera_mode(camera_mode)
-        , camera_index(std::to_underlying(camera_mode))
-        , component_name(component_name)
-        , needs_spring_arm(needs_spring_arm)
-        , use_pawn_control_rotation(use_pawn_control_rotation) {}
-
-    ECharacterCameraMode camera_mode;
-    std::underlying_type_t<ECharacterCameraMode> camera_index;
-    char const* component_name;
-    bool needs_spring_arm;
-    bool use_pawn_control_rotation;
-};
-
 namespace ml {
 namespace AMyCharacter {
 inline static constexpr int32 camera_count{static_cast<int32>(ECharacterCameraMode::MAX)};
@@ -92,38 +68,9 @@ consteval int32 count_required_spring_arms() {
 }
 }
 
-USTRUCT(BlueprintType)
-struct FCharacterInputActions {
-    GENERATED_BODY()
-
-    FCharacterInputActions() = default;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputMappingContext* character_context{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* move{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* jump{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* crouch{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* sprint{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* jetpack{nullptr};
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* cycle_camera{nullptr};
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputAction* toggle_torch{nullptr};
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    UInputAction* scroll_torch_cone{nullptr};
-};
-
 UCLASS()
 class SANDBOX_API AMyCharacter
     : public ACharacter
-    , public print_msg_mixin
     , public ml::LogMsgMixin<"MyCharacter", LogSandboxCharacter>
     , public IDeathHandler
     , public IMaxSpeedChangeListener

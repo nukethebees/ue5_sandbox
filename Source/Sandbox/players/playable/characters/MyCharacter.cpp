@@ -255,10 +255,7 @@ void AMyCharacter::reload_weapon() {
 
 // Torch
 void AMyCharacter::aim_torch(FVector const& world_location) {
-    if (!torch) {
-        print_msg("No torch");
-        return;
-    }
+    RETURN_IF_NULLPTR(torch);
 
     auto const location{torch->GetComponentLocation()};
     auto const direction{(world_location - location).GetSafeNormal()};
@@ -266,10 +263,7 @@ void AMyCharacter::aim_torch(FVector const& world_location) {
     torch->SetWorldRotation(look_at_rotation);
 }
 void AMyCharacter::reset_torch_position() {
-    if (!torch) {
-        print_msg("No torch");
-        return;
-    }
+    RETURN_IF_NULLPTR(torch);
 
     auto const fwd_rot{GetActorForwardVector().Rotation()};
     torch->SetWorldRotation(fwd_rot);
@@ -278,10 +272,7 @@ void AMyCharacter::toggle_torch() {
     set_torch(!torch_on);
 }
 void AMyCharacter::set_torch(bool on) {
-    if (!torch) {
-        print_msg("No torch");
-        return;
-    }
+    RETURN_IF_NULLPTR(torch);
 
     torch_on = on;
     torch->SetVisibility(torch_on);
