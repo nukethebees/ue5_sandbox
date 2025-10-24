@@ -11,6 +11,7 @@
 #include "Sandbox/environment/obstacles/enums/LandMineState.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -40,7 +41,8 @@ class SANDBOX_API ALandMine
     : public AActor
     , public ICollisionOwner
     , public IDeathHandler
-    , public ml::LogMsgMixin<"ALandMine", LogSandboxActor> {
+    , public ml::LogMsgMixin<"ALandMine", LogSandboxActor>
+    , public IDescribable {
     GENERATED_BODY()
   public:
     ALandMine();
@@ -52,6 +54,12 @@ class SANDBOX_API ALandMine
     virtual bool should_destroy_after_collision() const override { return true; }
     virtual float get_destruction_delay() const override { return payload_config.detonation_delay; }
     virtual void on_pre_collision_effect(AActor& other_actor) override;
+
+    // IDescribable
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Mine"))};
+        return desc;
+    }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;

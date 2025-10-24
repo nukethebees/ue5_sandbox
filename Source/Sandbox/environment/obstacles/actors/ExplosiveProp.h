@@ -28,8 +28,9 @@ class SANDBOX_API AExplosiveProp
     // IDeathHandler implementation
     virtual void handle_death() override;
 
-    virtual FText get_description() const override {
-        return FText::FromName(TEXT("Explosive Prop"));
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Explosive Prop"))};
+        return desc;
     }
   protected:
     virtual void BeginPlay() override;
