@@ -9,26 +9,104 @@ This is an Unreal Engine 5.6 project named "Sandbox" - a development playground 
 - **Build solution**: Open `Sandbox.sln` in Visual Studio and build, or use UE5 Editor's compile button
 - **Generate project files**: Right-click `Sandbox.uproject` → "Generate Visual Studio project files"
 - **Format code**: Uses `.clang-format` configuration (TabWidth: 4, ColumnLimit: 100, no tabs)
-- **Run tests**: Single test file exists at `Source/Sandbox/tests/levels_test.cpp`
+- **Run tests**: Test files located in subdirectories (e.g., `Source/Sandbox/core/levels/tests/`, `Source/Sandbox/containers/tests/`)
 
 ## Code Architecture and Structure
 
 ### Module Structure
-The main game module is located in `Source/Sandbox/` with organized subdirectories:
-- `actor_components/` - Custom actor components
-- `actors/` - Game actors and entities
-- `characters/` - Player and NPC character classes
-- `data/` - Data assets and structures
+The main game module is located in `Source/Sandbox/` with a feature-based organization:
+
+#### Combat System (`combat/`)
+- `effects/` - Combat-related effects
+- `projectiles/` - Bullet and projectile implementations
+- `weapons/` - Weapon systems and mechanics
+
+#### Core Systems (`core/`)
+- `camera/` - Camera systems and controls
+- `console/` - Console commands and debugging
+- `destruction/` - Destructible actor systems
+- `levels/` - Level management and utilities
+- `object_pooling/` - Object pooling for performance
+- `video_settings/` - Graphics and video configuration
+- `world_settings/` - World/level settings and configuration
+
+#### Environment (`environment/`)
+- `effects/` - Environmental effects
+- `interactive/` - Interactive environment objects
+- `obstacles/` - Obstacles and barriers
+- `structures/` - Building and structure actors
+- `traversal/` - Lifts, platforms, and traversal mechanics
+- `utilities/` - Environment-related utilities
+
+#### Game Flow (`game_flow/`)
+- `actors/` - Game flow management actors
 - `game_modes/` - Game mode implementations
 - `game_states/` - Game state classes
-- `huds/` - HUD and UI controllers
-- `interfaces/` - C++ interfaces
-- `mixins/` - Reusable component mixins
-- `player_controllers/` - Player input and control logic
-- `subsystems/` - Engine subsystem extensions
-- `tests/` - Unit tests
-- `utilities/` - Helper functions and utilities
-- `widgets/` - UMG widget implementations
+
+#### Health System (`health/`)
+- `actor_components/` - Health-related actor components
+- `actors/` - Health-related actors (health packs, stations)
+- `data/` - Health data structures
+- `enums/` - Health-related enumerations
+- `interfaces/` - Health system interfaces
+- `subsystems/` - Health management subsystems
+
+#### Inventory System (`inventory/`)
+- `actor_components/` - Inventory actor components
+- `actors/` - Inventory-related actors
+- `data/` - Inventory data structures
+- `enums/` - Inventory enumerations
+- `interfaces/` - Inventory interfaces
+
+#### Items System (`items/`)
+- `actor_components/` - Item-related actor components
+- `actors/` - Pickup actors and item entities
+- `data/` - Item data assets
+- `enums/` - Item type enumerations
+- `interfaces/` - Item system interfaces
+
+#### Input & Interaction
+- `input/mixins/` - Input handling mixins
+- `interaction/collision/` - Collision-based interactions
+- `interaction/triggering/` - Trigger-based interactions
+
+#### Logging System (`logging/`)
+- `functions/` - Logging utility functions
+- `mixins/` - Logging mixins
+- `output_devices/` - Custom output device implementations
+- `subsystems/` - Logging subsystems
+
+#### Player Systems (`players/`)
+- `common/` - Shared player functionality
+- `npcs/` - Non-player character implementations
+- `playable/` - Playable character classes and controllers
+
+#### Movement (`movement/`)
+- `actor_components/` - Movement-related components
+
+#### Mass Entity System (`mass_entity/`)
+- `data/` - Mass entity data structures
+- `mixins/` - Mass entity system mixins
+- `subsystems/` - Mass entity subsystems
+
+#### UI System (`ui/`)
+- `controllers/` - UI controllers
+- `hud/` - HUD implementations
+- `in_game_menu/` - In-game menu widgets
+- `in_world/` - 3D in-world UI elements
+- `main_menu/` - Main menu implementation
+- `options_menu/` - Settings and options menus
+- `styles/` - UI styling and themes
+- `utilities/` - UI utility functions
+- `widgets/` - Custom UMG widgets
+
+#### Other
+- `constants/` - Global constants
+- `containers/` - Custom container implementations (with tests)
+- `misc/learning/` - Learning/tutorial actors
+- `shaders/` - Custom shader implementations
+- `utilities/` - General utility functions, concepts, and macros
+- `generated/` - Unreal-generated files
 
 ### Dependencies
 - **Core modules**: Core, CoreUObject, Engine, InputCore, EnhancedInput, UMG
