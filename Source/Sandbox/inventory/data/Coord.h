@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compare>
 #include <concepts>
 #include <utility>
 
@@ -44,6 +45,7 @@ struct FCoord {
 
     FString to_string() const { return FString::Printf(TEXT("x=%d, y=%d"), x(), y()); }
 
+    auto operator<=>(FCoord const& other) const = default;
     FCoord operator-(FCoord const& other) const { return FCoord{value - other.value}; }
 
     // Hash support for TMap/TSet
