@@ -20,12 +20,8 @@ inline ETeamAttitude::Type GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId 
     auto const team_b{static_cast<ETeamID>(TeamB.GetId())};
 
 #if !UE_BUILD_SHIPPING
-    if (TeamA == FGenericTeamId::NoTeam) {
-        UE_LOG(LogSandboxAI, Warning, TEXT("TeamA is NoTeam"));
-    }
-    if (TeamB == FGenericTeamId::NoTeam) {
-        UE_LOG(LogSandboxAI, Warning, TEXT("TeamB is NoTeam"));
-    }
+    check(TeamA != FGenericTeamId::NoTeam);
+    check(TeamB != FGenericTeamId::NoTeam);
 #endif
 
     // Same team is friendly
