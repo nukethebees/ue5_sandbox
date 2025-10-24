@@ -8,11 +8,8 @@ namespace ml {
 auto get_random_nav_point(AActor* actor, float radius) -> std::optional<FNavLocation> {
     RETURN_VALUE_IF_FALSE(actor, {});
 
-    auto* world{actor->GetWorld()};
-    RETURN_VALUE_IF_FALSE(world, {});
-
-    auto* nav_sys{UNavigationSystemV1::GetCurrent(world)};
-    RETURN_VALUE_IF_FALSE(nav_sys, {});
+    INIT_PTR_OR_RETURN_VALUE(world, actor->GetWorld(), {});
+    INIT_PTR_OR_RETURN_VALUE(nav_sys, UNavigationSystemV1::GetCurrent(world), {});
 
     auto const actor_location{actor->GetActorLocation()};
     FNavLocation random_point{};
