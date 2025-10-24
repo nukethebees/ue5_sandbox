@@ -44,6 +44,7 @@ class UCoinCollectorActorComponent;
 class UPawnWeaponComponent;
 class UInventoryComponent;
 class UWarpComponent;
+class UActorDescriptionScannerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 
@@ -242,6 +243,9 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UArrowComponent* weapon_attach_point{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+    UActorDescriptionScannerComponent* actor_description_scanner{nullptr};
 
     // Camera components
     static constexpr int32 camera_count{ml::AMyCharacter::camera_count};

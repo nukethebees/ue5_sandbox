@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 
 #include "Sandbox/misc/learning/actors/TalkingPillar.h"
+#include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/WarpComponent.h"
 #include "Sandbox/ui/hud/huds/MyHud.h"
@@ -29,6 +30,20 @@ void AMyPlayerController::BeginPlay() {
     TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
     TRY_INIT_PTR(hud, Cast<AMyHUD>(GetHUD()));
     character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
+
+    check(character->actor_description_scanner);
+
+    // Set up actor description scanner
+    character->actor_description_scanner->on_description_update.BindUObject(
+        hud, &AMyHUD::update_description);
+
+    TRY_INIT_PTR(world, GetWorld());
+    constexpr bool loop_timer{true};
+    world->GetTimerManager().SetTimer(description_scanner_timer_handle,
+                                      this,
+                                      &AMyPlayerController::perform_description_scan,
+                                      description_scan_interval,
+                                      loop_timer);
 }
 void AMyPlayerController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
@@ -259,4 +274,17 @@ void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_re
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
     subsystem->RemoveMappingContext(to_remove);
     subsystem->AddMappingContext(to_add, 0);
+}
+
+void AMyPlayerController::perform_description_scan() {
+    constexpr auto logger{NestedLogger<"perform_description_scan">()};
+
+    RETURN_IF_NULLPTR(controlled_character);
+    RETURN_IF_NULLPTR(controlled_character->actor_description_scanner);
+
+    FVector view_location;
+    FRotator view_rotation;
+    GetPlayerViewPoint(view_location, view_rotation);
+
+    controlled_character->actor_description_scanner->perform_raycast(view_location, view_rotation);
 }

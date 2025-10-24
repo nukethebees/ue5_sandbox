@@ -7,6 +7,7 @@
 
 #include "Sandbox/combat/effects/data/ExplosionConfig.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -18,13 +19,18 @@ UCLASS()
 class SANDBOX_API AExplosiveProp
     : public AActor
     , public IDeathHandler
-    , public ml::LogMsgMixin<"AExplosiveProp", LogSandboxActor> {
+    , public ml::LogMsgMixin<"AExplosiveProp", LogSandboxActor>
+    , public IDescribable {
     GENERATED_BODY()
   public:
     AExplosiveProp();
 
     // IDeathHandler implementation
     virtual void handle_death() override;
+
+    virtual FText get_description() const override {
+        return FText::FromName(TEXT("Explosive Prop"));
+    }
   protected:
     virtual void BeginPlay() override;
 

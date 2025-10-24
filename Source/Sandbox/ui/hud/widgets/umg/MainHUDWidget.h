@@ -12,6 +12,7 @@ class UVerticalBox;
 class UValueWidget;
 class UHealthWidget;
 class UIntNumWidget;
+class UItemDescriptionHUDWidget;
 
 UCLASS()
 class SANDBOX_API UMainHUDWidget
@@ -39,6 +40,9 @@ class SANDBOX_API UMainHUDWidget
 
     UPROPERTY()
     UIntNumWidget* ammo_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UItemDescriptionHUDWidget* item_description_widget{nullptr};
   protected:
     virtual void NativeConstruct() override;
   public:

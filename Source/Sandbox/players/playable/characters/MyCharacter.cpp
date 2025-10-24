@@ -15,6 +15,7 @@
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
@@ -34,7 +35,9 @@ AMyCharacter::AMyCharacter()
     , warp(CreateDefaultSubobject<UWarpComponent>(TEXT("WarpComponent")))
     , weapon_component(CreateDefaultSubobject<UPawnWeaponComponent>(TEXT("PawnWeapon")))
     , inventory(CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory")))
-    , weapon_attach_point(CreateDefaultSubobject<UArrowComponent>(TEXT("WeaponAttachPoint"))) {
+    , weapon_attach_point(CreateDefaultSubobject<UArrowComponent>(TEXT("WeaponAttachPoint")))
+    , actor_description_scanner(CreateDefaultSubobject<UActorDescriptionScannerComponent>(
+          TEXT("ActorDescriptionScanner"))) {
     PrimaryActorTick.bCanEverTick = false;
 
     // Initialise arrays

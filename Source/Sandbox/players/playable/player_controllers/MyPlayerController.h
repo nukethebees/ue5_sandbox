@@ -12,7 +12,6 @@
 
 #include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/logging/mixins/print_msg_mixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 
@@ -68,7 +67,6 @@ struct FMyPlayerControllerInputActions {
 UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
-    , public print_msg_mixin
     , public ml::LogMsgMixin<"MyPlayerController", LogSandboxActor>
     , public ml::EnhancedInputMixin {
     GENERATED_BODY()
@@ -129,10 +127,15 @@ class SANDBOX_API AMyPlayerController
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     FMyPlayerControllerInputActions input{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Description")
+    float description_scan_interval{0.15f};
   private:
     bool tick_no_controller_character_warning_fired{false};
     void add_input_mapping_context(UInputMappingContext* context);
     void swap_input_mapping_context(UInputMappingContext* to_remove, UInputMappingContext* to_add);
+    void perform_description_scan();
 
     float attack_elapsed_time{0.0f};
+    FTimerHandle description_scanner_timer_handle;
 };
