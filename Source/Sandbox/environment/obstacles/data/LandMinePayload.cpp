@@ -2,8 +2,7 @@
 
 #include "Engine/World.h"
 
-#include "Sandbox/combat/effects/actors/Explosion.h"
-#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -11,30 +10,18 @@ void FLandMinePayload::execute(FCollisionContext context) {
     explode(context.world);
 }
 void FLandMinePayload::explode(UWorld& world) {
-    static constexpr auto logger{log.NestedLogger<"explode">()};
+    TRY_INIT_PTR(explosion_subsystem, world.GetSubsystem<UExplosionSubsystem>());
 
-    auto spawn_explosion{[&world, *this]() {
-        FActorSpawnParameters spawn_params;
-        spawn_params.SpawnCollisionHandlingOverride =
-            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        auto* explosion{world.SpawnActor<AExplosion>(
-            explosion_class, mine_location, FRotator::ZeroRotator, spawn_params)};
-
-        if (explosion) {
-            explosion->damage_config = FHealthChange{damage, EHealthChangeType::Damage};
-            explosion->explosion_radius = explosion_radius;
-            explosion->explosion_force = explosion_force;
-        } else {
-            logger.log_warning(TEXT("Failed to spawn explosion actor."));
-        }
+    auto trigger_explosion{[explosion_subsystem, *this]() {
+        explosion_subsystem->spawn_explosion(
+            mine_location, FRotator::ZeroRotator, explosion_config);
     }};
 
     // Start timer to trigger explosion after delay to synchronize with destruction
     if (detonation_delay > 0.0f) {
-        world.GetTimerManager().SetTimer(timer_handle, spawn_explosion, detonation_delay, false);
+        world.GetTimerManager().SetTimer(timer_handle, trigger_explosion, detonation_delay, false);
     } else {
         // No delay, spawn immediately
-        spawn_explosion();
+        trigger_explosion();
     }
 }

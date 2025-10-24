@@ -1,4 +1,4 @@
-#include "Sandbox/combat/effects/actors/Explosion.h"
+#include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
@@ -14,36 +14,38 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-AExplosion::AExplosion() {
-    PrimaryActorTick.bCanEverTick = true;
+void UExplosionSubsystem::Initialize(FSubsystemCollectionBase& collection) {
+    Super::Initialize(collection);
 }
 
-void AExplosion::BeginPlay() {
-    Super::BeginPlay();
+void UExplosionSubsystem::spawn_explosion(FVector location,
+                                          FRotator rotation,
+                                          FExplosionConfig const& config) {
+    static constexpr auto logger{NestedLogger<"spawn_explosion">()};
 
-    RETURN_IF_NULLPTR(explosion_channel);
+    RETURN_IF_NULLPTR(config.explosion_channel);
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(ndc_manager, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
-    writer_index = ndc_manager->register_asset(*explosion_channel);
-}
-void AExplosion::Tick(float delta_time) {
-    Super::Tick(delta_time);
-    explode();
-    Destroy();
+
+    auto const writer_index{ndc_manager->register_asset(*config.explosion_channel)};
+
+    execute_explosion(location, rotation, config, writer_index);
 }
 
-void AExplosion::explode() {
-    static constexpr auto logger{NestedLogger<"explode">()};
+void UExplosionSubsystem::execute_explosion(FVector location,
+                                            FRotator rotation,
+                                            FExplosionConfig const& config,
+                                            FNdcWriterIndex writer_index) {
+    static constexpr auto logger{NestedLogger<"execute_explosion">()};
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(ndc_subsystem, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
-    auto const explosion_location{GetActorLocation()};
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-    logger.log_verbose(TEXT("Spawning explosion at %s."), *explosion_location.ToString());
+    logger.log_verbose(TEXT("Spawning explosion at %s."), *location.ToString());
 #endif
-    ndc_subsystem->add_payload(writer_index, explosion_location, GetActorRotation().Vector());
+    ndc_subsystem->add_payload(writer_index, location, rotation.Vector());
 
     // Find all overlapping actors within explosion radius
     TArray<FOverlapResult> overlaps;
@@ -51,10 +53,10 @@ void AExplosion::explode() {
     query_params.bTraceComplex = false;
     query_params.bReturnPhysicalMaterial = false;
 
-    FCollisionShape sphere{FCollisionShape::MakeSphere(explosion_radius)};
+    FCollisionShape sphere{FCollisionShape::MakeSphere(config.explosion_radius)};
 
     bool found_overlaps{world->OverlapMultiByChannel(
-        overlaps, explosion_location, FQuat::Identity, ECC_Pawn, sphere, query_params)};
+        overlaps, location, FQuat::Identity, ECC_Pawn, sphere, query_params)};
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     {
@@ -64,8 +66,8 @@ void AExplosion::explode() {
         constexpr uint8 depth_priority{0};
         constexpr auto thickness{2.0f};
         DrawDebugSphere(world,
-                        explosion_location,
-                        explosion_radius,
+                        location,
+                        config.explosion_radius,
                         segments,
                         FColor::Orange,
                         persistent_lines,
@@ -91,15 +93,15 @@ void AExplosion::explode() {
         auto* target_actor{overlap.GetActor()};
         CONTINUE_IF_FALSE(target_actor);
 
-        auto const distance{static_cast<float>(
-            FVector::Dist(explosion_location, target_actor->GetActorLocation()))};
+        auto const distance{
+            static_cast<float>(FVector::Dist(location, target_actor->GetActorLocation()))};
 
         // Apply damage if actor has health component
         if (auto* health_component{target_actor->FindComponentByClass<UHealthComponent>()}) {
-            float const scaled_damage{
-                ml::calculate_explosion_damage(distance, explosion_radius, damage_config.value)};
+            float const scaled_damage{ml::calculate_explosion_damage(
+                distance, config.explosion_radius, config.damage_config.value)};
             if (scaled_damage > 0.0f) {
-                FHealthChange damage_change{scaled_damage, damage_config.type};
+                FHealthChange damage_change{scaled_damage, config.damage_config.type};
                 damage_manager->queue_health_change(health_component, damage_change);
             }
         }
@@ -107,13 +109,20 @@ void AExplosion::explode() {
         // Apply explosion force
         if (auto* movement_component{target_actor->FindComponentByClass<CharMvmt>()}) {
             movement_component->SetMovementMode(MOVE_Falling);
-            FVector impulse{calculate_impulse(target_actor->GetActorLocation(), distance)};
+            FVector impulse{calculate_impulse(location,
+                                              target_actor->GetActorLocation(),
+                                              distance,
+                                              config.explosion_radius,
+                                              config.explosion_force)};
             movement_component->AddImpulse(impulse, true);
         } else if (auto* root_component{target_actor->GetRootComponent()}) {
             if (auto* primitive_component{Cast<UPrimitiveComponent>(root_component)}) {
                 if (is_movable(*primitive_component)) {
-                    FVector const impulse{
-                        calculate_impulse(target_actor->GetActorLocation(), distance)};
+                    FVector const impulse{calculate_impulse(location,
+                                                            target_actor->GetActorLocation(),
+                                                            distance,
+                                                            config.explosion_radius,
+                                                            config.explosion_force)};
 
                     primitive_component->AddImpulse(impulse, NAME_None, true);
                 }
@@ -122,9 +131,11 @@ void AExplosion::explode() {
     }
 }
 
-FVector AExplosion::calculate_impulse(FVector target_location, float target_distance) {
-    auto const explosion_location{GetActorLocation()};
-
+FVector UExplosionSubsystem::calculate_impulse(FVector explosion_location,
+                                               FVector target_location,
+                                               float target_distance,
+                                               float explosion_radius,
+                                               float explosion_force) {
     FVector direction{target_location - explosion_location};
     direction.Z = FMath::Abs(direction.Z); // Force upward component
     direction.Normalize();

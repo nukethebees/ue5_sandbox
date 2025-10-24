@@ -3,39 +3,26 @@
 #include "CoreMinimal.h"
 #include "TimerManager.h"
 
+#include "Sandbox/combat/effects/data/ExplosionConfig.h"
 #include "Sandbox/interaction/collision/data/CollisionContext.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "LandMinePayload.generated.h"
-
-class AExplosion;
 
 USTRUCT(BlueprintType)
 struct FLandMinePayload {
     GENERATED_BODY()
 
     FLandMinePayload() = default;
-    FLandMinePayload(float damage, float radius, float force, FVector location, float delay)
-        : damage(damage)
-        , explosion_radius(radius)
-        , explosion_force(force)
-        , mine_location(location)
-        , detonation_delay(delay) {}
 
     void execute(FCollisionContext context);
     void explode(UWorld& world);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float damage{25.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float explosion_radius{300.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    float explosion_force{5000.0f};
+    FExplosionConfig explosion_config;
     FVector mine_location{FVector::ZeroVector};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     float detonation_delay{2.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
-    TSubclassOf<AExplosion> explosion_class;
   private:
     FTimerHandle timer_handle{};
 

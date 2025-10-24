@@ -58,7 +58,7 @@ ALandMine::ALandMine()
     explosion_radius_debug->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     explosion_radius_debug->SetCanEverAffectNavigation(false);
     explosion_radius_debug->SetHiddenInGame(true);
-    explosion_radius_debug->SetSphereRadius(payload_config.explosion_radius);
+    explosion_radius_debug->SetSphereRadius(payload_config.explosion_config.explosion_radius);
     explosion_radius_debug->ShapeColor = FColor::Orange;
     explosion_radius_debug->bDrawOnlyIfSelected = true;
 #endif
@@ -210,7 +210,7 @@ void ALandMine::handle_death() {
 void ALandMine::update_debug_sphere() {
 #if WITH_EDITORONLY_DATA
     if (explosion_radius_debug) {
-        explosion_radius_debug->SetSphereRadius(payload_config.explosion_radius /
+        explosion_radius_debug->SetSphereRadius(payload_config.explosion_config.explosion_radius /
                                                 explosion_radius_debug->GetShapeScale());
     }
 #endif
