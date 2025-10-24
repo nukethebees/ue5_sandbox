@@ -63,20 +63,23 @@ bool ATestEnemy::attack_actor(AActor* target) {
     constexpr auto logger{NestedLogger<"attack_actor">()};
 
     RETURN_VALUE_IF_NULLPTR(target, false);
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
 
     // Check cooldown
-    auto const current_time{GetWorld()->GetTimeSeconds()};
-    if (current_time - last_attack_time < combat_profile.melee_cooldown) {
+    auto const current_time{world->GetTimeSeconds()};
+    auto const delta_time{current_time - last_attack_time};
+
+    if (delta_time < combat_profile.melee_cooldown) {
         logger.log_verbose(TEXT("Attack on cooldown"));
         return false;
     }
 
     // Check distance
-    auto const distance{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
-    auto const attack_radius{combat_profile.melee_range};
-    if (distance > attack_radius) {
-        logger.log_verbose(
-            TEXT("Target out of attack range: %.2f > %.2f"), distance, attack_radius);
+    auto const distance_to_target{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
+    if (distance_to_target > combat_profile.melee_range) {
+        logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
+                           distance_to_target,
+                           combat_profile.melee_range);
         return false;
     }
 
