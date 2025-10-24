@@ -11,11 +11,5 @@ void UItemDescriptionHUDWidget::NativeConstruct() {
 void UItemDescriptionHUDWidget::set_description(FText const& description) {
     RETURN_IF_NULLPTR(description_text);
 
-    description_text->SetText(description);
-}
-
-void UItemDescriptionHUDWidget::clear_description() {
-    RETURN_IF_NULLPTR(description_text);
-
-    description_text->SetText(FText::GetEmpty());
+    description_text->SetText(FText::Format(FText::FromName(TEXT("> {0}")), description));
 }

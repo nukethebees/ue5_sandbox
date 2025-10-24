@@ -13,9 +13,6 @@ class SANDBOX_API UItemDescriptionHUDWidget : public UUserWidget {
   public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void set_description(FText const& description);
-
-    UFUNCTION(BlueprintCallable, Category = "UI")
-    void clear_description();
   protected:
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* description_text{nullptr};
