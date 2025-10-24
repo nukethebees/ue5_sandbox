@@ -84,7 +84,7 @@ auto UInventoryComponent::get_first_weapon() -> AWeaponBase* {
     for (int32 row{0}; row < n_rows; ++row) {
         for (int32 col{0}; col < n_cols; ++col) {
             FCoord const coord{col, row};
-            if (auto* item{get_item(coord)}) {
+            if (auto* item{get_item_at_origin(coord)}) {
                 if (auto* weapon{item->item->get_weapon()}) {
                     return weapon;
                 }
@@ -104,7 +104,7 @@ auto UInventoryComponent::get_last_weapon() -> AWeaponBase* {
     for (int32 row{n_rows - 1}; row >= 0; --row) {
         for (int32 col{n_cols - 1}; col >= 0; --col) {
             FCoord const coord{col, row};
-            if (auto* item{get_item(coord)}) {
+            if (auto* item{get_item_at_origin(coord)}) {
                 if (auto* weapon{item->item->get_weapon()}) {
                     return weapon;
                 }
@@ -205,7 +205,13 @@ bool UInventoryComponent::is_free(FCoord coord,
 
     return true;
 }
-auto UInventoryComponent::get_item(FCoord coord) -> FInventorySlot* {
+auto UInventoryComponent::get_item_at_origin(FCoord coord) -> FInventorySlot* {
+    for (auto& slot : slots) {
+        if (slot.origin == coord) {
+            return &slot;
+        }
+    }
+
     return nullptr;
 }
 auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot* {

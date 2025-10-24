@@ -54,7 +54,8 @@ class SANDBOX_API UInventoryComponent
     bool is_free(FCoord coord,
                  FDimensions item_dimensions,
                  FInventorySlot const* to_ignore = nullptr) const;
-    auto get_item(FCoord coord) -> FInventorySlot*;
+    // If origin maps to an item's origin, return it
+    auto get_item_at_origin(FCoord coord) -> FInventorySlot*;
     auto get_item(AWeaponBase const& weapon) -> FInventorySlot*;
 
     auto get_slots_view() const { return TArrayView<FInventorySlot const>(slots); }
