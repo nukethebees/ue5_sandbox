@@ -6,7 +6,7 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 
-#include "Sandbox/inventory/data/InventorySlot.h"
+#include "Sandbox/inventory/data/InventoryEntry.h"
 #include "Sandbox/ui/in_game_menu/misc/InventorySlotDragDropOperation.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

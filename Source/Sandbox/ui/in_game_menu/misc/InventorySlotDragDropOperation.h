@@ -7,7 +7,7 @@
 
 #include "InventorySlotDragDropOperation.generated.h"
 
-struct FInventorySlot;
+struct FInventoryEntry;
 
 UCLASS()
 class UInventorySlotDragDropOperation : public UDragDropOperation {
@@ -21,5 +21,5 @@ class UInventorySlotDragDropOperation : public UDragDropOperation {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     FCoord click_local_location;
 
-    FInventorySlot const* inventory_slot{nullptr};
+    FInventoryEntry const* inventory_slot{nullptr};
 };

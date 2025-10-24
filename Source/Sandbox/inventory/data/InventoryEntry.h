@@ -6,22 +6,22 @@
 #include "Sandbox/inventory/Inventory.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
-#include "InventorySlot.generated.h"
+#include "InventoryEntry.generated.h"
 
 USTRUCT(BlueprintType)
-struct FInventorySlot {
+struct FInventoryEntry {
     GENERATED_BODY()
 
-    FInventorySlot() = default;
-    FInventorySlot(TScriptInterface<IInventoryItem> item,
-                   FStackSize stack_size,
-                   FDimensions item_dimensions,
-                   FCoord origin)
+    FInventoryEntry() = default;
+    FInventoryEntry(TScriptInterface<IInventoryItem> item,
+                    FStackSize stack_size,
+                    FDimensions item_dimensions,
+                    FCoord origin)
         : item(item)
         , stack_size(stack_size)
         , item_dimensions(item_dimensions)
         , origin(origin) {}
-    FInventorySlot(TScriptInterface<IInventoryItem> item)
+    FInventoryEntry(TScriptInterface<IInventoryItem> item)
         : item(item)
         , stack_size(1)
         , item_dimensions(item->get_size()) {}

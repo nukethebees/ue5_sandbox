@@ -107,21 +107,21 @@ void UInventoryGridWidget::refresh_grid() {
         return FName(*str);
     }};
 
-    auto const items{inventory->get_slots_view()};
-    for (auto const& item : items) {
-        check(item.item);
+    auto const item_entries{inventory->get_entries_view()};
+    for (auto const& item_entry : item_entries) {
+        check(item_entry.item);
 
-        auto const item_origin{item.origin};
+        auto const item_origin{item_entry.origin};
         auto const origin_col{item_origin.x()};
         auto const origin_row{item_origin.y()};
 
         auto* slot_widget{CreateWidget<UInventorySlotWidget>(
             world, slot_class, make_name(origin_col, origin_row))};
         check(slot_widget);
-        slot_widget->set_inventory_slot(item);
+        slot_widget->set_inventory_slot(item_entry);
 
-        auto const w{item.width()};
-        auto const h{item.height()};
+        auto const w{item_entry.width()};
+        auto const h{item_entry.height()};
 
         auto* grid_slot{item_grid->AddChildToGrid(slot_widget, origin_row, origin_col)};
         check(grid_slot);

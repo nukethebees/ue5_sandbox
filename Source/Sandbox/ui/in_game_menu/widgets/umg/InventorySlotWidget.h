@@ -8,7 +8,7 @@
 
 #include "InventorySlotWidget.generated.h"
 
-struct FInventorySlot;
+struct FInventoryEntry;
 
 class UTexture2D;
 
@@ -22,7 +22,7 @@ class SANDBOX_API UInventorySlotWidget
     , public ml::LogMsgMixin<"UInventorySlotWidget", LogSandboxUI> {
     GENERATED_BODY()
   public:
-    void set_inventory_slot(FInventorySlot const& new_inventory_slot) {
+    void set_inventory_slot(FInventoryEntry const& new_inventory_slot) {
         inventory_slot = &new_inventory_slot;
     }
 
@@ -54,5 +54,5 @@ class SANDBOX_API UInventorySlotWidget
     UPROPERTY(meta = (BindWidget))
     UTextBlock* stack_size_text{nullptr};
 
-    FInventorySlot const* inventory_slot{nullptr};
+    FInventoryEntry const* inventory_slot{nullptr};
 };

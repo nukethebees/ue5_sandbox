@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
-#include "Sandbox/inventory/data/InventorySlot.h"
+#include "Sandbox/inventory/data/InventoryEntry.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/inventory/Inventory.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -25,7 +25,7 @@ class SANDBOX_API UInventoryComponent
 
     // Item insertion
     bool add_item(TScriptInterface<IInventoryItem> item);
-    bool move_item(FInventorySlot const& slot, FCoord item_offset, FCoord drop_location);
+    bool move_item(FInventoryEntry const& slot, FCoord item_offset, FCoord drop_location);
     auto find_free_point(IInventoryItem const& item) const -> std::optional<FCoord>;
 
     // Item access
@@ -53,18 +53,18 @@ class SANDBOX_API UInventoryComponent
     // Grid querying
     bool is_free(FCoord coord,
                  FDimensions item_dimensions,
-                 FInventorySlot const* to_ignore = nullptr) const;
+                 FInventoryEntry const* to_ignore = nullptr) const;
     // If origin maps to an item's origin, return it
-    auto get_item_at_origin(FCoord coord) -> FInventorySlot*;
-    auto get_item(AWeaponBase const& weapon) -> FInventorySlot*;
+    auto get_entry_at_origin(FCoord coord) -> FInventoryEntry*;
+    auto get_entry(AWeaponBase const& weapon) -> FInventoryEntry*;
 
-    auto get_slots_view() const { return TArrayView<FInventorySlot const>(slots); }
+    auto get_entries_view() const { return TArrayView<FInventoryEntry const>(item_entries); }
   protected:
     template <auto next_index_fn>
     auto get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase*;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    TArray<FInventorySlot> slots{};
+    TArray<FInventoryEntry> item_entries{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     FDimensions dimensions{100, 100};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")

@@ -19,15 +19,15 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     }
 
     FStackSize const stack_size{1};
-    FInventorySlot slot{item, stack_size, item->get_size(), *free_point};
+    FInventoryEntry item_entry{item, stack_size, item->get_size(), *free_point};
 
     logger.log_display(TEXT("Adding %s to %s"), *item->get_name(), *free_point->to_string());
 
-    slots.Add(slot);
+    item_entries.Add(item_entry);
 
     return true;
 }
-bool UInventoryComponent::move_item(FInventorySlot const& moving_slot,
+bool UInventoryComponent::move_item(FInventoryEntry const& moving_slot,
                                     FCoord item_offset,
                                     FCoord drop_location) {
     constexpr auto logger{NestedLogger<"move_item">()};
@@ -46,8 +46,8 @@ bool UInventoryComponent::move_item(FInventorySlot const& moving_slot,
                        *new_origin.to_string());
 #endif
 
-    for (auto& slot : slots) {
-        if (&slot != &moving_slot) {
+    for (auto& item_entry : item_entries) {
+        if (&item_entry != &moving_slot) {
             continue;
         }
 
@@ -55,7 +55,7 @@ bool UInventoryComponent::move_item(FInventorySlot const& moving_slot,
             return false;
         }
 
-        slot.origin = new_origin;
+        item_entry.origin = new_origin;
 
         return true;
     }
@@ -87,7 +87,7 @@ auto UInventoryComponent::get_first_weapon() -> AWeaponBase* {
     for (int32 row{0}; row < n_rows; ++row) {
         for (int32 col{0}; col < n_cols; ++col) {
             FCoord const coord{col, row};
-            if (auto* item{get_item_at_origin(coord)}) {
+            if (auto* item{get_entry_at_origin(coord)}) {
                 if (auto* weapon{item->item->get_weapon()}) {
                     return weapon;
                 }
@@ -107,7 +107,7 @@ auto UInventoryComponent::get_last_weapon() -> AWeaponBase* {
     for (int32 row{n_rows - 1}; row >= 0; --row) {
         for (int32 col{n_cols - 1}; col >= 0; --col) {
             FCoord const coord{col, row};
-            if (auto* item{get_item_at_origin(coord)}) {
+            if (auto* item{get_entry_at_origin(coord)}) {
                 if (auto* weapon{item->item->get_weapon()}) {
                     return weapon;
                 }
@@ -121,7 +121,7 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     log_display(TEXT("Getting random weapon."));
 
     TArray<int32> indexes;
-    auto const n{slots.Num()};
+    auto const n{item_entries.Num()};
     indexes.Reserve(n);
     for (int32 i{0}; i < n; ++i) {
         indexes.Add(i);
@@ -129,7 +129,7 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     Algo::RandomShuffle(indexes);
 
     for (int32 i : indexes) {
-        if (auto* weapon{slots[i].item->get_weapon()}) {
+        if (auto* weapon{item_entries[i].item->get_weapon()}) {
             return weapon;
         }
     }
@@ -145,7 +145,7 @@ auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AW
 
 bool UInventoryComponent::is_free(FCoord coord,
                                   FDimensions item_dimensions,
-                                  FInventorySlot const* to_ignore) const {
+                                  FInventoryEntry const* to_ignore) const {
     constexpr auto logger{NestedLogger<"is_free">()};
 
     auto const item_width{item_dimensions.x()};
@@ -178,8 +178,8 @@ bool UInventoryComponent::is_free(FCoord coord,
         return false;
     }
 
-    for (auto const& slot : slots) {
-        if (&slot == to_ignore) {
+    for (auto const& item_entry : item_entries) {
+        if (&item_entry == to_ignore) {
             continue;
         }
 
@@ -188,11 +188,11 @@ bool UInventoryComponent::is_free(FCoord coord,
         // and if A's right edge is to the right of B's left edge
         //
         // Check if A's top is above B's bottom and A's bottom is below B's top
-        auto const bx{slot.origin.x()};
-        auto const by{slot.origin.y()};
+        auto const bx{item_entry.origin.x()};
+        auto const by{item_entry.origin.y()};
 
-        auto const bw{slot.width()};
-        auto const bh{slot.height()};
+        auto const bw{item_entry.width()};
+        auto const bh{item_entry.height()};
 
         auto const intersects{
             (ax0 < (bx + bw))    // A's left < B's right
@@ -201,26 +201,26 @@ bool UInventoryComponent::is_free(FCoord coord,
             && (ay1 > by)        // A's top > B's bottom
         };
         if (intersects) {
-            logger.log_verbose(TEXT("Intersected with slot item %s"), *slot.name());
+            logger.log_verbose(TEXT("Intersected with item_entry item %s"), *item_entry.name());
             return false;
         }
     }
 
     return true;
 }
-auto UInventoryComponent::get_item_at_origin(FCoord coord) -> FInventorySlot* {
-    for (auto& slot : slots) {
-        if (slot.origin == coord) {
-            return &slot;
+auto UInventoryComponent::get_entry_at_origin(FCoord coord) -> FInventoryEntry* {
+    for (auto& item_entry : item_entries) {
+        if (item_entry.origin == coord) {
+            return &item_entry;
         }
     }
 
     return nullptr;
 }
-auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot* {
-    for (auto& slot : slots) {
-        if (auto* slot_weapon{slot.item->get_weapon()}; slot_weapon == &weapon) {
-            return &slot;
+auto UInventoryComponent::get_entry(AWeaponBase const& weapon) -> FInventoryEntry* {
+    for (auto& item_entry : item_entries) {
+        if (auto* slot_weapon{item_entry.item->get_weapon()}; slot_weapon == &weapon) {
+            return &item_entry;
         }
     }
 
@@ -229,17 +229,17 @@ auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot*
 
 template <auto next_index_fn>
 auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase* {
-    INIT_PTR_OR_RETURN_VALUE(slot, get_item(cur_weapon), nullptr);
+    INIT_PTR_OR_RETURN_VALUE(item_entry, get_entry(cur_weapon), nullptr);
 
     auto const grid_dimensions{get_dimensions()};
     auto const grid_area{grid_dimensions.area()};
-    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
-    auto coord_1d{next_index_fn(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
+    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, item_entry->origin)};
+    auto coord_1d{next_index_fn(grid_area, ml::to_1d_index(grid_dimensions, item_entry->origin))};
 
     while (coord_1d != initial_coordinate) {
         auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
 
-        if (auto* item{get_item_at_origin(coord_2d)}) {
+        if (auto* item{get_entry_at_origin(coord_2d)}) {
             if (auto* weapon{item->item->get_weapon()}) {
                 return weapon;
             }
@@ -248,5 +248,5 @@ auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> 
         coord_1d = next_index_fn(grid_area, coord_1d);
     }
 
-    return slot->item->get_weapon();
+    return item_entry->item->get_weapon();
 }
