@@ -31,7 +31,6 @@ void SNumWidget<T>::set_label(FText const& new_label) {
 }
 template <typename T>
 void SNumWidget<T>::set_value(T const& new_value) {
-    log_verbose(TEXT("set_value"));
     if (value_ != new_value) {
         value_ = new_value;
         update_display_text();
