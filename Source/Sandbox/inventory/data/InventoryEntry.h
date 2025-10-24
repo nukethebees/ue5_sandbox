@@ -19,8 +19,8 @@ struct FInventoryEntry {
                     FCoord origin)
         : item(item)
         , stack_size(stack_size)
-        , item_dimensions(item_dimensions)
-        , origin(origin) {}
+        , origin(origin)
+        , item_dimensions(item_dimensions) {}
     FInventoryEntry(TScriptInterface<IInventoryItem> item)
         : item(item)
         , stack_size(1)
@@ -49,9 +49,10 @@ struct FInventoryEntry {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     FStackSize stack_size{1};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    FDimensions item_dimensions{1, 1};
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     FCoord origin{0, 0};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     bool is_rotated{false};
+  protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    FDimensions item_dimensions{1, 1};
 };
