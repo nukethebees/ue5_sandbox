@@ -55,15 +55,14 @@ void APawnSpawner::spawn_pawn() {
         GetWorld()->SpawnActor<APawn>(pawn_class, spawn_location, spawn_rotation, spawn_params)};
 
     RETURN_IF_NULLPTR(spawned_pawn);
-
-    spawned_pawn->AIControllerClass = ai_controller_class;
-    spawned_pawn->AutoPossessAI = EAutoPossessAI::Spawned;
-    spawned_pawn->SpawnDefaultController();
-
     // Set team ID if the pawn implements IGenericTeamAgentInterface
     if (auto* team_agent{Cast<IGenericTeamAgentInterface>(spawned_pawn)}) {
         team_agent->SetGenericTeamId(FGenericTeamId(static_cast<uint8>(spawned_pawn_team_id)));
     }
+
+    spawned_pawn->AIControllerClass = ai_controller_class;
+    spawned_pawn->AutoPossessAI = EAutoPossessAI::Spawned;
+    spawned_pawn->SpawnDefaultController();
 
     log_verbose(TEXT("Spawned pawn at location: %s"), *spawn_location.ToString());
 }
