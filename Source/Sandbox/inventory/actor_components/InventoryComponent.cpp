@@ -137,48 +137,10 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     return nullptr;
 }
 auto UInventoryComponent::get_weapon_after(AWeaponBase const& cur_weapon) -> AWeaponBase* {
-    INIT_PTR_OR_RETURN_VALUE(slot, get_item(cur_weapon), nullptr);
-
-    auto const grid_dimensions{get_dimensions()};
-    auto const grid_area{grid_dimensions.area()};
-    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
-    auto coord_1d{ml::increment_index(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
-
-    while (coord_1d != initial_coordinate) {
-        auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
-
-        if (auto* item{get_item_at_origin(coord_2d)}) {
-            if (auto* weapon{item->item->get_weapon()}) {
-                return weapon;
-            }
-        }
-
-        coord_1d = ml::increment_index(grid_area, coord_1d);
-    }
-
-    return slot->item->get_weapon();
+    return get_weapon_adjacent<ml::increment_index>(cur_weapon);
 }
 auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AWeaponBase* {
-    INIT_PTR_OR_RETURN_VALUE(slot, get_item(cur_weapon), nullptr);
-
-    auto const grid_dimensions{get_dimensions()};
-    auto const grid_area{grid_dimensions.area()};
-    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
-    auto coord_1d{ml::decrement_index(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
-
-    while (coord_1d != initial_coordinate) {
-        auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
-
-        if (auto* item{get_item_at_origin(coord_2d)}) {
-            if (auto* weapon{item->item->get_weapon()}) {
-                return weapon;
-            }
-        }
-
-        coord_1d = ml::decrement_index(grid_area, coord_1d);
-    }
-
-    return slot->item->get_weapon();
+    return get_weapon_adjacent<ml::decrement_index>(cur_weapon);
 }
 
 bool UInventoryComponent::is_free(FCoord coord,
@@ -263,4 +225,28 @@ auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot*
     }
 
     return nullptr;
+}
+
+template <auto next_index_fn>
+auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase* {
+    INIT_PTR_OR_RETURN_VALUE(slot, get_item(cur_weapon), nullptr);
+
+    auto const grid_dimensions{get_dimensions()};
+    auto const grid_area{grid_dimensions.area()};
+    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
+    auto coord_1d{next_index_fn(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
+
+    while (coord_1d != initial_coordinate) {
+        auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
+
+        if (auto* item{get_item_at_origin(coord_2d)}) {
+            if (auto* weapon{item->item->get_weapon()}) {
+                return weapon;
+            }
+        }
+
+        coord_1d = next_index_fn(grid_area, coord_1d);
+    }
+
+    return slot->item->get_weapon();
 }

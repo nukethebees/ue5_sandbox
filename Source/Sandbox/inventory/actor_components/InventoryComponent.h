@@ -60,6 +60,9 @@ class SANDBOX_API UInventoryComponent
 
     auto get_slots_view() const { return TArrayView<FInventorySlot const>(slots); }
   protected:
+    template <auto next_index_fn>
+    auto get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase*;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventorySlot> slots{};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
