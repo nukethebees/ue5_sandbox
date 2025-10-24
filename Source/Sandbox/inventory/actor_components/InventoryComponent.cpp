@@ -215,5 +215,11 @@ auto UInventoryComponent::get_item_at_origin(FCoord coord) -> FInventorySlot* {
     return nullptr;
 }
 auto UInventoryComponent::get_item(AWeaponBase const& weapon) -> FInventorySlot* {
+    for (auto& slot : slots) {
+        if (auto* slot_weapon{slot.item->get_weapon()}; slot_weapon == &weapon) {
+            return &slot;
+        }
+    }
+
     return nullptr;
 }
