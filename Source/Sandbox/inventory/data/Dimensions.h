@@ -44,6 +44,8 @@ struct FDimensions {
         return std::forward_like<Self>(self.value.Y);
     }
 
+    auto rotated() const { return FDimensions{value.Y, value.X}; }
+
     FString to_string() const { return FString::Printf(TEXT("x=%d, y=%d"), x(), y()); }
 
     // Hash support for TMap/TSet

@@ -29,12 +29,7 @@ struct FInventoryEntry {
     auto area() const { return item_dimensions.area(); }
     auto width() const { return is_rotated ? item_dimensions.y() : item_dimensions.x(); }
     auto height() const { return is_rotated ? item_dimensions.x() : item_dimensions.y(); }
-    auto dimensions() const {
-        if (is_rotated) {
-            return FDimensions{item_dimensions.y(), item_dimensions.x()};
-        }
-        return item_dimensions;
-    }
+    auto dimensions() const { return is_rotated ? item_dimensions.rotated() : item_dimensions; }
     auto const& name() const {
         check(item);
         return item->get_name();
