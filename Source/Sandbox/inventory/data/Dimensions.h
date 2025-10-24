@@ -32,7 +32,15 @@ struct FDimensions {
         return std::forward_like<Self>(self.value.X);
     }
     template <typename Self>
+    auto&& width(this Self&& self) {
+        return std::forward_like<Self>(self.value.X);
+    }
+    template <typename Self>
     auto&& y(this Self&& self) {
+        return std::forward_like<Self>(self.value.Y);
+    }
+    template <typename Self>
+    auto&& height(this Self&& self) {
         return std::forward_like<Self>(self.value.Y);
     }
 
