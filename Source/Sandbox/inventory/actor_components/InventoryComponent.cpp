@@ -142,7 +142,7 @@ auto UInventoryComponent::get_weapon_after(AWeaponBase const& cur_weapon) -> AWe
     auto const grid_dimensions{get_dimensions()};
     auto const grid_area{grid_dimensions.area()};
     auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
-    auto coord_1d{(ml::to_1d_index(grid_dimensions, slot->origin) + 1) % grid_area};
+    auto coord_1d{ml::increment_index(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
 
     while (coord_1d != initial_coordinate) {
         auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
@@ -153,16 +153,32 @@ auto UInventoryComponent::get_weapon_after(AWeaponBase const& cur_weapon) -> AWe
             }
         }
 
-        ++coord_1d;
-        coord_1d %= grid_area;
+        coord_1d = ml::increment_index(grid_area, coord_1d);
     }
 
     return slot->item->get_weapon();
 }
-auto UInventoryComponent::get_weapon_before(AWeaponBase const& weapon) -> AWeaponBase* {
-    INIT_PTR_OR_RETURN_VALUE(slot, get_item(weapon), nullptr);
+auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AWeaponBase* {
+    INIT_PTR_OR_RETURN_VALUE(slot, get_item(cur_weapon), nullptr);
 
-    return nullptr;
+    auto const grid_dimensions{get_dimensions()};
+    auto const grid_area{grid_dimensions.area()};
+    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, slot->origin)};
+    auto coord_1d{ml::decrement_index(grid_area, ml::to_1d_index(grid_dimensions, slot->origin))};
+
+    while (coord_1d != initial_coordinate) {
+        auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
+
+        if (auto* item{get_item_at_origin(coord_2d)}) {
+            if (auto* weapon{item->item->get_weapon()}) {
+                return weapon;
+            }
+        }
+
+        coord_1d = ml::decrement_index(grid_area, coord_1d);
+    }
+
+    return slot->item->get_weapon();
 }
 
 bool UInventoryComponent::is_free(FCoord coord,
