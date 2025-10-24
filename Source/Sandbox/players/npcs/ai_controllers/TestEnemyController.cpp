@@ -47,6 +47,10 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     RETURN_IF_NULLPTR(InPawn);
     RETURN_IF_NULLPTR(blackboard_component);
 
+    auto const team_if{Cast<IGenericTeamAgentInterface>(InPawn)};
+    RETURN_IF_NULLPTR(team_if);
+    SetGenericTeamId(team_if->GetGenericTeamId());
+
     auto const mob_interface{Cast<ISandboxMobInterface>(InPawn)};
     RETURN_IF_NULLPTR(mob_interface);
 
@@ -70,19 +74,23 @@ void ATestEnemyController::OnUnPossess() {
     }
 }
 
-void ATestEnemyController::on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus) {
+void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
     constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
 
-    RETURN_IF_NULLPTR(Actor);
+    RETURN_IF_NULLPTR(actor);
     RETURN_IF_NULLPTR(blackboard_component);
 
     static auto const target_name{TEXT("target_actor")};
 
-    if (Stimulus.WasSuccessfullySensed()) {
-        blackboard_component->SetValueAsObject(target_name, Actor);
-        LOG.log_display(TEXT("Spotted: %s"), *Actor->GetName());
+    if (stimulus.WasSuccessfullySensed()) {
+        auto const attitude{GetTeamAttitudeTowards(*actor)};
+
+        if (attitude == ETeamAttitude::Hostile) {
+            blackboard_component->SetValueAsObject(target_name, actor);
+            LOG.log_display(TEXT("Spotted: %s"), *actor->GetName());
+        }
     } else {
         blackboard_component->ClearValue(target_name);
-        LOG.log_display(TEXT("Lost sight of: %s"), *Actor->GetName());
+        LOG.log_display(TEXT("Lost sight of: %s"), *actor->GetName());
     }
 }
