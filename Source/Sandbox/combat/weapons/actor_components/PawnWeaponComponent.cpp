@@ -70,6 +70,8 @@ void UPawnWeaponComponent::unequip_weapon() {
     active_weapon = nullptr;
 }
 void UPawnWeaponComponent::cycle_next_weapon() {
+    constexpr auto logger{NestedLogger<"cycle_next_weapon">()};
+
     RETURN_IF_NULLPTR(inventory);
     if (!active_weapon) {
         if (auto* weapon{inventory->get_first_weapon()}) {
@@ -80,6 +82,8 @@ void UPawnWeaponComponent::cycle_next_weapon() {
     }
 }
 void UPawnWeaponComponent::cycle_prev_weapon() {
+    constexpr auto logger{NestedLogger<"cycle_prev_weapon">()};
+
     RETURN_IF_NULLPTR(inventory);
     if (!active_weapon) {
         if (auto* weapon{inventory->get_last_weapon()}) {
