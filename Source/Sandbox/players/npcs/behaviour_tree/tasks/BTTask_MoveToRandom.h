@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "BehaviorTree/BTTaskNode.h"
 #include "BehaviorTree/ValueOrBBKey.h"
 
@@ -8,6 +9,8 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "BTTask_MoveToRandom.generated.h"
+
+struct FPathFollowingResult;
 
 UCLASS()
 class SANDBOX_API UBTTask_MoveToRandom
@@ -20,9 +23,12 @@ class SANDBOX_API UBTTask_MoveToRandom
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp,
                                             uint8* NodeMemory) override;
   protected:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    FValueOrBBKey_Float radius{1000.0f};
+    UFUNCTION()
+    void on_move_completed(FAIRequestID RequestID, EPathFollowingResult::Type Result);
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    FValueOrBBKey_Float travel_radius{1000.0f};
+    // The threshold for "arriving"
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FValueOrBBKey_Float acceptable_radius{5.0f};
 };
