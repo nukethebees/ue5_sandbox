@@ -102,7 +102,7 @@ UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
 }
 
 float ATestEnemy::get_acceptable_radius() const {
-    return combat_profile.get_attack_range();
+    return 50.0f;
 }
 float ATestEnemy::get_attack_acceptable_radius() const {
     return combat_profile.get_attack_range() / 2.0f;
