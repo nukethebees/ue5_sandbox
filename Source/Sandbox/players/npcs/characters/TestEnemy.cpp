@@ -19,7 +19,7 @@ ATestEnemy::ATestEnemy()
     body_mesh->SetupAttachment(RootComponent);
     light->SetupAttachment(body_mesh);
 
-    AutoPossessAI = EAutoPossessAI::Spawned;
+    AutoPossessAI = EAutoPossessAI::PlacedInWorld;
 }
 
 void ATestEnemy::OnConstruction(FTransform const& transform) {
@@ -32,19 +32,14 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
 
     dynamic_material = body_mesh->CreateDynamicMaterialInstance(0);
     apply_material_colours();
-}
-void ATestEnemy::BeginPlay() {
-    constexpr auto logger{NestedLogger<"BeginPlay">()};
-    Super::BeginPlay();
 
     if (controller_class) {
         AIControllerClass = controller_class;
     }
-
-    if (!Controller) {
-        RETURN_IF_NULLPTR(AIControllerClass);
-        SpawnDefaultController();
-    }
+}
+void ATestEnemy::BeginPlay() {
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
+    Super::BeginPlay();
 }
 
 void ATestEnemy::handle_death() {
