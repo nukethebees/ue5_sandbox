@@ -5,6 +5,7 @@
 
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/players/common/utilities/navigation.h"
+#include "Sandbox/players/npcs/ai_controllers/TestEnemyController.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -36,9 +37,17 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& ow
 
     switch (result.Code) {
         case EPathFollowingRequestResult::RequestSuccessful: {
-
             ai_controller->ReceiveMoveCompleted.AddDynamic(
                 this, &UBTTask_MoveToRandom::on_move_completed);
+
+            auto const bb_interrupt_for_enemy{interrupt_for_enemy.GetValue(owner_comp)};
+            if (bb_interrupt_for_enemy) {
+                if (auto* test_enemy_controller{Cast<ATestEnemyController>(ai_controller)}) {
+                    test_enemy_controller->on_enemy_spotted.AddUObject(
+                        this, &UBTTask_MoveToRandom::on_enemy_spotted);
+                }
+            }
+
             return EBTNodeResult::InProgress;
         }
         case EPathFollowingRequestResult::AlreadyAtGoal: {
@@ -80,4 +89,20 @@ void UBTTask_MoveToRandom::on_move_completed(FAIRequestID RequestID,
     }
 
     FinishLatentTask(*bt_comp, task_result);
+}
+void UBTTask_MoveToRandom::on_enemy_spotted() {
+    constexpr auto logger{NestedLogger<"on_enemy_spotted">()};
+
+    TRY_INIT_PTR(outer, GetOuter());
+    TRY_INIT_PTR(bt_comp, Cast<UBehaviorTreeComponent>(outer));
+
+    auto* ai_ctrl{bt_comp->GetAIOwner()};
+    if (ai_ctrl) {
+        if (auto* test_enemy_controller{Cast<ATestEnemyController>(ai_ctrl)}) {
+            test_enemy_controller->on_enemy_spotted.RemoveAll(this);
+        }
+    }
+
+    logger.log_verbose(TEXT("Enemy spotted, aborting move."));
+    FinishLatentTask(*bt_comp, EBTNodeResult::Aborted);
 }

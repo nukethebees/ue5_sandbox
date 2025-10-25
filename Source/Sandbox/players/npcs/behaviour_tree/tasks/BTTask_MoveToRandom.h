@@ -26,9 +26,14 @@ class SANDBOX_API UBTTask_MoveToRandom
     UFUNCTION()
     void on_move_completed(FAIRequestID RequestID, EPathFollowingResult::Type Result);
 
+    UFUNCTION()
+    void on_enemy_spotted();
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FValueOrBBKey_Float travel_radius{1000.0f};
     // The threshold for "arriving"
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FValueOrBBKey_Float acceptable_radius{5.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    FValueOrBBKey_Bool interrupt_for_enemy{true};
 };
