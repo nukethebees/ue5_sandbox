@@ -7,6 +7,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
+#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -86,11 +87,15 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
         auto const attitude{GetTeamAttitudeTowards(*actor)};
 
         if (attitude == ETeamAttitude::Hostile) {
+            on_enemy_spotted.Broadcast();
+
             blackboard_component->SetValueAsObject(target_name, actor);
-            LOG.log_display(TEXT("Spotted: %s"), *actor->GetName());
+            LOG.log_display(TEXT("Spotted: %s"), *ml::get_best_display_name(*actor));
         }
     } else {
+        if (blackboard_component->GetValueAsObject(target_name)) {
+            LOG.log_display(TEXT("Lost sight of: %s"), *ml::get_best_display_name(*actor));
+        }
         blackboard_component->ClearValue(target_name);
-        LOG.log_display(TEXT("Lost sight of: %s"), *actor->GetName());
     }
 }

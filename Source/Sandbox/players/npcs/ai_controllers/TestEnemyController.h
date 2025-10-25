@@ -5,6 +5,7 @@
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/npcs/data/npc_delegates.h"
 #include "Sandbox/players/npcs/enums/SimpleAIState.h"
 
 #include "TestEnemyController.generated.h"
@@ -22,6 +23,8 @@ class SANDBOX_API ATestEnemyController
     GENERATED_BODY()
   public:
     ATestEnemyController();
+
+    FOnEnemySpotted on_enemy_spotted;
   protected:
     virtual void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
