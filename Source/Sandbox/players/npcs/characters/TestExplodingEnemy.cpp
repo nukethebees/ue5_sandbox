@@ -1,6 +1,8 @@
 #include "Sandbox/players/npcs/characters/TestExplodingEnemy.h"
 
 #include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestExplodingEnemy::ATestExplodingEnemy() {
@@ -11,7 +13,7 @@ bool ATestExplodingEnemy::attack_actor(AActor* target) {
     constexpr auto logger{NestedLogger<"attack_actor">()};
 
     RETURN_VALUE_IF_NULLPTR(target, false);
-    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+    check(health);
 
     // Check distance to target
     auto const distance_to_target{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
@@ -22,8 +24,7 @@ bool ATestExplodingEnemy::attack_actor(AActor* target) {
         return false;
     }
 
-    explode(*world);
-    Destroy();
+    this->health->kill();
 
     return true;
 }
