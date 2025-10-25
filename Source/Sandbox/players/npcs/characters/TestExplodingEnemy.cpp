@@ -22,18 +22,21 @@ bool ATestExplodingEnemy::attack_actor(AActor* target) {
         return false;
     }
 
-    // Trigger explosion at own location
-    INIT_PTR_OR_RETURN_VALUE(
-        explosion_subsystem, world->GetSubsystem<UExplosionSubsystem>(), false);
-    auto const actor_location{GetActorLocation()};
-    explosion_subsystem->spawn_explosion(actor_location, FRotator::ZeroRotator, explosion_config);
-
-    logger.log_verbose(TEXT("TestExplodingEnemy exploded at location: %s targeting %s"),
-                       *actor_location.ToString(),
-                       *target->GetName());
-
-    // Destroy self
+    explode(*world);
     Destroy();
 
     return true;
+}
+void ATestExplodingEnemy::handle_death() {
+    Super::handle_death();
+
+    TRY_INIT_PTR(world, GetWorld());
+    explode(*world);
+}
+void ATestExplodingEnemy::explode(UWorld& world) {
+    constexpr auto logger{NestedLogger<"explode">()};
+
+    TRY_INIT_PTR(explosion_subsystem, world.GetSubsystem<UExplosionSubsystem>());
+    auto const actor_location{GetActorLocation()};
+    explosion_subsystem->spawn_explosion(actor_location, FRotator::ZeroRotator, explosion_config);
 }

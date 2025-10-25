@@ -64,6 +64,9 @@ class SANDBOX_API ATestEnemy
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
 
+    // IDeathHandler
+    virtual void handle_death() override;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     TSubclassOf<AAIController> controller_class{nullptr};
 
@@ -85,9 +88,6 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
   private:
-    // IDeathHandler
-    virtual void handle_death() override;
-
     void apply_material_colours();
     void apply_light_colours();
 
