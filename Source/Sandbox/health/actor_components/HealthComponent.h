@@ -37,10 +37,16 @@ class SANDBOX_API UHealthComponent
     UPROPERTY(BlueprintAssignable, Category = "Health")
     FOnDeath on_death;
 
+    // Query
     auto health() const { return health_; }
+    UFUNCTION(BlueprintCallable, Category = "Health")
+    float health_percent() const { return (max_health > 0.0f) ? health_ / max_health : 0.0f; }
+
     bool is_dead() const { return health_ <= 0.0f; }
     bool is_alive() const { return health_ > 0.0f; }
     bool at_max_health() const { return FMath::IsNearlyEqual(health_, max_health); }
+
+    // Modify
     UFUNCTION(BlueprintCallable, Category = "Health")
     void modify_health(FHealthChange change) {
         constexpr auto logger{NestedLogger<"modify_health">()};
@@ -68,13 +74,11 @@ class SANDBOX_API UHealthComponent
 
         set_health(new_health);
     }
-    UFUNCTION(BlueprintCallable, Category = "Health")
-    float health_percent() const { return (max_health > 0.0f) ? health_ / max_health : 0.0f; }
+    void kill() { set_health(0.0f); }
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health")
     float health_{0.0f};
   private:
-    void kill() { set_health(0.0f); }
     void set_health(float new_health) {
         constexpr auto logger{NestedLogger<"modify_health">()};
 
