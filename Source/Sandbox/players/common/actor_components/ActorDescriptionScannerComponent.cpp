@@ -37,13 +37,15 @@ void UActorDescriptionScannerComponent::perform_raycast(FVector position, FRotat
     FText description{};
     bool has_description{false};
 
-    if (hit_actor) {
-        if (auto* describable{Cast<IDescribable>(hit_actor)}) {
-            description = describable->get_description();
-            has_description = !description.IsEmpty();
+    if (hit) {
+        if (hit_actor) {
+            if (auto* describable{Cast<IDescribable>(hit_actor)}) {
+                description = describable->get_description();
+                has_description = !description.IsEmpty();
+            }
+        } else {
+            logger.log_verbose(TEXT("hit_actor is nullptr."));
         }
-    } else {
-        logger.log_verbose(TEXT("hit_actor is nullptr."));
     }
 
     // Only update if actor changed
