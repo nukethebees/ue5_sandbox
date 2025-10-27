@@ -36,6 +36,8 @@ void AMyPlayerController::BeginPlay() {
     // Set up actor description scanner
     character->actor_description_scanner->on_description_update.BindUObject(
         hud, &AMyHUD::update_description);
+    character->actor_description_scanner->on_target_screen_bounds_update.BindUObject(
+        hud, &AMyHUD::update_target_screen_bounds);
 
     TRY_INIT_PTR(world, GetWorld());
     constexpr bool loop_timer{true};
@@ -286,5 +288,6 @@ void AMyPlayerController::perform_description_scan() {
     FRotator view_rotation;
     GetPlayerViewPoint(view_location, view_rotation);
 
-    controlled_character->actor_description_scanner->perform_raycast(view_location, view_rotation);
+    controlled_character->actor_description_scanner->perform_raycast(
+        *this, view_location, view_rotation);
 }

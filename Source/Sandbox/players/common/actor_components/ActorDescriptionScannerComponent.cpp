@@ -4,6 +4,7 @@
 
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
+#include "Sandbox/ui/utilities/ui.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -15,7 +16,9 @@ void UActorDescriptionScannerComponent::BeginPlay() {
     Super::BeginPlay();
 }
 
-void UActorDescriptionScannerComponent::perform_raycast(FVector position, FRotator rotation) {
+void UActorDescriptionScannerComponent::perform_raycast(APlayerController const& pc,
+                                                        FVector position,
+                                                        FRotator rotation) {
     constexpr auto logger{NestedLogger<"perform_raycast">()};
 
     TRY_INIT_PTR(world, GetWorld());
@@ -35,13 +38,12 @@ void UActorDescriptionScannerComponent::perform_raycast(FVector position, FRotat
 
     // Check if hit actor implements IDescribable
     FText description{};
-    bool has_description{false};
 
     if (hit) {
         if (hit_actor) {
             if (auto* describable{Cast<IDescribable>(hit_actor)}) {
                 description = describable->get_description();
-                has_description = !description.IsEmpty();
+                update_outline(pc, *hit_actor);
             }
         } else {
             logger.log_verbose(TEXT("hit_actor is nullptr."));
@@ -56,9 +58,14 @@ void UActorDescriptionScannerComponent::perform_raycast(FVector position, FRotat
     }
 
     last_seen_actor = hit_actor;
-    on_description_update.ExecuteIfBound(has_description ? description : FText::GetEmpty());
+    on_description_update.ExecuteIfBound(description);
 }
 
 void UActorDescriptionScannerComponent::set_hud_widget(UItemDescriptionHUDWidget* widget) {
     hud_widget = widget;
+}
+void UActorDescriptionScannerComponent::update_outline(APlayerController const& pc,
+                                                       AActor const& actor) {
+    auto const actor_bounds{ml::get_screen_bounds(pc, actor)};
+    on_target_screen_bounds_update.ExecuteIfBound(actor_bounds);
 }
