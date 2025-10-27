@@ -1,7 +1,14 @@
 #pragma once
 
+#include <array>
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Math/Vector.h"
+
+#include "Sandbox/environment/data/ActorCorners.h"
+
+class AActor;
 
 namespace ml {
 
@@ -21,5 +28,7 @@ inline FString get_best_display_name(AActor const& actor) {
     return actor.GetName();
 #endif
 }
+
+auto get_actor_corners(AActor const& actor) -> FActorCorners;
 
 } // namespace ml
