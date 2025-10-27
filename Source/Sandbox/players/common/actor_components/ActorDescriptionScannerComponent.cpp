@@ -2,6 +2,7 @@
 
 #include "Engine/World.h"
 
+#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
 #include "Sandbox/ui/utilities/ui.h"
@@ -66,6 +67,6 @@ void UActorDescriptionScannerComponent::set_hud_widget(UItemDescriptionHUDWidget
 }
 void UActorDescriptionScannerComponent::update_outline(APlayerController const& pc,
                                                        AActor const& actor) {
-    auto const actor_bounds{ml::get_screen_bounds(pc, actor)};
-    on_target_screen_bounds_update.ExecuteIfBound(actor_bounds);
+    auto const corners{ml::get_actor_corners(actor)};
+    on_target_screen_bounds_update.ExecuteIfBound(corners);
 }

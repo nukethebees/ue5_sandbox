@@ -10,7 +10,7 @@
 
 class UImage;
 
-struct FScreenBounds;
+struct FActorCorners;
 
 UCLASS()
 class SANDBOX_API UTargetOverlayHUDWidget
@@ -18,7 +18,7 @@ class SANDBOX_API UTargetOverlayHUDWidget
     , public ml::LogMsgMixin<"UTargetOverlayHUDWidget", LogSandboxUI> {
     GENERATED_BODY()
   public:
-    void update_target_screen_bounds(FScreenBounds const& bounds);
+    void update_target_screen_bounds(APlayerController& pc, FActorCorners const& corners);
   protected:
     virtual void NativeOnInitialized() override;
 

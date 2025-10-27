@@ -1,33 +1,33 @@
 #include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
 
-#include "Blueprint/SlateBlueprintLibrary.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
-#include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/ui/data/ScreenBounds.h"
+#include "Sandbox/ui/utilities/ui.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-void UTargetOverlayHUDWidget::update_target_screen_bounds(FScreenBounds const& bounds) {
+void UTargetOverlayHUDWidget::update_target_screen_bounds(APlayerController& pc,
+                                                          FActorCorners const& corners) {
     constexpr auto logger{NestedLogger<"update_target_screen_bounds">()};
 
     SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 
     TRY_INIT_PTR(canvas_slot, Cast<UCanvasPanelSlot>(Slot));
 
-    auto* pc{UGameplayStatics::GetPlayerController(GetWorld(), 0)};
-    FVector2D viewport_position_2d;
-    FVector2D viewport_size_2d;
+    constexpr auto update_bounds{
+        [](APlayerController& pc, FVector world_pos, FVector2D& pos_2d) -> void {
+            constexpr bool bPlayerViewportRelative{false};
+            UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+                &pc, world_pos, pos_2d, bPlayerViewportRelative);
+        }};
 
-    auto const padded_size{bounds.size + outline_padding};
+    auto bounds{ml::get_screen_bounds<update_bounds>(pc, corners)};
 
-    USlateBlueprintLibrary::ScreenToViewport(pc, bounds.get_centre(), viewport_position_2d);
-    USlateBlueprintLibrary::ScreenToViewport(pc, bounds.size + outline_padding, viewport_size_2d);
-
-    canvas_slot->SetPosition(viewport_position_2d);
-    canvas_slot->SetSize(viewport_size_2d);
+    canvas_slot->SetPosition(bounds.get_centre());
+    canvas_slot->SetSize(bounds.size + outline_padding);
 }
 
 void UTargetOverlayHUDWidget::NativeOnInitialized() {

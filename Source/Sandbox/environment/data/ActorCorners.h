@@ -4,7 +4,12 @@
 
 #include "CoreMinimal.h"
 
+#include "ActorCorners.generated.h"
+
+USTRUCT()
 struct FActorCorners {
+    GENERATED_BODY()
+
     using Corners = TStaticArray<FVector, 8>;
 
     FActorCorners() = default;

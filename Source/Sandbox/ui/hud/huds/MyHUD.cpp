@@ -5,6 +5,7 @@
 #include "Widgets/SWeakWidget.h"
 
 #include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
+#include "Sandbox/environment/data/ActorCorners.h"
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
@@ -150,8 +151,10 @@ void AMyHUD::update_description(FText const& text) {
     RETURN_IF_NULLPTR(main_widget->item_description_widget);
     main_widget->item_description_widget->set_description(text);
 }
-void AMyHUD::update_target_screen_bounds(FScreenBounds const& bounds) {
+void AMyHUD::update_target_screen_bounds(FActorCorners const& corners) {
     RETURN_IF_NULLPTR(main_widget);
     RETURN_IF_NULLPTR(main_widget->target_overlay);
-    main_widget->target_overlay->update_target_screen_bounds(bounds);
+    TRY_INIT_PTR(player_controller, GetOwningPlayerController());
+
+    main_widget->target_overlay->update_target_screen_bounds(*player_controller, corners);
 }

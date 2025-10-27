@@ -14,8 +14,10 @@ class APlayerController;
 
 class UItemDescriptionHUDWidget;
 
+struct FActorCorners;
+
 DECLARE_DELEGATE_OneParam(FOnDescriptionUpdate, FText const&);
-DECLARE_DELEGATE_OneParam(FOnTargetScreenBoundsUpdate, FScreenBounds const&);
+DECLARE_DELEGATE_OneParam(FOnTargetScreenBoundsUpdate, FActorCorners const&);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UActorDescriptionScannerComponent

@@ -6,11 +6,11 @@
 #include "GameFramework/HUD.h"
 
 #include "Sandbox/combat/weapons/data/AmmoData.h"
+#include "Sandbox/environment/data/ActorCorners.h"
 #include "Sandbox/health/data/HealthData.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/data/JetpackState.h"
-#include "Sandbox/ui/data/ScreenBounds.h"
 #include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/widgets/slate/NumWidget.h"
 #include "Sandbox/ui/widgets/umg/ValueWidget.h"
@@ -21,6 +21,8 @@ class UInventoryComponent;
 
 class SInGameMenuWidget;
 class UInGamePlayerMenu;
+
+struct FActorCorners;
 
 UCLASS()
 class SANDBOX_API AMyHUD
@@ -62,7 +64,7 @@ class SANDBOX_API AMyHUD
     UFUNCTION()
     void update_description(FText const& text);
     UFUNCTION()
-    void update_target_screen_bounds(FScreenBounds const& bounds);
+    void update_target_screen_bounds(FActorCorners const& corners);
   protected:
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")
