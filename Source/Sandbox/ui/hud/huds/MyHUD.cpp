@@ -11,6 +11,7 @@
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/player_controllers/MyPlayerController.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
+#include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/slate/SInGameMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 
@@ -147,6 +148,10 @@ void AMyHUD::update_ammo(FAmmoData ammo_data) {
 void AMyHUD::update_description(FText const& text) {
     RETURN_IF_NULLPTR(main_widget);
     RETURN_IF_NULLPTR(main_widget->item_description_widget);
-
     main_widget->item_description_widget->set_description(text);
+}
+void AMyHUD::update_target_screen_bounds(FScreenBounds const& bounds) {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->target_overlay);
+    main_widget->target_overlay->update_target_screen_bounds(bounds);
 }

@@ -10,6 +10,7 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/data/JetpackState.h"
+#include "Sandbox/ui/data/ScreenBounds.h"
 #include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/widgets/slate/NumWidget.h"
 #include "Sandbox/ui/widgets/umg/ValueWidget.h"
@@ -60,6 +61,8 @@ class SANDBOX_API AMyHUD
 
     UFUNCTION()
     void update_description(FText const& text);
+    UFUNCTION()
+    void update_target_screen_bounds(FScreenBounds const& bounds);
   protected:
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")
