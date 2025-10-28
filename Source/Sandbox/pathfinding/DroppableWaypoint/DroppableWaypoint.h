@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -16,13 +17,19 @@ class URotatingActorComponent;
 UCLASS()
 class SANDBOX_API ADroppableWaypoint
     : public AActor
-    , public ml::LogMsgMixin<"ADroppableWaypoint", LogSandboxActor> {
+    , public ml::LogMsgMixin<"ADroppableWaypoint", LogSandboxActor>
+    , public IDescribable {
     GENERATED_BODY()
   public:
     ADroppableWaypoint();
 
     void Activate();
     void Deactivate();
+
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Waypoint"))};
+        return desc;
+    }
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")
     UStaticMeshComponent* mesh_component{nullptr};
