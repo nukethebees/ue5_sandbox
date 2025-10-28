@@ -13,77 +13,34 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+void UInGamePlayerMenu::NativeOnInitialized() {
+    Super::NativeOnInitialized();
+
+#define BIND_CLICKED(BUTTON, FUNCTION)                                         \
+    do {                                                                       \
+        if (BUTTON) {                                                          \
+            BUTTON->on_clicked.AddDynamic(this, &UInGamePlayerMenu::FUNCTION); \
+        } else {                                                               \
+            WARN_IF_EXPR(BUTTON);                                              \
+        }                                                                      \
+    } while (0)
+
+    BIND_CLICKED(powers_tab_button, handle_powers_tab);
+    BIND_CLICKED(stats_tab_button, handle_stats_tab);
+    BIND_CLICKED(logs_tab_button, handle_logs_tab);
+    BIND_CLICKED(objectives_tab_button, handle_objectives_tab);
+    BIND_CLICKED(map_tab_button, handle_map_tab);
+    BIND_CLICKED(research_tab_button, handle_research_tab);
+    BIND_CLICKED(inventory_tab_button, handle_inventory_tab);
+    BIND_CLICKED(close_button, handle_close);
+
+#undef BIND_CLICKED
+}
 void UInGamePlayerMenu::NativeConstruct() {
     Super::NativeConstruct();
-
-    WARN_IF_EXPR(!powers_tab_button);
-    WARN_IF_EXPR(!stats_tab_button);
-    WARN_IF_EXPR(!logs_tab_button);
-    WARN_IF_EXPR(!objectives_tab_button);
-    WARN_IF_EXPR(!map_tab_button);
-    WARN_IF_EXPR(!research_tab_button);
-    WARN_IF_EXPR(!inventory_tab_button);
-    WARN_IF_EXPR(!close_button);
-
-    // Bind tab button clicks
-    if (powers_tab_button) {
-        powers_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_powers_tab);
-    }
-    if (stats_tab_button) {
-        stats_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_stats_tab);
-    }
-    if (logs_tab_button) {
-        logs_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_logs_tab);
-    }
-    if (objectives_tab_button) {
-        objectives_tab_button->on_clicked.AddDynamic(this,
-                                                     &UInGamePlayerMenu::handle_objectives_tab);
-    }
-    if (map_tab_button) {
-        map_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_map_tab);
-    }
-    if (research_tab_button) {
-        research_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_research_tab);
-    }
-    if (inventory_tab_button) {
-        inventory_tab_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_inventory_tab);
-    }
-
-    // Bind close button click
-    if (close_button) {
-        close_button->on_clicked.AddDynamic(this, &UInGamePlayerMenu::handle_close);
-    }
-
-    // Set initial tab
     set_active_tab(EInGameMenuTab::Inventory);
 }
 void UInGamePlayerMenu::NativeDestruct() {
-    if (powers_tab_button) {
-        powers_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (stats_tab_button) {
-        stats_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (logs_tab_button) {
-        logs_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (objectives_tab_button) {
-        objectives_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (map_tab_button) {
-        map_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (research_tab_button) {
-        research_tab_button->on_clicked.RemoveAll(this);
-    }
-    if (inventory_tab_button) {
-        inventory_tab_button->on_clicked.RemoveAll(this);
-    }
-
-    if (close_button) {
-        close_button->on_clicked.RemoveAll(this);
-    }
-
     Super::NativeDestruct();
 }
 

@@ -29,6 +29,7 @@ class SANDBOX_API UInGamePlayerMenu
     , public ml::LogMsgMixin<"UInGamePlayerMenu", LogSandboxUI> {
     GENERATED_BODY()
   protected:
+    virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 
