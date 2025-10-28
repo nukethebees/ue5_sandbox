@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/core/object_pooling/concepts/ObjectPoolConcepts.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"

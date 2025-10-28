@@ -19,6 +19,9 @@ class SANDBOX_API ADroppableWaypoint
     GENERATED_BODY()
   public:
     ADroppableWaypoint();
+
+    void Activate();
+    void Deactivate();
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")
     UStaticMeshComponent* mesh_component{nullptr};

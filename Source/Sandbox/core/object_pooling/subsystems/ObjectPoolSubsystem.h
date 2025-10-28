@@ -3,11 +3,11 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/core/object_pooling/concepts/ObjectPoolConcepts.h"
-#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/combat/projectiles/data/BulletPoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystemCore.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/pathfinding/DroppableWaypoint/DroppableWaypointPoolConfig.h"
 
 #include "ObjectPoolSubsystem.generated.h"
 
@@ -17,7 +17,7 @@ class SANDBOX_API UObjectPoolSubsystem
     , public ml::LogMsgMixin<"UObjectPoolSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
-    using pool_type = UObjectPoolSubsystemCore<FBulletPoolConfig>;
+    using pool_type = UObjectPoolSubsystemCore<FBulletPoolConfig, FDroppableWaypointPoolConfig>;
 
     UObjectPoolSubsystem()
         : core_(MakeUnique<pool_type>(*GetWorld())) {}

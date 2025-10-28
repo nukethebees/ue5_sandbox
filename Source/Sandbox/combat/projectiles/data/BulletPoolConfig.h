@@ -5,11 +5,6 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/combat/projectiles/actors/BulletActor.h"
+#include "Sandbox/core/object_pooling/data/PoolConfig.h"
 
-struct FBulletPoolConfig {
-    using ActorType = ABulletActor;
-    static constexpr int32 DefaultPoolSize{100};
-    static constexpr std::optional<int32> MaxPoolSize{std::nullopt};
-
-    static TSubclassOf<ABulletActor> GetDefaultClass();
-};
+using FBulletPoolConfig = FPoolConfig<ABulletActor, 100>;
