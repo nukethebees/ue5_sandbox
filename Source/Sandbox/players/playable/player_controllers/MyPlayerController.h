@@ -40,11 +40,31 @@ class SANDBOX_API AMyPlayerController
 
     // Movement
     UFUNCTION()
+    void move(FInputActionValue const& value);
+    UFUNCTION()
+    void start_jump();
+    UFUNCTION()
+    void stop_jump();
+    UFUNCTION()
+    void start_crouch();
+    UFUNCTION()
+    void stop_crouch();
+    UFUNCTION()
+    void start_sprint();
+    UFUNCTION()
+    void stop_sprint();
+    UFUNCTION()
     void warp_to_cursor(FInputActionValue const& value);
+    UFUNCTION()
+    void start_jetpack();
+    UFUNCTION()
+    void stop_jetpack();
 
     // Vision
     UFUNCTION()
     void look(FInputActionValue const& value);
+    UFUNCTION()
+    void cycle_camera();
 
     // Combat
     UFUNCTION()
@@ -53,6 +73,12 @@ class SANDBOX_API AMyPlayerController
     void attack_continued(FInputActionInstance const& instance);
     UFUNCTION()
     void attack_ended();
+
+    // Torch
+    UFUNCTION()
+    void toggle_torch();
+    UFUNCTION()
+    void scroll_torch_cone(FInputActionValue const& value);
 
     // Inventory
     UFUNCTION()
@@ -99,11 +125,14 @@ class SANDBOX_API AMyPlayerController
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Description")
     float description_scan_interval{0.15f};
   private:
-    bool tick_no_controller_character_warning_fired{false};
+    // Input
     void add_input_mapping_context(UInputMappingContext* context);
     void swap_input_mapping_context(UInputMappingContext* to_remove, UInputMappingContext* to_add);
+
+    // UI
     void perform_description_scan();
 
+    bool tick_no_controller_character_warning_fired{false};
     float attack_elapsed_time{0.0f};
     FTimerHandle description_scanner_timer_handle;
     bool tracking_target_outline{false};

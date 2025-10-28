@@ -16,7 +16,6 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/data/CameraConfig.h"
-#include "Sandbox/players/playable/data/CharacterInputActions.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
 #include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
@@ -219,13 +218,9 @@ class SANDBOX_API AMyCharacter
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    // Speed
+    // Movement
     virtual void on_speed_changed(float new_speed);
     virtual void set_movement_multiplier(float multiplier) override;
-
-    // Input
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    FCharacterInputActions input_actions{};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement");
     FHumanoidMovement movement{};

@@ -102,10 +102,6 @@ void AMyCharacter::BeginPlay() {
         using EIPS = UEnhancedInputLocalPlayerSubsystem;
         auto const* local_player{player_controller->GetLocalPlayer()};
 
-        if (auto* subsystem{ULocalPlayer::GetSubsystem<EIPS>(local_player)}) {
-            subsystem->AddMappingContext(this->input_actions.character_context, 0);
-        }
-
         using HUD = std::remove_pointer<decltype(hud)>::type;
         hud = Cast<HUD>(player_controller->GetHUD());
 
@@ -124,28 +120,6 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
     if (auto* eic{CastChecked<UEnhancedInputComponent>(PlayerInputComponent)}) {
         using enum ETriggerEvent;
         auto bind{make_input_binder(eic)};
-
-        // Movement
-        bind(input_actions.move, Triggered, &AMyCharacter::move);
-
-        bind(input_actions.jump, Started, &ACharacter::Jump);
-        bind(input_actions.jump, Completed, &ACharacter::StopJumping);
-
-        bind(input_actions.crouch, Started, &AMyCharacter::start_crouch);
-        bind(input_actions.crouch, Completed, &AMyCharacter::stop_crouch);
-
-        bind(input_actions.sprint, Started, &AMyCharacter::start_sprint);
-        bind(input_actions.sprint, Completed, &AMyCharacter::stop_sprint);
-
-        bind(input_actions.jetpack, Triggered, &AMyCharacter::start_jetpack);
-        bind(input_actions.jetpack, Completed, &AMyCharacter::stop_jetpack);
-
-        // Vision
-        bind(input_actions.cycle_camera, Started, &AMyCharacter::cycle_camera);
-
-        // Torch
-        bind(input_actions.toggle_torch, Started, &AMyCharacter::toggle_torch);
-        bind(input_actions.scroll_torch_cone, Triggered, &AMyCharacter::scroll_torch_cone);
     }
 }
 

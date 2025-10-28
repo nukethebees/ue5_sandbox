@@ -57,6 +57,10 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
 
     controlled_character = Cast<AMyCharacter>(InPawn);
+
+    if (controlled_character) {
+        add_input_mapping_context(input.character_context);
+    }
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
     constexpr auto logger{NestedLogger<"Tick">()};
@@ -118,15 +122,34 @@ void AMyPlayerController::SetupInputComponent() {
     auto bind{make_input_binder(eic)};
 
     // Movement
+    bind(input.move, Triggered, &AMyPlayerController::move);
+
+    bind(input.jump, Started, &AMyPlayerController::start_jump);
+    bind(input.jump, Completed, &AMyPlayerController::stop_jump);
+
+    bind(input.crouch, Started, &AMyPlayerController::start_crouch);
+    bind(input.crouch, Completed, &AMyPlayerController::stop_crouch);
+
+    bind(input.sprint, Started, &AMyPlayerController::start_sprint);
+    bind(input.sprint, Completed, &AMyPlayerController::stop_sprint);
+
     bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
+
+    bind(input.jetpack, Triggered, &AMyPlayerController::start_jetpack);
+    bind(input.jetpack, Completed, &AMyPlayerController::stop_jetpack);
 
     // Vision
     bind(input.look, Triggered, &AMyPlayerController::look);
+    bind(input.cycle_camera, Started, &AMyPlayerController::cycle_camera);
 
     // Combat
     bind(input.attack, Started, &AMyPlayerController::attack_started);
     bind(input.attack, Ongoing, &AMyPlayerController::attack_continued);
     bind(input.attack, Completed, &AMyPlayerController::attack_ended);
+
+    // Torch
+    bind(input.toggle_torch, Started, &AMyPlayerController::toggle_torch);
+    bind(input.scroll_torch_cone, Triggered, &AMyPlayerController::scroll_torch_cone);
 
     // Inventory
     bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
@@ -145,6 +168,27 @@ void AMyPlayerController::SetupInputComponent() {
 }
 
 // Movement
+void AMyPlayerController::move(FInputActionValue const& value) {
+    FORWARD_CALL_TO_CHARACTER(move, value);
+}
+void AMyPlayerController::start_jump() {
+    FORWARD_CALL_TO_CHARACTER(Jump);
+}
+void AMyPlayerController::stop_jump() {
+    FORWARD_CALL_TO_CHARACTER(StopJumping);
+}
+void AMyPlayerController::start_crouch() {
+    FORWARD_CALL_TO_CHARACTER(start_crouch);
+}
+void AMyPlayerController::stop_crouch() {
+    FORWARD_CALL_TO_CHARACTER(stop_crouch);
+}
+void AMyPlayerController::start_sprint() {
+    FORWARD_CALL_TO_CHARACTER(start_sprint);
+}
+void AMyPlayerController::stop_sprint() {
+    FORWARD_CALL_TO_CHARACTER(stop_sprint);
+}
 void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
     RETURN_IF_NULLPTR(controlled_character);
 
@@ -168,11 +212,20 @@ void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
         }
     }
 }
+void AMyPlayerController::start_jetpack() {
+    FORWARD_CALL_TO_CHARACTER(start_jetpack);
+}
+void AMyPlayerController::stop_jetpack() {
+    FORWARD_CALL_TO_CHARACTER(stop_jetpack);
+}
 
 // Vision
 void AMyPlayerController::look(FInputActionValue const& value) {
     RETURN_IF_NULLPTR(controlled_character);
     controlled_character->look(value);
+}
+void AMyPlayerController::cycle_camera() {
+    FORWARD_CALL_TO_CHARACTER(cycle_camera);
 }
 
 // Combat
@@ -189,6 +242,14 @@ void AMyPlayerController::attack_continued(FInputActionInstance const& instance)
 }
 void AMyPlayerController::attack_ended() {
     FORWARD_CALL_TO_CHARACTER(attack_ended);
+}
+
+// Torch
+void AMyPlayerController::toggle_torch() {
+    FORWARD_CALL_TO_CHARACTER(toggle_torch);
+}
+void AMyPlayerController::scroll_torch_cone(FInputActionValue const& value) {
+    FORWARD_CALL_TO_CHARACTER(scroll_torch_cone, value);
 }
 
 // Inventory
@@ -286,6 +347,10 @@ void AMyPlayerController::set_mouse_input_mode() {
     swap_input_mapping_context(input.direct_mode_context, input.cursor_mode_context);
 }
 
+// Private
+// -------------------
+
+// Input
 void AMyPlayerController::add_input_mapping_context(UInputMappingContext* context) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
@@ -300,7 +365,7 @@ void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_re
     subsystem->RemoveMappingContext(to_remove);
     subsystem->AddMappingContext(to_add, 0);
 }
-
+// UI
 void AMyPlayerController::perform_description_scan() {
     constexpr auto logger{NestedLogger<"perform_description_scan">()};
 

@@ -13,16 +13,29 @@ struct FMyPlayerControllerInputActions {
 
     FMyPlayerControllerInputActions() = default;
 
+    // Contexts
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* base_context{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* direct_mode_context{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputMappingContext* cursor_mode_context{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputMappingContext* character_context{nullptr};
 
     // Movement
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* move{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* jump{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* crouch{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* sprint{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* warp_to_cursor{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* jetpack{nullptr};
 
     // Vision
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -31,10 +44,18 @@ struct FMyPlayerControllerInputActions {
     UInputAction* toggle_mouse{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* mouse_click{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* cycle_camera{nullptr};
 
-    // Weapons
+    // Combat
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* attack{nullptr};
+
+    // Torch
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* toggle_torch{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* scroll_torch_cone{nullptr};
 
     // Inventory
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
@@ -48,8 +69,11 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* reload_weapon{nullptr};
 
+    // Misc
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* interact{nullptr};
+
+    // UI
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_in_game_menu{nullptr};
 };
