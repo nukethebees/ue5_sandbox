@@ -14,9 +14,14 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/players/playable/data/MyPlayerControllerCache.h"
 #include "Sandbox/players/playable/data/MyPlayerControllerInputActions.h"
 
 #include "MyPlayerController.generated.h"
+
+class AMyHUD;
+
+struct FActorCorners;
 
 UCLASS()
 class SANDBOX_API AMyPlayerController
@@ -72,12 +77,21 @@ class SANDBOX_API AMyPlayerController
     // UI
     UFUNCTION()
     void toggle_in_game_menu();
-
+    UFUNCTION()
     void set_game_input_mode();
+    UFUNCTION()
     void set_mouse_input_mode();
+    UFUNCTION()
+    void update_target_screen_bounds(FActorCorners const& corners);
+    UFUNCTION()
+    void clear_target_screen_bounds();
 
     UPROPERTY()
     AMyCharacter* controlled_character;
+    UPROPERTY()
+    AMyHUD* hud;
+    UPROPERTY()
+    FMyPlayerControllerCache cache;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     FMyPlayerControllerInputActions input{};
@@ -92,4 +106,5 @@ class SANDBOX_API AMyPlayerController
 
     float attack_elapsed_time{0.0f};
     FTimerHandle description_scanner_timer_handle;
+    bool tracking_target_outline{false};
 };

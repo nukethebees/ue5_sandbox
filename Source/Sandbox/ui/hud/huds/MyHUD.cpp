@@ -158,3 +158,8 @@ void AMyHUD::update_target_screen_bounds(FActorCorners const& corners) {
 
     main_widget->target_overlay->update_target_screen_bounds(*player_controller, corners);
 }
+void AMyHUD::clear_target_screen_bounds() {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->target_overlay);
+    main_widget->target_overlay->hide();
+}

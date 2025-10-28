@@ -40,22 +40,22 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     // Check if hit actor implements IDescribable
     FText description{};
 
-    if (hit) {
-        if (hit_actor) {
-            if (auto* describable{Cast<IDescribable>(hit_actor)}) {
-                description = describable->get_description();
-                update_outline(pc, *hit_actor);
-            }
-        } else {
-            logger.log_verbose(TEXT("hit_actor is nullptr."));
-        }
-    }
-
     // Only update if actor changed
     bool const actor_changed{hit_actor != last_seen_actor.Get()};
 
     if (!actor_changed) {
         return;
+    }
+
+    if (hit_actor) {
+        if (auto* describable{Cast<IDescribable>(hit_actor)}) {
+            description = describable->get_description();
+            update_outline(pc, *hit_actor);
+        } else {
+            on_target_screen_bounds_cleared.ExecuteIfBound();
+        }
+    } else {
+        on_target_screen_bounds_cleared.ExecuteIfBound();
     }
 
     last_seen_actor = hit_actor;

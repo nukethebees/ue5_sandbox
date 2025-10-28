@@ -29,6 +29,9 @@ void UTargetOverlayHUDWidget::update_target_screen_bounds(APlayerController& pc,
     canvas_slot->SetPosition(bounds.get_centre());
     canvas_slot->SetSize(bounds.size + outline_padding);
 }
+void UTargetOverlayHUDWidget::hide() {
+    SetVisibility(ESlateVisibility::Collapsed);
+}
 
 void UTargetOverlayHUDWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();

@@ -18,6 +18,7 @@ struct FActorCorners;
 
 DECLARE_DELEGATE_OneParam(FOnDescriptionUpdate, FText const&);
 DECLARE_DELEGATE_OneParam(FOnTargetScreenBoundsUpdate, FActorCorners const&);
+DECLARE_DELEGATE(FOnTargetScreenBoundsCleared);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UActorDescriptionScannerComponent
@@ -29,6 +30,7 @@ class SANDBOX_API UActorDescriptionScannerComponent
 
     FOnDescriptionUpdate on_description_update;
     FOnTargetScreenBoundsUpdate on_target_screen_bounds_update;
+    FOnTargetScreenBoundsCleared on_target_screen_bounds_cleared;
   protected:
     virtual void BeginPlay() override;
   public:

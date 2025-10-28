@@ -65,6 +65,8 @@ class SANDBOX_API AMyHUD
     void update_description(FText const& text);
     UFUNCTION()
     void update_target_screen_bounds(FActorCorners const& corners);
+    UFUNCTION()
+    void clear_target_screen_bounds();
   protected:
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")

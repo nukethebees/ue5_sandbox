@@ -2,7 +2,7 @@
 
 #include "Camera/CameraComponent.h"
 
-#include "Sandbox/misc/learning/actors/TalkingPillar.h"
+#include "Sandbox/environment/interactive/interfaces/Clickable.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/WarpComponent.h"
@@ -22,13 +22,17 @@ void AMyPlayerController::BeginPlay() {
     bEnableClickEvents = true;
     bEnableMouseOverEvents = false;
 
+    PlayerCameraManager->GetCameraViewPoint(cache.camera_location, cache.camera_rotation);
+
     set_game_input_mode();
 
     add_input_mapping_context(input.base_context);
 
     TRY_INIT_PTR(pawn, GetPawn());
     TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
-    TRY_INIT_PTR(hud, Cast<AMyHUD>(GetHUD()));
+    hud = Cast<AMyHUD>(GetHUD());
+    RETURN_IF_NULLPTR(hud);
+
     character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
 
     check(character->actor_description_scanner);
@@ -37,7 +41,9 @@ void AMyPlayerController::BeginPlay() {
     character->actor_description_scanner->on_description_update.BindUObject(
         hud, &AMyHUD::update_description);
     character->actor_description_scanner->on_target_screen_bounds_update.BindUObject(
-        hud, &AMyHUD::update_target_screen_bounds);
+        this, &AMyPlayerController::update_target_screen_bounds);
+    character->actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
+        this, &AMyPlayerController::clear_target_screen_bounds);
 
     TRY_INIT_PTR(world, GetWorld());
     constexpr bool loop_timer{true};
@@ -53,11 +59,12 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
     controlled_character = Cast<AMyCharacter>(InPawn);
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
+    constexpr auto logger{NestedLogger<"Tick">()};
     Super::Tick(DeltaSeconds);
 
     if (!controlled_character) {
         if (!tick_no_controller_character_warning_fired) {
-            log_warning(TEXT("No controlled character"));
+            logger.log_warning(TEXT("No controlled character"));
             tick_no_controller_character_warning_fired = true;
         }
 
@@ -81,6 +88,22 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
             auto const look_target{camera_location + camera_rotation.Vector() * torch_target_scale};
 
             controlled_character->aim_torch(look_target);
+        }
+    }
+
+    FVector current_camera_location;
+    FRotator current_camera_rotation;
+    PlayerCameraManager->GetCameraViewPoint(current_camera_location, current_camera_rotation);
+
+    bool const has_camera_moved = !current_camera_location.Equals(cache.camera_location, 1.0f) ||
+                                  !current_camera_rotation.Equals(cache.camera_rotation, 0.1f);
+
+    if (has_camera_moved) {
+        cache.camera_location = current_camera_location;
+        cache.camera_rotation = current_camera_rotation;
+
+        if (tracking_target_outline) {
+            hud->update_target_screen_bounds(cache.outline_corners);
         }
     }
 }
@@ -245,7 +268,7 @@ void AMyPlayerController::interact() {
 
 // UI
 void AMyPlayerController::toggle_in_game_menu() {
-    TRY_INIT_PTR(hud, Cast<AMyHUD>(GetHUD()));
+    RETURN_IF_NULLPTR(hud);
     hud->toggle_in_game_menu();
 }
 void AMyPlayerController::set_game_input_mode() {
@@ -290,4 +313,16 @@ void AMyPlayerController::perform_description_scan() {
 
     controlled_character->actor_description_scanner->perform_raycast(
         *this, view_location, view_rotation);
+}
+void AMyPlayerController::update_target_screen_bounds(FActorCorners const& corners) {
+    RETURN_IF_NULLPTR(hud);
+    cache.outline_corners = corners;
+    tracking_target_outline = true;
+
+    hud->update_target_screen_bounds(corners);
+}
+void AMyPlayerController::clear_target_screen_bounds() {
+    RETURN_IF_NULLPTR(hud);
+    tracking_target_outline = false;
+    hud->clear_target_screen_bounds();
 }

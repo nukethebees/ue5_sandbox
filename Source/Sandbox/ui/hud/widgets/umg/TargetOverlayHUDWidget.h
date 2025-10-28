@@ -19,6 +19,7 @@ class SANDBOX_API UTargetOverlayHUDWidget
     GENERATED_BODY()
   public:
     void update_target_screen_bounds(APlayerController& pc, FActorCorners const& corners);
+    void hide();
   protected:
     virtual void NativeOnInitialized() override;
 
