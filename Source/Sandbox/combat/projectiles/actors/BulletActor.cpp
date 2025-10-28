@@ -13,24 +13,24 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-ABulletActor::ABulletActor() {
+ABulletActor::ABulletActor()
+    : collision_component{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"))}
+    , mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))}
+    , projectile_movement{
+          CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"))} {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::ABulletActor"))
 
     PrimaryActorTick.bCanEverTick = false;
 
-    collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"));
     collision_component->SetBoxExtent(FVector{1.0f, 1.0f, 1.0f});
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     collision_component->SetCollisionResponseToAllChannels(ECR_Block);
     collision_component->SetNotifyRigidBodyCollision(true);
     RootComponent = collision_component;
 
-    mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    projectile_movement =
-        CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
     projectile_movement->InitialSpeed = 1000.0f;
     projectile_movement->MaxSpeed = 1000.0f;
     projectile_movement->bRotationFollowsVelocity = true;
