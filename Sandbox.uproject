@@ -161,6 +161,10 @@
 		{
 			"Name": "SlateInsights",
 			"Enabled": true
+		},
+		{
+			"Name": "UdpMessaging",
+			"Enabled": false
 		}
 	],
 	"TargetPlatforms": [
