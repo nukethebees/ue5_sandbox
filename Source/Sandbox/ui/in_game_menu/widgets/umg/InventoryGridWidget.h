@@ -23,6 +23,7 @@ class SANDBOX_API UInventoryGridWidget
     , public ml::LogMsgMixin<"UInventoryGridWidget", LogSandboxUI> {
     GENERATED_BODY()
   protected:
+    virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 

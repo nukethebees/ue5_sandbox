@@ -11,17 +11,15 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+void UInventoryGridWidget::NativeOnInitialized() {
+    Super::NativeOnInitialized();
+    OnNativeVisibilityChanged.AddUObject(this, &UInventoryGridWidget::on_visibility_changed);
+}
 void UInventoryGridWidget::NativeConstruct() {
     Super::NativeConstruct();
-    log_verbose(TEXT("NativeConstruct."));
-
-    OnNativeVisibilityChanged.AddUObject(this, &UInventoryGridWidget::on_visibility_changed);
     refresh_grid();
 }
 void UInventoryGridWidget::NativeDestruct() {
-    log_verbose(TEXT("NativeDestruct."));
-    OnNativeVisibilityChanged.RemoveAll(this);
-
     Super::NativeDestruct();
 }
 
