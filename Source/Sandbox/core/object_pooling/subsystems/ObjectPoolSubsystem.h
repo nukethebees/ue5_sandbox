@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
+#include "Sandbox/core/object_pooling/concepts/ObjectPoolConcepts.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystemCore.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
