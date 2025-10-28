@@ -47,6 +47,7 @@ class UWarpComponent;
 class UActorDescriptionScannerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
+DECLARE_DELEGATE_OneParam(FOnJumpCountChanged, int32);
 
 namespace ml {
 namespace AMyCharacter {
@@ -148,16 +149,23 @@ class SANDBOX_API AMyCharacter
     void increase_max_jump_count(int32 jumps);
     virtual void OnJumped_Implementation() override;
     virtual void Landed(FHitResult const& Hit) override;
+    void broadcast_jump_count() const;
+    void broadcast_jump_count(int32 count) const;
 
     // Interaction
     UFUNCTION()
     void interact(FVector sweep_origin, FRotator sweep_direction);
 
+    // IGenericTeamAgentInterface
+    virtual FGenericTeamId GetGenericTeamId() const override;
+    virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
+
+    // Properties
     UPROPERTY()
     bool is_forced_movement{false};
 
-    UPROPERTY(BlueprintAssignable, Category = "Movement")
-    FOnMaxSpeedChanged OnMaxSpeedChanged;
+    FOnMaxSpeedChanged on_max_speed_changed;
+    FOnJumpCountChanged on_jump_count_changed;
 
     // Components
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -210,10 +218,6 @@ class SANDBOX_API AMyCharacter
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
     ETeamID team_id{ETeamID::Player};
-
-    // IGenericTeamAgentInterface
-    virtual FGenericTeamId GetGenericTeamId() const override;
-    virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
   protected:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -238,5 +242,4 @@ class SANDBOX_API AMyCharacter
 
     bool torch_on{true};
     APlayerController* player_controller{nullptr};
-    AMyHUD* hud{nullptr};
 };

@@ -33,11 +33,11 @@ void AMyPlayerController::BeginPlay() {
     hud = Cast<AMyHUD>(GetHUD());
     RETURN_IF_NULLPTR(hud);
 
-    character->OnMaxSpeedChanged.AddDynamic(hud, &AMyHUD::update_max_speed);
-
-    check(character->actor_description_scanner);
+    character->on_max_speed_changed.AddDynamic(hud, &AMyHUD::update_max_speed);
+    character->on_jump_count_changed.BindUObject(hud, &AMyHUD::update_jump);
 
     // Set up actor description scanner
+    check(character->actor_description_scanner);
     character->actor_description_scanner->on_description_update.BindUObject(
         hud, &AMyHUD::update_description);
     character->actor_description_scanner->on_target_screen_bounds_update.BindUObject(

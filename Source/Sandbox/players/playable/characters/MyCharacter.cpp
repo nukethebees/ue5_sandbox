@@ -21,7 +21,6 @@
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/players/playable/actor_components/WarpComponent.h"
-#include "Sandbox/ui/hud/huds/MyHud.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -94,21 +93,6 @@ void AMyCharacter::BeginPlay() {
     char_movement.MaxAcceleration = movement.acceleration;
 
     reset_max_jump_count();
-
-    using PC = std::remove_pointer<decltype(player_controller)>::type;
-    player_controller = Cast<PC>(this->Controller);
-
-    if (player_controller) {
-        using EIPS = UEnhancedInputLocalPlayerSubsystem;
-        auto const* local_player{player_controller->GetLocalPlayer()};
-
-        using HUD = std::remove_pointer<decltype(hud)>::type;
-        hud = Cast<HUD>(player_controller->GetHUD());
-
-        if (hud) {
-            hud->update_jump(JumpCurrentCount);
-        }
-    }
 
     RETURN_IF_NULLPTR(weapon_attach_point);
     RETURN_IF_NULLPTR(weapon_component);
@@ -278,15 +262,17 @@ void AMyCharacter::increase_max_jump_count(int32 jumps) {
 }
 void AMyCharacter::OnJumped_Implementation() {
     Super::OnJumped_Implementation();
-    if (hud) {
-        hud->update_jump(JumpCurrentCount);
-    }
+    broadcast_jump_count();
 }
 void AMyCharacter::Landed(FHitResult const& Hit) {
     Super::Landed(Hit);
-    if (hud) {
-        hud->update_jump(0);
-    }
+    broadcast_jump_count(0);
+}
+void AMyCharacter::broadcast_jump_count() const {
+    on_jump_count_changed.ExecuteIfBound(JumpCurrentCount);
+}
+void AMyCharacter::broadcast_jump_count(int32 count) const {
+    on_jump_count_changed.ExecuteIfBound(count);
 }
 
 // Interaction
@@ -312,7 +298,7 @@ void AMyCharacter::SetGenericTeamId(FGenericTeamId const& TeamID) {
 }
 
 void AMyCharacter::on_speed_changed(float new_speed) {
-    OnMaxSpeedChanged.Broadcast(new_speed);
+    on_max_speed_changed.Broadcast(new_speed);
 }
 
 void AMyCharacter::set_movement_multiplier(float multiplier) {
@@ -355,7 +341,7 @@ void AMyCharacter::set_speed(float new_speed) {
     if (auto* char_movement{GetCharacterMovement()}) {
         auto const boosted_speed{new_speed * movement.boost_scale_factor};
         char_movement->MaxWalkSpeed = boosted_speed;
-        OnMaxSpeedChanged.Broadcast(char_movement->MaxWalkSpeed);
+        on_max_speed_changed.Broadcast(char_movement->MaxWalkSpeed);
     } else {
         log_warning(TEXT("Couldn't get character movement component."));
     }

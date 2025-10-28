@@ -55,6 +55,7 @@ void AMyHUD::BeginPlay() {
     TRY_INIT_PTR(weapon_component, player_pawn->FindComponentByClass<UPawnWeaponComponent>());
     weapon_component->on_weapon_ammo_changed.AddDynamic(this, &AMyHUD::update_ammo);
     update_ammo({});
+    update_jump(0);
 }
 
 void AMyHUD::set_inventory(UInventoryComponent& inventory) {
