@@ -11,6 +11,7 @@
 #include "DroppableWaypoint.generated.h"
 
 class UStaticMeshComponent;
+class URotatingActorComponent;
 
 UCLASS()
 class SANDBOX_API ADroppableWaypoint
@@ -25,4 +26,6 @@ class SANDBOX_API ADroppableWaypoint
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")
     UStaticMeshComponent* mesh_component{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")
+    URotatingActorComponent* rotation_component{nullptr};
 };
