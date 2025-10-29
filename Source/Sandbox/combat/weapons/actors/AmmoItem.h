@@ -4,6 +4,7 @@
 
 #include "Sandbox/combat/weapons/enums/AmmoType.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
+#include "Sandbox/interaction/interfaces/Interactable.h"
 #include "Sandbox/inventory/data/Dimensions.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -20,6 +21,7 @@ class SANDBOX_API AAmmoItem
     : public AActor
     , public IDescribable
     , public IInventoryItem
+    , public IInteractable
     , public ml::LogMsgMixin<"AAmmoItem", LogSandboxWeapon> {
     GENERATED_BODY()
   public:
@@ -43,6 +45,9 @@ class SANDBOX_API AAmmoItem
         return inventory_name;
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
+
+    // IInteractable
+    virtual void on_interacted(AActor& instigator) override;
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     UBoxComponent* collision_box{nullptr};

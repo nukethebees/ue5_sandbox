@@ -5,6 +5,9 @@
 #include "Components/StaticMeshComponent.h"
 
 #include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AAmmoItem::AAmmoItem()
     : collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))}
@@ -19,6 +22,13 @@ AAmmoItem::AAmmoItem()
 
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AAmmoItem::on_interacted(AActor& instigator) {
+    TRY_INIT_PTR(inventory, instigator.GetComponentByClass<UInventoryComponent>());
+    if (inventory->add_item(this)) {
+        Destroy();
+    }
 }
 
 void AAmmoItem::BeginPlay() {
