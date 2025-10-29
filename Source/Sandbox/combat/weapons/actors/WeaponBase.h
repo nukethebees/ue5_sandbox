@@ -64,7 +64,7 @@ class SANDBOX_API AWeaponBase
         return default_name;
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
-    virtual EItemType get_item_type() const override { return EItemType::Ammo; }
+    virtual EItemType get_item_type() const override { return EItemType::Weapon; }
 
     // AWeaponBase
     UFUNCTION() void hide_weapon();

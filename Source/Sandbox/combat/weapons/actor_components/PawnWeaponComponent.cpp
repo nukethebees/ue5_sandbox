@@ -3,30 +3,20 @@
 #include "Sandbox/combat/weapons/actor_components/WeaponComponent.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/utilities/enums.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-UPawnWeaponComponent::UPawnWeaponComponent()
-    : spawn_parameters() {
-    FVector const translation{0.0f, 0.0f, 200.0f};
-    auto const rotation{FRotator{}};
-    auto const scale{FVector::OneVector};
-    spawn_transform = FTransform{rotation, translation, scale};
-
-    spawn_parameters.Name = TEXT("SpawnedGun");
-    spawn_parameters.NameMode = FActorSpawnParameters::ESpawnActorNameMode::Requested;
-}
+UPawnWeaponComponent::UPawnWeaponComponent() {}
 
 void UPawnWeaponComponent::BeginPlay() {
     Super::BeginPlay();
 
     TRY_INIT_PTR(owner, GetOwner());
 
-    spawn_parameters.Name = TEXT("SpawnedGun");
-    spawn_parameters.Owner = owner;
-
     inventory = owner->GetComponentByClass<UInventoryComponent>();
     check(inventory);
+    inventory->on_weapon_added.BindUObject(this, &UPawnWeaponComponent::on_weapon_added);
 }
 
 bool UPawnWeaponComponent::can_fire() const {
@@ -107,27 +97,6 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
 
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 }
-
-bool UPawnWeaponComponent::pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class) {
-    constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
-
-    logger.log_display(TEXT("Picking up new weapon"));
-
-    INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
-    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
-    INIT_PTR_OR_RETURN_VALUE(weapon, spawn_weapon(weapon_class, *owner, *world), false);
-
-    RETURN_VALUE_IF_NULLPTR(attach_location, false);
-    INIT_PTR_OR_RETURN_VALUE(
-        inventory_component, owner->GetComponentByClass<UInventoryComponent>(), false);
-
-    if (!pickup_new_weapon(*weapon, *inventory_component, *attach_location)) {
-        weapon->Destroy();
-        return false;
-    }
-
-    return true;
-}
 bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon) {
     INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
     RETURN_VALUE_IF_NULLPTR(attach_location, false);
@@ -165,7 +134,8 @@ bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
             break;
         }
         default: {
-            logger.log_warning(TEXT("Unhandled enum value"));
+            logger.log_warning(TEXT("%s"),
+                               *ml::make_unhandled_enum_case_warning(weapon_pickup_action));
             break;
         }
     }
@@ -178,15 +148,36 @@ void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& l
         &location, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, weld_to_parent));
     weapon.SetActorRelativeTransform(FTransform{});
 }
-AWeaponBase* UPawnWeaponComponent::spawn_weapon(TSubclassOf<AWeaponBase> weapon_class,
-                                                AActor& owner,
-                                                UWorld& world) {
-    auto* spawned_weapon{
-        world.SpawnActor<AWeaponBase>(weapon_class, spawn_transform, spawn_parameters)};
-    RETURN_VALUE_IF_NULLPTR(spawned_weapon, nullptr);
-    spawned_weapon->SetOwner(&owner);
+void UPawnWeaponComponent::on_weapon_added(AWeaponBase& weapon) {
+    constexpr auto logger{NestedLogger<"on_weapon_added">()};
 
-    return spawned_weapon;
+    logger.log_warning(TEXT("foo"));
+
+    check(attach_location);
+    attach_weapon(weapon, *attach_location);
+    weapon.hide_weapon();
+
+    switch (weapon_pickup_action) {
+        using enum EWeaponPickupAction;
+        case Nothing: {
+            break;
+        }
+        case EquipIfNothingEquipped: {
+            if (!active_weapon) {
+                equip_weapon(weapon);
+            }
+            break;
+        }
+        case Equip: {
+            equip_weapon(weapon);
+            break;
+        }
+        default: {
+            logger.log_warning(TEXT("%s"),
+                               *ml::make_unhandled_enum_case_warning(weapon_pickup_action));
+            break;
+        }
+    }
 }
 
 void UPawnWeaponComponent::on_active_weapon_ammo_changed(FAmmoData current_ammo) {

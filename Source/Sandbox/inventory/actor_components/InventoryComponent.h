@@ -15,6 +15,8 @@
 
 class AWeaponBase;
 
+DECLARE_DELEGATE_OneParam(FOnWeaponAdded, AWeaponBase&);
+
 UCLASS()
 class SANDBOX_API UInventoryComponent
     : public UActorComponent
@@ -60,6 +62,8 @@ class SANDBOX_API UInventoryComponent
     auto get_entry(AWeaponBase const& weapon) -> FInventoryEntry*;
 
     auto get_entries_view() const { return TArrayView<FInventoryEntry const>(item_entries); }
+
+    FOnWeaponAdded on_weapon_added;
   protected:
     template <auto next_index_fn>
     auto get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase*;

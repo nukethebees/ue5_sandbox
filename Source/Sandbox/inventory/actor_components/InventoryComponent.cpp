@@ -3,6 +3,7 @@
 #include "Algo/RandomShuffle.h"
 
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/utilities/enums.h"
 #include "Sandbox/utilities/grids.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -18,16 +19,41 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     auto const free_point{find_free_point(*item)};
 
     if (!free_point) {
-        log_warning(TEXT("Couldn't find a free spot in the inventory."));
+        logger.log_warning(TEXT("Couldn't find a free spot for %s in the inventory."),
+                           *item->get_name());
         return false;
     }
 
     FStackSize const stack_size{1};
     FInventoryEntry item_entry{item, stack_size, item->get_size(), *free_point};
+    auto const item_type{item->get_item_type()};
 
-    logger.log_display(TEXT("Adding %s to %s"), *item->get_name(), *free_point->to_string());
+    logger.log_display(TEXT("Adding %s [%s] to %s"),
+                       *item->get_name(),
+                       *UEnum::GetValueAsString(item_type),
+                       *free_point->to_string());
 
     item_entries.Add(item_entry);
+
+    switch (item_type) {
+        using enum EItemType;
+        case Weapon: {
+            auto* weapon{item->get_weapon()};
+            check(weapon);
+            on_weapon_added.ExecuteIfBound(*weapon);
+            break;
+        }
+        case Junk: {
+            break;
+        }
+        case Ammo: {
+            break;
+        }
+        default: {
+            logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(item_type));
+            break;
+        }
+    }
 
     return true;
 }

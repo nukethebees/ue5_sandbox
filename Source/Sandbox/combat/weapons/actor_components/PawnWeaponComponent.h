@@ -45,19 +45,9 @@ class SANDBOX_API UPawnWeaponComponent
     void cycle_next_weapon();
     void cycle_prev_weapon();
 
-    bool pickup_new_weapon(TSubclassOf<AWeaponBase> weapon_class);
     bool pickup_new_weapon(AWeaponBase& weapon);
 
-    void set_spawn_parameters(FActorSpawnParameters new_value) { spawn_parameters = new_value; }
-    auto get_spawn_parameters() const { return spawn_parameters; }
-
-    void set_spawn_transform(FTransform new_value) { spawn_transform = new_value; }
-    auto get_spawn_transform() const { return spawn_transform; }
-
-    void set_attach_location(USceneComponent& new_value) {
-        attach_location = &new_value;
-        spawn_transform.SetLocation(new_value.GetRelativeLocation());
-    }
+    void set_attach_location(USceneComponent& new_value) { attach_location = &new_value; }
     auto get_attach_location() const { return attach_location; }
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
@@ -71,8 +61,8 @@ class SANDBOX_API UPawnWeaponComponent
     bool pickup_new_weapon(AWeaponBase& weapon,
                            UInventoryComponent& inventory_component,
                            USceneComponent& location);
-    AWeaponBase* spawn_weapon(TSubclassOf<AWeaponBase> weapon_class, AActor& owner, UWorld& world);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
+    void on_weapon_added(AWeaponBase& weapon);
 
     UFUNCTION()
     void on_active_weapon_ammo_changed(FAmmoData current_ammo);
@@ -82,11 +72,6 @@ class SANDBOX_API UPawnWeaponComponent
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     USceneComponent* attach_location{nullptr};
-
-    FActorSpawnParameters spawn_parameters;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
-    FTransform spawn_transform{};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
     UInventoryComponent* inventory;

@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -9,12 +10,8 @@ FTriggerResult FWeaponPickupPayload::trigger(FTriggerContext context) {
     RETURN_VALUE_IF_FALSE(weapon, FTriggerResult{});
     RETURN_VALUE_IF_FALSE(context.source.instigator, FTriggerResult{});
 
-    INIT_PTR_OR_RETURN_VALUE(weapon_component,
-                             context.source.instigator->GetComponentByClass<UPawnWeaponComponent>(),
-                             FTriggerResult{});
-
-    logger.log_verbose(TEXT("Weapon being picked up."));
-    if (weapon_component->pickup_new_weapon(*weapon)) {
+    if (UInventoryComponent::add_item(*context.source.instigator,
+                                      TScriptInterface<AWeaponBase>(weapon))) {
         weapon->set_pickup_collision(false);
     }
 
