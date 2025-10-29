@@ -99,6 +99,24 @@ void UInGamePlayerMenu::refresh() {
             inventory_tab->on_widget_selected();
             break;
         }
+        case Powers: {
+            break;
+        }
+        case Stats: {
+            break;
+        }
+        case Objectives: {
+            break;
+        }
+        case Map: {
+            break;
+        }
+        case Logs: {
+            break;
+        }
+        case Research: {
+            break;
+        }
         default: {
             logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(current_tab));
             break;
