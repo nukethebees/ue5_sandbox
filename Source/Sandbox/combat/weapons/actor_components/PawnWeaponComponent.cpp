@@ -57,6 +57,8 @@ void UPawnWeaponComponent::unequip_weapon() {
     active_weapon->on_ammo_changed.RemoveAll(this);
     active_weapon->hide_weapon();
     active_weapon = nullptr;
+
+    on_weapon_unequipped.Broadcast();
 }
 void UPawnWeaponComponent::cycle_next_weapon() {
     constexpr auto logger{NestedLogger<"cycle_next_weapon">()};
@@ -90,11 +92,13 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
     active_weapon = &weapon;
     active_weapon->show_weapon();
 
-    active_weapon->on_ammo_changed.AddUObject(this,
-                                              &UPawnWeaponComponent::on_active_weapon_ammo_changed);
+    active_weapon->on_ammo_changed.AddRaw(&on_weapon_ammo_changed, &FOnAmmoChanged::Broadcast);
     on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
 
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
+
+    on_weapon_equipped.Broadcast(active_weapon->get_current_ammo(),
+                                 FAmmoData{active_weapon->get_ammo_type(), 0});
 }
 void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {
     constexpr bool weld_to_parent{false};
@@ -132,8 +136,4 @@ void UPawnWeaponComponent::on_weapon_added(AWeaponBase& weapon) {
             break;
         }
     }
-}
-
-void UPawnWeaponComponent::on_active_weapon_ammo_changed(FAmmoData current_ammo) {
-    on_weapon_ammo_changed.Broadcast(current_ammo);
 }

@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Engine/World.h"
 
-#include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
+#include "Sandbox/combat/weapons/delegates/PawnWeaponComponentDelegates.h"
 #include "Sandbox/combat/weapons/enums/WeaponPickupAction.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -45,13 +45,12 @@ class SANDBOX_API UPawnWeaponComponent
     EWeaponPickupAction weapon_pickup_action{EWeaponPickupAction::EquipIfNothingEquipped};
 
     FOnAmmoChanged on_weapon_ammo_changed;
+    FOnWeaponEquipped on_weapon_equipped;
+    FOnWeaponUnequipped on_weapon_unequipped;
   private:
     void equip_weapon(AWeaponBase& weapon);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
     void on_weapon_added(AWeaponBase& weapon);
-
-    UFUNCTION()
-    void on_active_weapon_ammo_changed(FAmmoData current_ammo);
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     AWeaponBase* active_weapon{nullptr};

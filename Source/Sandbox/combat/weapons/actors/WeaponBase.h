@@ -4,7 +4,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
-#include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
+#include "Sandbox/combat/weapons/delegates/PawnWeaponComponentDelegates.h"
 #include "Sandbox/combat/weapons/interfaces/WeaponInterface.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
