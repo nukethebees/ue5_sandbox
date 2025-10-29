@@ -10,6 +10,7 @@
 #include "Sandbox/ui/in_game_menu/widgets/umg/ResearchMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/StatsMenuWidget.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
+#include "Sandbox/utilities/enums.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -99,7 +100,7 @@ void UInGamePlayerMenu::refresh() {
             break;
         }
         default: {
-            logger.log_warning(TEXT("Unhandled case"));
+            logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(current_tab));
             break;
         }
     }
