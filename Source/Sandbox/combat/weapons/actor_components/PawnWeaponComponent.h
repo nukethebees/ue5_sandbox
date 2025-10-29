@@ -5,6 +5,7 @@
 #include "Engine/World.h"
 
 #include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
+#include "Sandbox/combat/weapons/enums/WeaponPickupAction.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -14,14 +15,6 @@ class USceneComponent;
 class UWeaponComponent;
 class AWeaponBase;
 class UInventoryComponent;
-
-UENUM(BlueprintType)
-enum class EWeaponPickupAction : uint8 {
-    // Discrete ammo types (countable)
-    Nothing UMETA(DisplayName = "Nothing"),
-    EquipIfNothingEquipped UMETA(DisplayName = "EquipIfNothingEquipped"),
-    Equip UMETA(DisplayName = "Equip")
-};
 
 UCLASS()
 class SANDBOX_API UPawnWeaponComponent

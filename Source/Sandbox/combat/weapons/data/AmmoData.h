@@ -10,6 +10,14 @@ USTRUCT(BlueprintType)
 struct FAmmoData {
     GENERATED_BODY()
 
+    FAmmoData() = default;
+    FAmmoData(EAmmoType type, int32 amount)
+        : type(type)
+        , discrete_amount(amount) {}
+    FAmmoData(EAmmoType type, float amount)
+        : type(type)
+        , continuous_amount(amount) {}
+
     static FAmmoData make_discrete(EAmmoType type, int32 amount) {
         FAmmoData data;
         data.type = type;
