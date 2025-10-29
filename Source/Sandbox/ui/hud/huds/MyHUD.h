@@ -60,6 +60,10 @@ class SANDBOX_API AMyHUD
     }
     UFUNCTION()
     void update_ammo(FAmmoData ammo_data);
+    UFUNCTION()
+    void on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData reserve_ammo);
+    UFUNCTION()
+    void on_weapon_unequipped();
 
     UFUNCTION()
     void update_description(FText const& text);

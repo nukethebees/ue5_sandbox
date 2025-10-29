@@ -93,7 +93,6 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
     active_weapon->show_weapon();
 
     active_weapon->on_ammo_changed.AddRaw(&on_weapon_ammo_changed, &FOnAmmoChanged::Broadcast);
-    on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
 
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 

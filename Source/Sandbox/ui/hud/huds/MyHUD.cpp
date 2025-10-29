@@ -54,8 +54,13 @@ void AMyHUD::BeginPlay() {
 
     TRY_INIT_PTR(weapon_component, player_pawn->FindComponentByClass<UPawnWeaponComponent>());
     weapon_component->on_weapon_ammo_changed.AddUObject(this, &AMyHUD::update_ammo);
+    weapon_component->on_weapon_equipped.AddUObject(this, &AMyHUD::on_weapon_equipped);
+    weapon_component->on_weapon_unequipped.AddUObject(this, &AMyHUD::on_weapon_unequipped);
     update_ammo({});
     update_jump(0);
+
+    check(main_widget->ammo_widget);
+    main_widget->ammo_widget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void AMyHUD::set_inventory(UInventoryComponent& inventory) {
@@ -147,6 +152,20 @@ void AMyHUD::update_ammo(FAmmoData ammo_data) {
 
     main_widget->ammo_widget->set_value(ammo_data.discrete_amount);
 }
+void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData reserve_ammo) {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_widget);
+
+    main_widget->ammo_widget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    main_widget->ammo_widget->set_value(weapon_ammo.discrete_amount);
+}
+void AMyHUD::on_weapon_unequipped() {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_widget);
+
+    main_widget->ammo_widget->SetVisibility(ESlateVisibility::Collapsed);
+}
+
 void AMyHUD::update_description(FText const& text) {
     RETURN_IF_NULLPTR(main_widget);
     RETURN_IF_NULLPTR(main_widget->item_description_widget);
