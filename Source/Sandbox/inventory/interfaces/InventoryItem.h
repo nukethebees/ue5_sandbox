@@ -4,6 +4,7 @@
 #include "UObject/Interface.h"
 
 #include "Sandbox/inventory/data/Dimensions.h"
+#include "Sandbox/inventory/enums/ItemType.h"
 
 #include "InventoryItem.generated.h"
 
@@ -21,6 +22,7 @@ class SANDBOX_API IInventoryItem {
     virtual bool is_weapon() const { return false; }
     virtual AWeaponBase* get_weapon() { return nullptr; }
     virtual FString const& get_name() const = 0;
+    virtual EItemType get_item_type() const = 0;
 
     // Grid
     virtual FDimensions get_size() const = 0;

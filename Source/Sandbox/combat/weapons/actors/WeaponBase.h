@@ -6,6 +6,7 @@
 #include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
 #include "Sandbox/combat/weapons/delegates/OnAmmoChanged.h"
 #include "Sandbox/combat/weapons/interfaces/WeaponInterface.h"
+#include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -63,6 +64,7 @@ class SANDBOX_API AWeaponBase
         return default_name;
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
+    virtual EItemType get_item_type() const override { return EItemType::Ammo; }
 
     // AWeaponBase
     UFUNCTION() void hide_weapon();

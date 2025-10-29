@@ -6,6 +6,7 @@
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/interaction/interfaces/Interactable.h"
 #include "Sandbox/inventory/data/Dimensions.h"
+#include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -45,6 +46,7 @@ class SANDBOX_API AAmmoItem
         return inventory_name;
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
+    virtual EItemType get_item_type() const override { return EItemType::Ammo; }
 
     // IInteractable
     virtual void on_interacted(AActor& instigator) override;
