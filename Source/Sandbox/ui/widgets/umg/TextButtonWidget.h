@@ -7,7 +7,7 @@
 class UButton;
 class UTextBlock;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTextButtonClicked);
+DECLARE_MULTICAST_DELEGATE(FOnTextButtonClicked);
 
 UCLASS()
 class SANDBOX_API UTextButtonWidget : public UUserWidget {
@@ -19,7 +19,6 @@ class SANDBOX_API UTextButtonWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (ExposeOnSpawn = true))
     FText label{};
 
-    UPROPERTY(BlueprintAssignable, Category = "Events")
     FOnTextButtonClicked on_clicked;
   protected:
     virtual void NativeConstruct() override;

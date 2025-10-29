@@ -54,7 +54,6 @@ class SANDBOX_API UOptionsWidget
     UControlsOptionsWidget* controls_tab{nullptr};
   public:
     // Back navigation event
-    UPROPERTY(BlueprintAssignable)
     FBackRequested back_requested;
   private:
     UFUNCTION()

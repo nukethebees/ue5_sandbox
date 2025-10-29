@@ -67,11 +67,11 @@ class SANDBOX_API AWeaponBase
     virtual EItemType get_item_type() const override { return EItemType::Weapon; }
 
     // AWeaponBase
-    UFUNCTION() void hide_weapon();
+    UFUNCTION()
+    void hide_weapon();
     UFUNCTION()
     void show_weapon();
 
-    UPROPERTY(BlueprintAssignable, Category = "Weapon")
     FOnAmmoChanged on_ammo_changed;
   protected:
     virtual void BeginPlay() override;

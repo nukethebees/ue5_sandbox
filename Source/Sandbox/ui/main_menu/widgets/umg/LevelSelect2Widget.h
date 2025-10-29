@@ -17,7 +17,6 @@ class SANDBOX_API ULevelSelect2Widget
     , public ml::LogMsgMixin<"ULevelSelect2Widget"> {
     GENERATED_BODY()
   public:
-    UPROPERTY(BlueprintAssignable)
     FBackRequested back_requested;
 
     void populate_level_buttons(TArray<FName> const& level_names);

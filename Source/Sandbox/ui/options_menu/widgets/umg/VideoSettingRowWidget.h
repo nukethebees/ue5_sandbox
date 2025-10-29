@@ -14,9 +14,7 @@
 
 #include "VideoSettingRowWidget.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVideoSettingChanged,
-                                            EVideoRowSettingChangeType,
-                                            change_type);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnVideoSettingChanged, EVideoRowSettingChangeType);
 
 UCLASS()
 class SANDBOX_API UVideoSettingRowWidget
@@ -24,9 +22,6 @@ class SANDBOX_API UVideoSettingRowWidget
     , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   public:
-    UPROPERTY(BlueprintAssignable, Category = "Events")
-    FOnVideoSettingChanged on_setting_changed;
-
     void initialize_with_row_data(VideoRow const& row_data);
     UFUNCTION()
     void reset_to_original_value();
@@ -39,6 +34,8 @@ class SANDBOX_API UVideoSettingRowWidget
     bool has_pending_changes() const;
     UFUNCTION()
     void refresh_current_value();
+
+    FOnVideoSettingChanged on_setting_changed;
   protected:
     virtual void NativeConstruct() override;
 

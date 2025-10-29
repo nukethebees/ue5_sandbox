@@ -9,9 +9,7 @@
 
 #include "HealthStationPayload.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged,
-                                            FStationStateData const&,
-                                            state_data);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnStationStateChanged, FStationStateData const&);
 
 USTRUCT(BlueprintType)
 struct FHealthStationPayload {
@@ -30,7 +28,6 @@ struct FHealthStationPayload {
     float current_capacity{0.0f};
     float cooldown_remaining{0.0f};
 
-    UPROPERTY(BlueprintAssignable, Category = "Health Station")
     FOnStationStateChanged on_station_state_changed;
 
     // Static logger since can't inherit from LogMsgMixin

@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
 #include "Sandbox/players/playable/data/JetpackState.h"
 
 #include "JetpackComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFuelChanged, FJetpackState const&, NewFuel);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnFuelChanged, FJetpackState const&);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UJetpackComponent : public UActorComponent {
@@ -29,7 +30,6 @@ class SANDBOX_API UJetpackComponent : public UActorComponent {
     float fuel_consumption_rate{1.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jetpack");
     float lift_force{15000.0f};
-    UPROPERTY(BlueprintAssignable, Category = "Jetpack")
     FOnFuelChanged on_fuel_changed;
   protected:
     virtual void BeginPlay() override;

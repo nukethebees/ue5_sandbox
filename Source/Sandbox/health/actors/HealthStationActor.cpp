@@ -23,7 +23,7 @@ void AHealthStationActor::BeginPlay() {
 
     health_station_payload.reset_capacity();
 
-    health_station_payload.on_station_state_changed.AddDynamic(
+    health_station_payload.on_station_state_changed.AddUObject(
         this, &AHealthStationActor::handle_station_state_changed);
     health_station_payload.broadcast_state();
 

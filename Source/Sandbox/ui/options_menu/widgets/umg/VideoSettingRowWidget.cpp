@@ -85,7 +85,7 @@ void UVideoSettingRowWidget::setup_boolean_widgets() {
     if (toggle_button) {
         toggle_button->SetVisibility(ESlateVisibility::Visible);
         toggle_button->set_label(FText::FromString(TEXT("Toggle")));
-        toggle_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::handle_button_clicked);
+        toggle_button->on_clicked.AddUObject(this, &UVideoSettingRowWidget::handle_button_clicked);
         log_verbose(TEXT("Toggle button configured and shown"));
     }
 
@@ -101,7 +101,8 @@ void UVideoSettingRowWidget::setup_boolean_widgets() {
 
 void UVideoSettingRowWidget::setup_reset_button() {
     if (reset_button) {
-        reset_button->on_clicked.AddDynamic(this, &UVideoSettingRowWidget::reset_to_original_value);
+        reset_button->on_clicked.AddUObject(this,
+                                             &UVideoSettingRowWidget::reset_to_original_value);
         reset_button->set_label(FText::FromString(TEXT("Reset")));
         log_verbose(TEXT("Reset button bound and configured"));
     } else {

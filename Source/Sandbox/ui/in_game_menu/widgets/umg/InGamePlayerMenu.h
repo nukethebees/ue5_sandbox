@@ -76,7 +76,6 @@ class SANDBOX_API UInGamePlayerMenu
     void refresh();
 
     // Close navigation event
-    UPROPERTY(BlueprintAssignable)
     FBackRequested back_requested;
   private:
     UFUNCTION()

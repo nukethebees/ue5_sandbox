@@ -38,7 +38,7 @@ void AMyHUD::BeginPlay() {
     }
 
     if (auto* game_state{world->GetGameState<APlatformerGameState>()}) {
-        game_state->on_coin_count_changed.AddDynamic(this, &AMyHUD::update_coin);
+        game_state->on_coin_count_changed.AddUObject(this, &AMyHUD::update_coin);
         update_coin(0);
     }
 
@@ -46,14 +46,14 @@ void AMyHUD::BeginPlay() {
     TRY_INIT_PTR(player_pawn, player_controller->GetPawn());
     TRY_INIT_PTR(health_component, player_pawn->FindComponentByClass<UHealthComponent>());
 
-    health_component->on_health_percent_changed.AddDynamic(this, &AMyHUD::update_health);
+    health_component->on_health_percent_changed.AddUObject(this, &AMyHUD::update_health);
 
     TRY_INIT_PTR(jetpack_component, player_pawn->FindComponentByClass<UJetpackComponent>());
-    jetpack_component->on_fuel_changed.AddDynamic(this, &AMyHUD::update_fuel);
+    jetpack_component->on_fuel_changed.AddUObject(this, &AMyHUD::update_fuel);
     jetpack_component->broadcast_fuel_state();
 
     TRY_INIT_PTR(weapon_component, player_pawn->FindComponentByClass<UPawnWeaponComponent>());
-    weapon_component->on_weapon_ammo_changed.AddDynamic(this, &AMyHUD::update_ammo);
+    weapon_component->on_weapon_ammo_changed.AddUObject(this, &AMyHUD::update_ammo);
     update_ammo({});
     update_jump(0);
 }
@@ -83,7 +83,7 @@ void AMyHUD::toggle_in_game_menu() {
                 TRY_INIT_PTR(world, GetWorld());
                 umg_player_menu = CreateWidget<UInGamePlayerMenu>(world, umg_player_menu_class);
                 RETURN_IF_NULLPTR(umg_player_menu);
-                umg_player_menu->back_requested.AddDynamic(this, &AMyHUD::toggle_in_game_menu);
+                umg_player_menu->back_requested.AddUObject(this, &AMyHUD::toggle_in_game_menu);
 
                 TRY_INIT_PTR(pawn, player_controller->GetPawn());
                 TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());

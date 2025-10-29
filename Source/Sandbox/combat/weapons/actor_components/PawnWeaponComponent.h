@@ -51,7 +51,6 @@ class SANDBOX_API UPawnWeaponComponent
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
     EWeaponPickupAction weapon_pickup_action{EWeaponPickupAction::EquipIfNothingEquipped};
 
-    UPROPERTY(BlueprintAssignable, Category = "Weapons")
     FOnAmmoChanged on_weapon_ammo_changed;
   private:
     void equip_weapon(AWeaponBase& weapon);

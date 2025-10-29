@@ -5,21 +5,21 @@ void UOptionsWidget::NativeConstruct() {
 
     // Bind tab button clicks
     if (gameplay_tab_button) {
-        gameplay_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_gameplay_tab);
+        gameplay_tab_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_gameplay_tab);
     }
     if (visuals_tab_button) {
-        visuals_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_visuals_tab);
+        visuals_tab_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_visuals_tab);
     }
     if (audio_tab_button) {
-        audio_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_audio_tab);
+        audio_tab_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_audio_tab);
     }
     if (controls_tab_button) {
-        controls_tab_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_controls_tab);
+        controls_tab_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_controls_tab);
     }
 
     // Bind back button click
     if (back_button) {
-        back_button->on_clicked.AddDynamic(this, &UOptionsWidget::handle_back);
+        back_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_back);
     }
 
     // Set initial tab

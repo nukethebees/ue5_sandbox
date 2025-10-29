@@ -13,8 +13,8 @@
 
 #include "HealthComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthPercentChanged, FHealthData, health_data);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnHealthPercentChanged, FHealthData);
+DECLARE_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UHealthComponent
@@ -32,9 +32,7 @@ class SANDBOX_API UHealthComponent
     float max_health{100.0f};
     UPROPERTY(EditAnywhere, Category = "Health")
     float initial_health;
-    UPROPERTY(BlueprintAssignable, Category = "Health")
     FOnHealthPercentChanged on_health_percent_changed;
-    UPROPERTY(BlueprintAssignable, Category = "Health")
     FOnDeath on_death;
 
     // Query

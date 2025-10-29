@@ -48,7 +48,7 @@ class UActorDescriptionScannerComponent;
 
 class ADroppableWaypoint;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float);
 DECLARE_DELEGATE_OneParam(FOnJumpCountChanged, int32);
 
 namespace ml {

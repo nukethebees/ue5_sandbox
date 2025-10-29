@@ -19,7 +19,7 @@ void UInGamePlayerMenu::NativeOnInitialized() {
 #define BIND_CLICKED(BUTTON, FUNCTION)                                         \
     do {                                                                       \
         if (BUTTON) {                                                          \
-            BUTTON->on_clicked.AddDynamic(this, &UInGamePlayerMenu::FUNCTION); \
+            BUTTON->on_clicked.AddUObject(this, &UInGamePlayerMenu::FUNCTION); \
         } else {                                                               \
             WARN_IF_EXPR(BUTTON);                                              \
         }                                                                      \

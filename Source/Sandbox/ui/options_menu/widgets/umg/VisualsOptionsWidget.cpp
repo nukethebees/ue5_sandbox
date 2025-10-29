@@ -11,7 +11,7 @@ void UVisualsOptionsWidget::NativeConstruct() {
     log_verbose(TEXT("NativeConstruct() begin"));
 
     if (apply_button) {
-        apply_button->on_clicked.AddDynamic(this, &UVisualsOptionsWidget::handle_apply_clicked);
+        apply_button->on_clicked.AddUObject(this, &UVisualsOptionsWidget::handle_apply_clicked);
         apply_button->set_label(FText::FromString(TEXT("Apply")));
         apply_button->SetIsEnabled(false);
     } else {
@@ -19,7 +19,7 @@ void UVisualsOptionsWidget::NativeConstruct() {
     }
 
     if (reset_all_button) {
-        reset_all_button->on_clicked.AddDynamic(this,
+        reset_all_button->on_clicked.AddUObject(this,
                                                 &UVisualsOptionsWidget::handle_reset_all_clicked);
         reset_all_button->set_label(FText::FromString(TEXT("Reset All")));
         reset_all_button->SetIsEnabled(false);
@@ -222,7 +222,7 @@ void UVisualsOptionsWidget::create_rows_for_type() {
         auto const current_value{setting.get_value(*game_settings)};
         auto const row_data{RowData<T>(&setting, current_value)};
         row_widget->initialize_with_row_data(row_data);
-        row_widget->on_setting_changed.AddDynamic(this,
+        row_widget->on_setting_changed.AddUObject(this,
                                                   &UVisualsOptionsWidget::handle_setting_changed);
 
         row_idx++;

@@ -54,8 +54,7 @@ void UPawnWeaponComponent::unequip_weapon() {
         return;
     }
 
-    active_weapon->on_ammo_changed.RemoveDynamic(
-        this, &UPawnWeaponComponent::on_active_weapon_ammo_changed);
+    active_weapon->on_ammo_changed.RemoveAll(this);
     active_weapon->hide_weapon();
     active_weapon = nullptr;
 }
@@ -91,7 +90,7 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
     active_weapon = &weapon;
     active_weapon->show_weapon();
 
-    active_weapon->on_ammo_changed.AddDynamic(this,
+    active_weapon->on_ammo_changed.AddUObject(this,
                                               &UPawnWeaponComponent::on_active_weapon_ammo_changed);
     on_weapon_ammo_changed.Broadcast(active_weapon->get_current_ammo());
 

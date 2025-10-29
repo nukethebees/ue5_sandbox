@@ -10,7 +10,7 @@ void ULevelSelect2Widget::NativeConstruct() {
     constexpr auto logger{NestedLogger<"NativeConstruct">()};
 
     if (back_button) {
-        back_button->on_clicked.AddDynamic(this, &ULevelSelect2Widget::handle_back);
+        back_button->on_clicked.AddUObject(this, &ULevelSelect2Widget::handle_back);
     }
 
     RETURN_IF_NULLPTR(level_select_grid);

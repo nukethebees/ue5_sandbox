@@ -10,19 +10,19 @@ void UMainMenu2Widget::NativeConstruct() {
     Super::NativeConstruct();
 
     if (play_button) {
-        play_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_play);
+        play_button->on_clicked.AddUObject(this, &UMainMenu2Widget::handle_play);
     }
 
     if (options_button) {
-        options_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_options);
+        options_button->on_clicked.AddUObject(this, &UMainMenu2Widget::handle_options);
     }
 
     if (quit_button) {
-        quit_button->on_clicked.AddDynamic(this, &UMainMenu2Widget::handle_quit);
+        quit_button->on_clicked.AddUObject(this, &UMainMenu2Widget::handle_quit);
     }
 
     if (level_select_menu) {
-        level_select_menu->back_requested.AddDynamic(this, &UMainMenu2Widget::return_to_main_page);
+        level_select_menu->back_requested.AddUObject(this, &UMainMenu2Widget::return_to_main_page);
         static auto const level_directory{FName("/Game/Levels")};
         auto level_names{ml::get_all_level_names(level_directory)};
         level_names.Sort([](auto A, auto B) { return A.LexicalLess(B); });
@@ -30,7 +30,7 @@ void UMainMenu2Widget::NativeConstruct() {
     }
 
     if (options_menu) {
-        options_menu->back_requested.AddDynamic(this, &UMainMenu2Widget::return_to_main_page);
+        options_menu->back_requested.AddUObject(this, &UMainMenu2Widget::return_to_main_page);
     }
 }
 void UMainMenu2Widget::handle_quit() {
