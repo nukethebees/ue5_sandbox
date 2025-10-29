@@ -69,9 +69,11 @@ struct FMyPlayerControllerInputActions {
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     UInputAction* reload_weapon{nullptr};
 
-    // Misc
+    // Interaction
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* interact{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* drop_waypoint{nullptr};
 
     // UI
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")

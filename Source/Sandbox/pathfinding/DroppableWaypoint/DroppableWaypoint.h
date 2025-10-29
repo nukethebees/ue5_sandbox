@@ -31,6 +31,8 @@ class SANDBOX_API ADroppableWaypoint
         return desc;
     }
   protected:
+    virtual void BeginPlay() override;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")
     UStaticMeshComponent* mesh_component{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Waypoint")

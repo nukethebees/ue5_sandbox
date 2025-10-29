@@ -102,7 +102,6 @@ void ABulletActor::Activate() {
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
 }
-
 void ABulletActor::Deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::Deactivate"))
     static constexpr auto LOG{NestedLogger<"Deactivate">()};

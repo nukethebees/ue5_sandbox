@@ -162,6 +162,7 @@ void AMyPlayerController::SetupInputComponent() {
     bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
     bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
     bind(input.interact, Started, &AMyPlayerController::interact);
+    bind(input.drop_waypoint, Started, &AMyPlayerController::drop_waypoint);
 
     // UI
     bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
@@ -325,6 +326,9 @@ void AMyPlayerController::interact() {
     FRotator view_rotation;
     GetPlayerViewPoint(view_location, view_rotation);
     controlled_character->interact(view_location, view_rotation);
+}
+void AMyPlayerController::drop_waypoint() {
+    FORWARD_CALL_TO_CHARACTER(drop_waypoint);
 }
 
 // UI

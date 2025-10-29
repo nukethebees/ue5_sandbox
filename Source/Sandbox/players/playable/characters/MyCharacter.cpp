@@ -13,8 +13,10 @@
 
 #include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 #include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/pathfinding/DroppableWaypoint/DroppableWaypoint.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
@@ -281,6 +283,16 @@ void AMyCharacter::interact(FVector sweep_origin, FRotator sweep_direction) {
     RETURN_IF_NULLPTR(weapon_attach_point);
 
     interactor->try_interact(sweep_origin, sweep_direction);
+}
+void AMyCharacter::drop_waypoint() {
+    RETURN_IF_NULLPTR(waypoint_class);
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(pool, world->GetSubsystem<UObjectPoolSubsystem>());
+
+    TRY_INIT_PTR(waypoint, pool->get_item<FDroppableWaypointPoolConfig>(waypoint_class));
+    waypoint->SetActorLocation(GetActorLocation());
+
+    waypoints.Add(waypoint);
 }
 
 void AMyCharacter::handle_death() {

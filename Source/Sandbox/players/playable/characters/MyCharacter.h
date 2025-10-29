@@ -46,6 +46,8 @@ class UInventoryComponent;
 class UWarpComponent;
 class UActorDescriptionScannerComponent;
 
+class ADroppableWaypoint;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float, NewMaxSpeed);
 DECLARE_DELEGATE_OneParam(FOnJumpCountChanged, int32);
 
@@ -155,6 +157,8 @@ class SANDBOX_API AMyCharacter
     // Interaction
     UFUNCTION()
     void interact(FVector sweep_origin, FRotator sweep_direction);
+    UFUNCTION()
+    void drop_waypoint();
 
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
@@ -213,6 +217,11 @@ class SANDBOX_API AMyCharacter
     ECharacterCameraMode camera_mode{ECharacterCameraMode::FirstPerson};
 
     // Bullets
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    TSubclassOf<ADroppableWaypoint> waypoint_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
+    TArray<ADroppableWaypoint*> waypoints;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TSubclassOf<AActor> bullet_class;
 

@@ -99,6 +99,8 @@ class SANDBOX_API AMyPlayerController
     void mouse_click(FInputActionValue const& value);
     UFUNCTION()
     void interact();
+    UFUNCTION()
+    void drop_waypoint();
 
     // UI
     UFUNCTION()
