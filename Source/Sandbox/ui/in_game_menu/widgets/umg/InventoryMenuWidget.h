@@ -19,6 +19,7 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
     void on_widget_selected();
     void update_money_display(int32 money);
   protected:
+    virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
@@ -27,7 +28,7 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UItemDetailsWidget* item_details{nullptr};
 
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY()
     UTextBlock* money_text{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
