@@ -1,0 +1,26 @@
+float GetWireframeOpactityMask(float2 uv, float border_thickness)
+{
+    float upper_bound = 1.0f - border_thickness;
+    bool is_outside_u = uv.x < border_thickness || uv.x > upper_bound;
+    bool is_outside_v = uv.y < border_thickness || uv.y > upper_bound;
+
+    // 1.0f == opaque
+    float opacity_mask = (is_outside_u || is_outside_v) ? 1.0f : 0.0f;
+
+    return opacity_mask;
+}
+
+// Assumes triangle at (0,0) (0,1) and (1,1)
+float GetWireframeOpactityMaskTriangle(float2 uv, float border_thickness)
+{
+    bool is_inside_bottom = uv.x < border_thickness;
+    bool is_inside_right = uv.y > (1.0f - border_thickness);
+    float distance_to_hypotenuse = abs(uv.x - uv.y) / sqrt(2);
+    bool is_inside_hypotenuse = (distance_to_hypotenuse < border_thickness) && (;
+
+    float opacity_mask = (is_inside_bottom || is_inside_right || is_inside_hypotenuse)
+                       ? 1.0f : 0.0f;
+    
+    return opacity_mask;
+}
+
