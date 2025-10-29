@@ -7,6 +7,7 @@
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -86,11 +87,12 @@ void AWeaponPickup::on_overlap_begin(UPrimitiveComponent* overlapped_component,
     RETURN_IF_NULLPTR(other_actor);
     RETURN_IF_NULLPTR(spawned_weapon);
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(weapon_component, other_actor->GetComponentByClass<UPawnWeaponComponent>());
     TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
 
     spawned_weapon->DetachFromActor(FDetachmentTransformRules::KeepRelativeTransform);
-    if (weapon_component->pickup_new_weapon(*spawned_weapon)) {
+
+    if (UInventoryComponent::add_item(*other_actor,
+                                      TScriptInterface<AWeaponBase>(spawned_weapon))) {
         rotation_manager->remove(*spawned_weapon->GetRootComponent());
         Destroy();
     } else {

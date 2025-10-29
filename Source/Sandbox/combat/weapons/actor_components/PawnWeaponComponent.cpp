@@ -97,51 +97,6 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
 
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 }
-bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon) {
-    INIT_PTR_OR_RETURN_VALUE(owner, GetOwner(), false);
-    RETURN_VALUE_IF_NULLPTR(attach_location, false);
-    RETURN_VALUE_IF_NULLPTR(inventory, false);
-
-    return pickup_new_weapon(weapon, *inventory, *attach_location);
-}
-bool UPawnWeaponComponent::pickup_new_weapon(AWeaponBase& weapon,
-                                             UInventoryComponent& inventory_component,
-                                             USceneComponent& location) {
-    constexpr auto logger{NestedLogger<"pickup_new_weapon">()};
-
-    if (!inventory_component.add_item(&weapon)) {
-        return false;
-    }
-
-    attach_weapon(weapon, location);
-    weapon.hide_weapon();
-
-    log_display(TEXT("Picked up weapon: %s"), *weapon.get_name());
-
-    switch (weapon_pickup_action) {
-        using enum EWeaponPickupAction;
-        case Nothing: {
-            break;
-        }
-        case EquipIfNothingEquipped: {
-            if (!active_weapon) {
-                equip_weapon(weapon);
-            }
-            break;
-        }
-        case Equip: {
-            equip_weapon(weapon);
-            break;
-        }
-        default: {
-            logger.log_warning(TEXT("%s"),
-                               *ml::make_unhandled_enum_case_warning(weapon_pickup_action));
-            break;
-        }
-    }
-
-    return true;
-}
 void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {
     constexpr bool weld_to_parent{false};
     weapon.AttachToComponent(

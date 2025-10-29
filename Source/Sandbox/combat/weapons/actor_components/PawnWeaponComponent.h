@@ -45,8 +45,6 @@ class SANDBOX_API UPawnWeaponComponent
     void cycle_next_weapon();
     void cycle_prev_weapon();
 
-    bool pickup_new_weapon(AWeaponBase& weapon);
-
     void set_attach_location(USceneComponent& new_value) { attach_location = &new_value; }
     auto get_attach_location() const { return attach_location; }
 
@@ -57,10 +55,6 @@ class SANDBOX_API UPawnWeaponComponent
     FOnAmmoChanged on_weapon_ammo_changed;
   private:
     void equip_weapon(AWeaponBase& weapon);
-
-    bool pickup_new_weapon(AWeaponBase& weapon,
-                           UInventoryComponent& inventory_component,
-                           USceneComponent& location);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);
     void on_weapon_added(AWeaponBase& weapon);
 
