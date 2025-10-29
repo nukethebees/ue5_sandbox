@@ -14,9 +14,9 @@ struct FScreenBounds {
         , size(size) {}
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FVector2D origin; // Top-left corner
+    FVector2D origin{}; // Top-left corner
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FVector2D size; // Width and height
+    FVector2D size{}; // Width and height
 
     auto get_centre() const -> FVector2D { return origin + size * 0.5f; }
     auto get_bottom_right() const -> FVector2D { return origin + size; }
