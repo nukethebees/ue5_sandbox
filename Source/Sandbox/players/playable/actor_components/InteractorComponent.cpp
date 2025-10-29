@@ -3,6 +3,7 @@
 #include "Engine/CollisionProfile.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/interaction/interfaces/Interactable.h"
 #include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
@@ -83,7 +84,12 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
     bool any_triggered{false};
     for (auto* actor : hit_actors) {
-        any_triggered |= subsystem->trigger(*actor, source) == ETriggerOccurred::yes;
+        if (auto* interface{Cast<IInteractable>(actor)}) {
+            interface->on_interacted(*owner);
+            any_triggered = true;
+        } else if (subsystem->trigger(*actor, source) == ETriggerOccurred::yes) {
+            any_triggered = true;
+        }
     }
 
     if (any_triggered) {
