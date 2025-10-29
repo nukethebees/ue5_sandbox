@@ -44,6 +44,7 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     bool const actor_changed{hit_actor != last_seen_actor.Get()};
 
     if (!actor_changed) {
+        logger.log_very_verbose(TEXT("!actor_changed"));
         return;
     }
 
@@ -51,10 +52,17 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
         if (auto* describable{Cast<IDescribable>(hit_actor)}) {
             description = describable->get_description();
             update_outline(pc, *hit_actor);
+
+            logger.log_very_verbose(TEXT("%s implements IDescribable"),
+                                    *ml::get_best_display_name(*hit_actor));
         } else {
+            logger.log_very_verbose(TEXT("%s doesn't implement IDescribable"),
+                                    *ml::get_best_display_name(*hit_actor));
             on_target_screen_bounds_cleared.ExecuteIfBound();
         }
     } else {
+        logger.log_very_verbose(TEXT("hit_actor is nullptr"));
+
         on_target_screen_bounds_cleared.ExecuteIfBound();
     }
 

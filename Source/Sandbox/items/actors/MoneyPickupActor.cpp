@@ -21,9 +21,10 @@ AMoneyPickupActor::AMoneyPickupActor() {
     collision_component = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComponent"));
     collision_component->SetupAttachment(RootComponent);
     collision_component->SetMobility(mobility);
+    collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
     collision_component->SetCollisionResponseToChannel(ml::collision::interaction, ECR_Block);
-    collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision_component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
 void AMoneyPickupActor::BeginPlay() {

@@ -26,6 +26,7 @@ class SANDBOX_API ADroppableWaypoint
     void Activate();
     void Deactivate();
 
+    // IDescribable
     virtual FText const& get_description() const override {
         static auto const desc{FText::FromName(TEXT("Waypoint"))};
         return desc;

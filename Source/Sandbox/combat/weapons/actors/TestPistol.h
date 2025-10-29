@@ -4,6 +4,7 @@
 
 #include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/string_literal_wrapper.h"
 
@@ -14,7 +15,9 @@ class UArrowComponent;
 class UBulletDataAsset;
 
 UCLASS()
-class SANDBOX_API ATestPistol : public AWeaponBase {
+class SANDBOX_API ATestPistol
+    : public AWeaponBase
+    , public IDescribable {
     GENERATED_BODY()
   public:
     static constexpr StaticTCharString tag{"ATestPistol"};
@@ -44,6 +47,12 @@ class SANDBOX_API ATestPistol : public AWeaponBase {
 
     // IInventoryItem
     int32 get_ammo_needed() const;
+
+    // IDescribable
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Test Pistol"))};
+        return desc;
+    }
   protected:
     virtual void BeginPlay() override;
 

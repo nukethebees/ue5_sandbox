@@ -4,6 +4,7 @@
 
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 
 #include "TestMachineGun.generated.h"
 
@@ -12,7 +13,9 @@ class UArrowComponent;
 class UBulletDataAsset;
 
 UCLASS()
-class SANDBOX_API ATestMachineGun : public AWeaponBase {
+class SANDBOX_API ATestMachineGun
+    : public AWeaponBase
+    , public IDescribable {
     GENERATED_BODY()
   public:
     ATestMachineGun();
@@ -37,6 +40,12 @@ class SANDBOX_API ATestMachineGun : public AWeaponBase {
         static FString const default_name{TEXT("ATestMachineGun")};
         return default_name;
     };
+
+    // IDescribable
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Test Machine Gun"))};
+        return desc;
+    }
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     int32 max_ammo{50};

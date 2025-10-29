@@ -18,6 +18,7 @@ void AWeaponBase::set_pickup_collision(bool enabled) {
 
     collision_box->SetCollisionEnabled(enabled ? ECollisionEnabled::QueryOnly
                                                : ECollisionEnabled::NoCollision);
+    collision_box->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
 void AWeaponBase::hide_weapon() {
