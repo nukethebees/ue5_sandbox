@@ -222,9 +222,6 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TArray<ADroppableWaypoint*> waypoints;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
-    TSubclassOf<AActor> bullet_class;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
     ETeamID team_id{ETeamID::Player};
   protected:
