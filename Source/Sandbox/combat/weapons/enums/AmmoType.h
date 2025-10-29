@@ -31,10 +31,23 @@ constexpr bool is_continuous(EAmmoType type) {
     return !is_discrete(type);
 }
 
-constexpr int32 num_discrete_types(EAmmoType type) {
+constexpr int32 ammo_type_discrete_begin() {
+    return 0;
+}
+constexpr int32 ammo_type_discrete_end() {
     return static_cast<int32>(EAmmoType::DISCRETE_END);
 }
-constexpr int32 num_continuous_types(EAmmoType type) {
+constexpr int32 ammo_type_continuous_begin() {
+    return static_cast<int32>(EAmmoType::DISCRETE_END) + 1;
+}
+constexpr int32 ammo_type_continuous_end() {
+    return static_cast<int32>(EAmmoType::CONTINUOUS_END);
+}
+
+constexpr int32 num_discrete_types() {
+    return static_cast<int32>(EAmmoType::DISCRETE_END);
+}
+constexpr int32 num_continuous_types() {
     constexpr auto d_end{std::to_underlying(EAmmoType::DISCRETE_END)};
     constexpr auto c_end{std::to_underlying(EAmmoType::CONTINUOUS_END)};
     constexpr auto diff{c_end - d_end};

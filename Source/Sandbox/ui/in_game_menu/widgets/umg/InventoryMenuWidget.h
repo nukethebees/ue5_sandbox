@@ -10,6 +10,9 @@ class UInventoryComponent;
 class UInventoryGridWidget;
 class UItemDetailsWidget;
 class UTextBlock;
+class UHorizontalBox;
+class UVerticalBox;
+class UGridPanel;
 
 UCLASS()
 class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
@@ -23,12 +26,21 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
     virtual void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
+    UHorizontalBox* main_box{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* sidebar{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UGridPanel* numbers_list_panel{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
     UInventoryGridWidget* inventory_grid{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UItemDetailsWidget* item_details{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(meta = (BindWidget))
     UTextBlock* money_text{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
