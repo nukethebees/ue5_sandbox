@@ -25,8 +25,7 @@ AAmmoItem::AAmmoItem()
 }
 
 void AAmmoItem::on_interacted(AActor& instigator) {
-    TRY_INIT_PTR(inventory, instigator.GetComponentByClass<UInventoryComponent>());
-    if (inventory->add_item(this)) {
+    if (UInventoryComponent::add_item(instigator, this)) {
         Destroy();
     }
 }

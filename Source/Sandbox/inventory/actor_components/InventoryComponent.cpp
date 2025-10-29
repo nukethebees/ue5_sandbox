@@ -9,6 +9,10 @@
 
 UInventoryComponent::UInventoryComponent() {}
 
+bool UInventoryComponent::add_item(AActor& actor, TScriptInterface<IInventoryItem> item) {
+    INIT_PTR_OR_RETURN_VALUE(inventory, actor.GetComponentByClass<UInventoryComponent>(), false);
+    return inventory->add_item(item);
+}
 bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     constexpr auto logger{NestedLogger<"add_item">()};
     auto const free_point{find_free_point(*item)};
