@@ -47,6 +47,7 @@ class SANDBOX_API AAmmoItem
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
     virtual EItemType get_item_type() const override { return EItemType::Ammo; }
+    virtual FStackSize get_quantity() const { return FStackSize{50}; }
 
     // IInteractable
     virtual void on_interacted(AActor& instigator) override;

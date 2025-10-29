@@ -24,8 +24,7 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
         return false;
     }
 
-    FStackSize const stack_size{1};
-    FInventoryEntry item_entry{item, stack_size, item->get_size(), *free_point};
+    FInventoryEntry item_entry{item, item->get_quantity(), item->get_size(), *free_point};
     auto const item_type{item->get_item_type()};
 
     logger.log_display(TEXT("Adding %s [%s] to %s"),

@@ -15,19 +15,21 @@ void UInventorySlotWidget::set_image(UTexture2D& img) {
     RETURN_IF_NULLPTR(icon_image);
 
     set_image_visibility(true);
+    set_fallback_text_visibility(false);
+
     icon_image->SetBrushFromTexture(&img);
 }
-void UInventorySlotWidget::set_stack_text(FText const& text) {
-    check(stack_size_text);
-    set_text_visibility(true);
-    stack_size_text->SetText(text);
+void UInventorySlotWidget::set_stack_size(int32 size) {
+    set_stack_text(FText::FromString(FString::Printf(TEXT("%d"), size)));
+    set_stack_text_visibility(true);
     align_stack_text(*stack_size_text);
 }
 void UInventorySlotWidget::set_no_image_fallback_text(FText const& text) {
-    check(stack_size_text);
-    set_text_visibility(true);
-    stack_size_text->SetText(text);
-    align_fallback_text(*stack_size_text);
+    check(fallback_text);
+    set_fallback_text_visibility(true);
+    set_image_visibility(false);
+    fallback_text->SetText(text);
+    align_fallback_text(*fallback_text);
 }
 
 void UInventorySlotWidget::set_aspect_ratio(float ar) {
@@ -36,10 +38,15 @@ void UInventorySlotWidget::set_aspect_ratio(float ar) {
     root->SetMinAspectRatio(ar);
     root->SetMaxAspectRatio(ar);
 }
-void UInventorySlotWidget::set_text_visibility(bool vis) {
+void UInventorySlotWidget::set_stack_text_visibility(bool vis) {
     check(stack_size_text);
     stack_size_text->SetVisibility(vis ? ESlateVisibility::SelfHitTestInvisible
                                        : ESlateVisibility::Collapsed);
+}
+void UInventorySlotWidget::set_fallback_text_visibility(bool vis) {
+    check(fallback_text);
+    fallback_text->SetVisibility(vis ? ESlateVisibility::SelfHitTestInvisible
+                                     : ESlateVisibility::Collapsed);
 }
 void UInventorySlotWidget::set_image_visibility(bool vis) {
     check(icon_image);
@@ -66,6 +73,13 @@ void UInventorySlotWidget::NativeConstruct() {
     } else {
         log_warning(TEXT("Item %s has no display image."), *item.get_name());
         set_no_image_fallback_text(FText::FromString(item.get_name()));
+    }
+
+    auto const stack_size{inventory_slot->stack_size.get_value()};
+    if (stack_size > 1) {
+        set_stack_size(stack_size);
+    } else {
+        set_stack_text_visibility(false);
     }
 }
 void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
@@ -137,6 +151,12 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(FGeometry const& InGeometry
     return FReply::Unhandled();
 }
 
+void UInventorySlotWidget::set_stack_text(FText const& text) {
+    check(stack_size_text);
+    set_stack_text_visibility(true);
+    stack_size_text->SetText(text);
+    align_stack_text(*stack_size_text);
+}
 void UInventorySlotWidget::align_stack_text(UTextBlock& tb) {
     if (auto* overlay_slot{Cast<UOverlaySlot>(tb.Slot)}) {
         overlay_slot->SetHorizontalAlignment(HAlign_Right);
