@@ -4,11 +4,14 @@
 #include "GameFramework/PlayerController.h"
 
 #include "Sandbox/environment/data/ActorCorners.h"
+#include "Sandbox/inventory/data/Dimensions.h"
+#include "Sandbox/inventory/data/Coord.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/data/ScreenBounds.h"
 
 class AActor;
 class APlayerController;
+class UGridPanel;
 
 namespace ml {
 int32 scale_font_to_umg(int32 slate_dpi);
@@ -37,4 +40,7 @@ auto get_screen_bounds(APlayerController& pc, FActorCorners const& corners) -> F
 
     return {top_left, bottom_right - top_left};
 }
+
+// If there are no cells it will default to (-1, -1)
+auto get_grid_outer_coords(UGridPanel const& grid) -> FCoord;
 }
