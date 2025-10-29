@@ -44,12 +44,15 @@ constexpr int32 ammo_type_continuous_end() {
     return static_cast<int32>(EAmmoType::CONTINUOUS_END);
 }
 
-constexpr int32 num_discrete_types() {
+constexpr int32 num_ammo_discrete_types() {
     return static_cast<int32>(EAmmoType::DISCRETE_END);
 }
-constexpr int32 num_continuous_types() {
+constexpr int32 num_ammo_continuous_types() {
     constexpr auto d_end{std::to_underlying(EAmmoType::DISCRETE_END)};
     constexpr auto c_end{std::to_underlying(EAmmoType::CONTINUOUS_END)};
     constexpr auto diff{c_end - d_end};
     return diff - 1;
+}
+constexpr int32 num_ammo_types() {
+    return static_cast<int32>(EAmmoType::CONTINUOUS_END) - 2;
 }

@@ -9,6 +9,8 @@
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryGridWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/ItemDetailsWidget.h"
+#include "Sandbox/ui/utilities/ui.h"
+#include "Sandbox/utilities/string.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -34,23 +36,42 @@ void UInventoryMenuWidget::update_money_display(int32 money) {
 void UInventoryMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    int32 row{1};
-    FString widget_name;
-    auto update_widget_name{[&]() -> FString const& {
-        widget_name = FString::Printf(TEXT("ammo_%d"), row);
-        return widget_name;
-    }};
+    auto const outer_coords{ml::get_grid_outer_coords(*numbers_list_panel)};
+
+    int32 row{outer_coords.y() + 1};
+
     auto create_slot{[&](int32 i) {
+        constexpr int32 label_column{0};
+        constexpr int32 value_column{1};
+
         auto const value{static_cast<EAmmoType>(i)};
 
-        auto* item{WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
-                                                           *update_widget_name())};
-        auto const row_name{FString::Printf(TEXT("%s"), *UEnum::GetValueAsString(value))};
+        auto const label_name{FString::Printf(TEXT("ammo_label_%d"), row)};
+        auto const label_text{
+            FString::Printf(TEXT("%s"), *ml::without_class_prefix(UEnum::GetValueAsString(value)))};
 
-        item->SetText(FText::FromString(row_name));
-        auto* slot{numbers_list_panel->AddChildToGrid(item, row, 0)};
-        slot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
-        slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+        auto* label_widget{
+            WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *label_name)};
+        label_widget->SetText(FText::FromString(label_text));
+        label_widget->SetJustification(ETextJustify::Left);
+
+        auto* label_slot{numbers_list_panel->AddChildToGrid(label_widget, row, label_column)};
+        label_slot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+        label_slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+
+        auto const count_name{FString::Printf(TEXT("ammo_count_%d"), row)};
+
+        auto* count_widget{
+            WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *count_name)};
+        count_widget->SetText(FText::FromString(TEXT("0")));
+        count_widget->SetJustification(ETextJustify::Right);
+
+        auto* count_slot{numbers_list_panel->AddChildToGrid(count_widget, row, value_column)};
+        count_slot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+        count_slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+
+        ammo_counts.Add(count_widget);
+
         row++;
     }};
 

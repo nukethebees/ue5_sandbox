@@ -45,4 +45,7 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UInventoryComponent* inventory{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    TArray<UTextBlock*> ammo_counts;
 };
