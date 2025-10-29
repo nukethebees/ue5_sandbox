@@ -10,11 +10,10 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestPistol::ATestPistol()
-    : ammo{max_ammo} {
-    gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
+    : ammo{max_ammo}
+    , gun_mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"))}
+    , fire_point_arrow{CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"))} {
     gun_mesh_component->SetupAttachment(RootComponent);
-
-    fire_point_arrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"));
     fire_point_arrow->SetupAttachment(RootComponent);
 }
 

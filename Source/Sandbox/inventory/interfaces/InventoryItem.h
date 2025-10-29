@@ -18,8 +18,8 @@ class UInventoryItem : public UInterface {
 class SANDBOX_API IInventoryItem {
     GENERATED_BODY()
   public:
-    virtual bool is_weapon() const = 0;
-    virtual AWeaponBase* get_weapon() { return nullptr; };
+    virtual bool is_weapon() const { return false; }
+    virtual AWeaponBase* get_weapon() { return nullptr; }
     virtual FString const& get_name() const = 0;
 
     // Grid
