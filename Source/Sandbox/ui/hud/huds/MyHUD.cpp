@@ -60,10 +60,7 @@ void AMyHUD::BeginPlay() {
     update_current_ammo({});
     update_jump(0);
 
-    check(main_widget->ammo_widget);
-    main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
-
-    check(main_widget->ammo_widget);
+    check(main_widget->ammo_display);
     main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
 }
 
@@ -153,18 +150,11 @@ void AMyHUD::update_health(FHealthData health_data) {
 void AMyHUD::update_current_ammo(FAmmoData current_ammo) {
     RETURN_IF_NULLPTR(main_widget);
 
-    RETURN_IF_NULLPTR(main_widget->ammo_widget);
-    main_widget->ammo_widget->set_value(current_ammo.discrete_amount);
-
     RETURN_IF_NULLPTR(main_widget->ammo_display);
     main_widget->ammo_display->set_current_ammo(current_ammo);
 }
 void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo) {
     RETURN_IF_NULLPTR(main_widget);
-
-    RETURN_IF_NULLPTR(main_widget->ammo_widget);
-    main_widget->ammo_widget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-    main_widget->ammo_widget->set_value(weapon_ammo.discrete_amount);
 
     RETURN_IF_NULLPTR(main_widget->ammo_display);
     main_widget->ammo_display->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
@@ -173,10 +163,8 @@ void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmo
 }
 void AMyHUD::on_weapon_unequipped() {
     RETURN_IF_NULLPTR(main_widget);
-    RETURN_IF_NULLPTR(main_widget->ammo_widget);
     RETURN_IF_NULLPTR(main_widget->ammo_display);
 
-    main_widget->ammo_widget->SetVisibility(ESlateVisibility::Collapsed);
     main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
 }
 

@@ -11,7 +11,6 @@
 class UVerticalBox;
 class UValueWidget;
 class UHealthWidget;
-class UIntNumWidget;
 class UItemDescriptionHUDWidget;
 class UTargetOverlayHUDWidget;
 class UAmmoHUDWidget;
@@ -39,9 +38,6 @@ class SANDBOX_API UMainHUDWidget
 
     UPROPERTY(meta = (BindWidget))
     UValueWidget* max_speed_widget;
-
-    UPROPERTY()
-    UIntNumWidget* ammo_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UItemDescriptionHUDWidget* item_description_widget{nullptr};

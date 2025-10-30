@@ -13,15 +13,6 @@
 
 void UMainHUDWidget::NativeConstruct() {
     Super::NativeConstruct();
-
-    ammo_widget = WidgetTree->ConstructWidget<UIntNumWidget>(UIntNumWidget::StaticClass(),
-                                                             TEXT("ammo_widget"));
-    RETURN_IF_FALSE(ammo_widget);
-    RETURN_IF_FALSE(current_stat_box);
-
-    // You must add the widget first before setters will work
-    current_stat_box->AddChild(ammo_widget);
-    ammo_widget->set_label(FText::FromName(TEXT("Ammo")));
 }
 
 void UMainHUDWidget::update_health(FHealthData health_data) {
