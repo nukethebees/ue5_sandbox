@@ -38,6 +38,23 @@ struct FAmmoData {
         return is_discrete(type) ? discrete_amount == 0 : continuous_amount <= 0.f;
     }
 
+    auto& operator+=(FAmmoData const& other) {
+        if (type == other.type) {
+            discrete_amount += other.discrete_amount;
+            continuous_amount += other.continuous_amount;
+        }
+
+        return *this;
+    }
+    auto& operator-=(FAmmoData const& other) {
+        if (type == other.type) {
+            discrete_amount -= other.discrete_amount;
+            continuous_amount -= other.continuous_amount;
+        }
+
+        return *this;
+    }
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     EAmmoType type{EAmmoType::Bullets};
 
