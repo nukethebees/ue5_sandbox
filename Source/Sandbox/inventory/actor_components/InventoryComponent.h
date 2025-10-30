@@ -17,7 +17,8 @@
 
 class AWeaponBase;
 
-DECLARE_DELEGATE_OneParam(FOnWeaponAdded, AWeaponBase&);
+DECLARE_DELEGATE_OneParam(FOnWeaponAdded, AWeaponBase& /* new_weapon */);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAmmoAdded, FAmmoData /* total_ammo */);
 
 UCLASS()
 class SANDBOX_API UInventoryComponent
@@ -40,6 +41,7 @@ class SANDBOX_API UInventoryComponent
     auto get_weapon_after(AWeaponBase const& weapon) -> AWeaponBase*;
     auto get_weapon_before(AWeaponBase const& weapon) -> AWeaponBase*;
     auto request_ammo(FAmmoData ammo_needed) -> FAmmoData;
+    auto count_ammo(EAmmoType type) -> FAmmoData;
 
     // Money
     void add_money(int32 new_money) { money += new_money; }
@@ -72,6 +74,7 @@ class SANDBOX_API UInventoryComponent
     }
 
     FOnWeaponAdded on_weapon_added;
+    FOnAmmoAdded on_ammo_added;
   protected:
     template <auto next_index_fn>
     auto get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase*;

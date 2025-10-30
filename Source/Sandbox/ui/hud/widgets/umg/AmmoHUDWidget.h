@@ -19,12 +19,15 @@ class SANDBOX_API UAmmoHUDWidget
     GENERATED_BODY()
   public:
     void set_max_ammo(FAmmoData new_max_ammo);
+    void set_reserve_ammo(FAmmoData new_reserve_ammo);
     void set_current_ammo(FAmmoData new_ammo);
   protected:
     UPROPERTY(meta = (BindWidget))
-    class UProgressBar* progress_bar;
+    UProgressBar* progress_bar;
     UPROPERTY(meta = (BindWidget))
-    class UTextBlock* ammo_text;
+    UTextBlock* ammo_text;
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* reserve_ammo_text;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
     FAmmoData max_ammo{};

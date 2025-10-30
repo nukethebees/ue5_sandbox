@@ -61,6 +61,10 @@ class SANDBOX_API AMyHUD
     UFUNCTION()
     void update_current_ammo(FAmmoData current_ammo);
     UFUNCTION()
+    void update_reserve_ammo(FAmmoData ammo);
+    UFUNCTION()
+    void on_weapon_reloaded(FAmmoData weapon_ammo, FAmmoData reserve_ammo);
+    UFUNCTION()
     void on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo);
     UFUNCTION()
     void on_weapon_unequipped();

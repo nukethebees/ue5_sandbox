@@ -57,6 +57,8 @@ void AMyHUD::BeginPlay() {
     weapon_component->on_weapon_ammo_changed.AddUObject(this, &AMyHUD::update_current_ammo);
     weapon_component->on_weapon_equipped.AddUObject(this, &AMyHUD::on_weapon_equipped);
     weapon_component->on_weapon_unequipped.AddUObject(this, &AMyHUD::on_weapon_unequipped);
+    weapon_component->on_weapon_reloaded.AddUObject(this, &AMyHUD::on_weapon_reloaded);
+    weapon_component->on_reserve_ammo_changed.AddUObject(this, &AMyHUD::update_reserve_ammo);
     update_current_ammo({});
     update_jump(0);
 
@@ -147,11 +149,25 @@ void AMyHUD::update_health(FHealthData health_data) {
     RETURN_IF_NULLPTR(main_widget);
     main_widget->update_health(health_data);
 }
+
+void AMyHUD::on_weapon_reloaded(FAmmoData weapon_ammo, FAmmoData reserve_ammo) {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_display);
+
+    main_widget->ammo_display->set_current_ammo(weapon_ammo);
+    main_widget->ammo_display->set_reserve_ammo(reserve_ammo);
+}
 void AMyHUD::update_current_ammo(FAmmoData current_ammo) {
     RETURN_IF_NULLPTR(main_widget);
-
     RETURN_IF_NULLPTR(main_widget->ammo_display);
+
     main_widget->ammo_display->set_current_ammo(current_ammo);
+}
+void AMyHUD::update_reserve_ammo(FAmmoData ammo) {
+    RETURN_IF_NULLPTR(main_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_display);
+
+    main_widget->ammo_display->set_reserve_ammo(ammo);
 }
 void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo) {
     RETURN_IF_NULLPTR(main_widget);
@@ -160,6 +176,7 @@ void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmo
     main_widget->ammo_display->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     main_widget->ammo_display->set_max_ammo(max_ammo);
     main_widget->ammo_display->set_current_ammo(weapon_ammo);
+    main_widget->ammo_display->set_reserve_ammo(reserve_ammo);
 }
 void AMyHUD::on_weapon_unequipped() {
     RETURN_IF_NULLPTR(main_widget);

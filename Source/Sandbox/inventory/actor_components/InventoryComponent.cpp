@@ -47,6 +47,10 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
             break;
         }
         case Ammo: {
+            auto* ammo{Cast<AAmmoItem>(item.GetObject())};
+            check(ammo);
+            auto const count{count_ammo(ammo->ammo_type)};
+            on_ammo_added.Broadcast(count);
             break;
         }
         default: {
@@ -175,21 +179,6 @@ auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AW
 auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
     FAmmoData out{ammo_needed.type};
 
-    auto ammo_entries{item_entries.FilterByPredicate(
-        [type_needed = ammo_needed.type](FInventoryEntry const& entry) -> bool {
-            if (entry.item_type() != EItemType::Ammo) {
-                return false;
-            }
-
-            if (auto* ammo{Cast<AAmmoItem>(entry.item.GetObject())}) {
-                if (ammo->ammo_type == type_needed) {
-                    return true;
-                }
-            }
-
-            return true;
-        })};
-
     for (auto& item_entry : item_entries) {
         if (item_entry.item_type() != EItemType::Ammo) {
             continue;
@@ -224,6 +213,28 @@ auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
     }
 
     remove_empty_entries();
+
+    return out;
+}
+auto UInventoryComponent::count_ammo(EAmmoType type) -> FAmmoData {
+    FAmmoData out{type};
+
+    for (auto& item_entry : item_entries) {
+        if (item_entry.item_type() != EItemType::Ammo) {
+            continue;
+        }
+
+        auto* ammo{Cast<AAmmoItem>(item_entry.item.GetObject())};
+        if ((!ammo) || (ammo->ammo_type != type)) {
+            continue;
+        }
+
+        if (is_continuous(out.type)) {
+            out.continuous_amount += static_cast<float>(item_entry.stack_size.get_value());
+        } else {
+            out.discrete_amount += item_entry.stack_size.get_value();
+        }
+    }
 
     return out;
 }

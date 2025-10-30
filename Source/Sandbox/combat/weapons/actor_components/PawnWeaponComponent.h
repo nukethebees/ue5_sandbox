@@ -46,6 +46,8 @@ class SANDBOX_API UPawnWeaponComponent
     FOnAmmoChanged on_weapon_ammo_changed;
     FOnWeaponEquipped on_weapon_equipped;
     FOnWeaponUnequipped on_weapon_unequipped;
+    FOnWeaponReloaded on_weapon_reloaded;
+    FOnReserveAmmoChanged on_reserve_ammo_changed;
   private:
     void equip_weapon(AWeaponBase& weapon);
     void attach_weapon(AWeaponBase& weapon, USceneComponent& location);

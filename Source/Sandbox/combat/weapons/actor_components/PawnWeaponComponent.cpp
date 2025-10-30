@@ -17,6 +17,7 @@ void UPawnWeaponComponent::BeginPlay() {
     inventory = owner->GetComponentByClass<UInventoryComponent>();
     check(inventory);
     inventory->on_weapon_added.BindUObject(this, &UPawnWeaponComponent::on_weapon_added);
+    inventory->on_ammo_added.AddRaw(&on_reserve_ammo_changed, &FOnReserveAmmoChanged::Broadcast);
 }
 
 bool UPawnWeaponComponent::can_fire() const {
@@ -50,8 +51,11 @@ void UPawnWeaponComponent::reload() {
 
     auto const ammo_needed{active_weapon->get_ammo_needed_for_reload()};
     auto const ammo_got{inventory->request_ammo(ammo_needed)};
+    auto const ammo_left{inventory->count_ammo(ammo_needed.type)};
 
     active_weapon->reload(ammo_got);
+
+    on_weapon_reloaded.Broadcast(active_weapon->get_current_ammo(), ammo_left);
 }
 
 void UPawnWeaponComponent::unequip_weapon() {
@@ -101,9 +105,10 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
 
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 
-    on_weapon_equipped.Broadcast(active_weapon->get_current_ammo(),
-                                 active_weapon->get_max_ammo(),
-                                 FAmmoData{active_weapon->get_ammo_type(), 0});
+    auto const reserve_ammo{inventory->count_ammo(active_weapon->get_ammo_type())};
+
+    on_weapon_equipped.Broadcast(
+        active_weapon->get_current_ammo(), active_weapon->get_max_ammo(), reserve_ammo);
 }
 void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {
     constexpr bool weld_to_parent{false};
