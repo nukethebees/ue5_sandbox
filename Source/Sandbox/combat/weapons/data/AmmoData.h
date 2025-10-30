@@ -11,6 +11,8 @@ struct FAmmoData {
     GENERATED_BODY()
 
     FAmmoData() = default;
+    FAmmoData(EAmmoType type)
+        : type(type) {}
     FAmmoData(EAmmoType type, int32 amount)
         : type(type)
         , discrete_amount(amount) {}
