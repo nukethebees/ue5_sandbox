@@ -26,11 +26,27 @@ void UInventoryMenuWidget::on_widget_selected() {
 
     RETURN_IF_NULLPTR(inventory);
     update_money_display(inventory->get_money());
+    update_ammo_counts();
 }
 void UInventoryMenuWidget::update_money_display(int32 money) {
     RETURN_IF_NULLPTR(money_text);
     auto const text{FText::FromString(FString::Printf(TEXT("%d"), money))};
     money_text->SetText(text);
+}
+void UInventoryMenuWidget::update_ammo_counts() {
+    auto n_ammo_types{static_cast<int32>(ml::ammo_types.size())};
+    check(inventory);
+
+    for (int32 i{0}; i < n_ammo_types; i++) {
+        auto const ammo_type{ml::ammo_types[i]};
+        auto const count(inventory->count_ammo(ammo_type));
+
+        if (ml::is_continuous(ammo_type)) {
+            ammo_counts[i]->SetText(FText::AsNumber(count.continuous_amount));
+        } else {
+            ammo_counts[i]->SetText(FText::AsNumber(count.discrete_amount));
+        }
+    }
 }
 
 void UInventoryMenuWidget::NativeOnInitialized() {
@@ -44,7 +60,7 @@ void UInventoryMenuWidget::NativeOnInitialized() {
         constexpr int32 label_column{0};
         constexpr int32 value_column{1};
 
-        auto const value{static_cast<EAmmoType>(i)};
+        auto const value{ml::ammo_types[i]};
 
         auto const label_name{FString::Printf(TEXT("ammo_label_%d"), row)};
         auto const label_text{
@@ -75,10 +91,8 @@ void UInventoryMenuWidget::NativeOnInitialized() {
         row++;
     }};
 
-    for (int32 i{ml::ammo_type_discrete_begin()}; i < ml::ammo_type_discrete_end(); ++i) {
-        create_slot(i);
-    }
-    for (int32 i{ml::ammo_type_continuous_begin()}; i < ml::ammo_type_continuous_end(); ++i) {
+    auto n_ammo_types{static_cast<int32>(ml::ammo_types.size())};
+    for (int32 i{0}; i < n_ammo_types; i++) {
         create_slot(i);
     }
 }

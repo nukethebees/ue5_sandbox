@@ -21,6 +21,7 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
     void set_inventory(UInventoryComponent& inv);
     void on_widget_selected();
     void update_money_display(int32 money);
+    void update_ammo_counts();
   protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;

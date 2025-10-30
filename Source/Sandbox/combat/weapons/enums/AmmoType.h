@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <utility>
 
 #include "CoreMinimal.h"
@@ -22,6 +23,15 @@ enum class EAmmoType : uint8 {
 };
 
 namespace ml {
+inline static constexpr std::array<EAmmoType, 6> ammo_types{
+    EAmmoType::Bullets,
+    EAmmoType::Shells,
+    EAmmoType::Rockets,
+    EAmmoType::Grenades,
+    EAmmoType::Energy,
+    EAmmoType::Plasma,
+};
+
 constexpr bool is_discrete(EAmmoType type) {
     constexpr auto end{std::to_underlying(EAmmoType::DISCRETE_END)};
 

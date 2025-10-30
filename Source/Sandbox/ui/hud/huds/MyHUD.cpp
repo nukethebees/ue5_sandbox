@@ -59,7 +59,6 @@ void AMyHUD::BeginPlay() {
     weapon_component->on_weapon_unequipped.AddUObject(this, &AMyHUD::on_weapon_unequipped);
     weapon_component->on_weapon_reloaded.AddUObject(this, &AMyHUD::on_weapon_reloaded);
     weapon_component->on_reserve_ammo_changed.AddUObject(this, &AMyHUD::update_reserve_ammo);
-    update_current_ammo({});
     update_jump(0);
 
     check(main_widget->ammo_display);
