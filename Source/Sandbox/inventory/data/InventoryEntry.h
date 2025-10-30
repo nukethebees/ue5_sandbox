@@ -38,6 +38,10 @@ struct FInventoryEntry {
         check(item);
         return dimensions().aspect_ratio();
     }
+    auto item_type() const {
+        check(item);
+        return item->get_item_type();
+    }
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TScriptInterface<IInventoryItem> item{nullptr};
