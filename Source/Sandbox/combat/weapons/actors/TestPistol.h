@@ -21,6 +21,7 @@ class SANDBOX_API ATestPistol
     GENERATED_BODY()
   public:
     static constexpr StaticTCharString tag{"ATestPistol"};
+    static constexpr EAmmoType ammo_type{EAmmoType::Bullets};
 
     ATestPistol();
 
@@ -34,8 +35,9 @@ class SANDBOX_API ATestPistol
 
     virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
+    virtual FAmmoData get_ammo_needed_for_reload() const override;
 
-    virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; }
+    virtual EAmmoType get_ammo_type() const override { return ammo_type; }
     virtual FAmmoData get_current_ammo() const override;
     virtual FAmmoData get_max_ammo() const override;
 

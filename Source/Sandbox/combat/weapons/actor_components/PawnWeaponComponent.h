@@ -32,7 +32,6 @@ class SANDBOX_API UPawnWeaponComponent
     void stop_firing();
 
     void reload();
-    bool can_reload() const;
 
     void unequip_weapon();
     void cycle_next_weapon();

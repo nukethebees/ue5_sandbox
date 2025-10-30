@@ -42,11 +42,16 @@ void UPawnWeaponComponent::stop_firing() {
 
 void UPawnWeaponComponent::reload() {
     RETURN_IF_NULLPTR(active_weapon);
-    active_weapon->reload(FAmmoData::make_discrete(EAmmoType::Bullets, 100));
-}
-bool UPawnWeaponComponent::can_reload() const {
-    RETURN_VALUE_IF_NULLPTR(active_weapon, false);
-    return active_weapon->can_reload();
+    RETURN_IF_NULLPTR(inventory);
+
+    if (!active_weapon->can_reload()) {
+        return;
+    }
+
+    auto const ammo_needed{active_weapon->get_ammo_needed_for_reload()};
+    auto const ammo_got{inventory->request_ammo(ammo_needed)};
+
+    active_weapon->reload(ammo_got);
 }
 
 void UPawnWeaponComponent::unequip_weapon() {

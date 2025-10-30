@@ -5,7 +5,9 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
+#include "Sandbox/combat/weapons/data/AmmoData.h"
 #include "Sandbox/inventory/data/InventoryEntry.h"
+#include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/inventory/Inventory.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -37,6 +39,7 @@ class SANDBOX_API UInventoryComponent
     auto get_last_weapon() -> AWeaponBase*;
     auto get_weapon_after(AWeaponBase const& weapon) -> AWeaponBase*;
     auto get_weapon_before(AWeaponBase const& weapon) -> AWeaponBase*;
+    auto request_ammo(FAmmoData ammo_needed) -> FAmmoData;
 
     // Money
     void add_money(int32 new_money) { money += new_money; }
@@ -62,11 +65,17 @@ class SANDBOX_API UInventoryComponent
     auto get_entry(AWeaponBase const& weapon) -> FInventoryEntry*;
 
     auto get_entries_view() const { return TArrayView<FInventoryEntry const>(item_entries); }
+    template <EItemType item_type>
+    auto get_entries_of() -> TArray<FInventoryEntry> {
+        return item_entries.FilterByPredicate(
+            [](FInventoryEntry const& entry) -> bool { return entry.item_type() == item_type; });
+    }
 
     FOnWeaponAdded on_weapon_added;
   protected:
     template <auto next_index_fn>
     auto get_weapon_adjacent(AWeaponBase const& cur_weapon) -> AWeaponBase*;
+    void remove_empty_entries();
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FInventoryEntry> item_entries{};

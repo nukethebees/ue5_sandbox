@@ -80,6 +80,9 @@ FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
 bool ATestPistol::can_reload() const {
     return ammo < max_ammo;
 }
+FAmmoData ATestPistol::get_ammo_needed_for_reload() const {
+    return FAmmoData{ammo_type, max_ammo - ammo};
+}
 
 FAmmoData ATestPistol::get_current_ammo() const {
     return FAmmoData::make_discrete(EAmmoType::Bullets, ammo);

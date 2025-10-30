@@ -42,6 +42,8 @@ class SANDBOX_API AWeaponBase
     virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) override { return {}; };
     UFUNCTION()
     virtual bool can_reload() const override { return false; };
+    UFUNCTION()
+    virtual FAmmoData get_ammo_needed_for_reload() const override { return FAmmoData{}; };
 
     UFUNCTION()
     virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; };

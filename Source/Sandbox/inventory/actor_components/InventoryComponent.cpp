@@ -2,6 +2,7 @@
 
 #include "Algo/RandomShuffle.h"
 
+#include "Sandbox/combat/weapons/actors/AmmoItem.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/utilities/enums.h"
 #include "Sandbox/utilities/grids.h"
@@ -171,6 +172,61 @@ auto UInventoryComponent::get_weapon_after(AWeaponBase const& cur_weapon) -> AWe
 auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AWeaponBase* {
     return get_weapon_adjacent<ml::decrement_index>(cur_weapon);
 }
+auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
+    FAmmoData out{ammo_needed.type};
+
+    auto ammo_entries{item_entries.FilterByPredicate(
+        [type_needed = ammo_needed.type](FInventoryEntry const& entry) -> bool {
+            if (entry.item_type() != EItemType::Ammo) {
+                return false;
+            }
+
+            if (auto* ammo{Cast<AAmmoItem>(entry.item.GetObject())}) {
+                if (ammo->ammo_type == type_needed) {
+                    return true;
+                }
+            }
+
+            return true;
+        })};
+
+    for (auto& item_entry : item_entries) {
+        if (item_entry.item_type() != EItemType::Ammo) {
+            continue;
+        }
+
+        auto* ammo{Cast<AAmmoItem>(item_entry.item.GetObject())};
+        if ((!ammo) || (ammo->ammo_type != ammo_needed.type)) {
+            continue;
+        }
+
+        if (is_continuous(out.type)) {
+            auto const ammo_taken{std::min(static_cast<int32>(ammo_needed.continuous_amount),
+                                           item_entry.stack_size.get_value())};
+
+            item_entry.stack_size -= FStackSize{ammo_taken};
+
+            ammo_needed.continuous_amount -= static_cast<float>(ammo_taken);
+            out.continuous_amount += static_cast<float>(ammo_taken);
+        } else {
+            auto const ammo_taken{
+                std::min(ammo_needed.discrete_amount, item_entry.stack_size.get_value())};
+
+            item_entry.stack_size -= FStackSize{ammo_taken};
+
+            ammo_needed.discrete_amount -= ammo_taken;
+            out.discrete_amount += ammo_taken;
+        }
+
+        if (ammo_needed.is_empty()) {
+            break;
+        }
+    }
+
+    remove_empty_entries();
+
+    return out;
+}
 
 bool UInventoryComponent::is_free(FCoord coord,
                                   FDimensions item_dimensions,
@@ -278,4 +334,8 @@ auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> 
     }
 
     return item_entry->item->get_weapon();
+}
+void UInventoryComponent::remove_empty_entries() {
+    item_entries.RemoveAllSwap(
+        [](FInventoryEntry const& entry) -> bool { return entry.stack_size.get_value() == 0; });
 }

@@ -32,6 +32,8 @@ class IWeaponInterface {
     virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) = 0;
     UFUNCTION()
     virtual bool can_reload() const = 0;
+    UFUNCTION()
+    virtual FAmmoData get_ammo_needed_for_reload() const = 0;
 
     UFUNCTION()
     virtual bool can_fire() const = 0;
