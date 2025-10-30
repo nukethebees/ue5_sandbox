@@ -189,7 +189,7 @@ auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
             continue;
         }
 
-        if (is_continuous(out.type)) {
+        if (ml::is_continuous(out.type)) {
             auto const ammo_taken{std::min(static_cast<int32>(ammo_needed.continuous_amount),
                                            item_entry.stack_size.get_value())};
 
@@ -229,7 +229,7 @@ auto UInventoryComponent::count_ammo(EAmmoType type) -> FAmmoData {
             continue;
         }
 
-        if (is_continuous(out.type)) {
+        if (ml::is_continuous(out.type)) {
             out.continuous_amount += static_cast<float>(item_entry.stack_size.get_value());
         } else {
             out.discrete_amount += item_entry.stack_size.get_value();

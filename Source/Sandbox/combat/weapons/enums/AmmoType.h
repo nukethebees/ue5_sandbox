@@ -21,6 +21,7 @@ enum class EAmmoType : uint8 {
     CONTINUOUS_END UMETA(Hidden),
 };
 
+namespace ml {
 constexpr bool is_discrete(EAmmoType type) {
     constexpr auto end{std::to_underlying(EAmmoType::DISCRETE_END)};
 
@@ -55,4 +56,6 @@ constexpr int32 num_ammo_continuous_types() {
 }
 constexpr int32 num_ammo_types() {
     return static_cast<int32>(EAmmoType::CONTINUOUS_END) - 2;
+}
+
 }

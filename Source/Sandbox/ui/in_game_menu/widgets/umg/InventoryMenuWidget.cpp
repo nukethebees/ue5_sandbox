@@ -75,10 +75,10 @@ void UInventoryMenuWidget::NativeOnInitialized() {
         row++;
     }};
 
-    for (int32 i{ammo_type_discrete_begin()}; i < ammo_type_discrete_end(); ++i) {
+    for (int32 i{ml::ammo_type_discrete_begin()}; i < ml::ammo_type_discrete_end(); ++i) {
         create_slot(i);
     }
-    for (int32 i{ammo_type_continuous_begin()}; i < ammo_type_continuous_end(); ++i) {
+    for (int32 i{ml::ammo_type_continuous_begin()}; i < ml::ammo_type_continuous_end(); ++i) {
         create_slot(i);
     }
 }

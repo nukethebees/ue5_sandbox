@@ -35,7 +35,7 @@ struct FAmmoData {
     }
 
     bool is_empty() const {
-        return is_discrete(type) ? discrete_amount == 0 : continuous_amount <= 0.f;
+        return ml::is_discrete(type) ? discrete_amount == 0 : continuous_amount <= 0.f;
     }
 
     auto& operator+=(FAmmoData const& other) {

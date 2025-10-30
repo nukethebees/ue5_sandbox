@@ -15,7 +15,7 @@ void UAmmoHUDWidget::set_reserve_ammo(FAmmoData new_reserve_ammo) {
 
     check(reserve_ammo_text);
 
-    if (is_continuous(new_reserve_ammo.type)) {
+    if (ml::is_continuous(new_reserve_ammo.type)) {
         reserve_ammo_text->SetText(FText::Format(fmt, new_reserve_ammo.continuous_amount));
     } else {
         reserve_ammo_text->SetText(FText::Format(fmt, new_reserve_ammo.discrete_amount));
@@ -30,17 +30,17 @@ void UAmmoHUDWidget::set_current_ammo(FAmmoData new_ammo) {
     float ammo_percent{0.0};
     FText text;
 
-    if (is_continuous(new_ammo.type)) {
+    if (ml::is_continuous(new_ammo.type)) {
         text = FText::Format(fmt, new_ammo.continuous_amount, max_ammo.continuous_amount);
 
         RETURN_IF_TRUE(max_ammo.is_empty());
-        RETURN_IF_TRUE(!is_continuous(max_ammo.type));
+        RETURN_IF_TRUE(!ml::is_continuous(max_ammo.type));
         ammo_percent = new_ammo.continuous_amount / max_ammo.continuous_amount;
     } else {
         text = FText::Format(fmt, new_ammo.discrete_amount, max_ammo.discrete_amount);
 
         RETURN_IF_TRUE(max_ammo.is_empty());
-        RETURN_IF_TRUE(is_continuous(max_ammo.type));
+        RETURN_IF_TRUE(ml::is_continuous(max_ammo.type));
         ammo_percent = static_cast<float>(new_ammo.discrete_amount) /
                        static_cast<float>(max_ammo.discrete_amount);
     }
