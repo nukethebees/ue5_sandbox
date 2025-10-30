@@ -32,8 +32,8 @@ struct FAmmoData {
         return data;
     }
 
-    bool is_empty(FAmmoData const& data) {
-        return is_discrete(data.type) ? data.discrete_amount == 0 : data.continuous_amount <= 0.f;
+    bool is_empty() const {
+        return is_discrete(type) ? discrete_amount == 0 : continuous_amount <= 0.f;
     }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

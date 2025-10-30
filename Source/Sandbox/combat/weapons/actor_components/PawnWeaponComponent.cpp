@@ -97,6 +97,7 @@ void UPawnWeaponComponent::equip_weapon(AWeaponBase& weapon) {
     logger.log_display(TEXT("Equipped weapon: %s"), *active_weapon->GetName());
 
     on_weapon_equipped.Broadcast(active_weapon->get_current_ammo(),
+                                 active_weapon->get_max_ammo(),
                                  FAmmoData{active_weapon->get_ammo_type(), 0});
 }
 void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& location) {

@@ -14,6 +14,7 @@ class UHealthWidget;
 class UIntNumWidget;
 class UItemDescriptionHUDWidget;
 class UTargetOverlayHUDWidget;
+class UAmmoHUDWidget;
 
 UCLASS()
 class SANDBOX_API UMainHUDWidget
@@ -47,6 +48,9 @@ class SANDBOX_API UMainHUDWidget
 
     UPROPERTY(meta = (BindWidget))
     UTargetOverlayHUDWidget* target_overlay{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UAmmoHUDWidget* ammo_display{nullptr};
   protected:
     virtual void NativeConstruct() override;
   public:

@@ -11,6 +11,7 @@
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/player_controllers/MyPlayerController.h"
+#include "Sandbox/ui/hud/widgets/umg/AmmoHUDWidget.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
 #include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/slate/SInGameMenuWidget.h"
@@ -53,14 +54,17 @@ void AMyHUD::BeginPlay() {
     jetpack_component->broadcast_fuel_state();
 
     TRY_INIT_PTR(weapon_component, player_pawn->FindComponentByClass<UPawnWeaponComponent>());
-    weapon_component->on_weapon_ammo_changed.AddUObject(this, &AMyHUD::update_ammo);
+    weapon_component->on_weapon_ammo_changed.AddUObject(this, &AMyHUD::update_current_ammo);
     weapon_component->on_weapon_equipped.AddUObject(this, &AMyHUD::on_weapon_equipped);
     weapon_component->on_weapon_unequipped.AddUObject(this, &AMyHUD::on_weapon_unequipped);
-    update_ammo({});
+    update_current_ammo({});
     update_jump(0);
 
     check(main_widget->ammo_widget);
-    main_widget->ammo_widget->SetVisibility(ESlateVisibility::Collapsed);
+    main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
+
+    check(main_widget->ammo_widget);
+    main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void AMyHUD::set_inventory(UInventoryComponent& inventory) {
@@ -146,24 +150,34 @@ void AMyHUD::update_health(FHealthData health_data) {
     RETURN_IF_NULLPTR(main_widget);
     main_widget->update_health(health_data);
 }
-void AMyHUD::update_ammo(FAmmoData ammo_data) {
+void AMyHUD::update_current_ammo(FAmmoData current_ammo) {
     RETURN_IF_NULLPTR(main_widget);
-    RETURN_IF_NULLPTR(main_widget->ammo_widget);
 
-    main_widget->ammo_widget->set_value(ammo_data.discrete_amount);
+    RETURN_IF_NULLPTR(main_widget->ammo_widget);
+    main_widget->ammo_widget->set_value(current_ammo.discrete_amount);
+
+    RETURN_IF_NULLPTR(main_widget->ammo_display);
+    main_widget->ammo_display->set_current_ammo(current_ammo);
 }
-void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData reserve_ammo) {
+void AMyHUD::on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo) {
     RETURN_IF_NULLPTR(main_widget);
-    RETURN_IF_NULLPTR(main_widget->ammo_widget);
 
+    RETURN_IF_NULLPTR(main_widget->ammo_widget);
     main_widget->ammo_widget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     main_widget->ammo_widget->set_value(weapon_ammo.discrete_amount);
+
+    RETURN_IF_NULLPTR(main_widget->ammo_display);
+    main_widget->ammo_display->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    main_widget->ammo_display->set_max_ammo(max_ammo);
+    main_widget->ammo_display->set_current_ammo(weapon_ammo);
 }
 void AMyHUD::on_weapon_unequipped() {
     RETURN_IF_NULLPTR(main_widget);
     RETURN_IF_NULLPTR(main_widget->ammo_widget);
+    RETURN_IF_NULLPTR(main_widget->ammo_display);
 
     main_widget->ammo_widget->SetVisibility(ESlateVisibility::Collapsed);
+    main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void AMyHUD::update_description(FText const& text) {

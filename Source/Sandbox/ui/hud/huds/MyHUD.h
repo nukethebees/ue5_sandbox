@@ -59,9 +59,9 @@ class SANDBOX_API AMyHUD
         }
     }
     UFUNCTION()
-    void update_ammo(FAmmoData ammo_data);
+    void update_current_ammo(FAmmoData current_ammo);
     UFUNCTION()
-    void on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData reserve_ammo);
+    void on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo);
     UFUNCTION()
     void on_weapon_unequipped();
 
