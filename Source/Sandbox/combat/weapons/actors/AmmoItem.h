@@ -28,9 +28,6 @@ class SANDBOX_API AAmmoItem
   public:
     AAmmoItem();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
-    EAmmoType ammo_type{EAmmoType::Bullets};
-
     // IDescribable
     virtual FText const& get_description() const override {
         static auto const desc{FText::FromName(TEXT("Ammo"))};
@@ -47,11 +44,16 @@ class SANDBOX_API AAmmoItem
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
     virtual EItemType get_item_type() const override { return EItemType::Ammo; }
-    virtual FStackSize get_quantity() const { return FStackSize{50}; }
+    virtual FStackSize get_quantity() const { return FStackSize{quantity}; }
 
     // IInteractable
     virtual void on_interacted(AActor& instigator) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    EAmmoType ammo_type{EAmmoType::Bullets};
   protected:
+    virtual void BeginPlay() override;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     UBoxComponent* collision_box{nullptr};
 
@@ -60,6 +62,7 @@ class SANDBOX_API AAmmoItem
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UTexture2D* display_image{nullptr};
-  protected:
-    virtual void BeginPlay() override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    int32 quantity{50};
 };
