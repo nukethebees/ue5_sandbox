@@ -9,6 +9,7 @@
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/player_controllers/MyPlayerController.h"
 #include "Sandbox/ui/hud/widgets/umg/AmmoHUDWidget.h"
@@ -60,6 +61,10 @@ void AMyHUD::BeginPlay() {
     weapon_component->on_weapon_reloaded.AddUObject(this, &AMyHUD::on_weapon_reloaded);
     weapon_component->on_reserve_ammo_changed.AddUObject(this, &AMyHUD::update_reserve_ammo);
     update_jump(0);
+
+    TRY_INIT_PTR(scanner_component,
+                 player_pawn->FindComponentByClass<UActorDescriptionScannerComponent>());
+    scanner_component->on_description_update.BindUObject(this, &AMyHUD::update_description);
 
     check(main_widget->ammo_display);
     main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);

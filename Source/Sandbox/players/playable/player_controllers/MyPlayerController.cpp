@@ -38,8 +38,6 @@ void AMyPlayerController::BeginPlay() {
 
     // Set up actor description scanner
     check(character->actor_description_scanner);
-    character->actor_description_scanner->on_description_update.BindUObject(
-        hud, &AMyHUD::update_description);
     character->actor_description_scanner->on_target_screen_bounds_update.BindUObject(
         this, &AMyPlayerController::update_target_screen_bounds);
     character->actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(

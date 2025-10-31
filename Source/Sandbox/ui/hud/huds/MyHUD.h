@@ -39,9 +39,20 @@ class SANDBOX_API AMyHUD
     UFUNCTION()
     void toggle_in_game_menu();
     UFUNCTION()
-    void update_fuel(FJetpackState const& jetpack_state);
+    void update_max_speed(float data) {
+        if (main_widget && main_widget->max_speed_widget) {
+            main_widget->max_speed_widget->update(data);
+        }
+    }
     UFUNCTION()
     void update_jump(int32 new_jump);
+    UFUNCTION()
+    void update_target_screen_bounds(FActorCorners const& corners);
+    UFUNCTION()
+    void clear_target_screen_bounds();
+  protected:
+    UFUNCTION()
+    void update_fuel(FJetpackState const& jetpack_state);
     UFUNCTION()
     void update_coin(int32 data) {
         if (main_widget && main_widget->coin_widget) {
@@ -52,12 +63,6 @@ class SANDBOX_API AMyHUD
     }
     UFUNCTION()
     void update_health(FHealthData health_data);
-    UFUNCTION()
-    void update_max_speed(float data) {
-        if (main_widget && main_widget->max_speed_widget) {
-            main_widget->max_speed_widget->update(data);
-        }
-    }
     UFUNCTION()
     void update_current_ammo(FAmmoData current_ammo);
     UFUNCTION()
@@ -71,11 +76,7 @@ class SANDBOX_API AMyHUD
 
     UFUNCTION()
     void update_description(FText const& text);
-    UFUNCTION()
-    void update_target_screen_bounds(FActorCorners const& corners);
-    UFUNCTION()
-    void clear_target_screen_bounds();
-  protected:
+
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UMainHUDWidget> main_widget_class;
