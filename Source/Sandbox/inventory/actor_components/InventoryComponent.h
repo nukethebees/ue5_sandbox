@@ -87,4 +87,6 @@ class SANDBOX_API UInventoryComponent
     FDimensions dimensions{100, 100};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
     int32 money{0};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+    int32 skill_points{0};
 };
