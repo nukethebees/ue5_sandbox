@@ -68,11 +68,6 @@ class SANDBOX_API UInventoryComponent
     auto get_entry(AWeaponBase const& weapon) -> FInventoryEntry*;
 
     auto get_entries_view() const { return TArrayView<FInventoryEntry const>(item_entries); }
-    template <EItemType item_type>
-    auto get_entries_of() -> TArray<FInventoryEntry> {
-        return item_entries.FilterByPredicate(
-            [](FInventoryEntry const& entry) -> bool { return entry.item_type() == item_type; });
-    }
 
     FOnWeaponAdded on_weapon_added;
     FOnAmmoAdded on_ammo_added;
