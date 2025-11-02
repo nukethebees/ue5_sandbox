@@ -20,6 +20,7 @@
 #include "Sandbox/players/playable/data/PlayerAttributes.h"
 #include "Sandbox/players/playable/data/PlayerTechSkills.h"
 #include "Sandbox/players/playable/data/PlayerWeaponSkills.h"
+#include "Sandbox/players/playable/delegates/MyCharacterDelegates.h"
 #include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
 #include "Sandbox/utilities/enums.h"
@@ -50,9 +51,6 @@ class UWarpComponent;
 class UActorDescriptionScannerComponent;
 
 class ADroppableWaypoint;
-
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMaxSpeedChanged, float);
-DECLARE_DELEGATE_OneParam(FOnJumpCountChanged, int32);
 
 namespace ml {
 namespace AMyCharacter {
