@@ -2,6 +2,9 @@
 
 void UStatsMenuWidget::on_widget_selected() {}
 
+void UStatsMenuWidget::NativeOnInitialized() {
+    Super::NativeOnInitialized();
+}
 void UStatsMenuWidget::NativeConstruct() {
     Super::NativeConstruct();
 }
