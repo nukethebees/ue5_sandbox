@@ -24,6 +24,8 @@ class UInGamePlayerMenu;
 
 struct FActorCorners;
 
+class AMyCharacter;
+
 UCLASS()
 class SANDBOX_API AMyHUD
     : public AHUD
@@ -35,6 +37,7 @@ class SANDBOX_API AMyHUD
     virtual void BeginPlay() override;
 
     void set_inventory(UInventoryComponent& inventory);
+    void set_character(AMyCharacter& my_char);
 
     UFUNCTION()
     void toggle_in_game_menu();

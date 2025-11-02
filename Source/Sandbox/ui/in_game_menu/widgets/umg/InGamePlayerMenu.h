@@ -23,11 +23,20 @@ class UMapMenuWidget;
 class UResearchMenuWidget;
 class UInventoryMenuWidget;
 
+class AMyCharacter;
+
 UCLASS()
 class SANDBOX_API UInGamePlayerMenu
     : public UUserWidget
     , public ml::LogMsgMixin<"UInGamePlayerMenu", LogSandboxUI> {
     GENERATED_BODY()
+  public:
+    void set_inventory(UInventoryComponent& inventory);
+    void set_character(AMyCharacter& character);
+    void refresh();
+
+    // Close navigation event
+    FBackRequested back_requested;
   protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
@@ -71,12 +80,6 @@ class SANDBOX_API UInGamePlayerMenu
     UResearchMenuWidget* research_tab{nullptr};
     UPROPERTY(meta = (BindWidget))
     UInventoryMenuWidget* inventory_tab{nullptr};
-  public:
-    void set_inventory(UInventoryComponent& inventory);
-    void refresh();
-
-    // Close navigation event
-    FBackRequested back_requested;
   private:
     UFUNCTION()
     void handle_powers_tab();

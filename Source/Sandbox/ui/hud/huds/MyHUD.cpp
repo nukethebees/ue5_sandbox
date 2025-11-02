@@ -74,6 +74,10 @@ void AMyHUD::set_inventory(UInventoryComponent& inventory) {
     RETURN_IF_NULLPTR(umg_player_menu);
     umg_player_menu->set_inventory(inventory);
 }
+void AMyHUD::set_character(AMyCharacter& my_char) {
+    RETURN_IF_NULLPTR(umg_player_menu);
+    umg_player_menu->set_character(my_char);
+}
 
 void AMyHUD::toggle_in_game_menu() {
     constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};
@@ -100,6 +104,10 @@ void AMyHUD::toggle_in_game_menu() {
                 TRY_INIT_PTR(pawn, player_controller->GetPawn());
                 TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
                 set_inventory(*inventory_comp);
+
+                if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
+                    set_character(*my_pc);
+                }
             }
 
             RETURN_IF_NULLPTR(umg_player_menu);

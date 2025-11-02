@@ -3,17 +3,25 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+
 #include "StatsMenuWidget.generated.h"
 
 class UGridPanel;
 class UHorizontalBox;
 class UTextBlock;
 
+class AMyCharacter;
+
 UCLASS()
-class SANDBOX_API UStatsMenuWidget : public UUserWidget {
+class SANDBOX_API UStatsMenuWidget
+    : public UUserWidget
+    , public ml::LogMsgMixin<"UStatsMenuWidget", LogSandboxUI> {
     GENERATED_BODY()
   public:
     void on_widget_selected();
+    void set_character(AMyCharacter& my_char);
   protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
@@ -62,4 +70,7 @@ class SANDBOX_API UStatsMenuWidget : public UUserWidget {
     // Weapon skills
     UPROPERTY(meta = (BindWidget))
     UGridPanel* weapon_skills_grid{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TWeakObjectPtr<AMyCharacter> character{nullptr};
 };

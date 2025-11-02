@@ -49,6 +49,10 @@ void UInGamePlayerMenu::set_inventory(UInventoryComponent& inventory) {
     RETURN_IF_NULLPTR(inventory_tab);
     inventory_tab->set_inventory(inventory);
 }
+void UInGamePlayerMenu::set_character(AMyCharacter& character) {
+    RETURN_IF_NULLPTR(stats_tab);
+    stats_tab->set_character(character);
+}
 
 void UInGamePlayerMenu::handle_powers_tab() {
     set_active_tab(EInGameMenuTab::Powers);
@@ -83,6 +87,7 @@ void UInGamePlayerMenu::set_active_tab(EInGameMenuTab tab) {
     RETURN_IF_NULLPTR(tab_switcher);
     tab_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
 
+    refresh();
     update_tab_button_states(tab);
 }
 void UInGamePlayerMenu::update_tab_button_states(EInGameMenuTab active_tab) {
