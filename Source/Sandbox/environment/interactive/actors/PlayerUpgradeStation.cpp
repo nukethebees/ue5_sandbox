@@ -47,7 +47,20 @@ void APlayerUpgradeStation::on_interacted(AActor& instigator) {
         }
     }
 }
-void APlayerUpgradeStation::load_attribute_window(AMyCharacter& character) {}
-void APlayerUpgradeStation::load_tech_skills_window(AMyCharacter& character) {}
-void APlayerUpgradeStation::load_weapon_skills_window(AMyCharacter& character) {}
-void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {}
+void APlayerUpgradeStation::load_attribute_window(AMyCharacter& character) {
+    constexpr auto logger{NestedLogger<"load_attribute_window">()};
+
+    logger.log_verbose(TEXT("Start"));
+}
+void APlayerUpgradeStation::load_tech_skills_window(AMyCharacter& character) {
+    constexpr auto logger{NestedLogger<"load_tech_skills_window">()};
+    logger.log_verbose(TEXT("Start"));
+}
+void APlayerUpgradeStation::load_weapon_skills_window(AMyCharacter& character) {
+    constexpr auto logger{NestedLogger<"load_weapon_skills_window">()};
+    logger.log_verbose(TEXT("Start"));
+}
+void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {
+    constexpr auto logger{NestedLogger<"load_psi_window">()};
+    logger.log_verbose(TEXT("Start"));
+}
