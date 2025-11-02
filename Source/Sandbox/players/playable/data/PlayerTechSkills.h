@@ -12,4 +12,10 @@ struct FPlayerTechSkills {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
     int32 hacking{1};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    int32 repair{1};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    int32 maintenance{1};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    int32 lockpicking{1};
 };
