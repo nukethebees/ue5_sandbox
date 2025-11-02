@@ -101,8 +101,7 @@ void UVideoSettingRowWidget::setup_boolean_widgets() {
 
 void UVideoSettingRowWidget::setup_reset_button() {
     if (reset_button) {
-        reset_button->on_clicked.AddUObject(this,
-                                             &UVideoSettingRowWidget::reset_to_original_value);
+        reset_button->on_clicked.AddUObject(this, &UVideoSettingRowWidget::reset_to_original_value);
         reset_button->set_label(FText::FromString(TEXT("Reset")));
         log_verbose(TEXT("Reset button bound and configured"));
     } else {

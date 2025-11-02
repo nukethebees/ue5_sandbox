@@ -12,5 +12,5 @@ class SANDBOX_API APlatformerGameState : public AGameStateBase {
   public:
     void notify_coin_change(int32 new_coin_count);
 
-        FCoinCountChangedSignature on_coin_count_changed;
+    FCoinCountChangedSignature on_coin_count_changed;
 };
