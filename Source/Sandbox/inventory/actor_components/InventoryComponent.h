@@ -6,10 +6,11 @@
 #include "Components/ActorComponent.h"
 
 #include "Sandbox/combat/weapons/data/AmmoData.h"
+#include "Sandbox/inventory/data/Coord.h"
+#include "Sandbox/inventory/data/Dimensions.h"
 #include "Sandbox/inventory/data/InventoryEntry.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
-#include "Sandbox/inventory/Inventory.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 

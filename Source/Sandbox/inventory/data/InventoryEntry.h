@@ -2,8 +2,9 @@
 
 #include "CoreMinimal.h"
 
+#include "Sandbox/inventory/data/Coord.h"
+#include "Sandbox/inventory/data/generated/StackSize.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
-#include "Sandbox/inventory/Inventory.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InventoryEntry.generated.h"
