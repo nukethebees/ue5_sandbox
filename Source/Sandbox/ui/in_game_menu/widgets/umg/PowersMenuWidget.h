@@ -8,6 +8,8 @@
 UCLASS()
 class SANDBOX_API UPowersMenuWidget : public UUserWidget {
     GENERATED_BODY()
+  public:
+    void on_widget_selected();
   protected:
     virtual void NativeConstruct() override;
 };

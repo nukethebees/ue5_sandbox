@@ -100,21 +100,33 @@ void UInGamePlayerMenu::refresh() {
             break;
         }
         case Powers: {
+            check(powers_tab);
+            powers_tab->on_widget_selected();
             break;
         }
         case Stats: {
+            check(stats_tab);
+            stats_tab->on_widget_selected();
             break;
         }
         case Objectives: {
+            check(objectives_tab);
+            objectives_tab->on_widget_selected();
             break;
         }
         case Map: {
+            check(map_tab);
+            map_tab->on_widget_selected();
             break;
         }
         case Logs: {
+            check(logs_tab);
+            logs_tab->on_widget_selected();
             break;
         }
         case Research: {
+            check(research_tab);
+            research_tab->on_widget_selected();
             break;
         }
         default: {
