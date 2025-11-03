@@ -12,12 +12,15 @@ class UTextBlock;
 class UGridPanel;
 
 class UTextButtonWidget;
+class AMyCharacter;
 
 UCLASS()
 class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_skill_points(int32 sp);
+    void set_character(AMyCharacter& my_char);
+    void refresh_values();
   protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
@@ -76,4 +79,6 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     UTextBlock* psi_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* psi_upgrade_button{nullptr};
+
+    AMyCharacter* character{nullptr};
 };

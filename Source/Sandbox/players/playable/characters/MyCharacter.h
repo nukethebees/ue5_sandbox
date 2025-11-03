@@ -133,6 +133,9 @@ class SANDBOX_API AMyCharacter
     UFUNCTION()
     void reload_weapon();
 
+    // Levels
+    int32 upgrade_cost(int32 level) { return level * 10; }
+
     // Torch
     UFUNCTION()
     void aim_torch(FVector const& world_location);

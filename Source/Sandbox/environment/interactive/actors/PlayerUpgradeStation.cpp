@@ -80,7 +80,7 @@ void APlayerUpgradeStation::load_window(AMyCharacter& character,
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(widget, CreateWidget<typename WidgetSubClass::ElementType>(world, widget_class));
 
-    widget->set_skill_points(character.inventory->get_skill_points());
+    widget->set_character(character);
     widget->AddToViewport();
 
     TRY_INIT_PTR(pc, world->GetFirstPlayerController());

@@ -4,7 +4,9 @@
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -13,6 +15,29 @@ void UPlayerAttributesUpgradeWidget::set_skill_points(int32 sp) {
     IF_EXPR_ELSE_WARN(skill_points_display) {
         skill_points_display->SetText(FText::AsNumber(sp));
     }
+}
+void UPlayerAttributesUpgradeWidget::set_character(AMyCharacter& my_char) {
+    character = &my_char;
+}
+void UPlayerAttributesUpgradeWidget::refresh_values() {
+    RETURN_IF_NULLPTR(character);
+    RETURN_IF_NULLPTR(character->inventory);
+
+    set_skill_points(character->inventory->get_skill_points());
+
+    strength_level->SetText(FText::AsNumber(character->attributes.strength));
+    endurance_level->SetText(FText::AsNumber(character->attributes.endurance));
+    agility_level->SetText(FText::AsNumber(character->attributes.agility));
+    cyber_level->SetText(FText::AsNumber(character->attributes.cyber));
+    psi_level->SetText(FText::AsNumber(character->attributes.psi));
+
+    strength_cost->SetText(
+        FText::AsNumber(character->upgrade_cost(character->attributes.strength)));
+    endurance_cost->SetText(
+        FText::AsNumber(character->upgrade_cost(character->attributes.endurance)));
+    agility_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.agility)));
+    cyber_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.cyber)));
+    psi_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.psi)));
 }
 
 void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
@@ -34,6 +59,8 @@ void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
 }
 void UPlayerAttributesUpgradeWidget::NativeConstruct() {
     Super::NativeConstruct();
+
+    refresh_values();
 }
 void UPlayerAttributesUpgradeWidget::NativeDestruct() {
     Super::NativeDestruct();
