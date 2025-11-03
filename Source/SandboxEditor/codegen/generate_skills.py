@@ -51,6 +51,8 @@ class SkillConfig:
         return self.name.replace("_", " ").title()
     def get_member_name(self) -> str:
         return self.name.lower()
+    def get_private_member_name(self) -> str:
+        return self.get_member_name() + "_"
 
 class PlayerSkills:
     skills: list[SkillConfig]
@@ -101,7 +103,7 @@ class SkillGenerator:
     skill_type: str = "int32"
     skill_base_level: int = 1
 
-    uproperty_header: str = "UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=\"Player\")"
+    uproperty_header: str = "UPROPERTY(EditAnywhere, Category=\"Player\")"
 
     def __init__(self, player_skills: PlayerSkills, output_dir: Path):
         self.categories = {}
@@ -213,9 +215,24 @@ enum class {self.player_skills_enum_typename} : uint8 {{
 USTRUCT(BlueprintType)
 struct {self.player_skills_struct_typename} {{
     GENERATED_BODY()
-
 """
-        
+        self.output_file += "  public:\n"
+
+        active_category = None
+        for skill in self.skills:
+            if active_category != skill.config.category:
+                if active_category is not None:
+                    self.output_file += "\n"
+                active_category = skill.config.category
+                self.output_file += f"    // {active_category}\n"
+
+            self.output_file += f"""    auto get_{skill.config.get_member_name()}() const -> {self.skill_type} {{ return {skill.config.get_member_name()}_; }}
+    void set_{skill.config.get_member_name()}({self.skill_type} value) {{ 
+        {skill.config.get_member_name()}_ = std::min({skill.config.get_private_member_name()}, {skill.config.max_level});
+    }}
+"""
+
+        self.output_file += "  private:\n"
         active_category = None
         for skill in self.skills:
             if active_category != skill.config.category:
@@ -225,7 +242,7 @@ struct {self.player_skills_struct_typename} {{
                 self.output_file += f"    // {active_category}\n"
 
             self.output_file += f"""    {self.uproperty_header}
-    {self.skill_type} {skill.config.get_member_name()}{{{self.skill_base_level}}};
+    {self.skill_type} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
 """
 
         self.output_file += "};\n"
