@@ -19,11 +19,17 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 
+    UFUNCTION()
     void on_close_requested();
+    UFUNCTION()
     void on_strength_upgrade_requested();
+    UFUNCTION()
     void on_endurance_upgrade_requested();
+    UFUNCTION()
     void on_agility_upgrade_requested();
+    UFUNCTION()
     void on_cyber_upgrade_requested();
+    UFUNCTION()
     void on_psi_upgrade_requested();
 
     UPROPERTY(meta = (BindWidget))
