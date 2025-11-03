@@ -5,6 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -13,7 +14,7 @@ void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
 
 #define BIND_BUTTON(WIDGET_NAME, METHOD_NAME) \
     check(WIDGET_NAME);                       \
-    WIDGET_NAME->OnClicked.AddDynamic(this, &UPlayerAttributesUpgradeWidget::METHOD_NAME);
+    WIDGET_NAME->on_clicked.AddUObject(this, &UPlayerAttributesUpgradeWidget::METHOD_NAME);
 
     BIND_BUTTON(close_button, on_close_requested);
 

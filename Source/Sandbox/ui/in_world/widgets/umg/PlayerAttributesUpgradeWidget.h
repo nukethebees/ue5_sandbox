@@ -11,6 +11,8 @@ class UButton;
 class UTextBlock;
 class UGridPanel;
 
+class UTextButtonWidget;
+
 UCLASS()
 class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     GENERATED_BODY()
@@ -33,40 +35,40 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     void on_psi_upgrade_requested();
 
     UPROPERTY(meta = (BindWidget))
-    UButton* close_button{nullptr};
+    UTextButtonWidget* close_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* strength_level{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* strength_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* strength_upgrade_button{nullptr};
+    UTextButtonWidget* strength_upgrade_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* endurance_level{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* endurance_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* endurance_upgrade_button{nullptr};
+    UTextButtonWidget* endurance_upgrade_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* agility_level{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* agility_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* agility_upgrade_button{nullptr};
+    UTextButtonWidget* agility_upgrade_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* cyber_level{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* cyber_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* cyber_upgrade_button{nullptr};
+    UTextButtonWidget* cyber_upgrade_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* psi_level{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* psi_cost{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* psi_upgrade_button{nullptr};
+    UTextButtonWidget* psi_upgrade_button{nullptr};
 };
