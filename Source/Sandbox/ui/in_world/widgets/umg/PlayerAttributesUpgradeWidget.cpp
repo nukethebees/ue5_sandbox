@@ -9,6 +9,12 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+void UPlayerAttributesUpgradeWidget::set_skill_points(int32 sp) {
+    IF_EXPR_ELSE_WARN(skill_points_display) {
+        skill_points_display->SetText(FText::AsNumber(sp));
+    }
+}
+
 void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 

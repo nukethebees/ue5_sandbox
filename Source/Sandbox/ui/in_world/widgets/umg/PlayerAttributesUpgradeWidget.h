@@ -16,6 +16,8 @@ class UTextButtonWidget;
 UCLASS()
 class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     GENERATED_BODY()
+  public:
+    void set_skill_points(int32 sp);
   protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
@@ -35,7 +37,7 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     void on_psi_upgrade_requested();
 
     UPROPERTY(meta = (BindWidget))
-    UTextBlock* skill_points{nullptr};
+    UTextBlock* skill_points_display{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* close_button{nullptr};

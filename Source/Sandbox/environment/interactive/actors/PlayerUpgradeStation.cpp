@@ -62,15 +62,12 @@ void APlayerUpgradeStation::load_attribute_window(AMyCharacter& character) {
 }
 void APlayerUpgradeStation::load_tech_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_tech_skills_window">()};
-    load_window(character, attributes_widget_class, logger);
 }
 void APlayerUpgradeStation::load_weapon_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_weapon_skills_window">()};
-    load_window(character, tech_skills_widget_class, logger);
 }
 void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_psi_window">()};
-    load_window(character, psi_abilities_widget_class, logger);
 }
 
 template <typename WidgetSubClass>
@@ -78,9 +75,12 @@ void APlayerUpgradeStation::load_window(AMyCharacter& character,
                                         WidgetSubClass const& widget_class,
                                         auto const& logger) {
     RETURN_IF_NULLPTR(widget_class);
+    RETURN_IF_NULLPTR(character.inventory);
+
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(widget, CreateWidget<typename WidgetSubClass::ElementType>(world, widget_class));
 
+    widget->set_skill_points(character.inventory->get_skill_points());
     widget->AddToViewport();
 
     TRY_INIT_PTR(pc, world->GetFirstPlayerController());
