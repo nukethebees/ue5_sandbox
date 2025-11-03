@@ -6,6 +6,8 @@
 
 #include "Sandbox/logging/SandboxLogCategories.h"
 
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
 void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
@@ -32,13 +34,12 @@ void UPlayerAttributesUpgradeWidget::NativeDestruct() {
 
 void UPlayerAttributesUpgradeWidget::on_close_requested() {
     auto* pc{UGameplayStatics::GetPlayerController(this, 0)};
-    if (pc) {
+
+    IF_EXPR_ELSE_WARN(pc) {
         pc->SetPause(false);
         FInputModeGameOnly const input_mode{};
         pc->SetInputMode(input_mode);
         pc->bShowMouseCursor = false;
-    } else {
-        UE_LOG(LogSandboxUI, Warning, TEXT("pc is nullptr"));
     }
 
     RemoveFromParent();

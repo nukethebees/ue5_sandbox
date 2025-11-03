@@ -27,6 +27,11 @@
         continue;                                                 \
     }
 
+#define IF_EXPR_ELSE_WARN(EXPR)                         \
+    if (!(EXPR)) {                                      \
+        ml::log_value_is_x(TEXT(#EXPR), TEXT("false")); \
+    } else
+
 // Pointers
 // -------------------------------------------------------------------------------------------------
 #define RETURN_IF_NULLPTR(VAR_NAME) \

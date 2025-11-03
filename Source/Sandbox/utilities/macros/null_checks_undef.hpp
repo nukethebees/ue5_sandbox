@@ -1,7 +1,7 @@
 #undef WARN_IF_EXPR
-
 #undef RETURN_VALUE_AND_WARN_IF_EXPR
 #undef CONTINUE_AND_WARN_IF_EXPR
+#undef IF_EXPR_ELSE_WARN
 
 // Pointers
 #undef RETURN_IF_NULLPTR

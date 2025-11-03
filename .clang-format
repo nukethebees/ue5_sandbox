@@ -55,6 +55,7 @@ EmptyLineBeforeAccessModifier: Never
 
 FixNamespaceComments: false
 
+IfMacros: [IF_EXPR_ELSE_WARN]
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: '^<.*>$'
