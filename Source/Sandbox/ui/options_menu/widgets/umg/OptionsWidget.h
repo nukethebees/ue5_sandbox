@@ -6,7 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetSwitcher.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
+#include "Sandbox/ui/delegates/CommonMenuDelegates.h"
 #include "Sandbox/ui/options_menu/widgets/umg/AudioOptionsWidget.h"
 #include "Sandbox/ui/options_menu/widgets/umg/ControlsOptionsWidget.h"
 #include "Sandbox/ui/options_menu/widgets/umg/GameplayOptionsWidget.h"

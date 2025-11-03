@@ -5,7 +5,7 @@
 #include "Components/GridPanel.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/ui/main_menu/delegates/CommonMenuDelegates.h"
+#include "Sandbox/ui/delegates/CommonMenuDelegates.h"
 #include "Sandbox/ui/main_menu/widgets/umg/LoadLevelButtonWidget.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 
