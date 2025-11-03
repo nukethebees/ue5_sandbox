@@ -12,6 +12,11 @@
 class UStaticMeshComponent;
 class UBoxComponent;
 
+class UPlayerAttributesUpgradeWidget;
+class UPlayerTechSkillsUpgradeWidget;
+class UPlayerWeaponSkillsUpgradeWidget;
+class UPlayerPsiAbilitiesUpgradeWidget;
+
 class AMyCharacter;
 
 UCLASS()
@@ -24,6 +29,15 @@ class APlayerUpgradeStation
     APlayerUpgradeStation();
 
     virtual void on_interacted(AActor& instigator) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    TSubclassOf<UPlayerAttributesUpgradeWidget> attributes_widget_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    TSubclassOf<UPlayerTechSkillsUpgradeWidget> tech_skills_widget_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    TSubclassOf<UPlayerWeaponSkillsUpgradeWidget> weapon_skills_widget_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+    TSubclassOf<UPlayerPsiAbilitiesUpgradeWidget> psi_abilities_widget_class;
   protected:
     void load_attribute_window(AMyCharacter& character);
     void load_tech_skills_window(AMyCharacter& character);
