@@ -48,6 +48,15 @@ class SANDBOX_API UInventoryComponent
     void add_money(int32 new_money) { money += new_money; }
     auto get_money() const { return money; }
 
+    // Skill points
+    int32 get_skill_points() const { return skill_points; }
+    int32 take_skill_points(int32 requested) {
+        auto const to_take{std::min(requested, skill_points)};
+        skill_points -= to_take;
+        return to_take;
+    }
+    void add_skill_points(int32 added) { skill_points += added; }
+
     // Grid dimensions
     auto get_dimensions() const { return dimensions; }
     auto get_n_rows() const { return dimensions.y(); }
