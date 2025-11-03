@@ -2,6 +2,9 @@
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Kismet/GameplayStatics.h"
+
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
@@ -28,7 +31,17 @@ void UPlayerAttributesUpgradeWidget::NativeDestruct() {
 }
 
 void UPlayerAttributesUpgradeWidget::on_close_requested() {
-    back_requested.Broadcast();
+    auto* pc{UGameplayStatics::GetPlayerController(this, 0)};
+    if (pc) {
+        pc->SetPause(false);
+        FInputModeGameOnly const input_mode{};
+        pc->SetInputMode(input_mode);
+        pc->bShowMouseCursor = false;
+    } else {
+        UE_LOG(LogSandboxUI, Warning, TEXT("pc is nullptr"));
+    }
+
+    RemoveFromParent();
 }
 void UPlayerAttributesUpgradeWidget::on_strength_upgrade_requested() {}
 void UPlayerAttributesUpgradeWidget::on_endurance_upgrade_requested() {}

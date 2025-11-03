@@ -80,12 +80,9 @@ void APlayerUpgradeStation::load_window(auto const& widget_class, auto const& lo
 
     widget->AddToViewport();
 
-    constexpr bool set_paused{true};
-    UGameplayStatics::SetGamePaused(world, set_paused);
-
     TRY_INIT_PTR(pc, world->GetFirstPlayerController());
     FInputModeUIOnly input_mode;
-    input_mode.SetWidgetToFocus(widget->TakeWidget());
     pc->SetInputMode(input_mode);
     pc->bShowMouseCursor = true;
+    pc->SetPause(true);
 }

@@ -34,7 +34,6 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UButton* close_button{nullptr};
-    FBackRequested back_requested;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* strength_level{nullptr};
