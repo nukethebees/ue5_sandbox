@@ -17,6 +17,7 @@
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/data/CameraConfig.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
+#include "Sandbox/players/playable/data/player_skills.h"
 #include "Sandbox/players/playable/data/PlayerAttributes.h"
 #include "Sandbox/players/playable/data/PlayerTechSkills.h"
 #include "Sandbox/players/playable/data/PlayerWeaponSkills.h"
@@ -175,6 +176,8 @@ class SANDBOX_API AMyCharacter
     FPlayerAttributes attributes;
     FPlayerTechSkills tech_skills;
     FPlayerWeaponSkills weapon_skills;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities")
+    FPlayerSkills skills;
 
     FOnMaxSpeedChanged on_max_speed_changed;
     FOnJumpCountChanged on_jump_count_changed;
