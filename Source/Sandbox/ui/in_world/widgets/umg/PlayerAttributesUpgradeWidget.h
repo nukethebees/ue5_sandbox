@@ -35,6 +35,9 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     void on_psi_upgrade_requested();
 
     UPROPERTY(meta = (BindWidget))
+    UTextBlock* skill_points{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
     UTextButtonWidget* close_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
