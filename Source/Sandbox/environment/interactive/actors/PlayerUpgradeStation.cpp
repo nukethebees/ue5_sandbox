@@ -1,10 +1,17 @@
 #include "Sandbox/environment/interactive/actors/PlayerUpgradeStation.h"
 
+#include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/ui/in_world/widgets/umg/PlayerAttributesUpgradeWidget.h"
+#include "Sandbox/ui/in_world/widgets/umg/PlayerPsiAbilitiesUpgradeWidget.h"
+#include "Sandbox/ui/in_world/widgets/umg/PlayerTechSkillsUpgradeWidget.h"
+#include "Sandbox/ui/in_world/widgets/umg/PlayerWeaponSkillsUpgradeWidget.h"
 #include "Sandbox/utilities/enums.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -50,17 +57,36 @@ void APlayerUpgradeStation::on_interacted(AActor& instigator) {
 void APlayerUpgradeStation::load_attribute_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_attribute_window">()};
 
-    logger.log_verbose(TEXT("Start"));
+    load_window<UPlayerAttributesUpgradeWidget>(attributes_widget_class, logger);
 }
 void APlayerUpgradeStation::load_tech_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_tech_skills_window">()};
-    logger.log_verbose(TEXT("Start"));
+    load_window<UPlayerTechSkillsUpgradeWidget>(attributes_widget_class, logger);
 }
 void APlayerUpgradeStation::load_weapon_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_weapon_skills_window">()};
-    logger.log_verbose(TEXT("Start"));
+    load_window<UPlayerWeaponSkillsUpgradeWidget>(tech_skills_widget_class, logger);
 }
 void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_psi_window">()};
-    logger.log_verbose(TEXT("Start"));
+    load_window<UPlayerPsiAbilitiesUpgradeWidget>(psi_abilities_widget_class, logger);
+}
+
+template <typename Widget>
+void APlayerUpgradeStation::load_window(auto const& widget_class, auto const& logger) {
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    if (auto* widget{CreateWidget<Widget>(world, widget_class)}) {
+        widget->AddToViewport();
+
+        constexpr bool set_paused{true};
+        UGameplayStatics::SetGamePaused(world, set_paused);
+
+        TRY_INIT_PTR(pc, world->GetFirstPlayerController());
+        FInputModeUIOnly input_mode;
+        input_mode.SetWidgetToFocus(widget->TakeWidget());
+        pc->SetInputMode(input_mode);
+        pc->bShowMouseCursor = true;
+    }
 }

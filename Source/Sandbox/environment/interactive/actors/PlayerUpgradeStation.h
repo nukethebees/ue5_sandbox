@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 
@@ -52,4 +53,7 @@ class APlayerUpgradeStation
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
     UBoxComponent* collision_box{nullptr};
+  private:
+    template <typename Widget>
+    void load_window(auto const& widget_class, auto const& logger);
 };
