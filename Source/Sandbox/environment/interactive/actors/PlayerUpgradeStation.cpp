@@ -74,19 +74,18 @@ void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {
 
 template <typename Widget>
 void APlayerUpgradeStation::load_window(auto const& widget_class, auto const& logger) {
-
+    RETURN_IF_NULLPTR(widget_class);
     TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(widget, CreateWidget<Widget>(world, widget_class));
 
-    if (auto* widget{CreateWidget<Widget>(world, widget_class)}) {
-        widget->AddToViewport();
+    widget->AddToViewport();
 
-        constexpr bool set_paused{true};
-        UGameplayStatics::SetGamePaused(world, set_paused);
+    constexpr bool set_paused{true};
+    UGameplayStatics::SetGamePaused(world, set_paused);
 
-        TRY_INIT_PTR(pc, world->GetFirstPlayerController());
-        FInputModeUIOnly input_mode;
-        input_mode.SetWidgetToFocus(widget->TakeWidget());
-        pc->SetInputMode(input_mode);
-        pc->bShowMouseCursor = true;
-    }
+    TRY_INIT_PTR(pc, world->GetFirstPlayerController());
+    FInputModeUIOnly input_mode;
+    input_mode.SetWidgetToFocus(widget->TakeWidget());
+    pc->SetInputMode(input_mode);
+    pc->bShowMouseCursor = true;
 }
