@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 #include "Sandbox/ui/in_world/widgets/umg/PlayerAttributesUpgradeWidget.h"
 #include "Sandbox/ui/in_world/widgets/umg/PlayerPsiAbilitiesUpgradeWidget.h"
@@ -57,26 +58,28 @@ void APlayerUpgradeStation::on_interacted(AActor& instigator) {
 void APlayerUpgradeStation::load_attribute_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_attribute_window">()};
 
-    load_window<UPlayerAttributesUpgradeWidget>(attributes_widget_class, logger);
+    load_window(character, attributes_widget_class, logger);
 }
 void APlayerUpgradeStation::load_tech_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_tech_skills_window">()};
-    load_window<UPlayerTechSkillsUpgradeWidget>(attributes_widget_class, logger);
+    load_window(character, attributes_widget_class, logger);
 }
 void APlayerUpgradeStation::load_weapon_skills_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_weapon_skills_window">()};
-    load_window<UPlayerWeaponSkillsUpgradeWidget>(tech_skills_widget_class, logger);
+    load_window(character, tech_skills_widget_class, logger);
 }
 void APlayerUpgradeStation::load_psi_window(AMyCharacter& character) {
     constexpr auto logger{NestedLogger<"load_psi_window">()};
-    load_window<UPlayerPsiAbilitiesUpgradeWidget>(psi_abilities_widget_class, logger);
+    load_window(character, psi_abilities_widget_class, logger);
 }
 
-template <typename Widget>
-void APlayerUpgradeStation::load_window(auto const& widget_class, auto const& logger) {
+template <typename WidgetSubClass>
+void APlayerUpgradeStation::load_window(AMyCharacter& character,
+                                        WidgetSubClass const& widget_class,
+                                        auto const& logger) {
     RETURN_IF_NULLPTR(widget_class);
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(widget, CreateWidget<Widget>(world, widget_class));
+    TRY_INIT_PTR(widget, CreateWidget<typename WidgetSubClass::ElementType>(world, widget_class));
 
     widget->AddToViewport();
 

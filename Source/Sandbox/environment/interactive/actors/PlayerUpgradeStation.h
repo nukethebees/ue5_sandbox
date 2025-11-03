@@ -54,6 +54,8 @@ class APlayerUpgradeStation
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
     UBoxComponent* collision_box{nullptr};
   private:
-    template <typename Widget>
-    void load_window(auto const& widget_class, auto const& logger);
+    template <typename WidgetSubClass>
+    void load_window(AMyCharacter& character,
+                     WidgetSubClass const& widget_class,
+                     auto const& logger);
 };
