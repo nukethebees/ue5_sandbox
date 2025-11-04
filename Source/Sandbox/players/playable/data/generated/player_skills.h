@@ -19,8 +19,10 @@ enum class EPlayerSkillName : uint8 {
     Agility UMETA(DisplayName = "Agility"),
     Cyber UMETA(DisplayName = "Cyber"),
     Psi UMETA(DisplayName = "Psi"),
+
     // Tech
     hacking UMETA(DisplayName = "Hacking"),
+
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
 };
