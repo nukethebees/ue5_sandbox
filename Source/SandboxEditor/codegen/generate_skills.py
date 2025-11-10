@@ -165,8 +165,10 @@ class SkillGenerator:
         with open(self.output_file_path, "w") as file:
             file.write(self.output_file)
     def write_include_file(self) -> None:
-        # Create a file in the non-generated directory
-        # This is to avoid breaking include paths if we change to a non-generated version in future
+        """Create a file in the non-generated directory
+        This is to avoid breaking include paths if we change to a non-generated version in future
+        """
+        
 
         file_path = self.output_dir / f"{self.file_name}.h"
         include_path = Path(*self.output_file_path.parts[1:]).as_posix()
