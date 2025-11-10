@@ -296,9 +296,9 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 
         # String functions
         self.output_file += f"// String functions\n"
-        self.write_get_display_fname()
-    def write_get_display_fname(self) -> None:
-        self.output_file += f"""inline auto get_display_fname({self.player_skills_enum_typename} value) -> FName {{
+        self.write_get_display_name()
+    def write_get_display_name(self) -> None:
+        self.output_file += f"""inline auto get_display_name({self.player_skills_enum_typename} value) -> FName {{
     switch (value) {{
 """
         for skill in self.skills:

@@ -153,7 +153,7 @@ inline constexpr TStaticArray<int32, 1> weapon_values{{
 }};
 
 // String functions
-inline auto get_display_fname(EPlayerSkillName value) -> FName {
+inline auto get_display_name(EPlayerSkillName value) -> FName {
     switch (value) {
         case EPlayerSkillName::Strength: {
             static auto const name{FName{TEXT("Strength")}};
