@@ -75,7 +75,9 @@ class GeneratorSkillCategory:
         self.skill_indexes.append(i)
         self.first_skill_index = min(self.first_skill_index, i)
         self.last_skill_index = max(self.last_skill_index, i)
-
+    def lower_name(self) -> str:
+        return self.name.lower()
+ 
 class SkillGenerator:
     skills: list[GeneratorSkill]
 
@@ -261,7 +263,7 @@ struct {self.player_skills_struct_typename} {{
         t = "int32"
 
         for category in self.categories.values():
-            lname = category.name.lower()
+            lname = category.lower_name()
 
             self.output_file += f"""
 // {category.name}
