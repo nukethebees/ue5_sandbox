@@ -1,5 +1,6 @@
 import os
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -181,7 +182,7 @@ class SkillGenerator:
         with open(file_path, "w") as file:
             file.write(out)
 
-    def category_loop(self, fn) -> None:
+    def category_loop(self, fn:Callable[[SkillGenerator, GeneratorSkill], None]) -> None:
         active_category = None
         for skill in self.skills:
             if active_category != skill.config.category:
