@@ -118,9 +118,15 @@ class SkillGenerator:
         self.player_skills_struct_typename = "F" + self.player_skills_struct_name
 
     def init_skills(self, player_skills: list[SkillConfig]) -> None:
+        active_category:str = None
+
         for skill in player_skills:
             if skill.category not in self.categories:
                 self.categories[skill.category] = GeneratorSkillCategory(skill.category, [])
+                active_category = skill.category
+            else:
+                if (active_category != skill.category):
+                    raise Exception("Category split up")
 
             skill_category = self.categories[skill.category]
             generator_skill = GeneratorSkill(
