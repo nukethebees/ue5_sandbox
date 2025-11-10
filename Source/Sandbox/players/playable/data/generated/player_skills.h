@@ -102,6 +102,15 @@ inline constexpr auto is_attributes(EPlayerSkillName value) -> bool {
     return ((x >= 0) && (x <= 4));
 }
 
+inline constexpr TStaticArray<int32, 5> attributes_values{{
+    EPlayerSkillName::Strength,
+    EPlayerSkillName::Endurance,
+    EPlayerSkillName::Agility,
+    EPlayerSkillName::Cyber,
+    EPlayerSkillName::Psi
+}};
+
+
 // Tech
 // ----------------------------------------------------------------------
 inline constexpr int32 num_tech_values{1};
@@ -118,6 +127,11 @@ inline constexpr auto is_tech(EPlayerSkillName value) -> bool {
     return ((x >= 0) && (x <= 5));
 }
 
+inline constexpr TStaticArray<int32, 1> tech_values{{
+    EPlayerSkillName::hacking
+}};
+
+
 // Weapon
 // ----------------------------------------------------------------------
 inline constexpr int32 num_weapon_values{1};
@@ -133,6 +147,11 @@ inline constexpr auto is_weapon(EPlayerSkillName value) -> bool {
 
     return ((x >= 0) && (x <= 6));
 }
+
+inline constexpr TStaticArray<int32, 1> weapon_values{{
+    EPlayerSkillName::small_guns
+}};
+
 // String functions
 inline auto get_display_fname(EPlayerSkillName value) -> FName {
     switch (value) {

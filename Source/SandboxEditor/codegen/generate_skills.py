@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, NewType, Any
+from typing import Optional, NewType, Any, Generator
 
 SkillId = NewType("SkillId", int)
 CategoryIndex = NewType("CategoryIndex", int)
@@ -162,6 +162,12 @@ class SkillGenerator:
             for skill in self.skills:
                 print(f"    {skill.config.name},\t{skill.config.category}")
 
+    # Accessors
+    def get_category_skills(self, cat:GeneratorSkillCategory) -> Generator[GeneratorSkill]:
+        for skill_idx in cat.skill_indexes:
+            yield self.skills[skill_idx]
+
+    # File writing
     def write_output_file(self):
         with open(self.output_file_path, "w") as file:
             file.write(self.output_file)
@@ -182,6 +188,7 @@ class SkillGenerator:
         with open(file_path, "w") as file:
             file.write(out)
 
+    # Helpers
     def category_loop(self, fn:Callable[[SkillGenerator, GeneratorSkill], None]) -> None:
         active_category = None
         for skill in self.skills:
@@ -192,6 +199,7 @@ class SkillGenerator:
                 self.output_file += f"    // {active_category}\n"
             fn(self, skill)
 
+    # File contents
     def write_file_header(self) -> None:
         self.output_file += f"""#pragma once
 
@@ -271,8 +279,19 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 
     return ((x >= {category.first_skill_index}) && (x <= {category.last_skill_index}));
 }}
+
 """
-    
+            n = len(category.skill_indexes)
+            self.output_file += f"inline constexpr TStaticArray<{self.skill_type}, {n}> {lname}_values{{{{\n"
+            first = True
+            for skill in self.get_category_skills(category):
+                if not first:
+                    self.output_file += ",\n"
+                self.output_file += f"    {self.player_skills_enum_typename}::{skill.config.name}"
+                first = False
+            self.output_file += "\n}};\n\n"
+                
+
         # String functions
         self.output_file += f"// String functions\n"
         self.write_get_display_fname()
