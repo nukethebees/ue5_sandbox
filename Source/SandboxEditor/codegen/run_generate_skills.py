@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from generate_skills import SkillConfig, PlayerSkills, SkillGenerator
+from generate_skills import SkillConfig, SkillGenerator
 
 def main() -> None:
-    skills: list[SkillConfig] = [
+    player_skills: list[SkillConfig] = [
         SkillConfig.attr("Strength"),
         SkillConfig.attr("Endurance"),
         SkillConfig.attr("Agility"),
@@ -13,7 +13,6 @@ def main() -> None:
         SkillConfig.weapon("small_guns")
 
     ]
-    player_skills = PlayerSkills(skills=skills)
 
     output_dir = Path("./Source/Sandbox/players/playable/data")
     generator = SkillGenerator(player_skills, output_dir)

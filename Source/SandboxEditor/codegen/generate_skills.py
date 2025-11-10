@@ -1,7 +1,7 @@
 import os
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -55,15 +55,6 @@ class SkillConfig:
     def get_private_member_name(self) -> str:
         return self.get_member_name() + "_"
 
-class PlayerSkills:
-    skills: list[SkillConfig]
-
-    def __init__(self, skills=None):
-        if skills is not None:
-            self.skills = skills
-        else:
-            self.skills = []
-
 @dataclass
 class GeneratorSkill:
     config: SkillConfig
@@ -106,7 +97,7 @@ class SkillGenerator:
 
     uproperty_header: str = "UPROPERTY(EditAnywhere, Category=\"Player\")"
 
-    def __init__(self, player_skills: PlayerSkills, output_dir: Path):
+    def __init__(self, player_skills: list[SkillConfig], output_dir: Path):
         self.categories = {}
 
         self.skills = []
@@ -126,8 +117,8 @@ class SkillGenerator:
         self.player_skills_struct_name = "PlayerSkills"
         self.player_skills_struct_typename = "F" + self.player_skills_struct_name
 
-    def init_skills(self, player_skills: PlayerSkills) -> None:
-        for skill in player_skills.skills:
+    def init_skills(self, player_skills: list[SkillConfig]) -> None:
+        for skill in player_skills:
             if skill.category not in self.categories:
                 self.categories[skill.category] = GeneratorSkillCategory(skill.category, [])
 
