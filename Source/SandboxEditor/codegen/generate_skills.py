@@ -299,23 +299,3 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     def write_namespace_end(self) -> None:
         self.output_file += f"}} // namespace {self.namespace}\n"
 
-def main() -> None:
-    skills: list[SkillConfig] = [
-        SkillConfig.attr("Strength"),
-        SkillConfig.attr("Endurance"),
-        SkillConfig.attr("Agility"),
-        SkillConfig.attr("Cyber"),
-        SkillConfig.attr("Psi"),
-        SkillConfig.tech("hacking"),
-        SkillConfig.weapon("small_guns")
-
-    ]
-    player_skills = PlayerSkills(skills=skills)
-
-    output_dir = Path("./Source/Sandbox/players/playable/data")
-    generator = SkillGenerator(player_skills, output_dir)
-    generator.run()
-    
-
-if __name__ == "__main__":
-    main()
