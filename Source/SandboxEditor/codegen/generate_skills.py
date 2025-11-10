@@ -3,7 +3,10 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, NewType
+
+SkillId = NewType("SkillId", int)
+CategoryIndex = NewType("CategoryIndex", int)
 
 @dataclass
 class SkillConfig:
@@ -58,17 +61,17 @@ class SkillConfig:
 @dataclass
 class GeneratorSkill:
     config: SkillConfig
-    skill_index: int
-    category_index: int 
+    skill_index: SkillId
+    category_index: CategoryIndex
 
 @dataclass
 class GeneratorSkillCategory:
     name: str
-    skill_indexes: list[int]
-    first_skill_index: int = 0
-    last_skill_index: int = 0
+    skill_indexes: list[SkillId]
+    first_skill_index: SkillId = 0
+    last_skill_index: SkillId = 0
 
-    def add_index(self, i: int) -> None:
+    def add_index(self, i: SkillId) -> None:
         self.skill_indexes.append(i)
         self.first_skill_index = min(self.first_skill_index, i)
         self.last_skill_index = max(self.last_skill_index, i)
