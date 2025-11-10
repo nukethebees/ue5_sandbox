@@ -149,11 +149,12 @@ class SkillGenerator:
         self.write_file_header()
 
         self.write_skills_enum()
-        self.write_skills_struct()
 
         self.write_namespace_start()
         self.write_enum_functions()
         self.write_namespace_end()
+
+        self.write_skills_struct()
 
         self.write_file_footer()
         self.write_output_file()

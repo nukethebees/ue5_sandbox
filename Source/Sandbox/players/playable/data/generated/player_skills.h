@@ -26,65 +26,6 @@ enum class EPlayerSkillName : uint8 {
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
 };
-
-USTRUCT(BlueprintType)
-struct FPlayerSkills {
-    GENERATED_BODY()
-  public:
-    // Attributes
-    auto get_strength() const -> int32 { return strength_; }
-    void set_strength(int32 value) { 
-        strength_ = std::min(strength_, 10);
-    }
-    auto get_endurance() const -> int32 { return endurance_; }
-    void set_endurance(int32 value) { 
-        endurance_ = std::min(endurance_, 10);
-    }
-    auto get_agility() const -> int32 { return agility_; }
-    void set_agility(int32 value) { 
-        agility_ = std::min(agility_, 10);
-    }
-    auto get_cyber() const -> int32 { return cyber_; }
-    void set_cyber(int32 value) { 
-        cyber_ = std::min(cyber_, 10);
-    }
-    auto get_psi() const -> int32 { return psi_; }
-    void set_psi(int32 value) { 
-        psi_ = std::min(psi_, 10);
-    }
-
-    // Tech
-    auto get_hacking() const -> int32 { return hacking_; }
-    void set_hacking(int32 value) { 
-        hacking_ = std::min(hacking_, 10);
-    }
-
-    // Weapon
-    auto get_small_guns() const -> int32 { return small_guns_; }
-    void set_small_guns(int32 value) { 
-        small_guns_ = std::min(small_guns_, 10);
-    }
-  private:
-    // Attributes
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 strength_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 endurance_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 agility_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 cyber_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 psi_{1};
-
-    // Tech
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 hacking_{1};
-
-    // Weapon
-    UPROPERTY(EditAnywhere, Category="Player")
-    int32 small_guns_{1};
-};
 namespace ml {
 // Attributes
 // ----------------------------------------------------------------------
@@ -233,4 +174,63 @@ inline auto get_display_string_view(EPlayerSkillName value) -> TStringView {
     return get_display_string(value);
 }
 } // namespace ml
+
+USTRUCT(BlueprintType)
+struct FPlayerSkills {
+    GENERATED_BODY()
+  public:
+    // Attributes
+    auto get_strength() const -> int32 { return strength_; }
+    void set_strength(int32 value) { 
+        strength_ = std::min(strength_, 10);
+    }
+    auto get_endurance() const -> int32 { return endurance_; }
+    void set_endurance(int32 value) { 
+        endurance_ = std::min(endurance_, 10);
+    }
+    auto get_agility() const -> int32 { return agility_; }
+    void set_agility(int32 value) { 
+        agility_ = std::min(agility_, 10);
+    }
+    auto get_cyber() const -> int32 { return cyber_; }
+    void set_cyber(int32 value) { 
+        cyber_ = std::min(cyber_, 10);
+    }
+    auto get_psi() const -> int32 { return psi_; }
+    void set_psi(int32 value) { 
+        psi_ = std::min(psi_, 10);
+    }
+
+    // Tech
+    auto get_hacking() const -> int32 { return hacking_; }
+    void set_hacking(int32 value) { 
+        hacking_ = std::min(hacking_, 10);
+    }
+
+    // Weapon
+    auto get_small_guns() const -> int32 { return small_guns_; }
+    void set_small_guns(int32 value) { 
+        small_guns_ = std::min(small_guns_, 10);
+    }
+  private:
+    // Attributes
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 strength_{1};
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 endurance_{1};
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 agility_{1};
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 cyber_{1};
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 psi_{1};
+
+    // Tech
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 hacking_{1};
+
+    // Weapon
+    UPROPERTY(EditAnywhere, Category="Player")
+    int32 small_guns_{1};
+};
 // clang-format on
