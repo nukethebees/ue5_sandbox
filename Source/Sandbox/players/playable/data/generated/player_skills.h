@@ -229,5 +229,8 @@ inline auto get_display_string(EPlayerSkillName value) -> FString const& {
     static FString const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
     return unhandled_name;
 }
+inline auto get_display_string_view(EPlayerSkillName value) -> TStringView {
+    return get_display_string(value);
+}
 } // namespace ml
 // clang-format on

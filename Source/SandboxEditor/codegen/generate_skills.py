@@ -298,6 +298,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
         self.output_file += f"// String functions\n"
         self.write_get_display_name()
         self.write_get_display_string()
+        self.write_get_display_string_view()
 
     def write_get_display_name(self) -> None:
         self.output_file += f"""inline auto get_display_name({self.player_skills_enum_typename} value) -> FName {{
@@ -336,6 +337,11 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     static FString const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
     return unhandled_name;
 }
+"""
+    def write_get_display_string_view(self) -> None:
+        self.output_file += f"""inline auto get_display_string_view({self.player_skills_enum_typename} value) -> TStringView {{
+    return get_display_string(value);
+}}
 """
 
     def write_namespace_start(self) -> None:
