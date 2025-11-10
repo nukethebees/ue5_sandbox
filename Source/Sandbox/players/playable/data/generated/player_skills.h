@@ -88,21 +88,14 @@ struct FPlayerSkills {
 namespace ml {
 // Attributes
 // ----------------------------------------------------------------------
-inline constexpr auto num_attributes_values() -> int32 {
-    return 5;
-}
+inline constexpr int32 num_attributes_values{5};
 // Index functions for looping
-inline constexpr auto attributes_start_index() -> int32 {
-    return 0;
-}
+inline constexpr int32 attributes_start_index{0};
 // The last index (inclusive)
-inline constexpr auto attributes_last_index() -> int32 {
-    return 4;
-}
+inline constexpr int32 attributes_last_index{4};
 // The index after the last index 
-inline constexpr auto attributes_end_index() -> int32 {
-    return 5;
-}
+inline constexpr int32 attributes_end_index{5};
+
 inline constexpr auto is_attributes(EPlayerSkillName value) -> bool {
     auto const x{std::to_underlying(value)};
 
@@ -111,21 +104,14 @@ inline constexpr auto is_attributes(EPlayerSkillName value) -> bool {
 
 // Tech
 // ----------------------------------------------------------------------
-inline constexpr auto num_tech_values() -> int32 {
-    return 1;
-}
+inline constexpr int32 num_tech_values{1};
 // Index functions for looping
-inline constexpr auto tech_start_index() -> int32 {
-    return 0;
-}
+inline constexpr int32 tech_start_index{0};
 // The last index (inclusive)
-inline constexpr auto tech_last_index() -> int32 {
-    return 5;
-}
+inline constexpr int32 tech_last_index{5};
 // The index after the last index 
-inline constexpr auto tech_end_index() -> int32 {
-    return 6;
-}
+inline constexpr int32 tech_end_index{6};
+
 inline constexpr auto is_tech(EPlayerSkillName value) -> bool {
     auto const x{std::to_underlying(value)};
 
@@ -134,21 +120,14 @@ inline constexpr auto is_tech(EPlayerSkillName value) -> bool {
 
 // Weapon
 // ----------------------------------------------------------------------
-inline constexpr auto num_weapon_values() -> int32 {
-    return 1;
-}
+inline constexpr int32 num_weapon_values{1};
 // Index functions for looping
-inline constexpr auto weapon_start_index() -> int32 {
-    return 0;
-}
+inline constexpr int32 weapon_start_index{0};
 // The last index (inclusive)
-inline constexpr auto weapon_last_index() -> int32 {
-    return 6;
-}
+inline constexpr int32 weapon_last_index{6};
 // The index after the last index 
-inline constexpr auto weapon_end_index() -> int32 {
-    return 7;
-}
+inline constexpr int32 weapon_end_index{7};
+
 inline constexpr auto is_weapon(EPlayerSkillName value) -> bool {
     auto const x{std::to_underlying(value)};
 

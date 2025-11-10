@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, NewType
+from typing import Optional, NewType, Any
 
 SkillId = NewType("SkillId", int)
 CategoryIndex = NewType("CategoryIndex", int)
@@ -244,28 +244,28 @@ struct {self.player_skills_struct_typename} {{
 
         self.output_file += "};\n"
     
+    def create_constant(self, var_type:str, name:str, value:Any) -> str:
+        return f"inline constexpr {var_type} {name}{{{value}}};"
+
     def write_enum_functions(self) -> None:
+        # Create constant
+        cc = self.create_constant
+        t = "int32"
+
         for category in self.categories.values():
             lname = category.name.lower()
 
             self.output_file += f"""
 // {category.name}
 // ----------------------------------------------------------------------
-inline constexpr auto num_{lname}_values() -> int32 {{
-    return {len(category.skill_indexes)};
-}}
+{cc(t, f"num_{lname}_values", len(category.skill_indexes))}
 // Index functions for looping
-inline constexpr auto {lname}_start_index() -> int32 {{
-    return {category.first_skill_index};
-}}
+{cc(t, f"{lname}_start_index", category.first_skill_index)}
 // The last index (inclusive)
-inline constexpr auto {lname}_last_index() -> int32 {{
-    return {category.last_skill_index};
-}}
+{cc(t, f"{lname}_last_index", category.last_skill_index)}
 // The index after the last index 
-inline constexpr auto {lname}_end_index() -> int32 {{
-    return {category.last_skill_index + 1};
-}}
+{cc(t, f"{lname}_end_index", category.last_skill_index + 1)}
+
 inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bool {{
     auto const x{{std::to_underlying(value)}};
 
