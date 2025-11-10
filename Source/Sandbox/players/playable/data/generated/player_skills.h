@@ -188,7 +188,46 @@ inline auto get_display_name(EPlayerSkillName value) -> FName {
         }
     }
 
-    return FName{TEXT("UNHANDLED_CASE")};
+    static auto const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
+    return unhandled_name;
+}
+inline auto get_display_string(EPlayerSkillName value) -> FString const& {
+    switch (value) {
+        case EPlayerSkillName::Strength: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::Endurance: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::Agility: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::Cyber: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::Psi: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::hacking: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        case EPlayerSkillName::small_guns: {
+            static FString const name{get_display_name(value)};
+            return name;
+        }
+        default: {
+            break;
+        }
+    }
+
+    static FString const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
+    return unhandled_name;
 }
 } // namespace ml
 // clang-format on

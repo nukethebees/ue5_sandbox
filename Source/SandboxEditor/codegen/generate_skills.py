@@ -297,6 +297,8 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
         # String functions
         self.output_file += f"// String functions\n"
         self.write_get_display_name()
+        self.write_get_display_string()
+
     def write_get_display_name(self) -> None:
         self.output_file += f"""inline auto get_display_name({self.player_skills_enum_typename} value) -> FName {{
     switch (value) {{
@@ -307,14 +309,32 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
             return name;
         }}
 """
-        
-
         self.output_file += """        default: {
             break;
         }
     }
 
-    return FName{TEXT("UNHANDLED_CASE")};
+    static auto const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
+    return unhandled_name;
+}
+"""
+    def write_get_display_string(self) -> None:
+        self.output_file += f"""inline auto get_display_string({self.player_skills_enum_typename} value) -> FString const& {{
+    switch (value) {{
+"""
+        for skill in self.skills:
+            self.output_file += f"""        case {self.player_skills_enum_typename}::{skill.config.name}: {{
+            static FString const name{{get_display_name(value)}};
+            return name;
+        }}
+"""
+        self.output_file += """        default: {
+            break;
+        }
+    }
+
+    static FString const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
+    return unhandled_name;
 }
 """
 
