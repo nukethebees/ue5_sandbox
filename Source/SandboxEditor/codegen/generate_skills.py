@@ -74,16 +74,26 @@ class GeneratorSkill:
 class GeneratorSkillCategory:
     name: str
     skill_indexes: list[SkillId]
-    first_skill_index: SkillId = 0
-    last_skill_index: SkillId = 0
+    first_skill_index: SkillId = None
+    last_skill_index: SkillId = None
 
     def add_index(self, i: SkillId) -> None:
         self.skill_indexes.append(i)
-        self.first_skill_index = min(self.first_skill_index, i)
-        self.last_skill_index = max(self.last_skill_index, i)
+        if self.first_skill_index is None:
+            self.first_skill_index = i
+        else:
+            self.first_skill_index = min(self.first_skill_index, i)
+        if self.last_skill_index is None:
+            self.last_skill_index = i
+        else:
+            self.last_skill_index = max(self.last_skill_index, i)
     def lower_name(self) -> str:
         return self.name.lower()
- 
+    def first_skill(self, skills: list[GeneratorSkill]) -> GeneratorSkill:
+        return skills[self.first_skill_index]
+    def last_skill(self, skills: list[GeneratorSkill]) -> GeneratorSkill:
+        return skills[self.last_skill_index]
+
 class SkillGenerator:
     skills: list[GeneratorSkill]
 
@@ -273,9 +283,15 @@ enum class {self.player_skills_enum_typename} : uint8 {{
 {cc(t, f"{lname}_end_index", category.last_skill_index + 1)}
 
 inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bool {{
-    auto const x{{std::to_underlying(value)}};
-
-    return ((x >= {category.first_skill_index}) && (x <= {category.last_skill_index}));
+    auto const x{{std::to_underlying(value)}}; 
+    constexpr auto lower{{
+        std::to_underlying({self.player_skills_enum_typename}::{category.first_skill(self.skills).config.name})
+    }};
+    constexpr auto upper{{
+        std::to_underlying({self.player_skills_enum_typename}::{category.last_skill(self.skills).config.name})
+    }};
+    
+    return ((x >= lower) && (x <= upper));
 }}
 
 """

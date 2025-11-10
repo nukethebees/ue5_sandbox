@@ -40,9 +40,15 @@ inline constexpr int32 attributes_last_index{4};
 inline constexpr int32 attributes_end_index{5};
 
 inline constexpr auto is_attributes(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)};
-
-    return ((x >= 0) && (x <= 4));
+    auto const x{std::to_underlying(value)}; 
+    constexpr auto lower{
+        std::to_underlying(EPlayerSkillName::Strength)
+    };
+    constexpr auto upper{
+        std::to_underlying(EPlayerSkillName::Psi)
+    };
+    
+    return ((x >= lower) && (x <= upper));
 }
 
 inline constexpr std::array<EPlayerSkillName, 5> attributes_values{{
@@ -58,16 +64,22 @@ inline constexpr std::array<EPlayerSkillName, 5> attributes_values{{
 // ----------------------------------------------------------------------
 inline constexpr int32 num_tech_values{1};
 // Index functions for looping
-inline constexpr int32 tech_start_index{0};
+inline constexpr int32 tech_start_index{5};
 // The last index (inclusive)
 inline constexpr int32 tech_last_index{5};
 // The index after the last index 
 inline constexpr int32 tech_end_index{6};
 
 inline constexpr auto is_tech(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)};
-
-    return ((x >= 0) && (x <= 5));
+    auto const x{std::to_underlying(value)}; 
+    constexpr auto lower{
+        std::to_underlying(EPlayerSkillName::hacking)
+    };
+    constexpr auto upper{
+        std::to_underlying(EPlayerSkillName::hacking)
+    };
+    
+    return ((x >= lower) && (x <= upper));
 }
 
 inline constexpr std::array<EPlayerSkillName, 1> tech_values{{
@@ -79,16 +91,22 @@ inline constexpr std::array<EPlayerSkillName, 1> tech_values{{
 // ----------------------------------------------------------------------
 inline constexpr int32 num_weapon_values{1};
 // Index functions for looping
-inline constexpr int32 weapon_start_index{0};
+inline constexpr int32 weapon_start_index{6};
 // The last index (inclusive)
 inline constexpr int32 weapon_last_index{6};
 // The index after the last index 
 inline constexpr int32 weapon_end_index{7};
 
 inline constexpr auto is_weapon(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)};
-
-    return ((x >= 0) && (x <= 6));
+    auto const x{std::to_underlying(value)}; 
+    constexpr auto lower{
+        std::to_underlying(EPlayerSkillName::small_guns)
+    };
+    constexpr auto upper{
+        std::to_underlying(EPlayerSkillName::small_guns)
+    };
+    
+    return ((x >= lower) && (x <= upper));
 }
 
 inline constexpr std::array<EPlayerSkillName, 1> weapon_values{{
