@@ -192,7 +192,9 @@ class SkillGenerator:
             file.write(out)
 
     # Helpers
-    def category_loop(self, fn:Callable[[SkillGenerator, GeneratorSkill], None]) -> None:
+    def category_loop(self, 
+                      fn:Callable[[SkillGenerator, GeneratorSkill], None], 
+                      is_method:bool = False) -> None:
         active_category = None
         for skill in self.skills:
             if active_category != skill.config.category:
@@ -200,7 +202,10 @@ class SkillGenerator:
                     self.output_file += "\n"
                 active_category = skill.config.category
                 self.output_file += f"    // {active_category}\n"
-            fn(self, skill)
+            if is_method:
+                fn(skill)
+            else:
+                fn(self, skill)
     def create_constant(self, var_type:str, name:str, value:Any) -> str:
         return f"inline constexpr {var_type} {name}{{{value}}};"
 
@@ -265,14 +270,14 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 
 """
             n = len(category.skill_indexes)
-            self.output_file += f"inline constexpr TStaticArray<{self.skill_type}, {n}> {lname}_values{{{{\n"
+            self.output_file += f"inline constexpr TStaticArray<{self.skill_type}, {n}> {lname}_values{{\n"
             first = True
             for skill in self.get_category_skills(category):
                 if not first:
                     self.output_file += ",\n"
                 self.output_file += f"    {self.player_skills_enum_typename}::{skill.config.name}"
                 first = False
-            self.output_file += "\n}};\n\n"
+            self.output_file += "\n};\n\n"
                 
 
         # String functions
@@ -326,18 +331,17 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 """
 
     # Struct generation
-    def write_skills_struct(self) -> None:
-        def add_accessors(self: SkillGenerator, skill: GeneratorSkill):
-            self.output_file += f"""    auto get_{skill.config.get_member_name()}() const -> {self.skill_type} {{ return {skill.config.get_member_name()}_; }}
+    def add_struct_accessor(self, skill: GeneratorSkill):
+        self.output_file += f"""    auto get_{skill.config.get_member_name()}() const -> {self.skill_type} {{ return {skill.config.get_member_name()}_; }}
     void set_{skill.config.get_member_name()}({self.skill_type} value) {{ 
         {skill.config.get_member_name()}_ = std::min({skill.config.get_private_member_name()}, {skill.config.max_level});
     }}
 """
-        def add_member(self: SkillGenerator, skill: GeneratorSkill):
-            self.output_file += f"""    {self.uproperty_header}
+    def add_struct_member(self, skill: GeneratorSkill):
+        self.output_file += f"""    {self.uproperty_header}
     {self.skill_type} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
 """
-
+    def write_skills_struct(self) -> None:
         self.output_file += f"""
 USTRUCT(BlueprintType)
 struct {self.player_skills_struct_typename} {{
@@ -345,9 +349,9 @@ struct {self.player_skills_struct_typename} {{
 """
 
         self.output_file += "  public:\n"
-        self.category_loop(add_accessors)          
+        self.category_loop(self.add_struct_accessor, True)
         self.output_file += "  private:\n"
-        self.category_loop(add_member)
+        self.category_loop(self.add_struct_member, True)
 
         self.output_file += "};\n"
     
