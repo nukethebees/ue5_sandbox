@@ -21,10 +21,8 @@ enum class EPlayerSkillName : uint8 {
     Agility UMETA(DisplayName = "Agility"),
     Cyber UMETA(DisplayName = "Cyber"),
     Psi UMETA(DisplayName = "Psi"),
-
     // Tech
     hacking UMETA(DisplayName = "Hacking"),
-
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
 };
@@ -193,154 +191,139 @@ inline auto get_display_string(EPlayerSkillName value) -> FString const& {
 inline auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR> {
     return get_display_string(value);
 }
+
 } // namespace ml
+
+USTRUCT(BlueprintType)
+struct FPlayerSkill {
+    GENERATED_BODY()
+  public:
+    FPlayerSkill() = default;
+    FPlayerSkill(uint8 skill_, uint8 max_)
+        : skill_(skill_)
+        , max_(max_)
+    {}
+
+    auto get(this auto const& self) {
+        return self.skill_;
+    }
+    auto set(this auto& self, uint8 input) {
+        self.skill_ = std::min(input, self.max_);
+    }
+    auto inc(this auto& self) {
+        self.set(self.skill_ + uint8{1});
+    }
+  private:
+    UPROPERTY(EditAnywhere, Category="Player")
+    uint8 skill_{1};
+    UPROPERTY(EditAnywhere, Category="Player")
+    uint8 max_{1};
+};
 
 USTRUCT(BlueprintType)
 struct FPlayerSkills {
     GENERATED_BODY()
   public:
-    using Getter = std::function<uint8()>;
-    using Setter = std::function<void(uint8)>;
-
     struct SkillView {
-        EPlayerSkillName enum_key;
+        FPlayerSkill& skill;
         FString const& name;
-        Getter getter;
-        Setter setter;
+        EPlayerSkillName enum_key;
 
         SkillView() = delete;
         SkillView(EPlayerSkillName enum_key, 
                   FString const& name, 
-                  Getter getter, 
-                  Setter setter)
-            : enum_key(enum_key)
+                  FPlayerSkill& skill)
+            : skill(skill)
             , name(name)
-            , getter(getter)
-            , setter(setter) 
+            , enum_key(enum_key)
         {};
     };
-
-    // Attribute
-    static constexpr uint8 max_strength{10};
-    static constexpr uint8 max_endurance{10};
-    static constexpr uint8 max_agility{10};
-    static constexpr uint8 max_cyber{10};
-    static constexpr uint8 max_psi{10};
-
-    // Tech
-    static constexpr uint8 max_hacking{10};
-
-    // Weapon
-    static constexpr uint8 max_small_guns{10};
-
-    // Attribute
-    constexpr auto get_strength() const -> uint8 { 
-        return strength_; 
+    template <EPlayerSkillName skill_type, typename Self>
+    constexpr auto get_value(this Self const& self) {
+        return self.skills_[std::to_underlying(skill_type)].get();
     }
-    constexpr void set_strength(uint8 value) { 
-        strength_ = std::min(strength_, max_strength);
+    template <typename Self>
+    constexpr auto get_value(this Self const& self, EPlayerSkillName skill_type) {
+        return self.skills_[std::to_underlying(skill_type)].get();
     }
+    template <EPlayerSkillName skill_type, typename Self>
+    constexpr auto get(this Self&& self) -> auto&& {
+        return std::forward_like<Self>(self.skills_[std::to_underlying(skill_type)]);
+    }
+    template <typename Self>
+    constexpr auto get(this Self const& self, EPlayerSkillName skill_type) -> auto&& {
+        return std::forward_like<Self>(self.skills_[std::to_underlying(skill_type)]);
+    }
+    template <EPlayerSkillName skill_type, typename Self>
+    constexpr void set(this Self& self, uint8 value) {
+        self.get<skill_type>.set(value);    
+    }
+    constexpr void set(this auto& self, EPlayerSkillName skill_type, uint8 value) {
+        self.get<skill_type>.set(value);
+    }
+    // Attribute
     auto get_strength_view() {
         constexpr auto enum_value{EPlayerSkillName::Strength};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_strength(); },
-            [&](uint8 value) -> void { set_strength(value); }
+            get<enum_value>()
         };
     }
-    constexpr auto get_endurance() const -> uint8 { 
-        return endurance_; 
-    }
-    constexpr void set_endurance(uint8 value) { 
-        endurance_ = std::min(endurance_, max_endurance);
-    }
+
     auto get_endurance_view() {
         constexpr auto enum_value{EPlayerSkillName::Endurance};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_endurance(); },
-            [&](uint8 value) -> void { set_endurance(value); }
+            get<enum_value>()
         };
     }
-    constexpr auto get_agility() const -> uint8 { 
-        return agility_; 
-    }
-    constexpr void set_agility(uint8 value) { 
-        agility_ = std::min(agility_, max_agility);
-    }
+
     auto get_agility_view() {
         constexpr auto enum_value{EPlayerSkillName::Agility};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_agility(); },
-            [&](uint8 value) -> void { set_agility(value); }
+            get<enum_value>()
         };
     }
-    constexpr auto get_cyber() const -> uint8 { 
-        return cyber_; 
-    }
-    constexpr void set_cyber(uint8 value) { 
-        cyber_ = std::min(cyber_, max_cyber);
-    }
+
     auto get_cyber_view() {
         constexpr auto enum_value{EPlayerSkillName::Cyber};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_cyber(); },
-            [&](uint8 value) -> void { set_cyber(value); }
+            get<enum_value>()
         };
     }
-    constexpr auto get_psi() const -> uint8 { 
-        return psi_; 
-    }
-    constexpr void set_psi(uint8 value) { 
-        psi_ = std::min(psi_, max_psi);
-    }
+
     auto get_psi_view() {
         constexpr auto enum_value{EPlayerSkillName::Psi};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_psi(); },
-            [&](uint8 value) -> void { set_psi(value); }
+            get<enum_value>()
         };
     }
 
     // Tech
-    constexpr auto get_hacking() const -> uint8 { 
-        return hacking_; 
-    }
-    constexpr void set_hacking(uint8 value) { 
-        hacking_ = std::min(hacking_, max_hacking);
-    }
     auto get_hacking_view() {
         constexpr auto enum_value{EPlayerSkillName::hacking};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_hacking(); },
-            [&](uint8 value) -> void { set_hacking(value); }
+            get<enum_value>()
         };
     }
 
     // Weapon
-    constexpr auto get_small_guns() const -> uint8 { 
-        return small_guns_; 
-    }
-    constexpr void set_small_guns(uint8 value) { 
-        small_guns_ = std::min(small_guns_, max_small_guns);
-    }
     auto get_small_guns_view() {
         constexpr auto enum_value{EPlayerSkillName::small_guns};
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> uint8 { return get_small_guns(); },
-            [&](uint8 value) -> void { set_small_guns(value); }
+            get<enum_value>()
         };
     }
 
@@ -364,154 +347,22 @@ struct FPlayerSkills {
             get_small_guns_view()
         }};
     }
-
-    template <EPlayerSkillName skill_type>
-    constexpr auto get(this auto const& self) -> uint8 {
-        if constexpr (skill_type == EPlayerSkillName::Strength) {
-            return self.get_strength();
-        } else if constexpr (skill_type == EPlayerSkillName::Endurance) {
-            return self.get_endurance();
-        } else if constexpr (skill_type == EPlayerSkillName::Agility) {
-            return self.get_agility();
-        } else if constexpr (skill_type == EPlayerSkillName::Cyber) {
-            return self.get_cyber();
-        } else if constexpr (skill_type == EPlayerSkillName::Psi) {
-            return self.get_psi();
-        } else if constexpr (skill_type == EPlayerSkillName::hacking) {
-            return self.get_hacking();
-        } else if constexpr (skill_type == EPlayerSkillName::small_guns) {
-            return self.get_small_guns();
-        } else {
-            // TODO: Add error handling
-            return -1;
-        }
-    }
-    template <EPlayerSkillName skill_type>
-    constexpr void set(this auto& self, uint8 value) {
-        if constexpr (skill_type == EPlayerSkillName::Strength) {
-            self.set_strength(value);
-        } else if constexpr (skill_type == EPlayerSkillName::Endurance) {
-            self.set_endurance(value);
-        } else if constexpr (skill_type == EPlayerSkillName::Agility) {
-            self.set_agility(value);
-        } else if constexpr (skill_type == EPlayerSkillName::Cyber) {
-            self.set_cyber(value);
-        } else if constexpr (skill_type == EPlayerSkillName::Psi) {
-            self.set_psi(value);
-        } else if constexpr (skill_type == EPlayerSkillName::hacking) {
-            self.set_hacking(value);
-        } else if constexpr (skill_type == EPlayerSkillName::small_guns) {
-            self.set_small_guns(value);
-        }  else {
-            // TODO: Add error handling
-        }
-    }
-    constexpr auto get(this auto const& self, 
-                       EPlayerSkillName skill_type) -> uint8 {
-        switch (skill_type) {
-            case EPlayerSkillName::Strength: {
-                return self.get_strength();
-            }
-            case EPlayerSkillName::Endurance: {
-                return self.get_endurance();
-            }
-            case EPlayerSkillName::Agility: {
-                return self.get_agility();
-            }
-            case EPlayerSkillName::Cyber: {
-                return self.get_cyber();
-            }
-            case EPlayerSkillName::Psi: {
-                return self.get_psi();
-            }
-            case EPlayerSkillName::hacking: {
-                return self.get_hacking();
-            }
-            case EPlayerSkillName::small_guns: {
-                return self.get_small_guns();
-            }
-            default: { break; }
-        }
-        
-        // TODO: Add error handling
-        return -1;
-    }
-
-    constexpr void set(this auto& self, 
-             EPlayerSkillName skill_type, 
-             uint8 value) {
-        switch (skill_type) {
-            case EPlayerSkillName::Strength: {
-                self.set_strength(value);
-                return;
-            }
-            case EPlayerSkillName::Endurance: {
-                self.set_endurance(value);
-                return;
-            }
-            case EPlayerSkillName::Agility: {
-                self.set_agility(value);
-                return;
-            }
-            case EPlayerSkillName::Cyber: {
-                self.set_cyber(value);
-                return;
-            }
-            case EPlayerSkillName::Psi: {
-                self.set_psi(value);
-                return;
-            }
-            case EPlayerSkillName::hacking: {
-                self.set_hacking(value);
-                return;
-            }
-            case EPlayerSkillName::small_guns: {
-                self.set_small_guns(value);
-                return;
-            }
-            default: { break; }
-        }
-        // TODO: Add error handling
-    }
   private:
-    // Attribute
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 strength_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 endurance_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 agility_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 cyber_{1};
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 psi_{1};
-
-    // Tech
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 hacking_{1};
-
-    // Weapon
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 small_guns_{1};
-};
-
-UPROPERTY(EditAnywhere, Category="Player")
-struct FPlayerSkill {
-    GENERATED_BODY()
-  public:
-    auto get(this auto const& self) {
-        return self.skill_;
-    }
-    auto set(this auto& self, uint8 input) {
-        self.skill_ = std::min(input, self.max_);
-    }
-    auto inc(this auto& self) {
-        self.set(self.skill_ + 1);
-    }
-  private:
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 skill_;
-    UPROPERTY(EditAnywhere, Category="Player")
-    uint8 max_;
+    std::array<FPlayerSkill, 7> skills_{{
+        // Strength
+        {uint8{1}, uint8{10}},
+        // Endurance
+        {uint8{1}, uint8{10}},
+        // Agility
+        {uint8{1}, uint8{10}},
+        // Cyber
+        {uint8{1}, uint8{10}},
+        // Psi
+        {uint8{1}, uint8{10}},
+        // hacking
+        {uint8{1}, uint8{10}},
+        // small_guns
+        {uint8{1}, uint8{10}}
+    }};
 };
 // clang-format on
