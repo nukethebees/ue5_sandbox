@@ -433,7 +433,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
         input = "value"
 
         self.output_file += f"""
-    void set(this auto& self, 
+    constexpr void set(this auto& self, 
              {self.player_skills_enum_typename} {key}, 
              {self.skill_value_typename} {input}) {{
         switch ({key}) {{"""
