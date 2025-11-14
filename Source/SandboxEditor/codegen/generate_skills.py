@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, NewType, Any, Generator
+from typing import Optional, NewType, Any, Generator, Sequence
 
 SkillId = NewType("SkillId", int)
 CategoryIndex = NewType("CategoryIndex", int)
@@ -84,6 +84,9 @@ class GeneratorSkillCategory:
     first_skill_index: SkillId = None
     last_skill_index: SkillId = None
 
+    def __len__(self) -> int:
+        return len(self.skill_indexes)
+
     def add_index(self, i: SkillId) -> None:
         self.skill_indexes.append(i)
         if self.first_skill_index is None:
@@ -100,6 +103,9 @@ class GeneratorSkillCategory:
         return skills[self.first_skill_index]
     def last_skill(self, skills: list[GeneratorSkill]) -> GeneratorSkill:
         return skills[self.last_skill_index]
+    def skills(self, skills: list[GeneratorSkill]) -> Generator[GeneratorSkill]:
+        for i in self.skill_indexes:
+            yield skills[i]
 
 class SkillGenerator:
     skills: list[GeneratorSkill]
@@ -125,7 +131,7 @@ class SkillGenerator:
 
     uproperty_header: str = "UPROPERTY(EditAnywhere, Category=\"Player\")"
 
-    skill_view_type_name: str = "SkillView"
+    skill_view_typename: str = "SkillView"
 
     def __init__(self, player_skills: list[SkillConfig], output_dir: Path):
         self.categories = {}
@@ -460,7 +466,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     }}
     auto {skill.config.get_view_name()}() {{
         constexpr auto enum_value{{{skill.config.get_full_enum_value()}}};
-        return {self.skill_view_type_name}{{
+        return {self.skill_view_typename}{{
             enum_value,
             ml::get_display_string(enum_value),
             [&]() -> {self.skill_value_typename} {{ return {skill.config.get_getter_name()}(); }},
@@ -475,6 +481,22 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
         self.output_file += f"""    static constexpr int32 {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
 """
+    def add_category_view_functions(self) -> None:
+        self.output_file += "    // Category views"
+
+        for cat in self.categories.values():
+            array = f"std::array<{self.skill_view_typename}, {len(cat)}>"
+            self.output_file += f"""
+    auto get_{cat.lower_name()}_view(this auto& self) -> {array} {{
+        return {{{{"""
+            first = True
+            for skill in cat.skills(self.skills):
+                if not first:
+                    self.output_file += ","
+                self.output_file += f"\n            {skill.config.get_view_name()}()"
+                first = False
+            self.output_file += "\n        }};\n    }"
+
     def write_skills_struct(self) -> None:
         self.output_file += f"""
 USTRUCT(BlueprintType)
@@ -486,14 +508,14 @@ struct {self.player_skills_struct_typename} {{
         self.output_file += f"""    using Getter = std::function<{self.skill_value_typename}()>;
     using Setter = std::function<void({self.skill_value_typename})>;
 
-    struct {self.skill_view_type_name} {{
+    struct {self.skill_view_typename} {{
         {self.player_skills_enum_typename} enum_key;
         FString const& name;
         Getter getter;
         Setter setter;
 
-        {self.skill_view_type_name}() = delete;
-        {self.skill_view_type_name}({self.player_skills_enum_typename} enum_key, 
+        {self.skill_view_typename}() = delete;
+        {self.skill_view_typename}({self.player_skills_enum_typename} enum_key, 
                   FString const& name, 
                   Getter getter, 
                   Setter setter)
@@ -508,6 +530,8 @@ struct {self.player_skills_struct_typename} {{
         self.category_loop(self.add_struct_max_value_variable, True)
         self.newline()
         self.category_loop(self.add_struct_accessor, True)
+        self.newline()
+        self.add_category_view_functions()
         self.newline()
         self.write_struct_skill_enum_template_accessors()
         self.write_struct_skill_enum_runtime_accessors()

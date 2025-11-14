@@ -344,6 +344,26 @@ struct FPlayerSkills {
         };
     }
 
+    // Category views
+    auto get_attribute_view(this auto& self) -> std::array<SkillView, 5> {
+        return {{
+            get_strength_view(),
+            get_endurance_view(),
+            get_agility_view(),
+            get_cyber_view(),
+            get_psi_view()
+        }};
+    }
+    auto get_tech_view(this auto& self) -> std::array<SkillView, 1> {
+        return {{
+            get_hacking_view()
+        }};
+    }
+    auto get_weapon_view(this auto& self) -> std::array<SkillView, 1> {
+        return {{
+            get_small_guns_view()
+        }};
+    }
 
     template <EPlayerSkillName skill_type>
     constexpr auto get(this auto const& self) -> int32 {
