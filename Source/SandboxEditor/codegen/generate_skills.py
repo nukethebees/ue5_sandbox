@@ -160,12 +160,16 @@ class SkillGenerator:
 
     file_name: str = "player_skills"
 
-    skill_value_typename: str = "int32"
+    index_typename: str = "int32"
+    skill_value_typename: str = "uint8"
     skill_base_level: int = 1
 
     uproperty_header: str = "UPROPERTY(EditAnywhere, Category=\"Player\")"
 
     skill_view_typename: str = "SkillView"
+
+    max_value_varname: str = "max_"
+    skill_value_varname: str = "skill_"
 
     def __init__(self, player_skills: list[SkillConfig], output_dir: Path):
         self.categories = {}
@@ -213,6 +217,8 @@ class SkillGenerator:
         self.write_namespace_end()
 
         self.write_player_skills_struct()
+
+        self.write_skill_struct()
 
         self.write_file_footer()
         self.write_output_file()
@@ -308,7 +314,7 @@ enum class {self.player_skills_enum} : uint8 {{
     def write_enum_functions(self) -> None:
         # Create constant
         cc = self.create_constant
-        t = "int32"
+        t = self.index_typename
 
         for category in self.categories.values():
             lname = category.lower_name()
@@ -505,7 +511,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum} value) -> bool {{
     {self.skill_value_typename} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
 """
     def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
-        self.output_file += f"""    static constexpr int32 {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
+        self.output_file += f"""    static constexpr {self.skill_value_typename} {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
 """
     def add_category_view_functions(self) -> None:
         self.output_file += "    // Category views"
@@ -566,5 +572,24 @@ struct {self.player_skills_struct} {{
         self.output_file += "};\n"
     
     def write_skill_struct(self) -> None:
-        pass
-
+        self.output_file += f"""
+{self.uproperty_header}
+struct {self.player_skill_struct} {{
+    GENERATED_BODY()
+  public:
+    auto get(this auto const& self) {{
+        return self.{self.skill_value_varname};
+    }}
+    auto set(this auto& self, {self.skill_value_typename} input) {{
+        self.{self.skill_value_varname} = std::min(input, self.{self.max_value_varname});
+    }}
+    auto inc(this auto& self) {{
+        self.set(self.{self.skill_value_varname} + 1);
+    }}
+  private:
+    {self.uproperty_header}
+    {self.skill_value_typename} {self.skill_value_varname};
+    {self.uproperty_header}
+    {self.skill_value_typename} {self.max_value_varname};
+}};
+"""
