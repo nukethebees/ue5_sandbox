@@ -463,12 +463,8 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
         return {self.skill_view_type_name}{{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> {self.skill_value_typename} {{ 
-                return {skill.config.get_getter_name()}(); 
-            }},
-            [&]({self.skill_value_typename} value) -> void {{ 
-                {skill.config.get_setter_name()}(value); 
-            }}
+            [&]() -> {self.skill_value_typename} {{ return {skill.config.get_getter_name()}(); }},
+            [&]({self.skill_value_typename} value) -> void {{ {skill.config.get_setter_name()}(value); }}
         }};
     }}
 """

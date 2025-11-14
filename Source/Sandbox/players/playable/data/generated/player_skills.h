@@ -245,12 +245,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_strength(); 
-            },
-            [&](int32 value) -> void { 
-                set_strength(value); 
-            }
+            [&]() -> int32 { return get_strength(); },
+            [&](int32 value) -> void { set_strength(value); }
         };
     }
     constexpr auto get_endurance() const -> int32 { 
@@ -264,12 +260,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_endurance(); 
-            },
-            [&](int32 value) -> void { 
-                set_endurance(value); 
-            }
+            [&]() -> int32 { return get_endurance(); },
+            [&](int32 value) -> void { set_endurance(value); }
         };
     }
     constexpr auto get_agility() const -> int32 { 
@@ -283,12 +275,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_agility(); 
-            },
-            [&](int32 value) -> void { 
-                set_agility(value); 
-            }
+            [&]() -> int32 { return get_agility(); },
+            [&](int32 value) -> void { set_agility(value); }
         };
     }
     constexpr auto get_cyber() const -> int32 { 
@@ -302,12 +290,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_cyber(); 
-            },
-            [&](int32 value) -> void { 
-                set_cyber(value); 
-            }
+            [&]() -> int32 { return get_cyber(); },
+            [&](int32 value) -> void { set_cyber(value); }
         };
     }
     constexpr auto get_psi() const -> int32 { 
@@ -321,12 +305,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_psi(); 
-            },
-            [&](int32 value) -> void { 
-                set_psi(value); 
-            }
+            [&]() -> int32 { return get_psi(); },
+            [&](int32 value) -> void { set_psi(value); }
         };
     }
 
@@ -342,12 +322,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_hacking(); 
-            },
-            [&](int32 value) -> void { 
-                set_hacking(value); 
-            }
+            [&]() -> int32 { return get_hacking(); },
+            [&](int32 value) -> void { set_hacking(value); }
         };
     }
 
@@ -363,12 +339,8 @@ struct FPlayerSkills {
         return SkillView{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> int32 { 
-                return get_small_guns(); 
-            },
-            [&](int32 value) -> void { 
-                set_small_guns(value); 
-            }
+            [&]() -> int32 { return get_small_guns(); },
+            [&](int32 value) -> void { set_small_guns(value); }
         };
     }
 
