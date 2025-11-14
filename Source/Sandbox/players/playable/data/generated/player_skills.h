@@ -221,9 +221,22 @@ struct FPlayerSkills {
     };
 
     // Attributes
+    static constexpr int32 max_strength{10};
+    static constexpr int32 max_endurance{10};
+    static constexpr int32 max_agility{10};
+    static constexpr int32 max_cyber{10};
+    static constexpr int32 max_psi{10};
+
+    // Tech
+    static constexpr int32 max_hacking{10};
+
+    // Weapon
+    static constexpr int32 max_small_guns{10};
+
+    // Attributes
     auto get_strength() const -> int32 { return strength_; }
     void set_strength(int32 value) { 
-        strength_ = std::min(strength_, 10);
+        strength_ = std::min(strength_, max_strength);
     }
     auto get_strength_view() {
         constexpr auto enum_value{EPlayerSkillName::Strength};
@@ -240,7 +253,7 @@ struct FPlayerSkills {
     }
     auto get_endurance() const -> int32 { return endurance_; }
     void set_endurance(int32 value) { 
-        endurance_ = std::min(endurance_, 10);
+        endurance_ = std::min(endurance_, max_endurance);
     }
     auto get_endurance_view() {
         constexpr auto enum_value{EPlayerSkillName::Endurance};
@@ -257,7 +270,7 @@ struct FPlayerSkills {
     }
     auto get_agility() const -> int32 { return agility_; }
     void set_agility(int32 value) { 
-        agility_ = std::min(agility_, 10);
+        agility_ = std::min(agility_, max_agility);
     }
     auto get_agility_view() {
         constexpr auto enum_value{EPlayerSkillName::Agility};
@@ -274,7 +287,7 @@ struct FPlayerSkills {
     }
     auto get_cyber() const -> int32 { return cyber_; }
     void set_cyber(int32 value) { 
-        cyber_ = std::min(cyber_, 10);
+        cyber_ = std::min(cyber_, max_cyber);
     }
     auto get_cyber_view() {
         constexpr auto enum_value{EPlayerSkillName::Cyber};
@@ -291,7 +304,7 @@ struct FPlayerSkills {
     }
     auto get_psi() const -> int32 { return psi_; }
     void set_psi(int32 value) { 
-        psi_ = std::min(psi_, 10);
+        psi_ = std::min(psi_, max_psi);
     }
     auto get_psi_view() {
         constexpr auto enum_value{EPlayerSkillName::Psi};
@@ -310,7 +323,7 @@ struct FPlayerSkills {
     // Tech
     auto get_hacking() const -> int32 { return hacking_; }
     void set_hacking(int32 value) { 
-        hacking_ = std::min(hacking_, 10);
+        hacking_ = std::min(hacking_, max_hacking);
     }
     auto get_hacking_view() {
         constexpr auto enum_value{EPlayerSkillName::hacking};
@@ -329,7 +342,7 @@ struct FPlayerSkills {
     // Weapon
     auto get_small_guns() const -> int32 { return small_guns_; }
     void set_small_guns(int32 value) { 
-        small_guns_ = std::min(small_guns_, 10);
+        small_guns_ = std::min(small_guns_, max_small_guns);
     }
     auto get_small_guns_view() {
         constexpr auto enum_value{EPlayerSkillName::small_guns};
@@ -344,6 +357,7 @@ struct FPlayerSkills {
             }
         };
     }
+
   private:
     // Attributes
     UPROPERTY(EditAnywhere, Category="Player")

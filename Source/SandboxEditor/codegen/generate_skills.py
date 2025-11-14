@@ -63,6 +63,8 @@ class SkillConfig:
         return f"set_{self.get_member_name()}"
     def get_view_name(self) -> str:
         return f"get_{self.get_member_name()}_view"
+    def get_max_variable_name(self) -> str:
+        return f"max_{self.get_member_name()}"
 
 @dataclass
 class GeneratorSkill:
@@ -226,6 +228,8 @@ class SkillGenerator:
                 fn(self, skill)
     def create_constant(self, var_type:str, name:str, value:Any) -> str:
         return f"inline constexpr {var_type} {name}{{{value}}};"
+    def newline(self):
+        self.output_file += "\n"
 
     # General file contents
     def write_file_header(self) -> None:
@@ -360,7 +364,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     def add_struct_accessor(self, skill: GeneratorSkill):
         self.output_file += f"""    auto {skill.config.get_getter_name()}() const -> {self.skill_value_type} {{ return {skill.config.get_member_name()}_; }}
     void {skill.config.get_setter_name()}({self.skill_value_type} value) {{ 
-        {skill.config.get_member_name()}_ = std::min({skill.config.get_private_member_name()}, {skill.config.max_level});
+        {skill.config.get_member_name()}_ = std::min({skill.config.get_private_member_name()}, {skill.config.get_max_variable_name()});
     }}
     auto {skill.config.get_view_name()}() {{
         constexpr auto enum_value{{{self.player_skills_enum_typename}::{skill.config.name}}};
@@ -379,6 +383,9 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     def add_struct_member(self, skill: GeneratorSkill):
         self.output_file += f"""    {self.uproperty_header}
     {self.skill_value_type} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
+"""
+    def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
+        self.output_file += f"""    static constexpr int32 {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
 """
     def write_skills_struct(self) -> None:
         self.output_file += f"""
@@ -410,7 +417,10 @@ struct {self.player_skills_struct_typename} {{
     }};
 
 """
+        self.category_loop(self.add_struct_max_value_variable, True)
+        self.newline()
         self.category_loop(self.add_struct_accessor, True)
+        self.newline()
         self.output_file += "  private:\n"
         self.category_loop(self.add_struct_member, True)
 
