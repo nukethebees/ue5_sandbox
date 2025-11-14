@@ -234,8 +234,10 @@ struct FPlayerSkills {
     static constexpr int32 max_small_guns{10};
 
     // Attributes
-    auto get_strength() const -> int32 { return strength_; }
-    void set_strength(int32 value) { 
+    constexpr auto get_strength() const -> int32 { 
+        return strength_; 
+    }
+    constexpr void set_strength(int32 value) { 
         strength_ = std::min(strength_, max_strength);
     }
     auto get_strength_view() {
@@ -251,8 +253,10 @@ struct FPlayerSkills {
             }
         };
     }
-    auto get_endurance() const -> int32 { return endurance_; }
-    void set_endurance(int32 value) { 
+    constexpr auto get_endurance() const -> int32 { 
+        return endurance_; 
+    }
+    constexpr void set_endurance(int32 value) { 
         endurance_ = std::min(endurance_, max_endurance);
     }
     auto get_endurance_view() {
@@ -268,8 +272,10 @@ struct FPlayerSkills {
             }
         };
     }
-    auto get_agility() const -> int32 { return agility_; }
-    void set_agility(int32 value) { 
+    constexpr auto get_agility() const -> int32 { 
+        return agility_; 
+    }
+    constexpr void set_agility(int32 value) { 
         agility_ = std::min(agility_, max_agility);
     }
     auto get_agility_view() {
@@ -285,8 +291,10 @@ struct FPlayerSkills {
             }
         };
     }
-    auto get_cyber() const -> int32 { return cyber_; }
-    void set_cyber(int32 value) { 
+    constexpr auto get_cyber() const -> int32 { 
+        return cyber_; 
+    }
+    constexpr void set_cyber(int32 value) { 
         cyber_ = std::min(cyber_, max_cyber);
     }
     auto get_cyber_view() {
@@ -302,8 +310,10 @@ struct FPlayerSkills {
             }
         };
     }
-    auto get_psi() const -> int32 { return psi_; }
-    void set_psi(int32 value) { 
+    constexpr auto get_psi() const -> int32 { 
+        return psi_; 
+    }
+    constexpr void set_psi(int32 value) { 
         psi_ = std::min(psi_, max_psi);
     }
     auto get_psi_view() {
@@ -321,8 +331,10 @@ struct FPlayerSkills {
     }
 
     // Tech
-    auto get_hacking() const -> int32 { return hacking_; }
-    void set_hacking(int32 value) { 
+    constexpr auto get_hacking() const -> int32 { 
+        return hacking_; 
+    }
+    constexpr void set_hacking(int32 value) { 
         hacking_ = std::min(hacking_, max_hacking);
     }
     auto get_hacking_view() {
@@ -340,8 +352,10 @@ struct FPlayerSkills {
     }
 
     // Weapon
-    auto get_small_guns() const -> int32 { return small_guns_; }
-    void set_small_guns(int32 value) { 
+    constexpr auto get_small_guns() const -> int32 { 
+        return small_guns_; 
+    }
+    constexpr void set_small_guns(int32 value) { 
         small_guns_ = std::min(small_guns_, max_small_guns);
     }
     auto get_small_guns_view() {
@@ -358,6 +372,115 @@ struct FPlayerSkills {
         };
     }
 
+
+    template <EPlayerSkillName skill_type>
+    constexpr auto get(this auto const& self) -> int32 {
+        if constexpr (skill_type == EPlayerSkillName::Strength) {
+            return self.get_strength();
+        } else if constexpr (skill_type == EPlayerSkillName::Endurance) {
+            return self.get_endurance();
+        } else if constexpr (skill_type == EPlayerSkillName::Agility) {
+            return self.get_agility();
+        } else if constexpr (skill_type == EPlayerSkillName::Cyber) {
+            return self.get_cyber();
+        } else if constexpr (skill_type == EPlayerSkillName::Psi) {
+            return self.get_psi();
+        } else if constexpr (skill_type == EPlayerSkillName::hacking) {
+            return self.get_hacking();
+        } else if constexpr (skill_type == EPlayerSkillName::small_guns) {
+            return self.get_small_guns();
+        } else {
+            // TODO: Add error handling
+            return -1;
+        }
+    }
+    template <EPlayerSkillName skill_type>
+    constexpr void set(this auto& self, int32 value) {
+        if constexpr (skill_type == EPlayerSkillName::Strength) {
+            self.set_strength(value);
+        } else if constexpr (skill_type == EPlayerSkillName::Endurance) {
+            self.set_endurance(value);
+        } else if constexpr (skill_type == EPlayerSkillName::Agility) {
+            self.set_agility(value);
+        } else if constexpr (skill_type == EPlayerSkillName::Cyber) {
+            self.set_cyber(value);
+        } else if constexpr (skill_type == EPlayerSkillName::Psi) {
+            self.set_psi(value);
+        } else if constexpr (skill_type == EPlayerSkillName::hacking) {
+            self.set_hacking(value);
+        } else if constexpr (skill_type == EPlayerSkillName::small_guns) {
+            self.set_small_guns(value);
+        }  else {
+            // TODO: Add error handling
+        }
+    }
+    constexpr auto get(this auto const& self, 
+                       EPlayerSkillName skill_type) -> int32 {
+        switch (skill_type) {
+            case EPlayerSkillName::Strength: {
+                return self.get_strength();
+            }
+            case EPlayerSkillName::Endurance: {
+                return self.get_endurance();
+            }
+            case EPlayerSkillName::Agility: {
+                return self.get_agility();
+            }
+            case EPlayerSkillName::Cyber: {
+                return self.get_cyber();
+            }
+            case EPlayerSkillName::Psi: {
+                return self.get_psi();
+            }
+            case EPlayerSkillName::hacking: {
+                return self.get_hacking();
+            }
+            case EPlayerSkillName::small_guns: {
+                return self.get_small_guns();
+            }
+            default: { break; }
+        }
+        
+        // TODO: Add error handling
+        return -1;
+    }
+
+    void set(this auto& self, 
+             EPlayerSkillName skill_type, 
+             int32 value) {
+        switch (skill_type) {
+            case EPlayerSkillName::Strength: {
+                self.set_strength(value);
+                return;
+            }
+            case EPlayerSkillName::Endurance: {
+                self.set_endurance(value);
+                return;
+            }
+            case EPlayerSkillName::Agility: {
+                self.set_agility(value);
+                return;
+            }
+            case EPlayerSkillName::Cyber: {
+                self.set_cyber(value);
+                return;
+            }
+            case EPlayerSkillName::Psi: {
+                self.set_psi(value);
+                return;
+            }
+            case EPlayerSkillName::hacking: {
+                self.set_hacking(value);
+                return;
+            }
+            case EPlayerSkillName::small_guns: {
+                self.set_small_guns(value);
+                return;
+            }
+            default: { break; }
+        }
+        // TODO: Add error handling
+    }
   private:
     // Attributes
     UPROPERTY(EditAnywhere, Category="Player")

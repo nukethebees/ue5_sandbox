@@ -14,6 +14,7 @@ class SkillConfig:
     max_level: int
     category: str
     display_name: Optional[str] = None
+    enum_typename: str = ""
 
     ATTRIBUTE_MAX_LEVEL: int = 10
     ATTRIBUTE_CATEGORY: str = "Attributes"
@@ -65,6 +66,10 @@ class SkillConfig:
         return f"get_{self.get_member_name()}_view"
     def get_max_variable_name(self) -> str:
         return f"max_{self.get_member_name()}"
+    def get_full_enum_value(self) -> str:
+        if not self.enum_typename:
+            raise ValueError("enum_type is missing")
+        return f"{self.enum_typename}::{self.name}"
 
 @dataclass
 class GeneratorSkill:
@@ -115,7 +120,7 @@ class SkillGenerator:
 
     file_name: str = "player_skills"
 
-    skill_value_type: str = "int32"
+    skill_value_typename: str = "int32"
     skill_base_level: int = 1
 
     uproperty_header: str = "UPROPERTY(EditAnywhere, Category=\"Player\")"
@@ -124,6 +129,9 @@ class SkillGenerator:
 
     def __init__(self, player_skills: list[SkillConfig], output_dir: Path):
         self.categories = {}
+
+        self.player_skills_enum_name = "PlayerSkillName"
+        self.player_skills_enum_typename = "E" + self.player_skills_enum_name
 
         self.skills = []
         self.init_skills(player_skills)
@@ -135,9 +143,6 @@ class SkillGenerator:
         self.output_file = ""
         
         self.namespace = "ml"
-
-        self.player_skills_enum_name = "PlayerSkillName"
-        self.player_skills_enum_typename = "E" + self.player_skills_enum_name
 
         self.player_skills_struct_name = "PlayerSkills"
         self.player_skills_struct_typename = "F" + self.player_skills_struct_name
@@ -154,6 +159,7 @@ class SkillGenerator:
                     raise Exception("Category split up")
 
             skill_category = self.categories[skill.category]
+            skill.enum_typename = self.player_skills_enum_typename
             generator_skill = GeneratorSkill(
                 skill, 
                 len(self.skills), 
@@ -289,10 +295,10 @@ enum class {self.player_skills_enum_typename} : uint8 {{
 inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bool {{
     auto const x{{std::to_underlying(value)}}; 
     constexpr auto lower{{
-        std::to_underlying({self.player_skills_enum_typename}::{category.first_skill(self.skills).config.name})
+        std::to_underlying({category.first_skill(self.skills).config.get_full_enum_value()})
     }};
     constexpr auto upper{{
-        std::to_underlying({self.player_skills_enum_typename}::{category.last_skill(self.skills).config.name})
+        std::to_underlying({category.last_skill(self.skills).config.get_full_enum_value()})
     }};
     
     return ((x >= lower) && (x <= upper));
@@ -305,7 +311,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
             for skill in self.get_category_skills(category):
                 if not first:
                     self.output_file += ",\n"
-                self.output_file += f"    {self.player_skills_enum_typename}::{skill.config.name}"
+                self.output_file += f"    {skill.config.get_full_enum_value()}"
                 first = False
             self.output_file += "\n}};\n\n"
                 
@@ -321,7 +327,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     switch (value) {{
 """
         for skill in self.skills:
-            self.output_file += f"""        case {self.player_skills_enum_typename}::{skill.config.name}: {{
+            self.output_file += f"""        case {skill.config.get_full_enum_value()}: {{
             static FName const name{{TEXT("{skill.config.get_display_name()}")}};
             return name;
         }}
@@ -340,7 +346,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
     switch (value) {{
 """
         for skill in self.skills:
-            self.output_file += f"""        case {self.player_skills_enum_typename}::{skill.config.name}: {{
+            self.output_file += f"""        case {skill.config.get_full_enum_value()}: {{
             static FString const name{{get_display_name(value).ToString()}};
             return name;
         }}
@@ -361,20 +367,106 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 """
 
     # Struct generation
+    def write_struct_skill_enum_template_accessors(self) -> None:
+        key = "skill_type"
+
+        self.output_file += f"""
+    template <{self.player_skills_enum_typename} {key}>
+    constexpr auto get(this auto const& self) -> {self.skill_value_typename} {{
+        """
+        first = True
+        for skill in self.skills:
+            if not first:
+                self.output_file += "else "
+            self.output_file += f"""if constexpr ({key} == {skill.config.get_full_enum_value()}) {{
+            return self.{skill.config.get_getter_name()}();
+        }} """
+            first = False
+
+        self.output_file += """else {
+            // TODO: Add error handling
+            return -1;
+        }
+    }"""
+
+        input = "value"
+
+        self.output_file += f"""
+    template <{self.player_skills_enum_typename} {key}>
+    constexpr void set(this auto& self, {self.skill_value_typename} {input}) {{
+        """
+        first = True
+        for skill in self.skills:
+            if not first:
+                self.output_file += "else "
+            self.output_file += f"""if constexpr ({key} == {skill.config.get_full_enum_value()}) {{
+            self.{skill.config.get_setter_name()}({input});
+        }} """
+            first = False
+
+        self.output_file += """ else {
+            // TODO: Add error handling
+        }
+    }"""
+    def write_struct_skill_enum_runtime_accessors(self) -> None:
+        key = "skill_type"
+
+        self.output_file += f"""
+    constexpr auto get(this auto const& self, 
+                       {self.player_skills_enum_typename} {key}) -> {self.skill_value_typename} {{
+        switch ({key}) {{"""
+        for skill in self.skills:
+            self.output_file += f"""
+            case {skill.config.get_full_enum_value()}: {{
+                return self.{skill.config.get_getter_name()}();
+            }}"""
+
+        self.output_file += """
+            default: { break; }
+        }
+        
+        // TODO: Add error handling
+        return -1;
+    }
+"""
+
+        input = "value"
+
+        self.output_file += f"""
+    void set(this auto& self, 
+             {self.player_skills_enum_typename} {key}, 
+             {self.skill_value_typename} {input}) {{
+        switch ({key}) {{"""
+
+        for skill in self.skills:
+            self.output_file += f"""
+            case {skill.config.get_full_enum_value()}: {{
+                self.{skill.config.get_setter_name()}({input});
+                return;
+            }}"""
+
+        self.output_file += """
+            default: { break; }
+        }
+        // TODO: Add error handling
+    }
+"""
     def add_struct_accessor(self, skill: GeneratorSkill):
-        self.output_file += f"""    auto {skill.config.get_getter_name()}() const -> {self.skill_value_type} {{ return {skill.config.get_member_name()}_; }}
-    void {skill.config.get_setter_name()}({self.skill_value_type} value) {{ 
+        self.output_file += f"""    constexpr auto {skill.config.get_getter_name()}() const -> {self.skill_value_typename} {{ 
+        return {skill.config.get_member_name()}_; 
+    }}
+    constexpr void {skill.config.get_setter_name()}({self.skill_value_typename} value) {{ 
         {skill.config.get_member_name()}_ = std::min({skill.config.get_private_member_name()}, {skill.config.get_max_variable_name()});
     }}
     auto {skill.config.get_view_name()}() {{
-        constexpr auto enum_value{{{self.player_skills_enum_typename}::{skill.config.name}}};
+        constexpr auto enum_value{{{skill.config.get_full_enum_value()}}};
         return {self.skill_view_type_name}{{
             enum_value,
             ml::get_display_string(enum_value),
-            [&]() -> {self.skill_value_type} {{ 
+            [&]() -> {self.skill_value_typename} {{ 
                 return {skill.config.get_getter_name()}(); 
             }},
-            [&]({self.skill_value_type} value) -> void {{ 
+            [&]({self.skill_value_typename} value) -> void {{ 
                 {skill.config.get_setter_name()}(value); 
             }}
         }};
@@ -382,7 +474,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum_typename} value) -> bo
 """
     def add_struct_member(self, skill: GeneratorSkill):
         self.output_file += f"""    {self.uproperty_header}
-    {self.skill_value_type} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
+    {self.skill_value_typename} {skill.config.get_private_member_name()}{{{self.skill_base_level}}};
 """
     def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
         self.output_file += f"""    static constexpr int32 {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
@@ -395,8 +487,8 @@ struct {self.player_skills_struct_typename} {{
 """
 
         self.output_file += "  public:\n"
-        self.output_file += f"""    using Getter = std::function<{self.skill_value_type}()>;
-    using Setter = std::function<void({self.skill_value_type})>;
+        self.output_file += f"""    using Getter = std::function<{self.skill_value_typename}()>;
+    using Setter = std::function<void({self.skill_value_typename})>;
 
     struct {self.skill_view_type_name} {{
         {self.player_skills_enum_typename} enum_key;
@@ -421,6 +513,8 @@ struct {self.player_skills_struct_typename} {{
         self.newline()
         self.category_loop(self.add_struct_accessor, True)
         self.newline()
+        self.write_struct_skill_enum_template_accessors()
+        self.write_struct_skill_enum_runtime_accessors()
         self.output_file += "  private:\n"
         self.category_loop(self.add_struct_member, True)
 
