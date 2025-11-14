@@ -17,7 +17,7 @@ class SkillConfig:
     enum_typename: str = ""
 
     ATTRIBUTE_MAX_LEVEL: int = 10
-    ATTRIBUTE_CATEGORY: str = "Attributes"
+    ATTRIBUTE_CATEGORY: str = "Attribute"
 
     TECH_MAX_LEVEL: int = 10
     TECH_CATEGORY: str = "Tech"
