@@ -2,9 +2,10 @@ import os
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Optional, NewType, Any, Generator, Sequence
+
+from unreal_type import UnrealType
 
 SkillId = NewType("SkillId", int)
 CategoryIndex = NewType("CategoryIndex", int)
@@ -110,40 +111,6 @@ class GeneratorSkillCategory:
     def skills(self, skills: list[GeneratorSkill]) -> Generator[GeneratorSkill]:
         for i in self.skill_indexes:
             yield skills[i]
-
-@dataclass
-class UnrealType:
-    class Tag(Enum):
-        ENUM = 0,
-        STRUCT = 1,
-        CLASS = 2
-
-    name: str
-    tag: Tag
-
-    def __str__(self) -> str:
-        return self.typename()
-
-    def rawname(self) -> str:
-        return self.name
-    def typename(self) -> str:
-        match self.tag:
-            case self.Tag.ENUM:
-                return self.enumname()
-            case self.Tag.STRUCT:
-                return self.structname()
-            case self.Tag.CLASS:
-                return self.classname()
-            case _:
-                return "???"
-            
-        return self.name
-    def enumname(self) -> str:
-        return "E" + self.name
-    def classname(self) -> str:
-        return "U" + self.name
-    def structname(self) -> str:
-        return "F" + self.name
 
 class SkillGenerator:
     skills: list[GeneratorSkill]
@@ -436,6 +403,14 @@ inline constexpr auto is_{lname}({self.player_skills_enum} value) -> bool {{
         return std::forward_like<Self>(self.{indexed});
     }}
     template <{self.player_skills_enum} {key}, typename Self>
+    auto get_view(this Self& self) {{
+        return SkillView{{
+            {key},
+            ml::get_display_string({key}),
+            self.get<{key}>()
+        }};
+    }}
+    template <{self.player_skills_enum} {key}, typename Self>
     constexpr void {set_value}(this Self& self, {self.skill_value_typename} {input}) {{
         self.get<{key}>.set({input});    
     }}
@@ -447,15 +422,7 @@ inline constexpr auto is_{lname}({self.player_skills_enum} value) -> bool {{
         indexed = self.index_skill(e)
 
         self.output_file += f"""
-    auto {skill.config.get_view_name()}() {{
-        constexpr auto enum_value{{{skill.config.get_full_enum_value()}}};
-        return {self.skill_view_typename}{{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        }};
-    }}
-"""
+    auto {skill.config.get_view_name()}() {{ return get_view<{skill.config.get_full_enum_value()}>(); }}"""
     def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
         self.output_file += f"""    static constexpr {self.skill_value_typename} {skill.config.get_max_variable_name()}{{{skill.config.max_level}}};
 """

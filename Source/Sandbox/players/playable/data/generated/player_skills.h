@@ -255,6 +255,14 @@ struct FPlayerSkills {
         return std::forward_like<Self>(self.skills_[std::to_underlying(skill_type)]);
     }
     template <EPlayerSkillName skill_type, typename Self>
+    auto get_view(this Self& self) {
+        return SkillView{
+            skill_type,
+            ml::get_display_string(skill_type),
+            self.get<skill_type>()
+        };
+    }
+    template <EPlayerSkillName skill_type, typename Self>
     constexpr void set(this Self& self, uint8 value) {
         self.get<skill_type>.set(value);    
     }
@@ -262,71 +270,15 @@ struct FPlayerSkills {
         self.get<skill_type>.set(value);
     }
     // Attribute
-    auto get_strength_view() {
-        constexpr auto enum_value{EPlayerSkillName::Strength};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
-    auto get_endurance_view() {
-        constexpr auto enum_value{EPlayerSkillName::Endurance};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
-    auto get_agility_view() {
-        constexpr auto enum_value{EPlayerSkillName::Agility};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
-    auto get_cyber_view() {
-        constexpr auto enum_value{EPlayerSkillName::Cyber};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
-    auto get_psi_view() {
-        constexpr auto enum_value{EPlayerSkillName::Psi};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
+    auto get_strength_view() { return get_view<EPlayerSkillName::Strength>(); }
+    auto get_endurance_view() { return get_view<EPlayerSkillName::Endurance>(); }
+    auto get_agility_view() { return get_view<EPlayerSkillName::Agility>(); }
+    auto get_cyber_view() { return get_view<EPlayerSkillName::Cyber>(); }
+    auto get_psi_view() { return get_view<EPlayerSkillName::Psi>(); }
     // Tech
-    auto get_hacking_view() {
-        constexpr auto enum_value{EPlayerSkillName::hacking};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
+    auto get_hacking_view() { return get_view<EPlayerSkillName::hacking>(); }
     // Weapon
-    auto get_small_guns_view() {
-        constexpr auto enum_value{EPlayerSkillName::small_guns};
-        return SkillView{
-            enum_value,
-            ml::get_display_string(enum_value),
-            get<enum_value>()
-        };
-    }
-
+    auto get_small_guns_view() { return get_view<EPlayerSkillName::small_guns>(); }
     // Category views
     auto get_attribute_view(this auto& self) -> std::array<SkillView, 5> {
         return {{
