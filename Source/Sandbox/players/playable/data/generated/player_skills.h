@@ -26,30 +26,7 @@ enum class EPlayerSkillName : uint8 {
     hacking UMETA(DisplayName = "Hacking"),
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
-};
-namespace ml {
-// Attribute
-// ----------------------------------------------------------------------
-inline constexpr int32 num_attribute_values{5};
-// Index functions for looping
-inline constexpr int32 attribute_start_index{0};
-// The last index (inclusive)
-inline constexpr int32 attribute_last_index{4};
-// The index after the last index 
-inline constexpr int32 attribute_end_index{5};
-
-inline constexpr auto is_attribute(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)}; 
-    constexpr auto lower{
-        std::to_underlying(EPlayerSkillName::Strength)
-    };
-    constexpr auto upper{
-        std::to_underlying(EPlayerSkillName::Psi)
-    };
-    
-    return ((x >= lower) && (x <= upper));
-}
-
+};namespace ml {
 inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Strength,
     EPlayerSkillName::Endurance,
@@ -58,141 +35,18 @@ inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Psi
 }};
 
-
-// Tech
-// ----------------------------------------------------------------------
-inline constexpr int32 num_tech_values{1};
-// Index functions for looping
-inline constexpr int32 tech_start_index{5};
-// The last index (inclusive)
-inline constexpr int32 tech_last_index{5};
-// The index after the last index 
-inline constexpr int32 tech_end_index{6};
-
-inline constexpr auto is_tech(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)}; 
-    constexpr auto lower{
-        std::to_underlying(EPlayerSkillName::hacking)
-    };
-    constexpr auto upper{
-        std::to_underlying(EPlayerSkillName::hacking)
-    };
-    
-    return ((x >= lower) && (x <= upper));
-}
-
 inline constexpr std::array<EPlayerSkillName, 1> tech_values{{
     EPlayerSkillName::hacking
 }};
-
-
-// Weapon
-// ----------------------------------------------------------------------
-inline constexpr int32 num_weapon_values{1};
-// Index functions for looping
-inline constexpr int32 weapon_start_index{6};
-// The last index (inclusive)
-inline constexpr int32 weapon_last_index{6};
-// The index after the last index 
-inline constexpr int32 weapon_end_index{7};
-
-inline constexpr auto is_weapon(EPlayerSkillName value) -> bool {
-    auto const x{std::to_underlying(value)}; 
-    constexpr auto lower{
-        std::to_underlying(EPlayerSkillName::small_guns)
-    };
-    constexpr auto upper{
-        std::to_underlying(EPlayerSkillName::small_guns)
-    };
-    
-    return ((x >= lower) && (x <= upper));
-}
 
 inline constexpr std::array<EPlayerSkillName, 1> weapon_values{{
     EPlayerSkillName::small_guns
 }};
 
 // String functions
-inline auto get_display_name(EPlayerSkillName value) -> FName {
-    switch (value) {
-        case EPlayerSkillName::Strength: {
-            static FName const name{TEXT("Strength")};
-            return name;
-        }
-        case EPlayerSkillName::Endurance: {
-            static FName const name{TEXT("Endurance")};
-            return name;
-        }
-        case EPlayerSkillName::Agility: {
-            static FName const name{TEXT("Agility")};
-            return name;
-        }
-        case EPlayerSkillName::Cyber: {
-            static FName const name{TEXT("Cyber")};
-            return name;
-        }
-        case EPlayerSkillName::Psi: {
-            static FName const name{TEXT("Psi")};
-            return name;
-        }
-        case EPlayerSkillName::hacking: {
-            static FName const name{TEXT("Hacking")};
-            return name;
-        }
-        case EPlayerSkillName::small_guns: {
-            static FName const name{TEXT("Small Guns")};
-            return name;
-        }
-        default: {
-            break;
-        }
-    }
-
-    static auto const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
-    return unhandled_name;
-}
-inline auto get_display_string(EPlayerSkillName value) -> FString const& {
-    switch (value) {
-        case EPlayerSkillName::Strength: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::Endurance: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::Agility: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::Cyber: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::Psi: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::hacking: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        case EPlayerSkillName::small_guns: {
-            static FString const name{get_display_name(value).ToString()};
-            return name;
-        }
-        default: {
-            break;
-        }
-    }
-
-    static FString const unhandled_name{TEXT("UNHANDLED_CASE")};
-    return unhandled_name;
-}
-inline auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR> {
-    return get_display_string(value);
-}
-
+auto get_display_name(EPlayerSkillName value) -> FName;
+auto get_display_string(EPlayerSkillName value) -> FString const&;
+auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR>;
 } // namespace ml
 
 USTRUCT(BlueprintType)
