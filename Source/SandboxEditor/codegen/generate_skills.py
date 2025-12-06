@@ -296,10 +296,6 @@ enum class {self.player_skills_enum} : uint8 {{
         self.header += "\n};"
 
     def write_enum_functions(self) -> None:
-        # Create constant
-        cc = self.create_constant
-        t = self.index_typename
-
         for category in self.categories.values():
             lname = category.lower_name()
 
@@ -315,15 +311,15 @@ enum class {self.player_skills_enum} : uint8 {{
                 
 
         # String functions
-        self.header += f"// String functions\n"
+        self.header += f"// String functions"
         self.write_get_display_name()
         self.write_get_display_string()
         self.write_get_display_string_view()
 
     def write_get_display_name(self) -> None:
-        sig = f"auto get_display_name({self.player_skills_enum} value) -> FName"
+        sig = f"\nauto get_display_name({self.player_skills_enum} value) -> FName"
 
-        self.header += f"{sig};\n"
+        self.header += f"{sig};"
         self.source += f"""
 {sig} {{
     switch (value) {{
@@ -341,12 +337,11 @@ enum class {self.player_skills_enum} : uint8 {{
 
     static auto const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
     return unhandled_name;
-}
-"""
+}"""
     def write_get_display_string(self) -> None:
-        sig = f"auto get_display_string({self.player_skills_enum} value) -> FString const&"
+        sig = f"\nauto get_display_string({self.player_skills_enum} value) -> FString const&"
 
-        self.header += f"{sig};\n"
+        self.header += f"{sig};"
         self.source += f"""
 {sig} {{
     switch (value) {{
@@ -364,17 +359,15 @@ enum class {self.player_skills_enum} : uint8 {{
 
     static FString const unhandled_name{TEXT("UNHANDLED_CASE")};
     return unhandled_name;
-}
-"""
+}"""
     def write_get_display_string_view(self) -> None:
-        sig = f"auto get_display_string_view({self.player_skills_enum} value) -> TStringView<TCHAR>"
+        sig = f"\nauto get_display_string_view({self.player_skills_enum} value) -> TStringView<TCHAR>"
 
-        self.header += f"{sig};\n"
+        self.header += f"{sig};"
         self.source += f"""
 {sig} {{
     return get_display_string(value);
-}}
-"""
+}}"""
 
     # Struct generation
     def write_struct_skill_enum_accessors(self) -> None:

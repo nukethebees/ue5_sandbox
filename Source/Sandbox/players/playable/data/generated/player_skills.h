@@ -26,7 +26,8 @@ enum class EPlayerSkillName : uint8 {
     hacking UMETA(DisplayName = "Hacking"),
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
-};namespace ml {
+};
+namespace ml {
 inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Strength,
     EPlayerSkillName::Endurance,
