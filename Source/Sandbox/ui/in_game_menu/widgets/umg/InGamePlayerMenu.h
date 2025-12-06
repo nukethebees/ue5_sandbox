@@ -5,8 +5,8 @@
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 #include "Sandbox/ui/delegates/CommonMenuDelegates.h"
+#include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"
 
 #include "InGamePlayerMenu.generated.h"
 
