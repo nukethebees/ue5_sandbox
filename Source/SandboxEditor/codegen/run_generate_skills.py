@@ -15,7 +15,8 @@ def main() -> None:
     ]
 
     output_dir = Path("./Source/Sandbox/players/playable/data")
-    generator = SkillGenerator(player_skills, output_dir)
+    ed_output_dir = Path("./Source/SandboxEditor/slate/")
+    generator = SkillGenerator(player_skills, output_dir, ed_output_dir)
     generator.run()
     
 

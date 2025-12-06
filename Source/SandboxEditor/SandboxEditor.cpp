@@ -4,8 +4,10 @@
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+// #include "Sandbox/players/playable/data/player_skills.h"
 #include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
+#include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -33,6 +35,10 @@ void FSandboxEditorModule::StartupModule() {
         "Dimensions",
         FOnGetPropertyTypeCustomizationInstance::CreateStatic(
             &FStrongTypedefPreview::MakeInstance));
+    property_module.RegisterCustomPropertyTypeLayout(
+        "PlayerSkills",
+        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+            &FPlayerSkillsPropDisplay::MakeInstance));
 }
 
 void FSandboxEditorModule::ShutdownModule() {

@@ -1,8 +1,6 @@
 #include "Sandbox/players/playable/data/generated/player_skills.h"
 
 namespace ml {
-
-
 auto get_display_name(EPlayerSkillName value) -> FName {
     switch (value) {
         case EPlayerSkillName::Strength: {
@@ -41,7 +39,6 @@ auto get_display_name(EPlayerSkillName value) -> FName {
     static auto const unhandled_name{FName{TEXT("UNHANDLED_CASE")}};
     return unhandled_name;
 }
-
 auto get_display_string(EPlayerSkillName value) -> FString const& {
     switch (value) {
         case EPlayerSkillName::Strength: {
@@ -80,25 +77,7 @@ auto get_display_string(EPlayerSkillName value) -> FString const& {
     static FString const unhandled_name{TEXT("UNHANDLED_CASE")};
     return unhandled_name;
 }
-
 auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR> {
     return get_display_string(value);
 }
 } // namespace ml
-
-void FPlayerSkillsPropDisplay::CustomizeHeader(
-        TSharedRef<IPropertyHandle> PropertyHandle, 
-        FDetailWidgetRow& HeaderRow, 
-        IPropertyTypeCustomizationUtils& CustomizationUtils) {
-                                    
-}
-void FPlayerSkillsPropDisplay::CustomizeChildren(
-        TSharedRef<IPropertyHandle> PropertyHandle, 
-        IDetailChildrenBuilder& ChildBuilder, 
-        IPropertyTypeCustomizationUtils& CustomizationUtils) {
-                               
-}
-    
-TSharedRef<IPropertyTypeCustomization> FPlayerSkillsPropDisplay::MakeInstance() {
-    return MakeShareable(new FPlayerSkillsPropDisplay);
-}

@@ -27,6 +27,7 @@ enum class EPlayerSkillName : uint8 {
     // Weapon
     small_guns UMETA(DisplayName = "Small Guns"),
 };
+
 namespace ml {
 inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Strength,
@@ -35,11 +36,9 @@ inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Cyber,
     EPlayerSkillName::Psi
 }};
-
 inline constexpr std::array<EPlayerSkillName, 1> tech_values{{
     EPlayerSkillName::hacking
 }};
-
 inline constexpr std::array<EPlayerSkillName, 1> weapon_values{{
     EPlayerSkillName::small_guns
 }};
@@ -172,17 +171,5 @@ struct FPlayerSkills {
         // small_guns
         {uint8{1}, uint8{10}}
     }};
-};
-
-struct FPlayerSkillsPropDisplay : public IPropertyTypeCustomization {
-  public:
-    virtual void CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, 
-                                 FDetailWidgetRow& HeaderRow, 
-                                 IPropertyTypeCustomizationUtils& CustomizationUtils) override;
-    virtual void CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, 
-                                   IDetailChildrenBuilder& ChildBuilder, 
-                                   IPropertyTypeCustomizationUtils& CustomizationUtils) override;
-    
-    static TSharedRef<IPropertyTypeCustomization> MakeInstance();
 };
 // clang-format on

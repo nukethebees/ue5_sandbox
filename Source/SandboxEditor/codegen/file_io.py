@@ -23,10 +23,10 @@ class FileBuffer:
 
     def namespace_start(self, ns: Optional[str] = None) -> None:
         ns = self.get_namespace(ns)
-        self.content += f"\nnamespace {ns} {{\n"
+        self.content += f"\n\nnamespace {ns} {{"
     def namespace_end(self, ns: Optional[str] = None) -> None:
         ns = self.get_namespace(ns)
-        self.content += f"\n}} // namespace {ns}\n"
+        self.content += f"\n}} // namespace {ns}"
 
     def write(self):
         with open(self.path, "w") as file:
