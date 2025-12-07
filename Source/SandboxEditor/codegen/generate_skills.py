@@ -151,6 +151,8 @@ class SkillGenerator:
     max_value_varname: str = "max_"
     skill_value_varname: str = "skill_"
 
+    module_api: str = "SANDBOX_API"
+
     def __init__(self, 
                  player_skills: list[SkillConfig], 
                  output_dir: Path,
@@ -316,7 +318,9 @@ class IDetailChildrenBuilder;"""
 
 #include "IDetailChildrenBuilder.h"
 #include "DetailLayoutBuilder.h"
-#include "DetailWidgetRow.h"'''
+#include "DetailWidgetRow.h"
+
+#include "{self.header_include_path}"'''
    
     # Enum generation
     def write_skills_enum(self) -> None:
@@ -331,11 +335,23 @@ enum class {self.player_skills_enum} : uint8 {{
         self.header += "\n};"
 
     def write_enum_functions(self) -> None:
+        arr_start = f"inline constexpr std::array<{self.player_skills_enum},"
+
+        n = len(self.skills)
+        self.header += f"\n{arr_start} {n}> {self.player_skills_enum}_values{{{{\n"
+        first = True
+        for skill in self.skills:
+            if not first:
+                self.header += ",\n"
+            self.header += f"    {skill.config.get_full_enum_value()}"
+            first = False
+        self.header += "\n}};"
+
         for category in self.categories.values():
             lname = category.lower_name()
 
             n = len(category.skill_indexes)
-            self.header += f"\ninline constexpr std::array<{self.player_skills_enum}, {n}> {lname}_values{{{{\n"
+            self.header += f"\n{arr_start} {n}> {lname}_values{{{{\n"
             first = True
             for skill in self.get_category_skills(category):
                 if not first:
@@ -352,7 +368,7 @@ enum class {self.player_skills_enum} : uint8 {{
         self.write_get_display_string_view()
 
     def write_get_display_name(self) -> None:
-        sig = f"\nauto get_display_name({self.player_skills_enum} value) -> FName"
+        sig = f"\n{self.module_api} auto get_display_name({self.player_skills_enum} value) -> FName"
 
         self.header += f"{sig};"
         self.source += f"""{sig} {{
@@ -373,7 +389,7 @@ enum class {self.player_skills_enum} : uint8 {{
     return unhandled_name;
 }"""
     def write_get_display_string(self) -> None:
-        sig = f"\nauto get_display_string({self.player_skills_enum} value) -> FString const&"
+        sig = f"\n{self.module_api} auto get_display_string({self.player_skills_enum} value) -> FString const&"
 
         self.header += f"{sig};"
         self.source += f"""{sig} {{
@@ -394,7 +410,7 @@ enum class {self.player_skills_enum} : uint8 {{
     return unhandled_name;
 }"""
     def write_get_display_string_view(self) -> None:
-        sig = f"\nauto get_display_string_view({self.player_skills_enum} value) -> TStringView<TCHAR>"
+        sig = f"\n{self.module_api} auto get_display_string_view({self.player_skills_enum} value) -> TStringView<TCHAR>"
 
         self.header += f"{sig};"
         self.source += f"""{sig} {{
@@ -584,14 +600,28 @@ void {prefix}CustomizeChildren(
 	    return;
 	}}
 	 
-	//Add a custom row that displays the text "Hello World!"
-	{cb}.AddCustomRow(FText::FromString("HelloWorldTest"))
-	    .NameContent()
-	    [
-	        SNew(STextBlock)
-	        .Text(FText::FromString(TEXT("Hello, World!")))
-	        .Font(IDetailLayoutBuilder::GetDetailFont())
-	    ];
+    void* raw_data{{nullptr}};
+    if (auto result{{{ph}->GetValueData(raw_data)}}; result != FPropertyAccess::Result::Success) {{
+        return;
+    }}
+    auto* data{{reinterpret_cast<FPlayerSkills*>(raw_data)}};
+
+	for (auto value : ml::EPlayerSkillName_values) {{
+        auto const& name{{ml::get_display_string_view(value)}};
+        auto skill{{data->get(value)}};
+
+	    {cb}.AddCustomRow(FText::FromStringView(name))
+	        .NameContent()
+	        [
+	            SNew(STextBlock)
+	            .Text(FText::FromStringView(name))
+	            .Font(IDetailLayoutBuilder::GetDetailFont())
+	        ]
+            .ValueContent()
+            [
+                SNew(STextBlock).Text(FText::AsNumber(skill.get()))
+            ];
+    }}
 }}
     
 TSharedRef<IPropertyTypeCustomization> {prefix}MakeInstance() {{

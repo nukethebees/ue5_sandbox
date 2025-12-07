@@ -10,9 +10,23 @@ public class Sandbox : ModuleRules
         CppStandard = CppStandardVersion.Latest;
 
         PublicDependencyModuleNames.AddRange(new string[] {
-            "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "RenderCore",
-            "Slate", "SlateCore", "Niagara", "AIModule", "NavigationSystem", "GameplayTasks",
-            "TraceLog", "MassEntity", "MassCommon", "MassSimulation"
+            "Core", 
+            "CoreUObject", 
+            "Engine", 
+            "InputCore", 
+            "EnhancedInput", 
+            "UMG", 
+            "RenderCore",
+            "Slate", 
+            "SlateCore", 
+            "Niagara", 
+            "AIModule", 
+            "NavigationSystem", 
+            "GameplayTasks",
+            "TraceLog", 
+            "MassEntity", 
+            "MassCommon", 
+            "MassSimulation"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {

@@ -29,6 +29,15 @@ enum class EPlayerSkillName : uint8 {
 };
 
 namespace ml {
+inline constexpr std::array<EPlayerSkillName, 7> EPlayerSkillName_values{{
+    EPlayerSkillName::Strength,
+    EPlayerSkillName::Endurance,
+    EPlayerSkillName::Agility,
+    EPlayerSkillName::Cyber,
+    EPlayerSkillName::Psi,
+    EPlayerSkillName::hacking,
+    EPlayerSkillName::small_guns
+}};
 inline constexpr std::array<EPlayerSkillName, 5> attribute_values{{
     EPlayerSkillName::Strength,
     EPlayerSkillName::Endurance,
@@ -44,9 +53,9 @@ inline constexpr std::array<EPlayerSkillName, 1> weapon_values{{
 }};
 
 // String functions
-auto get_display_name(EPlayerSkillName value) -> FName;
-auto get_display_string(EPlayerSkillName value) -> FString const&;
-auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR>;
+SANDBOX_API auto get_display_name(EPlayerSkillName value) -> FName;
+SANDBOX_API auto get_display_string(EPlayerSkillName value) -> FString const&;
+SANDBOX_API auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR>;
 } // namespace ml
 
 USTRUCT(BlueprintType)
