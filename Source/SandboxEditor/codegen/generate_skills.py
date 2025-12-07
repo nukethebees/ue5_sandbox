@@ -469,11 +469,31 @@ enum class {self.player_skills_enum} : uint8 {{
 """
     def add_category_view_functions(self) -> None:
         self.header += "    // Category views"
+        
+        def arr_type(n:int) -> str:
+            return f"std::array<{self.skill_view_typename}, {n}>"
+        def fn_sig(name:str, array:str) -> str:
+            return f"auto get_{name}_views(this auto& self) -> {array} {{"
+
+        n = len(self.skills)
+        self.header += f'''
+    {fn_sig("all", arr_type(n))}
+        return {{{{'''
+        first = True
+        for skill in self.skills:
+            if not first:
+                self.header += ","
+            self.header += f"\n{" "*12}{skill.config.get_view_name()}()"
+            first = False
+        self.header += '''    
+        }};
+    }'''
+
 
         for cat in self.categories.values():
-            array = f"std::array<{self.skill_view_typename}, {len(cat)}>"
+            array = arr_type(len(cat))
             self.header += f"""
-    auto get_{cat.lower_name()}_view(this auto& self) -> {array} {{
+    {fn_sig(cat.lower_name(), array)}
         return {{{{"""
             first = True
             for skill in cat.skills(self.skills):
@@ -491,7 +511,6 @@ enum class {self.player_skills_enum} : uint8 {{
             if not first:
                 self.header += ","
             self.header += f"""
-        // {skill.config.name}
         {{{self.skill_value_typename}{{{default_level}}}, {self.skill_value_typename}{{{skill.config.max_level}}}}}"""
             first = False
         self.header += "\n    }};"

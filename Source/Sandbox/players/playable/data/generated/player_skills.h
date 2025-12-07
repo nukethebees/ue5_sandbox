@@ -144,7 +144,18 @@ struct FPlayerSkills {
     // Weapon
     auto get_small_guns_view() { return get_view<EPlayerSkillName::small_guns>(); }
     // Category views
-    auto get_attribute_view(this auto& self) -> std::array<SkillView, 5> {
+    auto get_all_views(this auto& self) -> std::array<SkillView, 7> {
+        return {{
+            get_strength_view(),
+            get_endurance_view(),
+            get_agility_view(),
+            get_cyber_view(),
+            get_psi_view(),
+            get_hacking_view(),
+            get_small_guns_view()    
+        }};
+    }
+    auto get_attribute_views(this auto& self) -> std::array<SkillView, 5> {
         return {{
             get_strength_view(),
             get_endurance_view(),
@@ -153,31 +164,24 @@ struct FPlayerSkills {
             get_psi_view()
         }};
     }
-    auto get_tech_view(this auto& self) -> std::array<SkillView, 1> {
+    auto get_tech_views(this auto& self) -> std::array<SkillView, 1> {
         return {{
             get_hacking_view()
         }};
     }
-    auto get_weapon_view(this auto& self) -> std::array<SkillView, 1> {
+    auto get_weapon_views(this auto& self) -> std::array<SkillView, 1> {
         return {{
             get_small_guns_view()
         }};
     }
   private:
     std::array<FPlayerSkill, 7> skills_{{
-        // Strength
         {uint8{1}, uint8{10}},
-        // Endurance
         {uint8{1}, uint8{10}},
-        // Agility
         {uint8{1}, uint8{10}},
-        // Cyber
         {uint8{1}, uint8{10}},
-        // Psi
         {uint8{1}, uint8{10}},
-        // hacking
         {uint8{1}, uint8{10}},
-        // small_guns
         {uint8{1}, uint8{10}}
     }};
 };
