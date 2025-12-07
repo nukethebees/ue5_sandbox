@@ -153,6 +153,19 @@ class SkillGenerator:
 
     module_api: str = "SANDBOX_API"
 
+    class SkillMembers:
+        get_skill = "get_skill"
+        set_skill = "set_skill"
+        inc_skill = "inc_skill"
+        get_max = "get_max"
+        set_max = "set_max"
+
+    class SkillsMembers:
+        get_skill = "get_skill"
+        get_value = "get_value"
+        set_value = "set_value"
+
+
     def __init__(self, 
                  player_skills: list[SkillConfig], 
                  output_dir: Path,
@@ -421,26 +434,25 @@ enum class {self.player_skills_enum} : uint8 {{
     def write_struct_skill_enum_accessors(self) -> None:
         key = "skill_type"
         input = "value"
-        get_value = "get_value"
-        set_value = "set"
 
         indexed = self.index_skill(key)
+        m = self.SkillsMembers
 
         self.header += f"""
     template <{self.player_skills_enum} {key}, typename Self>
-    constexpr auto {get_value}(this Self const& self) {{
-        return self.{indexed}.get();
+    constexpr auto {m.get_value}(this Self const& self) {{
+        return self.{indexed}.{m.get_skill}();
     }}
     template <typename Self>
-    constexpr auto {get_value}(this Self const& self, {self.player_skills_enum} {key}) {{
-        return self.{indexed}.get();
+    constexpr auto {m.get_value}(this Self const& self, {self.player_skills_enum} {key}) {{
+        return self.{indexed}.{m.get_skill}();
     }}
     template <{self.player_skills_enum} {key}, typename Self>
-    constexpr auto get(this Self&& self) -> auto&& {{
+    constexpr auto {m.get_skill}(this Self&& self) -> auto&& {{
         return std::forward_like<Self>(self.{indexed});
     }}
     template <typename Self>
-    constexpr auto get(this Self const& self, {self.player_skills_enum} {key}) -> auto&& {{
+    constexpr auto {m.get_skill}(this Self const& self, {self.player_skills_enum} {key}) -> auto&& {{
         return std::forward_like<Self>(self.{indexed});
     }}
     template <{self.player_skills_enum} {key}, typename Self>
@@ -448,15 +460,15 @@ enum class {self.player_skills_enum} : uint8 {{
         return SkillView{{
             {key},
             ml::get_display_string({key}),
-            self.get<{key}>()
+            self.{m.get_skill}<{key}>()
         }};
     }}
     template <{self.player_skills_enum} {key}, typename Self>
-    constexpr void {set_value}(this Self& self, {self.skill_value_typename} {input}) {{
-        self.get<{key}>.set({input});    
+    constexpr void {m.set_value}(this Self& self, {self.skill_value_typename} {input}) {{
+        self.{m.get_skill}<{key}>.set({input});    
     }}
-    constexpr void {set_value}(this auto& self, {self.player_skills_enum} {key}, {self.skill_value_typename} {input}) {{
-        self.get<{key}>.set({input});
+    constexpr void {m.set_value}(this auto& self, {self.player_skills_enum} {key}, {self.skill_value_typename} {input}) {{
+        self.{m.get_skill}<{key}>.set({input});
     }}"""
     def add_struct_accessor(self, skill: GeneratorSkill):
         e = skill.config.get_full_enum_value()
@@ -549,6 +561,8 @@ struct {self.player_skills_struct} {{
         self.header += "\n};\n"
     
     def write_skill_struct(self) -> None:
+        m = self.SkillMembers
+
         self.header += f"""
 
 USTRUCT(BlueprintType)
@@ -561,14 +575,17 @@ struct {self.skill_struct} {{
         , {self.max_value_varname}({self.max_value_varname})
     {{}}
 
-    auto get(this auto const& self) {{
+    auto {m.get_skill}(this auto const& self) {{
         return self.{self.skill_value_varname};
     }}
-    auto set(this auto& self, {self.skill_value_typename} input) {{
+    auto {m.set_skill}(this auto& self, {self.skill_value_typename} input) {{
         self.{self.skill_value_varname} = std::min(input, self.{self.max_value_varname});
     }}
-    auto inc(this auto& self) {{
-        self.set(self.{self.skill_value_varname} + {self.skill_value_typename}{{1}});
+    auto {m.inc_skill}(this auto& self) {{
+        self.{m.set_skill}(self.{self.skill_value_varname} + {self.skill_value_typename}{{1}});
+    }}
+    auto {m.get_max}(this auto const& self) {{
+        return self.{self.max_value_varname};
     }}
   private:
     {self.uproperty_header}
@@ -602,6 +619,7 @@ struct {struct_name} : public IPropertyTypeCustomization {{
 """
         prefix = f"{struct_name}::"       
 
+        SM = self.SkillMembers
         self.ed_source += f"""
 
 void {prefix}CustomizeHeader(
@@ -627,7 +645,7 @@ void {prefix}CustomizeChildren(
 
 	for (auto value : ml::EPlayerSkillName_values) {{
         auto const& name{{ml::get_display_string_view(value)}};
-        auto skill{{data->get(value)}};
+        auto skill{{data->{self.SkillsMembers.get_skill}(value)}};
 
 	    {cb}.AddCustomRow(FText::FromStringView(name))
 	        .NameContent()
@@ -638,7 +656,7 @@ void {prefix}CustomizeChildren(
 	        ]
             .ValueContent()
             [
-                SNew(STextBlock).Text(FText::AsNumber(skill.get()))
+                SNew(STextBlock).Text(FText::AsNumber(skill.{SM.get_skill}()))
             ];
     }}
 }}

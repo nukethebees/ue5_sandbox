@@ -29,7 +29,7 @@ void FPlayerSkillsPropDisplay::CustomizeChildren(
 
 	for (auto value : ml::EPlayerSkillName_values) {
         auto const& name{ml::get_display_string_view(value)};
-        auto skill{data->get(value)};
+        auto skill{data->get_skill(value)};
 
 	    ChildBuilder.AddCustomRow(FText::FromStringView(name))
 	        .NameContent()
@@ -40,7 +40,7 @@ void FPlayerSkillsPropDisplay::CustomizeChildren(
 	        ]
             .ValueContent()
             [
-                SNew(STextBlock).Text(FText::AsNumber(skill.get()))
+                SNew(STextBlock).Text(FText::AsNumber(skill.get_skill()))
             ];
     }
 }

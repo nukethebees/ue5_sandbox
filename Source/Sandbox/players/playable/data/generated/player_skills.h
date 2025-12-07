@@ -68,14 +68,17 @@ struct FPlayerSkill {
         , max_(max_)
     {}
 
-    auto get(this auto const& self) {
+    auto get_skill(this auto const& self) {
         return self.skill_;
     }
-    auto set(this auto& self, uint8 input) {
+    auto set_skill(this auto& self, uint8 input) {
         self.skill_ = std::min(input, self.max_);
     }
-    auto inc(this auto& self) {
-        self.set(self.skill_ + uint8{1});
+    auto inc_skill(this auto& self) {
+        self.set_skill(self.skill_ + uint8{1});
+    }
+    auto get_max(this auto const& self) {
+        return self.max_;
     }
   private:
     UPROPERTY(EditAnywhere, Category="Player")
@@ -104,18 +107,18 @@ struct FPlayerSkills {
     };
     template <EPlayerSkillName skill_type, typename Self>
     constexpr auto get_value(this Self const& self) {
-        return self.skills_[std::to_underlying(skill_type)].get();
+        return self.skills_[std::to_underlying(skill_type)].get_skill();
     }
     template <typename Self>
     constexpr auto get_value(this Self const& self, EPlayerSkillName skill_type) {
-        return self.skills_[std::to_underlying(skill_type)].get();
+        return self.skills_[std::to_underlying(skill_type)].get_skill();
     }
     template <EPlayerSkillName skill_type, typename Self>
-    constexpr auto get(this Self&& self) -> auto&& {
+    constexpr auto get_skill(this Self&& self) -> auto&& {
         return std::forward_like<Self>(self.skills_[std::to_underlying(skill_type)]);
     }
     template <typename Self>
-    constexpr auto get(this Self const& self, EPlayerSkillName skill_type) -> auto&& {
+    constexpr auto get_skill(this Self const& self, EPlayerSkillName skill_type) -> auto&& {
         return std::forward_like<Self>(self.skills_[std::to_underlying(skill_type)]);
     }
     template <EPlayerSkillName skill_type, typename Self>
@@ -123,15 +126,15 @@ struct FPlayerSkills {
         return SkillView{
             skill_type,
             ml::get_display_string(skill_type),
-            self.get<skill_type>()
+            self.get_skill<skill_type>()
         };
     }
     template <EPlayerSkillName skill_type, typename Self>
-    constexpr void set(this Self& self, uint8 value) {
-        self.get<skill_type>.set(value);    
+    constexpr void set_value(this Self& self, uint8 value) {
+        self.get_skill<skill_type>.set(value);    
     }
-    constexpr void set(this auto& self, EPlayerSkillName skill_type, uint8 value) {
-        self.get<skill_type>.set(value);
+    constexpr void set_value(this auto& self, EPlayerSkillName skill_type, uint8 value) {
+        self.get_skill<skill_type>.set(value);
     }
     // Attribute
     auto get_strength_view() { return get_view<EPlayerSkillName::Strength>(); }
