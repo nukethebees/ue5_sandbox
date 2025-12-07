@@ -4,7 +4,7 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 
-#include "Sandbox/players/playable/data/generated/player_skills.h"
+#include "Sandbox/players/playable/data/generated/PlayerSkills.h"
 
 void FPlayerSkillsPropDisplay::CustomizeHeader(
         TSharedRef<IPropertyHandle> PropertyHandle, 

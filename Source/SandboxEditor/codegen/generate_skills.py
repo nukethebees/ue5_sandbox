@@ -138,7 +138,7 @@ class SkillGenerator:
     skill_struct = UnrealType("PlayerSkill", UnrealType.Tag.STRUCT)
     details_struct_name = UnrealType(f"{player_skills_struct.rawname()}PropDisplay", UnrealType.Tag.STRUCT)
 
-    file_name: str = "player_skills"
+    file_name: str = player_skills_struct.rawname()
 
     index_typename: str = "int32"
     skill_value_typename: str = "uint8"
