@@ -503,7 +503,7 @@ enum class {self.player_skills_enum} : uint8 {{
         for skill in self.skills:
             if not first:
                 self.header += ","
-            self.header += f"\n{" "*12}{skill.config.get_view_name()}()"
+            self.header += f"\n{" "*12}self.{skill.config.get_view_name()}()"
             first = False
         self.header += '''    
         }};
@@ -519,7 +519,7 @@ enum class {self.player_skills_enum} : uint8 {{
             for skill in cat.skills(self.skills):
                 if not first:
                     self.header += ","
-                self.header += f"\n            {skill.config.get_view_name()}()"
+                self.header += f"\n            self.{skill.config.get_view_name()}()"
                 first = False
             self.header += "\n        }};\n    }"
     def write_private_variables(self) -> None:
@@ -543,6 +543,8 @@ struct {self.player_skills_struct} {{
 
         self.header += "  public:"
         self.header += f"""
+    static constexpr int32 N_SKILLS{{{len(self.skills)}}};
+
     struct {self.skill_view_typename} {{
         {self.skill_struct}& skill;
         FString const& name;

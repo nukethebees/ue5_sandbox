@@ -21,6 +21,12 @@ void UStatsMenuWidget::on_widget_selected() {
         psi_value->SetText(FText::AsNumber(pinned_char->attributes.psi));
 
         hacking_value->SetText(FText::AsNumber(pinned_char->tech_skills.hacking));
+
+        auto& skills{pinned_char->skills};
+        auto views{skills.get_all_views()};
+        for (int32 i{0}; i < FPlayerSkills::N_SKILLS; i++) {
+            skills_values[i]->SetText(FText::AsNumber(views[i].skill.get_skill()));
+        }
     } else {
         log_warning(TEXT("Couldn't pin character."));
     }

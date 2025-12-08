@@ -92,6 +92,8 @@ USTRUCT(BlueprintType)
 struct FPlayerSkills {
     GENERATED_BODY()
   public:
+    static constexpr int32 N_SKILLS{7};
+
     struct SkillView {
         FPlayerSkill& skill;
         FString const& name;
@@ -150,32 +152,32 @@ struct FPlayerSkills {
     // Category views
     auto get_all_views(this auto& self) -> std::array<SkillView, 7> {
         return {{
-            get_strength_view(),
-            get_endurance_view(),
-            get_agility_view(),
-            get_cyber_view(),
-            get_psi_view(),
-            get_hacking_view(),
-            get_small_guns_view()    
+            self.get_strength_view(),
+            self.get_endurance_view(),
+            self.get_agility_view(),
+            self.get_cyber_view(),
+            self.get_psi_view(),
+            self.get_hacking_view(),
+            self.get_small_guns_view()    
         }};
     }
     auto get_attribute_views(this auto& self) -> std::array<SkillView, 5> {
         return {{
-            get_strength_view(),
-            get_endurance_view(),
-            get_agility_view(),
-            get_cyber_view(),
-            get_psi_view()
+            self.get_strength_view(),
+            self.get_endurance_view(),
+            self.get_agility_view(),
+            self.get_cyber_view(),
+            self.get_psi_view()
         }};
     }
     auto get_tech_views(this auto& self) -> std::array<SkillView, 1> {
         return {{
-            get_hacking_view()
+            self.get_hacking_view()
         }};
     }
     auto get_weapon_views(this auto& self) -> std::array<SkillView, 1> {
         return {{
-            get_small_guns_view()
+            self.get_small_guns_view()
         }};
     }
   private:
