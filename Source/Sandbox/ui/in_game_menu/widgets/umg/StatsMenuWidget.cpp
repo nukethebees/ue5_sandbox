@@ -33,9 +33,15 @@ void UStatsMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     for (auto skill : ml::EPlayerSkillName_values) {
-        auto* tb{NewObject<UTextBlock>(this)};
-        tb->SetText(ml::get_display_text(skill));
-        skills_grid_2->AddChildToGrid(tb, std::to_underlying(skill), 0);
+        auto* label_tb{NewObject<UTextBlock>(this)};
+        label_tb->SetText(ml::get_display_text(skill));
+        skills_grid_2->AddChildToGrid(label_tb, std::to_underlying(skill), 0);
+        skills_labels.Add(label_tb);
+
+        auto* value_tb{NewObject<UTextBlock>(this)};
+        value_tb->SetText(FText::FromString(TEXT("???")));
+        skills_grid_2->AddChildToGrid(value_tb, std::to_underlying(skill), 1);
+        skills_values.Add(value_tb);
     }
 }
 void UStatsMenuWidget::NativeConstruct() {
