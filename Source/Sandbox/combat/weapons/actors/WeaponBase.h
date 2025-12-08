@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/combat/weapons/data/AmmoReloadResult.h"
 #include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
 #include "Sandbox/combat/weapons/delegates/PawnWeaponComponentDelegates.h"
-#include "Sandbox/combat/weapons/interfaces/WeaponInterface.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -19,7 +19,6 @@ class UBoxComponent;
 UCLASS(Abstract)
 class SANDBOX_API AWeaponBase
     : public AActor
-    , public IWeaponInterface
     , public IInventoryItem
     , public ml::LogMsgMixin<"AWeaponBase", LogSandboxWeapon> {
     GENERATED_BODY()
@@ -30,27 +29,27 @@ class SANDBOX_API AWeaponBase
 
     // IWeaponInterface
     UFUNCTION()
-    virtual bool can_fire() const override { return false; };
+    virtual bool can_fire() const { return false; };
     UFUNCTION()
-    virtual void start_firing() override {};
+    virtual void start_firing() {};
     UFUNCTION()
-    virtual void sustain_firing(float delta_time) override {};
+    virtual void sustain_firing(float delta_time) {};
     UFUNCTION()
-    virtual void stop_firing() override {};
+    virtual void stop_firing() {};
 
     UFUNCTION()
-    virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) override { return {}; };
+    virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) { return {}; };
     UFUNCTION()
-    virtual bool can_reload() const override { return false; };
+    virtual bool can_reload() const { return false; };
     UFUNCTION()
-    virtual FAmmoData get_ammo_needed_for_reload() const override { return FAmmoData{}; };
+    virtual FAmmoData get_ammo_needed_for_reload() const { return FAmmoData{}; };
 
     UFUNCTION()
-    virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; };
+    EAmmoType get_ammo_type() const { return ammo_type; };
     UFUNCTION()
-    virtual FAmmoData get_current_ammo() const override { return FAmmoData{}; };
+    virtual FAmmoData get_current_ammo() const { return FAmmoData{}; };
     UFUNCTION()
-    virtual FAmmoData get_max_ammo() const override { return FAmmoData{}; };
+    virtual FAmmoData get_max_ammo() const { return FAmmoData{}; };
 
     UFUNCTION()
     virtual UStaticMesh* get_display_mesh() const { return nullptr; };
@@ -87,4 +86,7 @@ class SANDBOX_API AWeaponBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UTexture2D* display_image{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    EAmmoType ammo_type{EAmmoType::Bullets};
 };

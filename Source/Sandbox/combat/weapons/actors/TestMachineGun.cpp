@@ -11,6 +11,8 @@
 
 ATestMachineGun::ATestMachineGun()
     : ammo{max_ammo} {
+    ammo_type = EAmmoType::Bullets;
+
     gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
     gun_mesh_component->SetupAttachment(RootComponent);
 

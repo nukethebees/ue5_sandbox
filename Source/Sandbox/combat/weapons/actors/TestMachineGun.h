@@ -30,7 +30,6 @@ class SANDBOX_API ATestMachineGun
     virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
 
-    virtual EAmmoType get_ammo_type() const override { return EAmmoType::Bullets; }
     virtual FAmmoData get_current_ammo() const override;
     virtual FAmmoData get_max_ammo() const override;
     int32 get_ammo_needed() const;

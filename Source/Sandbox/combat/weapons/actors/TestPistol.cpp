@@ -13,6 +13,8 @@ ATestPistol::ATestPistol()
     : ammo{max_ammo}
     , gun_mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"))}
     , fire_point_arrow{CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"))} {
+    ammo_type = EAmmoType::Bullets;
+
     gun_mesh_component->SetupAttachment(RootComponent);
     fire_point_arrow->SetupAttachment(RootComponent);
 }
