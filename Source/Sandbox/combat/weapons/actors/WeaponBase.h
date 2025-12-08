@@ -42,7 +42,7 @@ class SANDBOX_API AWeaponBase
     UFUNCTION()
     virtual bool can_reload() const { return false; };
     UFUNCTION()
-    virtual FAmmoData get_ammo_needed_for_reload() const { return FAmmoData{}; };
+    FAmmoData get_ammo_needed_for_reload() const { return FAmmoData{ammo_type, max_ammo - ammo}; };
 
     UFUNCTION()
     EAmmoType get_ammo_type() const { return ammo_type; };

@@ -32,7 +32,6 @@ class SANDBOX_API ATestPistol
 
     virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
-    virtual FAmmoData get_ammo_needed_for_reload() const override;
 
     virtual UStaticMesh* get_display_mesh() const override;
     virtual FString const& get_name() const {

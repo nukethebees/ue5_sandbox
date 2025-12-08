@@ -31,10 +31,6 @@ bool ATestMachineGun::can_reload() const {
     return ammo < max_ammo;
 }
 
-int32 ATestMachineGun::get_ammo_needed() const {
-    return max_ammo - ammo;
-}
-
 FAmmoReloadResult ATestMachineGun::reload(FAmmoData const& offered) {
     FAmmoReloadResult result;
     result.AmmoOfferedRemaining = offered;
@@ -47,8 +43,8 @@ FAmmoReloadResult ATestMachineGun::reload(FAmmoData const& offered) {
         return result;
     }
 
-    auto const needed{get_ammo_needed()};
-    auto const taken{FMath::Min(needed, offered.amount)};
+    auto const needed{get_ammo_needed_for_reload()};
+    auto const taken{FMath::Min(needed.amount, offered.amount)};
 
     ammo += taken;
 

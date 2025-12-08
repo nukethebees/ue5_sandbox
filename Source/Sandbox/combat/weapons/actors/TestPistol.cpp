@@ -81,9 +81,6 @@ FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
 bool ATestPistol::can_reload() const {
     return ammo < max_ammo;
 }
-FAmmoData ATestPistol::get_ammo_needed_for_reload() const {
-    return FAmmoData{ammo_type, max_ammo - ammo};
-}
 
 UStaticMesh* ATestPistol::get_display_mesh() const {
     RETURN_VALUE_IF_NULLPTR(gun_mesh_component, nullptr);

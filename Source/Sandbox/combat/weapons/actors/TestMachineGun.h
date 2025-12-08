@@ -28,8 +28,6 @@ class SANDBOX_API ATestMachineGun
     virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
 
-    int32 get_ammo_needed() const;
-
     virtual UStaticMesh* get_display_mesh() const override;
     virtual FString const& get_name() const {
         static FString const default_name{TEXT("ATestMachineGun")};
