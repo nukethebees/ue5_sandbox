@@ -9,9 +9,10 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-ATestMachineGun::ATestMachineGun()
-    : ammo{max_ammo} {
+ATestMachineGun::ATestMachineGun() {
     ammo_type = EAmmoType::Bullets;
+    max_ammo = 50;
+    ammo = max_ammo;
 
     gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
     gun_mesh_component->SetupAttachment(RootComponent);
@@ -34,14 +35,6 @@ bool ATestMachineGun::can_reload() const {
 
 int32 ATestMachineGun::get_ammo_needed() const {
     return max_ammo - ammo;
-}
-
-FAmmoData ATestMachineGun::get_current_ammo() const {
-    return FAmmoData(EAmmoType::Bullets, ammo);
-}
-
-FAmmoData ATestMachineGun::get_max_ammo() const {
-    return FAmmoData(EAmmoType::Bullets, max_ammo);
 }
 
 FAmmoReloadResult ATestMachineGun::reload(FAmmoData const& offered) {

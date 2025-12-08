@@ -10,10 +10,11 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestPistol::ATestPistol()
-    : ammo{max_ammo}
-    , gun_mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"))}
+    : gun_mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"))}
     , fire_point_arrow{CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"))} {
     ammo_type = EAmmoType::Bullets;
+    max_ammo = 10;
+    ammo = max_ammo;
 
     gun_mesh_component->SetupAttachment(RootComponent);
     fire_point_arrow->SetupAttachment(RootComponent);
@@ -84,13 +85,6 @@ bool ATestPistol::can_reload() const {
 }
 FAmmoData ATestPistol::get_ammo_needed_for_reload() const {
     return FAmmoData{ammo_type, max_ammo - ammo};
-}
-
-FAmmoData ATestPistol::get_current_ammo() const {
-    return FAmmoData(EAmmoType::Bullets, ammo);
-}
-FAmmoData ATestPistol::get_max_ammo() const {
-    return FAmmoData(EAmmoType::Bullets, max_ammo);
 }
 
 UStaticMesh* ATestPistol::get_display_mesh() const {

@@ -47,9 +47,9 @@ class SANDBOX_API AWeaponBase
     UFUNCTION()
     EAmmoType get_ammo_type() const { return ammo_type; };
     UFUNCTION()
-    virtual FAmmoData get_current_ammo() const { return FAmmoData{}; };
+    FAmmoData get_current_ammo() const { return FAmmoData{ammo_type, ammo}; };
     UFUNCTION()
-    virtual FAmmoData get_max_ammo() const { return FAmmoData{}; };
+    FAmmoData get_max_ammo() const { return FAmmoData{ammo_type, max_ammo}; };
 
     UFUNCTION()
     virtual UStaticMesh* get_display_mesh() const { return nullptr; };
@@ -89,4 +89,10 @@ class SANDBOX_API AWeaponBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     EAmmoType ammo_type{EAmmoType::Bullets};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    int32 max_ammo{10};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    int32 ammo{0};
 };

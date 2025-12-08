@@ -30,8 +30,6 @@ class SANDBOX_API ATestMachineGun
     virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
 
-    virtual FAmmoData get_current_ammo() const override;
-    virtual FAmmoData get_max_ammo() const override;
     int32 get_ammo_needed() const;
 
     virtual UStaticMesh* get_display_mesh() const override;
@@ -46,12 +44,6 @@ class SANDBOX_API ATestMachineGun
         return desc;
     }
   protected:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
-    int32 max_ammo{50};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
-    int32 ammo{0};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     float fire_rate{10.0f};
 
