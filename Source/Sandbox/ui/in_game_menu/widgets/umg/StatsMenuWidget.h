@@ -71,6 +71,9 @@ class SANDBOX_API UStatsMenuWidget
     UPROPERTY(meta = (BindWidget))
     UGridPanel* weapon_skills_grid{nullptr};
 
+    UPROPERTY(meta = (BindWidget))
+    UGridPanel* skills_grid_2{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TWeakObjectPtr<AMyCharacter> character{nullptr};
 };
