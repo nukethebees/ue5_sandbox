@@ -56,6 +56,7 @@ inline constexpr std::array<EPlayerSkillName, 1> weapon_values{{
 SANDBOX_API auto get_display_name(EPlayerSkillName value) -> FName;
 SANDBOX_API auto get_display_string(EPlayerSkillName value) -> FString const&;
 SANDBOX_API auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR>;
+SANDBOX_API auto get_display_text(EPlayerSkillName value) -> FText;
 } // namespace ml
 
 USTRUCT(BlueprintType)

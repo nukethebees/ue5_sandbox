@@ -379,6 +379,7 @@ enum class {self.player_skills_enum} : uint8 {{
         self.write_get_display_name()
         self.write_get_display_string()
         self.write_get_display_string_view()
+        self.write_get_display_text()
 
     def write_get_display_name(self) -> None:
         sig = f"\n{self.module_api} auto get_display_name({self.player_skills_enum} value) -> FName"
@@ -428,6 +429,13 @@ enum class {self.player_skills_enum} : uint8 {{
         self.header += f"{sig};"
         self.source += f"""{sig} {{
     return get_display_string(value);
+}}"""
+    def write_get_display_text(self) -> None:
+        sig = f"\n{self.module_api} auto get_display_text({self.player_skills_enum} value) -> FText"
+
+        self.header += f"{sig};"
+        self.source += f"""{sig} {{
+    return FText::FromStringView(get_display_string_view(value));
 }}"""
 
     # Struct generation

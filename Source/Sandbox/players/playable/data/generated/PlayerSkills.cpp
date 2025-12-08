@@ -80,4 +80,7 @@ SANDBOX_API auto get_display_string(EPlayerSkillName value) -> FString const& {
 SANDBOX_API auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR> {
     return get_display_string(value);
 }
+SANDBOX_API auto get_display_text(EPlayerSkillName value) -> FText {
+    return FText::FromStringView(get_display_string_view(value));
+}
 } // namespace ml

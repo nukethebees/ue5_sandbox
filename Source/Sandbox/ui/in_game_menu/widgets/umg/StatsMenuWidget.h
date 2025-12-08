@@ -73,6 +73,8 @@ class SANDBOX_API UStatsMenuWidget
 
     UPROPERTY(meta = (BindWidget))
     UGridPanel* skills_grid_2{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+    TArray<UTextBlock*> skills_text_blocks;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TWeakObjectPtr<AMyCharacter> character{nullptr};
