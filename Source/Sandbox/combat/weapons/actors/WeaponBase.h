@@ -56,7 +56,7 @@ class SANDBOX_API AWeaponBase
 
     // IInventoryItem
     UFUNCTION()
-    virtual FDimensions get_size() const override { return FDimensions{1000000, 1000000}; };
+    virtual FDimensions get_size() const override { return size; };
     virtual bool is_weapon() const override final { return true; };
     virtual AWeaponBase* get_weapon() override final { return this; };
     UFUNCTION()
@@ -95,4 +95,7 @@ class SANDBOX_API AWeaponBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     int32 ammo{0};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
+    FDimensions size{1000000, 1000000};
 };

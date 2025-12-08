@@ -14,16 +14,14 @@ ATestMachineGun::ATestMachineGun() {
     max_ammo = 50;
     ammo = max_ammo;
 
+    size = FDimensions{5, 2};
+
     gun_mesh_component = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunMeshComponent"));
     gun_mesh_component->SetupAttachment(RootComponent);
 
     fire_point_arrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirePoint"));
     fire_point_arrow->SetupAttachment(RootComponent);
 }
-
-FDimensions ATestMachineGun::get_size() const {
-    return FDimensions{5, 2};
-};
 
 bool ATestMachineGun::can_fire() const {
     return ammo > 0;

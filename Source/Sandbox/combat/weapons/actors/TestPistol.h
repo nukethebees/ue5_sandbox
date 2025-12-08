@@ -24,8 +24,6 @@ class SANDBOX_API ATestPistol
 
     ATestPistol();
 
-    virtual FDimensions get_size() const override;
-
     // IWeaponInterface
     virtual bool can_fire() const override;
     virtual void start_firing() override;

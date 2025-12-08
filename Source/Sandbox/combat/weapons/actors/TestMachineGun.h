@@ -20,8 +20,6 @@ class SANDBOX_API ATestMachineGun
   public:
     ATestMachineGun();
 
-    virtual FDimensions get_size() const override;
-
     virtual void start_firing() override;
     virtual void sustain_firing(float delta_time) override;
     virtual void stop_firing() override;

@@ -16,13 +16,11 @@ ATestPistol::ATestPistol()
     max_ammo = 10;
     ammo = max_ammo;
 
+    size = FDimensions{4, 1};
+
     gun_mesh_component->SetupAttachment(RootComponent);
     fire_point_arrow->SetupAttachment(RootComponent);
 }
-
-FDimensions ATestPistol::get_size() const {
-    return FDimensions{4, 1};
-};
 
 // IWeaponInterface
 bool ATestPistol::can_fire() const {
