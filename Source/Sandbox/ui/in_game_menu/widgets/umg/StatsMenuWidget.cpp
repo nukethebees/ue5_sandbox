@@ -38,15 +38,20 @@ void UStatsMenuWidget::set_character(AMyCharacter& my_char) {
 void UStatsMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
+    skills_grid_2->SetColumnFill(0, 2.0f);
+    skills_grid_2->SetColumnFill(1, 1.0f);
     for (auto skill : ml::EPlayerSkillName_values) {
+        auto const i{std::to_underlying(skill)};
+
         auto* label_tb{NewObject<UTextBlock>(this)};
         label_tb->SetText(ml::get_display_text(skill));
-        skills_grid_2->AddChildToGrid(label_tb, std::to_underlying(skill), 0);
+        skills_grid_2->AddChildToGrid(label_tb, i, 0);
         skills_labels.Add(label_tb);
 
         auto* value_tb{NewObject<UTextBlock>(this)};
         value_tb->SetText(FText::FromString(TEXT("???")));
-        skills_grid_2->AddChildToGrid(value_tb, std::to_underlying(skill), 1);
+        value_tb->SetJustification(ETextJustify::Right);
+        skills_grid_2->AddChildToGrid(value_tb, i, 1);
         skills_values.Add(value_tb);
     }
 }
