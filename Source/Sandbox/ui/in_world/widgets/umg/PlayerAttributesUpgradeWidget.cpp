@@ -24,20 +24,6 @@ void UPlayerAttributesUpgradeWidget::refresh_values() {
     RETURN_IF_NULLPTR(character->inventory);
 
     set_skill_points(character->inventory->get_skill_points());
-
-    strength_level->SetText(FText::AsNumber(character->attributes.strength));
-    endurance_level->SetText(FText::AsNumber(character->attributes.endurance));
-    agility_level->SetText(FText::AsNumber(character->attributes.agility));
-    cyber_level->SetText(FText::AsNumber(character->attributes.cyber));
-    psi_level->SetText(FText::AsNumber(character->attributes.psi));
-
-    strength_cost->SetText(
-        FText::AsNumber(character->upgrade_cost(character->attributes.strength)));
-    endurance_cost->SetText(
-        FText::AsNumber(character->upgrade_cost(character->attributes.endurance)));
-    agility_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.agility)));
-    cyber_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.cyber)));
-    psi_cost->SetText(FText::AsNumber(character->upgrade_cost(character->attributes.psi)));
 }
 
 void UPlayerAttributesUpgradeWidget::NativeOnInitialized() {

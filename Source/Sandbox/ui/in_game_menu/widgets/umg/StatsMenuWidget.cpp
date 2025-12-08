@@ -14,14 +14,6 @@ void UStatsMenuWidget::on_widget_selected() {
     RETURN_IF_INVALID(character);
 
     if (auto pinned_char{character.Pin()}) {
-        strength_value->SetText(FText::AsNumber(pinned_char->attributes.strength));
-        endurance_value->SetText(FText::AsNumber(pinned_char->attributes.endurance));
-        agility_value->SetText(FText::AsNumber(pinned_char->attributes.agility));
-        cyber_value->SetText(FText::AsNumber(pinned_char->attributes.cyber));
-        psi_value->SetText(FText::AsNumber(pinned_char->attributes.psi));
-
-        hacking_value->SetText(FText::AsNumber(pinned_char->tech_skills.hacking));
-
         auto& skills{pinned_char->skills};
         auto views{skills.get_all_views()};
         for (int32 i{0}; i < FPlayerSkills::N_SKILLS; i++) {

@@ -17,10 +17,7 @@
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/data/CameraConfig.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
-#include "Sandbox/players/playable/data/PlayerAttributes.h"
 #include "Sandbox/players/playable/data/PlayerSkills.h"
-#include "Sandbox/players/playable/data/PlayerTechSkills.h"
-#include "Sandbox/players/playable/data/PlayerWeaponSkills.h"
 #include "Sandbox/players/playable/delegates/MyCharacterDelegates.h"
 #include "Sandbox/players/playable/interfaces/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
@@ -173,9 +170,6 @@ class SANDBOX_API AMyCharacter
     UPROPERTY()
     bool is_forced_movement{false};
 
-    FPlayerAttributes attributes;
-    FPlayerTechSkills tech_skills;
-    FPlayerWeaponSkills weapon_skills;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities")
     FPlayerSkills skills;
 
