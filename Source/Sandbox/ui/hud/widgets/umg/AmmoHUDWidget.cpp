@@ -15,11 +15,7 @@ void UAmmoHUDWidget::set_reserve_ammo(FAmmoData new_reserve_ammo) {
 
     check(reserve_ammo_text);
 
-    if (ml::is_continuous(new_reserve_ammo.type)) {
-        reserve_ammo_text->SetText(FText::Format(fmt, new_reserve_ammo.continuous_amount));
-    } else {
-        reserve_ammo_text->SetText(FText::Format(fmt, new_reserve_ammo.discrete_amount));
-    }
+    reserve_ammo_text->SetText(FText::Format(fmt, new_reserve_ammo.amount));
 }
 void UAmmoHUDWidget::set_current_ammo(FAmmoData new_ammo) {
     static FText const fmt{FText::FromName(TEXT("{0} / {1}"))};
@@ -30,20 +26,11 @@ void UAmmoHUDWidget::set_current_ammo(FAmmoData new_ammo) {
     float ammo_percent{0.0};
     FText text;
 
-    if (ml::is_continuous(new_ammo.type)) {
-        text = FText::Format(fmt, new_ammo.continuous_amount, max_ammo.continuous_amount);
+    text = FText::Format(fmt, new_ammo.amount, max_ammo.amount);
 
-        RETURN_IF_TRUE(max_ammo.is_empty());
-        RETURN_IF_TRUE(!ml::is_continuous(max_ammo.type));
-        ammo_percent = new_ammo.continuous_amount / max_ammo.continuous_amount;
-    } else {
-        text = FText::Format(fmt, new_ammo.discrete_amount, max_ammo.discrete_amount);
-
-        RETURN_IF_TRUE(max_ammo.is_empty());
-        RETURN_IF_TRUE(ml::is_continuous(max_ammo.type));
-        ammo_percent = static_cast<float>(new_ammo.discrete_amount) /
-                       static_cast<float>(max_ammo.discrete_amount);
-    }
+    RETURN_IF_TRUE(max_ammo.is_empty());
+    RETURN_IF_TRUE(ml::is_continuous(max_ammo.type));
+    ammo_percent = static_cast<float>(new_ammo.amount) / static_cast<float>(max_ammo.amount);
 
     ammo_text->SetText(text);
     progress_bar->SetPercent(ammo_percent);

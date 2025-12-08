@@ -41,11 +41,7 @@ void UInventoryMenuWidget::update_ammo_counts() {
         auto const ammo_type{ml::ammo_types[i]};
         auto const count(inventory->count_ammo(ammo_type));
 
-        if (ml::is_continuous(ammo_type)) {
-            ammo_counts[i]->SetText(FText::AsNumber(count.continuous_amount));
-        } else {
-            ammo_counts[i]->SetText(FText::AsNumber(count.discrete_amount));
-        }
+        ammo_counts[i]->SetText(FText::AsNumber(count.amount));
     }
 }
 

@@ -189,23 +189,12 @@ auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
             continue;
         }
 
-        if (ml::is_continuous(out.type)) {
-            auto const ammo_taken{std::min(static_cast<int32>(ammo_needed.continuous_amount),
-                                           item_entry.stack_size.get_value())};
+        auto const ammo_taken{std::min(ammo_needed.amount, item_entry.stack_size.get_value())};
 
-            item_entry.stack_size -= FStackSize{ammo_taken};
+        item_entry.stack_size -= FStackSize{ammo_taken};
 
-            ammo_needed.continuous_amount -= static_cast<float>(ammo_taken);
-            out.continuous_amount += static_cast<float>(ammo_taken);
-        } else {
-            auto const ammo_taken{
-                std::min(ammo_needed.discrete_amount, item_entry.stack_size.get_value())};
-
-            item_entry.stack_size -= FStackSize{ammo_taken};
-
-            ammo_needed.discrete_amount -= ammo_taken;
-            out.discrete_amount += ammo_taken;
-        }
+        ammo_needed.amount -= ammo_taken;
+        out.amount += ammo_taken;
 
         if (ammo_needed.is_empty()) {
             break;
@@ -229,11 +218,7 @@ auto UInventoryComponent::count_ammo(EAmmoType type) -> FAmmoData {
             continue;
         }
 
-        if (ml::is_continuous(out.type)) {
-            out.continuous_amount += static_cast<float>(item_entry.stack_size.get_value());
-        } else {
-            out.discrete_amount += item_entry.stack_size.get_value();
-        }
+        out.amount += item_entry.stack_size.get_value();
     }
 
     return out;

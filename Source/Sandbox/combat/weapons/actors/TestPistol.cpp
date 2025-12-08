@@ -66,12 +66,12 @@ FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
     }
 
     auto const needed{get_ammo_needed()};
-    auto const taken{FMath::Min(needed, offered.discrete_amount)};
+    auto const taken{FMath::Min(needed, offered.amount)};
 
     ammo += taken;
 
-    result.AmmoTaken = FAmmoData::make_discrete(EAmmoType::Bullets, taken);
-    result.AmmoOfferedRemaining.discrete_amount -= taken;
+    result.AmmoTaken = FAmmoData(EAmmoType::Bullets, taken);
+    result.AmmoOfferedRemaining.amount -= taken;
 
     on_ammo_changed.Broadcast(get_current_ammo());
 
@@ -85,10 +85,10 @@ FAmmoData ATestPistol::get_ammo_needed_for_reload() const {
 }
 
 FAmmoData ATestPistol::get_current_ammo() const {
-    return FAmmoData::make_discrete(EAmmoType::Bullets, ammo);
+    return FAmmoData(EAmmoType::Bullets, ammo);
 }
 FAmmoData ATestPistol::get_max_ammo() const {
-    return FAmmoData::make_discrete(EAmmoType::Bullets, max_ammo);
+    return FAmmoData(EAmmoType::Bullets, max_ammo);
 }
 
 UStaticMesh* ATestPistol::get_display_mesh() const {
