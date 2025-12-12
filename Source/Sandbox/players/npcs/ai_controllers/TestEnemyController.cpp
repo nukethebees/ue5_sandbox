@@ -8,6 +8,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/players/npcs/blackboard_utils.hpp"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -63,15 +64,12 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     RETURN_IF_NULLPTR(behavior_tree);
 
     FName const acceptable_radius{TEXT("acceptable_radius")};
-    FName const attack_radius{TEXT("attack_acceptable_radius")};
+    FName const attack_radius{TEXT("attack_radius")};
 
-    check(is_valid_key(*blackboard_component, acceptable_radius));
-    check(is_valid_key(*blackboard_component, attack_radius));
-
-    blackboard_component->SetValueAsFloat(acceptable_radius,
-                                          mob_interface->get_acceptable_radius());
-    blackboard_component->SetValueAsFloat(attack_radius,
-                                          mob_interface->get_attack_acceptable_radius());
+    ml::set_bb_value(
+        *blackboard_component, acceptable_radius, mob_interface->get_acceptable_radius());
+    ml::set_bb_value(
+        *blackboard_component, attack_radius, mob_interface->get_attack_acceptable_radius());
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
@@ -91,7 +89,8 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     RETURN_IF_NULLPTR(actor);
     RETURN_IF_NULLPTR(blackboard_component);
 
-    static auto const target_name{TEXT("target_actor")};
+    static FName const target_name{TEXT("target_actor")};
+    static FName const last_location{TEXT("last_location")};
 
     if (stimulus.WasSuccessfullySensed()) {
         auto const attitude{GetTeamAttitudeTowards(*actor)};
@@ -100,6 +99,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
             on_enemy_spotted.Broadcast();
 
             blackboard_component->SetValueAsObject(target_name, actor);
+            blackboard_component->SetValueAsVector(last_location, actor->GetActorLocation());
             LOG.log_display(TEXT("Spotted: %s"), *ml::get_best_display_name(*actor));
         }
     } else {
