@@ -119,8 +119,6 @@ void UPawnWeaponComponent::attach_weapon(AWeaponBase& weapon, USceneComponent& l
 void UPawnWeaponComponent::on_weapon_added(AWeaponBase& weapon) {
     constexpr auto logger{NestedLogger<"on_weapon_added">()};
 
-    logger.log_warning(TEXT("foo"));
-
     check(attach_location);
     attach_weapon(weapon, *attach_location);
     weapon.hide_weapon();
