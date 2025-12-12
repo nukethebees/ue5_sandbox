@@ -30,7 +30,6 @@ class SANDBOX_API ATestPistol
     virtual void sustain_firing(float delta_time) override { return; }
     virtual void stop_firing() override { return; }
 
-    virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
 
     virtual UStaticMesh* get_display_mesh() const override;
@@ -38,9 +37,6 @@ class SANDBOX_API ATestPistol
         static FString const default_name{TEXT("ATestPistol")};
         return default_name;
     };
-
-    // IInventoryItem
-    int32 get_ammo_needed() const;
 
     // IDescribable
     virtual FText const& get_description() const override {

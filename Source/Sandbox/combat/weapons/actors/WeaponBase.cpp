@@ -21,6 +21,31 @@ void AWeaponBase::set_pickup_collision(bool enabled) {
     collision_box->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
+FAmmoReloadResult AWeaponBase::reload(FAmmoData const& offered) {
+    FAmmoReloadResult result;
+    result.AmmoOfferedRemaining = offered;
+
+    if (offered.type != get_ammo_type()) {
+        return result;
+    }
+
+    if (!can_reload()) {
+        return result;
+    }
+
+    auto const needed{get_ammo_needed_for_reload()};
+    auto const taken{FMath::Min(needed.amount, offered.amount)};
+
+    ammo += taken;
+
+    result.AmmoTaken = FAmmoData(EAmmoType::Bullets, taken);
+    result.AmmoOfferedRemaining.amount -= taken;
+
+    on_ammo_changed.Broadcast(get_current_ammo());
+
+    return result;
+}
+
 void AWeaponBase::hide_weapon() {
     SetActorHiddenInGame(true);
     SetActorEnableCollision(false);
@@ -47,3 +72,4 @@ void AWeaponBase::EndPlay(EEndPlayReason::Type reason) {
 
     Super::EndPlay(reason);
 }
+

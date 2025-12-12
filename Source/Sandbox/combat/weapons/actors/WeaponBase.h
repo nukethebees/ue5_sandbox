@@ -38,7 +38,7 @@ class SANDBOX_API AWeaponBase
     virtual void stop_firing() {};
 
     UFUNCTION()
-    virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered) { return {}; };
+    virtual FAmmoReloadResult reload(FAmmoData const& ammo_offered);
     UFUNCTION()
     virtual bool can_reload() const { return false; };
     UFUNCTION()

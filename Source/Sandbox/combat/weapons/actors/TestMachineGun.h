@@ -25,7 +25,6 @@ class SANDBOX_API ATestMachineGun
     virtual void stop_firing() override;
     virtual bool can_fire() const override;
 
-    virtual FAmmoReloadResult reload(FAmmoData const& offered) override;
     virtual bool can_reload() const override;
 
     virtual UStaticMesh* get_display_mesh() const override;

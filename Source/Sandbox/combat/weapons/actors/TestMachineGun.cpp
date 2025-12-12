@@ -31,29 +31,6 @@ bool ATestMachineGun::can_reload() const {
     return ammo < max_ammo;
 }
 
-FAmmoReloadResult ATestMachineGun::reload(FAmmoData const& offered) {
-    FAmmoReloadResult result;
-    result.AmmoOfferedRemaining = offered;
-
-    if (offered.type != get_ammo_type()) {
-        return result;
-    }
-
-    if (!can_reload()) {
-        return result;
-    }
-
-    auto const needed{get_ammo_needed_for_reload()};
-    auto const taken{FMath::Min(needed.amount, offered.amount)};
-
-    ammo += taken;
-
-    result.AmmoTaken = FAmmoData(EAmmoType::Bullets, taken);
-    result.AmmoOfferedRemaining.amount -= taken;
-
-    return result;
-}
-
 void ATestMachineGun::start_firing() {
     is_firing = true;
     time_since_last_shot = 0.0f;

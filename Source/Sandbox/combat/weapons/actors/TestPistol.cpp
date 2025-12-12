@@ -54,30 +54,6 @@ void ATestPistol::start_firing() {
     on_ammo_changed.Broadcast(get_current_ammo());
 }
 
-FAmmoReloadResult ATestPistol::reload(FAmmoData const& offered) {
-    FAmmoReloadResult result;
-    result.AmmoOfferedRemaining = offered;
-
-    if (offered.type != get_ammo_type()) {
-        return result;
-    }
-
-    if (!can_reload()) {
-        return result;
-    }
-
-    auto const needed{get_ammo_needed()};
-    auto const taken{FMath::Min(needed, offered.amount)};
-
-    ammo += taken;
-
-    result.AmmoTaken = FAmmoData(EAmmoType::Bullets, taken);
-    result.AmmoOfferedRemaining.amount -= taken;
-
-    on_ammo_changed.Broadcast(get_current_ammo());
-
-    return result;
-}
 bool ATestPistol::can_reload() const {
     return ammo < max_ammo;
 }
@@ -85,11 +61,6 @@ bool ATestPistol::can_reload() const {
 UStaticMesh* ATestPistol::get_display_mesh() const {
     RETURN_VALUE_IF_NULLPTR(gun_mesh_component, nullptr);
     return gun_mesh_component->GetStaticMesh();
-}
-
-// IInventoryItem
-int32 ATestPistol::get_ammo_needed() const {
-    return max_ammo - ammo;
 }
 
 void ATestPistol::BeginPlay() {
