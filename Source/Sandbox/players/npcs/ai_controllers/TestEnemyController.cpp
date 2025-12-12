@@ -12,6 +12,10 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+bool is_valid_key(UBlackboardComponent& bb, FName const& name) {
+    return bb.GetKeyID(name) != FBlackboard::InvalidKey;
+}
+
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
     , behavior_tree_component(
@@ -58,9 +62,15 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
     RETURN_IF_NULLPTR(behavior_tree);
 
-    blackboard_component->SetValueAsFloat("acceptable_radius",
+    FName const acceptable_radius{TEXT("acceptable_radius")};
+    FName const attack_radius{TEXT("attack_acceptable_radius")};
+
+    check(is_valid_key(*blackboard_component, acceptable_radius));
+    check(is_valid_key(*blackboard_component, attack_radius));
+
+    blackboard_component->SetValueAsFloat(acceptable_radius,
                                           mob_interface->get_acceptable_radius());
-    blackboard_component->SetValueAsFloat("attack_acceptable_radius",
+    blackboard_component->SetValueAsFloat(attack_radius,
                                           mob_interface->get_attack_acceptable_radius());
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);

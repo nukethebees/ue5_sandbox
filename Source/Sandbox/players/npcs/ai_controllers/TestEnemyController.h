@@ -16,6 +16,8 @@ class UBlackboardComponent;
 class UBehaviorTree;
 class UAISenseConfig_Sight;
 
+bool is_valid_key(UBlackboardComponent& bb, FName const& name);
+
 UCLASS()
 class SANDBOX_API ATestEnemyController
     : public AAIController
