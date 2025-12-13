@@ -1,5 +1,6 @@
 #include "Sandbox/players/npcs/behaviour_tree/tasks/BTTask_MoveToRandom.h"
 
+#include "AIController.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 

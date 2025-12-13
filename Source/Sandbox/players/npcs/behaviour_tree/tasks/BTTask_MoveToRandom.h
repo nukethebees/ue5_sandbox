@@ -1,9 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
 #include "BehaviorTree/BTTaskNode.h"
 #include "BehaviorTree/ValueOrBBKey.h"
+#include "Navigation/PathFollowingComponent.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
