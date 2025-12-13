@@ -11,6 +11,7 @@
 #include "Sandbox/combat/projectiles/mass_entity/fragments/MassBulletFragments.h"
 #include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
 #include "Sandbox/environment/utilities/world.h"
+#include "Sandbox/mass_entity/mass_utils.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -65,16 +66,15 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
 
     {
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
-        descriptor.Fragments.Add(*FMassBulletTransformFragment::StaticStruct());
-        descriptor.Fragments.Add(*FMassBulletVelocityFragment::StaticStruct());
-        descriptor.Fragments.Add(*FMassBulletLastPositionFragment::StaticStruct());
-        descriptor.Fragments.Add(*FMassBulletHitInfoFragment::StaticStruct());
-        descriptor.Fragments.Add(*FMassBulletStateFragment::StaticStruct());
-
-        descriptor.ConstSharedFragments.Add(*FMassBulletImpactEffectFragment::StaticStruct());
-        descriptor.ConstSharedFragments.Add(*FMassBulletVisualizationActorFragment::StaticStruct());
-        descriptor.ConstSharedFragments.Add(*FMassBulletDamageFragment::StaticStruct());
-        descriptor.ConstSharedFragments.Add(*FMassBulletDataFragment::StaticStruct());
+        ml::add_fragments<FMassBulletTransformFragment,
+                          FMassBulletVelocityFragment,
+                          FMassBulletLastPositionFragment,
+                          FMassBulletHitInfoFragment,
+                          FMassBulletStateFragment>(descriptor.Fragments);
+        ml::add_fragments<FMassBulletImpactEffectFragment,
+                          FMassBulletVisualizationActorFragment,
+                          FMassBulletDamageFragment,
+                          FMassBulletDataFragment>(descriptor.ConstSharedFragments);
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));
