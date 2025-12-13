@@ -147,7 +147,6 @@ class SANDBOX_API UMassBulletSubsystem
     TMap<FPrimaryAssetId, FEntityDefinition> bullet_definitions;
     TMap<FPrimaryAssetId, FBulletTypeIndex> bullet_type_indices;
     TArray<FPrimaryAssetId> indexed_bullet_types;
-    AMassBulletVisualizationActor* visualization_actor{nullptr};
     TArray<FMassEntityHandle> new_entities{};
 
     ml::MonitoredLockFreeMPSCQueue<
