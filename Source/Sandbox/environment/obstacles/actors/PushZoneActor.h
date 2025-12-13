@@ -5,16 +5,15 @@
 #include <utility>
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "PushZoneActor.generated.h"
 
 class UPrimitiveComponent;
+class UBoxComponent;
+class USceneComponent;
+class UStaticMeshComponent;
 
 UENUM(BlueprintType)
 enum class EPushForceMode : uint8 {

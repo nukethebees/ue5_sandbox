@@ -1,6 +1,9 @@
 #include "PushZoneActor.h"
 
+#include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Character.h"
@@ -9,7 +12,10 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-APushZoneActor::APushZoneActor() {
+APushZoneActor::APushZoneActor()
+    : collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))}
+    , visual_mesh_outer{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshOuter"))}
+    , visual_mesh_inner{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshInner"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
 
@@ -17,7 +23,6 @@ APushZoneActor::APushZoneActor() {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
 
     // Create and setup collision box as child of root
-    collision_box = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
     collision_box->SetupAttachment(RootComponent);
 
     // Set default box size (can be adjusted in Blueprint/editor)
@@ -30,12 +35,10 @@ APushZoneActor::APushZoneActor() {
     collision_box->SetGenerateOverlapEvents(true);
 
     // Create outer visual mesh component
-    visual_mesh_outer = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshOuter"));
     visual_mesh_outer->SetupAttachment(RootComponent);
     visual_mesh_outer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     // Create inner visual mesh component
-    visual_mesh_inner = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshInner"));
     visual_mesh_inner->SetupAttachment(RootComponent);
     visual_mesh_inner->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
