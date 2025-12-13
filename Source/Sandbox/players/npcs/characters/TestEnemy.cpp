@@ -43,6 +43,7 @@ void ATestEnemy::BeginPlay() {
 }
 
 void ATestEnemy::handle_death() {
+    on_player_killed.Broadcast();
     SetLifeSpan(0.1f);
 }
 

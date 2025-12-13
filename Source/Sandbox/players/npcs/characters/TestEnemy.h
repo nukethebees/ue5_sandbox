@@ -14,6 +14,7 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/common/player_delegates.h"
 #include "Sandbox/players/npcs/data/CombatProfile.h"
 #include "Sandbox/players/npcs/enums/DefaultAIState.h"
 #include "Sandbox/players/npcs/enums/MobAttackMode.h"
@@ -36,18 +37,6 @@ class SANDBOX_API ATestEnemy
   public:
     ATestEnemy();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor mesh_base_colour{FLinearColor::Green};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor mesh_emissive_colour{FLinearColor::Black};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor light_colour{FLinearColor::White};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    ETeamID team_id{ETeamID::Enemy};
-
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
@@ -60,6 +49,20 @@ class SANDBOX_API ATestEnemy
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
     virtual EDefaultAIState get_default_ai_state() const override { return default_ai_state; }
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor mesh_base_colour{FLinearColor::Green};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor mesh_emissive_colour{FLinearColor::Black};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor light_colour{FLinearColor::White};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    ETeamID team_id{ETeamID::Enemy};
+
+    FOnPlayerKilled on_player_killed;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;
