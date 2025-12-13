@@ -19,6 +19,10 @@ void set_bb_value(UBlackboardComponent& bb, FName const& name, T value) {
         bb.SetValueAsFloat(name, value);
     } else if constexpr (std::is_enum_v<U>) {
         bb.SetValueAsEnum(name, static_cast<uint8>(value));
+    } else if constexpr (std::is_same_v<U, FVector>) {
+        bb.SetValueAsVector(name, value);
+    } else if constexpr (std::is_same_v<U, UObject*>) {
+        bb.SetValueAsObject(name, value);
     } else {
         static_assert(!sizeof(T), "Unhandled type");
     }
