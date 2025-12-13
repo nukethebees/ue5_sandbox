@@ -12,7 +12,8 @@
 
 ATestEnemy::ATestEnemy()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
-    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))) {
+    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
+    , ai_state{default_ai_state} {
     PrimaryActorTick.bCanEverTick = false;
 
     body_mesh->SetupAttachment(RootComponent);

@@ -89,6 +89,9 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    EDefaultAIState ai_state;
+
     UPROPERTY(EditAnywhere, Category = "AI")
     APatrolPath* patrol_path{nullptr};
   private:
