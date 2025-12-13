@@ -92,7 +92,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     RETURN_IF_NULLPTR(blackboard_component);
 
     static FName const target_name{TEXT("target_actor")};
-    static FName const last_location{TEXT("last_location")};
+    static FName const last_location{TEXT("last_known_location")};
 
     if (stimulus.WasSuccessfullySensed()) {
         auto const attitude{GetTeamAttitudeTowards(*actor)};
@@ -100,8 +100,8 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
         if (attitude == ETeamAttitude::Hostile) {
             on_enemy_spotted.Broadcast();
 
-            blackboard_component->SetValueAsObject(target_name, actor);
-            blackboard_component->SetValueAsVector(last_location, actor->GetActorLocation());
+            ml::set_bb_value(*blackboard_component, target_name, static_cast<UObject*>(actor));
+            ml::set_bb_value(*blackboard_component, last_location, actor->GetActorLocation());
             LOG.log_display(TEXT("Spotted: %s"), *ml::get_best_display_name(*actor));
         }
     } else {
