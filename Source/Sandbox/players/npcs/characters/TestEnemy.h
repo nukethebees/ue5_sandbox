@@ -24,6 +24,7 @@
 #include "TestEnemy.generated.h"
 
 class UHealthComponent;
+class APatrolPath;
 
 UCLASS()
 class SANDBOX_API ATestEnemy
@@ -87,6 +88,9 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    APatrolPath* patrol_path{nullptr};
   private:
     void apply_material_colours();
     void apply_light_colours();
