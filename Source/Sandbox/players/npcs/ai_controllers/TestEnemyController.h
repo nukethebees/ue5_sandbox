@@ -8,6 +8,8 @@
 #include "Sandbox/players/npcs/data/npc_delegates.h"
 #include "Sandbox/players/npcs/enums/SimpleAIState.h"
 
+#include "Sandbox/players/npcs/blackboard_utils.hpp"
+
 #include "TestEnemyController.generated.h"
 
 class UAIPerceptionComponent;
@@ -32,6 +34,10 @@ class SANDBOX_API ATestEnemyController
 
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
+    void set_bb_value(FName const& name, auto const& value) {
+        check(blackboard_component);
+        ml::set_bb_value(*blackboard_component, name, value);
+    }
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
