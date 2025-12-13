@@ -82,9 +82,6 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
     UStaticMeshComponent* body_mesh{nullptr};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
-    UPointLightComponent* light{nullptr};
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UHealthComponent* health{nullptr};
 
