@@ -117,11 +117,8 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         auto data_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(
             asset_id, FBulletTypeIndex{i})};
 
-        shared_values.Add(impact_effect_handle);
-        shared_values.Add(viz_actor_handle);
-        shared_values.Add(damage_handle);
-        shared_values.Add(data_handle);
-        shared_values.Sort();
+        ml::add_values(
+            shared_values, impact_effect_handle, viz_actor_handle, damage_handle, data_handle);
 
         add_definition({bullet_archetype, shared_values}, asset_id);
         logger.log_display(
