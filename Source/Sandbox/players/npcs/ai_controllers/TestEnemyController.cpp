@@ -70,6 +70,8 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
         *blackboard_component, acceptable_radius, mob_interface->get_acceptable_radius());
     ml::set_bb_value(
         *blackboard_component, attack_radius, mob_interface->get_attack_acceptable_radius());
+    ml::set_bb_value(
+        *blackboard_component, TEXT("default_ai_state"), mob_interface->get_default_ai_state());
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
