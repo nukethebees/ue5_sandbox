@@ -34,6 +34,4 @@ class SANDBOX_API UBTTask_MoveToRandom
     // The threshold for "arriving"
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FValueOrBBKey_Float acceptable_radius{5.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    FValueOrBBKey_Bool interrupt_for_enemy{true};
 };

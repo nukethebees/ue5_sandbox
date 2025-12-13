@@ -40,15 +40,6 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& ow
         case EPathFollowingRequestResult::RequestSuccessful: {
             ai_controller->ReceiveMoveCompleted.AddDynamic(
                 this, &UBTTask_MoveToRandom::on_move_completed);
-
-            auto const bb_interrupt_for_enemy{interrupt_for_enemy.GetValue(owner_comp)};
-            if (bb_interrupt_for_enemy) {
-                if (auto* test_enemy_controller{Cast<ATestEnemyController>(ai_controller)}) {
-                    test_enemy_controller->on_enemy_spotted.AddUObject(
-                        this, &UBTTask_MoveToRandom::on_enemy_spotted);
-                }
-            }
-
             return EBTNodeResult::InProgress;
         }
         case EPathFollowingRequestResult::AlreadyAtGoal: {
