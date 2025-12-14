@@ -2,7 +2,7 @@ from pathlib import Path
 
 from generate_skills import SkillConfig, SkillGenerator
 
-def main() -> None:
+def generate_skills() -> None:
     player_skills: list[SkillConfig] = [
         SkillConfig.attr("Strength"),
         SkillConfig.attr("Endurance"),
@@ -18,7 +18,9 @@ def main() -> None:
     ed_output_dir = Path("./Source/SandboxEditor/slate/")
     generator = SkillGenerator(player_skills, output_dir, ed_output_dir)
     generator.run()
-    
+
+def main() -> None:
+    generate_skills()
 
 if __name__ == "__main__":
     main()
