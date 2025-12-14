@@ -6,6 +6,7 @@
 
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
 #include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -13,6 +14,7 @@
 ATestEnemy::ATestEnemy()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
     , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
+    , patrol_state(CreateDefaultSubobject<UNpcPatrolComponent>(TEXT("PatrolState")))
     , ai_state{default_ai_state} {
     PrimaryActorTick.bCanEverTick = false;
 
