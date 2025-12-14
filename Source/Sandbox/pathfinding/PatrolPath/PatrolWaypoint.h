@@ -13,6 +13,8 @@ class SANDBOX_API APatrolWaypoint : public AActor {
   public:
     APatrolWaypoint();
 
+    auto get_point() const -> FVector { return this->GetActorLocation(); }
+
 #if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
 #endif

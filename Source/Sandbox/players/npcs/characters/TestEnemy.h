@@ -44,6 +44,7 @@ class SANDBOX_API ATestEnemy
 
     // ICombatActor
     virtual bool attack_actor(AActor* target) override;
+    virtual auto get_combat_profile() const -> FCombatProfile override { return combat_profile; }
 
     // ISandboxMobInterface
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;

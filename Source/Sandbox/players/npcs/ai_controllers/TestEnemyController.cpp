@@ -8,6 +8,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -56,8 +57,8 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     RETURN_IF_NULLPTR(team_if);
     SetGenericTeamId(team_if->GetGenericTeamId());
 
-    auto const mob_interface{Cast<ISandboxMobInterface>(InPawn)};
-    RETURN_IF_NULLPTR(mob_interface);
+    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(InPawn));
+    TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(InPawn));
 
     auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
     RETURN_IF_NULLPTR(behavior_tree);
@@ -69,6 +70,9 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     set_bb_value(attack_radius, mob_interface->get_attack_acceptable_radius());
     set_bb_value(TEXT("default_ai_state"), mob_interface->get_default_ai_state());
     set_bb_value(TEXT("ai_state"), mob_interface->get_default_ai_state());
+
+    auto const attack_profile{combat_interface->get_combat_profile()};
+    set_bb_value(TEXT("mob_attack_mode"), attack_profile.attack_mode);
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);

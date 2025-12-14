@@ -15,6 +15,16 @@ class SANDBOX_API APatrolPath : public AActor {
   public:
     APatrolPath();
 
+    auto get_first_point() -> APatrolWaypoint* {
+        if (waypoints.IsEmpty()) {
+            return nullptr;
+        }
+        return waypoints[0];
+    }
+    auto operator[](int32 i) -> APatrolWaypoint* {
+        return waypoints.IsValidIndex(i) ? waypoints[i] : nullptr;
+    }
+    auto length() const -> int32 { return waypoints.Num(); }
 #if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
 #endif
