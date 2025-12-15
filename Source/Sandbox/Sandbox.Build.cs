@@ -26,7 +26,8 @@ public class Sandbox : ModuleRules
             "TraceLog", 
             "MassEntity", 
             "MassCommon", 
-            "MassSimulation"
+            "MassSimulation",
+            "DeveloperSettings"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
