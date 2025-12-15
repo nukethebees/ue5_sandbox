@@ -5,17 +5,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/game_flow/game_modes/MyGameModeBase.h"
 
 #include "KillAllEnemiesGameMode.generated.h"
 
 UCLASS()
-class SANDBOX_API AKillAllEnemiesGameMode
-    : public AGameModeBase
-    , public ml::LogMsgMixin<"AKillAllEnemiesGameMode", LogSandboxCore> {
+class SANDBOX_API AKillAllEnemiesGameMode : public AMyGameModeBase {
     GENERATED_BODY()
   public:
+    static constexpr StaticTCharString tag{"AKillAllEnemiesGameMode"};
+
     AKillAllEnemiesGameMode();
   protected:
     virtual void
