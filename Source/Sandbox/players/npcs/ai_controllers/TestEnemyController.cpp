@@ -8,6 +8,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/players/npcs/data/TestEnemyBlackboardConstants.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
@@ -63,16 +64,15 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
     RETURN_IF_NULLPTR(behavior_tree);
 
-    FName const acceptable_radius{TEXT("acceptable_radius")};
-    FName const attack_radius{TEXT("attack_radius")};
+    using C = TestEnemyBlackboardConstants::FName;
 
-    set_bb_value(acceptable_radius, mob_interface->get_acceptable_radius());
-    set_bb_value(attack_radius, mob_interface->get_attack_acceptable_radius());
-    set_bb_value(TEXT("default_ai_state"), mob_interface->get_default_ai_state());
-    set_bb_value(TEXT("ai_state"), mob_interface->get_default_ai_state());
+    set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
+    set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
+    set_bb_value(C::default_ai_state(), mob_interface->get_default_ai_state());
+    set_bb_value(C::ai_state(), mob_interface->get_default_ai_state());
 
     auto const attack_profile{combat_interface->get_combat_profile()};
-    set_bb_value(TEXT("mob_attack_mode"), attack_profile.attack_mode);
+    set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
 
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
@@ -92,8 +92,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     RETURN_IF_NULLPTR(actor);
     RETURN_IF_NULLPTR(blackboard_component);
 
-    static FName const target_name{TEXT("target_actor")};
-    static FName const last_location{TEXT("last_known_location")};
+    using C = TestEnemyBlackboardConstants::FName;
 
     if (stimulus.WasSuccessfullySensed()) {
         auto const attitude{GetTeamAttitudeTowards(*actor)};
@@ -101,14 +100,14 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
         if (attitude == ETeamAttitude::Hostile) {
             on_enemy_spotted.Broadcast();
 
-            set_bb_value(target_name, static_cast<UObject*>(actor));
-            set_bb_value(last_location, actor->GetActorLocation());
+            set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
+            set_bb_value(C::last_known_location(), actor->GetActorLocation());
             LOG.log_display(TEXT("Spotted: %s"), *ml::get_best_display_name(*actor));
         }
     } else {
-        if (blackboard_component->GetValueAsObject(target_name)) {
+        if (blackboard_component->GetValueAsObject(C::target_actor())) {
             LOG.log_display(TEXT("Lost sight of: %s"), *ml::get_best_display_name(*actor));
         }
-        blackboard_component->ClearValue(target_name);
+        blackboard_component->ClearValue(C::target_actor());
     }
 }
