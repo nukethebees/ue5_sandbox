@@ -7,16 +7,13 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
+#include "Sandbox/core/SandboxDeveloperSettings.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/players/npcs/data/TestEnemyBlackboardConstants.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
-
-bool is_valid_key(UBlackboardComponent& bb, FName const& name) {
-    return bb.GetKeyID(name) != FBlackboard::InvalidKey;
-}
 
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
@@ -44,10 +41,18 @@ ATestEnemyController::ATestEnemyController()
     SetPerceptionComponent(*ai_perception);
 }
 
+void ATestEnemyController::Tick(float delta_time) {
+    Super::Tick(delta_time);
+
+    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
+    if (settings->visualise_ai_vision_cones) {
+        visualise_vision_cone();
+    }
+}
+
 void ATestEnemyController::BeginPlay() {
     Super::BeginPlay();
 }
-
 void ATestEnemyController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
 
@@ -77,7 +82,6 @@ void ATestEnemyController::OnPossess(APawn* InPawn) {
     UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
     RunBehaviorTree(behavior_tree);
 }
-
 void ATestEnemyController::OnUnPossess() {
     Super::OnUnPossess();
 
@@ -111,3 +115,5 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
         blackboard_component->ClearValue(C::target_actor());
     }
 }
+
+void ATestEnemyController::visualise_vision_cone() {}

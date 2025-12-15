@@ -27,6 +27,8 @@ class SANDBOX_API ATestEnemyController
     ATestEnemyController();
 
     FOnEnemySpotted on_enemy_spotted;
+
+    virtual void Tick(float delta_time) override;
   protected:
     virtual void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
@@ -38,6 +40,7 @@ class SANDBOX_API ATestEnemyController
         check(blackboard_component);
         ml::set_bb_value(*blackboard_component, name, value);
     }
+    void visualise_vision_cone();
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
