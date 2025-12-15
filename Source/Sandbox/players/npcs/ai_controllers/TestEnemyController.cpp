@@ -3,6 +3,7 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "DrawDebugHelpers.h"
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -24,7 +25,7 @@ ATestEnemyController::ATestEnemyController()
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
-    sight_config->PeripheralVisionAngleDegrees = 270.0f;
+    sight_config->PeripheralVisionAngleDegrees = 20.0f;
     sight_config->SetMaxAge(5.0f);
 
     sight_config->DetectionByAffiliation.bDetectEnemies = true;
@@ -116,4 +117,31 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     }
 }
 
-void ATestEnemyController::visualise_vision_cone() {}
+void ATestEnemyController::visualise_vision_cone() {
+    check(sight_config);
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(pawn, GetPawn());
+
+    auto const angle_deg{sight_config->PeripheralVisionAngleDegrees};
+    auto const angle_rad{FMath::DegreesToRadians(angle_deg)};
+    auto const origin{pawn->GetActorLocation()};
+    auto const direction{pawn->GetActorForwardVector()};
+
+    constexpr float lifetime{-1.0f};
+
+    auto draw_cone{[&](float len, FColor col) {
+        DrawDebugCone(world /*InWorld*/,
+                      origin /*Origin*/,
+                      direction /*Rotation*/,
+                      len /*Length*/,
+                      angle_rad /*AngleWidth*/,
+                      angle_rad /*AngleHeight*/,
+                      8 /*NumSides*/,
+                      col,
+                      false /*bPersistentLines*/,
+                      lifetime /*LifeTime*/);
+    }};
+
+    draw_cone(sight_config->SightRadius, FColor::Green);
+    draw_cone(sight_config->LoseSightRadius, FColor::Blue);
+}
