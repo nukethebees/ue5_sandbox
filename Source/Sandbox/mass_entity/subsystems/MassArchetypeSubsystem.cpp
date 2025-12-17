@@ -1,6 +1,5 @@
 #include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
 
-#include "EngineUtils.h"
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"
 #include "MassEntityTypes.h"
@@ -70,11 +69,11 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
                           FMassBulletVelocityFragment,
                           FMassBulletLastPositionFragment,
                           FMassBulletHitInfoFragment,
-                          FMassBulletStateFragment>(descriptor.Fragments);
+                          FMassBulletStateFragment>(descriptor.GetFragments());
         ml::add_fragments<FMassBulletImpactEffectFragment,
                           FMassBulletVisualizationActorFragment,
                           FMassBulletDamageFragment,
-                          FMassBulletDataFragment>(descriptor.ConstSharedFragments);
+                          FMassBulletDataFragment>(descriptor.GetConstSharedFragments());
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));

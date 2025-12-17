@@ -2,7 +2,9 @@
 
 #include "Components/GridPanel.h"
 #include "Components/GridSlot.h"
+#include "Engine.h"
 #include "Engine/UserInterfaceSettings.h"
+#include "UnrealClient.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"

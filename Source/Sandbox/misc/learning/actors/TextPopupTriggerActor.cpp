@@ -2,6 +2,7 @@
 
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Widgets/Layout/SBox.h"
 
 #include "Sandbox/ui/widgets/slate/TextPopupWidget.h"
 

@@ -1,5 +1,6 @@
 #include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
 
+#include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CoreDelegates.h"

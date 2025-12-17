@@ -2,6 +2,7 @@
 
 #include "Engine/AssetManager.h"
 #include "MassSimulationSubsystem.h"
+#include "Materials/Material.h"
 
 #include "Sandbox/combat/projectiles/actors/MassBulletSubsystemData.h"
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"

@@ -13,29 +13,29 @@ public class SandboxEditor : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
-            "Sandbox", // Reference to runtime module
             "UnrealEd", // Must be public for class inheritance
-            "EditorFramework", // Required by UnrealEd, must be public
-            "Slate",
-            "SlateCore",
-            "BlueprintGraph", // Required by UnrealEd
-            "MaterialEditor",
-            "EditorSubsystem",
-            "AssetRegistry", // For scanning data assets
-            "ToolMenus" // For editor toolbar buttons
+            "EditorFramework" // Required by UnrealEd, must be public
         });
 
         // Editor-specific dependencies
         PrivateDependencyModuleNames.AddRange(new string[]
         {
-            "MaterialEditor",
-            "ToolWidgets",
+            "AssetRegistry", // For scanning data assets
+            "BlueprintGraph", // Required by UnrealEd
             "EditorWidgets",
+            "EditorSubsystem",
             "EditorStyle",
-            "GraphEditor",
-            "RenderCore", // Often needed for material nodes
             "EngineSettings", // Engine configuration access
-            "USFLoaderEditor" // USF Loader plugin dependency
+            "GraphEditor",
+            "MaterialEditor",
+            "PropertyEditor",
+            "RenderCore", // Often needed for material nodes
+            "Sandbox", // Reference to runtime module
+            "Slate",
+            "SlateCore",
+            "ToolWidgets",
+            "ToolMenus", // For editor toolbar buttons
+            "USFLoaderEditor" // USF Loader plugin dependency            
         });
     }
 }

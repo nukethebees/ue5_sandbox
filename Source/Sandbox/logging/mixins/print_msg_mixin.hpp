@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "CoreMinimal.h"
+#include "Engine.h"
 
 class print_msg_mixin {
   protected:

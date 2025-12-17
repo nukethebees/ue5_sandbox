@@ -3,6 +3,7 @@
 #include "IDetailChildrenBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
+#include "Widgets/Text/STextBlock.h"
 
 #include "Sandbox/players/playable/data/generated/PlayerSkills.h"
 

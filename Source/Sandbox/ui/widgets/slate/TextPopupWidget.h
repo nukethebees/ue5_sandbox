@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/Widget.h"
+#include "Framework/SlateDelegates.h"
+#include "Widgets/SCompoundWidget.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -13,7 +15,8 @@ class STextPopupWidget
     , public ml::LogMsgMixin<"STextPopupWidget", LogSandboxUI> {
   public:
     // clang-format off
-    SLATE_BEGIN_ARGS(STextPopupWidget) {}
+    SLATE_BEGIN_ARGS(STextPopupWidget) 
+        {}
         SLATE_ARGUMENT(FText, msg)
         SLATE_EVENT(FOnClicked, OnDismissed)
     SLATE_END_ARGS()

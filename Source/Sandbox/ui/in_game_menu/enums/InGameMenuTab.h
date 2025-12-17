@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "InGameAdManager.generated.h"
+#include "InGameMenuTab.generated.h"
 
 UENUM(BlueprintType)
 enum class EInGameMenuTab : uint8 {

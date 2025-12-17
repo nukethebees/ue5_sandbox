@@ -1,4 +1,8 @@
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+
+#include "Components/SceneComponent.h"
+#include "Logging/StructuredLog.h"
+
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 
 void URotationManagerSubsystem::add(USceneComponent& scene_component,

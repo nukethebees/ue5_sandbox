@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "components/ActorComponent.h"
+#include "GameFramework/Actor.h"
+#include "Logging/StructuredLog.h"
 
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/health/data/HealthData.h"

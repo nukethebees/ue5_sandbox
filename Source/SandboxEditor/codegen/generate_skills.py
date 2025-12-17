@@ -332,6 +332,7 @@ class IDetailChildrenBuilder;"""
 #include "IDetailChildrenBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
+#include "Widgets/Text/STextBlock.h"
 
 #include "{self.header_include_path}"'''
    

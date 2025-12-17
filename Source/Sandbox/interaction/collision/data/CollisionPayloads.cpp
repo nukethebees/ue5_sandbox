@@ -1,5 +1,7 @@
 #include "Sandbox/interaction/collision/data/CollisionPayloads.h"
 
+#include "Logging/StructuredLog.h"
+
 void FSpeedBoostPayload::execute(FCollisionContext context) {
     if (auto* boost_component{
             context.collided_actor.FindComponentByClass<USpeedBoostComponent>()}) {

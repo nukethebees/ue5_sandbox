@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "Logging/StructuredLog.h"
 
 #include "Sandbox/combat/weapons/data/AmmoData.h"
 #include "Sandbox/environment/data/ActorCorners.h"

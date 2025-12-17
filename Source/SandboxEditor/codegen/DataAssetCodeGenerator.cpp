@@ -1,5 +1,6 @@
 #include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 
+#include "AssetRegistry/AssetData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

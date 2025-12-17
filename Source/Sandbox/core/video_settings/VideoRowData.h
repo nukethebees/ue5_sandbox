@@ -4,6 +4,7 @@
 #include <variant>
 
 #include "CoreMinimal.h"
+#include "GameFramework/GameUserSettings.h"
 
 #include "Sandbox/core/video_settings/VisualQualityLevel.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"

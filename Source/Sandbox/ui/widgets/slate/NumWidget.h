@@ -9,6 +9,7 @@
 #include "CoreMinimal.h"
 #include "Components/Widget.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Text/STextBlock.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"

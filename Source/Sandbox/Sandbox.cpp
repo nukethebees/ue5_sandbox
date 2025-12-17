@@ -1,9 +1,9 @@
 // Sandbox.cpp
 #include "Sandbox/Sandbox.h"
 
-#include "Sandbox/ui/styles//SandboxStyle.h"
+#include "ShaderCore.h"
 
-#include "PropertyEditorModule.h"
+#include "Sandbox/ui/styles//SandboxStyle.h"
 
 #define LOCTEXT_NAMESPACE "FSandboxModule"
 

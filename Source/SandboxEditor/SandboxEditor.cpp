@@ -1,10 +1,10 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
-// #include "Sandbox/players/playable/data/player_skills.h"
 #include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"

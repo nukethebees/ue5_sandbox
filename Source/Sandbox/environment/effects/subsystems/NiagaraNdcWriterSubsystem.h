@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "NiagaraDataChannelPublic.h"
+#include "Subsystems/WorldSubsystem.h"
 
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"

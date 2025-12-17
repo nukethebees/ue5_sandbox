@@ -14,6 +14,8 @@
 
 #include "MassArchetypeSubsystem.generated.h"
 
+class UWorld;
+
 DECLARE_MULTICAST_DELEGATE(FOnMassArchetypeSubsystemReady);
 
 // Create cached Mass Entity archetypes.
