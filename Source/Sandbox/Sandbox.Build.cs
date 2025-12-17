@@ -13,10 +13,7 @@ public class Sandbox : ModuleRules
             "Core", 
             "CoreUObject", 
             "Engine", 
-            "InputCore", 
-            "UMG",
-            "RenderCore",
-            "TraceLog"            
+            "RenderCore"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
@@ -24,13 +21,16 @@ public class Sandbox : ModuleRules
             "DeveloperSettings",
             "EnhancedInput",
             "GameplayTasks",
+            "InputCore",
             "MassEntity",
             "MassCommon",
             "MassSimulation",
             "Niagara",           
             "NavigationSystem",            
             "Slate",
-            "SlateCore"
+            "SlateCore",
+            "TraceLog",
+            "UMG"
         });
 
         // Uncomment if you are using online features
