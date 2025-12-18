@@ -80,20 +80,6 @@ class SANDBOX_API UMassBulletSubsystem
         check(i < indexed_bullet_types.Num());
         add_bullet(spawn_transform, bullet_speed, bullet_damage, indexed_bullet_types[i]);
     }
-    bool add_bullet_checked(FTransform const& spawn_transform,
-                            float bullet_speed,
-                            FHealthChange bullet_damage,
-                            FBulletTypeIndex bullet_type_index) {
-        auto const i{bullet_type_index.get_value()};
-        if (i < 0 || i >= indexed_bullet_types.Num()) {
-            log_error(TEXT("Invalid bullet type index: %d (valid range: 0-%d)"),
-                      i,
-                      indexed_bullet_types.Num() - 1);
-            return false;
-        }
-        add_bullet(spawn_transform, bullet_speed, bullet_damage, indexed_bullet_types[i]);
-        return true;
-    }
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
         (void)destroy_queue.enqueue(handle, bullet_type);
     }
@@ -101,17 +87,6 @@ class SANDBOX_API UMassBulletSubsystem
         auto const i{bullet_type_index.get_value()};
         check(i >= 0 && i < indexed_bullet_types.Num());
         destroy_bullet(handle, indexed_bullet_types[i]);
-    }
-    bool destroy_bullet_checked(FMassEntityHandle handle, FBulletTypeIndex bullet_type_index) {
-        auto const i{bullet_type_index.get_value()};
-        if (i < 0 || i >= indexed_bullet_types.Num()) {
-            log_error(TEXT("Invalid bullet type index: %d (valid range: 0-%d)"),
-                      i,
-                      indexed_bullet_types.Num() - 1);
-            return false;
-        }
-        destroy_bullet(handle, indexed_bullet_types[i]);
-        return true;
     }
 
     AMassBulletSubsystemData* get_data_actor() {
