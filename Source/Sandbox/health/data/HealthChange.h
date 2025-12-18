@@ -20,9 +20,8 @@ struct FHealthChange {
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     EHealthChangeType type{EHealthChangeType::Damage};
 
-    FHealthChange() = default;
-
-    FHealthChange(float value, EHealthChangeType change_type)
+    FHealthChange() noexcept = default;
+    FHealthChange(float value, EHealthChangeType change_type) noexcept
         : value(value)
         , type(change_type) {}
 };

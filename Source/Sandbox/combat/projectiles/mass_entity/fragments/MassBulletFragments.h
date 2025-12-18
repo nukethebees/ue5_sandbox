@@ -46,6 +46,18 @@ struct SANDBOX_API FMassBulletLastPositionFragment : public FMassFragment {
 };
 
 USTRUCT()
+struct SANDBOX_API FMassBulletDamageFragment : public FMassFragment {
+    GENERATED_BODY()
+
+    FMassBulletDamageFragment() = default;
+    FMassBulletDamageFragment(FHealthChange const& damage)
+        : damage(damage) {}
+
+    UPROPERTY()
+    FHealthChange damage{};
+};
+
+USTRUCT()
 struct SANDBOX_API FMassBulletHitInfoFragment : public FMassFragment {
     GENERATED_BODY()
 
@@ -99,18 +111,6 @@ struct SANDBOX_API FMassBulletVisualizationActorFragment : public FMassConstShar
 
     UPROPERTY()
     AMassBulletVisualizationActor* actor{nullptr};
-};
-
-USTRUCT()
-struct SANDBOX_API FMassBulletDamageFragment : public FMassConstSharedFragment {
-    GENERATED_BODY()
-
-    FMassBulletDamageFragment() = default;
-    FMassBulletDamageFragment(FHealthChange const& damage)
-        : damage(damage) {}
-
-    UPROPERTY()
-    FHealthChange damage{};
 };
 
 USTRUCT()

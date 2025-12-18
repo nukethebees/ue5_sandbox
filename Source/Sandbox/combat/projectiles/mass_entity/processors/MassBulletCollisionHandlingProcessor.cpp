@@ -26,7 +26,7 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
         auto const hit_infos{context.GetFragmentView<FMassBulletHitInfoFragment>()};
         auto const& impact_effect_fragment{
             context.GetConstSharedFragment<FMassBulletImpactEffectFragment>()};
-        auto const& damage_fragment{context.GetConstSharedFragment<FMassBulletDamageFragment>()};
+        auto const& damage_fragments{context.GetFragmentView<FMassBulletDamageFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
             if (!state_fragments[i].hit_occurred) {
@@ -38,7 +38,8 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
 
             if (auto* hit_actor{hit_infos[i].hit_actor.Get()}) {
                 if (auto* health_component{hit_actor->FindComponentByClass<UHealthComponent>()}) {
-                    damage_manager.queue_health_change(health_component, damage_fragment.damage);
+                    damage_manager.queue_health_change(health_component,
+                                                       damage_fragments[i].damage);
                 }
             } else {
                 logger.log_warning(TEXT("hit_actor is null"));

@@ -75,7 +75,8 @@ bool UMassBulletSubsystem::initialise_asset_data() {
 void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_manager,
                                                    FMassEntityHandle entity,
                                                    FTransform const& transform,
-                                                   float bullet_speed) {
+                                                   float bullet_speed,
+                                                   FHealthChange damage) {
     constexpr auto logger{NestedLogger<"configure_active_bullet">()};
 
     auto get_frag{
@@ -97,6 +98,9 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
 
     auto& state_frag{GET_FRAG(FMassBulletStateFragment)};
     state_frag.hit_occurred = false;
+
+    auto& damage_frag{GET_FRAG(FMassBulletDamageFragment)};
+    damage_frag.damage = damage;
 #undef GET_FRAG
 }
 void UMassBulletSubsystem::on_end_frame() {
@@ -187,7 +191,8 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
             configure_active_bullet(entity_manager,
                                     free_list.Pop(),
                                     spawn_requests.transforms[spawn_idx],
-                                    spawn_requests.speeds[spawn_idx]);
+                                    spawn_requests.speeds[spawn_idx],
+                                    spawn_requests.damages[spawn_idx]);
         }
 
         // Destroy remaining entities in free_list
@@ -224,7 +229,8 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
                         configure_active_bullet(entity_manager,
                                                 new_entities[i],
                                                 spawn_requests.transforms[spawn_idx],
-                                                spawn_requests.speeds[spawn_idx]);
+                                                spawn_requests.speeds[spawn_idx],
+                                                spawn_requests.damages[spawn_idx]);
                     }
                 });
         }

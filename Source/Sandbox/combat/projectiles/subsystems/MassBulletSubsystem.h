@@ -15,6 +15,7 @@
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/environment/utilities/world.h"
+#include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/data/EntityDefinition.h"
@@ -38,13 +39,16 @@ struct FBulletSpawnRequest {
 struct FBulletSpawnRequestView {
     std::span<FTransform> transforms;
     std::span<float> speeds;
+    std::span<FHealthChange> damages;
     std::span<FPrimaryAssetId> bullet_types;
 
     FBulletSpawnRequestView(std::span<FTransform> t,
                             std::span<float> s,
+                            std::span<FHealthChange> d,
                             std::span<FPrimaryAssetId> bt)
         : transforms(t)
         , speeds(s)
+        , damages(d)
         , bullet_types(bt) {}
 };
 
@@ -58,19 +62,22 @@ class SANDBOX_API UMassBulletSubsystem
 
     void add_bullet(FTransform const& spawn_transform,
                     float bullet_speed,
+                    FHealthChange bullet_damage,
                     FPrimaryAssetId const& bullet_type) {
-        (void)spawn_queue.enqueue(spawn_transform, bullet_speed, bullet_type);
+        (void)spawn_queue.enqueue(spawn_transform, bullet_speed, bullet_damage, bullet_type);
     }
     void add_bullet(FTransform const& spawn_transform,
                     float bullet_speed,
+                    FHealthChange bullet_damage,
                     FBulletTypeIndex bullet_type_index) {
         auto const i{bullet_type_index.get_value()};
         check(i >= 0);
         check(i < indexed_bullet_types.Num());
-        add_bullet(spawn_transform, bullet_speed, indexed_bullet_types[i]);
+        add_bullet(spawn_transform, bullet_speed, bullet_damage, indexed_bullet_types[i]);
     }
     bool add_bullet_checked(FTransform const& spawn_transform,
                             float bullet_speed,
+                            FHealthChange bullet_damage,
                             FBulletTypeIndex bullet_type_index) {
         auto const i{bullet_type_index.get_value()};
         if (i < 0 || i >= indexed_bullet_types.Num()) {
@@ -79,7 +86,7 @@ class SANDBOX_API UMassBulletSubsystem
                       indexed_bullet_types.Num() - 1);
             return false;
         }
-        add_bullet(spawn_transform, bullet_speed, indexed_bullet_types[i]);
+        add_bullet(spawn_transform, bullet_speed, bullet_damage, indexed_bullet_types[i]);
         return true;
     }
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
@@ -125,7 +132,8 @@ class SANDBOX_API UMassBulletSubsystem
     void configure_active_bullet(FMassEntityManager& entity_manager,
                                  FMassEntityHandle entity,
                                  FTransform const& transform,
-                                 float bullet_speed);
+                                 float bullet_speed,
+                                 FHealthChange damage);
     struct FBulletDestroyRequest {
         FMassEntityHandle entity;
         FPrimaryAssetId bullet_type;
@@ -149,8 +157,11 @@ class SANDBOX_API UMassBulletSubsystem
     TArray<FPrimaryAssetId> indexed_bullet_types;
     TArray<FMassEntityHandle> new_entities{};
 
-    ml::MonitoredLockFreeMPSCQueue<
-        ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView, FTransform, float, FPrimaryAssetId>>
+    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView,
+                                                            FTransform,
+                                                            float,
+                                                            FHealthChange,
+                                                            FPrimaryAssetId>>
         spawn_queue;
     ml::MonitoredLockFreeMPSCQueue<
         ml::LockFreeMPSCQueueSoA<FBulletDestroyRequestView, FMassEntityHandle, FPrimaryAssetId>>

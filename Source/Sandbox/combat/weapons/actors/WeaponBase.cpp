@@ -1,6 +1,7 @@
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 
 #include "Components/BoxComponent.h"
+#include "Engine/World.h"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -72,4 +73,3 @@ void AWeaponBase::EndPlay(EEndPlayReason::Type reason) {
 
     Super::EndPlay(reason);
 }
-

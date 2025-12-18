@@ -69,10 +69,10 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
                           FMassBulletVelocityFragment,
                           FMassBulletLastPositionFragment,
                           FMassBulletHitInfoFragment,
-                          FMassBulletStateFragment>(descriptor.GetFragments());
+                          FMassBulletStateFragment,
+                          FMassBulletDamageFragment>(descriptor.GetFragments());
         ml::add_fragments<FMassBulletImpactEffectFragment,
                           FMassBulletVisualizationActorFragment,
-                          FMassBulletDamageFragment,
                           FMassBulletDataFragment>(descriptor.GetConstSharedFragments());
 
         auto creation_params{FMassArchetypeCreationParams{}};
@@ -110,14 +110,10 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
             entity_manager.GetOrCreateConstSharedFragment<FMassBulletVisualizationActorFragment>(
                 visualization_actor)};
 
-        auto damage_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDamageFragment>(
-            bullet_data->damage)};
-
         auto data_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(
             asset_id, FBulletTypeIndex{i})};
 
-        ml::add_values(
-            shared_values, impact_effect_handle, viz_actor_handle, damage_handle, data_handle);
+        ml::add_values(shared_values, impact_effect_handle, viz_actor_handle, data_handle);
 
         add_definition({bullet_archetype, shared_values}, asset_id);
         logger.log_display(

@@ -31,9 +31,6 @@ class SANDBOX_API UBulletDataAsset : public UPrimaryDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
     TObjectPtr<UNiagaraDataChannelAsset> ndc_asset{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-    FHealthChange damage{10.0f, EHealthChangeType::Damage};
-
     virtual FPrimaryAssetId GetPrimaryAssetId() const override {
         static FPrimaryAssetType const asset_type{TEXT("Bullet")};
         FName const asset_name{id.IsNone() ? GetFName() : id};

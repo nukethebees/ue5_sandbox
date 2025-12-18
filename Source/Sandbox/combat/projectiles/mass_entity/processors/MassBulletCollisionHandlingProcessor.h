@@ -21,8 +21,8 @@ struct FMassBulletCollisionHandlingExecutor
     using Query = UE::Mass::FQueryDefinition<
         UE::Mass::FConstFragmentAccess<FMassBulletStateFragment>,
         UE::Mass::FConstFragmentAccess<FMassBulletHitInfoFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletImpactEffectFragment>,
-        UE::Mass::FConstSharedFragmentAccess<FMassBulletDamageFragment>>;
+        UE::Mass::FConstFragmentAccess<FMassBulletDamageFragment>,
+        UE::Mass::FConstSharedFragmentAccess<FMassBulletImpactEffectFragment>>;
 
     Query accessors{*this};
 

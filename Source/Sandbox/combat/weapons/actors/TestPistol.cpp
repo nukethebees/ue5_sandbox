@@ -43,11 +43,11 @@ void ATestPistol::start_firing() {
 
     if (cached_bullet_type_index.IsSet()) {
         mass_bullet_subsystem->add_bullet(
-            spawn_transform, bullet_speed, cached_bullet_type_index.GetValue());
+            spawn_transform, bullet_speed, bullet_damage, cached_bullet_type_index.GetValue());
     } else {
         RETURN_IF_NULLPTR(bullet_data);
         mass_bullet_subsystem->add_bullet(
-            spawn_transform, bullet_speed, bullet_data->GetPrimaryAssetId());
+            spawn_transform, bullet_speed, bullet_damage, bullet_data->GetPrimaryAssetId());
     }
 
     ammo -= 1;

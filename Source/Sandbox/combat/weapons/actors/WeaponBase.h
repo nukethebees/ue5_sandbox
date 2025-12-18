@@ -6,6 +6,7 @@
 #include "Sandbox/combat/weapons/data/AmmoReloadResult.h"
 #include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
 #include "Sandbox/combat/weapons/delegates/PawnWeaponComponentDelegates.h"
+#include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -98,4 +99,7 @@ class SANDBOX_API AWeaponBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     FDimensions size{1000000, 1000000};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    FHealthChange bullet_damage{10.0f, EHealthChangeType::Damage};
 };
