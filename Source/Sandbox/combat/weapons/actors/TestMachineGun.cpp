@@ -67,7 +67,7 @@ void ATestMachineGun::fire_single_bullet(float travel_time) {
 
     FTransform const spawn_transform{get_spawn_transform(travel_time)};
     mass_bullet_subsystem->add_bullet(
-        spawn_transform, bullet_speed, bullet_damage, bullet_data->GetPrimaryAssetId());
+        {{spawn_transform, bullet_speed, bullet_damage}, bullet_data->GetPrimaryAssetId()});
 
     ammo -= 1;
 }

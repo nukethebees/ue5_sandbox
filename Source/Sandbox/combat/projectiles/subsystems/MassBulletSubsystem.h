@@ -26,18 +26,21 @@ class AMassBulletVisualizationActor;
 class UBulletDataAsset;
 
 struct FBulletSpawnRequest {
-    FTransform transform;
-    float speed;
-    FHealthChange damage;
+    struct Data {
+        FTransform transform;
+        float speed;
+        FHealthChange damage;
+
+        Data(FTransform const& t, float s, FHealthChange damage)
+            : transform(t)
+            , speed(s)
+            , damage(damage) {}
+    };
+    Data data;
     FPrimaryAssetId bullet_type;
 
-    FBulletSpawnRequest(FTransform const& t,
-                        float s,
-                        FHealthChange damage,
-                        FPrimaryAssetId const& bt)
-        : transform(t)
-        , speed(s)
-        , damage(damage)
+    FBulletSpawnRequest(Data d, FPrimaryAssetId const& bt)
+        : data(d)
         , bullet_type(bt) {}
 };
 
@@ -65,20 +68,14 @@ class SANDBOX_API UMassBulletSubsystem
   public:
     static constexpr std::size_t n_queue_elements{30000};
 
-    void add_bullet(FTransform const& spawn_transform,
-                    float bullet_speed,
-                    FHealthChange bullet_damage,
-                    FPrimaryAssetId const& bullet_type) {
-        (void)spawn_queue.enqueue(spawn_transform, bullet_speed, bullet_damage, bullet_type);
+    void add_bullet(FBulletSpawnRequest r) {
+        (void)spawn_queue.enqueue(r.data.transform, r.data.speed, r.data.damage, r.bullet_type);
     }
-    void add_bullet(FTransform const& spawn_transform,
-                    float bullet_speed,
-                    FHealthChange bullet_damage,
-                    FBulletTypeIndex bullet_type_index) {
+    void add_bullet(FBulletSpawnRequest::Data data, FBulletTypeIndex bullet_type_index) {
         auto const i{bullet_type_index.get_value()};
         check(i >= 0);
         check(i < indexed_bullet_types.Num());
-        add_bullet(spawn_transform, bullet_speed, bullet_damage, indexed_bullet_types[i]);
+        add_bullet({data, indexed_bullet_types[i]});
     }
     void destroy_bullet(FMassEntityHandle handle, FPrimaryAssetId const& bullet_type) {
         (void)destroy_queue.enqueue(handle, bullet_type);
@@ -96,7 +93,7 @@ class SANDBOX_API UMassBulletSubsystem
         return nullptr;
     }
 
-    FBulletTypeIndex get_bullet_type_index(FPrimaryAssetId const& bullet_type) const {
+    auto get_bullet_type_index(FPrimaryAssetId const& bullet_type) const -> FBulletTypeIndex {
         if (auto const* index{bullet_type_indices.Find(bullet_type)}) {
             return *index;
         }
