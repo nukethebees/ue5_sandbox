@@ -28,11 +28,16 @@ class UBulletDataAsset;
 struct FBulletSpawnRequest {
     FTransform transform;
     float speed;
+    FHealthChange damage;
     FPrimaryAssetId bullet_type;
 
-    FBulletSpawnRequest(FTransform const& t, float s, FPrimaryAssetId const& bt)
+    FBulletSpawnRequest(FTransform const& t,
+                        float s,
+                        FHealthChange damage,
+                        FPrimaryAssetId const& bt)
         : transform(t)
         , speed(s)
+        , damage(damage)
         , bullet_type(bt) {}
 };
 
