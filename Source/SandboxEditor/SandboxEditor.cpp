@@ -5,7 +5,6 @@
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
-#include "SandboxEditor/codegen/DataAssetCodeGenerator.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
@@ -60,14 +59,6 @@ void FSandboxEditorModule::register_menu_extensions() {
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
-        "GenerateDataAssetCode",
-        FUIAction(
-            FExecuteAction::CreateRaw(this, &FSandboxEditorModule::on_generate_data_asset_code)),
-        FText::FromString("Generate Asset Code"),
-        FText::FromString("Generate C++ accessor code for data assets"),
-        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
-
-    section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "GenerateTypedefs",
         FUIAction(FExecuteAction::CreateRaw(this, &FSandboxEditorModule::on_generate_typedefs)),
         FText::FromString("Generate Typedefs"),
@@ -75,35 +66,6 @@ void FSandboxEditorModule::register_menu_extensions() {
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
 
     logger.log_log(TEXT("Registered menu extensions"));
-}
-
-void FSandboxEditorModule::on_generate_data_asset_code() {
-    constexpr auto logger{NestedLogger<"on_generate_data_asset_code">()};
-    logger.log_log(TEXT("Generating data asset code..."));
-
-    // Configuration for bullet data assets
-    FString const scan_path{TEXT("/Game/DataAssets")};
-    UClass* asset_class{UBulletDataAsset::StaticClass()};
-    FString const generated_class_name{TEXT("BulletAssetRegistry")};
-    FString const output_directory{FPaths::ProjectDir() /
-                                   TEXT("Source/Sandbox/generated/data_asset_registries/")};
-    TArray<FString> const additional_includes{
-        TEXT("Sandbox/combat/projectiles/data_assets/BulletDataAsset.h")};
-    FString const namespace_name{TEXT("ml")};
-
-    // Generate the code
-    bool const success{FDataAssetCodeGenerator::generate_asset_registry(scan_path,
-                                                                        asset_class,
-                                                                        generated_class_name,
-                                                                        output_directory,
-                                                                        additional_includes,
-                                                                        namespace_name)};
-
-    if (success) {
-        logger.log_log(TEXT("Code generation completed successfully!"));
-    } else {
-        logger.log_error(TEXT("Code generation failed!"));
-    }
 }
 
 void FSandboxEditorModule::on_generate_typedefs() {
