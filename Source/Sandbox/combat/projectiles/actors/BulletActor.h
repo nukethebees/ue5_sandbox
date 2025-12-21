@@ -3,16 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h"
-#include "NiagaraSystem.h"
 
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "BulletActor.generated.h"
+
+class UBoxComponent;
+class UNiagaraSystem;
+class UProjectileMovementComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class SANDBOX_API ABulletActor

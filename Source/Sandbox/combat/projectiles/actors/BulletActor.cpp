@@ -2,8 +2,12 @@
 
 #include "Sandbox/combat/projectiles/actors/BulletActor.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
