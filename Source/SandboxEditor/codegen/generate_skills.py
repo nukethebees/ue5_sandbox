@@ -469,15 +469,15 @@ enum class {self.player_skills_enum} : uint8 {{
         return SkillView{{
             {key},
             ml::get_display_string({key}),
-            self.{m.get_skill}<{key}>()
+            self.template {m.get_skill}<{key}>()
         }};
     }}
     template <{self.player_skills_enum} {key}, typename Self>
     constexpr void {m.set_value}(this Self& self, {self.skill_value_typename} {input}) {{
-        self.{m.get_skill}<{key}>.set({input});    
+        self.template {m.get_skill}<{key}>.set({input});    
     }}
     constexpr void {m.set_value}(this auto& self, {self.player_skills_enum} {key}, {self.skill_value_typename} {input}) {{
-        self.{m.get_skill}<{key}>.set({input});
+        self.template {m.get_skill}<{key}>.set({input});
     }}"""
     def add_struct_accessor(self, skill: GeneratorSkill):
         e = skill.config.get_full_enum_value()

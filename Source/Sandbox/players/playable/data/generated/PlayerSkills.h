@@ -129,15 +129,15 @@ struct FPlayerSkills {
         return SkillView{
             skill_type,
             ml::get_display_string(skill_type),
-            self.get_skill<skill_type>()
+            self.template get_skill<skill_type>()
         };
     }
     template <EPlayerSkillName skill_type, typename Self>
     constexpr void set_value(this Self& self, uint8 value) {
-        self.get_skill<skill_type>.set(value);    
+        self.template get_skill<skill_type>.set(value);    
     }
     constexpr void set_value(this auto& self, EPlayerSkillName skill_type, uint8 value) {
-        self.get_skill<skill_type>.set(value);
+        self.template get_skill<skill_type>.set(value);
     }
     // Attribute
     auto get_strength_view() { return get_view<EPlayerSkillName::Strength>(); }

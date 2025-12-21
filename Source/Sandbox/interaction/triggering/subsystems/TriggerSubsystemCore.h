@@ -49,10 +49,10 @@ constexpr auto trigger_array_index_v =
 }
 
 // Macros for generating switch statement
-#define TRIGGER_CASE(i)                                   \
-    case i: {                                             \
-        self.handle_trigger_case<i>(id, trigger_context); \
-        break;                                            \
+#define TRIGGER_CASE(i)                                            \
+    case i: {                                                      \
+        self.template handle_trigger_case<i>(id, trigger_context); \
+        break;                                                     \
     }
 
 #define TRIGGER_VISIT_STAMP(stamper, N_CASES)                                           \
@@ -305,7 +305,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
     ActorId get_or_create_actor_id(this Self&& self, AActor& actor) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::UCollisionEffectSubsystemCore::get_or_create_actor_id"))
-        static constexpr auto LOG{self.NestedLogger<"get_or_create_actor_id">()};
+        static constexpr auto LOG{self.template NestedLogger<"get_or_create_actor_id">()};
 
         if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) {
             return *existing_id;

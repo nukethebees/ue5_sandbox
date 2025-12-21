@@ -10,13 +10,13 @@
 #define GLOBAL_CATEGORY log_category
 #define LOCAL_CATEGORY log_cat
 
-#define LOG_MSG_TO(VERBOSITY)                                             \
-    self.log_to<ELogVerbosity::VERBOSITY, LOCAL_CATEGORY>(std::move(fmt), \
-                                                          std::forward<Args>(args)...);
+#define LOG_MSG_TO(VERBOSITY)                                                      \
+    self.template log_to<ELogVerbosity::VERBOSITY, LOCAL_CATEGORY>(std::move(fmt), \
+                                                                   std::forward<Args>(args)...);
 
-#define LOG_MSG(VERBOSITY)                                                 \
-    self.log_to<ELogVerbosity::VERBOSITY, GLOBAL_CATEGORY>(std::move(fmt), \
-                                                           std::forward<Args>(args)...);
+#define LOG_MSG(VERBOSITY)                                                          \
+    self.template log_to<ELogVerbosity::VERBOSITY, GLOBAL_CATEGORY>(std::move(fmt), \
+                                                                    std::forward<Args>(args)...);
 
 template <typename T>
 concept HasTagMember = requires {
@@ -42,7 +42,7 @@ struct LogMsgMixin {
     static consteval auto NestedLogger() {
         using Str = StaticTCharString<3>;
         constexpr Str sep{": "};
-        return LogMsgMixin<tag.concatenate_all<tag, sep, inner_tag>(), log_category_>{};
+        return LogMsgMixin<tag.template concatenate_all<tag, sep, inner_tag>(), log_category_>{};
     }
 
     // Strip references because the format string requires value types
