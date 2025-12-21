@@ -21,6 +21,12 @@ enum class EFloorTurretState : uint8 {
     Attacking UMETA(DisplayName = "Attacking"),
 };
 
+UENUM(BlueprintType)
+enum class EFloorTurretScanDirection : uint8 {
+    clockwise UMETA(DisplayName = "clockwise"),
+    anticlockwise UMETA(DisplayName = "anticlockwise"),
+};
+
 UCLASS()
 class SANDBOX_API AFloorTurret : public AActor {
     GENERATED_BODY()
@@ -52,13 +58,16 @@ class SANDBOX_API AFloorTurret : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     float rotation_speed_degrees_per_second{5.0f};
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    float current_rotation_angle{0.0f};
     // Half of the total rotation
     UPROPERTY(EditAnywhere, Category = "Turret")
     float watching_cone_degrees{60.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
     float tracking_cone_degrees{100.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float current_rotation_angle{0.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    EFloorTurretScanDirection scan_direction{EFloorTurretScanDirection::clockwise};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     float fire_rate{10.0f};
