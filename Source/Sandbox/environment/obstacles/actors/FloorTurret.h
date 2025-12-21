@@ -1,0 +1,53 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
+#include "Sandbox/health/data/HealthChange.h"
+
+#include "FloorTurret.generated.h"
+
+class UStaticMeshComponent;
+class USceneComponent;
+class ABulletActor;
+
+UCLASS()
+class SANDBOX_API AFloorTurret : public AActor {
+    GENERATED_BODY()
+  public:
+    AFloorTurret();
+
+    virtual void Tick(float dt) override;
+  protected:
+    virtual void BeginPlay() override;
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UStaticMeshComponent* base_mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UStaticMeshComponent* cannon_mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    USceneComponent* muzzle_point{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    TSubclassOf<ABulletActor> bullet_actor_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret")
+    FHealthChange bullet_damage{5.0f, EHealthChangeType::Damage};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float bullet_speed{1000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float rotation_speed_degrees_per_second{5.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float current_rotation_angle{0.0f};
+    // Half of the total rotation
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float max_rotation_angle{60.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float fire_rate{10.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    bool is_active{true};
+};
