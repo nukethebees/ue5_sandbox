@@ -89,7 +89,8 @@ class SANDBOX_API AFloorTurret : public AActor {
   protected:
     virtual void BeginPlay() override;
 
-    void scan_for_targets();
+    void handle_watching_state(float dt);
+    void handle_attacking_state();
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* base_mesh{nullptr};

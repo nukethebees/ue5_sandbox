@@ -10,7 +10,7 @@ AFloorTurret::AFloorTurret()
     : base_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretBase"))}
     , cannon_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCannon"))}
     , camera_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCamera"))}
-    , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretCannon"))} {
+    , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretMuzzlePoint"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -31,9 +31,11 @@ void AFloorTurret::Tick(float dt) {
             break;
         }
         case EFloorTurretState::Watching: {
+            handle_watching_state(dt);
             break;
         }
         case EFloorTurretState::Attacking: {
+            handle_attacking_state();
             break;
         }
         default: {
@@ -51,4 +53,23 @@ void AFloorTurret::BeginPlay() {
     Super::BeginPlay();
 }
 
-void AFloorTurret::scan_for_targets() {}
+void AFloorTurret::handle_watching_state(float dt) {
+    auto const delta_rotation{aim_limits.rotation_speed_degrees_per_second * dt};
+
+    if (aim_state.scan_direction == EFloorTurretScanDirection::clockwise) {
+        aim_state.camera_rotation_angle = std::min(aim_state.camera_rotation_angle + delta_rotation,
+                                                   aim_limits.tracking_cone_degrees);
+        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle,
+                                 aim_limits.tracking_cone_degrees)) {
+            aim_state.scan_direction = EFloorTurretScanDirection::anticlockwise;
+        }
+    } else {
+        aim_state.camera_rotation_angle = std::max(
+            -aim_state.camera_rotation_angle - delta_rotation, -aim_limits.tracking_cone_degrees);
+        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle,
+                                 aim_limits.tracking_cone_degrees)) {
+            aim_state.scan_direction = EFloorTurretScanDirection::clockwise;
+        }
+    }
+}
+void AFloorTurret::handle_attacking_state() {}
