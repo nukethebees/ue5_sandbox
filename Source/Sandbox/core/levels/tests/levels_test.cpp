@@ -1,5 +1,7 @@
 #include "Sandbox/core/levels/levels.h"
 
+#include "Misc/AutomationTest.h"
+
 BEGIN_DEFINE_SPEC(FFormatLevelDisplayNameSpec,
                   "Sandbox.levels.format_level_display_name 1",
                   EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
