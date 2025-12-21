@@ -9,6 +9,7 @@
 AFloorTurret::AFloorTurret()
     : base_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretBase"))}
     , cannon_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCannon"))}
+    , camera_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCamera"))}
     , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretCannon"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
@@ -18,12 +19,13 @@ AFloorTurret::AFloorTurret()
     base_mesh->SetupAttachment(RootComponent);
     cannon_mesh->SetupAttachment(base_mesh);
     muzzle_point->SetupAttachment(cannon_mesh);
+    camera_mesh->SetupAttachment(base_mesh);
 }
 
 void AFloorTurret::Tick(float dt) {
     Super::Tick(dt);
 
-    switch (state) {
+    switch (state.operating_state) {
         case EFloorTurretState::Disabled: {
             SetActorTickEnabled(false);
             break;
@@ -41,8 +43,8 @@ void AFloorTurret::Tick(float dt) {
     }
 }
 void AFloorTurret::set_state(EFloorTurretState new_state) {
-    state = new_state;
-    SetActorTickEnabled(state != EFloorTurretState::Disabled);
+    state.operating_state = new_state;
+    SetActorTickEnabled(state.operating_state != EFloorTurretState::Disabled);
 }
 
 void AFloorTurret::BeginPlay() {

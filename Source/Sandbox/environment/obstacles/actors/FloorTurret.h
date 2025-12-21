@@ -27,6 +27,55 @@ enum class EFloorTurretScanDirection : uint8 {
     anticlockwise UMETA(DisplayName = "anticlockwise"),
 };
 
+USTRUCT(BlueprintType)
+struct FFloorTurretBulletData {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    TSubclassOf<ABulletActor> bullet_actor_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret")
+    FHealthChange bullet_damage{5.0f, EHealthChangeType::Damage};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float bullet_speed{1000.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float fire_rate{10.0f};
+};
+
+USTRUCT(BlueprintType)
+struct FFloorTurretAimLimits {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float rotation_speed_degrees_per_second{5.0f};
+    // Half of the total rotation
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float watching_cone_degrees{60.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float tracking_cone_degrees{100.0f};
+};
+
+USTRUCT(BlueprintType)
+struct FFloorTurretAimState {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float camera_rotation_angle{0.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float muzzle_rotation_angle{0.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    EFloorTurretScanDirection scan_direction{EFloorTurretScanDirection::clockwise};
+};
+
+USTRUCT(BlueprintType)
+struct FFloorTurretState {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    EFloorTurretState operating_state{EFloorTurretState::Watching};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    AActor* current_target{nullptr};
+};
+
 UCLASS()
 class SANDBOX_API AFloorTurret : public AActor {
     GENERATED_BODY()
@@ -47,33 +96,16 @@ class SANDBOX_API AFloorTurret : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* cannon_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
+    UStaticMeshComponent* camera_mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
     UArrowComponent* muzzle_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
-    TSubclassOf<ABulletActor> bullet_actor_class;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret")
-    FHealthChange bullet_damage{5.0f, EHealthChangeType::Damage};
+    FFloorTurretBulletData bullet_data;
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float bullet_speed{1000.0f};
-
+    FFloorTurretAimLimits aim_limits;
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float rotation_speed_degrees_per_second{5.0f};
-    // Half of the total rotation
+    FFloorTurretAimState aim_state;
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float watching_cone_degrees{60.0f};
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    float tracking_cone_degrees{100.0f};
-
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    float current_rotation_angle{0.0f};
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    EFloorTurretScanDirection scan_direction{EFloorTurretScanDirection::clockwise};
-
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    float fire_rate{10.0f};
-
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    EFloorTurretState state{EFloorTurretState::Watching};
-    UPROPERTY(EditAnywhere, Category = "Turret")
-    AActor* current_target{nullptr};
+    FFloorTurretState state;
 };
