@@ -12,6 +12,7 @@
 class UStaticMeshComponent;
 class USceneComponent;
 class ABulletActor;
+class UArrowComponent;
 
 UENUM(BlueprintType)
 enum class EFloorTurretState : uint8 {
@@ -38,7 +39,7 @@ class SANDBOX_API AFloorTurret : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* cannon_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
-    USceneComponent* muzzle_point{nullptr};
+    UArrowComponent* muzzle_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     TSubclassOf<ABulletActor> bullet_actor_class;
