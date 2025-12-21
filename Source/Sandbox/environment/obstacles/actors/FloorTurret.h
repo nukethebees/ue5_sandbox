@@ -13,6 +13,13 @@ class UStaticMeshComponent;
 class USceneComponent;
 class ABulletActor;
 
+UENUM(BlueprintType)
+enum class EFloorTurretState : uint8 {
+    Disabled UMETA(DisplayName = "Disabled"),
+    Watching UMETA(DisplayName = "Watching"),
+    Attacking UMETA(DisplayName = "Attacking"),
+};
+
 UCLASS()
 class SANDBOX_API AFloorTurret : public AActor {
     GENERATED_BODY()
@@ -20,6 +27,9 @@ class SANDBOX_API AFloorTurret : public AActor {
     AFloorTurret();
 
     virtual void Tick(float dt) override;
+
+    void set_state(EFloorTurretState new_state);
+    auto get_state() const { return state; }
   protected:
     virtual void BeginPlay() override;
 
@@ -49,5 +59,7 @@ class SANDBOX_API AFloorTurret : public AActor {
     float fire_rate{10.0f};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
-    bool is_active{true};
+    EFloorTurretState state{EFloorTurretState::Watching};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    AActor* current_target{nullptr};
 };
