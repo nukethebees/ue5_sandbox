@@ -48,3 +48,5 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
 void AFloorTurret::BeginPlay() {
     Super::BeginPlay();
 }
+
+void AFloorTurret::scan_for_targets() {}

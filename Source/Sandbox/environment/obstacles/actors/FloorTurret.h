@@ -34,6 +34,8 @@ class SANDBOX_API AFloorTurret : public AActor {
   protected:
     virtual void BeginPlay() override;
 
+    void scan_for_targets();
+
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* base_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
@@ -54,7 +56,9 @@ class SANDBOX_API AFloorTurret : public AActor {
     float current_rotation_angle{0.0f};
     // Half of the total rotation
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float max_rotation_angle{60.0f};
+    float watching_cone_degrees{60.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float tracking_cone_degrees{100.0f};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     float fire_rate{10.0f};
