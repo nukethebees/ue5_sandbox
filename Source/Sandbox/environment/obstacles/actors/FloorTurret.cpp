@@ -1,10 +1,23 @@
 #include "Sandbox/environment/obstacles/actors/FloorTurret.h"
 
+#include "Components/ArrowComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+
 #include "Sandbox/logging/SandboxLogCategories.h"
 
-AFloorTurret::AFloorTurret() {
+AFloorTurret::AFloorTurret()
+    : base_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretBase"))}
+    , cannon_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCannon"))}
+    , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretCannon"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
+    base_mesh->SetupAttachment(RootComponent);
+    cannon_mesh->SetupAttachment(base_mesh);
+    muzzle_point->SetupAttachment(cannon_mesh);
 }
 
 void AFloorTurret::Tick(float dt) {
