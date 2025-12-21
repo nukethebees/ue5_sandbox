@@ -7,6 +7,7 @@
 
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "BulletActor.generated.h"
 
@@ -18,7 +19,7 @@ class UStaticMeshComponent;
 UCLASS()
 class SANDBOX_API ABulletActor
     : public AActor
-    , public ml::LogMsgMixin<"ABulletActor"> {
+    , public ml::LogMsgMixin<"ABulletActor", LogSandboxActor> {
     GENERATED_BODY()
   public:
     ABulletActor();
