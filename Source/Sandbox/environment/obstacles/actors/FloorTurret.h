@@ -47,11 +47,15 @@ struct FFloorTurretAimLimits {
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     float rotation_speed_degrees_per_second{5.0f};
-    // Half of the total rotation
+    // Angles are half of the full rotation
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float rotation_degrees{90.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
     float watching_cone_degrees{60.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
     float tracking_cone_degrees{100.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float watching_cone_radius{500.0f};
 };
 
 USTRUCT(BlueprintType)

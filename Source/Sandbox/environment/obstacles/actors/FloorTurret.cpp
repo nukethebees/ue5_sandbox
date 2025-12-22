@@ -3,8 +3,11 @@
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 AFloorTurret::AFloorTurret()
     : base_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretBase"))}
@@ -61,7 +64,7 @@ void AFloorTurret::BeginPlay() {
 void AFloorTurret::handle_watching_state(float dt) {
     auto const delta_rotation{aim_limits.rotation_speed_degrees_per_second * dt};
 
-    auto const max_rot{aim_limits.watching_cone_degrees};
+    auto const max_rot{aim_limits.rotation_degrees};
 
     if (aim_state.scan_direction == EFloorTurretScanDirection::clockwise) {
         aim_state.camera_rotation_angle =
@@ -80,5 +83,52 @@ void AFloorTurret::handle_watching_state(float dt) {
     auto cannon_rotation{pivot->GetRelativeRotation()};
     cannon_rotation.Yaw = aim_state.camera_rotation_angle;
     pivot->SetRelativeRotation(cannon_rotation);
+
+    // Perform raycast
+    TRY_INIT_PTR(world, GetWorld());
+
+    TArray<FHitResult> hits;
+    float const capsule_half_height{aim_limits.watching_cone_radius}; // placeholder
+    auto const vision_pos{camera_mesh->GetComponentLocation()};
+    auto const vision_angle{aim_limits.watching_cone_degrees};
+
+    auto const capsule{
+        FCollisionShape::MakeCapsule(aim_limits.watching_cone_radius, capsule_half_height)};
+    FCollisionQueryParams params;
+    auto const start{vision_pos};
+    auto const end{vision_pos};
+
+    auto sweep_hit{
+        world->SweepMultiByChannel(hits, start, end, FQuat::Identity, ECC_Pawn, capsule, params)};
+
+    if (!sweep_hit) {
+        return;
+    }
+
+    for (auto const& hit : hits) {
+        auto const target{hit.GetActor()};
+        if (!target) {
+            continue;
+        }
+    }
+
+    {
+        DrawDebugCapsule(world,
+                         /*centre*/ vision_pos,
+                         /*half height*/ capsule_half_height,
+                         /*radius*/ aim_limits.watching_cone_radius,
+                         /*rotation*/ FQuat::Identity,
+                         /*color*/ FColor::Green);
+
+        constexpr int32 cone_sides{8};
+        DrawDebugCone(world,
+                      vision_pos,
+                      camera_mesh->GetForwardVector(),
+                      aim_limits.watching_cone_radius,
+                      FMath::DegreesToRadians(vision_angle),
+                      FMath::DegreesToRadians(vision_angle),
+                      cone_sides,
+                      FColor::Blue);
+    }
 }
 void AFloorTurret::handle_attacking_state() {}
