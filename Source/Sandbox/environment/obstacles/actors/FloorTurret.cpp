@@ -110,6 +110,18 @@ void AFloorTurret::handle_watching_state(float dt) {
         if (!target) {
             continue;
         }
+
+        if (!within_vision_cone(*target, aim_limits.watching_cone_degrees)) {
+            continue;
+        }
+
+        if (!is_enemy(*target)) {
+            continue;
+        }
+
+        state.current_target = hit.GetActor();
+        state.operating_state = EFloorTurretState::Attacking;
+        break;
     }
 
     {
@@ -132,3 +144,9 @@ void AFloorTurret::handle_watching_state(float dt) {
     }
 }
 void AFloorTurret::handle_attacking_state() {}
+bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
+    return false;
+}
+bool AFloorTurret::is_enemy(AActor& target) const {
+    return false;
+}

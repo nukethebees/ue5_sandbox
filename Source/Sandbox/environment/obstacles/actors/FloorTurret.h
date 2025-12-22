@@ -90,6 +90,9 @@ class SANDBOX_API AFloorTurret : public AActor {
 
     void set_state(EFloorTurretState new_state);
     auto get_state() const { return state; }
+
+    bool within_vision_cone(AActor& target, float cone_degrees) const;
+    bool is_enemy(AActor& target) const;
   protected:
     virtual void BeginPlay() override;
 
