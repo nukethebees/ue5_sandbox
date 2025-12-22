@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
+#include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -95,6 +96,8 @@ void AFloorTurret::handle_watching_state(float dt) {
     auto const capsule{
         FCollisionShape::MakeCapsule(aim_limits.watching_cone_radius, capsule_half_height)};
     FCollisionQueryParams params;
+    params.AddIgnoredActor(Owner);
+    params.AddIgnoredActor(this);
     auto const start{vision_pos};
     auto const end{vision_pos};
 
@@ -118,6 +121,13 @@ void AFloorTurret::handle_watching_state(float dt) {
         if (!is_enemy(*target)) {
             continue;
         }
+
+        auto* health{target->FindComponentByClass<UHealthComponent>()};
+        if (!health) {
+            continue;
+        }
+
+        UE_LOG(LogSandboxAI, Verbose, TEXT("Found enemy: %s\n"), *target->GetActorLabel());
 
         state.current_target = hit.GetActor();
         state.operating_state = EFloorTurretState::Attacking;
@@ -145,8 +155,16 @@ void AFloorTurret::handle_watching_state(float dt) {
 }
 void AFloorTurret::handle_attacking_state() {}
 bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
-    return false;
+    auto const fwd{camera_mesh->GetForwardVector()};
+    auto const camera_location{camera_mesh->GetComponentLocation()};
+    auto const to_target{target.GetActorLocation() - camera_location};
+    auto const to_target_norm{to_target.GetSafeNormal()};
+
+    auto const dot{FVector::DotProduct(fwd, to_target_norm)};
+    auto const threshold{FMath::Cos(FMath::DegreesToRadians(cone_degrees))};
+
+    return dot >= threshold;
 }
 bool AFloorTurret::is_enemy(AActor& target) const {
-    return false;
+    return true;
 }
