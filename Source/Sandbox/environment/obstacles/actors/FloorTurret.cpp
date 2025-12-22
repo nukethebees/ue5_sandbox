@@ -61,18 +61,18 @@ void AFloorTurret::BeginPlay() {
 void AFloorTurret::handle_watching_state(float dt) {
     auto const delta_rotation{aim_limits.rotation_speed_degrees_per_second * dt};
 
+    auto const max_rot{aim_limits.watching_cone_degrees};
+
     if (aim_state.scan_direction == EFloorTurretScanDirection::clockwise) {
-        aim_state.camera_rotation_angle = std::min(aim_state.camera_rotation_angle + delta_rotation,
-                                                   aim_limits.tracking_cone_degrees);
-        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle,
-                                 aim_limits.tracking_cone_degrees)) {
+        aim_state.camera_rotation_angle =
+            std::min(aim_state.camera_rotation_angle + delta_rotation, max_rot);
+        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle, max_rot)) {
             aim_state.scan_direction = EFloorTurretScanDirection::anticlockwise;
         }
     } else {
-        aim_state.camera_rotation_angle = std::max(aim_state.camera_rotation_angle - delta_rotation,
-                                                   -aim_limits.tracking_cone_degrees);
-        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle,
-                                 aim_limits.tracking_cone_degrees)) {
+        aim_state.camera_rotation_angle =
+            std::max(aim_state.camera_rotation_angle - delta_rotation, -max_rot);
+        if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle, -max_rot)) {
             aim_state.scan_direction = EFloorTurretScanDirection::clockwise;
         }
     }
