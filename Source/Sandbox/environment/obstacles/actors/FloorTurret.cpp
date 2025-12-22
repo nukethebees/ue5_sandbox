@@ -8,6 +8,8 @@
 
 AFloorTurret::AFloorTurret()
     : base_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretBase"))}
+    , pivot{CreateDefaultSubobject<USceneComponent>(TEXT("TurretPivot"))}
+    , camera_pivot{CreateDefaultSubobject<USceneComponent>(TEXT("TurretCameraPivot"))}
     , cannon_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCannon"))}
     , camera_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCamera"))}
     , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretMuzzlePoint"))} {
@@ -17,9 +19,12 @@ AFloorTurret::AFloorTurret()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
     base_mesh->SetupAttachment(RootComponent);
-    cannon_mesh->SetupAttachment(base_mesh);
+    pivot->SetupAttachment(base_mesh);
+    cannon_mesh->SetupAttachment(pivot);
     muzzle_point->SetupAttachment(cannon_mesh);
-    camera_mesh->SetupAttachment(base_mesh);
+
+    camera_pivot->SetupAttachment(pivot);
+    camera_mesh->SetupAttachment(camera_pivot);
 }
 
 void AFloorTurret::Tick(float dt) {
@@ -64,12 +69,16 @@ void AFloorTurret::handle_watching_state(float dt) {
             aim_state.scan_direction = EFloorTurretScanDirection::anticlockwise;
         }
     } else {
-        aim_state.camera_rotation_angle = std::max(
-            -aim_state.camera_rotation_angle - delta_rotation, -aim_limits.tracking_cone_degrees);
+        aim_state.camera_rotation_angle = std::max(aim_state.camera_rotation_angle - delta_rotation,
+                                                   -aim_limits.tracking_cone_degrees);
         if (FMath::IsNearlyEqual(aim_state.camera_rotation_angle,
                                  aim_limits.tracking_cone_degrees)) {
             aim_state.scan_direction = EFloorTurretScanDirection::clockwise;
         }
     }
+
+    auto cannon_rotation{pivot->GetRelativeRotation()};
+    cannon_rotation.Yaw = aim_state.camera_rotation_angle;
+    pivot->SetRelativeRotation(cannon_rotation);
 }
 void AFloorTurret::handle_attacking_state() {}

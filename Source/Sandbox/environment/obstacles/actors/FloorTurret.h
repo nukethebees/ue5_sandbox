@@ -95,6 +95,10 @@ class SANDBOX_API AFloorTurret : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* base_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
+    USceneComponent* pivot{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    USceneComponent* camera_pivot{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* cannon_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* camera_mesh{nullptr};
