@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/players/common/enums/TeamID.h"
 
 #include "FloorTurret.generated.h"
 
@@ -74,6 +75,8 @@ USTRUCT(BlueprintType)
 struct FFloorTurretState {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    ETeamID team_id{ETeamID::Enemy};
     UPROPERTY(EditAnywhere, Category = "Turret")
     EFloorTurretState operating_state{EFloorTurretState::Watching};
     UPROPERTY(EditAnywhere, Category = "Turret")
