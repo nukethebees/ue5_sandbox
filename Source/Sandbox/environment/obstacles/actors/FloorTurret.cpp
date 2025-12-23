@@ -7,6 +7,7 @@
 
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/common/enums/TeamID.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -166,5 +167,5 @@ bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const 
     return dot >= threshold;
 }
 bool AFloorTurret::is_enemy(AActor& target) const {
-    return true;
+    return get_team_attitude(state.team_id, target) == ETeamAttitude::Hostile;
 }
