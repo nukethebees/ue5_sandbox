@@ -47,7 +47,7 @@ void AFloorTurret::Tick(float dt) {
             break;
         }
         case EFloorTurretState::Attacking: {
-            handle_attacking_state();
+            handle_attacking_state(dt);
             break;
         }
         default: {
@@ -59,6 +59,16 @@ void AFloorTurret::Tick(float dt) {
 void AFloorTurret::set_state(EFloorTurretState new_state) {
     state.operating_state = new_state;
     SetActorTickEnabled(state.operating_state != EFloorTurretState::Disabled);
+
+    switch (state.operating_state) {
+        case EFloorTurretState::Attacking: {
+            state.time_since_last_shot = 0.0f;
+            break;
+        }
+        default: {
+            break;
+        }
+    }
 }
 
 bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
@@ -79,6 +89,72 @@ bool AFloorTurret::is_enemy(AActor& target) const {
 void AFloorTurret::BeginPlay() {
     Super::BeginPlay();
 }
+
+auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) const -> AActor* {
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), nullptr);
+
+    TArray<FHitResult> hits;
+    float const capsule_half_height{vision_radius}; // placeholder
+    auto const vision_pos{camera_mesh->GetComponentLocation()};
+
+    auto const capsule{FCollisionShape::MakeCapsule(vision_radius, capsule_half_height)};
+    FCollisionQueryParams params;
+    params.AddIgnoredActor(Owner);
+    params.AddIgnoredActor(this);
+    auto const start{vision_pos};
+    auto const end{vision_pos};
+
+    auto sweep_hit{
+        world->SweepMultiByChannel(hits, start, end, FQuat::Identity, ECC_Pawn, capsule, params)};
+
+    DrawDebugCapsule(world,
+                     /*centre*/ vision_pos,
+                     /*half height*/ capsule_half_height,
+                     /*radius*/ vision_radius,
+                     /*rotation*/ FQuat::Identity,
+                     /*color*/ FColor::Green);
+
+    constexpr int32 cone_sides{8};
+    DrawDebugCone(world,
+                  vision_pos,
+                  camera_mesh->GetForwardVector(),
+                  vision_radius,
+                  FMath::DegreesToRadians(vision_angle),
+                  FMath::DegreesToRadians(vision_angle),
+                  cone_sides,
+                  FColor::Blue);
+
+    if (!sweep_hit) {
+        return nullptr;
+    }
+
+    for (auto const& hit : hits) {
+        auto const target{hit.GetActor()};
+        if (!target) {
+            continue;
+        }
+
+        if (!within_vision_cone(*target, vision_angle)) {
+            continue;
+        }
+
+        if (!is_enemy(*target)) {
+            continue;
+        }
+
+        auto* health{target->FindComponentByClass<UHealthComponent>()};
+        if (!health) {
+            continue;
+        }
+
+        UE_LOG(LogSandboxAI, Verbose, TEXT("Found enemy: %s\n"), *target->GetActorLabel());
+
+        return hit.GetActor();
+    }
+
+    return nullptr;
+}
+void AFloorTurret::turn_towards_enemy(AActor& enemy) {}
 
 void AFloorTurret::handle_watching_state(float dt) {
     auto const delta_rotation{aim_config.watching_rotation_speed_degrees_per_second * dt};
@@ -103,77 +179,31 @@ void AFloorTurret::handle_watching_state(float dt) {
     cannon_rotation.Yaw = aim_state.camera_rotation_angle;
     pivot->SetRelativeRotation(cannon_rotation);
 
-    // Perform raycast
-    TRY_INIT_PTR(world, GetWorld());
+    if (auto* enemy{
+            search_for_enemy(aim_config.watching_cone_radius, aim_config.watching_cone_degrees)}) {
+        state.current_target = enemy;
+        set_state(EFloorTurretState::Attacking);
+    }
+}
+void AFloorTurret::handle_attacking_state(float dt) {
+    auto* enemy{
+        search_for_enemy(aim_config.watching_cone_radius, aim_config.tracking_cone_degrees)};
 
-    TArray<FHitResult> hits;
-    float const capsule_half_height{aim_config.watching_cone_radius}; // placeholder
-    auto const vision_pos{camera_mesh->GetComponentLocation()};
-    auto const vision_angle{aim_config.watching_cone_degrees};
-
-    auto const capsule{
-        FCollisionShape::MakeCapsule(aim_config.watching_cone_radius, capsule_half_height)};
-    FCollisionQueryParams params;
-    params.AddIgnoredActor(Owner);
-    params.AddIgnoredActor(this);
-    auto const start{vision_pos};
-    auto const end{vision_pos};
-
-    auto sweep_hit{
-        world->SweepMultiByChannel(hits, start, end, FQuat::Identity, ECC_Pawn, capsule, params)};
-
-    if (!sweep_hit) {
+    if (!enemy) {
+        set_state(EFloorTurretState::Watching);
+        state.current_target = nullptr;
         return;
     }
 
-    for (auto const& hit : hits) {
-        auto const target{hit.GetActor()};
-        if (!target) {
-            continue;
-        }
+    turn_towards_enemy(*enemy);
 
-        if (!within_vision_cone(*target, aim_config.watching_cone_degrees)) {
-            continue;
-        }
+    state.time_since_last_shot += dt;
+    auto const seconds_per_bullet{1.0f / bullet_config.fire_rate};
 
-        if (!is_enemy(*target)) {
-            continue;
-        }
-
-        auto* health{target->FindComponentByClass<UHealthComponent>()};
-        if (!health) {
-            continue;
-        }
-
-        UE_LOG(LogSandboxAI, Verbose, TEXT("Found enemy: %s\n"), *target->GetActorLabel());
-
-        state.current_target = hit.GetActor();
-        state.operating_state = EFloorTurretState::Attacking;
-        break;
+    if (state.time_since_last_shot >= seconds_per_bullet) {
+        fire_bullet();
+        state.time_since_last_shot = 0.0f;
     }
-
-    {
-        DrawDebugCapsule(world,
-                         /*centre*/ vision_pos,
-                         /*half height*/ capsule_half_height,
-                         /*radius*/ aim_config.watching_cone_radius,
-                         /*rotation*/ FQuat::Identity,
-                         /*color*/ FColor::Green);
-
-        constexpr int32 cone_sides{8};
-        DrawDebugCone(world,
-                      vision_pos,
-                      camera_mesh->GetForwardVector(),
-                      aim_config.watching_cone_radius,
-                      FMath::DegreesToRadians(vision_angle),
-                      FMath::DegreesToRadians(vision_angle),
-                      cone_sides,
-                      FColor::Blue);
-    }
-}
-void AFloorTurret::handle_attacking_state() {
-    // turn towards where enemy is moving
-    // fire if pointing in the right direction
 }
 void AFloorTurret::fire_bullet() {
     check(bullet_config.bullet_actor_class);

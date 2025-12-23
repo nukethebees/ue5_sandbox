@@ -103,8 +103,11 @@ class SANDBOX_API AFloorTurret : public AActor {
   protected:
     virtual void BeginPlay() override;
 
+    auto search_for_enemy(float vision_radius, float vision_angle) const -> AActor*;
+    void turn_towards_enemy(AActor& enemy);
+
     void handle_watching_state(float dt);
-    void handle_attacking_state();
+    void handle_attacking_state(float dt);
     void fire_bullet();
 
     UPROPERTY(EditAnywhere, Category = "Turret")
