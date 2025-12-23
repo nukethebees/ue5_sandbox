@@ -29,7 +29,7 @@ enum class EFloorTurretScanDirection : uint8 {
 };
 
 USTRUCT(BlueprintType)
-struct FFloorTurretBulletData {
+struct FFloorTurretBulletConfig {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Turret")
@@ -43,11 +43,13 @@ struct FFloorTurretBulletData {
 };
 
 USTRUCT(BlueprintType)
-struct FFloorTurretAimLimits {
+struct FFloorTurretAimConfig {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float rotation_speed_degrees_per_second{5.0f};
+    float watching_rotation_speed_degrees_per_second{45.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float attacking_rotation_speed_degrees_per_second{95.0f};
     // Angles are half of the full rotation
     UPROPERTY(EditAnywhere, Category = "Turret")
     float rotation_degrees{90.0f};
@@ -101,6 +103,7 @@ class SANDBOX_API AFloorTurret : public AActor {
 
     void handle_watching_state(float dt);
     void handle_attacking_state();
+    void fire_bullet();
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* base_mesh{nullptr};
@@ -116,9 +119,9 @@ class SANDBOX_API AFloorTurret : public AActor {
     UArrowComponent* muzzle_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
-    FFloorTurretBulletData bullet_data;
+    FFloorTurretBulletConfig bullet_config;
     UPROPERTY(EditAnywhere, Category = "Turret")
-    FFloorTurretAimLimits aim_limits;
+    FFloorTurretAimConfig aim_config;
     UPROPERTY(EditAnywhere, Category = "Turret")
     FFloorTurretAimState aim_state;
     UPROPERTY(EditAnywhere, Category = "Turret")

@@ -59,14 +59,29 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
     SetActorTickEnabled(state.operating_state != EFloorTurretState::Disabled);
 }
 
+bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
+    auto const fwd{camera_mesh->GetForwardVector()};
+    auto const camera_location{camera_mesh->GetComponentLocation()};
+    auto const to_target{target.GetActorLocation() - camera_location};
+    auto const to_target_norm{to_target.GetSafeNormal()};
+
+    auto const dot{FVector::DotProduct(fwd, to_target_norm)};
+    auto const threshold{FMath::Cos(FMath::DegreesToRadians(cone_degrees))};
+
+    return dot >= threshold;
+}
+bool AFloorTurret::is_enemy(AActor& target) const {
+    return get_team_attitude(state.team_id, target) == ETeamAttitude::Hostile;
+}
+
 void AFloorTurret::BeginPlay() {
     Super::BeginPlay();
 }
 
 void AFloorTurret::handle_watching_state(float dt) {
-    auto const delta_rotation{aim_limits.rotation_speed_degrees_per_second * dt};
+    auto const delta_rotation{aim_config.watching_rotation_speed_degrees_per_second * dt};
 
-    auto const max_rot{aim_limits.rotation_degrees};
+    auto const max_rot{aim_config.rotation_degrees};
 
     if (aim_state.scan_direction == EFloorTurretScanDirection::clockwise) {
         aim_state.camera_rotation_angle =
@@ -90,12 +105,12 @@ void AFloorTurret::handle_watching_state(float dt) {
     TRY_INIT_PTR(world, GetWorld());
 
     TArray<FHitResult> hits;
-    float const capsule_half_height{aim_limits.watching_cone_radius}; // placeholder
+    float const capsule_half_height{aim_config.watching_cone_radius}; // placeholder
     auto const vision_pos{camera_mesh->GetComponentLocation()};
-    auto const vision_angle{aim_limits.watching_cone_degrees};
+    auto const vision_angle{aim_config.watching_cone_degrees};
 
     auto const capsule{
-        FCollisionShape::MakeCapsule(aim_limits.watching_cone_radius, capsule_half_height)};
+        FCollisionShape::MakeCapsule(aim_config.watching_cone_radius, capsule_half_height)};
     FCollisionQueryParams params;
     params.AddIgnoredActor(Owner);
     params.AddIgnoredActor(this);
@@ -115,7 +130,7 @@ void AFloorTurret::handle_watching_state(float dt) {
             continue;
         }
 
-        if (!within_vision_cone(*target, aim_limits.watching_cone_degrees)) {
+        if (!within_vision_cone(*target, aim_config.watching_cone_degrees)) {
             continue;
         }
 
@@ -139,7 +154,7 @@ void AFloorTurret::handle_watching_state(float dt) {
         DrawDebugCapsule(world,
                          /*centre*/ vision_pos,
                          /*half height*/ capsule_half_height,
-                         /*radius*/ aim_limits.watching_cone_radius,
+                         /*radius*/ aim_config.watching_cone_radius,
                          /*rotation*/ FQuat::Identity,
                          /*color*/ FColor::Green);
 
@@ -147,25 +162,15 @@ void AFloorTurret::handle_watching_state(float dt) {
         DrawDebugCone(world,
                       vision_pos,
                       camera_mesh->GetForwardVector(),
-                      aim_limits.watching_cone_radius,
+                      aim_config.watching_cone_radius,
                       FMath::DegreesToRadians(vision_angle),
                       FMath::DegreesToRadians(vision_angle),
                       cone_sides,
                       FColor::Blue);
     }
 }
-void AFloorTurret::handle_attacking_state() {}
-bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
-    auto const fwd{camera_mesh->GetForwardVector()};
-    auto const camera_location{camera_mesh->GetComponentLocation()};
-    auto const to_target{target.GetActorLocation() - camera_location};
-    auto const to_target_norm{to_target.GetSafeNormal()};
-
-    auto const dot{FVector::DotProduct(fwd, to_target_norm)};
-    auto const threshold{FMath::Cos(FMath::DegreesToRadians(cone_degrees))};
-
-    return dot >= threshold;
+void AFloorTurret::handle_attacking_state() {
+    // turn towards where enemy is moving
+    // fire if pointing in the right direction
 }
-bool AFloorTurret::is_enemy(AActor& target) const {
-    return get_team_attitude(state.team_id, target) == ETeamAttitude::Hostile;
-}
+void AFloorTurret::fire_bullet() {}
