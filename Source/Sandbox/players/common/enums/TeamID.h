@@ -7,6 +7,8 @@
 
 #include "TeamID.generated.h"
 
+class AActor;
+
 UENUM(BlueprintType)
 enum class ETeamID : uint8 {
     Player = 0 UMETA(DisplayName = "Player"),
@@ -15,7 +17,7 @@ enum class ETeamID : uint8 {
     Neutral = 3 UMETA(DisplayName = "Neutral"),
 };
 
-inline ETeamAttitude::Type GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId TeamB) {
+inline auto GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId TeamB) -> ETeamAttitude::Type {
     auto const team_a{static_cast<ETeamID>(TeamA.GetId())};
     auto const team_b{static_cast<ETeamID>(TeamB.GetId())};
 
@@ -55,3 +57,5 @@ inline ETeamAttitude::Type GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId 
     // Default to hostile
     return ETeamAttitude::Hostile;
 }
+
+auto get_team_attitude(ETeamID team_a, AActor& target) -> ETeamAttitude::Type;
