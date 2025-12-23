@@ -4,7 +4,9 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
@@ -173,4 +175,32 @@ void AFloorTurret::handle_attacking_state() {
     // turn towards where enemy is moving
     // fire if pointing in the right direction
 }
-void AFloorTurret::fire_bullet() {}
+void AFloorTurret::fire_bullet() {
+    check(bullet_config.bullet_actor_class);
+
+    RETURN_IF_NULLPTR(bullet_config.bullet_actor_class);
+    RETURN_IF_NULLPTR(muzzle_point);
+    TRY_INIT_PTR(world, GetWorld());
+
+    auto const spawn_location{muzzle_point->GetComponentLocation()};
+    auto const spawn_rotation{muzzle_point->GetComponentRotation()};
+
+    FActorSpawnParameters spawn_params{};
+    spawn_params.Owner = this;
+    auto* bullet{world->SpawnActor<ABulletActor>(
+        bullet_config.bullet_actor_class, spawn_location, spawn_rotation, spawn_params)};
+
+    RETURN_IF_NULLPTR(bullet);
+
+    TRY_INIT_PTR(movement, bullet->FindComponentByClass<UProjectileMovementComponent>());
+
+    bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
+
+    auto const speed{bullet_config.bullet_speed};
+    movement->InitialSpeed = speed;
+    movement->MaxSpeed = speed;
+
+    auto velocity_unit{spawn_rotation.Vector()};
+    velocity_unit.Normalize();
+    movement->Velocity = velocity_unit * speed;
+}
