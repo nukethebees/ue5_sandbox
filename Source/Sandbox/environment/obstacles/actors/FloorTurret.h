@@ -83,6 +83,8 @@ struct FFloorTurretState {
     EFloorTurretState operating_state{EFloorTurretState::Watching};
     UPROPERTY(EditAnywhere, Category = "Turret")
     AActor* current_target{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float time_since_last_shot{0.0f};
 };
 
 UCLASS()
