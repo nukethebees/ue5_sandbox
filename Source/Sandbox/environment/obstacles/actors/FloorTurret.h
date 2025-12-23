@@ -54,11 +54,11 @@ struct FFloorTurretAimConfig {
     UPROPERTY(EditAnywhere, Category = "Turret")
     float rotation_degrees{90.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float watching_cone_degrees{60.0f};
+    float watching_cone_degrees{25.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float tracking_cone_degrees{100.0f};
+    float tracking_cone_degrees{40.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
-    float watching_cone_radius{500.0f};
+    float watching_cone_radius{1200.0f};
 };
 
 USTRUCT(BlueprintType)
