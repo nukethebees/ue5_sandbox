@@ -8,7 +8,7 @@ auto get_team_attitude(ETeamID team_a, AActor& target) -> ETeamAttitude::Type {
 
     if (team_agent) {
         auto const team_id{team_agent->GetGenericTeamId()};
-        return GetTeamAttitude(static_cast<FGenericTeamId>(std::to_underlying(team_a)), team_id);
+        return get_team_attitude(team_a, static_cast<ETeamID>(team_id.GetId()));
     }
 
     return ETeamAttitude::Neutral;

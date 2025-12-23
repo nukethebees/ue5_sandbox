@@ -17,15 +17,7 @@ enum class ETeamID : uint8 {
     Neutral = 3 UMETA(DisplayName = "Neutral"),
 };
 
-inline auto GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId TeamB) -> ETeamAttitude::Type {
-    auto const team_a{static_cast<ETeamID>(TeamA.GetId())};
-    auto const team_b{static_cast<ETeamID>(TeamB.GetId())};
-
-#if !UE_BUILD_SHIPPING
-    check(TeamA != FGenericTeamId::NoTeam);
-    check(TeamB != FGenericTeamId::NoTeam);
-#endif
-
+inline auto get_team_attitude(ETeamID team_a, ETeamID team_b) -> ETeamAttitude::Type {
     // Same team is friendly
     if (team_a == team_b) {
         return ETeamAttitude::Friendly;
@@ -57,5 +49,16 @@ inline auto GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId TeamB) -> ETeam
     // Default to hostile
     return ETeamAttitude::Hostile;
 }
-
 auto get_team_attitude(ETeamID team_a, AActor& target) -> ETeamAttitude::Type;
+
+inline auto GetTeamAttitude(FGenericTeamId TeamA, FGenericTeamId TeamB) -> ETeamAttitude::Type {
+#if !UE_BUILD_SHIPPING
+    check(TeamA != FGenericTeamId::NoTeam);
+    check(TeamB != FGenericTeamId::NoTeam);
+#endif
+
+    auto const team_a{static_cast<ETeamID>(TeamA.GetId())};
+    auto const team_b{static_cast<ETeamID>(TeamB.GetId())};
+
+    return get_team_attitude(team_a, team_b);
+}
