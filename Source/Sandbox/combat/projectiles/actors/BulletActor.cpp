@@ -4,6 +4,7 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraFunctionLibrary.h"
@@ -65,18 +66,19 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
     static constexpr auto LOG{NestedLogger<"on_hit">()};
 
     log_very_verbose(TEXT("Hit occurred."));
+    TRY_INIT_PTR(world, GetWorld());
 
     if (impact_effect) {
         auto const impact_location{Hit.Location};
         auto const impact_rotation{UKismetMathLibrary::MakeRotFromZ(Hit.Normal)};
 
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(), impact_effect, impact_location, impact_rotation);
+            world, impact_effect, impact_location, impact_rotation);
     }
 
     if (other_actor) {
         if (auto* actor_health{other_actor->FindComponentByClass<UHealthComponent>()}) {
-            if (auto* manager{GetWorld()->GetSubsystem<UDamageManagerSubsystem>()}) {
+            if (auto* manager{world->GetSubsystem<UDamageManagerSubsystem>()}) {
                 manager->queue_health_change(actor_health, damage);
             }
         }
@@ -84,7 +86,7 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
         LOG.log_warning(TEXT("No other_actor"));
     }
 
-    if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
+    if (auto* pool{world->GetSubsystem<UObjectPoolSubsystem>()}) {
         pool->return_item<FBulletPoolConfig>(this);
     } else {
         LOG.log_warning(TEXT("No object pool subsystem, destroying instead"));

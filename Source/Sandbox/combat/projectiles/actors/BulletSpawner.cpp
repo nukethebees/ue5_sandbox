@@ -2,6 +2,9 @@
 
 #include "Sandbox/combat/projectiles/actors/BulletSpawner.h"
 
+#include "Engine/World.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+
 #include "Sandbox/combat/projectiles/actors/BulletActor.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
@@ -33,13 +36,14 @@ void ABulletSpawner::spawn_bullet() {
 
     RETURN_IF_NULLPTR(bullet_class);
     RETURN_IF_NULLPTR(fire_point);
+    TRY_INIT_PTR(world, GetWorld());
 
     auto const spawn_location{fire_point->GetComponentLocation()};
     auto const spawn_rotation{fire_point->GetComponentRotation()};
 
     ABulletActor* bullet{nullptr};
 
-    if (auto* pool{GetWorld()->GetSubsystem<UObjectPoolSubsystem>()}) {
+    if (auto* pool{world->GetSubsystem<UObjectPoolSubsystem>()}) {
         bullet = pool->get_item<FBulletPoolConfig>(bullet_class);
     }
 
@@ -49,7 +53,7 @@ void ABulletSpawner::spawn_bullet() {
 
         FActorSpawnParameters spawn_params{};
         spawn_params.Owner = this;
-        bullet = GetWorld()->SpawnActor<ABulletActor>(
+        bullet = world->SpawnActor<ABulletActor>(
             bullet_class, spawn_location, spawn_rotation, spawn_params);
     }
 
