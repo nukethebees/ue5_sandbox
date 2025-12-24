@@ -48,6 +48,8 @@ void ABulletActor::BeginPlay() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::ABulletActor::BeginPlay"))
     static constexpr auto LOG{NestedLogger<"BeginPlay">()};
 
+    SetLifeSpan(120.0f);
+
     Super::BeginPlay();
 
     // Bind to collision event
@@ -89,7 +91,6 @@ void ABulletActor::on_hit(UPrimitiveComponent* HitComponent,
     if (auto* pool{world->GetSubsystem<UObjectPoolSubsystem>()}) {
         pool->return_item<FBulletPoolConfig>(this);
     } else {
-        LOG.log_warning(TEXT("No object pool subsystem, destroying instead"));
         Destroy();
     }
 }
