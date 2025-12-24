@@ -10,6 +10,7 @@
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/utilities/geometry.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -77,10 +78,10 @@ bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const 
     auto const to_target{target.GetActorLocation() - camera_location};
     auto const to_target_norm{to_target.GetSafeNormal()};
 
-    auto const dot{FVector::DotProduct(fwd, to_target_norm)};
-    auto const threshold{FMath::Cos(FMath::DegreesToRadians(cone_degrees))};
+    auto const angle_between{
+        FMath::RadiansToDegrees(ml::get_angle_between_lines(fwd, to_target_norm))};
 
-    return dot >= threshold;
+    return angle_between <= cone_degrees;
 }
 bool AFloorTurret::is_enemy(AActor& target) const {
     return get_team_attitude(state.team_id, target) == ETeamAttitude::Hostile;
