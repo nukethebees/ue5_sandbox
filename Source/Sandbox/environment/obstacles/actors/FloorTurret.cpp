@@ -75,7 +75,7 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
 auto AFloorTurret::angle_to_enemy(AActor& target) const -> double {
     auto const fwd{camera_mesh->GetForwardVector()};
     auto const camera_location{camera_mesh->GetComponentLocation()};
-    auto const angle_between{ml::get_angle_from_fwd_vector(camera_location, fwd, target)};
+    auto const angle_between{ml::get_abs_angle_from_fwd_vector(camera_location, fwd, target)};
     return angle_between;
 }
 bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
