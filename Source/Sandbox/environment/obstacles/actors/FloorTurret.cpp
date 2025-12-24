@@ -10,7 +10,7 @@
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
-#include "Sandbox/utilities/geometry.h"
+#include "Sandbox/utilities/vision_maths.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -75,13 +75,9 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
 bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
     auto const fwd{camera_mesh->GetForwardVector()};
     auto const camera_location{camera_mesh->GetComponentLocation()};
-    auto const to_target{target.GetActorLocation() - camera_location};
-    auto const to_target_norm{to_target.GetSafeNormal()};
+    auto const angle_between{ml::get_angle_from_fwd_vector(camera_location, fwd, target)};
 
-    auto const angle_between{
-        FMath::RadiansToDegrees(ml::get_angle_between_lines(fwd, to_target_norm))};
-
-    return angle_between <= cone_degrees;
+    return FMath::RadiansToDegrees(angle_between) <= cone_degrees;
 }
 bool AFloorTurret::is_enemy(AActor& target) const {
     return get_team_attitude(state.team_id, target) == ETeamAttitude::Hostile;
