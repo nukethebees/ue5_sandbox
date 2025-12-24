@@ -72,11 +72,14 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
     }
 }
 
-bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
+auto AFloorTurret::angle_to_enemy(AActor& target) const -> double {
     auto const fwd{camera_mesh->GetForwardVector()};
     auto const camera_location{camera_mesh->GetComponentLocation()};
     auto const angle_between{ml::get_angle_from_fwd_vector(camera_location, fwd, target)};
-
+    return angle_between;
+}
+bool AFloorTurret::within_vision_cone(AActor& target, float cone_degrees) const {
+    auto const angle_between{angle_to_enemy(target)};
     return FMath::RadiansToDegrees(angle_between) <= cone_degrees;
 }
 bool AFloorTurret::is_enemy(AActor& target) const {
@@ -151,7 +154,33 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
 
     return nullptr;
 }
-void AFloorTurret::turn_towards_enemy(AActor& enemy) {}
+void AFloorTurret::turn_towards_enemy(AActor& enemy, float dt) {
+    auto const angle_to_enemy_rad{static_cast<float>(angle_to_enemy(enemy))};
+
+    auto const max_movement_deg{aim_config.attacking_rotation_speed_degrees_per_second * dt};
+    auto const max_movement_rad{FMath::DegreesToRadians(max_movement_deg)};
+    auto const movement_deg{
+        FMath::RadiansToDegrees(std::min(max_movement_rad, angle_to_enemy_rad))};
+
+    auto const fwd{camera_mesh->GetForwardVector()};
+    auto const right{camera_mesh->GetRightVector()};
+    auto const camera_location{camera_mesh->GetComponentLocation()};
+    auto const to_enemy{(enemy.GetActorLocation() - camera_location).GetSafeNormal()};
+    auto const fwd_dot{FVector::DotProduct(fwd, to_enemy)};
+    auto const right_dot{FVector::DotProduct(right, to_enemy)};
+
+    bool const is_right{right_dot > 0.0f};
+
+    if (is_right) {
+        aim_state.camera_rotation_angle += movement_deg;
+    } else {
+        aim_state.camera_rotation_angle -= movement_deg;
+    }
+
+    auto cannon_rotation{pivot->GetRelativeRotation()};
+    cannon_rotation.Yaw = aim_state.camera_rotation_angle;
+    pivot->SetRelativeRotation(cannon_rotation);
+}
 
 void AFloorTurret::handle_watching_state(float dt) {
     auto const delta_rotation{aim_config.watching_rotation_speed_degrees_per_second * dt};
@@ -192,13 +221,20 @@ void AFloorTurret::handle_attacking_state(float dt) {
         return;
     }
 
-    turn_towards_enemy(*enemy);
+    turn_towards_enemy(*enemy, dt);
 
     state.time_since_last_shot += dt;
     auto const seconds_per_bullet{1.0f / bullet_config.fire_rate};
 
     if (state.time_since_last_shot >= seconds_per_bullet) {
+#if WITH_EDITOR
+        if (can_fire) {
+            fire_bullet();
+        }
+#else
         fire_bullet();
+#endif
+
         state.time_since_last_shot = 0.0f;
     }
 }

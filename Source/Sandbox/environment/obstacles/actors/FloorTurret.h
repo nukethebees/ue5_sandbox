@@ -98,13 +98,14 @@ class SANDBOX_API AFloorTurret : public AActor {
     void set_state(EFloorTurretState new_state);
     auto get_state() const { return state; }
 
+    auto angle_to_enemy(AActor& target) const -> double;
     bool within_vision_cone(AActor& target, float cone_degrees) const;
     bool is_enemy(AActor& target) const;
   protected:
     virtual void BeginPlay() override;
 
     auto search_for_enemy(float vision_radius, float vision_angle) const -> AActor*;
-    void turn_towards_enemy(AActor& enemy);
+    void turn_towards_enemy(AActor& enemy, float dt);
 
     void handle_watching_state(float dt);
     void handle_attacking_state(float dt);
@@ -131,4 +132,9 @@ class SANDBOX_API AFloorTurret : public AActor {
     FFloorTurretAimState aim_state;
     UPROPERTY(EditAnywhere, Category = "Turret")
     FFloorTurretState state;
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    bool can_fire{true};
+#endif
 };
