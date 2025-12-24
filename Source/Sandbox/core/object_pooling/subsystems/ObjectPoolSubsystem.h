@@ -29,8 +29,8 @@ class SANDBOX_API UObjectPoolSubsystem
     }
 
     template <typename Config>
-    void return_item(typename Config::ActorType* item) {
-        core_->return_item<Config>(item);
+    [[nodiscard]] auto return_item(typename Config::ActorType* item) {
+        return core_->return_item<Config>(item);
     }
 
     template <typename Config>

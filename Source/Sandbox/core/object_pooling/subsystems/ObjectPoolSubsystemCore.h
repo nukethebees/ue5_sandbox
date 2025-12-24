@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "CoreMinimal.h"
+#include "Engine/World.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/core/object_pooling/concepts/ObjectPoolConcepts.h"
@@ -11,6 +12,14 @@
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+UENUM(BlueprintType)
+enum class EObjectPoolSubsystemReturnStatus : uint8 {
+    Success,
+    NullItem,
+    ItemNotInPool,
+    AlreadyReturned
+};
 
 template <typename... Configs>
     requires (IsPoolConfig<Configs> && ...)
@@ -71,22 +80,22 @@ class UObjectPoolSubsystemCore
     }
 
     template <typename Config>
-    void return_item(typename Config::ActorType* item) {
+    [[nodiscard]] auto return_item(typename Config::ActorType* item)
+        -> EObjectPoolSubsystemReturnStatus {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UObjectPoolSubsystemCore::return_item"))
 
         static constexpr auto logger{NestedLogger<"return_item">()};
 
         if (!item) {
             logger.log_warning(TEXT("Attempted to return null item"));
-            return;
+            return EObjectPoolSubsystemReturnStatus::NullItem;
         }
 
         auto& pool{get_pool<Config>()};
         auto const pool_idx{pool.Find(item)};
 
         if (pool_idx == INDEX_NONE) {
-            logger.log_error(TEXT("Attempted to return item not in pool"));
-            return;
+            return EObjectPoolSubsystemReturnStatus::ItemNotInPool;
         }
 
         // Look up which free list this actor's class belongs to
@@ -96,7 +105,7 @@ class UObjectPoolSubsystemCore
         // Check for double-return
         if (subclass_data.freelist.Contains(pool_idx)) {
             logger.log_error(TEXT("Attempted to return already-free item at index %d"), pool_idx);
-            return;
+            return EObjectPoolSubsystemReturnStatus::AlreadyReturned;
         }
 
         item->Deactivate();
@@ -105,6 +114,8 @@ class UObjectPoolSubsystemCore
         logger.log_very_verbose(TEXT("Returned actor to pool at index %d. (%d free)"),
                                 pool_idx,
                                 subclass_data.freelist.Num());
+
+        return EObjectPoolSubsystemReturnStatus::Success;
     }
 
     template <typename Config>
