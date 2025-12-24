@@ -7,6 +7,8 @@
 
 #include "PatrolWaypoint.generated.h"
 
+class UStaticMeshComponent;
+
 UCLASS()
 class SANDBOX_API APatrolWaypoint : public AActor {
     GENERATED_BODY()
@@ -21,4 +23,9 @@ class SANDBOX_API APatrolWaypoint : public AActor {
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation")
     FName name;
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Navigation")
+    UStaticMeshComponent* editor_mesh{nullptr};
+#endif
 };

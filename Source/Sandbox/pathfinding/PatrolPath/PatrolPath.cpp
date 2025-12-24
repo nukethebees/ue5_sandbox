@@ -2,7 +2,8 @@
 
 #include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
 
-APatrolPath::APatrolPath() {
+APatrolPath::APatrolPath()
+{
     PrimaryActorTick.bCanEverTick = true;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));

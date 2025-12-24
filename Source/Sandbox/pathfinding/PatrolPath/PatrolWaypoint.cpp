@@ -2,10 +2,20 @@
 
 #include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
 
-APatrolWaypoint::APatrolWaypoint() {
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+
+APatrolWaypoint::APatrolWaypoint()
+#if WITH_EDITOR
+    : editor_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EditorMesh"))}
+#endif
+{
     PrimaryActorTick.bCanEverTick = true;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+#if WITH_EDITOR
+    editor_mesh->SetupAttachment(RootComponent);
+#endif
 }
 
 #if WITH_EDITOR
