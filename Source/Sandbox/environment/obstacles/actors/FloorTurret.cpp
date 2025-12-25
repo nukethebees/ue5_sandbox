@@ -11,6 +11,7 @@
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/utilities/line.h"
 #include "Sandbox/utilities/vision_maths.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -95,10 +96,9 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
     INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), nullptr);
 
     TArray<FHitResult> hits;
-    float const capsule_half_height{vision_radius}; // placeholder
     auto const vision_pos{camera_mesh->GetComponentLocation()};
 
-    auto const capsule{FCollisionShape::MakeCapsule(vision_radius, capsule_half_height)};
+    auto const capsule{FCollisionShape::MakeCapsule(vision_radius, vision_half_height())};
     FCollisionQueryParams params;
     params.AddIgnoredActor(Owner);
     params.AddIgnoredActor(this);
@@ -108,18 +108,12 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
     auto sweep_hit{
         world->SweepMultiByChannel(hits, start, end, FQuat::Identity, ECC_Pawn, capsule, params)};
 
+#if WITH_EDITOR
     {
-        auto const vision_angle_rad{FMath::DegreesToRadians(vision_angle)};
-        constexpr int32 cone_sides{8};
-        DrawDebugCone(world,
-                      vision_pos,
-                      camera_mesh->GetForwardVector(),
-                      vision_radius,
-                      vision_angle_rad,
-                      vision_angle_rad,
-                      cone_sides,
-                      FColor::Blue);
+        auto const fwd{camera_mesh->GetForwardVector()};
+        draw_vision_cone(*world, vision_radius, vision_angle, vision_pos, fwd);
     }
+#endif
 
     if (!sweep_hit) {
         return nullptr;
@@ -264,3 +258,46 @@ void AFloorTurret::fire_bullet() {
     velocity_unit.Normalize();
     movement->Velocity = velocity_unit * speed;
 }
+
+#if WITH_EDITOR
+void AFloorTurret::draw_vision_cone(
+    UWorld& world, float vision_radius, float vision_angle, FVector loc, FVector fwd) const {
+    FVector const h{0.0f, 0.0f, vision_half_height()};
+    auto const vision_angle_rad{FMath::DegreesToRadians(vision_angle)};
+
+    FRotator yaw_rotation_right(0.0f, vision_angle, 0.0f);
+    FRotator yaw_rotation_left(0.0f, -vision_angle, 0.0f);
+    auto const rot_right{yaw_rotation_right.RotateVector(fwd) * vision_radius};
+    auto const rot_left{yaw_rotation_left.RotateVector(fwd) * vision_radius};
+
+    auto const loc_bot{loc - h};
+    auto const loc_top{loc + h};
+    auto const loc_bot_right{loc_bot + rot_right};
+    auto const loc_bot_left{loc_bot + rot_left};
+    auto const loc_top_right{loc_top + rot_right};
+    auto const loc_top_left{loc_top + rot_left};
+
+    TArray<FLine> lines{
+        {loc_bot, loc_top},
+        {loc_bot, loc_bot_left},
+        {loc_bot, loc_bot_right},
+        {loc_top, loc_top_left},
+        {loc_top, loc_top_right},
+        {loc_bot_left, loc_top_left},
+        {loc_bot_right, loc_top_right},
+        {loc_bot_left, loc_bot_right},
+        {loc_top_left, loc_top_right},
+        //{loc, loc_bot_left},
+        //{loc, loc_bot_right},
+        //{loc, loc_top_left},
+        //{loc, loc_top_right},
+        //{loc_bot_left, loc_top_left},
+        //{loc_bot_right, loc_top_right},
+        //{loc_bot_left, loc_bot_right},
+    };
+
+    for (auto const& line : lines) {
+        DrawDebugLine(&world, line.start, line.end, FColor::Blue);
+    }
+}
+#endif

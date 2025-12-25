@@ -59,6 +59,8 @@ struct FFloorTurretAimConfig {
     float tracking_cone_degrees{40.0f};
     UPROPERTY(EditAnywhere, Category = "Turret")
     float watching_cone_radius{1200.0f};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    float vision_cone_height{300.0f};
 };
 
 USTRUCT(BlueprintType)
@@ -101,6 +103,8 @@ class SANDBOX_API AFloorTurret : public AActor {
     auto angle_to_enemy(AActor& target) const -> double;
     bool within_vision_cone(AActor& target, float cone_degrees) const;
     bool is_enemy(AActor& target) const;
+
+    auto vision_half_height() const { return aim_config.vision_cone_height / 2.0f; }
   protected:
     virtual void BeginPlay() override;
 
@@ -110,6 +114,11 @@ class SANDBOX_API AFloorTurret : public AActor {
     void handle_watching_state(float dt);
     void handle_attacking_state(float dt);
     void fire_bullet();
+
+#if WITH_EDITOR
+    void draw_vision_cone(
+        UWorld& world, float vision_radius, float vision_angle, FVector loc, FVector fwd) const;
+#endif
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     UStaticMeshComponent* base_mesh{nullptr};
