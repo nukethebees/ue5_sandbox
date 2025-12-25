@@ -107,22 +107,18 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
     auto sweep_hit{
         world->SweepMultiByChannel(hits, start, end, FQuat::Identity, ECC_Pawn, capsule, params)};
 
-    DrawDebugCapsule(world,
-                     /*centre*/ vision_pos,
-                     /*half height*/ capsule_half_height,
-                     /*radius*/ vision_radius,
-                     /*rotation*/ FQuat::Identity,
-                     /*color*/ FColor::Green);
-
-    constexpr int32 cone_sides{8};
-    DrawDebugCone(world,
-                  vision_pos,
-                  camera_mesh->GetForwardVector(),
-                  vision_radius,
-                  FMath::DegreesToRadians(vision_angle),
-                  FMath::DegreesToRadians(vision_angle),
-                  cone_sides,
-                  FColor::Blue);
+    {
+        auto const vision_angle_rad{FMath::DegreesToRadians(vision_angle)};
+        constexpr int32 cone_sides{8};
+        DrawDebugCone(world,
+                      vision_pos,
+                      camera_mesh->GetForwardVector(),
+                      vision_radius,
+                      vision_angle_rad,
+                      vision_angle_rad,
+                      cone_sides,
+                      FColor::Blue);
+    }
 
     if (!sweep_hit) {
         return nullptr;
