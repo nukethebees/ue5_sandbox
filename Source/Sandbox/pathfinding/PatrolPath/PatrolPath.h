@@ -26,9 +26,26 @@ class SANDBOX_API APatrolPath : public AActor {
     }
     auto length() const -> int32 { return waypoints.Num(); }
 #if WITH_EDITOR
+    virtual bool ShouldTickIfViewportsOnly() const { return true; }
+#endif
+    virtual void Tick(float dt) override;
+#if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
 #endif
   protected:
+#if WITH_EDITOR
+    void draw_line_between_waypoints(UWorld& world, int32 a, int32 b);
+#endif
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
+    FColor debug_line_color{FColor::Blue};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
+    float editor_line_arrow_size{5000.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
+    float editor_line_thickness{20.0f};
+#endif
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation")
     FName name;
 
