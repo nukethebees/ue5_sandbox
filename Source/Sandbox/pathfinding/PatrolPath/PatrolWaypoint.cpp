@@ -15,6 +15,9 @@ APatrolWaypoint::APatrolWaypoint()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 #if WITH_EDITOR
     editor_mesh->SetupAttachment(RootComponent);
+    editor_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    editor_mesh->bIsEditorOnly = true;
+    editor_mesh->SetMobility(EComponentMobility::Static);
 #endif
 }
 
