@@ -74,6 +74,9 @@ Plugins/**/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
+# Fab
+Content/Fab
+
 # Claude local files
 /.claude
 /ai_checkpoints
