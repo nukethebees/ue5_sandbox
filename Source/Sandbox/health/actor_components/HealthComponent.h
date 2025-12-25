@@ -106,7 +106,7 @@ class SANDBOX_API UHealthComponent
                 IDeathHandler::try_kill(comp);
             }
 
-            IDeathHandler::kill(owner);
+            check(IDeathHandler::kill(owner));
         }
     }
 };
