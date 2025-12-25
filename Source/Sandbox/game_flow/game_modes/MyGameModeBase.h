@@ -29,9 +29,4 @@ class SANDBOX_API AMyGameModeBase
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Mode")
     URemoveGhostsOnStartComponent* ghost_cleanup_component{nullptr};
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Game Mode")
-    bool show_collision{true};
-#endif
 };

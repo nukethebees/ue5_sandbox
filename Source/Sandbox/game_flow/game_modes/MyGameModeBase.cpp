@@ -1,5 +1,7 @@
 #include "MyGameModeBase.h"
 
+#include "Sandbox/core/SandboxDeveloperSettings.h"
+
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 AMyGameModeBase::AMyGameModeBase()
@@ -31,7 +33,8 @@ void AMyGameModeBase::BeginPlay() {
     pc->Possess(my_character);
 
 #if WITH_EDITOR
-    if (show_collision) {
+    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
+    if (settings->show_collision) {
         pc->ConsoleCommand(TEXT("show collision"));
     }
 #endif

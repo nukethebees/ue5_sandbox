@@ -14,5 +14,10 @@ class USandboxDeveloperSettings : public UDeveloperSettings {
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
     bool visualise_all_patrol_paths{true};
 
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Collision")
+    bool show_collision{true};
+#endif
+
     USandboxDeveloperSettings();
 };
