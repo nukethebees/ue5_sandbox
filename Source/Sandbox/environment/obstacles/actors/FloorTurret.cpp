@@ -1,6 +1,7 @@
 #include "Sandbox/environment/obstacles/actors/FloorTurret.h"
 
 #include "Components/ArrowComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
@@ -22,7 +23,9 @@ AFloorTurret::AFloorTurret()
     , camera_pivot{CreateDefaultSubobject<USceneComponent>(TEXT("TurretCameraPivot"))}
     , cannon_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCannon"))}
     , camera_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCamera"))}
-    , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretMuzzlePoint"))} {
+    , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretMuzzlePoint"))}
+    , health{CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))}
+    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -35,6 +38,10 @@ AFloorTurret::AFloorTurret()
 
     camera_pivot->SetupAttachment(pivot);
     camera_mesh->SetupAttachment(camera_pivot);
+
+    collision_box->SetupAttachment(RootComponent);
+    collision_box->SetCollisionEnabled(ECollisionEnabled::QueryAndProbe);
+    collision_box->SetCollisionResponseToAllChannels(ECR_Block);
 }
 
 void AFloorTurret::Tick(float dt) {
@@ -72,6 +79,10 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
             break;
         }
     }
+}
+
+void AFloorTurret::handle_death() {
+    Destroy();
 }
 
 auto AFloorTurret::angle_to_enemy(AActor& target) const -> double {
@@ -133,8 +144,8 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
             continue;
         }
 
-        auto* health{target->FindComponentByClass<UHealthComponent>()};
-        if (!health) {
+        auto* tgt_health{target->FindComponentByClass<UHealthComponent>()};
+        if (!tgt_health) {
             continue;
         }
 
@@ -287,13 +298,6 @@ void AFloorTurret::draw_vision_cone(
         {loc_bot_right, loc_top_right},
         {loc_bot_left, loc_bot_right},
         {loc_top_left, loc_top_right},
-        //{loc, loc_bot_left},
-        //{loc, loc_bot_right},
-        //{loc, loc_top_left},
-        //{loc, loc_top_right},
-        //{loc_bot_left, loc_top_left},
-        //{loc_bot_right, loc_top_right},
-        //{loc_bot_left, loc_bot_right},
     };
 
     for (auto const& line : lines) {

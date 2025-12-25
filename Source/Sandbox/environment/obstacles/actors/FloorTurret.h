@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 
 #include "FloorTurret.generated.h"
@@ -14,6 +15,9 @@ class UStaticMeshComponent;
 class USceneComponent;
 class ABulletActor;
 class UArrowComponent;
+class UBoxComponent;
+
+class UHealthComponent;
 
 UENUM(BlueprintType)
 enum class EFloorTurretState : uint8 {
@@ -90,7 +94,9 @@ struct FFloorTurretState {
 };
 
 UCLASS()
-class SANDBOX_API AFloorTurret : public AActor {
+class SANDBOX_API AFloorTurret
+    : public AActor
+    , public IDeathHandler {
     GENERATED_BODY()
   public:
     AFloorTurret();
@@ -105,6 +111,8 @@ class SANDBOX_API AFloorTurret : public AActor {
     bool is_enemy(AActor& target) const;
 
     auto vision_half_height() const { return aim_config.vision_cone_height / 2.0f; }
+
+    virtual void handle_death() override;
   protected:
     virtual void BeginPlay() override;
 
@@ -132,6 +140,10 @@ class SANDBOX_API AFloorTurret : public AActor {
     UStaticMeshComponent* camera_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
     UArrowComponent* muzzle_point{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UHealthComponent* health{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UBoxComponent* collision_box{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     FFloorTurretBulletConfig bullet_config;
