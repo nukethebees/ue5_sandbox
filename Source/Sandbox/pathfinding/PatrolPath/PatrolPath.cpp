@@ -38,7 +38,7 @@ void APatrolPath::Tick(float dt) {
     auto const render_lines{settings->visualise_all_patrol_paths ||
                             !editor_line_require_selection || IsSelected()};
 
-    if (render_lines && (elems >= 2)) {
+    if (render_lines && (elems >= 2) && !any_points_null()) {
         TRY_INIT_PTR(world, GetWorld());
         for (int32 i{1}; i < elems; ++i) {
             draw_line_between_waypoints(*world, i - 1, i);
@@ -46,6 +46,15 @@ void APatrolPath::Tick(float dt) {
         draw_line_between_waypoints(*world, elems - 1, 0);
     }
 #endif
+}
+bool APatrolPath::any_points_null() const {
+    for (auto const* ptr : waypoints) {
+        if (!ptr) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 #if WITH_EDITOR

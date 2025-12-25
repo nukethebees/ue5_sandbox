@@ -27,6 +27,7 @@ class SANDBOX_API APatrolPath : public AActor {
         return waypoints.IsValidIndex(i) ? waypoints[i] : nullptr;
     }
     auto length() const -> int32 { return waypoints.Num(); }
+    bool any_points_null() const;
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const { return true; }
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
