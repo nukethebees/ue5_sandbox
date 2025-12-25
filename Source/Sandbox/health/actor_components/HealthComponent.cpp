@@ -10,4 +10,6 @@ void UHealthComponent::BeginPlay() {
     Super::BeginPlay();
 
     set_health(initial_health < 0.0f ? max_health : initial_health);
+
+    check(Cast<IDeathHandler>(GetOwner()));
 }
