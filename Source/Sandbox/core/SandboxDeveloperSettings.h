@@ -11,6 +11,8 @@ class USandboxDeveloperSettings : public UDeveloperSettings {
   public:
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
     bool visualise_ai_vision_cones{false};
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
+    bool visualise_all_patrol_paths{true};
 
     USandboxDeveloperSettings();
 };

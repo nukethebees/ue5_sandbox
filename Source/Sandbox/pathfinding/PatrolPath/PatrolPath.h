@@ -15,6 +15,8 @@ class SANDBOX_API APatrolPath : public AActor {
   public:
     APatrolPath();
 
+    virtual void Tick(float dt) override;
+
     auto get_first_point() -> APatrolWaypoint* {
         if (waypoints.IsEmpty()) {
             return nullptr;
@@ -27,9 +29,6 @@ class SANDBOX_API APatrolPath : public AActor {
     auto length() const -> int32 { return waypoints.Num(); }
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const { return true; }
-#endif
-    virtual void Tick(float dt) override;
-#if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
 #endif
   protected:
@@ -38,12 +37,16 @@ class SANDBOX_API APatrolPath : public AActor {
 #endif
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
-    FColor debug_line_color{FColor::Blue};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
+    static int32 color_index;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Editor Visualisation")
+    FColor editor_line_color{FColor::Blue};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Editor Visualisation")
     float editor_line_arrow_size{5000.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Debug")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Editor Visualisation")
     float editor_line_thickness{20.0f};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation|Editor Visualisation")
+    bool editor_line_require_selection{false};
 #endif
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation")
