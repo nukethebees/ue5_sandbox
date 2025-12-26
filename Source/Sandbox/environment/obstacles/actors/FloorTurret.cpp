@@ -7,6 +7,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
+#include "Perception/AISense_Sight.h"
 
 #include "Sandbox/combat/projectiles/actors/BulletActor.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
@@ -25,7 +27,9 @@ AFloorTurret::AFloorTurret()
     , camera_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurretCamera"))}
     , muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("TurretMuzzlePoint"))}
     , health{CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))}
-    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))} {
+    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))}
+    , stimuli_source(
+          CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("StimuliSource"))) {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -66,6 +70,14 @@ void AFloorTurret::Tick(float dt) {
         }
     }
 }
+
+FGenericTeamId AFloorTurret::GetGenericTeamId() const {
+    return FGenericTeamId(static_cast<uint8>(state.team_id));
+}
+void AFloorTurret::SetGenericTeamId(FGenericTeamId const& TeamID) {
+    state.team_id = static_cast<ETeamID>(TeamID.GetId());
+}
+
 void AFloorTurret::set_state(EFloorTurretState new_state) {
     state.operating_state = new_state;
     SetActorTickEnabled(state.operating_state != EFloorTurretState::Disabled);
@@ -80,7 +92,6 @@ void AFloorTurret::set_state(EFloorTurretState new_state) {
         }
     }
 }
-
 void AFloorTurret::handle_death() {
     Destroy();
 }
@@ -101,6 +112,10 @@ bool AFloorTurret::is_enemy(AActor& target) const {
 
 void AFloorTurret::BeginPlay() {
     Super::BeginPlay();
+
+    check(stimuli_source);
+    stimuli_source->RegisterForSense(UAISense_Sight::StaticClass());
+    stimuli_source->RegisterWithPerceptionSystem();
 }
 
 auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) const -> AActor* {

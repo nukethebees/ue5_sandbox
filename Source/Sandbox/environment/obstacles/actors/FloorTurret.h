@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GenericTeamAgentInterface.h"
 
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
@@ -13,10 +14,11 @@
 
 class UStaticMeshComponent;
 class USceneComponent;
-class ABulletActor;
 class UArrowComponent;
 class UBoxComponent;
+class UAIPerceptionStimuliSourceComponent;
 
+class ABulletActor;
 class UHealthComponent;
 
 UENUM(BlueprintType)
@@ -96,12 +98,18 @@ struct FFloorTurretState {
 UCLASS()
 class SANDBOX_API AFloorTurret
     : public AActor
+    , public IGenericTeamAgentInterface
     , public IDeathHandler {
     GENERATED_BODY()
   public:
     AFloorTurret();
 
     virtual void Tick(float dt) override;
+
+    // IGenericTeamAgentInterface
+    virtual FGenericTeamId GetGenericTeamId() const override;
+    virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
+    // IGenericTeamAgentInterface
 
     void set_state(EFloorTurretState new_state);
     auto get_state() const { return state; }
@@ -144,6 +152,8 @@ class SANDBOX_API AFloorTurret
     UHealthComponent* health{nullptr};
     UPROPERTY(EditAnywhere, Category = "Turret")
     UBoxComponent* collision_box{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UAIPerceptionStimuliSourceComponent* stimuli_source{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     FFloorTurretBulletConfig bullet_config;
