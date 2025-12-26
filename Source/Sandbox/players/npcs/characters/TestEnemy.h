@@ -16,7 +16,7 @@
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/common/player_delegates.h"
 #include "Sandbox/players/npcs/data/CombatProfile.h"
-#include "Sandbox/players/npcs/enums/DefaultAIState.h"
+#include "Sandbox/players/npcs/enums/AIState.h"
 #include "Sandbox/players/npcs/enums/MobAttackMode.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
@@ -50,7 +50,7 @@ class SANDBOX_API ATestEnemy
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
-    virtual EDefaultAIState get_default_ai_state() const override { return default_ai_state; }
+    virtual EAIState get_default_ai_state() const override { return default_ai_state; }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_base_colour{FLinearColor::Green};
@@ -91,10 +91,10 @@ class SANDBOX_API ATestEnemy
     UNpcPatrolComponent* patrol_state{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    EDefaultAIState default_ai_state{EDefaultAIState::RandomlyMove};
+    EAIState default_ai_state{EAIState::RandomlyMove};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    EDefaultAIState ai_state;
+    EAIState ai_state;
   private:
     void apply_material_colours();
     void apply_light_colours();

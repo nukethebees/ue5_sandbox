@@ -2,10 +2,10 @@
 
 #include "CoreMinimal.h"
 
-#include "DefaultAIState.generated.h"
+#include "AIState.generated.h"
 
 UENUM(BlueprintType)
-enum class EDefaultAIState : uint8 {
+enum class EAIState : uint8 {
     Idle UMETA(DisplayName = "Idle"),
     RandomlyMove UMETA(DisplayName = "RandomlyMove"),
     Patrol UMETA(DisplayName = "Patrol"),
