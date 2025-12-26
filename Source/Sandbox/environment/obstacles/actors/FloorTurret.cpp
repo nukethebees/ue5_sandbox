@@ -291,8 +291,8 @@ void AFloorTurret::draw_vision_cone(
     FVector const h{0.0f, 0.0f, vision_half_height()};
     auto const vision_angle_rad{FMath::DegreesToRadians(vision_angle)};
 
-    FRotator yaw_rotation_right(0.0f, vision_angle, 0.0f);
-    FRotator yaw_rotation_left(0.0f, -vision_angle, 0.0f);
+    FRotator const yaw_rotation_right(0.0f, vision_angle, 0.0f);
+    FRotator const yaw_rotation_left(0.0f, -vision_angle, 0.0f);
     auto const rot_right{yaw_rotation_right.RotateVector(fwd) * vision_radius};
     auto const rot_left{yaw_rotation_left.RotateVector(fwd) * vision_radius};
 

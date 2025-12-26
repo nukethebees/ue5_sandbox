@@ -149,25 +149,32 @@ void ATestEnemyController::visualise_vision_cone() {
     auto const angle_deg{sight_config->PeripheralVisionAngleDegrees};
     auto const angle_rad{FMath::DegreesToRadians(angle_deg)};
     auto const origin{pawn->GetActorLocation()};
-    auto const direction{pawn->GetActorForwardVector()};
+    auto const fwd{pawn->GetActorForwardVector()};
 
-    constexpr float lifetime{-1.0f};
+    FRotator const yaw_rotation_right(0.0f, angle_deg, 0.0f);
+    FRotator const yaw_rotation_left(0.0f, -angle_deg, 0.0f);
 
-    auto draw_cone{[&](float len, FColor col) {
-        DrawDebugCone(world /*InWorld*/,
-                      origin /*Origin*/,
-                      direction /*Rotation*/,
-                      len /*Length*/,
-                      angle_rad /*AngleWidth*/,
-                      angle_rad /*AngleHeight*/,
-                      8 /*NumSides*/,
-                      col,
-                      false /*bPersistentLines*/,
-                      lifetime /*LifeTime*/);
+    auto draw_vision{[&](float len, FColor col, float thickness) {
+        auto const rot_right{yaw_rotation_right.RotateVector(fwd) * len};
+        auto const rot_left{yaw_rotation_left.RotateVector(fwd) * len};
+
+        auto const loc_front{origin + fwd * len};
+        auto const loc_left{origin + rot_left};
+        auto const loc_right{origin + rot_right};
+
+        auto draw_line{[&](FVector const& from, FVector const& to) -> void {
+            DrawDebugLine(world, from, to, col, false, -1.f, 0, thickness);
+        }};
+
+        draw_line(origin, loc_left);
+        draw_line(origin, loc_front);
+        draw_line(origin, loc_right);
+        draw_line(loc_front, loc_left);
+        draw_line(loc_front, loc_right);
     }};
 
-    draw_cone(sight_config->SightRadius, FColor::Green);
-    draw_cone(sight_config->LoseSightRadius, FColor::Blue);
+    draw_vision(sight_config->SightRadius, FColor::Green, 5.f);
+    draw_vision(sight_config->LoseSightRadius, FColor::Blue, 2.f);
 }
 void ATestEnemyController::set_ai_state(EAIState state) {
     set_bb_value(C::ai_state(), state);
