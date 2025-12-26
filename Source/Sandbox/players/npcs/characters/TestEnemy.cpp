@@ -70,7 +70,20 @@ bool ATestEnemy::attack_actor(AActor* target) {
     }
 
     // Check distance
-    auto const distance_to_target{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
+    // Use a hitscan to take enemy size into account
+    // We hit their edge, not their middle
+    FHitResult hit;
+    auto const start{GetActorLocation()};
+    auto const end{target->GetActorLocation()};
+    FCollisionQueryParams query_params;
+    query_params.AddIgnoredActor(this);
+
+    if (!world->LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
+        logger.log_verbose(TEXT("Hit missed"));
+        return false;
+    }
+
+    auto const distance_to_target{hit.Distance};
     if (distance_to_target > combat_profile.melee_range) {
         logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
                            distance_to_target,
