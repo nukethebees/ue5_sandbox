@@ -94,7 +94,7 @@ void ATestEnemyController::OnUnPossess() {
 void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
     constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
 
-    UE_LOG(LogSandboxController, Verbose, TEXT("Perception updated."));
+    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Perception updated."));
 
     RETURN_IF_NULLPTR(actor);
     RETURN_IF_NULLPTR(blackboard_component);
@@ -104,8 +104,10 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     if (stimulus.WasSuccessfullySensed()) {
         auto const attitude{GetTeamAttitudeTowards(*actor)};
 
-        UE_LOG(
-            LogSandboxController, Verbose, TEXT("Sensed: %s."), *ml::get_best_display_name(*actor));
+        UE_LOG(LogSandboxController,
+               VeryVerbose,
+               TEXT("Sensed: %s."),
+               *ml::get_best_display_name(*actor));
 
         if (attitude == ETeamAttitude::Hostile) {
             on_enemy_spotted.Broadcast();
