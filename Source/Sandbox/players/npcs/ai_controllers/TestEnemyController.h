@@ -6,6 +6,7 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/npcs/data/npc_delegates.h"
+#include "Sandbox/players/npcs/enums/AIState.h"
 
 #include "Sandbox/players/npcs/blackboard_utils.hpp"
 
@@ -40,6 +41,7 @@ class SANDBOX_API ATestEnemyController
         ml::set_bb_value(*blackboard_component, name, value);
     }
     void visualise_vision_cone();
+    void set_ai_state(EAIState state);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};

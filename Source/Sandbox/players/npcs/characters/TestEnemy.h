@@ -51,6 +51,7 @@ class SANDBOX_API ATestEnemy
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
+    virtual void set_ai_state(EAIState state) override { ai_state = state; }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_base_colour{FLinearColor::Green};

@@ -16,6 +16,8 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+using C = TestEnemyBlackboardConstants::FName;
+
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
     , behavior_tree_component(
@@ -54,28 +56,26 @@ void ATestEnemyController::Tick(float delta_time) {
 void ATestEnemyController::BeginPlay() {
     Super::BeginPlay();
 }
-void ATestEnemyController::OnPossess(APawn* InPawn) {
-    Super::OnPossess(InPawn);
+void ATestEnemyController::OnPossess(APawn* pawn) {
+    Super::OnPossess(pawn);
 
-    RETURN_IF_NULLPTR(InPawn);
+    RETURN_IF_NULLPTR(pawn);
     RETURN_IF_NULLPTR(blackboard_component);
 
-    auto const team_if{Cast<IGenericTeamAgentInterface>(InPawn)};
+    auto const team_if{Cast<IGenericTeamAgentInterface>(pawn)};
     RETURN_IF_NULLPTR(team_if);
     SetGenericTeamId(team_if->GetGenericTeamId());
 
-    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(InPawn));
-    TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(InPawn));
+    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
+    TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
 
     auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
     RETURN_IF_NULLPTR(behavior_tree);
 
-    using C = TestEnemyBlackboardConstants::FName;
-
     set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
     set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
     set_bb_value(C::default_ai_state(), mob_interface->get_default_ai_state());
-    set_bb_value(C::ai_state(), mob_interface->get_default_ai_state());
+    set_ai_state(mob_interface->get_default_ai_state());
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
@@ -123,7 +123,6 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
         blackboard_component->ClearValue(C::target_actor());
     }
 }
-
 void ATestEnemyController::visualise_vision_cone() {
     check(sight_config);
     TRY_INIT_PTR(world, GetWorld());
@@ -151,4 +150,10 @@ void ATestEnemyController::visualise_vision_cone() {
 
     draw_cone(sight_config->SightRadius, FColor::Green);
     draw_cone(sight_config->LoseSightRadius, FColor::Blue);
+}
+void ATestEnemyController::set_ai_state(EAIState state) {
+    set_bb_value(C::ai_state(), state);
+    TRY_INIT_PTR(pawn, GetPawn());
+    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
+    mob_interface->set_ai_state(state);
 }
