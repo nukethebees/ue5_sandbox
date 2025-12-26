@@ -1,5 +1,7 @@
 #include "Sandbox/logging/functions/logging.h"
 
+#include "Logging/StructuredLog.h"
+
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 namespace ml {
