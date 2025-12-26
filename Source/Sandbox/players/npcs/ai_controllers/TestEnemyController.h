@@ -6,7 +6,6 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/npcs/data/npc_delegates.h"
-#include "Sandbox/players/npcs/enums/SimpleAIState.h"
 
 #include "Sandbox/players/npcs/blackboard_utils.hpp"
 
