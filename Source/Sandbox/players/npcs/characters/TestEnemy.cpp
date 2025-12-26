@@ -1,7 +1,9 @@
 #include "Sandbox/players/npcs/characters/TestEnemy.h"
 
+#include "BehaviorTree/BehaviorTree.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/health/actor_components/HealthComponent.h"

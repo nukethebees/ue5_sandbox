@@ -2,15 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "BehaviorTree/BehaviorTree.h"
-#include "Components/PointLightComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GenericTeamAgentInterface.h"
-#include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
@@ -23,6 +19,10 @@
 
 #include "TestEnemy.generated.h"
 
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
+class UBehaviorTree;
+
 class UHealthComponent;
 class UNpcPatrolComponent;
 
@@ -33,7 +33,8 @@ class SANDBOX_API ATestEnemy
     , public ICombatActor
     , public IDeathHandler
     , public IGenericTeamAgentInterface
-    , public ISandboxMobInterface {
+    , public ISandboxMobInterface
+    , public IDescribable {
     GENERATED_BODY()
   public:
     ATestEnemy();
@@ -52,6 +53,14 @@ class SANDBOX_API ATestEnemy
     virtual float get_attack_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
     virtual void set_ai_state(EAIState state) override { ai_state = state; }
+
+    // IDescribable
+    virtual FText const& get_description() const override {
+        auto const fmt{FText::FromName(TEXT("Test NPC ({0})"))};
+        description = FText::Format(
+            fmt, FText::FromString(UEnum::GetValueAsString(combat_profile.attack_mode)));
+        return description;
+    }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_base_colour{FLinearColor::Green};
@@ -96,6 +105,9 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState ai_state;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    mutable FText description;
   private:
     void apply_material_colours();
     void apply_light_colours();

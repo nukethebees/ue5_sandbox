@@ -8,6 +8,7 @@
 
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 
 #include "FloorTurret.generated.h"
@@ -99,7 +100,8 @@ UCLASS()
 class SANDBOX_API AFloorTurret
     : public AActor
     , public IGenericTeamAgentInterface
-    , public IDeathHandler {
+    , public IDeathHandler
+    , public IDescribable {
     GENERATED_BODY()
   public:
     AFloorTurret();
@@ -110,6 +112,13 @@ class SANDBOX_API AFloorTurret
     virtual FGenericTeamId GetGenericTeamId() const override;
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
     // IGenericTeamAgentInterface
+
+    // IDescribable
+    virtual FText const& get_description() const override {
+        static auto const desc{FText::FromName(TEXT("Turret"))};
+        return desc;
+    }
+    // IDescribable
 
     void set_state(EFloorTurretState new_state);
     auto get_state() const { return state; }
