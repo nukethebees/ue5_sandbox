@@ -1,6 +1,7 @@
 #include "Sandbox/environment/obstacles/actors/ExplosiveProp.h"
 
 #include "Components/SphereComponent.h"
+#include "Engine/World.h"
 
 #include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
 #include "Sandbox/constants/collision_channels.h"

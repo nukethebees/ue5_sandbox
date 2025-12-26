@@ -1,10 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/PointLightComponent.h"
-#include "Components/SphereComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
@@ -16,6 +12,11 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "LandMine.generated.h"
+
+class UCapsuleComponent;
+class UPointLightComponent;
+class USphereComponent;
+class UStaticMeshComponent;
 
 class UHealthComponent;
 
@@ -48,11 +49,9 @@ class SANDBOX_API ALandMine
     ALandMine();
 
     // ICollisionOwner implementation
-    virtual UPrimitiveComponent* get_collision_component() override {
-        return trigger_collision_component;
-    }
+    virtual UPrimitiveComponent* get_collision_component() override;
     virtual bool should_destroy_after_collision() const override { return true; }
-    virtual float get_destruction_delay() const override { return payload_config.detonation_delay; }
+    virtual float get_destruction_delay() const override;
     virtual void on_pre_collision_effect(AActor& other_actor) override;
 
     // IDescribable

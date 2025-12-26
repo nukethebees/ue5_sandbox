@@ -1,7 +1,10 @@
 #include "Sandbox/environment/obstacles/actors/LandMine.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 
@@ -70,6 +73,12 @@ ALandMine::ALandMine()
     update_debug_sphere();
 }
 
+UPrimitiveComponent* ALandMine::get_collision_component() {
+    return trigger_collision_component;
+}
+float ALandMine::get_destruction_delay() const {
+    return payload_config.detonation_delay;
+}
 void ALandMine::on_pre_collision_effect(AActor& other_actor) {
     constexpr auto logger{NestedLogger<"on_pre_collision_effect">()};
     logger.log_verbose(TEXT("Landmine triggered by actor: %s"), *other_actor.GetName());
