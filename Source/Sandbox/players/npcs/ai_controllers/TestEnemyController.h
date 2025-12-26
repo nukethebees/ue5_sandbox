@@ -12,6 +12,9 @@
 
 #include "TestEnemyController.generated.h"
 
+class UWorld;
+class APawn;
+
 class UAIPerceptionComponent;
 class UBehaviorTreeComponent;
 class UBlackboardComponent;
@@ -43,6 +46,9 @@ class SANDBOX_API ATestEnemyController
     void visualise_vision_cone();
     void set_ai_state(EAIState state);
 
+    auto scan_around_pawn(UWorld& world, FVector scan_location) const -> TArray<FHitResult>;
+    auto check_for_enemy_nearby(UWorld& world, FVector scan_location, AActor& enemy) const -> bool;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
@@ -52,6 +58,6 @@ class SANDBOX_API ATestEnemyController
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBlackboardComponent* blackboard_component{nullptr};
 
-    UPROPERTY(VisibleAnywhere, Category = "AI")
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
     UAISenseConfig_Sight* sight_config;
 };

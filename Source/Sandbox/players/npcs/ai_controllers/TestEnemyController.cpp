@@ -27,7 +27,7 @@ ATestEnemyController::ATestEnemyController()
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
-    sight_config->PeripheralVisionAngleDegrees = 20.0f;
+    sight_config->PeripheralVisionAngleDegrees = 90.0f;
     sight_config->SetMaxAge(5.0f);
 
     sight_config->DetectionByAffiliation.bDetectEnemies = true;
@@ -112,18 +112,31 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
 
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
-            LOG.log_display(TEXT("Spotted enemy: %s"), *ml::get_best_display_name(*actor));
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Spotted enemy: %s"),
+                   *ml::get_best_display_name(*actor));
         } else {
             UE_LOG(LogSandboxController, Verbose, TEXT("Not hostile"));
         }
     } else {
-        if (blackboard_component->GetValueAsObject(C::target_actor())) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Lost sight of: %s"),
-                   *ml::get_best_display_name(*actor));
+        if (auto* old_actor{
+                Cast<AActor>(blackboard_component->GetValueAsObject(C::target_actor()))}) {
+            bool actor_found{false};
+
+            // Do a raycast, if the enemy is within X metres then assume we still sense it
+            TRY_INIT_PTR(pawn, GetPawn());
+            TRY_INIT_PTR(world, GetWorld());
+            auto const scan_location{pawn->GetActorLocation()};
+
+            if (!check_for_enemy_nearby(*world, scan_location, *old_actor)) {
+                UE_LOG(LogSandboxController,
+                       Verbose,
+                       TEXT("Lost sight of: %s"),
+                       *ml::get_best_display_name(*actor));
+                blackboard_component->ClearValue(C::target_actor());
+            }
         }
-        blackboard_component->ClearValue(C::target_actor());
     }
 }
 void ATestEnemyController::visualise_vision_cone() {
@@ -159,4 +172,38 @@ void ATestEnemyController::set_ai_state(EAIState state) {
     TRY_INIT_PTR(pawn, GetPawn());
     TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
     mob_interface->set_ai_state(state);
+}
+auto ATestEnemyController::scan_around_pawn(UWorld& world, FVector scan_location) const
+    -> TArray<FHitResult> {
+    TArray<FHitResult> hits;
+    constexpr float h{200.0f};
+
+    auto const capsule{FCollisionShape::MakeCapsule(h, h)};
+    FCollisionQueryParams params;
+    params.AddIgnoredActor(Owner);
+    params.AddIgnoredActor(this);
+
+    auto sweep_hit{world.SweepMultiByChannel(
+        hits, scan_location, scan_location, FQuat::Identity, ECC_Pawn, capsule, params)};
+
+    DrawDebugCapsule(&world, scan_location, h, h, FQuat::Identity, FColor::Purple);
+
+    return hits;
+}
+auto ATestEnemyController::check_for_enemy_nearby(UWorld& world,
+                                                  FVector scan_location,
+                                                  AActor& enemy) const -> bool {
+    auto const hits{scan_around_pawn(world, scan_location)};
+
+    for (auto const& hit : hits) {
+        if (hit.GetActor() == &enemy) {
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Sensed %s near pawn."),
+                   *ml::get_best_display_name(enemy));
+            return true;
+        }
+    }
+
+    return false;
 }
