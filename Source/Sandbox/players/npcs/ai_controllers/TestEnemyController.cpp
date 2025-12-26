@@ -112,13 +112,16 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
 
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
-            LOG.log_display(TEXT("Spotted: %s"), *ml::get_best_display_name(*actor));
+            LOG.log_display(TEXT("Spotted enemy: %s"), *ml::get_best_display_name(*actor));
         } else {
             UE_LOG(LogSandboxController, Verbose, TEXT("Not hostile"));
         }
     } else {
         if (blackboard_component->GetValueAsObject(C::target_actor())) {
-            LOG.log_display(TEXT("Lost sight of: %s"), *ml::get_best_display_name(*actor));
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Lost sight of: %s"),
+                   *ml::get_best_display_name(*actor));
         }
         blackboard_component->ClearValue(C::target_actor());
     }
