@@ -4,6 +4,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/utilities/navigation.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 
@@ -32,5 +33,10 @@ EBTNodeResult::Type UBTTask_AttackEnemy::ExecuteTask(UBehaviorTreeComponent& own
 
     auto const attack_succeeded{combat_actor->attack_actor(target)};
 
-    return attack_succeeded ? EBTNodeResult::Succeeded : EBTNodeResult::Failed;
+    if (attack_succeeded) {
+        return EBTNodeResult::Succeeded;
+    } else {
+        UE_LOG(LogSandboxAI, Verbose, TEXT("Attack failed.\n"));
+        return EBTNodeResult::Failed;
+    }
 }
