@@ -22,10 +22,12 @@
 class UWorld;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UArrowComponent;
 
 class AAIController;
 class UHealthComponent;
 class UNpcPatrolComponent;
+class ABulletActor;
 
 UCLASS()
 class SANDBOX_API ATestEnemy
@@ -73,6 +75,9 @@ class SANDBOX_API ATestEnemy
     // IDeathHandler
     virtual void handle_death() override;
 
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    UArrowComponent* muzzle_point{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     TSubclassOf<AAIController> controller_class{nullptr};
 
@@ -99,6 +104,9 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Enemy};
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    TSubclassOf<ABulletActor> bullet_actor_class;
   private:
     void apply_material_colours();
 

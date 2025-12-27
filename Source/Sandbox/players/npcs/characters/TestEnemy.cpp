@@ -1,11 +1,12 @@
 #include "Sandbox/players/npcs/characters/TestEnemy.h"
 
 #include "AIController.h"
-#include "Components/PointLightComponent.h"
+#include "Components/ArrowComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+#include "Sandbox/combat/projectiles/actors/BulletActor.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
@@ -14,11 +15,13 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestEnemy::ATestEnemy()
-    : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
+    : muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("MuzzlePoint"))}
+    , body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
     , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
     , patrol_state(CreateDefaultSubobject<UNpcPatrolComponent>(TEXT("PatrolState"))) {
     PrimaryActorTick.bCanEverTick = false;
 
+    muzzle_point->SetupAttachment(RootComponent);
     body_mesh->SetupAttachment(RootComponent);
 
     AutoPossessAI = EAutoPossessAI::PlacedInWorld;
@@ -91,7 +94,7 @@ bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
     return true;
 }
 bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
-    UE_LOG(LogSandboxCharacter, Warning, TEXT("Ranged mob attack mode not yet implemented.\n"));
+    check(muzzle_point);
 
     // Check cooldown
     auto const current_time{world.GetTimeSeconds()};
@@ -102,6 +105,20 @@ bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
     }
 
     // Fire the bullet
+    check(bullet_actor_class);
+    RETURN_VALUE_IF_NULLPTR(bullet_actor_class, false);
+
+    auto const spawn_location{muzzle_point->GetComponentLocation()};
+    auto const spawn_rotation{muzzle_point->GetComponentRotation()};
+
+    INIT_PTR_OR_RETURN_VALUE(bullet,
+                             ABulletActor::fire(world,
+                                                bullet_actor_class,
+                                                spawn_location,
+                                                spawn_rotation,
+                                                2000.0f,
+                                                FHealthChange{5.f, EHealthChangeType::Damage}),
+                             false);
 
     last_attack_time = current_time;
 
