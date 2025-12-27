@@ -72,10 +72,12 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
     RETURN_IF_NULLPTR(behavior_tree);
 
+    ai_state = mob_interface->get_default_ai_state();
+
     set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
     set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
-    set_bb_value(C::default_ai_state(), mob_interface->get_default_ai_state());
-    set_ai_state(mob_interface->get_default_ai_state());
+    set_bb_value(C::default_ai_state(), ai_state);
+    set_ai_state(ai_state);
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
@@ -177,10 +179,8 @@ void ATestEnemyController::visualise_vision_cone() {
     draw_vision(sight_config->LoseSightRadius, FColor::Blue, 2.f);
 }
 void ATestEnemyController::set_ai_state(EAIState state) {
+    ai_state = state;
     set_bb_value(C::ai_state(), state);
-    TRY_INIT_PTR(pawn, GetPawn());
-    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
-    mob_interface->set_ai_state(state);
 }
 auto ATestEnemyController::scan_around_pawn(UWorld& world, FVector scan_location) const
     -> TArray<FHitResult> {

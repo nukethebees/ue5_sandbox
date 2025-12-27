@@ -56,7 +56,6 @@ class SANDBOX_API ASimpleCharacter
     virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
-    virtual void set_ai_state(EAIState state) override { return; }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
     virtual void BeginPlay() override;

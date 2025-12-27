@@ -60,4 +60,7 @@ class SANDBOX_API ATestEnemyController
 
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UAISenseConfig_Sight* sight_config;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    EAIState ai_state;
 };

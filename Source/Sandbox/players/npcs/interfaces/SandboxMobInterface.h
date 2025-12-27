@@ -21,5 +21,4 @@ class SANDBOX_API ISandboxMobInterface {
     virtual float get_attack_acceptable_radius() const { return 100.0f; }
     // AI state
     virtual EAIState get_default_ai_state() const { return EAIState::RandomlyMove; }
-    virtual void set_ai_state(EAIState state) = 0;
 };

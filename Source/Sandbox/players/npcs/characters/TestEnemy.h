@@ -52,7 +52,6 @@ class SANDBOX_API ATestEnemy
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
-    virtual void set_ai_state(EAIState state) override { ai_state = state; }
 
     // IDescribable
     virtual FText const& get_description() const override {
@@ -102,9 +101,6 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState default_ai_state{EAIState::RandomlyMove};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    EAIState ai_state;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     mutable FText description;
