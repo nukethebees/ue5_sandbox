@@ -97,9 +97,6 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_emissive_colour{FLinearColor::Black};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor light_colour{FLinearColor::White};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Enemy};
   private:
