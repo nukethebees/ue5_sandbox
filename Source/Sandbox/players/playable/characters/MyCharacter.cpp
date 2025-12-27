@@ -170,7 +170,7 @@ void AMyCharacter::look(FInputActionValue const& value) {
     }
 }
 void AMyCharacter::cycle_camera() {
-    change_camera_to(get_next(camera_mode));
+    change_camera_to(ml::get_next(camera_mode));
 }
 
 // Combat

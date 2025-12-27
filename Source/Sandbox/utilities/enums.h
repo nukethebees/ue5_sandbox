@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 
+namespace ml {
 template <typename Enum>
 concept HasMaxEnumValue = requires { Enum::MAX; };
 
@@ -17,7 +18,6 @@ Enum get_next(Enum current) {
     return (next >= MAX) ? static_cast<Enum>(Underlying{0}) : static_cast<Enum>(next);
 }
 
-namespace ml {
 template <typename Enum>
     requires std::is_scoped_enum_v<Enum>
 auto make_unhandled_enum_case_warning(Enum value) -> FString {
