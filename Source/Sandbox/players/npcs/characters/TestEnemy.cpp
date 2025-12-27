@@ -55,10 +55,9 @@ void ATestEnemy::SetGenericTeamId(FGenericTeamId const& TeamID) {
     team_id = static_cast<ETeamID>(TeamID.GetId());
 }
 
-bool ATestEnemy::attack_actor(AActor* target) {
+bool ATestEnemy::attack_actor(AActor& target) {
     constexpr auto logger{NestedLogger<"attack_actor">()};
 
-    RETURN_VALUE_IF_NULLPTR(target, false);
     INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
 
     switch (combat_profile.attack_mode) {
@@ -77,7 +76,7 @@ bool ATestEnemy::attack_actor(AActor* target) {
             // We hit their edge, not their middle
             FHitResult hit;
             auto const start{GetActorLocation()};
-            auto const end{target->GetActorLocation()};
+            auto const end{target.GetActorLocation()};
             FCollisionQueryParams query_params;
             query_params.AddIgnoredActor(this);
 
@@ -96,11 +95,11 @@ bool ATestEnemy::attack_actor(AActor* target) {
 
             // Find health component
             INIT_PTR_OR_RETURN_VALUE(
-                target_health, target->FindComponentByClass<UHealthComponent>(), false);
+                target_health, target.FindComponentByClass<UHealthComponent>(), false);
 
             // Apply damage
             logger.log_verbose(TEXT("Attacking %s for %.2f damage"),
-                               *target->GetName(),
+                               *target.GetName(),
                                combat_profile.melee_damage);
             target_health->modify_health(
                 FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});

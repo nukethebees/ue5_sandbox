@@ -1,5 +1,7 @@
 #include "Sandbox/players/npcs/characters/TestExplodingEnemy.h"
 
+#include "Engine/World.h"
+
 #include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 
@@ -9,14 +11,13 @@ ATestExplodingEnemy::ATestExplodingEnemy() {
     PrimaryActorTick.bCanEverTick = false;
 }
 
-bool ATestExplodingEnemy::attack_actor(AActor* target) {
+bool ATestExplodingEnemy::attack_actor(AActor& target) {
     constexpr auto logger{NestedLogger<"attack_actor">()};
 
-    RETURN_VALUE_IF_NULLPTR(target, false);
     check(health);
 
     // Check distance to target
-    auto const distance_to_target{FVector::Dist(GetActorLocation(), target->GetActorLocation())};
+    auto const distance_to_target{FVector::Dist(GetActorLocation(), target.GetActorLocation())};
     if (distance_to_target > combat_profile.melee_range) {
         logger.log_verbose(TEXT("Target out of explosion range: %.2f > %.2f"),
                            distance_to_target,

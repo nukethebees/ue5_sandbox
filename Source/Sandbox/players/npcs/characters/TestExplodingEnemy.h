@@ -14,7 +14,7 @@ class SANDBOX_API ATestExplodingEnemy : public ATestEnemy {
     ATestExplodingEnemy();
 
     // ICombatActor
-    virtual bool attack_actor(AActor* target) override;
+    virtual bool attack_actor(AActor& target) override;
   protected:
     // IDeathHandler
     virtual void handle_death() override;

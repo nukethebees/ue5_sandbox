@@ -44,7 +44,7 @@ class SANDBOX_API ATestEnemy
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
 
     // ICombatActor
-    virtual bool attack_actor(AActor* target) override;
+    virtual bool attack_actor(AActor& target) override;
     virtual auto get_combat_profile() const -> FCombatProfile override { return combat_profile; }
 
     // ISandboxMobInterface
