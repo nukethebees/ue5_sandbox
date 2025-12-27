@@ -16,5 +16,5 @@ class IDescribable {
     GENERATED_BODY()
   public:
     UFUNCTION()
-    virtual FText const& get_description() const = 0;
+    virtual FText get_description() const = 0;
 };

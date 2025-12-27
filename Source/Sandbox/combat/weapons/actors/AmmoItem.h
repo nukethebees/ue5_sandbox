@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/weapons/enums/AmmoType.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
@@ -29,7 +30,7 @@ class SANDBOX_API AAmmoItem
     AAmmoItem();
 
     // IDescribable
-    virtual FText const& get_description() const override {
+    virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Ammo"))};
         return desc;
     }

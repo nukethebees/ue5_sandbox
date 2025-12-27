@@ -24,7 +24,7 @@ class SANDBOX_API AMoneyPickupActor
     virtual bool should_destroy_after_collision() const override { return true; }
 
     // IDescribable
-    virtual FText const& get_description() const override {
+    virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Money"))};
         return desc;
     }

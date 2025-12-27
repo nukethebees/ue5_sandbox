@@ -55,7 +55,7 @@ class SANDBOX_API ALandMine
     virtual void on_pre_collision_effect(AActor& other_actor) override;
 
     // IDescribable
-    virtual FText const& get_description() const override {
+    virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Mine"))};
         return desc;
     }

@@ -1,5 +1,7 @@
 #include "Sandbox/items/actors/MoneyPickupActor.h"
 
+#include "Engine/World.h"
+
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 

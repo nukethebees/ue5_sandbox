@@ -52,10 +52,10 @@ class SANDBOX_API ATestEnemy
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
 
     // IDescribable
-    virtual FText const& get_description() const override {
+    virtual FText get_description() const override {
         auto const fmt{FText::FromName(TEXT("Test NPC ({0})"))};
-        description = FText::Format(
-            fmt, FText::FromString(UEnum::GetValueAsString(combat_profile.attack_mode)));
+        auto const description{FText::Format(
+            fmt, FText::FromString(UEnum::GetValueAsString(combat_profile.attack_mode)))};
         return description;
     }
 
@@ -96,9 +96,6 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState default_ai_state{EAIState::RandomlyMove};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    mutable FText description;
   private:
     void apply_material_colours();
     void apply_light_colours();

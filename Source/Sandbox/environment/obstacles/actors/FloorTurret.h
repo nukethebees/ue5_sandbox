@@ -114,7 +114,7 @@ class SANDBOX_API AFloorTurret
     // IGenericTeamAgentInterface
 
     // IDescribable
-    virtual FText const& get_description() const override {
+    virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Turret"))};
         return desc;
     }

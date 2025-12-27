@@ -1,5 +1,8 @@
 #include "Sandbox/pathfinding/DroppableWaypoint/DroppableWaypoint.h"
 
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
