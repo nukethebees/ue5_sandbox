@@ -11,10 +11,11 @@ class AActor;
 
 UENUM(BlueprintType)
 enum class ETeamID : uint8 {
-    Player = 0 UMETA(DisplayName = "Player"),
-    Friendly = 1 UMETA(DisplayName = "Friendly"),
-    Enemy = 2 UMETA(DisplayName = "Enemy"),
-    Neutral = 3 UMETA(DisplayName = "Neutral"),
+    Player = 0,
+    Friendly = 1,
+    Enemy = 2,
+    Neutral = 3,
+    Count = 4 UMETA(Hidden)
 };
 
 inline auto get_team_attitude(ETeamID team_a, ETeamID team_b) -> ETeamAttitude::Type {
