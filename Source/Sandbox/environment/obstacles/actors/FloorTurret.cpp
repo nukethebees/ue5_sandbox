@@ -257,32 +257,20 @@ void AFloorTurret::handle_attacking_state(float dt) {
 }
 void AFloorTurret::fire_bullet() {
     check(bullet_config.bullet_actor_class);
-
     RETURN_IF_NULLPTR(bullet_config.bullet_actor_class);
+
     RETURN_IF_NULLPTR(muzzle_point);
     TRY_INIT_PTR(world, GetWorld());
 
     auto const spawn_location{muzzle_point->GetComponentLocation()};
     auto const spawn_rotation{muzzle_point->GetComponentRotation()};
 
-    FActorSpawnParameters spawn_params{};
-    spawn_params.Owner = this;
-    auto* bullet{world->SpawnActor<ABulletActor>(
-        bullet_config.bullet_actor_class, spawn_location, spawn_rotation, spawn_params)};
-
-    RETURN_IF_NULLPTR(bullet);
-
-    TRY_INIT_PTR(movement, bullet->FindComponentByClass<UProjectileMovementComponent>());
-
-    bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
-
-    auto const speed{bullet_config.bullet_speed};
-    movement->InitialSpeed = speed;
-    movement->MaxSpeed = speed;
-
-    auto velocity_unit{spawn_rotation.Vector()};
-    velocity_unit.Normalize();
-    movement->Velocity = velocity_unit * speed;
+    RETURN_IF_NULLPTR(ABulletActor::fire(*world,
+                                         bullet_config.bullet_actor_class,
+                                         spawn_location,
+                                         spawn_rotation,
+                                         bullet_config.bullet_speed,
+                                         bullet_config.bullet_damage));
 }
 
 #if WITH_EDITOR

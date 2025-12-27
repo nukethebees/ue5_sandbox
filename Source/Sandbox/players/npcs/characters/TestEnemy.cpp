@@ -92,7 +92,20 @@ bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
 }
 bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
     UE_LOG(LogSandboxCharacter, Warning, TEXT("Ranged mob attack mode not yet implemented.\n"));
-    return false;
+
+    // Check cooldown
+    auto const current_time{world.GetTimeSeconds()};
+    auto const delta_time{current_time - last_attack_time};
+
+    if (delta_time < combat_profile.ranged_cooldown) {
+        return false;
+    }
+
+    // Fire the bullet
+
+    last_attack_time = current_time;
+
+    return true;
 }
 
 FGenericTeamId ATestEnemy::GetGenericTeamId() const {

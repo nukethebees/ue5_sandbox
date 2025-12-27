@@ -11,6 +11,7 @@
 
 #include "BulletActor.generated.h"
 
+class UWorld;
 class UBoxComponent;
 class UNiagaraSystem;
 class UProjectileMovementComponent;
@@ -23,6 +24,13 @@ class SANDBOX_API ABulletActor
     GENERATED_BODY()
   public:
     ABulletActor();
+
+    static auto fire(UWorld& world,
+                     TSubclassOf<ABulletActor> bullet_class,
+                     FVector spawn_location,
+                     FRotator spawn_rotation,
+                     float speed,
+                     FHealthChange damage) -> ABulletActor*;
 
     void Activate();
     void Deactivate();

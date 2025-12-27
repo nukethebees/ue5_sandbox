@@ -127,3 +127,35 @@ void ABulletActor::Deactivate() {
     SetActorEnableCollision(false);
     SetActorLocation(FVector::ZeroVector);
 }
+
+auto ABulletActor::fire(UWorld& world,
+                        TSubclassOf<ABulletActor> bullet_class,
+                        FVector spawn_location,
+                        FRotator spawn_rotation,
+                        float speed,
+                        FHealthChange damage) -> ABulletActor* {
+    check(bullet_class);
+
+    RETURN_VALUE_IF_NULLPTR(bullet_class, nullptr);
+
+    FActorSpawnParameters spawn_params{};
+    INIT_PTR_OR_RETURN_VALUE(
+        bullet,
+        world.SpawnActor<ABulletActor>(bullet_class, spawn_location, spawn_rotation, spawn_params),
+        nullptr);
+
+    INIT_PTR_OR_RETURN_VALUE(
+        movement, bullet->FindComponentByClass<UProjectileMovementComponent>(), nullptr);
+
+    bullet->SetActorLocationAndRotation(spawn_location, spawn_rotation);
+    bullet->damage = damage;
+
+    movement->InitialSpeed = speed;
+    movement->MaxSpeed = speed;
+
+    auto velocity_unit{spawn_rotation.Vector()};
+    velocity_unit.Normalize();
+    movement->Velocity = velocity_unit * speed;
+
+    return bullet;
+}
