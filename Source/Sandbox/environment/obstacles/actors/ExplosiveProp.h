@@ -1,8 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SphereComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/effects/data/ExplosionConfig.h"
@@ -12,6 +10,9 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "ExplosiveProp.generated.h"
+
+class UStaticMeshComponent;
+class USphereComponent;
 
 class UHealthComponent;
 

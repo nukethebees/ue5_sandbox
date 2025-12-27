@@ -1,11 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/DirectionalLightComponent.h"
-#include "Engine/DirectionalLight.h"
 #include "GameFramework/Actor.h"
 
 #include "DayNightCycle.generated.h"
+
+class ADirectionalLight;
 
 UCLASS()
 class SANDBOX_API ADayNightCycle : public AActor {

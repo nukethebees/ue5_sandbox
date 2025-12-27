@@ -2,11 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/environment/interactive/interfaces/Clickable.h"
 
 #include "MoveToTargetActorComponent.generated.h"
+
+class USceneComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UMoveToTargetActorComponent

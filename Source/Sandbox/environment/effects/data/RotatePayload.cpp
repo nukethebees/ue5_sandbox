@@ -1,5 +1,7 @@
 #include "RotatePayload.h"
 
+#include "GameFramework/Actor.h"
+
 FTriggerResult FRotatePayload::trigger(FTriggerContext context) {
     logger.log_verbose(TEXT("Triggering rotation for actor %s"),
                        *context.triggered_actor.GetName());

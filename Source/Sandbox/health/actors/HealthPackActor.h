@@ -3,14 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "HealthPackActor.generated.h"
+
+class UBoxComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class SANDBOX_API AHealthPackActor

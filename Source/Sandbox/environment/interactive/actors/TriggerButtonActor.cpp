@@ -1,6 +1,7 @@
 #include "Sandbox/environment/interactive/actors/TriggerButtonActor.h"
 
 #include "Components/SceneComponent.h"
+#include "Engine/World.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"

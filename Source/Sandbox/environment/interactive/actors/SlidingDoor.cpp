@@ -1,6 +1,8 @@
 #include "Sandbox/environment/interactive/actors/SlidingDoor.h"
 
+#include "Components/CapsuleComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

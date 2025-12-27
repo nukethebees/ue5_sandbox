@@ -1,11 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SplineComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "BoxSplineMover.generated.h"
+
+class USplineComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class SANDBOX_API ABoxSplineMover : public AActor {

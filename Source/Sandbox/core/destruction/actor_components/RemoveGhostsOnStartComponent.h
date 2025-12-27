@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
 #include "RemoveGhostsOnStartComponent.generated.h"
 
 // Upon first tick, go through the level and destroy every actor component

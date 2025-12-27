@@ -7,12 +7,13 @@
 
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "DamageManagerSubsystem.generated.h"
+
+class UHealthComponent;
 
 USTRUCT()
 struct FQueuedHealthChange {

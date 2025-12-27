@@ -1,5 +1,7 @@
 #include "Sandbox/items/actors/PickupActor.h"
 
+#include "Components/BoxComponent.h"
+
 #include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 
 APickupActor::APickupActor() {
@@ -13,6 +15,13 @@ APickupActor::APickupActor() {
     collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
     collision_component->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
     collision_component->SetBoxExtent(FVector{50.0f, 50.0f, 50.0f});
+}
+
+UPrimitiveComponent* APickupActor::get_collision_component() {
+    return collision_component;
+}
+bool APickupActor::should_destroy_after_collision() const {
+    return destroy_after_collision;
 }
 void APickupActor::BeginPlay() {
     Super::BeginPlay();

@@ -1,6 +1,7 @@
 #include "Sandbox/environment/traversal/actor_components/LoopingPlatformComponent.h"
 
 #include "Components/SceneComponent.h"
+#include "GameFramework/Actor.h"
 
 ULoopingPlatformComponent::ULoopingPlatformComponent() {
     PrimaryComponentTick.bCanEverTick = true;

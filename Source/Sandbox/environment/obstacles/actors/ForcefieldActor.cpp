@@ -1,13 +1,19 @@
 #include "ForcefieldActor.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/PostProcessComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/TimelineComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "TimerManager.h"
+
+#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
 
 AForcefieldActor::AForcefieldActor() {
     PrimaryActorTick.bCanEverTick = false;

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
+
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "TiledWallActor.generated.h"

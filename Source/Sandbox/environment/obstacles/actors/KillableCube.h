@@ -1,14 +1,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "components/StaticMeshComponent.h"
 #include "engine/World.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
 
 #include "KillableCube.generated.h"
+
+class UStaticMeshComponent;
+
+class UHealthComponent;
 
 UCLASS()
 class SANDBOX_API AKillableCube

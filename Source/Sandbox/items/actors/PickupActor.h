@@ -1,12 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
+
 #include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "PickupActor.generated.h"
+
+class UBoxComponent;
 
 UCLASS()
 class SANDBOX_API APickupActor
@@ -18,8 +20,8 @@ class SANDBOX_API APickupActor
     APickupActor();
 
     // ICollisionOwner implementation
-    virtual UPrimitiveComponent* get_collision_component() override { return collision_component; }
-    virtual bool should_destroy_after_collision() const override { return destroy_after_collision; }
+    virtual UPrimitiveComponent* get_collision_component() override;
+    virtual bool should_destroy_after_collision() const override;
   protected:
     virtual void BeginPlay() override;
 

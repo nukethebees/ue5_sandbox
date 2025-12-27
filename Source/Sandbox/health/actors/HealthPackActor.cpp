@@ -2,6 +2,10 @@
 
 #include "Sandbox/health/actors/HealthPackActor.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 

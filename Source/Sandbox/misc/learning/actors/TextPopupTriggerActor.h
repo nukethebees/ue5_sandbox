@@ -1,14 +1,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "TextPopupTriggerActor.generated.h"
+
+class UBoxComponent;
+class UStaticMeshComponent;
 
 class STextPopupWidget;
 class SCompoundWidget;

@@ -1,5 +1,9 @@
 #include "Sandbox/environment/traversal/actor_components/TeleporterActorComponent.h"
 
+#include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "GameFramework/Actor.h"
+
 UTeleporterActorComponent::UTeleporterActorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }

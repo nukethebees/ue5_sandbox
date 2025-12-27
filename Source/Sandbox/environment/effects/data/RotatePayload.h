@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/TimerHandle.h"
+
 #include "Sandbox/interaction/triggering/data/TriggerContext.h"
 #include "Sandbox/interaction/triggering/data/TriggerResult.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"

@@ -1,5 +1,7 @@
 #include "Sandbox/items/actors/SpeedBoostItemActor.h"
 
+#include "Components/StaticMeshComponent.h"
+
 #include "Sandbox/items/actor_components/SpeedBoostItemComponent.h"
 
 ASpeedBoostItemActor::ASpeedBoostItemActor() {

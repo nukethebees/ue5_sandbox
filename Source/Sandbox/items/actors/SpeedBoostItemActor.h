@@ -1,10 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/StaticMeshComponent.h"
 #include "Sandbox/items/actors/PickupActor.h"
 
 #include "SpeedBoostItemActor.generated.h"
+
+class StaticMeshComponent;
 
 class USpeedBoostItemComponent;
 

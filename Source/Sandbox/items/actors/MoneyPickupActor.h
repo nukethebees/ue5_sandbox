@@ -1,8 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
@@ -10,6 +8,9 @@
 #include "Sandbox/items/data/MoneyPickupPayload.h"
 
 #include "MoneyPickupActor.generated.h"
+
+class UBoxComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class SANDBOX_API AMoneyPickupActor
@@ -20,8 +21,8 @@ class SANDBOX_API AMoneyPickupActor
   public:
     AMoneyPickupActor();
 
-    virtual UPrimitiveComponent* get_collision_component() override { return collision_component; }
-    virtual bool should_destroy_after_collision() const override { return true; }
+    virtual UPrimitiveComponent* get_collision_component() override;
+    virtual bool should_destroy_after_collision() const override;
 
     // IDescribable
     virtual FText get_description() const override {

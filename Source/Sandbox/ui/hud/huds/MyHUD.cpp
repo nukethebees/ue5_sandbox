@@ -1,5 +1,6 @@
 #include "MyHUD.h"
 
+#include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/SWeakWidget.h"

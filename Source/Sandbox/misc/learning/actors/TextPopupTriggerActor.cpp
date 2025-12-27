@@ -1,5 +1,7 @@
 #include "Sandbox/misc/learning/actors/TextPopupTriggerActor.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Widgets/Layout/SBox.h"

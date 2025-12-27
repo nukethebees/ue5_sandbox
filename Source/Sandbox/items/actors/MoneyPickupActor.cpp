@@ -1,5 +1,7 @@
 #include "Sandbox/items/actors/MoneyPickupActor.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
 #include "Sandbox/constants/collision_channels.h"
@@ -29,6 +31,12 @@ AMoneyPickupActor::AMoneyPickupActor() {
     collision_component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
+UPrimitiveComponent* AMoneyPickupActor::get_collision_component() {
+    return collision_component;
+}
+bool AMoneyPickupActor::should_destroy_after_collision() const {
+    return true;
+}
 void AMoneyPickupActor::BeginPlay() {
     Super::BeginPlay();
 

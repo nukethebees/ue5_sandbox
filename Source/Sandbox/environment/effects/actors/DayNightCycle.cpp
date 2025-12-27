@@ -1,5 +1,8 @@
 #include "Sandbox/environment/effects/actors/DayNightCycle.h"
 
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
+
 ADayNightCycle::ADayNightCycle() {
     PrimaryActorTick.bCanEverTick = true;
 }

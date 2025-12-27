@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Engine/World.h"
 
 #include "Sandbox/combat/weapons/delegates/PawnWeaponComponentDelegates.h"
 #include "Sandbox/combat/weapons/enums/WeaponPickupAction.h"

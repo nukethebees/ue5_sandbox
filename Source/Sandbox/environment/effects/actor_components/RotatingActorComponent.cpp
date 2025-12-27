@@ -1,5 +1,7 @@
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 
+#include "Engine/World.h"
+
 #include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
 

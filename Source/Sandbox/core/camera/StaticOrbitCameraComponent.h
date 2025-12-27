@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
 #include "StaticOrbitCameraComponent.generated.h"
 
 // Make a camera actor rotate around a point

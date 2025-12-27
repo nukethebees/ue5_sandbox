@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
 #include "RandLaunchpadComponent.generated.h"
 
 class UBoxComponent;

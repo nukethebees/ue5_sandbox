@@ -1,13 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "SlidingDoor.generated.h"
 
 class UPrimitiveComponent;
+class UCapsuleComponent;
+class UStaticMeshComponent;
 
 UENUM(BlueprintType)
 enum class ESlidingDoorDirection : uint8 {

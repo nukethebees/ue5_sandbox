@@ -1,14 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/BoxComponent.h"
-#include "Components/PostProcessComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "Components/TimelineComponent.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TimerHandle.h"
 #include "GameFramework/Actor.h"
-#include "Particles/ParticleSystemComponent.h"
 
 #include "Sandbox/environment/obstacles/data/ForcefieldPayload.h"
 #include "Sandbox/environment/obstacles/enums/ForcefieldState.h"
@@ -16,6 +11,13 @@
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 
 #include "ForcefieldActor.generated.h"
+
+class UBoxComponent;
+class UPostProcessComponent;
+class UStaticMeshComponent;
+class UTimelineComponent;
+class UPrimitiveComponent;
+class UParticleSystemComponent;
 
 UCLASS()
 class SANDBOX_API AForcefieldActor

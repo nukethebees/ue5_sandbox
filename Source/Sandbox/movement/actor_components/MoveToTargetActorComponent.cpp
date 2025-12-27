@@ -1,5 +1,8 @@
 #include "Sandbox/movement/actor_components/MoveToTargetActorComponent.h"
 
+#include "Components/SceneComponent.h"
+#include "DrawDebugHelpers.h"
+
 UMoveToTargetActorComponent::UMoveToTargetActorComponent() {
     PrimaryComponentTick.bCanEverTick = true;
 }

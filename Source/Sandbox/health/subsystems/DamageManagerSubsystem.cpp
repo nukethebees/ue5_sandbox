@@ -1,5 +1,7 @@
 #include "Sandbox/health/subsystems/DamageManagerSubsystem.h"
 
+#include "Sandbox/health/actor_components/HealthComponent.h"
+
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UDamageManagerSubsystem::Initialize(FSubsystemCollectionBase& collection) {

@@ -1,5 +1,8 @@
 #include "Sandbox/items/actors/Coin.h"
 
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
+
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
 #include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
@@ -25,6 +28,12 @@ ACoin::ACoin() {
     collision_component->SetMobility(mobility);
 }
 
+UPrimitiveComponent* ACoin::get_collision_component() {
+    return collision_component;
+}
+bool ACoin::should_destroy_after_collision() const {
+    return true;
+}
 void ACoin::BeginPlay() {
     Super::BeginPlay();
 

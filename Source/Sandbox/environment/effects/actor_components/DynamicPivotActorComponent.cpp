@@ -1,6 +1,8 @@
 #include "Sandbox/environment/effects/actor_components/DynamicPivotActorComponent.h"
 
 #include "Camera/CameraActor.h"
+#include "Engine/HitResult.h"
+#include "Engine/World.h"
 
 UDynamicPivotActorComponent::UDynamicPivotActorComponent() {
     PrimaryComponentTick.bCanEverTick = true;
