@@ -1,5 +1,6 @@
 #include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
 
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "MassSimulationSubsystem.h"
 #include "Materials/Material.h"

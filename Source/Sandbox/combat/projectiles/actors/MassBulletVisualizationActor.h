@@ -4,7 +4,6 @@
 #include <optional>
 
 #include "CoreMinimal.h"
-#include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
@@ -14,6 +13,8 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "MassBulletVisualizationActor.generated.h"
+
+class UInstancedStaticMeshComponent;
 
 class UBulletDataAsset;
 
