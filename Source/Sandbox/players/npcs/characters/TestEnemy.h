@@ -59,18 +59,6 @@ class SANDBOX_API ATestEnemy
         return description;
     }
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor mesh_base_colour{FLinearColor::Green};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor mesh_emissive_colour{FLinearColor::Black};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
-    FLinearColor light_colour{FLinearColor::White};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    ETeamID team_id{ETeamID::Enemy};
-
     FOnPlayerKilled on_player_killed;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
@@ -82,9 +70,6 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     TSubclassOf<AAIController> controller_class{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    FCombatProfile combat_profile{EMobAttackMode::None, 150.0f, 1000.0f};
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
     UStaticMeshComponent* body_mesh{nullptr};
 
@@ -95,7 +80,22 @@ class SANDBOX_API ATestEnemy
     UNpcPatrolComponent* patrol_state{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    FCombatProfile combat_profile{EMobAttackMode::None, 150.0f, 1000.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState default_ai_state{EAIState::RandomlyMove};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor mesh_base_colour{FLinearColor::Green};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor mesh_emissive_colour{FLinearColor::Black};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
+    FLinearColor light_colour{FLinearColor::White};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    ETeamID team_id{ETeamID::Enemy};
   private:
     void apply_material_colours();
     void apply_light_colours();
