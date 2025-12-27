@@ -1,5 +1,6 @@
 #include "Sandbox/players/npcs/characters/TestEnemy.h"
 
+#include "AIController.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"

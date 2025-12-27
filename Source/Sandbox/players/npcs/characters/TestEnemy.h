@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 
@@ -22,6 +21,7 @@
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 
+class AAIController;
 class UHealthComponent;
 class UNpcPatrolComponent;
 
