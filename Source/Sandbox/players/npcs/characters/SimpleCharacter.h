@@ -1,14 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
-#include "BehaviorTree/BehaviorTree.h"
-#include "Components/PointLightComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GenericTeamAgentInterface.h"
-#include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -19,6 +13,10 @@
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "SimpleCharacter.generated.h"
+
+class UMaterialInstanceDynamic;
+class UPointLightComponent;
+class UStaticMeshComponent;
 
 class UHealthComponent;
 
