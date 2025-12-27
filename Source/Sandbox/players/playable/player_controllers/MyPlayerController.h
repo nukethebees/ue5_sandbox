@@ -3,12 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/GameViewportClient.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerController.h"
-#include "InputActionValue.h"
-#include "InputMappingContext.h"
 
 #include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -19,8 +14,10 @@
 
 #include "MyPlayerController.generated.h"
 
-class AMyHUD;
+struct FInputActionValue;
+class UInputMappingContext;
 
+class AMyHUD;
 struct FActorCorners;
 
 UCLASS()

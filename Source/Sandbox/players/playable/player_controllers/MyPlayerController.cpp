@@ -1,6 +1,11 @@
 #include "MyPlayerController.h"
 
 #include "Camera/CameraComponent.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputActionValue.h"
+#include "InputMappingContext.h"
+#include "TimerManager.h"
 
 #include "Sandbox/environment/interactive/interfaces/Clickable.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
