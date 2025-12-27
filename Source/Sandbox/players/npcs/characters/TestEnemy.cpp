@@ -40,6 +40,8 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
 void ATestEnemy::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};
     Super::BeginPlay();
+
+    apply_material_colours();
 }
 
 bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
