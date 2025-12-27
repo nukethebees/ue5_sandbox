@@ -4,14 +4,16 @@ namespace ml {
 auto without_class_prefix(FString const& input) -> FString {
     FString out{};
 
-    for (auto c : input.Reverse()) {
+    auto const n_full{input.Len()};
+    int32 n{0};
+    for (int32 i{n_full - 1}; i >= 0; --i) {
+        auto const c{input[i]};
         if (c == TEXT(':')) {
             break;
         }
-        out += c;
+        n++;
     }
 
-    out.ReverseString();
-    return out;
+    return input.Right(n);
 }
 }
