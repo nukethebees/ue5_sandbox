@@ -62,49 +62,70 @@ bool ATestEnemy::attack_actor(AActor* target) {
     RETURN_VALUE_IF_NULLPTR(target, false);
     INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
 
-    // Check cooldown
-    auto const current_time{world->GetTimeSeconds()};
-    auto const delta_time{current_time - last_attack_time};
+    switch (combat_profile.attack_mode) {
+        case EMobAttackMode::Melee: {
+            // Check cooldown
+            auto const current_time{world->GetTimeSeconds()};
+            auto const delta_time{current_time - last_attack_time};
 
-    if (delta_time < combat_profile.melee_cooldown) {
-        logger.log_verbose(TEXT("Attack on cooldown"));
-        return false;
+            if (delta_time < combat_profile.melee_cooldown) {
+                logger.log_verbose(TEXT("Attack on cooldown"));
+                return false;
+            }
+
+            // Check distance
+            // Use a hitscan to take enemy size into account
+            // We hit their edge, not their middle
+            FHitResult hit;
+            auto const start{GetActorLocation()};
+            auto const end{target->GetActorLocation()};
+            FCollisionQueryParams query_params;
+            query_params.AddIgnoredActor(this);
+
+            if (!world->LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
+                logger.log_verbose(TEXT("Hit missed"));
+                return false;
+            }
+
+            auto const distance_to_target{hit.Distance};
+            if (distance_to_target > combat_profile.melee_range) {
+                logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
+                                   distance_to_target,
+                                   combat_profile.melee_range);
+                return false;
+            }
+
+            // Find health component
+            INIT_PTR_OR_RETURN_VALUE(
+                target_health, target->FindComponentByClass<UHealthComponent>(), false);
+
+            // Apply damage
+            logger.log_verbose(TEXT("Attacking %s for %.2f damage"),
+                               *target->GetName(),
+                               combat_profile.melee_damage);
+            target_health->modify_health(
+                FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
+            last_attack_time = current_time;
+
+            return true;
+        }
+        case EMobAttackMode::None: {
+            return true;
+        }
+        case EMobAttackMode::Ranged: {
+            UE_LOG(LogSandboxCharacter,
+                   Warning,
+                   TEXT("Ranged mob attack mode not yet implemented.\n"));
+            return false;
+        }
+        default: {
+            break;
+        }
     }
 
-    // Check distance
-    // Use a hitscan to take enemy size into account
-    // We hit their edge, not their middle
-    FHitResult hit;
-    auto const start{GetActorLocation()};
-    auto const end{target->GetActorLocation()};
-    FCollisionQueryParams query_params;
-    query_params.AddIgnoredActor(this);
+    UE_LOG(LogSandboxCharacter, Warning, TEXT("Unhandled Mob attack mode.\n"));
 
-    if (!world->LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
-        logger.log_verbose(TEXT("Hit missed"));
-        return false;
-    }
-
-    auto const distance_to_target{hit.Distance};
-    if (distance_to_target > combat_profile.melee_range) {
-        logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
-                           distance_to_target,
-                           combat_profile.melee_range);
-        return false;
-    }
-
-    // Find health component
-    INIT_PTR_OR_RETURN_VALUE(
-        target_health, target->FindComponentByClass<UHealthComponent>(), false);
-
-    // Apply damage
-    logger.log_verbose(
-        TEXT("Attacking %s for %.2f damage"), *target->GetName(), combat_profile.melee_damage);
-    target_health->modify_health(
-        FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
-    last_attack_time = current_time;
-
-    return true;
+    return false;
 }
 
 UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
