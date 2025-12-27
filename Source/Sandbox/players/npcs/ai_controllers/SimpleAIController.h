@@ -35,6 +35,9 @@ class SANDBOX_API ASimpleAIController
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
     UBehaviorTreeComponent* behavior_tree_component{nullptr};
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
+    UBehaviorTree* behaviour_tree_asset{nullptr};
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
     UBlackboardComponent* blackboard_component{nullptr};
 

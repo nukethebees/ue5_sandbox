@@ -45,6 +45,7 @@ void ASimpleAIController::OnPossess(APawn* InPawn) {
 
     RETURN_IF_NULLPTR(InPawn);
     RETURN_IF_NULLPTR(blackboard_component);
+    RETURN_IF_NULLPTR(behaviour_tree_asset);
 
     auto const team_if{Cast<IGenericTeamAgentInterface>(InPawn)};
     RETURN_IF_NULLPTR(team_if);
@@ -53,17 +54,14 @@ void ASimpleAIController::OnPossess(APawn* InPawn) {
     auto const mob_interface{Cast<ISandboxMobInterface>(InPawn)};
     RETURN_IF_NULLPTR(mob_interface);
 
-    auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
-    RETURN_IF_NULLPTR(behavior_tree);
-
     blackboard_component->SetValueAsFloat("acceptable_radius",
                                           mob_interface->get_acceptable_radius());
 
     blackboard_component->SetValueAsEnum("default_ai_state",
                                          std::to_underlying(mob_interface->get_default_ai_state()));
 
-    UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
-    RunBehaviorTree(behavior_tree);
+    UseBlackboard(behaviour_tree_asset->BlackboardAsset, blackboard_component);
+    RunBehaviorTree(behaviour_tree_asset);
 }
 
 void ASimpleAIController::OnUnPossess() {

@@ -1,6 +1,5 @@
 #include "Sandbox/players/npcs/characters/TestEnemy.h"
 
-#include "BehaviorTree/BehaviorTree.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -125,10 +124,6 @@ bool ATestEnemy::attack_actor(AActor* target) {
     UE_LOG(LogSandboxCharacter, Warning, TEXT("Unhandled Mob attack mode.\n"));
 
     return false;
-}
-
-UBehaviorTree* ATestEnemy::get_behaviour_tree_asset() const {
-    return behaviour_tree_asset;
 }
 
 float ATestEnemy::get_acceptable_radius() const {

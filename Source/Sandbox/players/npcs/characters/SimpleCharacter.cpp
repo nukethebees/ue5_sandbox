@@ -58,10 +58,6 @@ void ASimpleCharacter::SetGenericTeamId(FGenericTeamId const& TeamID) {
     team_id = static_cast<ETeamID>(TeamID.GetId());
 }
 
-UBehaviorTree* ASimpleCharacter::get_behaviour_tree_asset() const {
-    return behaviour_tree_asset;
-}
-
 float ASimpleCharacter::get_acceptable_radius() const {
     return acceptable_radius;
 }

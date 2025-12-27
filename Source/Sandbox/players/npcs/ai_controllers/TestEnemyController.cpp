@@ -61,6 +61,7 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     RETURN_IF_NULLPTR(pawn);
     RETURN_IF_NULLPTR(blackboard_component);
+    RETURN_IF_NULLPTR(behaviour_tree_asset);
 
     auto const team_if{Cast<IGenericTeamAgentInterface>(pawn)};
     RETURN_IF_NULLPTR(team_if);
@@ -68,9 +69,6 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
     TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
-
-    auto const behavior_tree{mob_interface->get_behaviour_tree_asset()};
-    RETURN_IF_NULLPTR(behavior_tree);
 
     ai_state = mob_interface->get_default_ai_state();
 
@@ -82,8 +80,8 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
 
-    UseBlackboard(behavior_tree->BlackboardAsset, blackboard_component);
-    RunBehaviorTree(behavior_tree);
+    UseBlackboard(behaviour_tree_asset->BlackboardAsset, blackboard_component);
+    RunBehaviorTree(behaviour_tree_asset);
 }
 void ATestEnemyController::OnUnPossess() {
     Super::OnUnPossess();

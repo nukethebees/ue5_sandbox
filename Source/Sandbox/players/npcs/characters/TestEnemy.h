@@ -21,7 +21,6 @@
 
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
-class UBehaviorTree;
 
 class UHealthComponent;
 class UNpcPatrolComponent;
@@ -48,7 +47,6 @@ class SANDBOX_API ATestEnemy
     virtual auto get_combat_profile() const -> FCombatProfile override { return combat_profile; }
 
     // ISandboxMobInterface
-    virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
     virtual float get_attack_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
@@ -83,9 +81,6 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     TSubclassOf<AAIController> controller_class{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    UBehaviorTree* behaviour_tree_asset{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     FCombatProfile combat_profile{EMobAttackMode::None, 150.0f, 1000.0f};

@@ -16,7 +16,6 @@ class USandboxMobInterface : public UInterface {
 class SANDBOX_API ISandboxMobInterface {
     GENERATED_BODY()
   public:
-    virtual UBehaviorTree* get_behaviour_tree_asset() const { return nullptr; }
     virtual float get_acceptable_radius() const { return 100.0f; }
     virtual float get_attack_acceptable_radius() const { return 100.0f; }
     // AI state

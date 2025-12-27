@@ -55,6 +55,9 @@ class SANDBOX_API ATestEnemyController
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBehaviorTreeComponent* behavior_tree_component{nullptr};
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    UBehaviorTree* behaviour_tree_asset{nullptr};
+
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBlackboardComponent* blackboard_component{nullptr};
 

@@ -53,7 +53,6 @@ class SANDBOX_API ASimpleCharacter
     virtual void SetGenericTeamId(FGenericTeamId const& TeamID) override;
 
     // ISandboxMobInterface
-    virtual UBehaviorTree* get_behaviour_tree_asset() const override;
     virtual float get_acceptable_radius() const override;
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
   protected:
@@ -62,9 +61,6 @@ class SANDBOX_API ASimpleCharacter
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     TSubclassOf<AAIController> controller_class{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
-    UBehaviorTree* behaviour_tree_asset{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     float acceptable_radius{100.0f};
