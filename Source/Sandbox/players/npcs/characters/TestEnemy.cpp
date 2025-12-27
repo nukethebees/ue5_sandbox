@@ -42,15 +42,60 @@ void ATestEnemy::BeginPlay() {
     Super::BeginPlay();
 }
 
-void ATestEnemy::handle_death() {
-    on_player_killed.Broadcast();
-    SetLifeSpan(0.1f);
+bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
+    constexpr auto logger{NestedLogger<"attack_actor_melee">()};
+
+    // Check cooldown
+    auto const current_time{world.GetTimeSeconds()};
+    auto const delta_time{current_time - last_attack_time};
+
+    if (delta_time < combat_profile.melee_cooldown) {
+        logger.log_verbose(TEXT("Attack on cooldown"));
+        return false;
+    }
+
+    // Check distance
+    // Use a hitscan to take enemy size into account
+    // We hit their edge, not their middle
+    FHitResult hit;
+    auto const start{GetActorLocation()};
+    auto const end{target.GetActorLocation()};
+    FCollisionQueryParams query_params;
+    query_params.AddIgnoredActor(this);
+
+    if (!world.LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
+        logger.log_verbose(TEXT("Hit missed"));
+        return false;
+    }
+
+    auto const distance_to_target{hit.Distance};
+    if (distance_to_target > combat_profile.melee_range) {
+        logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
+                           distance_to_target,
+                           combat_profile.melee_range);
+        return false;
+    }
+
+    // Find health component
+    INIT_PTR_OR_RETURN_VALUE(target_health, target.FindComponentByClass<UHealthComponent>(), false);
+
+    // Apply damage
+    logger.log_verbose(
+        TEXT("Attacking %s for %.2f damage"), *target.GetName(), combat_profile.melee_damage);
+    target_health->modify_health(
+        FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
+    last_attack_time = current_time;
+
+    return true;
+}
+bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
+    UE_LOG(LogSandboxCharacter, Warning, TEXT("Ranged mob attack mode not yet implemented.\n"));
+    return false;
 }
 
 FGenericTeamId ATestEnemy::GetGenericTeamId() const {
     return FGenericTeamId(static_cast<uint8>(team_id));
 }
-
 void ATestEnemy::SetGenericTeamId(FGenericTeamId const& TeamID) {
     team_id = static_cast<ETeamID>(TeamID.GetId());
 }
@@ -62,59 +107,13 @@ bool ATestEnemy::attack_actor(AActor& target) {
 
     switch (combat_profile.attack_mode) {
         case EMobAttackMode::Melee: {
-            // Check cooldown
-            auto const current_time{world->GetTimeSeconds()};
-            auto const delta_time{current_time - last_attack_time};
-
-            if (delta_time < combat_profile.melee_cooldown) {
-                logger.log_verbose(TEXT("Attack on cooldown"));
-                return false;
-            }
-
-            // Check distance
-            // Use a hitscan to take enemy size into account
-            // We hit their edge, not their middle
-            FHitResult hit;
-            auto const start{GetActorLocation()};
-            auto const end{target.GetActorLocation()};
-            FCollisionQueryParams query_params;
-            query_params.AddIgnoredActor(this);
-
-            if (!world->LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
-                logger.log_verbose(TEXT("Hit missed"));
-                return false;
-            }
-
-            auto const distance_to_target{hit.Distance};
-            if (distance_to_target > combat_profile.melee_range) {
-                logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
-                                   distance_to_target,
-                                   combat_profile.melee_range);
-                return false;
-            }
-
-            // Find health component
-            INIT_PTR_OR_RETURN_VALUE(
-                target_health, target.FindComponentByClass<UHealthComponent>(), false);
-
-            // Apply damage
-            logger.log_verbose(TEXT("Attacking %s for %.2f damage"),
-                               *target.GetName(),
-                               combat_profile.melee_damage);
-            target_health->modify_health(
-                FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
-            last_attack_time = current_time;
-
-            return true;
+            return attack_actor_melee(*world, target);
         }
         case EMobAttackMode::None: {
             return true;
         }
         case EMobAttackMode::Ranged: {
-            UE_LOG(LogSandboxCharacter,
-                   Warning,
-                   TEXT("Ranged mob attack mode not yet implemented.\n"));
-            return false;
+            return attack_actor_ranged(*world, target);
         }
         default: {
             break;
@@ -131,6 +130,11 @@ float ATestEnemy::get_acceptable_radius() const {
 }
 float ATestEnemy::get_attack_acceptable_radius() const {
     return combat_profile.get_attack_range() / 2.0f;
+}
+
+void ATestEnemy::handle_death() {
+    on_player_killed.Broadcast();
+    SetLifeSpan(0.1f);
 }
 
 void ATestEnemy::apply_material_colours() {

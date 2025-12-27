@@ -19,6 +19,7 @@
 
 #include "TestEnemy.generated.h"
 
+class UWorld;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 
@@ -38,6 +39,9 @@ class SANDBOX_API ATestEnemy
     GENERATED_BODY()
   public:
     ATestEnemy();
+
+    bool attack_actor_melee(UWorld& world, AActor& target);
+    bool attack_actor_ranged(UWorld& world, AActor& target);
 
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
@@ -100,7 +104,6 @@ class SANDBOX_API ATestEnemy
     ETeamID team_id{ETeamID::Enemy};
   private:
     void apply_material_colours();
-    void apply_light_colours();
 
     UMaterialInstanceDynamic* dynamic_material{nullptr};
     float last_attack_time{0.0f};
