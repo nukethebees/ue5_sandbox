@@ -13,8 +13,6 @@
 class UWorld;
 class APawn;
 
-class UAIPerceptionComponent;
-class UBlackboardComponent;
 class UBehaviorTree;
 
 UCLASS()
@@ -31,9 +29,6 @@ class SANDBOX_API ACombatDummyController : public AAIController {
         ml::set_bb_value(*Blackboard, name, value);
     }
     void set_ai_state(EAIState state);
-
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
-    UBehaviorTreeComponent* behavior_tree_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     UBehaviorTree* behaviour_tree_asset{nullptr};

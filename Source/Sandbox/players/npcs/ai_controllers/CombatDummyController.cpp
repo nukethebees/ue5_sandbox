@@ -1,9 +1,6 @@
 #include "Sandbox/players/npcs/ai_controllers/CombatDummyController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
-#include "BehaviorTree/BehaviorTreeComponent.h"
-#include "BehaviorTree/BlackboardComponent.h"
-#include "NavigationSystem.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -14,18 +11,14 @@
 
 using C = TestEnemyBlackboardConstants::FName;
 
-ACombatDummyController::ACombatDummyController()
-    : behavior_tree_component(
-          CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"))) {}
+ACombatDummyController::ACombatDummyController() {}
 
 void ACombatDummyController::OnPossess(APawn* pawn) {
     Super::OnPossess(pawn);
 
-    check(behavior_tree_component);
     check(behaviour_tree_asset);
 
     RETURN_IF_NULLPTR(pawn);
-    RETURN_IF_NULLPTR(behavior_tree_component);
     RETURN_IF_NULLPTR(behaviour_tree_asset);
 
     auto const team_if{Cast<IGenericTeamAgentInterface>(pawn)};
@@ -41,10 +34,6 @@ void ACombatDummyController::OnPossess(APawn* pawn) {
 }
 void ACombatDummyController::OnUnPossess() {
     Super::OnUnPossess();
-
-    if (behavior_tree_component) {
-        behavior_tree_component->StopTree();
-    }
 }
 
 void ACombatDummyController::set_ai_state(EAIState state) {
