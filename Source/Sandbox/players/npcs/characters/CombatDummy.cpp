@@ -1,18 +1,12 @@
 #include "Sandbox/players/npcs/characters/CombatDummy.h"
 
-#include "AIController.h"
 #include "Components/StaticMeshComponent.h"
 
 #include "Sandbox/health/actor_components/HealthComponent.h"
-#include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
-#include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
-
-#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ACombatDummy::ACombatDummy()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
-    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
-    , patrol_state(CreateDefaultSubobject<UNpcPatrolComponent>(TEXT("PatrolState"))) {
+    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))) {
     PrimaryActorTick.bCanEverTick = false;
 
     body_mesh->SetupAttachment(RootComponent);
@@ -25,10 +19,6 @@ ACombatDummy::ACombatDummy()
 
 void ACombatDummy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-
-    if (controller_class) {
-        AIControllerClass = controller_class;
-    }
 }
 void ACombatDummy::BeginPlay() {
     Super::BeginPlay();
