@@ -1,11 +1,16 @@
 #include "Sandbox/players/npcs/characters/CombatDummy.h"
 
+#include "AIController.h"
 #include "Components/StaticMeshComponent.h"
 
 #include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ACombatDummy::ACombatDummy()
     : body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
+    , patrol_state(CreateDefaultSubobject<UNpcPatrolComponent>(TEXT("PatrolState")))
     , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health"))) {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -14,11 +19,16 @@ ACombatDummy::ACombatDummy()
     health->max_health = 1e9;
     health->initial_health = 1e9;
 
-    AutoPossessAI = EAutoPossessAI::PlacedInWorld;
+    AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 void ACombatDummy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
+
+    RETURN_IF_NULLPTR(controller_class);
+    if (controller_class) {
+        AIControllerClass = controller_class;
+    }
 }
 void ACombatDummy::BeginPlay() {
     Super::BeginPlay();

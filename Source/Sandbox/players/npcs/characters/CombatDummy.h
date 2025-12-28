@@ -7,10 +7,12 @@
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/npcs/enums/AIState.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
 
 #include "CombatDummy.generated.h"
 
+class AAIController;
 class UStaticMeshComponent;
 
 class UHealthComponent;
@@ -26,6 +28,8 @@ class SANDBOX_API ACombatDummy
     GENERATED_BODY()
   public:
     ACombatDummy();
+
+    auto get_default_ai_state() const { return default_ai_state; }
 
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
@@ -44,8 +48,17 @@ class SANDBOX_API ACombatDummy
     UStaticMeshComponent* body_mesh{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+    UNpcPatrolComponent* patrol_state{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    TSubclassOf<AAIController> controller_class{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UHealthComponent* health{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Neutral};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    EAIState default_ai_state{EAIState::Idle};
 };
