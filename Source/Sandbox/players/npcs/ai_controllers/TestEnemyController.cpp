@@ -34,6 +34,8 @@ ATestEnemyController::ATestEnemyController()
     // Auto-update blackboard when target is spotted/lost
     ai_perception->OnTargetPerceptionUpdated.AddDynamic(
         this, &ATestEnemyController::on_target_perception_updated);
+    ai_perception->OnTargetPerceptionForgotten.AddDynamic(
+        this, &ATestEnemyController::on_target_perception_forgotten);
 
     SetPerceptionComponent(*ai_perception);
 }
@@ -81,51 +83,39 @@ void ATestEnemyController::OnUnPossess() {
 
 void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
     constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
-
-    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Perception updated."));
-
-    RETURN_IF_NULLPTR(actor);
-    RETURN_IF_NULLPTR(Blackboard);
-
     using C = TestEnemyBlackboardConstants::FName;
 
+    RETURN_IF_NULLPTR(Blackboard);
+
+    auto const display_name{ml::get_best_display_name(*actor)};
+    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Perception updated for: %s."), *display_name);
+
     if (stimulus.WasSuccessfullySensed()) {
+        UE_LOG(LogSandboxController, VeryVerbose, TEXT("Successfully sensed: %s."), *display_name);
+
         auto const attitude{GetTeamAttitudeTowards(*actor)};
-
-        UE_LOG(LogSandboxController,
-               VeryVerbose,
-               TEXT("Sensed: %s."),
-               *ml::get_best_display_name(*actor));
-
         if (attitude == ETeamAttitude::Hostile) {
+            UE_LOG(LogSandboxController, VeryVerbose, TEXT("Spotted enemy: %s"), *display_name);
             on_enemy_spotted.Broadcast();
 
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Spotted enemy: %s"),
-                   *ml::get_best_display_name(*actor));
         } else {
-            UE_LOG(LogSandboxController, Verbose, TEXT("Not hostile"));
+            UE_LOG(LogSandboxController, VeryVerbose, TEXT("Not hostile: %s"), *display_name);
         }
-    } else {
-        if (auto* old_actor{Cast<AActor>(Blackboard->GetValueAsObject(C::target_actor()))}) {
-            bool actor_found{false};
+    }
+}
+void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
+    auto const display_name{ml::get_best_display_name(*actor)};
+    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Forgot: %s"), *display_name);
 
-            // Do a raycast, if the enemy is within X metres then assume we still sense it
-            TRY_INIT_PTR(pawn, GetPawn());
-            TRY_INIT_PTR(world, GetWorld());
-            auto const scan_location{pawn->GetActorLocation()};
+    auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
+    if (!tgt_actor_obj) {
+        return;
+    }
 
-            if (!check_for_enemy_nearby(*world, scan_location, *old_actor)) {
-                UE_LOG(LogSandboxController,
-                       Verbose,
-                       TEXT("Lost sight of: %s"),
-                       *ml::get_best_display_name(*actor));
-                Blackboard->ClearValue(C::target_actor());
-            }
-        }
+    if (actor == tgt_actor_obj) {
+        Blackboard->ClearValue(C::target_actor());
     }
 }
 void ATestEnemyController::visualise_vision_cone() {

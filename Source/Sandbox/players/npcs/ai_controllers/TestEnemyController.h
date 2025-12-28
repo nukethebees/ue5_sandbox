@@ -37,6 +37,8 @@ class SANDBOX_API ATestEnemyController
 
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
+    UFUNCTION()
+    void on_target_perception_forgotten(AActor* Actor);
     void set_bb_value(FName const& name, auto const& value) {
         check(Blackboard);
         ml::set_bb_value(*Blackboard, name, value);
