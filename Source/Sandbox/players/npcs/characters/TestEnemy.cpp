@@ -152,7 +152,10 @@ bool ATestEnemy::attack_actor(AActor& target) {
         }
     }
 
-    UE_LOG(LogSandboxCharacter, Warning, TEXT("Unhandled Mob attack mode.\n"));
+    UE_LOG(LogSandboxCharacter,
+           Warning,
+           TEXT("%s"),
+           *ml::make_unhandled_enum_case_warning(combat_profile.attack_mode));
 
     return false;
 }
