@@ -16,8 +16,6 @@ class UWorld;
 class APawn;
 
 class UAIPerceptionComponent;
-class UBehaviorTreeComponent;
-class UBlackboardComponent;
 class UBehaviorTree;
 class UAISenseConfig_Sight;
 
@@ -40,8 +38,8 @@ class SANDBOX_API ATestEnemyController
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);
     void set_bb_value(FName const& name, auto const& value) {
-        check(blackboard_component);
-        ml::set_bb_value(*blackboard_component, name, value);
+        check(Blackboard);
+        ml::set_bb_value(*Blackboard, name, value);
     }
     void visualise_vision_cone();
     void set_ai_state(EAIState state);
@@ -52,14 +50,8 @@ class SANDBOX_API ATestEnemyController
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
-    UBehaviorTreeComponent* behavior_tree_component{nullptr};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     UBehaviorTree* behaviour_tree_asset{nullptr};
-
-    UPROPERTY(EditDefaultsOnly, Category = "AI")
-    UBlackboardComponent* blackboard_component{nullptr};
 
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UAISenseConfig_Sight* sight_config;

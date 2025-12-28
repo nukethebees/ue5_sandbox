@@ -1,7 +1,6 @@
 #include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
-#include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -12,10 +11,6 @@
 
 ASimpleAIController::ASimpleAIController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
-    , behavior_tree_component(
-          CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent")))
-    , blackboard_component(
-          CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent")))
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
@@ -44,8 +39,11 @@ void ASimpleAIController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
 
     RETURN_IF_NULLPTR(InPawn);
-    RETURN_IF_NULLPTR(blackboard_component);
     RETURN_IF_NULLPTR(behaviour_tree_asset);
+
+    auto* bb_ptr{Blackboard.Get()};
+    UseBlackboard(behaviour_tree_asset->BlackboardAsset, bb_ptr);
+    RunBehaviorTree(behaviour_tree_asset);
 
     auto const team_if{Cast<IGenericTeamAgentInterface>(InPawn)};
     RETURN_IF_NULLPTR(team_if);
@@ -54,29 +52,21 @@ void ASimpleAIController::OnPossess(APawn* InPawn) {
     auto const mob_interface{Cast<ISandboxMobInterface>(InPawn)};
     RETURN_IF_NULLPTR(mob_interface);
 
-    blackboard_component->SetValueAsFloat("acceptable_radius",
-                                          mob_interface->get_acceptable_radius());
+    Blackboard->SetValueAsFloat("acceptable_radius", mob_interface->get_acceptable_radius());
 
-    blackboard_component->SetValueAsEnum("default_ai_state",
-                                         std::to_underlying(mob_interface->get_default_ai_state()));
-
-    UseBlackboard(behaviour_tree_asset->BlackboardAsset, blackboard_component);
-    RunBehaviorTree(behaviour_tree_asset);
+    Blackboard->SetValueAsEnum("default_ai_state",
+                               std::to_underlying(mob_interface->get_default_ai_state()));
 }
 
 void ASimpleAIController::OnUnPossess() {
     Super::OnUnPossess();
-
-    if (behavior_tree_component) {
-        behavior_tree_component->StopTree();
-    }
 }
 
 void ASimpleAIController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
     constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
 
     RETURN_IF_NULLPTR(actor);
-    RETURN_IF_NULLPTR(blackboard_component);
+    RETURN_IF_NULLPTR(Blackboard);
 
     static auto const target_name{TEXT("target_actor")};
 
@@ -84,11 +74,11 @@ void ASimpleAIController::on_target_perception_updated(AActor* actor, FAIStimulu
         auto const attitude{GetTeamAttitudeTowards(*actor)};
 
         if (attitude == ETeamAttitude::Hostile) {
-            blackboard_component->SetValueAsObject(target_name, actor);
+            Blackboard->SetValueAsObject(target_name, actor);
             LOG.log_display(TEXT("Spotted: %s"), *actor->GetName());
         }
     } else {
-        blackboard_component->ClearValue(target_name);
+        Blackboard->ClearValue(target_name);
         LOG.log_display(TEXT("Lost sight of: %s"), *actor->GetName());
     }
 }

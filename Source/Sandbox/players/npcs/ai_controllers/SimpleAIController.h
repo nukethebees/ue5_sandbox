@@ -9,8 +9,6 @@
 #include "SimpleAIController.generated.h"
 
 class UAIPerceptionComponent;
-class UBehaviorTreeComponent;
-class UBlackboardComponent;
 class UBehaviorTree;
 class UAISenseConfig_Sight;
 
@@ -32,14 +30,8 @@ class SANDBOX_API ASimpleAIController
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
-    UBehaviorTreeComponent* behavior_tree_component{nullptr};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     UBehaviorTree* behaviour_tree_asset{nullptr};
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
-    UBlackboardComponent* blackboard_component{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAISenseConfig_Sight* sight_config;

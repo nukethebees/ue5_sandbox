@@ -1,8 +1,6 @@
 #include "Sandbox/players/npcs/ai_controllers/TestEnemyController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
-#include "BehaviorTree/BehaviorTreeComponent.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "DrawDebugHelpers.h"
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -20,10 +18,6 @@ using C = TestEnemyBlackboardConstants::FName;
 
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
-    , behavior_tree_component(
-          CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent")))
-    , blackboard_component(
-          CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent")))
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
@@ -60,8 +54,11 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     Super::OnPossess(pawn);
 
     RETURN_IF_NULLPTR(pawn);
-    RETURN_IF_NULLPTR(blackboard_component);
     RETURN_IF_NULLPTR(behaviour_tree_asset);
+
+    auto* bb_ptr{Blackboard.Get()};
+    UseBlackboard(behaviour_tree_asset->BlackboardAsset, bb_ptr);
+    RunBehaviorTree(behaviour_tree_asset);
 
     auto const team_if{Cast<IGenericTeamAgentInterface>(pawn)};
     RETURN_IF_NULLPTR(team_if);
@@ -70,8 +67,6 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
     TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
 
-    ai_state = mob_interface->get_default_ai_state();
-
     set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
     set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
     set_bb_value(C::default_ai_state(), ai_state);
@@ -79,16 +74,9 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
-
-    UseBlackboard(behaviour_tree_asset->BlackboardAsset, blackboard_component);
-    RunBehaviorTree(behaviour_tree_asset);
 }
 void ATestEnemyController::OnUnPossess() {
     Super::OnUnPossess();
-
-    if (behavior_tree_component) {
-        behavior_tree_component->StopTree();
-    }
 }
 
 void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
@@ -97,7 +85,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     UE_LOG(LogSandboxController, VeryVerbose, TEXT("Perception updated."));
 
     RETURN_IF_NULLPTR(actor);
-    RETURN_IF_NULLPTR(blackboard_component);
+    RETURN_IF_NULLPTR(Blackboard);
 
     using C = TestEnemyBlackboardConstants::FName;
 
@@ -122,8 +110,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
             UE_LOG(LogSandboxController, Verbose, TEXT("Not hostile"));
         }
     } else {
-        if (auto* old_actor{
-                Cast<AActor>(blackboard_component->GetValueAsObject(C::target_actor()))}) {
+        if (auto* old_actor{Cast<AActor>(Blackboard->GetValueAsObject(C::target_actor()))}) {
             bool actor_found{false};
 
             // Do a raycast, if the enemy is within X metres then assume we still sense it
@@ -136,7 +123,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
                        Verbose,
                        TEXT("Lost sight of: %s"),
                        *ml::get_best_display_name(*actor));
-                blackboard_component->ClearValue(C::target_actor());
+                Blackboard->ClearValue(C::target_actor());
             }
         }
     }
