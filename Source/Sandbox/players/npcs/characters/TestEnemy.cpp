@@ -101,6 +101,7 @@ bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
     auto const delta_time{current_time - last_attack_time};
 
     if (delta_time < combat_profile.ranged_cooldown) {
+        UE_LOG(LogSandboxCharacter, Verbose, TEXT("Attack on cooldown"));
         return false;
     }
 
