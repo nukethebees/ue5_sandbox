@@ -138,26 +138,35 @@ void ATestEnemyController::visualise_vision_cone() {
     auto const origin{pawn->GetActorLocation()};
     auto const fwd{pawn->GetActorForwardVector()};
 
-    FRotator const yaw_rotation_right(0.0f, angle_deg, 0.0f);
-    FRotator const yaw_rotation_left(0.0f, -angle_deg, 0.0f);
+    auto const full_rot{angle_deg * 2.0f};
+    int32 const n_segments{8};
+    int32 const n_lines{n_segments + 1};
+    check(n_segments > 2);
+    TArray<FRotator> rots;
+    rots.Reserve(n_lines);
+    auto const div{full_rot / static_cast<float>(n_segments)};
+    for (int32 i{0}; i < n_lines; i++) {
+        auto const yaw{-angle_deg + static_cast<float>(i) * div};
+        rots.Add({0.0f, yaw, 0.0f});
+    }
 
     auto draw_vision{[&](float len, FColor col, float thickness) {
-        auto const rot_right{yaw_rotation_right.RotateVector(fwd) * len};
-        auto const rot_left{yaw_rotation_left.RotateVector(fwd) * len};
-
-        auto const loc_front{origin + fwd * len};
-        auto const loc_left{origin + rot_left};
-        auto const loc_right{origin + rot_right};
+        TArray<FVector> outs;
+        outs.Reserve(n_lines);
+        for (int32 i{0}; i < n_lines; i++) {
+            outs.Add(origin + rots[i].RotateVector(fwd).GetSafeNormal() * len);
+        }
 
         auto draw_line{[&](FVector const& from, FVector const& to) -> void {
             DrawDebugLine(world, from, to, col, false, -1.f, 0, thickness);
         }};
 
-        draw_line(origin, loc_left);
-        draw_line(origin, loc_front);
-        draw_line(origin, loc_right);
-        draw_line(loc_front, loc_left);
-        draw_line(loc_front, loc_right);
+        for (int32 i{0}; i < n_lines; i++) {
+            draw_line(origin, outs[i]);
+        }
+        for (int32 i{1}; i < n_lines; i++) {
+            draw_line(outs[i - 1], outs[i]);
+        }
     }};
 
     draw_vision(sight_config->SightRadius, FColor::Green, 5.f);
