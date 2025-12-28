@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 
+#include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -28,6 +29,20 @@ class AAIController;
 class UHealthComponent;
 class UNpcPatrolComponent;
 class ABulletActor;
+
+USTRUCT(BlueprintType)
+struct FTestEnemyRangedConfig {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    TSubclassOf<ABulletActor> bullet_actor_class;
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    float bullet_speed{2000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    FHealthChange bullet_damage{5.f, EHealthChangeType::Damage};
+};
 
 UCLASS()
 class SANDBOX_API ATestEnemy
@@ -105,8 +120,8 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Enemy};
 
-    UPROPERTY(EditAnywhere, Category = "AI")
-    TSubclassOf<ABulletActor> bullet_actor_class;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    FTestEnemyRangedConfig ranged_config;
   private:
     void apply_material_colours();
 

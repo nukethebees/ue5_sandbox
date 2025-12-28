@@ -8,7 +8,6 @@
 
 #include "Sandbox/combat/projectiles/actors/BulletActor.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
-#include "Sandbox/health/data/HealthChange.h"
 #include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
 #include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
@@ -106,19 +105,19 @@ bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
     }
 
     // Fire the bullet
-    check(bullet_actor_class);
-    RETURN_VALUE_IF_NULLPTR(bullet_actor_class, false);
+    check(ranged_config.bullet_actor_class);
+    RETURN_VALUE_IF_NULLPTR(ranged_config.bullet_actor_class, false);
 
     auto const spawn_location{muzzle_point->GetComponentLocation()};
     auto const spawn_rotation{muzzle_point->GetComponentRotation()};
 
     INIT_PTR_OR_RETURN_VALUE(bullet,
                              ABulletActor::fire(world,
-                                                bullet_actor_class,
+                                                ranged_config.bullet_actor_class,
                                                 spawn_location,
                                                 spawn_rotation,
-                                                2000.0f,
-                                                FHealthChange{5.f, EHealthChangeType::Damage}),
+                                                ranged_config.bullet_speed,
+                                                ranged_config.bullet_damage),
                              false);
 
     last_attack_time = current_time;
