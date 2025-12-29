@@ -39,6 +39,7 @@ class SANDBOX_API AMyHUD
 
     void set_inventory(UInventoryComponent& inventory);
     void set_character(AMyCharacter& my_char);
+    void toggle_hud();
 
     UFUNCTION()
     void toggle_in_game_menu();

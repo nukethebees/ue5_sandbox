@@ -79,6 +79,14 @@ void AMyHUD::set_character(AMyCharacter& my_char) {
     RETURN_IF_NULLPTR(umg_player_menu);
     umg_player_menu->set_character(my_char);
 }
+void AMyHUD::toggle_hud() {
+    check(main_widget);
+    RETURN_IF_NULLPTR(main_widget);
+
+    auto const is_visible{main_widget->IsVisible()};
+    main_widget->SetVisibility(is_visible ? ESlateVisibility::Collapsed
+                                          : ESlateVisibility::SelfHitTestInvisible);
+}
 
 void AMyHUD::toggle_in_game_menu() {
     constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};

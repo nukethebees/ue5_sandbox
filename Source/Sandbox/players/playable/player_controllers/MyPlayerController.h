@@ -110,6 +110,8 @@ class SANDBOX_API AMyPlayerController
     void update_target_screen_bounds(FActorCorners const& corners);
     UFUNCTION()
     void clear_target_screen_bounds();
+    UFUNCTION()
+    void toggle_hud();
 
     UPROPERTY()
     AMyCharacter* controlled_character;

@@ -169,6 +169,7 @@ void AMyPlayerController::SetupInputComponent() {
 
     // UI
     bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
+    bind(input.toggle_hud, Started, &AMyPlayerController::toggle_hud);
 }
 
 // Movement
@@ -352,6 +353,10 @@ void AMyPlayerController::set_mouse_input_mode() {
     SetInputMode(input_mode);
     bShowMouseCursor = true;
     swap_input_mapping_context(input.direct_mode_context, input.cursor_mode_context);
+}
+void AMyPlayerController::toggle_hud() {
+    RETURN_IF_NULLPTR(hud);
+    hud->toggle_hud();
 }
 
 // Private

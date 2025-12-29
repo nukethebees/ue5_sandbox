@@ -78,4 +78,6 @@ struct FMyPlayerControllerInputActions {
     // UI
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* toggle_in_game_menu{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* toggle_hud{nullptr};
 };
