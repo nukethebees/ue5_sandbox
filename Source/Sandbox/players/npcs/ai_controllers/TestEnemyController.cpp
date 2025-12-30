@@ -11,6 +11,8 @@
 #include "Sandbox/players/npcs/data/TestEnemyBlackboardConstants.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
+#include "Sandbox/utilities/array.h"
+#include "Sandbox/utilities/geometry.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -124,35 +126,27 @@ void ATestEnemyController::visualise_vision_cone() {
     TRY_INIT_PTR(pawn, GetPawn());
 
     auto const angle_deg{sight_config->PeripheralVisionAngleDegrees};
-    auto const angle_rad{FMath::DegreesToRadians(angle_deg)};
     auto const origin{pawn->GetActorLocation()};
     auto const fwd{pawn->GetActorForwardVector()};
 
-    auto const full_rot{angle_deg * 2.0f};
     int32 const n_segments{8};
     int32 const n_lines{n_segments + 1};
-    check(n_segments > 2);
-    TArray<FRotator> rots;
-    rots.Reserve(n_lines);
-    auto const div{full_rot / static_cast<float>(n_segments)};
-    for (int32 i{0}; i < n_lines; i++) {
-        auto const yaw{-angle_deg + static_cast<float>(i) * div};
-        rots.Add({0.0f, yaw, 0.0f});
-    }
+
+    constexpr auto map_fn{[](float x) { return FRotator{0.0f, x, 0.0f}; }};
+    auto const angles{ml::subdivide_arc_into_segments(-angle_deg, angle_deg * 2.0f, n_segments)};
+    auto rots{ml::map_array<map_fn>(angles)};
 
     auto draw_vision{[&](float len, FColor col, float thickness) {
-        TArray<FVector> outs;
-        outs.Reserve(n_lines);
-        for (int32 i{0}; i < n_lines; i++) {
-            outs.Add(origin + rots[i].RotateVector(fwd).GetSafeNormal() * len);
-        }
+        auto outs{ml::map_array(rots, [&](FRotator const& rot) {
+            return origin + rot.RotateVector(fwd).GetSafeNormal() * len;
+        })};
 
         auto draw_line{[&](FVector const& from, FVector const& to) -> void {
             DrawDebugLine(world, from, to, col, false, -1.f, 0, thickness);
         }};
 
-        for (int32 i{0}; i < n_lines; i++) {
-            draw_line(origin, outs[i]);
+        for (auto const& out : outs) {
+            draw_line(origin, out);
         }
         for (int32 i{1}; i < n_lines; i++) {
             draw_line(outs[i - 1], outs[i]);
