@@ -57,11 +57,6 @@ class SANDBOX_API AMyPlayerController
     GENERATED_BODY()
   public:
     AMyPlayerController() = default;
-  protected:
-    virtual void BeginPlay() override;
-    virtual void OnPossess(APawn* InPawn) override;
-    virtual void Tick(float DeltaSeconds) override;
-  public:
     virtual void SetupInputComponent() override;
 
     // Movement
@@ -132,7 +127,7 @@ class SANDBOX_API AMyPlayerController
     void initialise_hud(UWorld& world, AMyCharacter& character);
     UFUNCTION()
     void toggle_in_game_menu();
-    void construct_in_game_menu(UWorld& world);
+    void construct_in_game_menu(UWorld& world, AMyCharacter& character);
     UFUNCTION()
     void set_game_input_mode();
     UFUNCTION()
@@ -167,6 +162,10 @@ class SANDBOX_API AMyPlayerController
     void update_target_screen_bounds(FActorCorners const& corners);
     UFUNCTION()
     void clear_target_screen_bounds();
+  protected:
+    virtual void BeginPlay() override;
+    virtual void OnPossess(APawn* InPawn) override;
+    virtual void Tick(float DeltaSeconds) override;
 
     UPROPERTY()
     AMyCharacter* controlled_character;

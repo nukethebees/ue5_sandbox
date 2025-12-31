@@ -46,8 +46,8 @@ void AMyPlayerController::BeginPlay() {
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(pawn, GetPawn());
-    TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
-    initialise_hud(*world, *character);
+    RETURN_IF_NULLPTR(controlled_character);
+    initialise_hud(*world, *controlled_character);
 
     constexpr bool loop_timer{true};
     world->GetTimerManager().SetTimer(description_scanner_timer_handle,
@@ -336,6 +336,55 @@ void AMyPlayerController::drop_waypoint() {
 }
 
 // UI
+void AMyPlayerController::initialise_hud(UWorld& world, AMyCharacter& character) {
+    using T = AMyPlayerController;
+    RETURN_IF_NULLPTR(hud.main_widget_class);
+
+    if (!hud.main_widget) {
+        hud.main_widget = CreateWidget<UMainHUDWidget>(&world, hud.main_widget_class);
+        hud.main_widget->AddToViewport();
+    }
+
+    if (auto* game_state{world.GetGameState<APlatformerGameState>()}) {
+        game_state->on_coin_count_changed.AddUObject(this, &T::update_coin);
+        update_coin(0);
+    }
+
+    TRY_INIT_PTR(pawn, GetPawn());
+    TRY_INIT_PTR(health_component, pawn->FindComponentByClass<UHealthComponent>());
+
+    health_component->on_health_percent_changed.AddUObject(this, &T::update_health);
+
+    TRY_INIT_PTR(jetpack_component, pawn->FindComponentByClass<UJetpackComponent>());
+    jetpack_component->on_fuel_changed.AddUObject(this, &T::update_fuel);
+    jetpack_component->broadcast_fuel_state();
+
+    TRY_INIT_PTR(weapon_component, pawn->FindComponentByClass<UPawnWeaponComponent>());
+    weapon_component->on_weapon_ammo_changed.AddUObject(this, &T::update_current_ammo);
+    weapon_component->on_weapon_equipped.AddUObject(this, &T::on_weapon_equipped);
+    weapon_component->on_weapon_unequipped.AddUObject(this, &T::on_weapon_unequipped);
+    weapon_component->on_weapon_reloaded.AddUObject(this, &T::on_weapon_reloaded);
+    weapon_component->on_reserve_ammo_changed.AddUObject(this, &T::update_reserve_ammo);
+    update_jump(0);
+
+    TRY_INIT_PTR(scanner_component,
+                 pawn->FindComponentByClass<UActorDescriptionScannerComponent>());
+    scanner_component->on_description_update.BindUObject(this, &T::update_description);
+
+    check(hud.main_widget->ammo_display);
+    hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
+
+    character.on_max_speed_changed.AddUObject(this, &AMyPlayerController::update_max_speed);
+    character.on_jump_count_changed.BindUObject(this, &AMyPlayerController::update_jump);
+
+    // Set up actor description scanner
+    check(character.actor_description_scanner);
+    character.actor_description_scanner->on_target_screen_bounds_update.BindUObject(
+        this, &AMyPlayerController::update_target_screen_bounds);
+    character.actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
+        this, &AMyPlayerController::clear_target_screen_bounds);
+}
+
 void AMyPlayerController::toggle_in_game_menu() {
     constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};
     logger.log_display(TEXT("Toggling menu."));
@@ -350,7 +399,8 @@ void AMyPlayerController::toggle_in_game_menu() {
     } else {
         if (!hud.umg_player_menu) {
             TRY_INIT_PTR(world, GetWorld());
-            construct_in_game_menu(*world);
+            RETURN_IF_NULLPTR(controlled_character);
+            construct_in_game_menu(*world, *controlled_character);
         }
 
         RETURN_IF_NULLPTR(hud.umg_player_menu);
@@ -360,7 +410,7 @@ void AMyPlayerController::toggle_in_game_menu() {
         hud.is_in_game_menu_open = true;
     }
 }
-void AMyPlayerController::construct_in_game_menu(UWorld& world) {
+void AMyPlayerController::construct_in_game_menu(UWorld& world, AMyCharacter& character) {
     hud.umg_player_menu = CreateWidget<UInGamePlayerMenu>(&world, hud.umg_player_menu_class);
     RETURN_IF_NULLPTR(hud.umg_player_menu);
     hud.umg_player_menu->back_requested.AddUObject(this, &AMyPlayerController::toggle_in_game_menu);
@@ -368,18 +418,13 @@ void AMyPlayerController::construct_in_game_menu(UWorld& world) {
     TRY_INIT_PTR(pawn, GetPawn());
     TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
     hud.umg_player_menu->set_inventory(*inventory_comp);
-
-    if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
-        hud.umg_player_menu->set_character(*my_pc);
-    }
+    hud.umg_player_menu->set_character(character);
 }
 void AMyPlayerController::set_game_input_mode() {
     auto input_mode{FInputModeGameOnly()};
     SetInputMode(input_mode);
     bShowMouseCursor = false;
     swap_input_mapping_context(input.cursor_mode_context, input.direct_mode_context);
-
-    RETURN_IF_NULLPTR(controlled_character);
 }
 void AMyPlayerController::set_mouse_input_mode() {
     auto input_mode{FInputModeGameAndUI()};
@@ -395,7 +440,6 @@ void AMyPlayerController::toggle_hud() {
     hud.main_widget->SetVisibility(is_visible ? ESlateVisibility::Collapsed
                                               : ESlateVisibility::SelfHitTestInvisible);
 }
-// UI/HUD
 void AMyPlayerController::update_fuel(FJetpackState const& jetpack_state) {
     RETURN_IF_NULLPTR(hud.main_widget);
     RETURN_IF_NULLPTR(hud.main_widget->fuel_widget);
@@ -487,6 +531,21 @@ void AMyPlayerController::clear_target_screen_bounds() {
 // -------------------
 
 // Input
+void AMyPlayerController::perform_description_scan() {
+    constexpr auto logger{NestedLogger<"perform_description_scan">()};
+
+    RETURN_IF_NULLPTR(controlled_character);
+    RETURN_IF_NULLPTR(controlled_character->actor_description_scanner);
+
+    FVector view_location;
+    FRotator view_rotation;
+    GetPlayerViewPoint(view_location, view_rotation);
+
+    controlled_character->actor_description_scanner->perform_raycast(
+        *this, view_location, view_rotation);
+}
+
+// Input
 void AMyPlayerController::add_input_mapping_context(UInputMappingContext* context) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
@@ -500,66 +559,4 @@ void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_re
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
     subsystem->RemoveMappingContext(to_remove);
     subsystem->AddMappingContext(to_add, 0);
-}
-// UI
-void AMyPlayerController::initialise_hud(UWorld& world, AMyCharacter& character) {
-    using T = AMyPlayerController;
-    RETURN_IF_NULLPTR(hud.main_widget_class);
-
-    if (!hud.main_widget) {
-        hud.main_widget = CreateWidget<UMainHUDWidget>(&world, hud.main_widget_class);
-        hud.main_widget->AddToViewport();
-    }
-
-    if (auto* game_state{world.GetGameState<APlatformerGameState>()}) {
-        game_state->on_coin_count_changed.AddUObject(this, &T::update_coin);
-        update_coin(0);
-    }
-
-    TRY_INIT_PTR(pawn, GetPawn());
-    TRY_INIT_PTR(health_component, pawn->FindComponentByClass<UHealthComponent>());
-
-    health_component->on_health_percent_changed.AddUObject(this, &T::update_health);
-
-    TRY_INIT_PTR(jetpack_component, pawn->FindComponentByClass<UJetpackComponent>());
-    jetpack_component->on_fuel_changed.AddUObject(this, &T::update_fuel);
-    jetpack_component->broadcast_fuel_state();
-
-    TRY_INIT_PTR(weapon_component, pawn->FindComponentByClass<UPawnWeaponComponent>());
-    weapon_component->on_weapon_ammo_changed.AddUObject(this, &T::update_current_ammo);
-    weapon_component->on_weapon_equipped.AddUObject(this, &T::on_weapon_equipped);
-    weapon_component->on_weapon_unequipped.AddUObject(this, &T::on_weapon_unequipped);
-    weapon_component->on_weapon_reloaded.AddUObject(this, &T::on_weapon_reloaded);
-    weapon_component->on_reserve_ammo_changed.AddUObject(this, &T::update_reserve_ammo);
-    update_jump(0);
-
-    TRY_INIT_PTR(scanner_component,
-                 pawn->FindComponentByClass<UActorDescriptionScannerComponent>());
-    scanner_component->on_description_update.BindUObject(this, &T::update_description);
-
-    check(hud.main_widget->ammo_display);
-    hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
-
-    character.on_max_speed_changed.AddUObject(this, &AMyPlayerController::update_max_speed);
-    character.on_jump_count_changed.BindUObject(this, &AMyPlayerController::update_jump);
-
-    // Set up actor description scanner
-    check(character.actor_description_scanner);
-    character.actor_description_scanner->on_target_screen_bounds_update.BindUObject(
-        this, &AMyPlayerController::update_target_screen_bounds);
-    character.actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
-        this, &AMyPlayerController::clear_target_screen_bounds);
-}
-void AMyPlayerController::perform_description_scan() {
-    constexpr auto logger{NestedLogger<"perform_description_scan">()};
-
-    RETURN_IF_NULLPTR(controlled_character);
-    RETURN_IF_NULLPTR(controlled_character->actor_description_scanner);
-
-    FVector view_location;
-    FRotator view_rotation;
-    GetPlayerViewPoint(view_location, view_rotation);
-
-    controlled_character->actor_description_scanner->perform_raycast(
-        *this, view_location, view_rotation);
 }
