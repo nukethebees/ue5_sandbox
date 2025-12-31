@@ -1,5 +1,7 @@
 #include "Sandbox/ui/options_menu/widgets/umg/OptionsWidget.h"
 
+#include "Logging/StructuredLog.h"
+
 void UOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
 
