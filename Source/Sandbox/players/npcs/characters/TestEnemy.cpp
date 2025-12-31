@@ -32,8 +32,10 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
     RETURN_IF_NULLPTR(body_mesh);
     RETURN_IF_NULLPTR(body_mesh->GetMaterial(0));
 
-    dynamic_material = body_mesh->CreateDynamicMaterialInstance(0);
-    apply_material_colours();
+    dynamic_material = body_mesh->CreateDynamicMaterialInstance(0, mesh_base_material);
+    WARN_IF_EXPR_ELSE(!dynamic_material) {
+        apply_material_colours(*dynamic_material);
+    }
 
     if (controller_class) {
         AIControllerClass = controller_class;
@@ -43,7 +45,8 @@ void ATestEnemy::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};
     Super::BeginPlay();
 
-    apply_material_colours();
+    RETURN_IF_NULLPTR(dynamic_material);
+    apply_material_colours(*dynamic_material);
 }
 
 bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
@@ -172,10 +175,9 @@ void ATestEnemy::handle_death() {
     SetLifeSpan(0.1f);
 }
 
-void ATestEnemy::apply_material_colours() {
+void ATestEnemy::apply_material_colours(UMaterialInstanceDynamic& dyn_material) {
     constexpr auto logger{NestedLogger<"apply_material_colours">()};
 
-    RETURN_IF_NULLPTR(dynamic_material);
-    dynamic_material->SetVectorParameterValue(FName("base_colour"), mesh_base_colour);
-    dynamic_material->SetVectorParameterValue(FName("emissive_colour"), mesh_emissive_colour);
+    dyn_material.SetVectorParameterValue(FName("base_colour"), mesh_base_colour);
+    dyn_material.SetVectorParameterValue(FName("emissive_colour"), mesh_emissive_colour);
 }

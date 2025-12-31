@@ -23,6 +23,7 @@
 class UWorld;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class UArrowComponent;
 
 class AAIController;
@@ -111,20 +112,26 @@ class SANDBOX_API ATestEnemy
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState default_ai_state{EAIState::RandomlyMove};
 
+    UPROPERTY(EditDefaultsOnly, Category = "Visuals")
+    UMaterialInterface* mesh_base_material{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_base_colour{FLinearColor::Green};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visuals")
     FLinearColor mesh_emissive_colour{FLinearColor::Black};
 
+    UPROPERTY(VisibleAnywhere, Category = "Visuals")
+    UMaterialInstanceDynamic* dynamic_material{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     ETeamID team_id{ETeamID::Enemy};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     FTestEnemyRangedConfig ranged_config;
-  private:
-    void apply_material_colours();
 
-    UMaterialInstanceDynamic* dynamic_material{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "AI")
     float last_attack_time{0.0f};
+  private:
+    void apply_material_colours(UMaterialInstanceDynamic& dyn_material);
 };
