@@ -19,6 +19,8 @@
 
 using C = TestEnemyBlackboardConstants::FName;
 
+#define LOG(VERBOSITY, MESSAGE, ...) UE_LOG(LogSandboxAI, VERBOSITY, TEXT(MESSAGE), __VA_ARGS__)
+
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
@@ -90,26 +92,26 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     RETURN_IF_NULLPTR(Blackboard);
 
     auto const display_name{ml::get_best_display_name(*actor)};
-    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Perception updated for: %s."), *display_name);
+    LOG(VeryVerbose, "Perception updated for: %s.", *display_name);
 
     if (stimulus.WasSuccessfullySensed()) {
-        UE_LOG(LogSandboxController, VeryVerbose, TEXT("Successfully sensed: %s."), *display_name);
+        LOG(VeryVerbose, "Successfully sensed: %s.", *display_name);
 
         auto const attitude{GetTeamAttitudeTowards(*actor)};
         if (attitude == ETeamAttitude::Hostile) {
-            UE_LOG(LogSandboxController, VeryVerbose, TEXT("Spotted enemy: %s"), *display_name);
+            LOG(VeryVerbose, "Spotted enemy: %s", *display_name);
             on_enemy_spotted.Broadcast();
 
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
         } else {
-            UE_LOG(LogSandboxController, VeryVerbose, TEXT("Not hostile: %s"), *display_name);
+            LOG(VeryVerbose, "Not hostile: %s", *display_name);
         }
     }
 }
 void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
     auto const display_name{ml::get_best_display_name(*actor)};
-    UE_LOG(LogSandboxController, VeryVerbose, TEXT("Forgot: %s"), *display_name);
+    LOG(VeryVerbose, "Forgot: %s", *display_name);
 
     auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
     if (!tgt_actor_obj) {
@@ -184,10 +186,7 @@ auto ATestEnemyController::check_for_enemy_nearby(UWorld& world,
 
     for (auto const& hit : hits) {
         if (hit.GetActor() == &enemy) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Sensed %s near pawn."),
-                   *ml::get_best_display_name(enemy));
+            LOG(Verbose, "Sensed %s near pawn.", *ml::get_best_display_name(enemy));
             return true;
         }
     }
