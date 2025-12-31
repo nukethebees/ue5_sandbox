@@ -3,8 +3,6 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/npcs/data/npc_delegates.h"
 #include "Sandbox/players/npcs/enums/AIState.h"
 
@@ -20,9 +18,7 @@ class UBehaviorTree;
 class UAISenseConfig_Sight;
 
 UCLASS()
-class SANDBOX_API ATestEnemyController
-    : public AAIController
-    , public ml::LogMsgMixin<"ATestEnemyController", LogSandboxController> {
+class SANDBOX_API ATestEnemyController : public AAIController {
     GENERATED_BODY()
   public:
     ATestEnemyController();

@@ -8,6 +8,7 @@
 
 #include "Sandbox/core/SandboxDeveloperSettings.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/npcs/data/TestEnemyBlackboardConstants.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
@@ -84,7 +85,6 @@ void ATestEnemyController::OnUnPossess() {
 }
 
 void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
-    constexpr auto LOG{NestedLogger<"on_target_perception_updated">()};
     using C = TestEnemyBlackboardConstants::FName;
 
     RETURN_IF_NULLPTR(Blackboard);
