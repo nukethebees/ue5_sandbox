@@ -1,6 +1,7 @@
 #include "Sandbox/players/npcs/ai_controllers/TestEnemyController.h"
 
 #include "BehaviorTree/BehaviorTree.h"
+#include "Components/StateTreeComponent.h"
 #include "DrawDebugHelpers.h"
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -19,10 +20,12 @@
 
 using C = TestEnemyBlackboardConstants::FName;
 
-#define LOG(VERBOSITY, MESSAGE, ...) UE_LOG(LogSandboxAI, VERBOSITY, TEXT(MESSAGE), __VA_ARGS__)
+#define LOG(VERBOSITY, MESSAGE, ...) \
+    UE_LOG(LogSandboxAI, VERBOSITY, TEXT(MESSAGE) __VA_OPT__(, ) __VA_ARGS__)
 
 ATestEnemyController::ATestEnemyController()
     : ai_perception(CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception")))
+    , state_tree(CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTree")))
     , sight_config(CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"))) {
     sight_config->SightRadius = 800.0f;
     sight_config->LoseSightRadius = 900.0f;
@@ -60,27 +63,33 @@ void ATestEnemyController::BeginPlay() {
 void ATestEnemyController::OnPossess(APawn* pawn) {
     Super::OnPossess(pawn);
 
-    RETURN_IF_NULLPTR(pawn);
-    RETURN_IF_NULLPTR(behaviour_tree_asset);
-
-    auto* bb_ptr{Blackboard.Get()};
-    UseBlackboard(behaviour_tree_asset->BlackboardAsset, bb_ptr);
-    RunBehaviorTree(behaviour_tree_asset);
-
     auto const team_if{Cast<IGenericTeamAgentInterface>(pawn)};
     RETURN_IF_NULLPTR(team_if);
     SetGenericTeamId(team_if->GetGenericTeamId());
 
-    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
-    TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
+    if (state_tree_mode == ETestEnemyControllerAiMode::BehaviourTree) {
+        RETURN_IF_NULLPTR(pawn);
+        RETURN_IF_NULLPTR(behaviour_tree_asset);
 
-    set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
-    set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
-    set_bb_value(C::default_ai_state(), ai_state);
-    set_ai_state(ai_state);
+        auto* bb_ptr{Blackboard.Get()};
+        UseBlackboard(behaviour_tree_asset->BlackboardAsset, bb_ptr);
+        RunBehaviorTree(behaviour_tree_asset);
 
-    auto const attack_profile{combat_interface->get_combat_profile()};
-    set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
+        TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
+        TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
+
+        set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
+        set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
+        set_bb_value(C::default_ai_state(), ai_state);
+        set_ai_state(ai_state);
+
+        auto const attack_profile{combat_interface->get_combat_profile()};
+        set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
+    } else {
+        LOG(Verbose, "Starting state tree logic.");
+        check(state_tree);
+        state_tree->StartLogic();
+    }
 }
 void ATestEnemyController::OnUnPossess() {
     Super::OnUnPossess();
@@ -88,8 +97,6 @@ void ATestEnemyController::OnUnPossess() {
 
 void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimulus stimulus) {
     using C = TestEnemyBlackboardConstants::FName;
-
-    RETURN_IF_NULLPTR(Blackboard);
 
     auto const display_name{ml::get_best_display_name(*actor)};
     LOG(VeryVerbose, "Perception updated for: %s.", *display_name);
@@ -102,9 +109,11 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
             LOG(VeryVerbose, "Spotted enemy: %s", *display_name);
             on_enemy_spotted.Broadcast();
 
-            set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
-            set_bb_value(C::last_known_location(), actor->GetActorLocation());
-            set_ai_state(EAIState::Combat);
+            if (state_tree_mode == ETestEnemyControllerAiMode::BehaviourTree) {
+                set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
+                set_bb_value(C::last_known_location(), actor->GetActorLocation());
+                set_ai_state(EAIState::Combat);
+            }
         } else {
             LOG(VeryVerbose, "Not hostile: %s", *display_name);
         }
@@ -114,14 +123,16 @@ void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
     auto const display_name{ml::get_best_display_name(*actor)};
     LOG(VeryVerbose, "Forgot: %s", *display_name);
 
-    auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
-    if (!tgt_actor_obj) {
-        return;
-    }
+    if (state_tree_mode == ETestEnemyControllerAiMode::BehaviourTree) {
+        auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
+        if (!tgt_actor_obj) {
+            return;
+        }
 
-    if (actor == tgt_actor_obj) {
-        Blackboard->ClearValue(C::target_actor());
-        set_ai_state(EAIState::SearchForLostEnemy);
+        if (actor == tgt_actor_obj) {
+            Blackboard->ClearValue(C::target_actor());
+            set_ai_state(EAIState::SearchForLostEnemy);
+        }
     }
 }
 void ATestEnemyController::visualise_vision_cone() {

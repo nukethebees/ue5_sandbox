@@ -12,10 +12,13 @@
 
 class UWorld;
 class APawn;
-
+class UStateTreeComponent;
 class UAIPerceptionComponent;
 class UBehaviorTree;
 class UAISenseConfig_Sight;
+
+UENUM(BlueprintType)
+enum class ETestEnemyControllerAiMode : uint8 { BehaviourTree, StateTree };
 
 UCLASS()
 class SANDBOX_API ATestEnemyController : public AAIController {
@@ -48,6 +51,9 @@ class SANDBOX_API ATestEnemyController : public AAIController {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* ai_perception{nullptr};
 
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UStateTreeComponent* state_tree{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     UBehaviorTree* behaviour_tree_asset{nullptr};
 
@@ -56,4 +62,7 @@ class SANDBOX_API ATestEnemyController : public AAIController {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     EAIState ai_state;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    ETestEnemyControllerAiMode state_tree_mode{ETestEnemyControllerAiMode::BehaviourTree};
 };
