@@ -104,6 +104,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
 
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
+            set_ai_state(EAIState::Combat);
         } else {
             LOG(VeryVerbose, "Not hostile: %s", *display_name);
         }
@@ -120,6 +121,7 @@ void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
 
     if (actor == tgt_actor_obj) {
         Blackboard->ClearValue(C::target_actor());
+        set_ai_state(EAIState::SearchForLostEnemy);
     }
 }
 void ATestEnemyController::visualise_vision_cone() {
