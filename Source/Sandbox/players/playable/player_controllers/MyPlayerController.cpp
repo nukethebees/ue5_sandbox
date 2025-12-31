@@ -1,17 +1,29 @@
 #include "MyPlayerController.h"
 
 #include "Camera/CameraComponent.h"
+#include "Engine/GameViewportClient.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "TimerManager.h"
 
+#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
 #include "Sandbox/environment/interactive/interfaces/Clickable.h"
+#include "Sandbox/game_flow/game_states/PlatformerGameState.h"
+#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
+#include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/actor_components/WarpComponent.h"
-#include "Sandbox/ui/hud/huds/MyHud.h"
+#include "Sandbox/ui/hud/widgets/umg/AmmoHUDWidget.h"
+#include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
+#include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
+#include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/slate/SInGameMenuWidget.h"
+#include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
+#include "Sandbox/ui/widgets/umg/ValueWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -33,13 +45,14 @@ void AMyPlayerController::BeginPlay() {
 
     add_input_mapping_context(input.base_context);
 
+    TRY_INIT_PTR(world, GetWorld());
+
+    initialise_hud(*world);
+
     TRY_INIT_PTR(pawn, GetPawn());
     TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
-    hud = Cast<AMyHUD>(GetHUD());
-    RETURN_IF_NULLPTR(hud);
-
-    character->on_max_speed_changed.AddUObject(hud, &AMyHUD::update_max_speed);
-    character->on_jump_count_changed.BindUObject(hud, &AMyHUD::update_jump);
+    character->on_max_speed_changed.AddUObject(this, &AMyPlayerController::update_max_speed);
+    character->on_jump_count_changed.BindUObject(this, &AMyPlayerController::update_jump);
 
     // Set up actor description scanner
     check(character->actor_description_scanner);
@@ -48,7 +61,6 @@ void AMyPlayerController::BeginPlay() {
     character->actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
         this, &AMyPlayerController::clear_target_screen_bounds);
 
-    TRY_INIT_PTR(world, GetWorld());
     constexpr bool loop_timer{true};
     world->GetTimerManager().SetTimer(description_scanner_timer_handle,
                                       this,
@@ -110,7 +122,7 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
         cache.camera_rotation = current_camera_rotation;
 
         if (tracking_target_outline) {
-            hud->update_target_screen_bounds(cache.outline_corners);
+            update_target_screen_bounds(cache.outline_corners);
         }
     }
 }
@@ -337,8 +349,70 @@ void AMyPlayerController::drop_waypoint() {
 
 // UI
 void AMyPlayerController::toggle_in_game_menu() {
-    RETURN_IF_NULLPTR(hud);
-    hud->toggle_in_game_menu();
+    constexpr auto logger{NestedLogger<"toggle_in_game_menu">()};
+    logger.log_display(TEXT("Toggling menu."));
+
+    TRY_INIT_PTR(game_viewport, GetWorld()->GetGameViewport());
+
+    if (hud.use_umg_player_menu) {
+        // UMG version
+        if (hud.is_in_game_menu_open) {
+            RETURN_IF_NULLPTR(hud.umg_player_menu);
+            hud.umg_player_menu->RemoveFromParent();
+            set_game_input_mode();
+            hud.is_in_game_menu_open = false;
+        } else {
+            if (!hud.umg_player_menu) {
+                TRY_INIT_PTR(world, GetWorld());
+                hud.umg_player_menu =
+                    CreateWidget<UInGamePlayerMenu>(world, hud.umg_player_menu_class);
+                RETURN_IF_NULLPTR(hud.umg_player_menu);
+                hud.umg_player_menu->back_requested.AddUObject(
+                    this, &AMyPlayerController::toggle_in_game_menu);
+
+                TRY_INIT_PTR(pawn, GetPawn());
+                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+                hud.umg_player_menu->set_inventory(*inventory_comp);
+
+                if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
+                    hud.umg_player_menu->set_character(*my_pc);
+                }
+            }
+
+            RETURN_IF_NULLPTR(hud.umg_player_menu);
+            hud.umg_player_menu->refresh();
+            hud.umg_player_menu->AddToViewport();
+            set_mouse_input_mode();
+            hud.is_in_game_menu_open = true;
+        }
+    } else {
+        // Slate version
+        if (hud.is_in_game_menu_open) {
+            if (hud.in_game_menu_widget.IsValid()) {
+                game_viewport->RemoveViewportWidgetContent(hud.in_game_menu_widget.ToSharedRef());
+            }
+            set_game_input_mode();
+            hud.is_in_game_menu_open = false;
+        } else {
+            if (!hud.in_game_menu_widget.IsValid()) {
+                // Get inventory component from player
+                TRY_INIT_PTR(pawn, GetPawn());
+                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+
+                hud.in_game_menu_widget = SNew(SInGameMenuWidget)
+                                              .OnExitClicked_Lambda([this]() {
+                                                  toggle_in_game_menu();
+                                                  return FReply::Handled();
+                                              })
+                                              .InventoryComponent(inventory_comp);
+            }
+
+            constexpr int32 z_order{100};
+            game_viewport->AddViewportWidgetContent(hud.in_game_menu_widget.ToSharedRef(), z_order);
+            set_mouse_input_mode();
+            hud.is_in_game_menu_open = true;
+        }
+    }
 }
 void AMyPlayerController::set_game_input_mode() {
     auto input_mode{FInputModeGameOnly()};
@@ -355,8 +429,99 @@ void AMyPlayerController::set_mouse_input_mode() {
     swap_input_mapping_context(input.direct_mode_context, input.cursor_mode_context);
 }
 void AMyPlayerController::toggle_hud() {
-    RETURN_IF_NULLPTR(hud);
-    hud->toggle_hud();
+    check(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget);
+
+    auto const is_visible{hud.main_widget->IsVisible()};
+    hud.main_widget->SetVisibility(is_visible ? ESlateVisibility::Collapsed
+                                              : ESlateVisibility::SelfHitTestInvisible);
+}
+// UI/HUD
+void AMyPlayerController::update_fuel(FJetpackState const& jetpack_state) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->fuel_widget);
+
+    hud.main_widget->fuel_widget->update(jetpack_state.fuel_remaining);
+}
+void AMyPlayerController::update_jump(int32 new_jump) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->jump_widget);
+
+    hud.main_widget->jump_widget->update(new_jump);
+}
+void AMyPlayerController::update_coin(int32 data) {
+    if (hud.main_widget && hud.main_widget->coin_widget) {
+        hud.main_widget->coin_widget->update(data);
+    } else {
+        UE_LOGFMT(LogTemp, Warning, "No coin widget.");
+    }
+}
+void AMyPlayerController::update_health(FHealthData health_data) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    hud.main_widget->update_health(health_data);
+}
+void AMyPlayerController::update_max_speed(float data) {
+    if (hud.main_widget && hud.main_widget->max_speed_widget) {
+        hud.main_widget->max_speed_widget->update(data);
+    }
+}
+void AMyPlayerController::on_weapon_reloaded(FAmmoData weapon_ammo, FAmmoData reserve_ammo) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->ammo_display);
+
+    hud.main_widget->ammo_display->set_current_ammo(weapon_ammo);
+    hud.main_widget->ammo_display->set_reserve_ammo(reserve_ammo);
+}
+void AMyPlayerController::update_current_ammo(FAmmoData current_ammo) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->ammo_display);
+
+    hud.main_widget->ammo_display->set_current_ammo(current_ammo);
+}
+void AMyPlayerController::update_reserve_ammo(FAmmoData ammo) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->ammo_display);
+
+    hud.main_widget->ammo_display->set_reserve_ammo(ammo);
+}
+void AMyPlayerController::on_weapon_equipped(FAmmoData weapon_ammo,
+                                             FAmmoData max_ammo,
+                                             FAmmoData reserve_ammo) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->ammo_display);
+
+    hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    hud.main_widget->ammo_display->set_max_ammo(max_ammo);
+    hud.main_widget->ammo_display->set_current_ammo(weapon_ammo);
+    hud.main_widget->ammo_display->set_reserve_ammo(reserve_ammo);
+}
+void AMyPlayerController::on_weapon_unequipped() {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->ammo_display);
+
+    hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
+}
+void AMyPlayerController::update_description(FText const& text) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->item_description_widget);
+    hud.main_widget->item_description_widget->set_description(text);
+}
+void AMyPlayerController::update_target_screen_bounds(FActorCorners const& corners) {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->target_overlay);
+
+    cache.outline_corners = corners;
+    tracking_target_outline = true;
+
+    hud.main_widget->target_overlay->update_target_screen_bounds(*this, corners);
+}
+void AMyPlayerController::clear_target_screen_bounds() {
+    RETURN_IF_NULLPTR(hud.main_widget);
+    RETURN_IF_NULLPTR(hud.main_widget->target_overlay);
+
+    tracking_target_outline = false;
+
+    hud.main_widget->target_overlay->hide();
 }
 
 // Private
@@ -378,6 +543,44 @@ void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_re
     subsystem->AddMappingContext(to_add, 0);
 }
 // UI
+void AMyPlayerController::initialise_hud(UWorld& world) {
+    using T = AMyPlayerController;
+    RETURN_IF_NULLPTR(hud.main_widget_class);
+
+    if (!hud.main_widget) {
+        hud.main_widget = CreateWidget<UMainHUDWidget>(&world, hud.main_widget_class);
+        hud.main_widget->AddToViewport();
+    }
+
+    if (auto* game_state{world.GetGameState<APlatformerGameState>()}) {
+        game_state->on_coin_count_changed.AddUObject(this, &T::update_coin);
+        update_coin(0);
+    }
+
+    TRY_INIT_PTR(pawn, GetPawn());
+    TRY_INIT_PTR(health_component, pawn->FindComponentByClass<UHealthComponent>());
+
+    health_component->on_health_percent_changed.AddUObject(this, &T::update_health);
+
+    TRY_INIT_PTR(jetpack_component, pawn->FindComponentByClass<UJetpackComponent>());
+    jetpack_component->on_fuel_changed.AddUObject(this, &T::update_fuel);
+    jetpack_component->broadcast_fuel_state();
+
+    TRY_INIT_PTR(weapon_component, pawn->FindComponentByClass<UPawnWeaponComponent>());
+    weapon_component->on_weapon_ammo_changed.AddUObject(this, &T::update_current_ammo);
+    weapon_component->on_weapon_equipped.AddUObject(this, &T::on_weapon_equipped);
+    weapon_component->on_weapon_unequipped.AddUObject(this, &T::on_weapon_unequipped);
+    weapon_component->on_weapon_reloaded.AddUObject(this, &T::on_weapon_reloaded);
+    weapon_component->on_reserve_ammo_changed.AddUObject(this, &T::update_reserve_ammo);
+    update_jump(0);
+
+    TRY_INIT_PTR(scanner_component,
+                 pawn->FindComponentByClass<UActorDescriptionScannerComponent>());
+    scanner_component->on_description_update.BindUObject(this, &T::update_description);
+
+    check(hud.main_widget->ammo_display);
+    hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
+}
 void AMyPlayerController::perform_description_scan() {
     constexpr auto logger{NestedLogger<"perform_description_scan">()};
 
@@ -390,16 +593,4 @@ void AMyPlayerController::perform_description_scan() {
 
     controlled_character->actor_description_scanner->perform_raycast(
         *this, view_location, view_rotation);
-}
-void AMyPlayerController::update_target_screen_bounds(FActorCorners const& corners) {
-    RETURN_IF_NULLPTR(hud);
-    cache.outline_corners = corners;
-    tracking_target_outline = true;
-
-    hud->update_target_screen_bounds(corners);
-}
-void AMyPlayerController::clear_target_screen_bounds() {
-    RETURN_IF_NULLPTR(hud);
-    tracking_target_outline = false;
-    hud->clear_target_screen_bounds();
 }

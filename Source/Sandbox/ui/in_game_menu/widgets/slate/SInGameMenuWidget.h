@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Framework/SlateDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"

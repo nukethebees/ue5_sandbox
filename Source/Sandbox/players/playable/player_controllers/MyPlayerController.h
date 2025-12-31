@@ -16,9 +16,43 @@
 
 struct FInputActionValue;
 class UInputMappingContext;
+class UWorld;
 
-class AMyHUD;
 struct FActorCorners;
+
+class UInventoryComponent;
+
+class UMainHUDWidget;
+class SInGameMenuWidget;
+class UInGamePlayerMenu;
+
+struct FActorCorners;
+
+USTRUCT(BlueprintType)
+struct FMyPlayerControllerHud {
+    GENERATED_BODY()
+
+    // Widget classes
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UMainHUDWidget> main_widget_class;
+
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UInGamePlayerMenu> umg_player_menu_class;
+
+    // Widget instances
+    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UMainHUDWidget* main_widget;
+
+    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UInGamePlayerMenu* umg_player_menu{nullptr};
+
+    // Slate widgets
+    TSharedPtr<SInGameMenuWidget> in_game_menu_widget;
+    bool is_in_game_menu_open{false};
+
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    bool use_umg_player_menu{true};
+};
 
 UCLASS()
 class SANDBOX_API AMyPlayerController
@@ -100,6 +134,7 @@ class SANDBOX_API AMyPlayerController
     void drop_waypoint();
 
     // UI
+    void initialise_hud(UWorld& world);
     UFUNCTION()
     void toggle_in_game_menu();
     UFUNCTION()
@@ -107,16 +142,38 @@ class SANDBOX_API AMyPlayerController
     UFUNCTION()
     void set_mouse_input_mode();
     UFUNCTION()
+    void toggle_hud();
+
+    // UI/HUD
+    UFUNCTION()
+    void update_jump(int32 new_jump);
+    UFUNCTION()
+    void update_fuel(FJetpackState const& jetpack_state);
+    UFUNCTION()
+    void update_coin(int32 data);
+    UFUNCTION()
+    void update_health(FHealthData health_data);
+    UFUNCTION()
+    void update_max_speed(float data);
+    UFUNCTION()
+    void update_current_ammo(FAmmoData current_ammo);
+    UFUNCTION()
+    void update_reserve_ammo(FAmmoData ammo);
+    UFUNCTION()
+    void on_weapon_reloaded(FAmmoData weapon_ammo, FAmmoData reserve_ammo);
+    UFUNCTION()
+    void on_weapon_equipped(FAmmoData weapon_ammo, FAmmoData max_ammo, FAmmoData reserve_ammo);
+    UFUNCTION()
+    void on_weapon_unequipped();
+    UFUNCTION()
+    void update_description(FText const& text);
+    UFUNCTION()
     void update_target_screen_bounds(FActorCorners const& corners);
     UFUNCTION()
     void clear_target_screen_bounds();
-    UFUNCTION()
-    void toggle_hud();
 
     UPROPERTY()
     AMyCharacter* controlled_character;
-    UPROPERTY()
-    AMyHUD* hud;
     UPROPERTY()
     FMyPlayerControllerCache cache;
 
@@ -125,6 +182,9 @@ class SANDBOX_API AMyPlayerController
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Description")
     float description_scan_interval{0.15f};
+
+    UPROPERTY(EditAnywhere, Category = "UI")
+    FMyPlayerControllerHud hud;
   private:
     // Input
     void add_input_mapping_context(UInputMappingContext* context);

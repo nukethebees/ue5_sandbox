@@ -11,7 +11,6 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
-#include "Sandbox/ui/hud/huds/MyHud.h"
 
 #include "MyGameModeBase.generated.h"
 
