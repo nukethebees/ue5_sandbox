@@ -20,6 +20,7 @@ public class Sandbox : ModuleRules
             "AIModule",
             "DeveloperSettings",
             "EnhancedInput",
+            "GameplayStateTreeModule",
             "GameplayTasks",
             "InputCore",
             "MassEntity",
@@ -29,6 +30,7 @@ public class Sandbox : ModuleRules
             "NavigationSystem",            
             "Slate",
             "SlateCore",
+            "StateTreeModule",
             "TraceLog",
             "UMG"
         });
