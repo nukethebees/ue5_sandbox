@@ -6,8 +6,6 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-using Task = FStateTreeGetRandomPointTask;
-
 FStateTreeGetRandomPointTask::FStateTreeGetRandomPointTask() {
     bShouldCallTick = false;
     bShouldCopyBoundPropertiesOnTick = false;
@@ -16,9 +14,10 @@ FStateTreeGetRandomPointTask::FStateTreeGetRandomPointTask() {
     bConsideredForScheduling = false;
 }
 
-auto Task::EnterState(Context& context, TransitionResult const& transition) const -> RunStatus {
+auto FStateTreeGetRandomPointTask::EnterState(Context& context,
+                                              TransitionResult const& transition) const
+    -> RunStatus {
     auto& instance_data{context.GetInstanceData(*this)};
-
     RETURN_VALUE_IF_NULLPTR(instance_data.Actor, RunStatus::Failed);
 
     auto const random_point{ml::get_random_nav_point(instance_data.Actor, instance_data.distance)};

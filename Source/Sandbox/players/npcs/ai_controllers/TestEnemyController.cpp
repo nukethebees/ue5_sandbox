@@ -67,6 +67,11 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     RETURN_IF_NULLPTR(team_if);
     SetGenericTeamId(team_if->GetGenericTeamId());
 
+    TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
+    auto const default_ai_state{mob_interface->get_default_ai_state()};
+
+    set_ai_state(default_ai_state);
+
     if (state_tree_mode == ETestEnemyControllerAiMode::BehaviourTree) {
         RETURN_IF_NULLPTR(pawn);
         RETURN_IF_NULLPTR(behaviour_tree_asset);
@@ -75,13 +80,11 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
         UseBlackboard(behaviour_tree_asset->BlackboardAsset, bb_ptr);
         RunBehaviorTree(behaviour_tree_asset);
 
-        TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
         TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
 
         set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
         set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
-        set_bb_value(C::default_ai_state(), ai_state);
-        set_ai_state(ai_state);
+        set_bb_value(C::default_ai_state(), default_ai_state);
 
         auto const attack_profile{combat_interface->get_combat_profile()};
         set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
@@ -173,7 +176,10 @@ void ATestEnemyController::visualise_vision_cone() {
 }
 void ATestEnemyController::set_ai_state(EAIState state) {
     ai_state = state;
-    set_bb_value(C::ai_state(), state);
+
+    if (state_tree_mode == ETestEnemyControllerAiMode::BehaviourTree) {
+        set_bb_value(C::ai_state(), state);
+    }
 }
 auto ATestEnemyController::scan_around_pawn(UWorld& world, FVector scan_location) const
     -> TArray<FHitResult> {

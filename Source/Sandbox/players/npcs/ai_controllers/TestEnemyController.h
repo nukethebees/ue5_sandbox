@@ -29,6 +29,8 @@ class SANDBOX_API ATestEnemyController : public AAIController {
     FOnEnemySpotted on_enemy_spotted;
 
     virtual void Tick(float delta_time) override;
+
+    auto get_ai_state() const { return ai_state; }
   protected:
     virtual void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
