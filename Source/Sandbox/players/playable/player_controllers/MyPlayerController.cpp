@@ -350,18 +350,7 @@ void AMyPlayerController::toggle_in_game_menu() {
     } else {
         if (!hud.umg_player_menu) {
             TRY_INIT_PTR(world, GetWorld());
-            hud.umg_player_menu = CreateWidget<UInGamePlayerMenu>(world, hud.umg_player_menu_class);
-            RETURN_IF_NULLPTR(hud.umg_player_menu);
-            hud.umg_player_menu->back_requested.AddUObject(
-                this, &AMyPlayerController::toggle_in_game_menu);
-
-            TRY_INIT_PTR(pawn, GetPawn());
-            TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
-            hud.umg_player_menu->set_inventory(*inventory_comp);
-
-            if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
-                hud.umg_player_menu->set_character(*my_pc);
-            }
+            construct_in_game_menu(*world);
         }
 
         RETURN_IF_NULLPTR(hud.umg_player_menu);
@@ -369,6 +358,19 @@ void AMyPlayerController::toggle_in_game_menu() {
         hud.umg_player_menu->AddToViewport();
         set_mouse_input_mode();
         hud.is_in_game_menu_open = true;
+    }
+}
+void AMyPlayerController::construct_in_game_menu(UWorld& world) {
+    hud.umg_player_menu = CreateWidget<UInGamePlayerMenu>(&world, hud.umg_player_menu_class);
+    RETURN_IF_NULLPTR(hud.umg_player_menu);
+    hud.umg_player_menu->back_requested.AddUObject(this, &AMyPlayerController::toggle_in_game_menu);
+
+    TRY_INIT_PTR(pawn, GetPawn());
+    TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+    hud.umg_player_menu->set_inventory(*inventory_comp);
+
+    if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
+        hud.umg_player_menu->set_character(*my_pc);
     }
 }
 void AMyPlayerController::set_game_input_mode() {

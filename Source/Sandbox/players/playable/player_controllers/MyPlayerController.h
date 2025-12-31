@@ -132,6 +132,7 @@ class SANDBOX_API AMyPlayerController
     void initialise_hud(UWorld& world, AMyCharacter& character);
     UFUNCTION()
     void toggle_in_game_menu();
+    void construct_in_game_menu(UWorld& world);
     UFUNCTION()
     void set_game_input_mode();
     UFUNCTION()
