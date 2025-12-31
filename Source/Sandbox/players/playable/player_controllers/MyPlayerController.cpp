@@ -45,20 +45,9 @@ void AMyPlayerController::BeginPlay() {
     add_input_mapping_context(input.base_context);
 
     TRY_INIT_PTR(world, GetWorld());
-
-    initialise_hud(*world);
-
     TRY_INIT_PTR(pawn, GetPawn());
     TRY_INIT_PTR(character, Cast<AMyCharacter>(pawn));
-    character->on_max_speed_changed.AddUObject(this, &AMyPlayerController::update_max_speed);
-    character->on_jump_count_changed.BindUObject(this, &AMyPlayerController::update_jump);
-
-    // Set up actor description scanner
-    check(character->actor_description_scanner);
-    character->actor_description_scanner->on_target_screen_bounds_update.BindUObject(
-        this, &AMyPlayerController::update_target_screen_bounds);
-    character->actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
-        this, &AMyPlayerController::clear_target_screen_bounds);
+    initialise_hud(*world, *character);
 
     constexpr bool loop_timer{true};
     world->GetTimerManager().SetTimer(description_scanner_timer_handle,
@@ -511,7 +500,7 @@ void AMyPlayerController::swap_input_mapping_context(UInputMappingContext* to_re
     subsystem->AddMappingContext(to_add, 0);
 }
 // UI
-void AMyPlayerController::initialise_hud(UWorld& world) {
+void AMyPlayerController::initialise_hud(UWorld& world, AMyCharacter& character) {
     using T = AMyPlayerController;
     RETURN_IF_NULLPTR(hud.main_widget_class);
 
@@ -548,6 +537,16 @@ void AMyPlayerController::initialise_hud(UWorld& world) {
 
     check(hud.main_widget->ammo_display);
     hud.main_widget->ammo_display->SetVisibility(ESlateVisibility::Collapsed);
+
+    character.on_max_speed_changed.AddUObject(this, &AMyPlayerController::update_max_speed);
+    character.on_jump_count_changed.BindUObject(this, &AMyPlayerController::update_jump);
+
+    // Set up actor description scanner
+    check(character.actor_description_scanner);
+    character.actor_description_scanner->on_target_screen_bounds_update.BindUObject(
+        this, &AMyPlayerController::update_target_screen_bounds);
+    character.actor_description_scanner->on_target_screen_bounds_cleared.BindUObject(
+        this, &AMyPlayerController::clear_target_screen_bounds);
 }
 void AMyPlayerController::perform_description_scan() {
     constexpr auto logger{NestedLogger<"perform_description_scan">()};

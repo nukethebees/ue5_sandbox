@@ -129,7 +129,7 @@ class SANDBOX_API AMyPlayerController
     void drop_waypoint();
 
     // UI
-    void initialise_hud(UWorld& world);
+    void initialise_hud(UWorld& world, AMyCharacter& character);
     UFUNCTION()
     void toggle_in_game_menu();
     UFUNCTION()
