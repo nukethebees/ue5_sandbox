@@ -21,7 +21,6 @@
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
 #include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
 #include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/slate/SInGameMenuWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
 #include "Sandbox/ui/widgets/umg/ValueWidget.h"
 
@@ -354,64 +353,33 @@ void AMyPlayerController::toggle_in_game_menu() {
 
     TRY_INIT_PTR(game_viewport, GetWorld()->GetGameViewport());
 
-    if (hud.use_umg_player_menu) {
-        // UMG version
-        if (hud.is_in_game_menu_open) {
-            RETURN_IF_NULLPTR(hud.umg_player_menu);
-            hud.umg_player_menu->RemoveFromParent();
-            set_game_input_mode();
-            hud.is_in_game_menu_open = false;
-        } else {
-            if (!hud.umg_player_menu) {
-                TRY_INIT_PTR(world, GetWorld());
-                hud.umg_player_menu =
-                    CreateWidget<UInGamePlayerMenu>(world, hud.umg_player_menu_class);
-                RETURN_IF_NULLPTR(hud.umg_player_menu);
-                hud.umg_player_menu->back_requested.AddUObject(
-                    this, &AMyPlayerController::toggle_in_game_menu);
-
-                TRY_INIT_PTR(pawn, GetPawn());
-                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
-                hud.umg_player_menu->set_inventory(*inventory_comp);
-
-                if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
-                    hud.umg_player_menu->set_character(*my_pc);
-                }
-            }
-
-            RETURN_IF_NULLPTR(hud.umg_player_menu);
-            hud.umg_player_menu->refresh();
-            hud.umg_player_menu->AddToViewport();
-            set_mouse_input_mode();
-            hud.is_in_game_menu_open = true;
-        }
+    if (hud.is_in_game_menu_open) {
+        RETURN_IF_NULLPTR(hud.umg_player_menu);
+        hud.umg_player_menu->RemoveFromParent();
+        set_game_input_mode();
+        hud.is_in_game_menu_open = false;
     } else {
-        // Slate version
-        if (hud.is_in_game_menu_open) {
-            if (hud.in_game_menu_widget.IsValid()) {
-                game_viewport->RemoveViewportWidgetContent(hud.in_game_menu_widget.ToSharedRef());
-            }
-            set_game_input_mode();
-            hud.is_in_game_menu_open = false;
-        } else {
-            if (!hud.in_game_menu_widget.IsValid()) {
-                // Get inventory component from player
-                TRY_INIT_PTR(pawn, GetPawn());
-                TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+        if (!hud.umg_player_menu) {
+            TRY_INIT_PTR(world, GetWorld());
+            hud.umg_player_menu = CreateWidget<UInGamePlayerMenu>(world, hud.umg_player_menu_class);
+            RETURN_IF_NULLPTR(hud.umg_player_menu);
+            hud.umg_player_menu->back_requested.AddUObject(
+                this, &AMyPlayerController::toggle_in_game_menu);
 
-                hud.in_game_menu_widget = SNew(SInGameMenuWidget)
-                                              .OnExitClicked_Lambda([this]() {
-                                                  toggle_in_game_menu();
-                                                  return FReply::Handled();
-                                              })
-                                              .InventoryComponent(inventory_comp);
-            }
+            TRY_INIT_PTR(pawn, GetPawn());
+            TRY_INIT_PTR(inventory_comp, pawn->FindComponentByClass<UInventoryComponent>());
+            hud.umg_player_menu->set_inventory(*inventory_comp);
 
-            constexpr int32 z_order{100};
-            game_viewport->AddViewportWidgetContent(hud.in_game_menu_widget.ToSharedRef(), z_order);
-            set_mouse_input_mode();
-            hud.is_in_game_menu_open = true;
+            if (auto* my_pc{Cast<AMyCharacter>(pawn)}) {
+                hud.umg_player_menu->set_character(*my_pc);
+            }
         }
+
+        RETURN_IF_NULLPTR(hud.umg_player_menu);
+        hud.umg_player_menu->refresh();
+        hud.umg_player_menu->AddToViewport();
+        set_mouse_input_mode();
+        hud.is_in_game_menu_open = true;
     }
 }
 void AMyPlayerController::set_game_input_mode() {
