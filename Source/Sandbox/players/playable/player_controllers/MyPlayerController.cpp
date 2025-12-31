@@ -30,13 +30,15 @@
     RETURN_IF_NULLPTR(controlled_character);        \
     controlled_character->METHOD_CALL(__VA_ARGS__);
 
-void AMyPlayerController::BeginPlay() {
-    Super::BeginPlay();
-
+AMyPlayerController::AMyPlayerController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
     bEnableClickEvents = true;
     bEnableMouseOverEvents = false;
+}
+
+void AMyPlayerController::BeginPlay() {
+    Super::BeginPlay();
 
     PlayerCameraManager->GetCameraViewPoint(cache.camera_location, cache.camera_rotation);
 

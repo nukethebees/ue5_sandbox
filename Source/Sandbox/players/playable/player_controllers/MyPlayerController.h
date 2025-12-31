@@ -56,7 +56,7 @@ class SANDBOX_API AMyPlayerController
     , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
-    AMyPlayerController() = default;
+    AMyPlayerController();
     virtual void SetupInputComponent() override;
 
     // Movement
