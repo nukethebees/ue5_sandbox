@@ -21,7 +21,7 @@ struct FStateTreeGetRandomPointTaskInstanceData {
 };
 
 USTRUCT(meta = (DisplayName = "Get Random Point", Category = "AI|Action"))
-struct FStateTreeGetRandomPointTask : public FStateTreeAIActionTaskBase {
+struct FStateTreeGetRandomPointTask : public FStateTreeAITaskBase {
     GENERATED_BODY()
 
     using FInstanceDataType = FStateTreeGetRandomPointTaskInstanceData;
