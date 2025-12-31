@@ -41,16 +41,10 @@ void AMyPlayerController::BeginPlay() {
     Super::BeginPlay();
 
     PlayerCameraManager->GetCameraViewPoint(cache.camera_location, cache.camera_rotation);
-
     set_game_input_mode();
-
     add_input_mapping_context(input.base_context);
 
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(pawn, GetPawn());
-    RETURN_IF_NULLPTR(controlled_character);
-    initialise_hud(*world, *controlled_character);
-
     constexpr bool loop_timer{true};
     world->GetTimerManager().SetTimer(description_scanner_timer_handle,
                                       this,
@@ -62,10 +56,11 @@ void AMyPlayerController::OnPossess(APawn* InPawn) {
     Super::OnPossess(InPawn);
 
     controlled_character = Cast<AMyCharacter>(InPawn);
+    RETURN_IF_NULLPTR(controlled_character);
 
-    if (controlled_character) {
-        add_input_mapping_context(input.character_context);
-    }
+    TRY_INIT_PTR(world, GetWorld());
+    add_input_mapping_context(input.character_context);
+    initialise_hud(*world, *controlled_character);
 }
 void AMyPlayerController::Tick(float DeltaSeconds) {
     constexpr auto logger{NestedLogger<"Tick">()};
