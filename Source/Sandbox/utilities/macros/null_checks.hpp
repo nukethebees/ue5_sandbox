@@ -6,6 +6,9 @@
 
 // INIT macros initialise variables and then perform a null checks
 
+#define WARN_IS_FALSE(CATEGORY, EXPR) \
+    UE_LOG(CATEGORY, Warning, TEXT(#EXPR " is false"))
+
 #define WARN_IF_EXPR(BOOL_EXPR)                                 \
     do {                                                        \
         if ((BOOL_EXPR)) {                                      \
