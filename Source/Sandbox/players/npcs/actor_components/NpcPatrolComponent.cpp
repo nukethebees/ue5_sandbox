@@ -30,7 +30,8 @@ void UNpcPatrolComponent::advance_to_next_point() {
 
     auto& path{*patrol_path};
 
-    if (!last_waypoint) {
+    if (!current_waypoint) {
+        UE_LOG(LogSandboxAI, Verbose, TEXT("No current waypoint. Using default."));
         set_waypoint_to_default();
         return;
     }
@@ -55,9 +56,11 @@ void UNpcPatrolComponent::advance_to_next_point() {
 
     auto const next_index{i + 1};
     if (next_index >= n) {
+        UE_LOG(LogSandboxAI, Verbose, TEXT("Looping to first waypoint."));
         current_waypoint = path[0];
     } else {
-        current_waypoint = path[i + 1];
+        UE_LOG(LogSandboxAI, Verbose, TEXT("Moving to waypoint[%d]."), next_index);
+        current_waypoint = path[next_index];
     }
 
     if (!current_waypoint) {
