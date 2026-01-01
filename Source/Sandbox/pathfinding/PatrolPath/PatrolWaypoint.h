@@ -21,6 +21,8 @@ class SANDBOX_API APatrolWaypoint : public AActor {
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
 #endif
   protected:
+    void OnConstruction(FTransform const& Transform);
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Navigation")
     FName name;
 

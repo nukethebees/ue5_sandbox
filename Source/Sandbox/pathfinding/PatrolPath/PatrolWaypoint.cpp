@@ -29,3 +29,11 @@ void APatrolWaypoint::PostEditChangeProperty(FPropertyChangedEvent& event) {
     }
 }
 #endif
+
+void APatrolWaypoint::OnConstruction(FTransform const& Transform) {
+    Super::OnConstruction(Transform);
+
+#if WITH_EDITOR
+    name = *GetActorLabel();
+#endif
+}
