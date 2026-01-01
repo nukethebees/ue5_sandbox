@@ -28,6 +28,11 @@ void APatrolWaypoint::PostEditChangeProperty(FPropertyChangedEvent& event) {
         SetActorLabel(name.ToString());
     }
 }
+void APatrolWaypoint::OnActorLabelChanged(AActor* actor) {
+    if (auto* wp{Cast<ThisClass>(actor)}) {
+        wp->name = *wp->GetActorLabel();
+    }
+}
 #endif
 
 void APatrolWaypoint::OnConstruction(FTransform const& Transform) {

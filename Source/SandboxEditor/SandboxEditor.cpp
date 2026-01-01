@@ -1,10 +1,12 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Misc/CoreDelegates.h"
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
@@ -38,6 +40,9 @@ void FSandboxEditorModule::StartupModule() {
         "PlayerSkills",
         FOnGetPropertyTypeCustomizationInstance::CreateStatic(
             &FPlayerSkillsPropDisplay::MakeInstance));
+
+    // FCoreDelegates bindings
+    FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
 }
 
 void FSandboxEditorModule::ShutdownModule() {
@@ -48,6 +53,9 @@ void FSandboxEditorModule::ShutdownModule() {
 
         property_module.UnregisterCustomPropertyTypeLayout("Dimensions");
     }
+
+    // FCoreDelegates bindings
+    FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
 }
 
 void FSandboxEditorModule::register_menu_extensions() {

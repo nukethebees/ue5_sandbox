@@ -19,6 +19,7 @@ class SANDBOX_API APatrolWaypoint : public AActor {
 
 #if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
+    static void OnActorLabelChanged(AActor* actor);
 #endif
   protected:
     void OnConstruction(FTransform const& Transform);
