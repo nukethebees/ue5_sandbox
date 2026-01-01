@@ -7,6 +7,8 @@
 
 #include "BTTask_PerformLookPattern.generated.h"
 
+class APawn;
+
 UENUM()
 enum class ELookPatternMoveState : uint8 { GoingRight, GoingLeft, ReturnToCentre };
 
@@ -26,11 +28,15 @@ class SANDBOX_API UBTTask_PerformLookPattern : public UBTTaskNode {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FValueOrBBKey_Float interp_speed{3.0f};
   private:
-    auto get_target_rotation(ELookPatternMoveState state) -> FRotator;
+    auto get_target_rotation(ELookPatternMoveState state) -> FQuat;
+    void set_new_target(FQuat new_tgt);
 
     ELookPatternMoveState move_state{ELookPatternMoveState::GoingRight};
-    FRotator fwd_rot{FRotator::ZeroRotator};
-    FRotator right_rot{FRotator::ZeroRotator};
-    FRotator left_rot{FRotator::ZeroRotator};
-    FRotator tgt_rot{FRotator::ZeroRotator};
+    FQuat actor_fwd{FQuat::Identity};
+    FQuat actor_right{FQuat::Identity};
+    FQuat actor_left{FQuat::Identity};
+    FQuat target{FQuat::Identity};
+    FQuat start_rotation{FQuat::Identity};
+    float progress{0.f};
+    APawn* pawn{nullptr};
 };

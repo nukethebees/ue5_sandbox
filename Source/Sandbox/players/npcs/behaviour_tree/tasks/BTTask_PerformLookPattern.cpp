@@ -17,68 +17,85 @@ auto UBTTask_PerformLookPattern::ExecuteTask(UBehaviorTreeComponent& owner_comp,
     -> EBTNodeResult::Type {
 
     INIT_PTR_OR_RETURN_VALUE(ai_controller, owner_comp.GetAIOwner(), EBTNodeResult::Failed);
-    INIT_PTR_OR_RETURN_VALUE(pawn, ai_controller->GetPawn(), EBTNodeResult::Failed);
-
+    pawn = ai_controller->GetPawn();
+    if (!pawn) {
+        WARN_IS_FALSE(LogSandboxAI, pawn);
+        return EBTNodeResult::Failed;
+    }
     move_state = ELookPatternMoveState::GoingRight;
 
     auto const bb_angle{half_angle_degrees.GetValue(owner_comp)};
-    auto const angle{static_cast<double>(FMath::Abs(bb_angle))};
-    auto const rot{FRotator{0.f, -angle, 0.f}};
+    auto const angle{static_cast<double>(FMath::ClampAngle(FMath::Abs(bb_angle), 0.01f, 179.99))};
 
-    fwd_rot = pawn->GetActorRotation();
-    left_rot = fwd_rot + rot;
-    right_rot = fwd_rot - rot;
-    tgt_rot = get_target_rotation(move_state);
+    auto const rot_left{FRotator{0.f, -angle, 0.f}};
+    auto const rot_right{FRotator{0.f, angle, 0.f}};
+    FQuat delta_left{FQuat::MakeFromRotator(rot_left)};
+    FQuat delta_right{FQuat::MakeFromRotator(rot_right)};
+
+    actor_fwd = pawn->GetActorQuat();
+    actor_left = actor_fwd * delta_left;
+    actor_right = actor_fwd * delta_right;
+    start_rotation = actor_fwd;
+    target = get_target_rotation(move_state);
+    progress = 0.0f;
+
+    UE_LOG(LogSandboxAI,
+           Verbose,
+           TEXT("Starting UBTTask_PerformLookPattern Fwd: %s, Left: %s, Right:%s "
+                "\n    Fwd  : %s\n    Left : %s\n    Right: %s"),
+           *actor_fwd.Rotator().ToCompactString(),
+           *actor_left.Rotator().ToCompactString(),
+           *actor_right.Rotator().ToCompactString(),
+           *actor_fwd.ToString(),
+           *actor_left.ToString(),
+           *actor_right.ToString());
 
     return EBTNodeResult::InProgress;
 }
 void UBTTask_PerformLookPattern::TickTask(UBehaviorTreeComponent& owner_comp,
                                           uint8* node_memory,
                                           float delta_seconds) {
-    auto* ai_controller{owner_comp.GetAIOwner()};
-    if (!ai_controller) {
-        WARN_IS_FALSE(LogSandboxAI, ai_controller);
-        return FinishLatentTask(owner_comp, EBTNodeResult::Failed);
-    }
-
-    auto pawn{ai_controller->GetPawn()};
-    if (!pawn) {
-        WARN_IS_FALSE(LogSandboxAI, pawn);
-        return FinishLatentTask(owner_comp, EBTNodeResult::Failed);
-    }
+    check(pawn);
 
     auto const rate{interp_speed.GetValue(owner_comp)};
-    auto const cur_rot{pawn->GetActorRotation()};
-    auto const new_rot{FMath::RInterpTo(cur_rot, tgt_rot, delta_seconds, rate)};
-    constexpr float equals_tolerance{0.5f};
-    auto const reached_destination{
-        FMath::IsNearlyEqual(new_rot.Yaw, tgt_rot.Yaw, equals_tolerance)};
+    constexpr float progress_end{1.0f};
+    progress = FMath::FInterpTo(progress, progress_end, delta_seconds, rate);
+
+    auto const new_rot{FQuat::SlerpFullPath_NotNormalized(start_rotation, target, progress)};
+
+    constexpr float equals_tolerance{0.1f};
+    auto const angular_distance{FMath::RadiansToDegrees(new_rot.AngularDistance(target))};
+    auto const reached_destination{FMath::IsNearlyEqual(progress, progress_end, 0.01)};
     pawn->SetActorRotation(new_rot);
 
     UE_LOG(LogSandboxAI,
-           Verbose,
-           TEXT("Moving to %s\n    Cur : %s\n    Next: %s\n    Tgt : %s"),
+           VeryVerbose,
+           TEXT("Moving to %s: Next: %s, Tgt: %s, Progress: %.2f"),
            *ml::to_string_without_type_prefix(move_state),
-           *cur_rot.ToString(),
-           *new_rot.ToString(),
-           *tgt_rot.ToString());
+           *new_rot.Rotator().ToCompactString(),
+           *target.Rotator().ToCompactString(),
+           progress);
 
     if (reached_destination) {
-        UE_LOG(LogSandboxAI, Verbose, TEXT("Reached destination"));
+        UE_LOG(LogSandboxAI,
+               Verbose,
+               TEXT("Reached: %s"),
+               *ml::to_string_without_type_prefix(move_state));
 
         switch (move_state) {
             using enum ELookPatternMoveState;
             case ReturnToCentre: {
+                UE_LOG(LogSandboxAI, Verbose, TEXT("UBTTask_PerformLookPattern: Finished."));
                 return FinishLatentTask(owner_comp, EBTNodeResult::Succeeded);
             }
             case GoingRight: {
                 move_state = GoingLeft;
-                tgt_rot = left_rot;
+                set_new_target(actor_left);
                 break;
             }
             case GoingLeft: {
                 move_state = ReturnToCentre;
-                tgt_rot = fwd_rot;
+                set_new_target(actor_fwd);
                 break;
             }
             default: {
@@ -92,17 +109,17 @@ void UBTTask_PerformLookPattern::TickTask(UBehaviorTreeComponent& owner_comp,
     }
 }
 
-auto UBTTask_PerformLookPattern::get_target_rotation(ELookPatternMoveState state) -> FRotator {
+auto UBTTask_PerformLookPattern::get_target_rotation(ELookPatternMoveState state) -> FQuat {
     switch (state) {
         using enum ELookPatternMoveState;
         case ReturnToCentre: {
-            return fwd_rot;
+            return actor_fwd;
         }
         case GoingRight: {
-            return right_rot;
+            return actor_right;
         }
         case GoingLeft: {
-            return left_rot;
+            return actor_left;
         }
         default: {
             UE_LOG(LogSandboxAI, Error, TEXT("%s"), *ml::make_unhandled_enum_case_warning(state));
@@ -110,5 +127,10 @@ auto UBTTask_PerformLookPattern::get_target_rotation(ELookPatternMoveState state
         }
     }
 
-    return FRotator::ZeroRotator;
+    return FQuat::Identity;
+}
+void UBTTask_PerformLookPattern::set_new_target(FQuat new_tgt) {
+    start_rotation = target;
+    target = new_tgt;
+    progress = 0.0f;
 }
