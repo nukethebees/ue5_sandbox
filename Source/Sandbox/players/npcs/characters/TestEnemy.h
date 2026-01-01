@@ -60,6 +60,7 @@ class SANDBOX_API ATestEnemy
 
     bool attack_actor_melee(UWorld& world, AActor& target);
     bool attack_actor_ranged(UWorld& world, AActor& target);
+    auto get_defend_target() const -> AActor* { return defend_target; }
 
     // IGenericTeamAgentInterface
     virtual FGenericTeamId GetGenericTeamId() const override;
@@ -129,6 +130,9 @@ class SANDBOX_API ATestEnemy
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
     FTestEnemyRangedConfig ranged_config;
+
+    UPROPERTY(EditAnywhere, Category = "AI")
+    AActor* defend_target{nullptr};
 
     UPROPERTY(VisibleAnywhere, Category = "AI")
     float last_attack_time{0.0f};

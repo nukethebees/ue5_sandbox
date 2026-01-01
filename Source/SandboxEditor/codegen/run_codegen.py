@@ -36,6 +36,7 @@ def generate_string_constants() -> None:
             ["mob_attack_mode"],
             ["target_actor"],
             ["last_known_location"],
+            ["defend_target"],
         )
     ]
     name = "TestEnemyBlackboardConstants"

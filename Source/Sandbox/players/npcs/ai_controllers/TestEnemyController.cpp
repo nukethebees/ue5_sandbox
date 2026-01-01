@@ -9,6 +9,7 @@
 #include "Sandbox/core/SandboxDeveloperSettings.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/npcs/characters/TestEnemy.h"
 #include "Sandbox/players/npcs/data/TestEnemyBlackboardConstants.h"
 #include "Sandbox/players/npcs/interfaces/CombatActor.h"
 #include "Sandbox/players/npcs/interfaces/SandboxMobInterface.h"
@@ -71,6 +72,7 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
     RETURN_IF_NULLPTR(team_if);
     SetGenericTeamId(team_if->GetGenericTeamId());
 
+    TRY_INIT_PTR(test_enemy, Cast<ATestEnemy>(pawn));
     TRY_INIT_PTR(mob_interface, Cast<ISandboxMobInterface>(pawn));
     TRY_INIT_PTR(combat_interface, Cast<ICombatActor>(pawn));
 
@@ -83,6 +85,7 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
+    set_bb_value(C::defend_target(), static_cast<UObject*>(test_enemy->get_defend_target()));
 
 #if WITH_EDITOR
     auto const new_label{FString::Printf(TEXT("TestEnemyController_%s"), *pawn->GetActorLabel())};

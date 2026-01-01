@@ -32,6 +32,10 @@ struct TestEnemyBlackboardConstants {
             static ::FName const v {TEXT("last_known_location")};
             return v;
         }
+        static auto defend_target() -> ::FName {
+            static ::FName const v {TEXT("defend_target")};
+            return v;
+        }
     };
     struct FString {
         static auto acceptable_radius() -> ::FString const& {
@@ -60,6 +64,10 @@ struct TestEnemyBlackboardConstants {
         }
         static auto last_known_location() -> ::FString const& {
             static ::FString const v {TEXT("last_known_location")};
+            return v;
+        }
+        static auto defend_target() -> ::FString const& {
+            static ::FString const v {TEXT("defend_target")};
             return v;
         }
     };
@@ -92,6 +100,10 @@ struct TestEnemyBlackboardConstants {
             static ::FText const v {::FText::FromName(TEXT("last_known_location"))};
             return v;
         }
+        static auto defend_target() -> ::FText const& {
+            static ::FText const v {::FText::FromName(TEXT("defend_target"))};
+            return v;
+        }
     };
     struct TStringView {
         static auto acceptable_radius() -> ::TStringView<TCHAR> {
@@ -120,6 +132,10 @@ struct TestEnemyBlackboardConstants {
         }
         static auto last_known_location() -> ::TStringView<TCHAR> {
             static ::TStringView const v {TEXT("last_known_location")};
+            return v;
+        }
+        static auto defend_target() -> ::TStringView<TCHAR> {
+            static ::TStringView const v {TEXT("defend_target")};
             return v;
         }
     };
