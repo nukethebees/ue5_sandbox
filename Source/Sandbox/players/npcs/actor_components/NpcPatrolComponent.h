@@ -25,7 +25,7 @@ class SANDBOX_API UNpcPatrolComponent : public UActorComponent {
   protected:
     virtual void BeginPlay() override;
 
-    void set_current_waypoint(APatrolWaypoint* wp);
+    void set_current_waypoint(APatrolWaypoint& wp);
     void set_waypoint_to_default();
 
     UPROPERTY(EditAnywhere, Category = "Patrol")
