@@ -83,6 +83,11 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
+
+#if WITH_EDITOR
+    auto const new_label{FString::Printf(TEXT("TestEnemyController_%s"), *pawn->GetActorLabel())};
+    SetActorLabel(new_label);
+#endif
 }
 void ATestEnemyController::OnUnPossess() {
     Super::OnUnPossess();
