@@ -76,6 +76,8 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     set_bb_value(C::acceptable_radius(), mob_interface->get_acceptable_radius());
     set_bb_value(C::attack_radius(), mob_interface->get_attack_acceptable_radius());
+
+    ai_state = mob_interface->get_default_ai_state();
     set_bb_value(C::default_ai_state(), ai_state);
     set_ai_state(ai_state);
 
@@ -102,6 +104,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
             LOG(VeryVerbose, "Spotted enemy: %s", *display_name);
             on_enemy_spotted.Broadcast();
 
+            set_ai_state(EAIState::Combat);
             set_bb_value(C::target_actor(), static_cast<UObject*>(actor));
             set_bb_value(C::last_known_location(), actor->GetActorLocation());
         } else {
@@ -119,6 +122,7 @@ void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
     }
 
     if (actor == tgt_actor_obj) {
+        set_ai_state(EAIState::Investigate);
         Blackboard->ClearValue(C::target_actor());
     }
 }
