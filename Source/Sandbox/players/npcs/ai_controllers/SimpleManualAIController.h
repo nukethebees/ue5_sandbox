@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "Misc/Optional.h"
+#include "TimerManager.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/players/npcs/enums/SimpleAIState.h"

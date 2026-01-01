@@ -1,5 +1,6 @@
 #include "Sandbox/players/npcs/ai_controllers/SimpleManualAIController.h"
 
+#include "Logging/StructuredLog.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -172,7 +173,9 @@ void ASimpleManualAIController::fsm_wandering(float delta_time) {
     constexpr auto LOG{NestedLogger<"fsm_wandering">()};
     LOG.log_verbose(TEXT("Start"));
 
-    auto const random_point{ml::get_random_nav_point(GetPawn(), config.wander_radius)};
+    TRY_INIT_PTR(pawn, GetPawn());
+
+    auto const random_point{ml::get_random_nav_point(*pawn, config.wander_radius)};
     if (!random_point) {
         LOG.log_warning(TEXT("No point found."));
         return;

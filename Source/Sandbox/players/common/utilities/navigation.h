@@ -8,5 +8,5 @@
 class AActor;
 
 namespace ml {
-auto get_random_nav_point(AActor* actor, float radius) -> std::optional<FNavLocation>;
+auto get_random_nav_point(AActor& actor, float radius) -> std::optional<FNavLocation>;
 }

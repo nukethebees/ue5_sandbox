@@ -27,7 +27,7 @@ EBTNodeResult::Type UBTTask_MoveToRandom::ExecuteTask(UBehaviorTreeComponent& ow
     INIT_PTR_OR_RETURN_VALUE(pawn, ai_controller->GetPawn(), EBTNodeResult::Failed);
 
     auto const bb_travel_radius{travel_radius.GetValue(owner_comp)};
-    auto const random_point{ml::get_random_nav_point(pawn, bb_travel_radius)};
+    auto const random_point{ml::get_random_nav_point(*pawn, bb_travel_radius)};
     RETURN_VALUE_IF_FALSE(random_point, EBTNodeResult::Failed);
 
     FAIMoveRequest move_request{random_point->Location};
