@@ -13,5 +13,7 @@ class FSandboxEditorModule
     virtual void ShutdownModule() override;
   private:
     void register_menu_extensions();
+    void register_custom_properties();
+    void unregister_custom_properties();
     void on_generate_typedefs();
 };

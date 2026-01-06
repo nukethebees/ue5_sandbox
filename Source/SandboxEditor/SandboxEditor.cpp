@@ -29,30 +29,14 @@ void FSandboxEditorModule::StartupModule() {
             }
         });
     }
-
-    auto& property_module{
-        FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
-    property_module.RegisterCustomPropertyTypeLayout(
-        "Dimensions",
-        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
-            &FStrongTypedefPreview::MakeInstance));
-    property_module.RegisterCustomPropertyTypeLayout(
-        "PlayerSkills",
-        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
-            &FPlayerSkillsPropDisplay::MakeInstance));
+    register_custom_properties();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
 }
 
 void FSandboxEditorModule::ShutdownModule() {
-    // ToolMenus are automatically cleaned up when the module is unloaded
-    if (FModuleManager::Get().IsModuleLoaded("PropertyEditor")) {
-        auto& property_module{
-            FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor")};
-
-        property_module.UnregisterCustomPropertyTypeLayout("Dimensions");
-    }
+    unregister_custom_properties();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
@@ -74,6 +58,27 @@ void FSandboxEditorModule::register_menu_extensions() {
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile")));
 
     logger.log_log(TEXT("Registered menu extensions"));
+}
+void FSandboxEditorModule::register_custom_properties() {
+    auto& property_module{
+        FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
+    property_module.RegisterCustomPropertyTypeLayout(
+        "Dimensions",
+        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+            &FStrongTypedefPreview::MakeInstance));
+    property_module.RegisterCustomPropertyTypeLayout(
+        "PlayerSkills",
+        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+            &FPlayerSkillsPropDisplay::MakeInstance));
+}
+void FSandboxEditorModule::unregister_custom_properties() {
+    // ToolMenus are automatically cleaned up when the module is unloaded
+    if (FModuleManager::Get().IsModuleLoaded("PropertyEditor")) {
+        auto& property_module{
+            FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor")};
+
+        property_module.UnregisterCustomPropertyTypeLayout("Dimensions");
+    }
 }
 
 void FSandboxEditorModule::on_generate_typedefs() {
