@@ -13,6 +13,8 @@ class SANDBOX_API AMassBulletSubsystemData : public AActor {
   public:
     AMassBulletSubsystemData();
 
+    void add_bullet_type(UBulletDataAsset& bt);
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TArray<TObjectPtr<UBulletDataAsset>> bullet_types;
 };
