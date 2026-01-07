@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
+#include "Sandbox/combat/weapons/actors/MassBulletWeapon.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -16,7 +17,7 @@ class UBulletDataAsset;
 
 UCLASS()
 class SANDBOX_API ATestPistol
-    : public AWeaponBase
+    : public AMassBulletWeapon
     , public IDescribable {
     GENERATED_BODY()
   public:
@@ -50,13 +51,8 @@ class SANDBOX_API ATestPistol
     float bullet_speed{5000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
-    TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UStaticMeshComponent* gun_mesh_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     UArrowComponent* fire_point_arrow{nullptr};
-
-    TOptional<FBulletTypeIndex> cached_bullet_type_index;
 };
