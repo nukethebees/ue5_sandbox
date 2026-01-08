@@ -82,3 +82,6 @@ Content/Fab
 /ai_checkpoints
 /notes/
 *.pyc
+
+# Assets
+UltraDynamicSky/
