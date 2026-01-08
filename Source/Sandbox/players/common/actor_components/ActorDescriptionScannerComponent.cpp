@@ -2,6 +2,7 @@
 
 #include "Engine/World.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
@@ -31,11 +32,18 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     FHitResult hit_result;
     FCollisionQueryParams query_params;
     query_params.AddIgnoredActor(GetOwner());
+    FCollisionObjectQueryParams object_query_params;
+    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
+    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
 
-    bool const hit{
-        world->LineTraceSingleByChannel(hit_result, start, end, ECC_Visibility, query_params)};
+    bool const hit{world->LineTraceSingleByObjectType(
+        hit_result, start, end, object_query_params, query_params)};
 
     AActor* hit_actor{hit ? hit_result.GetActor() : nullptr};
+    if (hit_actor) {
+        logger.log_very_verbose(TEXT("Hit %s"), *ml::get_best_display_name(*hit_actor));
+    }
 
     // Check if hit actor implements IDescribable
     FText description{};
@@ -44,7 +52,9 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     bool const actor_changed{hit_actor != last_seen_actor.Get()};
 
     if (!actor_changed) {
-        logger.log_very_verbose(TEXT("!actor_changed"));
+        if (hit) {
+            logger.log_very_verbose(TEXT("!actor_changed"));
+        }
         return;
     }
 
