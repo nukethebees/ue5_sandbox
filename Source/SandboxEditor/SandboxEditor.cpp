@@ -50,6 +50,13 @@ void FSandboxEditorModule::ShutdownModule() {
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
+
+    if (FModuleManager::Get().IsModuleLoaded("LevelEditor")) {
+        auto& level_editor_module{
+            FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor")};
+        level_editor_module.GetAllLevelViewportContextMenuExtenders().RemoveAll(
+            [&](auto const& delegate) { return delegate.GetHandle() == context_menu_delegate; });
+    }
 }
 
 void FSandboxEditorModule::create_sandbox_editor_menus() {
@@ -62,11 +69,13 @@ void FSandboxEditorModule::create_sandbox_editor_menus() {
         nullptr,
         FMenuBarExtensionDelegate::CreateRaw(
             this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown));
-    level_editor_module.GetMenuExtensibilityManager()->AddExtender(toolbar_menu_extender);
+    auto extensibility_manager{level_editor_module.GetMenuExtensibilityManager()};
+    extensibility_manager->AddExtender(toolbar_menu_extender);
 
     auto& extenders{level_editor_module.GetAllLevelViewportContextMenuExtenders()};
     extenders.Add(FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors::CreateStatic(
         &FSandboxEditorModule::on_extend_level_editor_menu));
+    context_menu_delegate = extenders.Last().GetHandle();
 }
 void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
     FMenuBarBuilder& menu_bar_builder) {

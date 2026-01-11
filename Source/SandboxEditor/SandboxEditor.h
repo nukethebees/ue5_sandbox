@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
 
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
@@ -33,4 +34,6 @@ class FSandboxEditorModule
     // Custom properties
     void register_custom_properties();
     void unregister_custom_properties();
+
+    FDelegateHandle context_menu_delegate;
 };
