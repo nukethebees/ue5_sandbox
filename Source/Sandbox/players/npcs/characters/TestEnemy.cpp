@@ -37,6 +37,8 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
         apply_material_colours(*dynamic_material);
     }
 
+    defend_position = GetActorLocation();
+
     if (controller_class) {
         AIControllerClass = controller_class;
     }

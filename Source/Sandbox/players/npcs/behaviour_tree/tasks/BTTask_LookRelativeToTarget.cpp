@@ -44,9 +44,9 @@ auto UBTTask_LookRelativeToTarget::ExecuteTask(UBehaviorTreeComponent& owner_com
         return EBTNodeResult::Failed;
     }
 
-    auto const direction{ml::get_norm_vector_to_actor(*pawn, target)};
-    FRotator const rotator{0.0f, angle_deg.GetValue(owner_comp), 0.0f};
-    auto const new_direction{direction.Rotation() + rotator};
+    auto const direction{ml::get_norm_vector_to_actor(*pawn, target).Rotation()};
+    FRotator rotator{0.0f, angle_deg.GetValue(owner_comp), 0.0f};
+    FRotator const new_direction{0.f, (direction + rotator).Yaw, 0.f};
 
     UE_LOG(LogSandboxAI,
            Verbose,

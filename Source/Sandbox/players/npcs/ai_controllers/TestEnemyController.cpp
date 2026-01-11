@@ -85,7 +85,8 @@ void ATestEnemyController::OnPossess(APawn* pawn) {
 
     auto const attack_profile{combat_interface->get_combat_profile()};
     set_bb_value(C::mob_attack_mode(), attack_profile.attack_mode);
-    set_bb_value(C::defend_target(), static_cast<UObject*>(test_enemy->get_defend_target()));
+    set_bb_value(C::defend_actor(), static_cast<UObject*>(test_enemy->get_defend_actor()));
+    set_bb_value(C::defend_position(), test_enemy->get_defend_position());
 
 #if WITH_EDITOR
     auto const new_label{FString::Printf(TEXT("TestEnemyController_%s"), *pawn->GetActorLabel())};

@@ -32,8 +32,12 @@ struct TestEnemyBlackboardConstants {
             static ::FName const v {TEXT("last_known_location")};
             return v;
         }
-        static auto defend_target() -> ::FName {
-            static ::FName const v {TEXT("defend_target")};
+        static auto defend_actor() -> ::FName {
+            static ::FName const v {TEXT("defend_actor")};
+            return v;
+        }
+        static auto defend_position() -> ::FName {
+            static ::FName const v {TEXT("defend_position")};
             return v;
         }
     };
@@ -66,8 +70,12 @@ struct TestEnemyBlackboardConstants {
             static ::FString const v {TEXT("last_known_location")};
             return v;
         }
-        static auto defend_target() -> ::FString const& {
-            static ::FString const v {TEXT("defend_target")};
+        static auto defend_actor() -> ::FString const& {
+            static ::FString const v {TEXT("defend_actor")};
+            return v;
+        }
+        static auto defend_position() -> ::FString const& {
+            static ::FString const v {TEXT("defend_position")};
             return v;
         }
     };
@@ -100,8 +108,12 @@ struct TestEnemyBlackboardConstants {
             static ::FText const v {::FText::FromName(TEXT("last_known_location"))};
             return v;
         }
-        static auto defend_target() -> ::FText const& {
-            static ::FText const v {::FText::FromName(TEXT("defend_target"))};
+        static auto defend_actor() -> ::FText const& {
+            static ::FText const v {::FText::FromName(TEXT("defend_actor"))};
+            return v;
+        }
+        static auto defend_position() -> ::FText const& {
+            static ::FText const v {::FText::FromName(TEXT("defend_position"))};
             return v;
         }
     };
@@ -134,8 +146,12 @@ struct TestEnemyBlackboardConstants {
             static ::TStringView const v {TEXT("last_known_location")};
             return v;
         }
-        static auto defend_target() -> ::TStringView<TCHAR> {
-            static ::TStringView const v {TEXT("defend_target")};
+        static auto defend_actor() -> ::TStringView<TCHAR> {
+            static ::TStringView const v {TEXT("defend_actor")};
+            return v;
+        }
+        static auto defend_position() -> ::TStringView<TCHAR> {
+            static ::TStringView const v {TEXT("defend_position")};
             return v;
         }
     };
