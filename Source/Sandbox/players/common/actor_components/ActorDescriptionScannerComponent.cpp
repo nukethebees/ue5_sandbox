@@ -7,6 +7,7 @@
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
 #include "Sandbox/ui/utilities/ui.h"
+#include "Sandbox/utilities/geometry.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -81,6 +82,7 @@ void UActorDescriptionScannerComponent::set_hud_widget(UItemDescriptionHUDWidget
 }
 void UActorDescriptionScannerComponent::update_outline(APlayerController const& pc,
                                                        AActor const& actor) {
-    auto const corners{ml::get_actor_corners(actor)};
+    auto const box{ml::get_static_meshes_bounding_box(actor)};
+    auto const corners{ml::get_box_corners(box)};
     on_target_screen_bounds_update.ExecuteIfBound(corners);
 }
