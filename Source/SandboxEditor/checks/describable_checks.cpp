@@ -4,9 +4,11 @@
 #include "AssetRegistry/AssetData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
+#include "components/PrimitiveComponent.h"
 #include "Engine/Blueprint.h"
 #include "GameFramework/Actor.h"
 
+#include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
@@ -74,11 +76,34 @@ void check_describable_actors_are_visible_to_hitscan() {
             continue;
         }
 
-        LOG(Verbose, "Found %s", *ml::get_best_display_name(*actor));
+        auto const actor_name{ml::get_best_display_name(*actor)};
+
+        LOG(Verbose, "Found %s", *actor_name);
+
+        if (!describable_actor_can_be_hitcan(*actor)) {
+            LOG(Warning, "%s cannot be seen.", *actor_name);
+        }
 
         ++count;
     }
 
     LOG(Log, "Found %d BPs that implement IDescribable", count);
+}
+
+bool describable_actor_can_be_hitcan(AActor& actor) {
+    auto const components{actor.GetComponents().Array()};
+    for (auto const* component : components) {
+        auto const* prim_comp{Cast<UPrimitiveComponent>(component)};
+        if (!prim_comp) {
+            continue;
+        }
+
+        auto const response{prim_comp->GetCollisionResponseToChannel(ml::collision::description)};
+        if (response == ECollisionResponse::ECR_Block) {
+            return true;
+        }
+    }
+
+    return false;
 }
 }
