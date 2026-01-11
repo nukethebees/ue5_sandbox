@@ -9,6 +9,7 @@
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
 #include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
+#include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
@@ -65,10 +66,11 @@ void FSandboxEditorModule::create_sandbox_editor_menu_pulldown(FMenuBarBuilder& 
 }
 void FSandboxEditorModule::create_sandbox_editor_menu_items(FMenuBuilder& menu_builder) {
     menu_builder.AddMenuEntry(
-        FText::FromName(TEXT("Example Button")),
-        FText::FromName(TEXT("Example Button Tooltip")),
+        FText::FromName(TEXT("IDescribable Check")),
+        FText::FromName(TEXT("Check classes with IDescribable can be seen with hitscan")),
         FSlateIcon(),
-        FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); })));
+        FUIAction(
+            FExecuteAction::CreateStatic(ml::check_describable_actors_are_visible_to_hitscan)));
 
     menu_builder.AddSubMenu(FText::FromName(TEXT("Example Submenu")),
                             FText::FromName(TEXT("Example Submenu Tooltip")),
