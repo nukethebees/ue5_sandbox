@@ -15,10 +15,10 @@ class FSandboxEditorModule
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
   private:
-    // Editor menu
-    void create_sandbox_editor_menu();
-    void create_sandbox_editor_menu_pulldown(FMenuBarBuilder& menu_bar_builder);
-    void create_sandbox_editor_menu_items(FMenuBuilder& menu_builder);
+    // Editor toolbar menu
+    void create_sandbox_editor_toolbar_menu();
+    void create_sandbox_editor_toolbar_menu_pulldown(FMenuBarBuilder& menu_bar_builder);
+    void create_sandbox_editor_toolbar_menu_items(FMenuBuilder& menu_builder);
     // Menu Extensions
     void register_menu_extensions();
     void on_generate_typedefs();

@@ -33,7 +33,7 @@ void FSandboxEditorModule::StartupModule() {
         });
     }
     register_custom_properties();
-    create_sandbox_editor_menu();
+    create_sandbox_editor_toolbar_menu();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
@@ -45,7 +45,7 @@ void FSandboxEditorModule::ShutdownModule() {
     FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
 }
 
-void FSandboxEditorModule::create_sandbox_editor_menu() {
+void FSandboxEditorModule::create_sandbox_editor_toolbar_menu() {
     auto& level_editor_module =
         FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
     auto const menu_extender = MakeShared<FExtender>();
@@ -55,16 +55,18 @@ void FSandboxEditorModule::create_sandbox_editor_menu() {
         EExtensionHook::After,
         nullptr,
         FMenuBarExtensionDelegate::CreateRaw(
-            this, &FSandboxEditorModule::create_sandbox_editor_menu_pulldown));
+            this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown));
     level_editor_module.GetMenuExtensibilityManager()->AddExtender(menu_extender);
 }
-void FSandboxEditorModule::create_sandbox_editor_menu_pulldown(FMenuBarBuilder& menu_bar_builder) {
+void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
+    FMenuBarBuilder& menu_bar_builder) {
     menu_bar_builder.AddPullDownMenu(
         FText::FromString("Sandbox"),
         FText::FromString("Sandbox Utilities"),
-        FNewMenuDelegate::CreateRaw(this, &FSandboxEditorModule::create_sandbox_editor_menu_items));
+        FNewMenuDelegate::CreateRaw(
+            this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items));
 }
-void FSandboxEditorModule::create_sandbox_editor_menu_items(FMenuBuilder& menu_builder) {
+void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder& menu_builder) {
     menu_builder.AddMenuEntry(
         FText::FromName(TEXT("IDescribable Check")),
         FText::FromName(TEXT("Check classes with IDescribable can be seen with hitscan")),
