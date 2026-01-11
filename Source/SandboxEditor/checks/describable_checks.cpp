@@ -64,11 +64,22 @@ void check_describable_actors_are_visible_to_hitscan() {
         LOG(VeryVerbose, "Checking blueprint: %s", *asset.GetFullName());
 
         auto* bp{Cast<UBlueprint>(asset.GetAsset())};
-        if (!bp || !bp->GeneratedClass) {
+        if (!bp) {
             continue;
         }
 
-        auto* actor{Cast<AActor>(bp->GeneratedClass->GetDefaultObject())};
+        if (!bp->GeneratedClass) {
+            continue;
+        }
+        LOG(VeryVerbose, "    Generated class: %s", *bp->GeneratedClass->GetName());
+
+        auto* cdo{bp->GeneratedClass->GetDefaultObject()};
+        if (!cdo) {
+            continue;
+        }
+        LOG(VeryVerbose, "    CDO: %s", *cdo->GetName());
+
+        auto* actor{Cast<AActor>(cdo)};
         if (!actor) {
             continue;
         }
