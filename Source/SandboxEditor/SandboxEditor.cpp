@@ -8,13 +8,20 @@
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
 #include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
+#include "SandboxEditor/utilities/patrol_points.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
+
+namespace ml::detail {
+auto null_action{
+    FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); }))};
+}
 
 void FSandboxEditorModule::StartupModule() {
     constexpr auto logger{NestedLogger<"StartupModule">()};
@@ -33,7 +40,7 @@ void FSandboxEditorModule::StartupModule() {
         });
     }
     register_custom_properties();
-    create_sandbox_editor_toolbar_menu();
+    create_sandbox_editor_menus();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
@@ -45,18 +52,21 @@ void FSandboxEditorModule::ShutdownModule() {
     FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
 }
 
-void FSandboxEditorModule::create_sandbox_editor_toolbar_menu() {
-    auto& level_editor_module =
-        FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-    auto const menu_extender = MakeShared<FExtender>();
+void FSandboxEditorModule::create_sandbox_editor_menus() {
+    auto& level_editor_module{FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor")};
+    auto const toolbar_menu_extender{MakeShared<FExtender>()};
 
-    menu_extender->AddMenuBarExtension(
+    toolbar_menu_extender->AddMenuBarExtension(
         "Help",
         EExtensionHook::After,
         nullptr,
         FMenuBarExtensionDelegate::CreateRaw(
             this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown));
-    level_editor_module.GetMenuExtensibilityManager()->AddExtender(menu_extender);
+    level_editor_module.GetMenuExtensibilityManager()->AddExtender(toolbar_menu_extender);
+
+    auto& extenders{level_editor_module.GetAllLevelViewportContextMenuExtenders()};
+    extenders.Add(FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors::CreateStatic(
+        &FSandboxEditorModule::on_extend_level_editor_menu));
 }
 void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
     FMenuBarBuilder& menu_bar_builder) {
@@ -81,9 +91,51 @@ void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder
                                     FText::FromName(TEXT("Example Button")),
                                     FText::FromName(TEXT("Example Button Tooltip")),
                                     FSlateIcon(),
-                                    FUIAction(FExecuteAction::CreateLambda(
-                                        []() { UE_LOG(LogTemp, Warning, TEXT("Bar")); })));
+                                    ml::detail::null_action);
                             }));
+}
+
+auto
+    FSandboxEditorModule::on_extend_level_editor_menu(TSharedRef<FUICommandList> const command_list,
+                                                      TArray<AActor*> selected_actors)
+        -> TSharedRef<FExtender> {
+    auto extender(MakeShared<FExtender>());
+
+    bool contains_patrol_path{false};
+    bool contains_patrol_waypoint{false};
+    for (auto* actor : selected_actors) {
+        if (Cast<APatrolWaypoint>(actor)) {
+            contains_patrol_waypoint = true;
+            continue;
+        }
+        if (Cast<APatrolPath>(actor)) {
+            contains_patrol_path = true;
+            continue;
+        }
+    }
+
+    if (contains_patrol_path && contains_patrol_waypoint) {
+        // Add the sprite actions sub-menu extender
+        extender->AddMenuExtension(
+            "ActorTypeTools",
+            EExtensionHook::After,
+            nullptr,
+            FMenuExtensionDelegate::CreateStatic(
+                &FSandboxEditorModule::create_sandbox_editor_context_menu_items));
+    }
+
+    return extender;
+}
+void FSandboxEditorModule::create_sandbox_editor_context_menu_items(FMenuBuilder& menu_builder) {
+    menu_builder.BeginSection("Patrol Path", FText::FromName(TEXT("Patrol Path")));
+
+    menu_builder.AddMenuEntry(
+        FText::FromString("Add waypoints to selected paths"),
+        FText::FromString("Add the selected waypoints to the selected paths"),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateStatic(&ml::add_selected_patrol_points_to_selected_paths)));
+
+    menu_builder.EndSection();
 }
 
 void FSandboxEditorModule::register_menu_extensions() {
