@@ -2,5 +2,6 @@
 
 #include "Logging/LogMacros.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxEditor, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxEditorChecks, Log, All);
 
