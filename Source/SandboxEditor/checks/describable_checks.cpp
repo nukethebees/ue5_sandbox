@@ -78,10 +78,10 @@ void check_describable_actors_are_visible_to_hitscan() {
 
         auto const actor_name{ml::get_best_display_name(*actor)};
 
-        LOG(Verbose, "Found %s", *actor_name);
-
         if (!describable_actor_can_be_hitcan(*actor)) {
             LOG(Warning, "%s cannot be seen.", *actor_name);
+        } else {
+            LOG(Log, "%s can be seen.", *actor_name);
         }
 
         ++count;
