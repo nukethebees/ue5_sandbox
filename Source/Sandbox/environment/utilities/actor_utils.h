@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Math/Box.h"
 #include "Math/Vector.h"
 
 #include "Sandbox/environment/data/ActorCorners.h"
@@ -35,5 +36,6 @@ inline FString get_best_display_name(AActor const& actor) {
 }
 
 auto get_actor_corners(AActor const& actor) -> FActorCorners;
+auto get_static_meshes_bounding_box(AActor const& actor) -> FBox;
 
 } // namespace ml
