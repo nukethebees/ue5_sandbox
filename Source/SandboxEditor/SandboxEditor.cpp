@@ -1,7 +1,9 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "LevelEditor.h"
 #include "Misc/CoreDelegates.h"
+#include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 
@@ -30,16 +32,54 @@ void FSandboxEditorModule::StartupModule() {
         });
     }
     register_custom_properties();
+    create_sandbox_editor_menu();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
 }
-
 void FSandboxEditorModule::ShutdownModule() {
     unregister_custom_properties();
 
     // FCoreDelegates bindings
     FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
+}
+
+void FSandboxEditorModule::create_sandbox_editor_menu() {
+    auto& level_editor_module =
+        FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+    auto const menu_extender = MakeShared<FExtender>();
+
+    menu_extender->AddMenuBarExtension(
+        "Help",
+        EExtensionHook::After,
+        nullptr,
+        FMenuBarExtensionDelegate::CreateRaw(
+            this, &FSandboxEditorModule::create_sandbox_editor_menu_pulldown));
+    level_editor_module.GetMenuExtensibilityManager()->AddExtender(menu_extender);
+}
+void FSandboxEditorModule::create_sandbox_editor_menu_pulldown(FMenuBarBuilder& menu_bar_builder) {
+    menu_bar_builder.AddPullDownMenu(
+        FText::FromString("Sandbox"),
+        FText::FromString("Sandbox Utilities"),
+        FNewMenuDelegate::CreateRaw(this, &FSandboxEditorModule::create_sandbox_editor_menu_items));
+}
+void FSandboxEditorModule::create_sandbox_editor_menu_items(FMenuBuilder& menu_builder) {
+    menu_builder.AddMenuEntry(
+        FText::FromName(TEXT("Example Button")),
+        FText::FromName(TEXT("Example Button Tooltip")),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); })));
+
+    menu_builder.AddSubMenu(FText::FromName(TEXT("Example Submenu")),
+                            FText::FromName(TEXT("Example Submenu Tooltip")),
+                            FNewMenuDelegate::CreateLambda([](FMenuBuilder& submenu_builder) {
+                                submenu_builder.AddMenuEntry(
+                                    FText::FromName(TEXT("Example Button")),
+                                    FText::FromName(TEXT("Example Button Tooltip")),
+                                    FSlateIcon(),
+                                    FUIAction(FExecuteAction::CreateLambda(
+                                        []() { UE_LOG(LogTemp, Warning, TEXT("Bar")); })));
+                            }));
 }
 
 void FSandboxEditorModule::register_menu_extensions() {
