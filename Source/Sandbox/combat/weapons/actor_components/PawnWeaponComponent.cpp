@@ -2,7 +2,6 @@
 
 #include "Engine/World.h"
 
-#include "Sandbox/combat/weapons/actor_components/WeaponComponent.h"
 #include "Sandbox/combat/weapons/actors/WeaponBase.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/utilities/enums.h"
