@@ -22,6 +22,11 @@ namespace ml {
  * is null
  */
 inline FString get_best_display_name(AActor const& actor) {
+    // GetActorLabel can return incorrect values for a CDO
+    if (actor.HasAnyFlags(RF_ClassDefaultObject)) {
+        return actor.GetClass()->GetName();
+    }
+
 #if WITH_EDITOR
     return actor.GetActorLabel();
 #else
