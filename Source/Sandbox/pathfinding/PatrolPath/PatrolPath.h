@@ -28,7 +28,7 @@ class SANDBOX_API APatrolPath : public AActor {
     }
     auto length() const -> int32 { return waypoints.Num(); }
     bool any_points_null() const;
-    void add_point(APatrolWaypoint* wp);
+    void add_point(APatrolWaypoint& wp);
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const { return true; }
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;

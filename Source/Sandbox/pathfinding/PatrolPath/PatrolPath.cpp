@@ -56,17 +56,12 @@ bool APatrolPath::any_points_null() const {
 
     return false;
 }
-void APatrolPath::add_point(APatrolWaypoint* wp) {
-    if (!wp) {
-        UE_LOG(LogTemp, Warning, TEXT("Waypoint is null."));
+void APatrolPath::add_point(APatrolWaypoint& wp) {
+    if (waypoints.Contains(&wp)) {
         return;
     }
 
-    if (waypoints.Contains(wp)) {
-        return;
-    }
-
-    waypoints.Add(wp);
+    waypoints.Add(&wp);
 }
 
 #if WITH_EDITOR
