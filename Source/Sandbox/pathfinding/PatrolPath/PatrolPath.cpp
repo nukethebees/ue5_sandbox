@@ -85,5 +85,24 @@ void APatrolPath::draw_line_between_waypoints(UWorld& world, int32 a, int32 b) {
                               depth_priority,
                               editor_line_thickness);
 }
+void APatrolPath::rename_points_to_path_name() {
+    if (name.IsNone()) {
+        UE_LOG(LogTemp, Warning, TEXT("Tried to set waypoint to None name."));
+        return;
+    }
 
+    auto const n{waypoints.Num()};
+    auto const path_name{name.ToString()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto* wp{waypoints[i]};
+        if (!wp) {
+            UE_LOG(LogTemp, Warning, TEXT("Waypoint %d is null."), i);
+            continue;
+        }
+
+        auto const wp_name{FString::Printf(TEXT("%s_%d"), *path_name, i)};
+        wp->set_name(*wp_name);
+    }
+}
 #endif

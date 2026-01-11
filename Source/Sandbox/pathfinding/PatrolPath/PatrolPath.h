@@ -31,6 +31,8 @@ class SANDBOX_API APatrolPath : public AActor {
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const { return true; }
     virtual void PostEditChangeProperty(FPropertyChangedEvent& event) override;
+    UFUNCTION(CallInEditor, Category = "Navigation")
+    void rename_points_to_path_name();
 #endif
   protected:
 #if WITH_EDITOR

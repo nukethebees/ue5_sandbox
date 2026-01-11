@@ -19,6 +19,16 @@ APatrolWaypoint::APatrolWaypoint()
 #endif
 }
 
+void APatrolWaypoint::set_name(FName new_name) {
+    if (name.IsNone()) {
+        UE_LOG(LogTemp, Warning, TEXT("Tried to set waypoint to None name."));
+        return;
+    }
+
+    name = new_name;
+    SetActorLabel(name.ToString());
+}
+
 #if WITH_EDITOR
 void APatrolWaypoint::PostEditChangeProperty(FPropertyChangedEvent& event) {
     Super::PostEditChangeProperty(event);
