@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Math/Box.h"
 #include "Math/UnrealMathUtility.h"
 #include "Math/Vector.h"
 
@@ -31,4 +32,8 @@ inline auto get_box_corners(FVector origin, FVector box_extent) -> FActorCorners
              origin + FVector(-box_extent.X, -box_extent.Y, +box_extent.Z),
              origin + FVector(-box_extent.X, -box_extent.Y, -box_extent.Z)}};
 }
+inline auto get_box_corners(FBox box) -> FActorCorners {
+    return get_box_corners(box.GetCenter(), box.GetExtent());
+}
+
 }
