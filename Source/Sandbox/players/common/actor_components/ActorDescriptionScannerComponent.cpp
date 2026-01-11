@@ -32,13 +32,9 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     FHitResult hit_result;
     FCollisionQueryParams query_params;
     query_params.AddIgnoredActor(GetOwner());
-    FCollisionObjectQueryParams object_query_params;
-    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
-    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-    object_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
 
-    bool const hit{world->LineTraceSingleByObjectType(
-        hit_result, start, end, object_query_params, query_params)};
+    bool const hit{world->LineTraceSingleByChannel(
+        hit_result, start, end, ml::collision::description, query_params)};
 
     AActor* hit_actor{hit ? hit_result.GetActor() : nullptr};
     if (hit_actor) {
