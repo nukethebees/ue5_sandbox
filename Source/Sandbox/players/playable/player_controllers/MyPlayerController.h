@@ -122,6 +122,8 @@ class SANDBOX_API AMyPlayerController
     void interact();
     UFUNCTION()
     void drop_waypoint();
+    UFUNCTION()
+    void possess_target();
 
     // UI
     void initialise_hud(UWorld& world, AMyCharacter& character);

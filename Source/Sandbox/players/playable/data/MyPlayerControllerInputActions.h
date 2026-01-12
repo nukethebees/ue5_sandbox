@@ -74,6 +74,8 @@ struct FMyPlayerControllerInputActions {
     UInputAction* interact{nullptr};
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     UInputAction* drop_waypoint{nullptr};
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputAction* possess_target{nullptr};
 
     // UI
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")

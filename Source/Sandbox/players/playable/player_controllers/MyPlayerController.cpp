@@ -1,6 +1,7 @@
 #include "MyPlayerController.h"
 
 #include "Camera/CameraComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/GameViewportClient.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -163,6 +164,7 @@ void AMyPlayerController::SetupInputComponent() {
     bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
     bind(input.interact, Started, &AMyPlayerController::interact);
     bind(input.drop_waypoint, Started, &AMyPlayerController::drop_waypoint);
+    bind(input.possess_target, Started, &AMyPlayerController::possess_target);
 
     // UI
     bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
@@ -330,6 +332,41 @@ void AMyPlayerController::interact() {
 }
 void AMyPlayerController::drop_waypoint() {
     FORWARD_CALL_TO_CHARACTER(drop_waypoint);
+}
+void AMyPlayerController::possess_target() {
+    log_log(TEXT("Trying to possess target"));
+
+    FVector view_location;
+    FRotator view_rotation;
+    GetPlayerViewPoint(view_location, view_rotation);
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(pawn, GetPawn());
+
+    constexpr float raycast_distance{2000.f};
+    FVector const direction{view_rotation.Vector()};
+    FVector const start{pawn->GetActorLocation()};
+    FVector const end{view_location + direction * raycast_distance};
+
+    FHitResult hit_result;
+    FCollisionQueryParams query_params;
+    query_params.AddIgnoredActor(pawn);
+
+    bool const hit{world->LineTraceSingleByChannel(hit_result, start, end, ECC_Pawn, query_params)};
+
+    DrawDebugLine(world, start, end, FColor::Orange, false, 1.0f, 0U, 5.f);
+
+    if (hit) {
+        if (auto* character{Cast<AMyCharacter>(hit_result.GetActor())}) {
+            if (character == pawn) {
+                UE_LOG(LogSandboxController, Warning, TEXT("Possess raycast hit self."));
+                return;
+            }
+
+            UE_LOG(LogSandboxController, Verbose, TEXT("Possess raycast hit new character."));
+            Possess(character);
+        }
+    }
 }
 
 // UI
