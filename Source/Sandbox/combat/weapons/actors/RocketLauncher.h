@@ -17,5 +17,7 @@ class SANDBOX_API ARocketLauncher : public AWeaponBase {
     ARocketLauncher();
   protected:
     UPROPERTY(EditAnywhere, Category = "Rocket")
+    UStaticMeshComponent* mesh;
+    UPROPERTY(EditAnywhere, Category = "Rocket")
     TSubclassOf<ARocket> rocket_class;
 };
