@@ -19,6 +19,8 @@ class SANDBOX_API ARocketLauncher
   public:
     ARocketLauncher();
 
+    virtual bool can_reload() const override;
+
     // IDescribable
     virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Rocket Launcher"))};
