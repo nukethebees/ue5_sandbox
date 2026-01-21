@@ -6,4 +6,6 @@
 ARocketLauncher::ARocketLauncher()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"))) {
     mesh->SetupAttachment(RootComponent);
+
+    this->size = FDimensions{4, 2};
 }

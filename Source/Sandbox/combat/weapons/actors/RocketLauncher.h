@@ -24,6 +24,12 @@ class SANDBOX_API ARocketLauncher
         static auto const desc{FText::FromName(TEXT("Rocket Launcher"))};
         return desc;
     }
+
+    // IInventoryItem
+    virtual FString const& get_name() const override {
+        static FString const default_name{TEXT("Rocket Launcher")};
+        return default_name;
+    };
   protected:
     UPROPERTY(EditAnywhere, Category = "Rocket")
     UStaticMeshComponent* mesh;

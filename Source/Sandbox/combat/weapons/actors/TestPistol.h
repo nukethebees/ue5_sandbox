@@ -25,14 +25,13 @@ class SANDBOX_API ATestPistol
 
     ATestPistol();
 
-    // IWeaponInterface
     virtual bool can_fire() const override;
     virtual void start_firing() override;
     virtual void sustain_firing(float delta_time) override { return; }
     virtual void stop_firing() override { return; }
-
     virtual bool can_reload() const override;
 
+    // IInventoryItem
     virtual UStaticMesh* get_display_mesh() const override;
     virtual FString const& get_name() const {
         static FString const default_name{TEXT("ATestPistol")};

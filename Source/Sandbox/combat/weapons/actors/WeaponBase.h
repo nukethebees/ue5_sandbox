@@ -28,7 +28,6 @@ class SANDBOX_API AWeaponBase
 
     void set_pickup_collision(bool enabled);
 
-    // IWeaponInterface
     UFUNCTION()
     virtual bool can_fire() const { return false; };
     UFUNCTION()
