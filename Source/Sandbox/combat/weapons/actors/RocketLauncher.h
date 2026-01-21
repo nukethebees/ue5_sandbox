@@ -19,6 +19,10 @@ class SANDBOX_API ARocketLauncher
   public:
     ARocketLauncher();
 
+    virtual bool can_fire() const override;
+    virtual void start_firing() override;
+    virtual void sustain_firing(float delta_time) override { return; }
+    virtual void stop_firing() override { return; }
     virtual bool can_reload() const override;
 
     // IDescribable

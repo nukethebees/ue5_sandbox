@@ -11,6 +11,15 @@ ARocketLauncher::ARocketLauncher()
     this->max_ammo = 1;
     this->ammo_type = EAmmoType::Rockets;
 }
+
+bool ARocketLauncher::can_fire() const {
+    return ammo > 0;
+}
+void ARocketLauncher::start_firing() {
+    if (!can_fire()) {
+        return;
+    }
+}
 bool ARocketLauncher::can_reload() const {
     return ammo < max_ammo;
 }
