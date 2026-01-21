@@ -5,6 +5,7 @@
 #include "MassCommandBuffer.h"
 #include "MassCommands.h"
 #include "MassEntitySubsystem.h"
+#include "Misc/CoreDelegates.h"
 
 #include "Sandbox/combat/projectiles/actors/MassBulletVisualizationActor.h"
 #include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
