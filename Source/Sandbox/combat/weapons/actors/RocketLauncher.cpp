@@ -8,4 +8,6 @@ ARocketLauncher::ARocketLauncher()
     mesh->SetupAttachment(RootComponent);
 
     this->size = FDimensions{4, 2};
+    this->max_ammo = 1;
+    this->ammo_type = EAmmoType::Rockets;
 }
