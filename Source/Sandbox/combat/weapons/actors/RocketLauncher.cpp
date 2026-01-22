@@ -2,6 +2,12 @@
 
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+
+#include "Sandbox/combat/projectiles/actors/Rocket.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ARocketLauncher::ARocketLauncher()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"))) {
@@ -19,6 +25,34 @@ void ARocketLauncher::start_firing() {
     if (!can_fire()) {
         return;
     }
+
+    FName const socket_name{TEXT("Fire")};
+
+    RETURN_IF_NULLPTR(rocket_class);
+    RETURN_IF_NULLPTR(mesh);
+    RETURN_IF_FALSE(mesh->DoesSocketExist(socket_name));
+    TRY_INIT_PTR(world, GetWorld());
+
+    auto const socket_transform{mesh->GetSocketTransform(socket_name, RTS_World)};
+
+    FActorSpawnParameters spawn_params;
+    spawn_params.Owner = this;
+    spawn_params.Instigator = GetInstigator();
+
+    TRY_INIT_PTR(rocket, world->SpawnActor<ARocket>(rocket_class, socket_transform, spawn_params));
+    rocket->SetActorTickEnabled(true);
+
+    TRY_INIT_PTR(movement, rocket->FindComponentByClass<UProjectileMovementComponent>());
+
+    movement->InitialSpeed = rocket_speed;
+    movement->MaxSpeed = rocket_speed;
+    auto const fwd{rocket->GetActorForwardVector()};
+    movement->Velocity = fwd * rocket_speed;
+
+    movement->Activate();
+
+    ammo -= 1;
+    on_ammo_changed.Broadcast(get_current_ammo());
 }
 bool ARocketLauncher::can_reload() const {
     return ammo < max_ammo;

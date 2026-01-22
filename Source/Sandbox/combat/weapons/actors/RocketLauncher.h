@@ -41,4 +41,6 @@ class SANDBOX_API ARocketLauncher
     UStaticMeshComponent* mesh;
     UPROPERTY(EditAnywhere, Category = "Rocket")
     TSubclassOf<ARocket> rocket_class;
+    UPROPERTY(EditAnywhere, Category = "Rocket")
+    float rocket_speed{500.f};
 };
