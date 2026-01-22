@@ -14,6 +14,9 @@
 class UStaticMeshComponent;
 class UTexture2D;
 class UProjectileMovementComponent;
+class UPrimitiveComponent;
+
+struct FHitResult;
 
 UCLASS()
 class SANDBOX_API ARocket : public AAmmoItem {
@@ -22,6 +25,8 @@ class SANDBOX_API ARocket : public AAmmoItem {
     ARocket();
 
     void Tick(float dt) override;
+
+    void fire(float speed);
 
     // IDescribable
     virtual FText get_description() const override {
@@ -38,6 +43,13 @@ class SANDBOX_API ARocket : public AAmmoItem {
     virtual EItemType get_item_type() const override { return EItemType::Ammo; }
   protected:
     void BeginPlay() override;
+
+    UFUNCTION()
+    void on_hit(UPrimitiveComponent* HitComponent,
+                AActor* other_actor,
+                UPrimitiveComponent* other_component,
+                FVector NormalImpulse,
+                FHitResult const& Hit);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
     UProjectileMovementComponent* projectile_movement{nullptr};

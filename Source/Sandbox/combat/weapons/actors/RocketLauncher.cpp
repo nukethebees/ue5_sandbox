@@ -40,16 +40,7 @@ void ARocketLauncher::start_firing() {
     spawn_params.Instigator = GetInstigator();
 
     TRY_INIT_PTR(rocket, world->SpawnActor<ARocket>(rocket_class, socket_transform, spawn_params));
-    rocket->SetActorTickEnabled(true);
-
-    TRY_INIT_PTR(movement, rocket->FindComponentByClass<UProjectileMovementComponent>());
-
-    movement->InitialSpeed = rocket_speed;
-    movement->MaxSpeed = rocket_speed;
-    auto const fwd{rocket->GetActorForwardVector()};
-    movement->Velocity = fwd * rocket_speed;
-
-    movement->Activate();
+    rocket->fire(rocket_speed);
 
     ammo -= 1;
     on_ammo_changed.Broadcast(get_current_ammo());
