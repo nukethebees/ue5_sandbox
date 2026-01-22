@@ -52,6 +52,7 @@ void ATestMachineGun::sustain_firing(float delta_time) {
         time_since_last_shot -= seconds_per_bullet;
         fire_single_bullet(time_since_last_shot);
     }
+    on_ammo_changed.Broadcast(get_current_ammo());
 }
 
 void ATestMachineGun::stop_firing() {
