@@ -42,12 +42,12 @@ void ATestPistol::start_firing() {
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 
     if (cached_bullet_type_index.IsSet()) {
-        mass_bullet_subsystem->add_bullet({spawn_transform, bullet_speed, bullet_damage},
+        mass_bullet_subsystem->add_bullet({spawn_transform, bullet_speed, projectile_damage},
                                           cached_bullet_type_index.GetValue());
     } else {
         RETURN_IF_NULLPTR(bullet_data);
         mass_bullet_subsystem->add_bullet(
-            {{spawn_transform, bullet_speed, bullet_damage}, bullet_data->GetPrimaryAssetId()});
+            {{spawn_transform, bullet_speed, projectile_damage}, bullet_data->GetPrimaryAssetId()});
     }
 
     ammo -= 1;

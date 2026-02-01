@@ -46,7 +46,7 @@ void ARocketLauncher::start_firing() {
     spawn_params.Instigator = GetInstigator();
 
     TRY_INIT_PTR(rocket, world->SpawnActor<ARocket>(rocket_class, socket_transform, spawn_params));
-    rocket->fire({rocket_speed, explosion_radius, bullet_damage});
+    rocket->fire({rocket_speed, explosion_radius, projectile_damage});
 
     ammo -= 1;
     on_ammo_changed.Broadcast(get_current_ammo());

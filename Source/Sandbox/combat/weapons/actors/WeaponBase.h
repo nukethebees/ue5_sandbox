@@ -100,5 +100,5 @@ class SANDBOX_API AWeaponBase
     FDimensions size{1000000, 1000000};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-    FHealthChange bullet_damage{10.0f, EHealthChangeType::Damage};
+    FHealthChange projectile_damage{10.0f, EHealthChangeType::Damage};
 };
