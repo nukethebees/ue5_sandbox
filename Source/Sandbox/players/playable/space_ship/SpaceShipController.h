@@ -23,11 +23,14 @@ class ASpaceShipController
     void Tick(float dt) override;
   protected:
     void BeginPlay() override;
+    void OnPossess(APawn* in_pawn) override;
 
     // Movement
     UFUNCTION()
-    void move(FInputActionValue const& value);
+    void turn(FInputActionValue const& value);
+    UFUNCTION()
+    void turn_completed(FInputActionValue const& value);
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;
 };

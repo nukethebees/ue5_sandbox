@@ -15,5 +15,5 @@ struct FSpaceShipControllerInputs {
     UInputMappingContext* base_context{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* move{nullptr};
+    UInputAction* turn{nullptr};
 };

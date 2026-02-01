@@ -1,5 +1,7 @@
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 
+#include "Sandbox/logging/SandboxLogCategories.h"
+
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -21,11 +23,22 @@ ASpaceShip::ASpaceShip()
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
 
-    SetActorLocation(GetActorLocation() + velocity * dt, true);
+    FRotator const delta_rotation(
+        rotation_input.Y * rotation_speed * dt, rotation_input.X * rotation_speed * dt, 0.f);
+    AddActorLocalRotation(delta_rotation);
+
+    auto const delta_pos{velocity * dt};
+    SetActorLocation(GetActorLocation() + delta_pos, true);
 }
 
 void ASpaceShip::BeginPlay() {
     Super::BeginPlay();
 
     velocity = GetActorForwardVector() * cruise_speed;
+}
+
+void ASpaceShip::turn(FVector2D direction) {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+
+    rotation_input = direction;
 }

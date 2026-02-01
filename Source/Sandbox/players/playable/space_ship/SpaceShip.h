@@ -23,6 +23,8 @@ class ASpaceShip : public APawn {
     ASpaceShip();
 
     void Tick(float dt) override;
+
+    void turn(FVector2D direction);
   protected:
     void BeginPlay() override;
 
@@ -55,4 +57,6 @@ class ASpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float rotation_speed{0.5f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FVector2D rotation_input{FVector2D::ZeroVector};
 };
