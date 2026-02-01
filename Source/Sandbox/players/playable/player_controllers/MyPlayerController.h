@@ -52,7 +52,7 @@ struct FMyPlayerControllerHud {
 UCLASS()
 class SANDBOX_API AMyPlayerController
     : public APlayerController
-    , public ml::LogMsgMixin<"MyPlayerController", LogSandboxActor>
+    , public ml::LogMsgMixin<"MyPlayerController", LogSandboxController>
     , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
