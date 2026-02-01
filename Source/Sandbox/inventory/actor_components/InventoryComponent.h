@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
-#include "Sandbox/combat/weapons/data/AmmoData.h"
+#include "Sandbox/combat/ammo/AmmoData.h"
 #include "Sandbox/inventory/data/Coord.h"
 #include "Sandbox/inventory/data/Dimensions.h"
 #include "Sandbox/inventory/data/InventoryEntry.h"

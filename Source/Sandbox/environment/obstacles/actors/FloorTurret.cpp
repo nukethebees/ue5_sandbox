@@ -10,7 +10,7 @@
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
 
-#include "Sandbox/combat/projectiles/actors/BulletActor.h"
+#include "Sandbox/combat/bullets/BulletActor.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"

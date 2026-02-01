@@ -5,7 +5,7 @@
 #include "Components/GridSlot.h"
 #include "Components/TextBlock.h"
 
-#include "Sandbox/combat/weapons/enums/AmmoType.h"
+#include "Sandbox/combat/ammo/AmmoType.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventoryGridWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/ItemDetailsWidget.h"

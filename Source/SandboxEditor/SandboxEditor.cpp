@@ -7,7 +7,7 @@
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 
-#include "Sandbox/combat/projectiles/data_assets/BulletDataAsset.h"
+#include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
 #include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"

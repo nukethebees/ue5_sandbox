@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/combat/effects/data/ExplosionConfig.h"
+#include "Sandbox/combat/explosion/ExplosionConfig.h"
 #include "Sandbox/health/interfaces/DeathHandler.h"
 #include "Sandbox/interaction/interfaces/Describable.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"

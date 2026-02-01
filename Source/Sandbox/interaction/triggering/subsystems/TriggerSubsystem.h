@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/combat/weapons/data/WeaponPickupPayload.h"
+#include "Sandbox/combat/weapons/WeaponPickupPayload.h"
 #include "Sandbox/environment/effects/data/RotatePayload.h"
 #include "Sandbox/environment/obstacles/data/ForcefieldPayload.h"
 #include "Sandbox/health/data/HealthStationPayload.h"

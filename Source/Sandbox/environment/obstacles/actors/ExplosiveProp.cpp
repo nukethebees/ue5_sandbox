@@ -4,7 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
-#include "Sandbox/combat/effects/subsystems/ExplosionSubsystem.h"
+#include "Sandbox/combat/explosion/ExplosionSubsystem.h"
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 

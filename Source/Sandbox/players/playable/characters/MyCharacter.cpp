@@ -11,7 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ScriptInterface.h"
 
-#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
+#include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"

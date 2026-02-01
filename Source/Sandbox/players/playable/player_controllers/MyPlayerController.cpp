@@ -9,7 +9,7 @@
 #include "InputMappingContext.h"
 #include "TimerManager.h"
 
-#include "Sandbox/combat/weapons/actor_components/PawnWeaponComponent.h"
+#include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/environment/interactive/interfaces/Clickable.h"
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"

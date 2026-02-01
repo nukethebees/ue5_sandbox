@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
-#include "Sandbox/combat/projectiles/data/BulletPoolConfig.h"
+#include "Sandbox/combat/bullets/BulletPoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystemCore.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"

@@ -2,8 +2,8 @@
 
 #include "Algo/RandomShuffle.h"
 
-#include "Sandbox/combat/weapons/actors/AmmoItem.h"
-#include "Sandbox/combat/weapons/actors/WeaponBase.h"
+#include "Sandbox/combat/ammo/AmmoItem.h"
+#include "Sandbox/combat/weapons/WeaponBase.h"
 #include "Sandbox/utilities/enums.h"
 #include "Sandbox/utilities/grids.h"
 

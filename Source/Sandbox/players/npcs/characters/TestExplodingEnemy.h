@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/combat/effects/data/ExplosionConfig.h"
+#include "Sandbox/combat/explosion/ExplosionConfig.h"
 #include "Sandbox/players/npcs/characters/TestEnemy.h"
 
 #include "TestExplodingEnemy.generated.h"

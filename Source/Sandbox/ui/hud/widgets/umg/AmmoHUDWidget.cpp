@@ -3,7 +3,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 
-#include "Sandbox/combat/weapons/enums/AmmoType.h"
+#include "Sandbox/combat/ammo/AmmoType.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
