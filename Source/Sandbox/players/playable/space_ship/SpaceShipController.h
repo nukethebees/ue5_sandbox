@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
+#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/space_ship/SpaceShipControllerInputs.h"
 
 #include "CoreMinimal.h"
@@ -8,6 +11,23 @@
 #include "SpaceShipController.generated.h"
 
 UCLASS()
-class ASpaceShipController : public APlayerController {
+class ASpaceShipController
+    : public APlayerController
+    , public ml::EnhancedInputMixin
+    , public ml::LogMsgMixin<"SpaceShipController", LogSandboxController> {
     GENERATED_BODY()
+
+    ASpaceShipController();
+
+    void SetupInputComponent() override;
+    void Tick(float dt) override;
+  protected:
+    void BeginPlay() override;
+
+    // Movement
+    UFUNCTION()
+    void move(FInputActionValue const& value);
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FSpaceShipControllerInputs input;
 };

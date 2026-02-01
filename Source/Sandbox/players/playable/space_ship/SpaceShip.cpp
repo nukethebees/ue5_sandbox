@@ -18,3 +18,10 @@ ASpaceShip::ASpaceShip()
     ship_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
 }
+void ASpaceShip::Tick(float dt) {
+    Super::Tick(dt);
+}
+
+void ASpaceShip::BeginPlay() {
+    Super::BeginPlay();
+}
