@@ -3,23 +3,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/combat/weapons/actors/AmmoItem.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
-#include "Sandbox/interaction/interfaces/Interactable.h"
-#include "Sandbox/inventory/enums/ItemType.h"
-#include "Sandbox/inventory/interfaces/InventoryItem.h"
-
 #include "Rocket.generated.h"
 
 class UStaticMeshComponent;
-class UTexture2D;
 class UProjectileMovementComponent;
-class UPrimitiveComponent;
+class UBoxComponent;
 
 struct FHitResult;
 
 UCLASS()
-class SANDBOX_API ARocket : public AAmmoItem {
+class SANDBOX_API ARocket : public AActor {
     GENERATED_BODY()
   public:
     ARocket();
@@ -27,20 +20,6 @@ class SANDBOX_API ARocket : public AAmmoItem {
     void Tick(float dt) override;
 
     void fire(float speed);
-
-    // IDescribable
-    virtual FText get_description() const override {
-        static auto const desc{FText::FromName(TEXT("Rocket"))};
-        return desc;
-    }
-
-    // IInventoryItem
-    virtual FDimensions get_size() const override { return FDimensions{1, 1}; };
-    virtual FString const& get_name() const {
-        static FString const default_name{TEXT("Rocket")};
-        return default_name;
-    };
-    virtual EItemType get_item_type() const override { return EItemType::Ammo; }
   protected:
     void BeginPlay() override;
 
@@ -51,6 +30,20 @@ class SANDBOX_API ARocket : public AAmmoItem {
                 FVector NormalImpulse,
                 FHitResult const& Hit);
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet")
     UProjectileMovementComponent* projectile_movement{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    UBoxComponent* collision_box{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    UStaticMeshComponent* mesh_component{nullptr};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    bool fire_on_launch{false};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    float speed{100.f};
+#endif
 };

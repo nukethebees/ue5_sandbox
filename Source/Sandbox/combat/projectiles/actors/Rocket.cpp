@@ -1,32 +1,27 @@
 #include "Sandbox/combat/projectiles/actors/Rocket.h"
 
+#include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
+
 #include "Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-
-#include "Sandbox/constants/collision_channels.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ARocket::ARocket()
-    : projectile_movement{
-          CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"))} {
+    : projectile_movement{CreateDefaultSubobject<UProjectileMovementComponent>(
+          TEXT("ProjectileMovement"))}
+    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))}
+    , mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"))} {
     PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
 
-    this->ammo_type = EAmmoType::Rockets;
-    this->quantity = 1;
-
     check(collision_box);
 
-    collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    collision_box->SetCollisionResponseToAllChannels(ECR_Ignore);
-    collision_box->SetCollisionResponseToChannel(ml::collision::interaction, ECR_Block);
-    collision_box->SetNotifyRigidBodyCollision(false);
-
     RootComponent = collision_box;
-
-    mesh_component->SetupAttachment(collision_box);
+    mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     projectile_movement->bAutoActivate = false;
@@ -35,22 +30,6 @@ ARocket::ARocket()
     projectile_movement->bShouldBounce = false;
     projectile_movement->ProjectileGravityScale = 0.0f;
     projectile_movement->UpdatedComponent = collision_box;
-}
-
-void ARocket::Tick(float dt) {
-    Super::Tick(dt);
-}
-void ARocket::fire(float speed) {
-    check(projectile_movement);
-
-    projectile_movement->InitialSpeed = speed;
-    projectile_movement->MaxSpeed = speed;
-    projectile_movement->Velocity = GetActorForwardVector() * speed;
-
-    projectile_movement->Activate();
-
-    RETURN_IF_NULLPTR(collision_box);
-    collision_box->OnComponentHit.AddDynamic(this, &ThisClass::on_hit);
 
     using enum ECollisionChannel;
     using enum ECollisionResponse;
@@ -66,9 +45,31 @@ void ARocket::fire(float speed) {
     collision_box->BodyInstance.bUseCCD = true;
 }
 
+void ARocket::Tick(float dt) {
+    Super::Tick(dt);
+}
+void ARocket::fire(float rocket_speed) {
+    check(projectile_movement);
+
+    projectile_movement->InitialSpeed = rocket_speed;
+    projectile_movement->MaxSpeed = rocket_speed;
+    projectile_movement->Velocity = GetActorForwardVector() * rocket_speed;
+
+    projectile_movement->Activate();
+
+    RETURN_IF_NULLPTR(collision_box);
+    collision_box->OnComponentHit.AddDynamic(this, &ThisClass::on_hit);
+}
+
 void ARocket::BeginPlay() {
     Super::BeginPlay();
     SetLifeSpan(120.0f);
+
+#if WITH_EDITOR
+    if (fire_on_launch) {
+        fire(speed);
+    }
+#endif
 }
 
 void ARocket::on_hit(UPrimitiveComponent* HitComponent,

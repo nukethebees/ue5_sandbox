@@ -35,6 +35,11 @@ void ARocketLauncher::start_firing() {
 
     auto const socket_transform{mesh->GetSocketTransform(socket_name, RTS_World)};
 
+    UE_LOG(LogSandboxActor,
+           Log,
+           TEXT("Socket transform: %s"),
+           *socket_transform.ToHumanReadableString());
+
     FActorSpawnParameters spawn_params;
     spawn_params.Owner = this;
     spawn_params.Instigator = GetInstigator();

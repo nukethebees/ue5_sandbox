@@ -57,7 +57,7 @@ class SANDBOX_API AAmmoItem
     UBoxComponent* collision_box{nullptr};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
-    UStaticMeshComponent* mesh_component;
+    UStaticMeshComponent* mesh_component{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
     UTexture2D* display_image{nullptr};
