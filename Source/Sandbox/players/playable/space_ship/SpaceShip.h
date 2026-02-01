@@ -59,4 +59,19 @@ class ASpaceShip : public APawn {
     float rotation_speed{0.5f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FVector2D rotation_input{FVector2D::ZeroVector};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float pitch_angle_max{30.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float pitch_speed{3.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float bank_angle_max{30.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float bank_speed{5.f};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 ticks_since_last_log{0};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 ticks_per_log{60};
+#endif
 };
