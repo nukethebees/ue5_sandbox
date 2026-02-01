@@ -43,4 +43,6 @@ class SANDBOX_API ARocketLauncher
     TSubclassOf<ARocket> rocket_class;
     UPROPERTY(EditAnywhere, Category = "Rocket")
     float rocket_speed{500.f};
+    UPROPERTY(EditAnywhere, Category = "Rocket")
+    float explosion_radius{100.f};
 };

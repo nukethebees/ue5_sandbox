@@ -1,11 +1,12 @@
 #include "Sandbox/combat/weapons/actors/RocketLauncher.h"
 
+#include "Sandbox/combat/projectiles/actors/Rocket.h"
+#include "Sandbox/combat/weapons/data/RocketConfig.h"
+
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-
-#include "Sandbox/combat/projectiles/actors/Rocket.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -45,7 +46,7 @@ void ARocketLauncher::start_firing() {
     spawn_params.Instigator = GetInstigator();
 
     TRY_INIT_PTR(rocket, world->SpawnActor<ARocket>(rocket_class, socket_transform, spawn_params));
-    rocket->fire(rocket_speed);
+    rocket->fire({rocket_speed, explosion_radius, bullet_damage});
 
     ammo -= 1;
     on_ammo_changed.Broadcast(get_current_ammo());

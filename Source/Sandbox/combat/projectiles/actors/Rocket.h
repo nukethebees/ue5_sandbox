@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/combat/weapons/data/RocketConfig.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -19,7 +21,7 @@ class SANDBOX_API ARocket : public AActor {
 
     void Tick(float dt) override;
 
-    void fire(float speed);
+    void fire(FRocketConfig rocket_config);
   protected:
     void BeginPlay() override;
 
@@ -39,11 +41,11 @@ class SANDBOX_API ARocket : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     UStaticMeshComponent* mesh_component{nullptr};
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    FRocketConfig config{};
+
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     bool fire_on_launch{false};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
-    float speed{100.f};
 #endif
 };
