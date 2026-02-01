@@ -20,8 +20,12 @@ ASpaceShip::ASpaceShip()
 }
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
+
+    SetActorLocation(GetActorLocation() + velocity * dt, true);
 }
 
 void ASpaceShip::BeginPlay() {
     Super::BeginPlay();
+
+    velocity = GetActorForwardVector() * cruise_speed;
 }

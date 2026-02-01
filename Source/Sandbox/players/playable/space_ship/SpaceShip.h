@@ -34,4 +34,25 @@ class ASpaceShip : public APawn {
     UStaticMeshComponent* ship_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FVector velocity;
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float cruise_speed{3000.0f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float cruise_acceleration{3000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float boost_speed{5000.0f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float boost_acceleration{5000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float brake_speed{1000.0f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float brake_acceleration{1000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float rotation_speed{0.5f};
 };
