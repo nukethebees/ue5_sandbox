@@ -31,8 +31,7 @@ class SANDBOX_API AAmmoItem
 
     // IDescribable
     virtual FText get_description() const override {
-        static auto const desc{FText::FromName(TEXT("Ammo"))};
-        return desc;
+        return FText::FromString(display_name);
     }
 
     // IInventoryItem
@@ -40,8 +39,7 @@ class SANDBOX_API AAmmoItem
     virtual FDimensions get_size() const override { return FDimensions{1, 1}; };
     UFUNCTION()
     virtual FString const& get_name() const {
-        static FString const inventory_name{TEXT("Ammo")};
-        return inventory_name;
+        return display_name;
     };
     virtual UTexture2D* get_display_image() const override { return display_image; }
     virtual EItemType get_item_type() const override { return EItemType::Ammo; }
@@ -66,4 +64,7 @@ class SANDBOX_API AAmmoItem
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
     int32 quantity{50};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    FString display_name{"Ammo"};
 };
