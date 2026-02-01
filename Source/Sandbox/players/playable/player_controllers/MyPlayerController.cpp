@@ -123,52 +123,52 @@ void AMyPlayerController::SetupInputComponent() {
     auto bind{make_input_binder(eic)};
 
     // Movement
-    bind(input.move, Triggered, &AMyPlayerController::move);
+    bind(input.move, Triggered, &ThisClass::move);
 
-    bind(input.jump, Started, &AMyPlayerController::start_jump);
-    bind(input.jump, Completed, &AMyPlayerController::stop_jump);
+    bind(input.jump, Started, &ThisClass::start_jump);
+    bind(input.jump, Completed, &ThisClass::stop_jump);
 
-    bind(input.crouch, Started, &AMyPlayerController::start_crouch);
-    bind(input.crouch, Completed, &AMyPlayerController::stop_crouch);
+    bind(input.crouch, Started, &ThisClass::start_crouch);
+    bind(input.crouch, Completed, &ThisClass::stop_crouch);
 
-    bind(input.sprint, Started, &AMyPlayerController::start_sprint);
-    bind(input.sprint, Completed, &AMyPlayerController::stop_sprint);
+    bind(input.sprint, Started, &ThisClass::start_sprint);
+    bind(input.sprint, Completed, &ThisClass::stop_sprint);
 
-    bind(input.warp_to_cursor, Completed, &AMyPlayerController::warp_to_cursor);
+    bind(input.warp_to_cursor, Completed, &ThisClass::warp_to_cursor);
 
-    bind(input.jetpack, Triggered, &AMyPlayerController::start_jetpack);
-    bind(input.jetpack, Completed, &AMyPlayerController::stop_jetpack);
+    bind(input.jetpack, Triggered, &ThisClass::start_jetpack);
+    bind(input.jetpack, Completed, &ThisClass::stop_jetpack);
 
     // Vision
-    bind(input.look, Triggered, &AMyPlayerController::look);
-    bind(input.cycle_camera, Started, &AMyPlayerController::cycle_camera);
+    bind(input.look, Triggered, &ThisClass::look);
+    bind(input.cycle_camera, Started, &ThisClass::cycle_camera);
 
     // Combat
-    bind(input.attack, Started, &AMyPlayerController::attack_started);
-    bind(input.attack, Ongoing, &AMyPlayerController::attack_continued);
-    bind(input.attack, Completed, &AMyPlayerController::attack_ended);
+    bind(input.attack, Started, &ThisClass::attack_started);
+    bind(input.attack, Ongoing, &ThisClass::attack_continued);
+    bind(input.attack, Completed, &ThisClass::attack_ended);
 
     // Torch
-    bind(input.toggle_torch, Started, &AMyPlayerController::toggle_torch);
-    bind(input.scroll_torch_cone, Triggered, &AMyPlayerController::scroll_torch_cone);
+    bind(input.toggle_torch, Started, &ThisClass::toggle_torch);
+    bind(input.scroll_torch_cone, Triggered, &ThisClass::scroll_torch_cone);
 
     // Inventory
-    bind(input.cycle_next_weapon, Started, &AMyPlayerController::cycle_next_weapon);
-    bind(input.cycle_prev_weapon, Started, &AMyPlayerController::cycle_prev_weapon);
-    bind(input.unequip_weapon, Triggered, &AMyPlayerController::unequip_weapon);
-    bind(input.drop_weapon, Triggered, &AMyPlayerController::drop_weapon);
-    bind(input.reload_weapon, Started, &AMyPlayerController::reload_weapon);
+    bind(input.cycle_next_weapon, Started, &ThisClass::cycle_next_weapon);
+    bind(input.cycle_prev_weapon, Started, &ThisClass::cycle_prev_weapon);
+    bind(input.unequip_weapon, Triggered, &ThisClass::unequip_weapon);
+    bind(input.drop_weapon, Triggered, &ThisClass::drop_weapon);
+    bind(input.reload_weapon, Started, &ThisClass::reload_weapon);
 
     // Interaction
-    bind(input.toggle_mouse, Started, &AMyPlayerController::toggle_mouse);
-    bind(input.mouse_click, Started, &AMyPlayerController::mouse_click);
-    bind(input.interact, Started, &AMyPlayerController::interact);
-    bind(input.drop_waypoint, Started, &AMyPlayerController::drop_waypoint);
-    bind(input.possess_target, Started, &AMyPlayerController::possess_target);
+    bind(input.toggle_mouse, Started, &ThisClass::toggle_mouse);
+    bind(input.mouse_click, Started, &ThisClass::mouse_click);
+    bind(input.interact, Started, &ThisClass::interact);
+    bind(input.drop_waypoint, Started, &ThisClass::drop_waypoint);
+    bind(input.possess_target, Started, &ThisClass::possess_target);
 
     // UI
-    bind(input.toggle_in_game_menu, Started, &AMyPlayerController::toggle_in_game_menu);
-    bind(input.toggle_hud, Started, &AMyPlayerController::toggle_hud);
+    bind(input.toggle_in_game_menu, Started, &ThisClass::toggle_in_game_menu);
+    bind(input.toggle_hud, Started, &ThisClass::toggle_hud);
 }
 
 // Movement
