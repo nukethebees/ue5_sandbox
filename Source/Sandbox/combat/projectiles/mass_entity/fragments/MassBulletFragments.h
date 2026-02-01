@@ -2,18 +2,20 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "MassEntityTypes.h"
-
 #include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
 #include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
 #include "Sandbox/health/data/HealthChange.h"
+
+#include "CoreMinimal.h"
+#include "MassEntityTypes.h"
+#include "UObject/WeakObjectPtrTemplates.h"
 
 #include "MassBulletFragments.generated.h"
 
 class UNiagaraSystem;
 class AMassBulletVisualizationActor;
 struct FHealthChange;
+class AActor;
 
 USTRUCT()
 struct SANDBOX_API FMassBulletTransformFragment : public FMassFragment {
@@ -127,4 +129,16 @@ struct SANDBOX_API FMassBulletDataFragment : public FMassConstSharedFragment {
 
     UPROPERTY()
     FBulletTypeIndex bullet_type_index{};
+};
+
+USTRUCT()
+struct SANDBOX_API FMassBulletSourceFragment : public FMassFragment {
+    GENERATED_BODY()
+
+    FMassBulletSourceFragment() = default;
+    FMassBulletSourceFragment(TWeakObjectPtr<AActor> shooter)
+        : shooter(shooter) {}
+
+    UPROPERTY()
+    TWeakObjectPtr<AActor> shooter{nullptr};
 };

@@ -1,14 +1,5 @@
 #pragma once
 
-#include <atomic>
-#include <cstddef>
-
-#include "CoreMinimal.h"
-#include "MassArchetypeTypes.h"
-#include "MassEntityHandle.h"
-#include "MassEntityTypes.h"
-#include "MassSubsystemBase.h"
-
 #include "Sandbox/combat/projectiles/actors/MassBulletSubsystemData.h"
 #include "Sandbox/combat/projectiles/data/generated/BulletTypeIndex.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
@@ -20,21 +11,33 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/data/EntityDefinition.h"
 
+#include "CoreMinimal.h"
+#include "MassArchetypeTypes.h"
+#include "MassEntityHandle.h"
+#include "MassEntityTypes.h"
+#include "MassSubsystemBase.h"
+
+#include <atomic>
+#include <cstddef>
+
 #include "MassBulletSubsystem.generated.h"
 
 class AMassBulletVisualizationActor;
 class UBulletDataAsset;
+class AActor;
 
 struct FBulletSpawnRequest {
     struct Data {
         FTransform transform;
         float speed;
         FHealthChange damage;
+        TWeakObjectPtr<AActor> shooter;
 
-        Data(FTransform const& t, float s, FHealthChange damage)
+        Data(FTransform const& t, float s, FHealthChange damage, TWeakObjectPtr<AActor> shooter)
             : transform(t)
             , speed(s)
-            , damage(damage) {}
+            , damage(damage)
+            , shooter(shooter) {}
     };
     Data data;
     FPrimaryAssetId bullet_type;
@@ -48,15 +51,18 @@ struct FBulletSpawnRequestView {
     std::span<FTransform> transforms;
     std::span<float> speeds;
     std::span<FHealthChange> damages;
+    std::span<TWeakObjectPtr<AActor>> shooters;
     std::span<FPrimaryAssetId> bullet_types;
 
     FBulletSpawnRequestView(std::span<FTransform> t,
                             std::span<float> s,
                             std::span<FHealthChange> d,
+                            std::span<TWeakObjectPtr<AActor>> shtrs,
                             std::span<FPrimaryAssetId> bt)
         : transforms(t)
         , speeds(s)
         , damages(d)
+        , shooters(shtrs)
         , bullet_types(bt) {}
 };
 
@@ -69,7 +75,8 @@ class SANDBOX_API UMassBulletSubsystem
     static constexpr std::size_t n_queue_elements{30000};
 
     void add_bullet(FBulletSpawnRequest r) {
-        (void)spawn_queue.enqueue(r.data.transform, r.data.speed, r.data.damage, r.bullet_type);
+        (void)spawn_queue.enqueue(
+            r.data.transform, r.data.speed, r.data.damage, r.data.shooter, r.bullet_type);
     }
     void add_bullet(FBulletSpawnRequest::Data data, FBulletTypeIndex bullet_type_index) {
         auto const i{bullet_type_index.get_value()};
@@ -138,6 +145,7 @@ class SANDBOX_API UMassBulletSubsystem
                                                             FTransform,
                                                             float,
                                                             FHealthChange,
+                                                            TWeakObjectPtr<AActor>,
                                                             FPrimaryAssetId>>
         spawn_queue;
     ml::MonitoredLockFreeMPSCQueue<

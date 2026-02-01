@@ -70,7 +70,8 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
                           FMassBulletLastPositionFragment,
                           FMassBulletHitInfoFragment,
                           FMassBulletStateFragment,
-                          FMassBulletDamageFragment>(descriptor.GetFragments());
+                          FMassBulletDamageFragment,
+                          FMassBulletSourceFragment>(descriptor.GetFragments());
         ml::add_fragments<FMassBulletImpactEffectFragment,
                           FMassBulletVisualizationActorFragment,
                           FMassBulletDataFragment>(descriptor.GetConstSharedFragments());

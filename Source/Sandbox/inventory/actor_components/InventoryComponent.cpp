@@ -19,6 +19,10 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     constexpr auto logger{NestedLogger<"add_item">()};
     auto const free_point{find_free_point(*item)};
 
+    if (auto* actor{Cast<AActor>(item.GetObject())}) {
+        actor->SetOwner(GetOwner());
+    }
+
     if (!free_point) {
         logger.log_warning(TEXT("Couldn't find a free spot for %s in the inventory."),
                            *item->get_name());

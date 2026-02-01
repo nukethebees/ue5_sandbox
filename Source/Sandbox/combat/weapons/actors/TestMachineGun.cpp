@@ -64,11 +64,12 @@ void ATestMachineGun::fire_single_bullet(float travel_time) {
     RETURN_IF_NULLPTR(fire_point_arrow);
     RETURN_IF_NULLPTR(bullet_data);
     TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(owner, GetOwner());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
     FTransform const spawn_transform{get_spawn_transform(travel_time)};
-    mass_bullet_subsystem->add_bullet(
-        {{spawn_transform, bullet_speed, projectile_damage}, bullet_data->GetPrimaryAssetId()});
+    mass_bullet_subsystem->add_bullet({{spawn_transform, bullet_speed, projectile_damage, owner},
+                                       bullet_data->GetPrimaryAssetId()});
 
     ammo -= 1;
 }

@@ -33,6 +33,7 @@ void ATestPistol::start_firing() {
 
     RETURN_IF_NULLPTR(fire_point_arrow);
     TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(owner, GetOwner());
     TRY_INIT_PTR(mass_bullet_subsystem, world->GetSubsystem<UMassBulletSubsystem>());
 
     auto const spawn_rotation{fire_point_arrow->GetComponentRotation()};
@@ -42,12 +43,13 @@ void ATestPistol::start_firing() {
     FTransform const spawn_transform{spawn_rotation, spawn_location, spawn_scale};
 
     if (cached_bullet_type_index.IsSet()) {
-        mass_bullet_subsystem->add_bullet({spawn_transform, bullet_speed, projectile_damage},
+        mass_bullet_subsystem->add_bullet({spawn_transform, bullet_speed, projectile_damage, owner},
                                           cached_bullet_type_index.GetValue());
     } else {
         RETURN_IF_NULLPTR(bullet_data);
         mass_bullet_subsystem->add_bullet(
-            {{spawn_transform, bullet_speed, projectile_damage}, bullet_data->GetPrimaryAssetId()});
+            {{spawn_transform, bullet_speed, projectile_damage, owner},
+             bullet_data->GetPrimaryAssetId()});
     }
 
     ammo -= 1;
