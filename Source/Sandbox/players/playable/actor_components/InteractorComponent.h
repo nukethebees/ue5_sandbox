@@ -1,12 +1,13 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-#include "EnhancedInputComponent.h"
-
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/logging/mixins/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "Engine/TimerHandle.h"
+#include "EnhancedInputComponent.h"
 
 #include "InteractorComponent.generated.h"
 

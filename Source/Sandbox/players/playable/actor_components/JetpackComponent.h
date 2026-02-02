@@ -2,10 +2,11 @@
 
 #pragma once
 
+#include "Sandbox/players/playable/data/JetpackState.h"
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-
-#include "Sandbox/players/playable/data/JetpackState.h"
+#include "Engine/TimerHandle.h"
 
 #include "JetpackComponent.generated.h"
 

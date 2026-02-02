@@ -1,7 +1,9 @@
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 
+#include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 
 UJetpackComponent::UJetpackComponent() {
     PrimaryComponentTick.bCanEverTick = true;

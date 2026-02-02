@@ -1,11 +1,14 @@
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 
-#include "Engine/CollisionProfile.h"
-
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/interfaces/Interactable.h"
 #include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
 #include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+
+#include "DrawDebugHelpers.h"
+#include "Engine/CollisionProfile.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
