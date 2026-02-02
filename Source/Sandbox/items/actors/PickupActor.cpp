@@ -2,7 +2,7 @@
 
 #include "Components/BoxComponent.h"
 
-#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/interaction/CollisionEffectSubsystem.h"
 
 APickupActor::APickupActor() {
     PrimaryActorTick.bCanEverTick = false;

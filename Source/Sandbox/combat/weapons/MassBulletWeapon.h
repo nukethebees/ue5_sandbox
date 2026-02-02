@@ -4,7 +4,7 @@
 
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
 #include "Sandbox/combat/weapons/WeaponBase.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
+#include "Sandbox/interaction/Describable.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/string_literal_wrapper.h"
 

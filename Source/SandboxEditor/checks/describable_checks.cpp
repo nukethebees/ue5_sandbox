@@ -10,7 +10,7 @@
 
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
+#include "Sandbox/interaction/Describable.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
 #define LOG(VERBOSITY, MSG, ...) \

@@ -9,7 +9,7 @@
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "MassBulletVisualizationActor.generated.h"

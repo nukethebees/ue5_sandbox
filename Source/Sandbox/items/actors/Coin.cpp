@@ -4,7 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
-#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/interaction/CollisionEffectSubsystem.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 

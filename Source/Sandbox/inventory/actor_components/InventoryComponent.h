@@ -11,7 +11,7 @@
 #include "Sandbox/inventory/data/InventoryEntry.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "InventoryComponent.generated.h"

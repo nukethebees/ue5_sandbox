@@ -5,7 +5,7 @@
 #include "BehaviorTree/ValueOrBBKey.h"
 #include "Navigation/PathFollowingComponent.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "BTTask_MoveToRandom.generated.h"

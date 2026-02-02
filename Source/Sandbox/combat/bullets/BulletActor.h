@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/health/data/HealthChange.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/HealthChange.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "BulletActor.generated.h"

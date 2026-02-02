@@ -4,8 +4,8 @@
 #include "TimerManager.h"
 
 #include "Sandbox/combat/explosion/ExplosionConfig.h"
-#include "Sandbox/interaction/collision/data/CollisionContext.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/CollisionContext.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 
 #include "LandMinePayload.generated.h"
 

@@ -11,7 +11,7 @@
 #include "Perception/AISense_Sight.h"
 
 #include "Sandbox/combat/bullets/BulletActor.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/utilities/line.h"

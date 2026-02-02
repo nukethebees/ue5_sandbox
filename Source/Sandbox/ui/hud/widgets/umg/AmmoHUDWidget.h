@@ -4,7 +4,7 @@
 #include "Blueprint/UserWidget.h"
 
 #include "Sandbox/combat/ammo/AmmoData.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "AmmoHUDWidget.generated.h"

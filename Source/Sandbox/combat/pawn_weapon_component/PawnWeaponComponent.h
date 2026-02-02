@@ -5,7 +5,7 @@
 
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponentDelegates.h"
 #include "Sandbox/combat/weapons/WeaponPickupAction.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "PawnWeaponComponent.generated.h"

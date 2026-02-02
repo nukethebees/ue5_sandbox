@@ -3,7 +3,7 @@
 #include "components/StaticMeshComponent.h"
 #include "engine/Engine.h"
 
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 
 AKillableCube::AKillableCube() {
     PrimaryActorTick.bCanEverTick = false;

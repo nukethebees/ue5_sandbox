@@ -4,7 +4,7 @@
 #include "engine/World.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/health/DeathHandler.h"
 
 #include "KillableCube.generated.h"
 

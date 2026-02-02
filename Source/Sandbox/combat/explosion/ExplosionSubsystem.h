@@ -5,7 +5,7 @@
 
 #include "Sandbox/combat/explosion/ExplosionConfig.h"
 #include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "ExplosionSubsystem.generated.h"

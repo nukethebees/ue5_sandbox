@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/delegates/CommonMenuDelegates.h"
 #include "Sandbox/ui/in_game_menu/enums/InGameMenuTab.h"

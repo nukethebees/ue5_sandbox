@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
-#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/health/HealthChange.h"
 
 #include "BulletDataAsset.generated.h"
 

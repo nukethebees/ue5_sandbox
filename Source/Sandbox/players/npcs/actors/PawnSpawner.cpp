@@ -1,8 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Sandbox/players/npcs/actors/PawnSpawner.h"
 
 #include "AIController.h"
+#include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "GenericTeamAgentInterface.h"
 

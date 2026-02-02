@@ -10,8 +10,8 @@
 
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
-#include "Sandbox/interaction/collision/subsystems/CollisionEffectSubsystem.h"
+#include "Sandbox/health/HealthComponent.h"
+#include "Sandbox/interaction/CollisionEffectSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

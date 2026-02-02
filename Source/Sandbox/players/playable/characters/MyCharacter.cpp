@@ -14,7 +14,7 @@
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/pathfinding/DroppableWaypoint/DroppableWaypoint.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"

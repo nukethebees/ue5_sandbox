@@ -4,7 +4,7 @@
 #include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 
 class FMenuBarBuilder;
 class FMenuBuilder;

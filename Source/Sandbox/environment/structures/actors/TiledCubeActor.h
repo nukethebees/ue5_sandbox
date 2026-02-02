@@ -4,7 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 
 #include "TiledCubeActor.generated.h"
 

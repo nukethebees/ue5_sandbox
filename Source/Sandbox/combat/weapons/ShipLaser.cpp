@@ -1,7 +1,7 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"

@@ -2,6 +2,8 @@
 
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
 
+#include "Engine/World.h"
+
 UCoinCollectorActorComponent::UCoinCollectorActorComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }

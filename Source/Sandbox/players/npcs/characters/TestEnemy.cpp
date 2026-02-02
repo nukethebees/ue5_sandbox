@@ -7,7 +7,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/combat/bullets/BulletActor.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
 #include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 

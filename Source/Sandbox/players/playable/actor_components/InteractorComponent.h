@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "CoreMinimal.h"

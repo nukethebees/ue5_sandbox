@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/interaction/StrongIds.h"
-#include "Sandbox/interaction/triggering/data/TriggerableId.h"
-#include "Sandbox/interaction/triggering/data/TriggerContext.h"
-#include "Sandbox/interaction/triggering/data/TriggerResult.h"
+#include "Sandbox/interaction/TriggerableId.h"
+#include "Sandbox/interaction/TriggerContext.h"
+#include "Sandbox/interaction/TriggerResult.h"
 
 #include "MoneyPickupPayload.generated.h"
 

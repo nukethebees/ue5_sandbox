@@ -1,12 +1,5 @@
 #include "Sandbox/environment/interactive/actors/PlayerUpgradeStation.h"
 
-#include "Blueprint/UserWidget.h"
-#include "Components/BoxComponent.h"
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "GameFramework/PlayerController.h"
-#include "Kismet/GameplayStatics.h"
-
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 #include "Sandbox/ui/in_world/widgets/umg/PlayerAttributesUpgradeWidget.h"
@@ -14,6 +7,14 @@
 #include "Sandbox/ui/in_world/widgets/umg/PlayerTechSkillsUpgradeWidget.h"
 #include "Sandbox/ui/in_world/widgets/umg/PlayerWeaponSkillsUpgradeWidget.h"
 #include "Sandbox/utilities/enums.h"
+
+#include "Blueprint/UserWidget.h"
+#include "Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

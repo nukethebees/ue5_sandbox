@@ -6,9 +6,9 @@
 #include "GameFramework/Actor.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/health/data/HealthChange.h"
-#include "Sandbox/health/interfaces/DeathHandler.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
+#include "Sandbox/health/HealthChange.h"
+#include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/interaction/Describable.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 
 #include "FloorTurret.generated.h"

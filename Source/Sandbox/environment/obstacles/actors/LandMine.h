@@ -5,10 +5,10 @@
 
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 #include "Sandbox/environment/obstacles/enums/LandMineState.h"
-#include "Sandbox/health/interfaces/DeathHandler.h"
-#include "Sandbox/interaction/collision/interfaces/CollisionOwner.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/interaction/CollisionOwner.h"
+#include "Sandbox/interaction/Describable.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "LandMine.generated.h"

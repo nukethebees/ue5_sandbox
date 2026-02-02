@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/health/HealthChange.h"
 
 #include "RocketConfig.generated.h"
 

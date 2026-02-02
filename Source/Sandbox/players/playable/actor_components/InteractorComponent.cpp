@@ -1,9 +1,9 @@
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
-#include "Sandbox/interaction/interfaces/Interactable.h"
-#include "Sandbox/interaction/triggering/data/TriggerCapabilities.h"
-#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+#include "Sandbox/interaction/Interactable.h"
+#include "Sandbox/interaction/TriggerCapabilities.h"
+#include "Sandbox/interaction/TriggerSubsystem.h"
 
 #include "DrawDebugHelpers.h"
 #include "Engine/CollisionProfile.h"

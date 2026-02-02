@@ -1,9 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sandbox/interaction/triggering/data/TriggerContext.h"
-#include "Sandbox/interaction/triggering/data/TriggerResult.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/TriggerContext.h"
+#include "Sandbox/interaction/TriggerResult.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 
 #include "ForcefieldPayload.generated.h"
 

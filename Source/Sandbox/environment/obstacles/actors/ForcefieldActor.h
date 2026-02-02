@@ -7,8 +7,8 @@
 
 #include "Sandbox/environment/obstacles/data/ForcefieldPayload.h"
 #include "Sandbox/environment/obstacles/enums/ForcefieldState.h"
-#include "Sandbox/interaction/triggering/data/TriggerableId.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/TriggerableId.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 
 #include "ForcefieldActor.generated.h"
 

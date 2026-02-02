@@ -7,7 +7,7 @@
 #include "GameFramework/GameUserSettings.h"
 
 #include "Sandbox/core/video_settings/VisualQualityLevel.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/utilities/concepts/concepts.h"
 
 // Row data structure for variant-based storage

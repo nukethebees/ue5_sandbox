@@ -5,7 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/players/npcs/ai_controllers/SimpleAIController.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

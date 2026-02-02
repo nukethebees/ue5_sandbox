@@ -10,9 +10,9 @@
 #include "GenericTeamAgentInterface.h"
 #include "InputActionValue.h"
 
-#include "Sandbox/health/interfaces/DeathHandler.h"
+#include "Sandbox/health/DeathHandler.h"
 #include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/data/CameraConfig.h"

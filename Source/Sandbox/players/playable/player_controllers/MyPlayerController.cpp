@@ -12,7 +12,7 @@
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/environment/interactive/interfaces/Clickable.h"
 #include "Sandbox/game_flow/game_states/PlatformerGameState.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/inventory/actor_components/InventoryComponent.h"
 #include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"

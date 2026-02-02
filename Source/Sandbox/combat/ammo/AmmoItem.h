@@ -4,12 +4,12 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/ammo/AmmoType.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
-#include "Sandbox/interaction/interfaces/Interactable.h"
+#include "Sandbox/interaction/Describable.h"
+#include "Sandbox/interaction/Interactable.h"
 #include "Sandbox/inventory/data/Dimensions.h"
 #include "Sandbox/inventory/enums/ItemType.h"
 #include "Sandbox/inventory/interfaces/InventoryItem.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "AmmoItem.generated.h"

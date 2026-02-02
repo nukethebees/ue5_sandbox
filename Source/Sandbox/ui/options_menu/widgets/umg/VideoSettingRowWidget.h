@@ -8,7 +8,7 @@
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Sandbox/core/video_settings/VideoSettingsData.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"
 #include "Sandbox/utilities/concepts/concepts.h"
 

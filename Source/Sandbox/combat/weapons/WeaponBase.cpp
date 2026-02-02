@@ -2,7 +2,7 @@
 
 #include "Components/BoxComponent.h"
 #include "Engine/World.h"
-#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+#include "Sandbox/interaction/TriggerSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

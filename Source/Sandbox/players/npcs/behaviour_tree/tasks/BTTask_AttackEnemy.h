@@ -4,7 +4,7 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "BehaviorTree/ValueOrBBKey.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "BTTask_AttackEnemy.generated.h"

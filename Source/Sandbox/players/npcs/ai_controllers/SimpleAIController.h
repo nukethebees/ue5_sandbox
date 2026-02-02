@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "SimpleAIController.generated.h"

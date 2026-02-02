@@ -1,12 +1,12 @@
 #pragma once
-#pragma once
-
-#include "CoreMinimal.h"
 
 #include "Sandbox/environment/interactive/enums/PlayerUpgradeStationMode.h"
-#include "Sandbox/interaction/interfaces/Interactable.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/Interactable.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "PlayerUpgradeStation.generated.h"
 

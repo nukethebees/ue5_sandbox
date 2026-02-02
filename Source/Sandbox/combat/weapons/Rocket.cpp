@@ -1,7 +1,7 @@
 #include "Sandbox/combat/weapons/Rocket.h"
 
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/health/actor_components/HealthComponent.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"

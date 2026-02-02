@@ -8,7 +8,7 @@
 #include "UObject/PrimaryAssetId.h"
 
 #include "Sandbox/combat/bullets/BulletDataAssetIds.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/data/EntityDefinition.h"
 

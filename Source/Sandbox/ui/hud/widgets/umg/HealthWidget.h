@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
-#include "Sandbox/health/data/HealthData.h"
+#include "Sandbox/health/HealthData.h"
 
 #include "HealthWidget.generated.h"
 

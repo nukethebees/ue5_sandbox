@@ -4,9 +4,9 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/explosion/ExplosionConfig.h"
-#include "Sandbox/health/interfaces/DeathHandler.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/interaction/Describable.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "ExplosiveProp.generated.h"

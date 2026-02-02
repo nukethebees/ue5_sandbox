@@ -8,7 +8,7 @@
 #include "MassQueryExecutor.h"
 
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/mixins/MassProcessorMixins.hpp"
 

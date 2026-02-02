@@ -4,7 +4,7 @@
 
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
 #include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
-#include "Sandbox/health/data/HealthChange.h"
+#include "Sandbox/health/HealthChange.h"
 
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"

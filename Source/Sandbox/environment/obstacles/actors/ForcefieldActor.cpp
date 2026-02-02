@@ -13,7 +13,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "TimerManager.h"
 
-#include "Sandbox/interaction/triggering/subsystems/TriggerSubsystem.h"
+#include "Sandbox/interaction/TriggerSubsystem.h"
 
 AForcefieldActor::AForcefieldActor() {
     PrimaryActorTick.bCanEverTick = false;

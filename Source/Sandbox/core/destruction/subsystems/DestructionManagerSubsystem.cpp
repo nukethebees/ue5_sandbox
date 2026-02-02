@@ -1,5 +1,7 @@
 #include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
 
+#include "Engine/World.h"
+
 void UDestructionManagerSubsystem::queue_destruction(AActor* actor) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDestructionManagerSubsystem::queue_destruction"))
     queue_destruction(actor, queued_actors);

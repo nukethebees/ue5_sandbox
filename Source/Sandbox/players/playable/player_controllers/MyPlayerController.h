@@ -6,7 +6,7 @@
 #include "GameFramework/PlayerController.h"
 
 #include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 #include "Sandbox/players/playable/data/MyPlayerControllerCache.h"

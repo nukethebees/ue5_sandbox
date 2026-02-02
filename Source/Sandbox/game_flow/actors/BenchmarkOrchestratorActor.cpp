@@ -3,6 +3,7 @@
 #include "BenchmarkOrchestratorActor.h"
 
 #include "Camera/CameraActor.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/DateTime.h"
 #include "ProfilingDebugging/TraceAuxiliary.h"

@@ -7,7 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/core/destruction/actor_components/RemoveGhostsOnStartComponent.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"

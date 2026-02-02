@@ -10,7 +10,7 @@
 #include "Sandbox/core/object_pooling/concepts/ObjectPoolConcepts.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 UENUM(BlueprintType)

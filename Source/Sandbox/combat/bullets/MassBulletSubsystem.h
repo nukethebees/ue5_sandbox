@@ -6,8 +6,8 @@
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/environment/utilities/world.h"
-#include "Sandbox/health/data/HealthChange.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/HealthChange.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/data/EntityDefinition.h"
 

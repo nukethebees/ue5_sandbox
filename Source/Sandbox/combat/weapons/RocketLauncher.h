@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "Sandbox/combat/weapons/WeaponBase.h"
-#include "Sandbox/interaction/interfaces/Describable.h"
+#include "Sandbox/interaction/Describable.h"
 
 #include "RocketLauncher.generated.h"
 

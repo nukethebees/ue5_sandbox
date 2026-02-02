@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 #include "Engine/TimerHandle.h"
 
-#include "Sandbox/interaction/triggering/data/TriggerContext.h"
-#include "Sandbox/interaction/triggering/data/TriggerResult.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/interaction/TriggerContext.h"
+#include "Sandbox/interaction/TriggerResult.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "WeaponPickupPayload.generated.h"

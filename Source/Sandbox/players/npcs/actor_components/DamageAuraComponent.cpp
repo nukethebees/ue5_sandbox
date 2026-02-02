@@ -1,12 +1,13 @@
 #include "Sandbox/players/npcs/actor_components/DamageAuraComponent.h"
 
+#include "Sandbox/health/HealthChange.h"
+#include "Sandbox/health/HealthComponent.h"
+
 #include "Components/BoxComponent.h"
+#include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GenericTeamAgentInterface.h"
 #include "TimerManager.h"
-
-#include "Sandbox/health/actor_components/HealthComponent.h"
-#include "Sandbox/health/data/HealthChange.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

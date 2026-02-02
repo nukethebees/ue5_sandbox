@@ -4,8 +4,8 @@
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/health/interfaces/DeathHandler.h"
-#include "Sandbox/logging/mixins/LogMsgMixin.hpp"
+#include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 #include "Sandbox/players/npcs/enums/AIState.h"
