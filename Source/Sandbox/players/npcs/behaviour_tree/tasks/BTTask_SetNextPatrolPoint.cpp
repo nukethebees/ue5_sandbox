@@ -4,7 +4,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Pawn.h"
 
-#include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
+#include "Sandbox/pathfinding/PatrolWaypoint.h"
 #include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
 #include "Sandbox/players/npcs/blackboard_utils.hpp"
 

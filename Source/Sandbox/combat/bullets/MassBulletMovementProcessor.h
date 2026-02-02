@@ -9,7 +9,7 @@
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/mass_entity/mixins/MassProcessorMixins.hpp"
+#include "Sandbox/mass_entity/MassProcessorMixins.hpp"
 
 #include "MassBulletMovementProcessor.generated.h"
 

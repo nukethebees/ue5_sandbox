@@ -7,7 +7,7 @@
 #include "Sandbox/combat/weapons/WeaponBase.h"
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 #include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
-#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/inventory/InventoryComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

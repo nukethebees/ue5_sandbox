@@ -1,16 +1,16 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/combat/ammo/AmmoType.h"
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/interaction/Interactable.h"
-#include "Sandbox/inventory/data/Dimensions.h"
-#include "Sandbox/inventory/enums/ItemType.h"
-#include "Sandbox/inventory/interfaces/InventoryItem.h"
+#include "Sandbox/inventory/Dimensions.h"
+#include "Sandbox/inventory/ItemType.h"
+#include "Sandbox/inventory/InventoryItem.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "AmmoItem.generated.h"
 

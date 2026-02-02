@@ -5,7 +5,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-#include "Sandbox/items/data/SpeedBoost.h"
+#include "Sandbox/items/SpeedBoost.h"
 #include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
 
 #include "SpeedBoostComponent.generated.h"

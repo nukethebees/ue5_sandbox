@@ -1,8 +1,8 @@
 #include "Sandbox/players/npcs/actor_components/NpcPatrolComponent.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
-#include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
+#include "Sandbox/pathfinding/PatrolPath.h"
+#include "Sandbox/pathfinding/PatrolWaypoint.h"
 
 UNpcPatrolComponent::UNpcPatrolComponent() {
     PrimaryComponentTick.bCanEverTick = false;

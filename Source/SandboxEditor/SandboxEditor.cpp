@@ -8,8 +8,8 @@
 #include "ToolMenus.h"
 
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
-#include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
-#include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
+#include "Sandbox/pathfinding/PatrolPath.h"
+#include "Sandbox/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"

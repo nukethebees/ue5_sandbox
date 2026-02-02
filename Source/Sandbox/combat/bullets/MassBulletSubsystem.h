@@ -9,7 +9,7 @@
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/mass_entity/data/EntityDefinition.h"
+#include "Sandbox/mass_entity/EntityDefinition.h"
 
 #include "CoreMinimal.h"
 #include "MassArchetypeTypes.h"

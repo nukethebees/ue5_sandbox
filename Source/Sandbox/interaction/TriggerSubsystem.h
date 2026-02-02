@@ -12,7 +12,7 @@
 #include "Sandbox/interaction/TriggerOtherPayload.h"
 #include "Sandbox/interaction/TriggerSubsystemMixins.hpp"
 #include "Sandbox/interaction/TriggerSubsystemCore.h"
-#include "Sandbox/items/data/MoneyPickupPayload.h"
+#include "Sandbox/items/MoneyPickupPayload.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 

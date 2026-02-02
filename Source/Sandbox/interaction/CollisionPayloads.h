@@ -5,7 +5,7 @@
 #include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 #include "Sandbox/interaction/CollisionContext.h"
-#include "Sandbox/items/data/SpeedBoost.h"
+#include "Sandbox/items/SpeedBoost.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"

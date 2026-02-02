@@ -14,7 +14,7 @@
 #include "Sandbox/combat/bullets/MassBulletSubsystem.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
-#include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
+#include "Sandbox/mass_entity/MassArchetypeSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

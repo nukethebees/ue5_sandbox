@@ -4,7 +4,7 @@
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 #include "Sandbox/ui/widgets/umg/TextButtonWidget.h"

@@ -10,7 +10,7 @@
 #include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
-#include "Sandbox/mass_entity/subsystems/MassArchetypeSubsystem.h"
+#include "Sandbox/mass_entity/MassArchetypeSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

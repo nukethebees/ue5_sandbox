@@ -4,8 +4,8 @@
 #include "GameFramework/PlayerController.h"
 
 #include "Sandbox/environment/data/ActorCorners.h"
-#include "Sandbox/inventory/data/Coord.h"
-#include "Sandbox/inventory/data/Dimensions.h"
+#include "Sandbox/inventory/Coord.h"
+#include "Sandbox/inventory/Dimensions.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/data/ScreenBounds.h"
 

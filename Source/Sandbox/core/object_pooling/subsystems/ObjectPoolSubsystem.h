@@ -7,7 +7,7 @@
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystemCore.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/pathfinding/DroppableWaypoint/DroppableWaypointPoolConfig.h"
+#include "Sandbox/pathfinding/DroppableWaypointPoolConfig.h"
 
 #include "ObjectPoolSubsystem.generated.h"
 

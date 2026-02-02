@@ -5,7 +5,7 @@
 #include "Components/SizeBox.h"
 #include "Engine/Texture2D.h"
 
-#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/misc/InventorySlotDragDropOperation.h"
 #include "Sandbox/ui/in_game_menu/widgets/umg/InventorySlotWidget.h"
 

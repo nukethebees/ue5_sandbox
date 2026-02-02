@@ -2,7 +2,7 @@
 
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/combat/weapons/WeaponBase.h"
-#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/inventory/InventoryComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

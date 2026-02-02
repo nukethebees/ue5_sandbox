@@ -5,8 +5,8 @@
 #include "LevelEditor.h"
 #include "Selection.h"
 
-#include "Sandbox/pathfinding/PatrolPath/PatrolPath.h"
-#include "Sandbox/pathfinding/PatrolPath/PatrolWaypoint.h"
+#include "Sandbox/pathfinding/PatrolPath.h"
+#include "Sandbox/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

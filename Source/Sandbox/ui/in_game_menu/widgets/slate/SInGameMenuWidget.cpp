@@ -10,7 +10,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-#include "Sandbox/inventory/actor_components/InventoryComponent.h"
+#include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/widgets/slate/SInventoryTabWidget.h"
 #include "Sandbox/ui/in_game_menu/widgets/slate/SStatsTabWidget.h"
 #include "Sandbox/ui/styles/SandboxStyle.h"

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/DragDropOperation.h"
 
-#include "Sandbox/inventory/data/Coord.h"
+#include "Sandbox/inventory/Coord.h"
 
 #include "InventorySlotDragDropOperation.generated.h"
 
