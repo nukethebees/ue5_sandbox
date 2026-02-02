@@ -2,12 +2,12 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "DroppableWaypoint.generated.h"
 

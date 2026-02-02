@@ -1,11 +1,11 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "UObject/Interface.h"
-
 #include "Sandbox/inventory/Dimensions.h"
 #include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/inventory/StackSize.h"
+
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
 
 #include "InventoryItem.generated.h"
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include "Sandbox/environment/interactive/interfaces/Clickable.h"
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Actor.h"
-
-#include "Sandbox/environment/interactive/interfaces/Clickable.h"
 
 #include "MoveToTargetActorComponent.generated.h"
 

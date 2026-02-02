@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Sandbox/items/PickupActor.h"
+
+#include "CoreMinimal.h"
 
 #include "SpeedBoostItemActor.generated.h"
 

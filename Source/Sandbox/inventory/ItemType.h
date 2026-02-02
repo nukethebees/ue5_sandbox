@@ -1,8 +1,8 @@
 #pragma once
 
-#include <utility>
-
 #include "CoreMinimal.h"
+
+#include <utility>
 
 #include "ItemType.generated.h"
 

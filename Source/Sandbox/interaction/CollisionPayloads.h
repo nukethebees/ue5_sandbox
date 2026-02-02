@@ -1,7 +1,5 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
 #include "Sandbox/environment/obstacles/data/LandMinePayload.h"
 #include "Sandbox/interaction/CollisionContext.h"
@@ -10,6 +8,8 @@
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
+
+#include "CoreMinimal.h"
 
 struct FSpeedBoostPayload {
     FSpeedBoostPayload() = default;

@@ -1,14 +1,14 @@
 #pragma once
 
-#include <array>
-
-#include "CoreMinimal.h"
-
 #include "Sandbox/interaction/StrongIds.h"
 #include "Sandbox/interaction/TriggerableId.h"
 #include "Sandbox/interaction/TriggerContext.h"
 #include "Sandbox/interaction/TriggerResult.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
+
+#include <array>
+
+#include "CoreMinimal.h"
 
 struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
     static constexpr uint8 MAX_TARGETS{8};

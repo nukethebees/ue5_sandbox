@@ -1,11 +1,11 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/interaction/CollisionOwner.h"
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/items/MoneyPickupPayload.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "MoneyPickupActor.generated.h"
 

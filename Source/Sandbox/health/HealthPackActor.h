@@ -2,12 +2,12 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "HealthPackActor.generated.h"
 

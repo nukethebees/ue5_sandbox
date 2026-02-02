@@ -1,11 +1,11 @@
 #pragma once
 
-#include <optional>
+#include "Sandbox/interaction/TriggerableId.h"
+#include "Sandbox/interaction/TriggerCapabilities.h"
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/interaction/TriggerableId.h"
-#include "Sandbox/interaction/TriggerCapabilities.h"
+#include <optional>
 
 class AActor;
 class UWorld;

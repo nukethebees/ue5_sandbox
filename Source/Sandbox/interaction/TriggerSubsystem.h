@@ -1,10 +1,5 @@
 #pragma once
 
-#include <utility>
-
-#include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
-
 #include "Sandbox/combat/weapons/WeaponPickupPayload.h"
 #include "Sandbox/environment/effects/data/RotatePayload.h"
 #include "Sandbox/environment/obstacles/data/ForcefieldPayload.h"
@@ -15,6 +10,11 @@
 #include "Sandbox/items/MoneyPickupPayload.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+
+#include <utility>
 
 #include "TriggerSubsystem.generated.h"
 

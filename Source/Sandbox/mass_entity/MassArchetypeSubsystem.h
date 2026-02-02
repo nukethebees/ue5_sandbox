@@ -1,16 +1,16 @@
 #pragma once
 
-#include <optional>
+#include "Sandbox/combat/bullets/BulletDataAssetIds.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/mass_entity/EntityDefinition.h"
 
 #include "CoreMinimal.h"
 #include "MassArchetypeTypes.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/PrimaryAssetId.h"
 
-#include "Sandbox/combat/bullets/BulletDataAssetIds.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/mass_entity/EntityDefinition.h"
+#include <optional>
 
 #include "MassArchetypeSubsystem.generated.h"
 

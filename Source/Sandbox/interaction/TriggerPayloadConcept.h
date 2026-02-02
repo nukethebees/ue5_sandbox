@@ -1,9 +1,9 @@
 #pragma once
 
-#include <concepts>
-
 #include "Sandbox/interaction/TriggerContext.h"
 #include "Sandbox/interaction/TriggerResult.h"
+
+#include <concepts>
 
 namespace ml {
 template <typename T>

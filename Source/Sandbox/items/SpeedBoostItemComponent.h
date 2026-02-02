@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Sandbox/items/SpeedBoost.h"
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-
-#include "Sandbox/items/SpeedBoost.h"
 
 #include "SpeedBoostItemComponent.generated.h"
 

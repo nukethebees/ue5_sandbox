@@ -1,10 +1,5 @@
 #pragma once
 
-#include <optional>
-
-#include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-
 #include "Sandbox/combat/ammo/AmmoData.h"
 #include "Sandbox/inventory/Coord.h"
 #include "Sandbox/inventory/Dimensions.h"
@@ -13,6 +8,11 @@
 #include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+
+#include <optional>
 
 #include "InventoryComponent.generated.h"
 

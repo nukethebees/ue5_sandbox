@@ -1,11 +1,11 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "Sandbox/inventory/Coord.h"
 #include "Sandbox/inventory/InventoryItem.h"
 #include "Sandbox/inventory/StackSize.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
 
 #include "InventoryEntry.generated.h"
 

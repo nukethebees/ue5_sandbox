@@ -1,11 +1,12 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/health/StationStateData.h"
 #include "Sandbox/interaction/TriggerContext.h"
 #include "Sandbox/interaction/TriggerResult.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
+
+#include "CoreMinimal.h"
 
 #include "HealthStationPayload.generated.h"
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "Sandbox/interaction/StrongIds.h"
 #include "Sandbox/interaction/TriggerableId.h"
 #include "Sandbox/interaction/TriggerContext.h"
 #include "Sandbox/interaction/TriggerResult.h"
+
+#include "CoreMinimal.h"
 
 #include "MoneyPickupPayload.generated.h"
 

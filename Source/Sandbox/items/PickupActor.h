@@ -1,10 +1,10 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/interaction/CollisionOwner.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "PickupActor.generated.h"
 

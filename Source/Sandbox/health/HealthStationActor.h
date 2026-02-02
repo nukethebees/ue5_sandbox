@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "Sandbox/health/HealthStationPayload.h"
 #include "Sandbox/interaction/TriggerableId.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "HealthStationActor.generated.h"
 

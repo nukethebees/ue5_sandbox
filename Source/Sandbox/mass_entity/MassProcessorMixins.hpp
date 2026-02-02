@@ -3,7 +3,6 @@
 #include <type_traits>
 
 #include "CoreMinimal.h"
-
 #include "MassProcessingTypes.h"
 
 namespace ml {
