@@ -1,12 +1,16 @@
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 
+#include "Sandbox/combat/bullets/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
 
 ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
@@ -24,7 +28,8 @@ void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
 
 #if WITH_EDITOR
-    auto const can_log{ticks_since_last_log >= ticks_per_log};
+    seconds_since_last_log += dt;
+    auto const can_log{seconds_since_last_log >= seconds_per_log};
 #endif
 
     auto const drot{rotation_speed * dt};
@@ -74,9 +79,7 @@ void ASpaceShip::Tick(float dt) {
 
 #if WITH_EDITOR
     if (can_log) {
-        ticks_since_last_log = 0;
-    } else {
-        ticks_since_last_log++;
+        seconds_since_last_log = 0.f;
     }
 #endif
 }
@@ -92,3 +95,49 @@ void ASpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
+void ASpaceShip::fire_laser() {
+    check(ship_mesh);
+    RETURN_IF_NULLPTR(ship_mesh);
+    check(laser_class);
+    RETURN_IF_NULLPTR(laser_class);
+    check(hyper_laser_class);
+    RETURN_IF_NULLPTR(hyper_laser_class);
+
+    auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
+    auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
+    auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+
+    switch (laser_mode) {
+        case EShipLaserMode::Single: {
+            fire_laser_from(laser_class, middle);
+            break;
+        }
+        case EShipLaserMode::Double: {
+            fire_laser_from(laser_class, left);
+            fire_laser_from(laser_class, right);
+            break;
+        }
+        case EShipLaserMode::Hyper: {
+            fire_laser_from(hyper_laser_class, left);
+            fire_laser_from(hyper_laser_class, right);
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxActor, Warning, TEXT("Unhandled fire_laser branch."));
+            break;
+        }
+    }
+}
+void ASpaceShip::fire_laser_from(TSubclassOf<AShipLaser> fire_laser_class, FTransform fire_point) {
+    TRY_INIT_PTR(world, GetWorld());
+
+    UE_LOG(LogSandboxActor,
+           Verbose,
+           TEXT("Spawning laser at %s"),
+           *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(laser, world->SpawnActorDeferred<AShipLaser>(fire_laser_class, fire_point, this, this));
+    laser->set_speed(laser_speed);
+    laser->FinishSpawning(fire_point);
+}
+void ASpaceShip::fire_bomb() {}

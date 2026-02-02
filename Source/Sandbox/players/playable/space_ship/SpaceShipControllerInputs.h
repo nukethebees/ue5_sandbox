@@ -16,4 +16,8 @@ struct FSpaceShipControllerInputs {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* turn{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* fire_laser{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* fire_bomb{nullptr};
 };

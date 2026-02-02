@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/players/playable/space_ship/ShipLaserMode.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 
@@ -9,6 +11,8 @@ class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+
+class AShipLaser;
 
 UCLASS()
 class ASpaceShip : public APawn {
@@ -25,8 +29,12 @@ class ASpaceShip : public APawn {
     void Tick(float dt) override;
 
     void turn(FVector2D direction);
+    void fire_laser();
+    void fire_bomb();
   protected:
     void BeginPlay() override;
+
+    void fire_laser_from(TSubclassOf<AShipLaser> laser_class, FTransform fire_point);
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
@@ -68,10 +76,19 @@ class ASpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float bank_speed{5.f};
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SpaceShip")
+    EShipLaserMode laser_mode{EShipLaserMode::Single};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float laser_speed{1000.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    TSubclassOf<AShipLaser> laser_class;
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    TSubclassOf<AShipLaser> hyper_laser_class;
+
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    int32 ticks_since_last_log{0};
+    float seconds_since_last_log{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    int32 ticks_per_log{60};
+    float seconds_per_log{2.f};
 #endif
 };

@@ -26,6 +26,8 @@ void ASpaceShipController::SetupInputComponent() {
     // Movement
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
+    bind(input.fire_laser, Started, &ThisClass::fire_laser);
+    bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -50,4 +52,12 @@ void ASpaceShipController::turn(FInputActionValue const& value) {
 void ASpaceShipController::turn_completed(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->turn(FVector2D::ZeroVector);
+}
+void ASpaceShipController::fire_laser(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->fire_laser();
+}
+void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->fire_bomb();
 }
