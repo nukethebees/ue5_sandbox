@@ -17,14 +17,15 @@ USTRUCT(BlueprintType)
 struct FStackSize {
     GENERATED_BODY()
   private:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
     int32 value{};
-
   public:
-    explicit FStackSize(int32 v = 0) : value(v) {}
+    explicit FStackSize(int32 v = 0)
+        : value(v) {}
     template <typename... Args>
         requires std::constructible_from<int32, Args...>
-    explicit FStackSize(Args&&... args) : value(std::forward<Args>(args)...) {}
+    explicit FStackSize(Args&&... args)
+        : value(std::forward<Args>(args)...) {}
 
     explicit operator int32() const { return value; }
 
@@ -44,27 +45,45 @@ struct FStackSize {
     FStackSize operator*(FStackSize const& rhs) const { return FStackSize{value * rhs.value}; }
     FStackSize operator/(FStackSize const& rhs) const { return FStackSize{value / rhs.value}; }
 
-    FStackSize& operator+=(FStackSize const& rhs) { value += rhs.value; return *this; }
-    FStackSize& operator-=(FStackSize const& rhs) { value -= rhs.value; return *this; }
-    FStackSize& operator*=(FStackSize const& rhs) { value *= rhs.value; return *this; }
-    FStackSize& operator/=(FStackSize const& rhs) { value /= rhs.value; return *this; }
+    FStackSize& operator+=(FStackSize const& rhs) {
+        value += rhs.value;
+        return *this;
+    }
+    FStackSize& operator-=(FStackSize const& rhs) {
+        value -= rhs.value;
+        return *this;
+    }
+    FStackSize& operator*=(FStackSize const& rhs) {
+        value *= rhs.value;
+        return *this;
+    }
+    FStackSize& operator/=(FStackSize const& rhs) {
+        value /= rhs.value;
+        return *this;
+    }
 
     FStackSize operator-() const { return FStackSize{-value}; }
 
     // Increment operators
-    FStackSize& operator++() { ++value; return *this; }
+    FStackSize& operator++() {
+        ++value;
+        return *this;
+    }
     FStackSize operator++(int) { return FStackSize{value++}; }
-    FStackSize& operator--() { --value; return *this; }
+    FStackSize& operator--() {
+        --value;
+        return *this;
+    }
     FStackSize operator--(int) { return FStackSize{value--}; }
 
     // Modulo operators
     FStackSize operator%(FStackSize const& rhs) const { return FStackSize{value % rhs.value}; }
 
-    FStackSize& operator%=(FStackSize const& rhs) { value %= rhs.value; return *this; }
-
-    // Hash support for TMap/TSet
-    friend uint32 GetTypeHash(FStackSize const& obj) {
-        return GetTypeHash(obj.value);
+    FStackSize& operator%=(FStackSize const& rhs) {
+        value %= rhs.value;
+        return *this;
     }
 
+    // Hash support for TMap/TSet
+    friend uint32 GetTypeHash(FStackSize const& obj) { return GetTypeHash(obj.value); }
 };

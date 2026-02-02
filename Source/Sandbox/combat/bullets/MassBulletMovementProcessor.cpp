@@ -3,8 +3,8 @@
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
-#include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/BulletProcessorGroups.h"
+#include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/constants/collision_channels.h"
 
 void FMassBulletMovementExecutor::Execute(FMassExecutionContext& context) {

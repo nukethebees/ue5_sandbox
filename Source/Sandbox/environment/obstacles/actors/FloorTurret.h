@@ -6,8 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/health/HealthChange.h"
 #include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/health/HealthChange.h"
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/players/common/enums/TeamID.h"
 

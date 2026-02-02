@@ -2,7 +2,6 @@
 
 #include "Logging/StructuredLog.h"
 
-
 void UOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
 

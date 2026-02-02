@@ -2,16 +2,16 @@
 
 #pragma once
 
+#include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/health/HealthChange.h"
+#include "Sandbox/health/HealthData.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+
 #include "CoreMinimal.h"
 #include "components/ActorComponent.h"
 #include "GameFramework/Actor.h"
 #include "Logging/StructuredLog.h"
-
-#include "Sandbox/health/HealthChange.h"
-#include "Sandbox/health/HealthData.h"
-#include "Sandbox/health/DeathHandler.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "HealthComponent.generated.h"
 

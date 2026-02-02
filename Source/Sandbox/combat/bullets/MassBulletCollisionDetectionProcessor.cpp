@@ -5,8 +5,8 @@
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 
-#include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/BulletProcessorGroups.h"
+#include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/constants/collision_channels.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

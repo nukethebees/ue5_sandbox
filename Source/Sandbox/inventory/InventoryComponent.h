@@ -9,8 +9,8 @@
 #include "Sandbox/inventory/Coord.h"
 #include "Sandbox/inventory/Dimensions.h"
 #include "Sandbox/inventory/InventoryEntry.h"
-#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/inventory/InventoryItem.h"
+#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 

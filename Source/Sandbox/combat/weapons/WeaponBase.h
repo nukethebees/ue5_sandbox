@@ -4,11 +4,11 @@
 #include "GameFramework/Actor.h"
 
 #include "Sandbox/combat/ammo/AmmoReloadResult.h"
-#include "Sandbox/combat/weapons/WeaponPickupPayload.h"
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponentDelegates.h"
+#include "Sandbox/combat/weapons/WeaponPickupPayload.h"
 #include "Sandbox/health/HealthChange.h"
-#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/inventory/InventoryItem.h"
+#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 

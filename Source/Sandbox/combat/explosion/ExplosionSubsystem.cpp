@@ -8,8 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 #include "Sandbox/environment/effects/subsystems/NiagaraNdcWriterSubsystem.h"
-#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/health/DamageManagerSubsystem.h"
+#include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/utilities/math.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

@@ -8,10 +8,10 @@
 #include "MassEntitySubsystem.h"
 
 #include "Sandbox/combat/bullets/BulletActor.h"
-#include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystem.h"
+#include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/core/object_pooling/data/PoolConfig.h"
 #include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
 #include "Sandbox/mass_entity/MassArchetypeSubsystem.h"

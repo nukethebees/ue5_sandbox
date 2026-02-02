@@ -4,9 +4,9 @@
 #include "MassExecutionContext.h"
 #include "MassProcessingTypes.h"
 
-#include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
-#include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/BulletProcessorGroups.h"
+#include "Sandbox/combat/bullets/MassBulletFragments.h"
+#include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

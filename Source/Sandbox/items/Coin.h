@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/interaction/CollisionPayloads.h"
 #include "Sandbox/interaction/CollisionOwner.h"
+#include "Sandbox/interaction/CollisionPayloads.h"
 
 #include "Coin.generated.h"
 

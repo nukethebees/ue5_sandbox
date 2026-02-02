@@ -4,8 +4,8 @@
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/health/HealthChange.h"
 #include "Sandbox/health/DeathHandler.h"
+#include "Sandbox/health/HealthChange.h"
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"

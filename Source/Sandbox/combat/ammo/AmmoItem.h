@@ -4,8 +4,8 @@
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/interaction/Interactable.h"
 #include "Sandbox/inventory/Dimensions.h"
-#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/inventory/InventoryItem.h"
+#include "Sandbox/inventory/ItemType.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -30,17 +30,13 @@ class SANDBOX_API AAmmoItem
     AAmmoItem();
 
     // IDescribable
-    virtual FText get_description() const override {
-        return FText::FromString(display_name);
-    }
+    virtual FText get_description() const override { return FText::FromString(display_name); }
 
     // IInventoryItem
     UFUNCTION()
     virtual FDimensions get_size() const override { return FDimensions{1, 1}; };
     UFUNCTION()
-    virtual FString const& get_name() const {
-        return display_name;
-    };
+    virtual FString const& get_name() const { return display_name; };
     virtual UTexture2D* get_display_image() const override { return display_image; }
     virtual EItemType get_item_type() const override { return EItemType::Ammo; }
     virtual FStackSize get_quantity() const { return FStackSize{quantity}; }

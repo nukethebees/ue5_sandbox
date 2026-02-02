@@ -1,15 +1,15 @@
 #pragma once
 
-#include <cstddef>
-
-#include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
-
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+
+#include <cstddef>
 
 #include "DamageManagerSubsystem.generated.h"
 

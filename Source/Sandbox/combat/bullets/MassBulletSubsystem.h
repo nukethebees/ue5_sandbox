@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
+#include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"

@@ -4,8 +4,8 @@
 #include "UObject/Interface.h"
 
 #include "Sandbox/inventory/Dimensions.h"
-#include "Sandbox/inventory/StackSize.h"
 #include "Sandbox/inventory/ItemType.h"
+#include "Sandbox/inventory/StackSize.h"
 
 #include "InventoryItem.generated.h"
 
