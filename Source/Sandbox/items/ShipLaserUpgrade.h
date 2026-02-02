@@ -17,13 +17,6 @@ class AShipLaserUpgrade : public AActor {
     GENERATED_BODY()
 
     AShipLaserUpgrade();
-
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    UStaticMeshComponent* mesh{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    UBoxComponent* collision_box{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    URotatingActorComponent* rotator{nullptr};
   protected:
     void BeginPlay() override;
 
@@ -34,4 +27,11 @@ class AShipLaserUpgrade : public AActor {
                           int32 other_body_index,
                           bool from_sweep,
                           FHitResult const& sweep_result);
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UStaticMeshComponent* mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UBoxComponent* collision_box{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    URotatingActorComponent* rotator{nullptr};
 };
