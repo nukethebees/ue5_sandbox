@@ -11,6 +11,9 @@ class UWorld;
 class UBoxComponent;
 class UProjectileMovementComponent;
 class UStaticMeshComponent;
+class UMaterialInterface;
+
+class UShipLaserConfig;
 
 UCLASS()
 class SANDBOX_API AShipLaser : public AActor {
@@ -22,8 +25,10 @@ class SANDBOX_API AShipLaser : public AActor {
 
     void set_speed(float s) { speed = s; }
     auto get_speed(float s) const { return speed; }
+    void set_config(UShipLaserConfig const& config);
   protected:
     void BeginPlay() override;
+    void OnConstruction(FTransform const& transform);
 
     UFUNCTION()
     void on_hit(UPrimitiveComponent* HitComponent,
@@ -37,6 +42,9 @@ class SANDBOX_API AShipLaser : public AActor {
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Laser")
     UStaticMeshComponent* mesh_component{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UMaterialInterface* material{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
     FHealthChange damage{5.0f, EHealthChangeType::Damage};

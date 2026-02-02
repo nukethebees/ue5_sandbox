@@ -1,11 +1,13 @@
-#include "Sandbox/combat/bullets/ShipLaser.h"
+#include "Sandbox/combat/weapons/ShipLaser.h"
 
+#include "Sandbox/combat/weapons/ShipLaserConfig.h"
 #include "Sandbox/health/actor_components/HealthComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Materials/MaterialInstance.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -33,6 +35,11 @@ void AShipLaser::Tick(float dt) {
 
     SetActorLocation(GetActorLocation() + velocity * dt);
 }
+void AShipLaser::set_config(UShipLaserConfig const& config) {
+    material = config.material;
+    set_speed(config.speed);
+    damage.value = config.damage;
+}
 void AShipLaser::BeginPlay() {
     Super::BeginPlay();
 
@@ -42,6 +49,14 @@ void AShipLaser::BeginPlay() {
     if (collision_component) {
         collision_component->OnComponentHit.AddDynamic(this, &AShipLaser::on_hit);
     }
+}
+void AShipLaser::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+
+    RETURN_IF_NULLPTR(material);
+    RETURN_IF_NULLPTR(mesh_component);
+
+    mesh_component->SetMaterial(0, material);
 }
 
 void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,

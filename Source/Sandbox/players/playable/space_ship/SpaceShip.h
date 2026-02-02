@@ -13,6 +13,7 @@ class UStaticMeshComponent;
 class UBoxComponent;
 
 class AShipLaser;
+class UShipLaserConfig;
 
 UCLASS()
 class ASpaceShip : public APawn {
@@ -34,7 +35,7 @@ class ASpaceShip : public APawn {
   protected:
     void BeginPlay() override;
 
-    void fire_laser_from(TSubclassOf<AShipLaser> laser_class, FTransform fire_point);
+    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
@@ -76,14 +77,16 @@ class ASpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float bank_speed{5.f};
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float laser_speed{1000.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     TSubclassOf<AShipLaser> laser_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    TSubclassOf<AShipLaser> hyper_laser_class;
+    UShipLaserConfig* laser_config;
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UShipLaserConfig* hyper_laser_config;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

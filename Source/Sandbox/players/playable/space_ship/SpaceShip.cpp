@@ -1,6 +1,6 @@
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 
-#include "Sandbox/combat/bullets/ShipLaser.h"
+#include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Camera/CameraComponent.h"
@@ -100,8 +100,11 @@ void ASpaceShip::fire_laser() {
     RETURN_IF_NULLPTR(ship_mesh);
     check(laser_class);
     RETURN_IF_NULLPTR(laser_class);
-    check(hyper_laser_class);
-    RETURN_IF_NULLPTR(hyper_laser_class);
+    check(laser_config);
+    RETURN_IF_NULLPTR(laser_config);
+    check(hyper_laser_config);
+    RETURN_IF_NULLPTR(hyper_laser_config);
+
 
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
@@ -109,17 +112,17 @@ void ASpaceShip::fire_laser() {
 
     switch (laser_mode) {
         case EShipLaserMode::Single: {
-            fire_laser_from(laser_class, middle);
+            fire_laser_from(*laser_config, middle);
             break;
         }
         case EShipLaserMode::Double: {
-            fire_laser_from(laser_class, left);
-            fire_laser_from(laser_class, right);
+            fire_laser_from(*laser_config, left);
+            fire_laser_from(*laser_config, right);
             break;
         }
         case EShipLaserMode::Hyper: {
-            fire_laser_from(hyper_laser_class, left);
-            fire_laser_from(hyper_laser_class, right);
+            fire_laser_from(*hyper_laser_config, left);
+            fire_laser_from(*hyper_laser_config, right);
             break;
         }
         default: {
@@ -128,7 +131,7 @@ void ASpaceShip::fire_laser() {
         }
     }
 }
-void ASpaceShip::fire_laser_from(TSubclassOf<AShipLaser> fire_laser_class, FTransform fire_point) {
+void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point) {
     TRY_INIT_PTR(world, GetWorld());
 
     UE_LOG(LogSandboxActor,
@@ -136,7 +139,9 @@ void ASpaceShip::fire_laser_from(TSubclassOf<AShipLaser> fire_laser_class, FTran
            TEXT("Spawning laser at %s"),
            *fire_point.ToHumanReadableString());
 
-    TRY_INIT_PTR(laser, world->SpawnActorDeferred<AShipLaser>(fire_laser_class, fire_point, this, this));
+    TRY_INIT_PTR(laser,
+                 world->SpawnActorDeferred<AShipLaser>(laser_class, fire_point, this, this));
+    laser->set_config(fire_laser_config);
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
