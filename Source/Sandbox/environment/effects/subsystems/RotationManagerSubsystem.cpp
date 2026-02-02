@@ -14,9 +14,13 @@ void URotationManagerSubsystem::add(USceneComponent& scene_component,
 
     tick_enabled = true;
 }
-void URotationManagerSubsystem::add(USceneComponent& scene_component, float speed) {
+void URotationManagerSubsystem::add(USceneComponent& scene_component,
+                                    float speed,
+                                    FRotator rot_scale) {
     static_scene_components.Add(&scene_component);
     static_speeds.Add(speed);
+    static_rotation_scales.Add(rot_scale);
+
     tick_enabled = true;
 }
 
@@ -68,7 +72,8 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
             continue;
         }
 
-        auto const delta_rotation{FRotator(0.0f, dynamic_components[i]->speed * DeltaTime, 0.0f)};
+        auto const dr{dynamic_components[i]->speed * DeltaTime};
+        auto const delta_rotation{dynamic_components[i]->rotation_scale * dr};
         dynamic_scene_components[i]->AddLocalRotation(delta_rotation);
         has_valid_actors = true;
     }
@@ -81,7 +86,8 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
             continue;
         }
 
-        auto const delta_rotation{FRotator(0.0f, static_speeds[i] * DeltaTime, 0.0f)};
+        auto const dr{static_speeds[i] * DeltaTime};
+        auto const delta_rotation{static_rotation_scales[i] * dr};
         static_scene_components[i]->AddLocalRotation(delta_rotation);
         has_valid_actors = true;
     }

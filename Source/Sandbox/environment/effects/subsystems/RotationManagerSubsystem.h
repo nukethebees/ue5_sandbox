@@ -24,7 +24,7 @@ class SANDBOX_API URotationManagerSubsystem
     GENERATED_BODY()
   public:
     void add(USceneComponent& scene_component, URotatingActorComponent& component);
-    void add(USceneComponent& scene_component, float speed);
+    void add(USceneComponent& scene_component, float speed, FRotator rot_scale);
     void remove(URotatingActorComponent& component);
     void remove(USceneComponent& component);
 
@@ -44,6 +44,7 @@ class SANDBOX_API URotationManagerSubsystem
     // Static rotation arrays - fixed speed, components may be destroyed
     TArray<TWeakObjectPtr<USceneComponent>> static_scene_components;
     TArray<float> static_speeds;
+    TArray<FRotator> static_rotation_scales;
 
     bool tick_enabled{false};
 };
