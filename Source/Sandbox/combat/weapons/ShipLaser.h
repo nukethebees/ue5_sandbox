@@ -43,12 +43,12 @@ class SANDBOX_API AShipLaser : public AActor {
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Laser")
     UStaticMeshComponent* mesh_component{nullptr};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Laser")
     UMaterialInterface* material{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
     FHealthChange damage{5.0f, EHealthChangeType::Damage};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
-    float speed{1000.f};
+    float speed{10000.f};
 };

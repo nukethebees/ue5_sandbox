@@ -32,6 +32,7 @@ class ASpaceShip : public APawn {
     void turn(FVector2D direction);
     void fire_laser();
     void fire_bomb();
+    void upgrade_laser();
   protected:
     void BeginPlay() override;
 

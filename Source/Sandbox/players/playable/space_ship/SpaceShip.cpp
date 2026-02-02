@@ -144,3 +144,10 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->FinishSpawning(fire_point);
 }
 void ASpaceShip::fire_bomb() {}
+void ASpaceShip::upgrade_laser() {
+    if (laser_mode == EShipLaserMode::Single) {
+        laser_mode = EShipLaserMode::Double;
+    } else if (laser_mode == EShipLaserMode::Double) {
+        laser_mode = EShipLaserMode::Hyper;
+    }
+}

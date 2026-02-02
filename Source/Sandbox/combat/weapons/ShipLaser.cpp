@@ -18,6 +18,7 @@ AShipLaser::AShipLaser()
     PrimaryActorTick.bStartWithTickEnabled = true;
 
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
+    RootComponent->SetMobility(EComponentMobility::Movable);
 
     collision_component->SetupAttachment(RootComponent);
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
