@@ -33,6 +33,7 @@ class ASpaceShip : public APawn {
     void fire_laser();
     void fire_bomb();
     void upgrade_laser();
+    void add_bomb();
   protected:
     void BeginPlay() override;
 
@@ -88,6 +89,9 @@ class ASpaceShip : public APawn {
     UShipLaserConfig* laser_config;
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UShipLaserConfig* hyper_laser_config;
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 bombs{3};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

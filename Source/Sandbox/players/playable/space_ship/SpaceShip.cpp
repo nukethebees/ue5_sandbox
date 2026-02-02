@@ -151,3 +151,6 @@ void ASpaceShip::upgrade_laser() {
         laser_mode = EShipLaserMode::Hyper;
     }
 }
+void ASpaceShip::add_bomb() {
+    bombs++;
+}
