@@ -138,7 +138,8 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
            TEXT("Spawning laser at %s"),
            *fire_point.ToHumanReadableString());
 
-    TRY_INIT_PTR(laser, world->SpawnActorDeferred<AShipLaser>(laser_class, fire_point, this, this));
+    TRY_INIT_PTR(laser,
+                 world->SpawnActorDeferred<AShipLaser>(laser_class, fire_point, nullptr, this));
     laser->set_config(fire_laser_config);
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
