@@ -95,6 +95,8 @@ class ASpaceShip : public APawn {
     TSubclassOf<AShipBomb> bomb_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 bombs{3};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip")
+    TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

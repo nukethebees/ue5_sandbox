@@ -150,6 +150,11 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->FinishSpawning(fire_point);
 }
 void ASpaceShip::fire_bomb() {
+    if (active_bomb.IsValid()) {
+        active_bomb.Get()->detonate();
+        return;
+    }
+
     if (bombs <= 0) {
         UE_LOG(LogSandboxActor, Verbose, TEXT("No bombs left."));
         return;
@@ -161,8 +166,8 @@ void ASpaceShip::fire_bomb() {
     UE_LOG(
         LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
 
-    TRY_INIT_PTR(bomb, world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this));
-    bomb->FinishSpawning(fire_point);
+    active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
+    active_bomb->FinishSpawning(fire_point);
 
     bombs--;
 }
