@@ -35,6 +35,8 @@ class ASpaceShip : public APawn {
     void fire_bomb();
     void upgrade_laser();
     void add_bomb();
+    void upgrade_health();
+    void add_gold_ring();
   protected:
     void BeginPlay() override;
 
@@ -97,6 +99,8 @@ class ASpaceShip : public APawn {
     int32 bombs{3};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip")
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 gold_rings_collected{0};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

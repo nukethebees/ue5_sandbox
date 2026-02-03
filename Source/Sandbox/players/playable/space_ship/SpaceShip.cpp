@@ -181,3 +181,11 @@ void ASpaceShip::upgrade_laser() {
 void ASpaceShip::add_bomb() {
     bombs++;
 }
+void ASpaceShip::upgrade_health() {}
+void ASpaceShip::add_gold_ring() {
+    gold_rings_collected++;
+    if (gold_rings_collected >= 3) {
+        upgrade_health();
+        gold_rings_collected = 0;
+    }
+}

@@ -14,6 +14,9 @@ class UMaterialInterface;
 class URotatingActorComponent;
 class UShipHealthItemConfig;
 
+UENUM(BlueprintType)
+enum class EShipHealthItemType : uint8 { Silver, Gold, SuperSilver };
+
 UCLASS()
 class AShipHealthItem : public AActor {
     GENERATED_BODY()
@@ -43,4 +46,6 @@ class AShipHealthItem : public AActor {
     UMaterialInterface* material{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float health{50.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    EShipHealthItemType type{EShipHealthItemType::Silver};
 };
