@@ -1,5 +1,6 @@
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 
+#include "Sandbox/combat/weapons/ShipBomb.h"
 #include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -88,14 +89,7 @@ void ASpaceShip::BeginPlay() {
     Super::BeginPlay();
 
     velocity = GetActorForwardVector() * cruise_speed;
-}
 
-void ASpaceShip::turn(FVector2D direction) {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
-
-    rotation_input = direction;
-}
-void ASpaceShip::fire_laser() {
     check(ship_mesh);
     RETURN_IF_NULLPTR(ship_mesh);
     check(laser_class);
@@ -105,6 +99,17 @@ void ASpaceShip::fire_laser() {
     check(hyper_laser_config);
     RETURN_IF_NULLPTR(hyper_laser_config);
 
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
+}
+
+void ASpaceShip::turn(FVector2D direction) {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+
+    rotation_input = direction;
+}
+void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
     auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
@@ -144,7 +149,23 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
-void ASpaceShip::fire_bomb() {}
+void ASpaceShip::fire_bomb() {
+    if (bombs <= 0) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("No bombs left."));
+        return;
+    }
+
+    TRY_INIT_PTR(world, GetWorld());
+    auto const fire_point{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+
+    UE_LOG(
+        LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(bomb, world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this));
+    bomb->FinishSpawning(fire_point);
+
+    bombs--;
+}
 void ASpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {
         laser_mode = EShipLaserMode::Double;

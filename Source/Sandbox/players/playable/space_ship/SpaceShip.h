@@ -14,6 +14,7 @@ class UBoxComponent;
 
 class AShipLaser;
 class UShipLaserConfig;
+class AShipBomb;
 
 UCLASS()
 class ASpaceShip : public APawn {
@@ -90,6 +91,8 @@ class ASpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UShipLaserConfig* hyper_laser_config;
 
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    TSubclassOf<AShipBomb> bomb_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 bombs{3};
 
