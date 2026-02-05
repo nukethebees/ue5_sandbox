@@ -1,6 +1,7 @@
 #include "Sandbox/players/playable/space_ship/SpaceShipController.h"
 
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
+#include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
@@ -37,6 +38,11 @@ void ASpaceShipController::Tick(float dt) {
 
 void ASpaceShipController::BeginPlay() {
     Super::BeginPlay();
+
+    RETURN_IF_NULLPTR(hud_widget_class);
+    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class);
+    RETURN_IF_NULLPTR(hud_widget);
+    hud_widget->AddToViewport();
 }
 
 void ASpaceShipController::OnPossess(APawn* in_pawn) {

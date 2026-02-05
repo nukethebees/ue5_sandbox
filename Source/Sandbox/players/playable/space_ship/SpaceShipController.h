@@ -10,6 +10,8 @@
 
 #include "SpaceShipController.generated.h"
 
+class UShipHudWidget;
+
 UCLASS()
 class ASpaceShipController
     : public APlayerController
@@ -24,6 +26,12 @@ class ASpaceShipController
   protected:
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
+
+    // UI
+    UPROPERTY(EditAnywhere, Category = "UI")
+    TSubclassOf<UShipHudWidget> hud_widget_class;
+    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UShipHudWidget* hud_widget{nullptr};
 
     // Movement
     UFUNCTION()
