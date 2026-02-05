@@ -57,6 +57,9 @@ class ASpaceShip : public APawn {
     FVector velocity;
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float target_speed{0.f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float cruise_speed{3000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float cruise_acceleration{3000.0f};

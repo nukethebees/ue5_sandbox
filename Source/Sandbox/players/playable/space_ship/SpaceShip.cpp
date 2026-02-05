@@ -73,7 +73,7 @@ void ASpaceShip::Tick(float dt) {
     auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, bank_speed)};
     ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
 
-    velocity = GetActorForwardVector() * velocity.Size();
+    velocity = GetActorForwardVector() * target_speed;
 
     auto const delta_pos{velocity * dt};
     SetActorLocation(GetActorLocation() + delta_pos, true);
@@ -83,6 +83,8 @@ void ASpaceShip::Tick(float dt) {
         seconds_since_last_log = 0.f;
     }
 #endif
+
+    target_speed = cruise_speed;
 }
 
 void ASpaceShip::BeginPlay() {
@@ -102,6 +104,8 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
+    
+    target_speed = cruise_speed;
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -189,5 +193,9 @@ void ASpaceShip::add_gold_ring() {
         gold_rings_collected = 0;
     }
 }
-void ASpaceShip::boost() {}
-void ASpaceShip::brake() {}
+void ASpaceShip::boost() {
+    target_speed = boost_speed;
+}
+void ASpaceShip::brake() {
+    target_speed = brake_speed;
+}
