@@ -1,8 +1,8 @@
 #include "Sandbox/health/HealthStationActor.h"
 
 #include "Sandbox/interaction/TriggerSubsystem.h"
-#include "Sandbox/ui/hud/widgets/umg/HealthWidget.h"
-#include "Sandbox/ui/in_world/widgets/umg/HealthStationWidget.h"
+#include "Sandbox/ui/hud/HealthWidget.h"
+#include "Sandbox/ui/in_world/HealthStationWidget.h"
 
 #include "Components/WidgetComponent.h"
 #include "Logging/StructuredLog.h"

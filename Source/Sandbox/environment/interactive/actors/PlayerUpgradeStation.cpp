@@ -2,10 +2,10 @@
 
 #include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
-#include "Sandbox/ui/in_world/widgets/umg/PlayerAttributesUpgradeWidget.h"
-#include "Sandbox/ui/in_world/widgets/umg/PlayerPsiAbilitiesUpgradeWidget.h"
-#include "Sandbox/ui/in_world/widgets/umg/PlayerTechSkillsUpgradeWidget.h"
-#include "Sandbox/ui/in_world/widgets/umg/PlayerWeaponSkillsUpgradeWidget.h"
+#include "Sandbox/ui/in_world/PlayerAttributesUpgradeWidget.h"
+#include "Sandbox/ui/in_world/PlayerPsiAbilitiesUpgradeWidget.h"
+#include "Sandbox/ui/in_world/PlayerTechSkillsUpgradeWidget.h"
+#include "Sandbox/ui/in_world/PlayerWeaponSkillsUpgradeWidget.h"
 #include "Sandbox/utilities/enums.h"
 
 #include "Blueprint/UserWidget.h"

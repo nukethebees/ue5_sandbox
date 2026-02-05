@@ -6,7 +6,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Widgets/Layout/SBox.h"
 
-#include "Sandbox/ui/widgets/slate/TextPopupWidget.h"
+#include "Sandbox/ui/widgets/TextPopupWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

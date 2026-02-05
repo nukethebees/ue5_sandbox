@@ -3,7 +3,7 @@
 
 #include "ShaderCore.h"
 
-#include "Sandbox/ui/styles//SandboxStyle.h"
+#include "Sandbox/ui/SandboxStyle.h"
 
 #define LOCTEXT_NAMESPACE "FSandboxModule"
 

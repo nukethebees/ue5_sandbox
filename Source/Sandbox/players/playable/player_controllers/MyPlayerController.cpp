@@ -18,12 +18,12 @@
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"
 #include "Sandbox/players/playable/actor_components/WarpComponent.h"
-#include "Sandbox/ui/hud/widgets/umg/AmmoHUDWidget.h"
-#include "Sandbox/ui/hud/widgets/umg/ItemDescriptionHUDWidget.h"
-#include "Sandbox/ui/hud/widgets/umg/MainHUDWidget.h"
-#include "Sandbox/ui/hud/widgets/umg/TargetOverlayHUDWidget.h"
-#include "Sandbox/ui/in_game_menu/widgets/umg/InGamePlayerMenu.h"
-#include "Sandbox/ui/widgets/umg/ValueWidget.h"
+#include "Sandbox/ui/hud/AmmoHUDWidget.h"
+#include "Sandbox/ui/hud/ItemDescriptionHUDWidget.h"
+#include "Sandbox/ui/hud/MainHUDWidget.h"
+#include "Sandbox/ui/hud/TargetOverlayHUDWidget.h"
+#include "Sandbox/ui/in_game_menu/InGamePlayerMenu.h"
+#include "Sandbox/ui/widgets/ValueWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

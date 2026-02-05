@@ -111,7 +111,7 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
-    
+
     target_speed = cruise_speed;
     max_acceleration = cruise_acceleration;
 }

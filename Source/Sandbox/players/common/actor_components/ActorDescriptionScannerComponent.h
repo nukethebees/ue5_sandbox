@@ -5,7 +5,7 @@
 
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/ui/data/ScreenBounds.h"
+#include "Sandbox/ui/ScreenBounds.h"
 
 #include "ActorDescriptionScannerComponent.generated.h"
 
