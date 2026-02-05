@@ -3,7 +3,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/environment/effects/RotationManagerSubsystem.h"
 #include "Sandbox/interaction/CollisionEffectSubsystem.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"

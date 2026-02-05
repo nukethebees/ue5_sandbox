@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/core/object_pooling/data/PoolConfig.h"
+#include "Sandbox/core/object_pooling/PoolConfig.h"
 #include "Sandbox/pathfinding/DroppableWaypoint.h"
 
 #include <optional>

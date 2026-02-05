@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 

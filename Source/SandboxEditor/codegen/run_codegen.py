@@ -41,7 +41,7 @@ def generate_string_constants() -> None:
         )
     ]
     name = "TestEnemyBlackboardConstants"
-    file_path = pc.Paths.sandbox_source / f"players/npcs/data/{name}.h"
+    file_path = pc.Paths.sandbox_source / f"players/npcs/{name}.h"
     gen = scg.ConstantGenerator(name, inputs)
 
     with open(file_path, "w") as file:

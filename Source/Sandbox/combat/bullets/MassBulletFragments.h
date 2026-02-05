@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
-#include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
+#include "Sandbox/environment/effects/NdcWriterIndex.h"
 #include "Sandbox/health/HealthChange.h"
 
 #include "CoreMinimal.h"

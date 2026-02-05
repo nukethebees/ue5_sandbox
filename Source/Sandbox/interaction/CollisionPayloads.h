@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
-#include "Sandbox/environment/obstacles/data/LandMinePayload.h"
+#include "Sandbox/core/destruction/DestructionManagerSubsystem.h"
+#include "Sandbox/environment/obstacles/LandMinePayload.h"
 #include "Sandbox/interaction/CollisionContext.h"
 #include "Sandbox/items/SpeedBoost.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"

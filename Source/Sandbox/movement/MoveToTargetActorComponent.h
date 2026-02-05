@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/environment/interactive/interfaces/Clickable.h"
+#include "Sandbox/environment/interactive/Clickable.h"
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"

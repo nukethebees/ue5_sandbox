@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Sandbox/combat/weapons/WeaponPickupPayload.h"
-#include "Sandbox/environment/effects/data/RotatePayload.h"
-#include "Sandbox/environment/obstacles/data/ForcefieldPayload.h"
+#include "Sandbox/environment/effects/RotatePayload.h"
+#include "Sandbox/environment/obstacles/ForcefieldPayload.h"
 #include "Sandbox/health/HealthStationPayload.h"
 #include "Sandbox/interaction/TriggerOtherPayload.h"
 #include "Sandbox/interaction/TriggerSubsystemCore.h"

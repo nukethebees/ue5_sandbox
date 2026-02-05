@@ -5,8 +5,8 @@
 
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/combat/weapons/WeaponBase.h"
-#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
-#include "Sandbox/environment/effects/subsystems/RotationManagerSubsystem.h"
+#include "Sandbox/environment/effects/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/RotationManagerSubsystem.h"
 #include "Sandbox/inventory/InventoryComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

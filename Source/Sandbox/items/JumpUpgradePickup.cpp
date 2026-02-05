@@ -2,7 +2,7 @@
 
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/interaction/CollisionEffectSubsystem.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 

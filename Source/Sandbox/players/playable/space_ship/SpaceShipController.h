@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
+#include "Sandbox/input/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/playable/space_ship/SpaceShipControllerInputs.h"

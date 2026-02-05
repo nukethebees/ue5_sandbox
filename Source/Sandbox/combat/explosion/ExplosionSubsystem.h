@@ -4,7 +4,7 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "Sandbox/combat/explosion/ExplosionConfig.h"
-#include "Sandbox/environment/effects/data/generated/NdcWriterIndex.h"
+#include "Sandbox/environment/effects/NdcWriterIndex.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 

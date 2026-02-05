@@ -3,7 +3,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Sandbox/players/npcs/characters/TestEnemy.h"
+#include "Sandbox/players/npcs/TestEnemy.h"
 #include "Sandbox/players/playable/characters/MyCharacter.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

@@ -11,10 +11,10 @@
 #include "InputActionValue.h"
 
 #include "Sandbox/health/DeathHandler.h"
-#include "Sandbox/input/mixins/EnhancedInputMixin.hpp"
+#include "Sandbox/input/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/enums/TeamID.h"
+#include "Sandbox/players/common/TeamID.h"
 #include "Sandbox/players/playable/data/CameraConfig.h"
 #include "Sandbox/players/playable/data/HumanoidMovement.h"
 #include "Sandbox/players/playable/data/PlayerSkills.h"

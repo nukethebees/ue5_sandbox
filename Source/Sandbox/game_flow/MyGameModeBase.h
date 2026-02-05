@@ -2,15 +2,15 @@
 
 #pragma once
 
+#include "Sandbox/core/destruction/RemoveGhostsOnStartComponent.h"
+#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/common/TeamID.h"
+#include "Sandbox/players/playable/characters/MyCharacter.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
-
-#include "Sandbox/core/destruction/actor_components/RemoveGhostsOnStartComponent.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/enums/TeamID.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
 
 #include "MyGameModeBase.generated.h"
 

@@ -66,7 +66,7 @@ The main game module is located in `Source/Sandbox/` with a feature-based organi
 - `interfaces/` - Item system interfaces
 
 #### Input & Interaction
-- `input/mixins/` - Input handling mixins
+- `input/` - Input handling mixins
 - `interaction/` - Collision-based interactions
 - `interaction/triggering/` - Trigger-based interactions
 

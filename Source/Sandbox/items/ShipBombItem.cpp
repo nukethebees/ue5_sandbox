@@ -1,6 +1,6 @@
 #include "Sandbox/items/ShipBombItem.h"
 
-#include "Sandbox/environment/effects/actor_components/RotatingActorComponent.h"
+#include "Sandbox/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 
 #include "Components/BoxComponent.h"

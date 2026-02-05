@@ -12,8 +12,8 @@
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystem.h"
 #include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
-#include "Sandbox/core/object_pooling/data/PoolConfig.h"
-#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/core/object_pooling/ObjectPoolSubsystem.h"
+#include "Sandbox/core/object_pooling/PoolConfig.h"
 #include "Sandbox/mass_entity/MassArchetypeSubsystem.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

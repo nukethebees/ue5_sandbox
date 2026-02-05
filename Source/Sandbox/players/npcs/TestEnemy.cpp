@@ -1,0 +1,185 @@
+#include "Sandbox/players/npcs/TestEnemy.h"
+
+#include "AIController.h"
+#include "Components/ArrowComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+
+#include "Sandbox/combat/bullets/BulletActor.h"
+#include "Sandbox/health/HealthComponent.h"
+#include "Sandbox/players/npcs/NpcPatrolComponent.h"
+#include "Sandbox/players/npcs/SimpleAIController.h"
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
+ATestEnemy::ATestEnemy()
+    : muzzle_point{CreateDefaultSubobject<UArrowComponent>(TEXT("MuzzlePoint"))}
+    , body_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh")))
+    , health(CreateDefaultSubobject<UHealthComponent>(TEXT("Health")))
+    , patrol_state(CreateDefaultSubobject<UNpcPatrolComponent>(TEXT("PatrolState"))) {
+    PrimaryActorTick.bCanEverTick = false;
+
+    muzzle_point->SetupAttachment(RootComponent);
+    body_mesh->SetupAttachment(RootComponent);
+
+    AutoPossessAI = EAutoPossessAI::PlacedInWorld;
+}
+
+void ATestEnemy::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+
+    RETURN_IF_NULLPTR(body_mesh);
+    RETURN_IF_NULLPTR(body_mesh->GetMaterial(0));
+
+    dynamic_material = body_mesh->CreateDynamicMaterialInstance(0, mesh_base_material);
+    WARN_IF_EXPR_ELSE(!dynamic_material) {
+        apply_material_colours(*dynamic_material);
+    }
+
+    defend_position = GetActorLocation();
+
+    if (controller_class) {
+        AIControllerClass = controller_class;
+    }
+}
+void ATestEnemy::BeginPlay() {
+    constexpr auto logger{NestedLogger<"BeginPlay">()};
+    Super::BeginPlay();
+
+    RETURN_IF_NULLPTR(dynamic_material);
+    apply_material_colours(*dynamic_material);
+}
+
+bool ATestEnemy::attack_actor_melee(UWorld& world, AActor& target) {
+    constexpr auto logger{NestedLogger<"attack_actor_melee">()};
+
+    // Check cooldown
+    auto const current_time{world.GetTimeSeconds()};
+    auto const delta_time{current_time - last_attack_time};
+
+    if (delta_time < combat_profile.melee_cooldown) {
+        logger.log_verbose(TEXT("Attack on cooldown"));
+        return false;
+    }
+
+    // Check distance
+    // Use a hitscan to take enemy size into account
+    // We hit their edge, not their middle
+    FHitResult hit;
+    auto const start{GetActorLocation()};
+    auto const end{target.GetActorLocation()};
+    FCollisionQueryParams query_params;
+    query_params.AddIgnoredActor(this);
+
+    if (!world.LineTraceSingleByChannel(hit, start, end, ECC_Pawn, query_params)) {
+        logger.log_verbose(TEXT("Hit missed"));
+        return false;
+    }
+
+    auto const distance_to_target{hit.Distance};
+    if (distance_to_target > combat_profile.melee_range) {
+        logger.log_verbose(TEXT("Target out of attack range: %.2f > %.2f"),
+                           distance_to_target,
+                           combat_profile.melee_range);
+        return false;
+    }
+
+    // Find health component
+    INIT_PTR_OR_RETURN_VALUE(target_health, target.FindComponentByClass<UHealthComponent>(), false);
+
+    // Apply damage
+    logger.log_verbose(
+        TEXT("Attacking %s for %.2f damage"), *target.GetName(), combat_profile.melee_damage);
+    target_health->modify_health(
+        FHealthChange{combat_profile.melee_damage, EHealthChangeType::Damage});
+    last_attack_time = current_time;
+
+    return true;
+}
+bool ATestEnemy::attack_actor_ranged(UWorld& world, AActor& target) {
+    check(muzzle_point);
+
+    // Check cooldown
+    auto const current_time{world.GetTimeSeconds()};
+    auto const delta_time{current_time - last_attack_time};
+
+    if (delta_time < combat_profile.ranged_cooldown) {
+        UE_LOG(LogSandboxCharacter, Verbose, TEXT("Attack on cooldown"));
+        return false;
+    }
+
+    // Fire the bullet
+    check(ranged_config.bullet_actor_class);
+    RETURN_VALUE_IF_NULLPTR(ranged_config.bullet_actor_class, false);
+
+    auto const spawn_location{muzzle_point->GetComponentLocation()};
+    auto const spawn_rotation{muzzle_point->GetComponentRotation()};
+
+    INIT_PTR_OR_RETURN_VALUE(bullet,
+                             ABulletActor::fire(world,
+                                                ranged_config.bullet_actor_class,
+                                                spawn_location,
+                                                spawn_rotation,
+                                                ranged_config.bullet_speed,
+                                                ranged_config.bullet_damage),
+                             false);
+
+    last_attack_time = current_time;
+
+    return true;
+}
+
+FGenericTeamId ATestEnemy::GetGenericTeamId() const {
+    return FGenericTeamId(static_cast<uint8>(team_id));
+}
+void ATestEnemy::SetGenericTeamId(FGenericTeamId const& TeamID) {
+    team_id = static_cast<ETeamID>(TeamID.GetId());
+}
+
+bool ATestEnemy::attack_actor(AActor& target) {
+    constexpr auto logger{NestedLogger<"attack_actor">()};
+
+    INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
+
+    switch (combat_profile.attack_mode) {
+        case EMobAttackMode::Melee: {
+            return attack_actor_melee(*world, target);
+        }
+        case EMobAttackMode::None: {
+            return true;
+        }
+        case EMobAttackMode::Ranged: {
+            return attack_actor_ranged(*world, target);
+        }
+        default: {
+            break;
+        }
+    }
+
+    UE_LOG(LogSandboxCharacter,
+           Warning,
+           TEXT("%s"),
+           *ml::make_unhandled_enum_case_warning(combat_profile.attack_mode));
+
+    return false;
+}
+
+float ATestEnemy::get_acceptable_radius() const {
+    return 50.0f;
+}
+float ATestEnemy::get_attack_acceptable_radius() const {
+    return combat_profile.get_attack_range() / 2.0f;
+}
+
+void ATestEnemy::handle_death() {
+    on_player_killed.Broadcast();
+    SetLifeSpan(0.1f);
+}
+
+void ATestEnemy::apply_material_colours(UMaterialInstanceDynamic& dyn_material) {
+    constexpr auto logger{NestedLogger<"apply_material_colours">()};
+
+    dyn_material.SetVectorParameterValue(FName("base_colour"), mesh_base_colour);
+    dyn_material.SetVectorParameterValue(FName("emissive_colour"), mesh_emissive_colour);
+}

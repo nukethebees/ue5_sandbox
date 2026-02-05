@@ -13,11 +13,11 @@
 
 #include "Sandbox/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/core/object_pooling/subsystems/ObjectPoolSubsystem.h"
+#include "Sandbox/core/object_pooling/ObjectPoolSubsystem.h"
 #include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/pathfinding/DroppableWaypoint.h"
-#include "Sandbox/players/common/actor_components/ActorDescriptionScannerComponent.h"
+#include "Sandbox/players/common/ActorDescriptionScannerComponent.h"
 #include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
 #include "Sandbox/players/playable/actor_components/InteractorComponent.h"
 #include "Sandbox/players/playable/actor_components/JetpackComponent.h"

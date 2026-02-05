@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/core/destruction/subsystems/DestructionManagerSubsystem.h"
+#include "Sandbox/core/destruction/DestructionManagerSubsystem.h"
 #include "Sandbox/interaction/CollisionContext.h"
 #include "Sandbox/interaction/CollisionOwner.h"
 #include "Sandbox/interaction/PayloadIndex.h"
