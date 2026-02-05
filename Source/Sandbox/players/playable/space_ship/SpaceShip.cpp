@@ -189,3 +189,5 @@ void ASpaceShip::add_gold_ring() {
         gold_rings_collected = 0;
     }
 }
+void ASpaceShip::boost() {}
+void ASpaceShip::brake() {}

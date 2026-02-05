@@ -37,6 +37,8 @@ class ASpaceShip : public APawn {
     void add_bomb();
     void upgrade_health();
     void add_gold_ring();
+    void boost();
+    void brake();
   protected:
     void BeginPlay() override;
 

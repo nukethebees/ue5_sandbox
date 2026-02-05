@@ -34,6 +34,10 @@ class ASpaceShipController
     void fire_laser(FInputActionValue const& value);
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
+    UFUNCTION()
+    void boost(FInputActionValue const& value);
+    UFUNCTION()
+    void brake(FInputActionValue const& value);
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;

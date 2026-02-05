@@ -28,6 +28,8 @@ void ASpaceShipController::SetupInputComponent() {
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.fire_laser, Started, &ThisClass::fire_laser);
     bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
+    bind(input.boost, Triggered, &ThisClass::boost);
+    bind(input.brake, Triggered, &ThisClass::brake);
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -60,4 +62,12 @@ void ASpaceShipController::fire_laser(FInputActionValue const& value) {
 void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->fire_bomb();
+}
+void ASpaceShipController::boost(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->boost();
+}
+void ASpaceShipController::brake(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->brake();
 }
