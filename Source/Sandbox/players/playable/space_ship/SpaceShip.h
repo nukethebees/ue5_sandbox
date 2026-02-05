@@ -58,6 +58,8 @@ class ASpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float target_speed{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float max_acceleration{0.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float cruise_speed{3000.0f};

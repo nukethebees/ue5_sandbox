@@ -33,11 +33,11 @@ void ASpaceShip::Tick(float dt) {
     auto const can_log{seconds_since_last_log >= seconds_per_log};
 #endif
 
+    constexpr auto clamp{
+        [](auto x, auto dt, auto abs_max) { return FMath::Clamp(x * dt, -abs_max, abs_max); }};
+
     auto const drot{rotation_speed * dt};
     if (rotation_input == FVector2D::ZeroVector) {
-        constexpr auto clamp{
-            [](float rot, float dt, float max) { return FMath::Clamp(rot * dt, -max, max); }};
-
         auto const rot{GetActorRotation()};
         FRotator const delta_rotation{
             clamp(-rot.Pitch, dt, drot), 0.0f, clamp(-rot.Roll, dt, drot)};
@@ -73,7 +73,13 @@ void ASpaceShip::Tick(float dt) {
     auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, bank_speed)};
     ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
 
-    velocity = GetActorForwardVector() * target_speed;
+    auto const current_speed{velocity.Size()};
+    auto const target_speed_delta{target_speed - current_speed};
+    auto const max_frame_speed_delta{max_acceleration * dt};
+    auto const frame_speed_delta{clamp(target_speed_delta, dt, max_frame_speed_delta)};
+    auto const new_speed{current_speed + frame_speed_delta};
+
+    velocity = GetActorForwardVector() * new_speed;
 
     auto const delta_pos{velocity * dt};
     SetActorLocation(GetActorLocation() + delta_pos, true);
@@ -85,6 +91,7 @@ void ASpaceShip::Tick(float dt) {
 #endif
 
     target_speed = cruise_speed;
+    max_acceleration = cruise_acceleration;
 }
 
 void ASpaceShip::BeginPlay() {
@@ -106,6 +113,7 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
     
     target_speed = cruise_speed;
+    max_acceleration = cruise_acceleration;
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -195,7 +203,9 @@ void ASpaceShip::add_gold_ring() {
 }
 void ASpaceShip::boost() {
     target_speed = boost_speed;
+    max_acceleration = boost_acceleration;
 }
 void ASpaceShip::brake() {
     target_speed = brake_speed;
+    max_acceleration = brake_acceleration;
 }
