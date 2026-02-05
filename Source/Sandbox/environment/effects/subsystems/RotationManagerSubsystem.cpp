@@ -14,12 +14,9 @@ void URotationManagerSubsystem::add(USceneComponent& scene_component,
 
     tick_enabled = true;
 }
-void URotationManagerSubsystem::add(USceneComponent& scene_component,
-                                    float speed,
-                                    FRotator rot_scale) {
+void URotationManagerSubsystem::add(USceneComponent& scene_component, FRotator rotation_speed) {
     static_scene_components.Add(&scene_component);
-    static_speeds.Add(speed);
-    static_rotation_scales.Add(rot_scale);
+    static_rotation_speeds.Add(rotation_speed);
 
     tick_enabled = true;
 }
@@ -48,7 +45,7 @@ void URotationManagerSubsystem::remove(USceneComponent& component) {
     for (int32 i{static_scene_components.Num() - 1}; i >= 0; --i) {
         if (static_scene_components[i] == &component) {
             static_scene_components.RemoveAtSwap(i);
-            static_speeds.RemoveAtSwap(i);
+            static_rotation_speeds.RemoveAtSwap(i);
             break;
         }
     }
@@ -72,8 +69,7 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
             continue;
         }
 
-        auto const dr{dynamic_components[i]->speed * DeltaTime};
-        auto const delta_rotation{dynamic_components[i]->rotation_scale * dr};
+        auto const delta_rotation{dynamic_components[i]->rotation_speed * DeltaTime};
         dynamic_scene_components[i]->AddLocalRotation(delta_rotation);
         has_valid_actors = true;
     }
@@ -82,12 +78,11 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
     for (int32 i{static_scene_components.Num() - 1}; i >= 0; --i) {
         if (!static_scene_components[i].IsValid()) {
             static_scene_components.RemoveAtSwap(i);
-            static_speeds.RemoveAtSwap(i);
+            static_rotation_speeds.RemoveAtSwap(i);
             continue;
         }
 
-        auto const dr{static_speeds[i] * DeltaTime};
-        auto const delta_rotation{static_rotation_scales[i] * dr};
+        auto const delta_rotation{static_rotation_speeds[i] * DeltaTime};
         static_scene_components[i]->AddLocalRotation(delta_rotation);
         has_valid_actors = true;
     }

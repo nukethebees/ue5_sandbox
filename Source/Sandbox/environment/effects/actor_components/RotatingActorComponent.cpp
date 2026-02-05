@@ -39,7 +39,7 @@ void URotatingActorComponent::register_scene_component(URotationManagerSubsystem
                                                        UWorld& world,
                                                        USceneComponent& scene_component) {
     if (rotation_type == ERotationType::STATIC) {
-        rotation_manager.add(scene_component, speed, rotation_scale);
+        rotation_manager.add(scene_component, rotation_speed);
     } else {
         rotation_manager.add(scene_component, *this);
     }

@@ -31,7 +31,7 @@ class SANDBOX_API ACoin
     UBoxComponent* collision_component;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Coin")
-    float rotation_speed{100.0f};
+    FRotator rotation_speed{0.f, 100.0f, 0.f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Coin")
     int32 coin_value{1};
 };

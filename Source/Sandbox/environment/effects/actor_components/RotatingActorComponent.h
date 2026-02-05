@@ -26,10 +26,7 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
     void register_scene_component(USceneComponent& scene_component);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float speed{50.0f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    FRotator rotation_scale{0.f, 1.f, 0.f};
+    FRotator rotation_speed{0.f, 50.f, 0.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     ERotationType rotation_type{ERotationType::STATIC};

@@ -27,7 +27,7 @@ AHealthPackActor::AHealthPackActor() {
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     rotating_component = CreateDefaultSubobject<URotatingActorComponent>(TEXT("RotatingComponent"));
-    rotating_component->speed = 100.0f;
+    rotating_component->rotation_speed.Yaw = 100.f;
 }
 
 void AHealthPackActor::BeginPlay() {

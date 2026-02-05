@@ -41,7 +41,7 @@ void ACoin::BeginPlay() {
     TRY_INIT_PTR(rotation_manager, world->GetSubsystem<URotationManagerSubsystem>());
     RETURN_IF_NULLPTR(mesh_component);
 
-    rotation_manager->add(*mesh_component, rotation_speed, {0.f, 1.f, 0.f});
+    rotation_manager->add(*mesh_component, rotation_speed);
 
     TRY_INIT_PTR(collision_manager, world->GetSubsystem<UCollisionEffectSubsystem>());
     collision_manager->add_payload(*this, FCoinPayload(coin_value));
