@@ -5,7 +5,7 @@
 
 #include "ShipThrusterEnergyWidget.generated.h"
 
-class UValueWidget;
+class UProgressBar;
 
 UCLASS()
 class SANDBOX_API UShipThrusterEnergyWidget : public UUserWidget {
@@ -15,5 +15,5 @@ class SANDBOX_API UShipThrusterEnergyWidget : public UUserWidget {
     void set_energy(float energy);
   protected:
     UPROPERTY(meta = (BindWidget))
-    UValueWidget* widget{nullptr};
+    UProgressBar* energy_bar{nullptr};
 };

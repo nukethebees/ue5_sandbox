@@ -5,7 +5,7 @@
 
 #include "ShipHealthWidget.generated.h"
 
-class UValueWidget;
+class UProgressBar;
 
 UCLASS()
 class SANDBOX_API UShipHealthWidget : public UUserWidget {
@@ -15,5 +15,5 @@ class SANDBOX_API UShipHealthWidget : public UUserWidget {
     void set_health(float health);
   protected:
     UPROPERTY(meta = (BindWidget))
-    UValueWidget* widget{nullptr};
+    UProgressBar* health_bar{nullptr};
 };
