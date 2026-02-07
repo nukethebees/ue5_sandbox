@@ -26,7 +26,7 @@ class SANDBOX_API UHealthComponent
   public:
     UHealthComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     static constexpr float NO_INITIAL_HEALTH{-1.0f};
 
