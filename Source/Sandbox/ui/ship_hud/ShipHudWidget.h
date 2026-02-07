@@ -17,6 +17,13 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
   public:
     GENERATED_BODY()
 
+    void set_speed(float value);
+    void set_health(float value);
+    void set_energy(float value);
+    void set_points(int32 value);
+    void set_bombs(int32 value);
+    void set_gold_rings(int32 value);
+  protected:
     UPROPERTY(meta = (BindWidget))
     UShipSpeedWidget* speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))

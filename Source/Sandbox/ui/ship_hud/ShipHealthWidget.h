@@ -7,5 +7,8 @@
 
 UCLASS()
 class SANDBOX_API UShipHealthWidget : public UUserWidget {
+  public:
     GENERATED_BODY()
+
+    void set_health(float health);
 };

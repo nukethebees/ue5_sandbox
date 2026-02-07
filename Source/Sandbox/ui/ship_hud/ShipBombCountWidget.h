@@ -7,5 +7,8 @@
 
 UCLASS()
 class SANDBOX_API UShipBombCountWidget : public UUserWidget {
+  public:
     GENERATED_BODY()
+
+    void set_count(int32 count);
 };

@@ -7,5 +7,8 @@
 
 UCLASS()
 class SANDBOX_API UShipPointsWidget : public UUserWidget {
+  public:
     GENERATED_BODY()
+
+    void set_points(int32 points);
 };
