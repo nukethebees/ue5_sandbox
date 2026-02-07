@@ -29,10 +29,13 @@ class SANDBOX_API UValueWidget : public UUserWidget {
             value_text->SetText(display);
         }
     }
+  protected:
     UPROPERTY(meta = (BindWidget))
     UTextBlock* value_text;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     FName format_spec;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    int32 font_size{24};
   private:
     FText format_spec_text;
 };
