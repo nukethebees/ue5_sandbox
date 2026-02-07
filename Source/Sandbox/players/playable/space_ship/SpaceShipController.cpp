@@ -55,11 +55,17 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(in_pawn));
 
     ship->on_health_changed.BindUObject(hud_widget, &UShipHudWidget::set_health);
+    hud_widget->set_health(1.f);
     ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
+    hud_widget->set_speed(ship->get_speed());
     ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
+    hud_widget->set_energy(1.f);
     ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
+    hud_widget->set_bombs(ship->get_bombs());
     ship->on_gold_rings_changed.BindUObject(hud_widget, &UShipHudWidget::set_gold_rings);
+    hud_widget->set_gold_rings(ship->get_gold_rings());
     ship->on_points_changed.BindUObject(hud_widget, &UShipHudWidget::set_points);
+    hud_widget->set_points(ship->get_points());
 
     ship->SetActorTickEnabled(true);
 }

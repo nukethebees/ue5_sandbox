@@ -40,16 +40,21 @@ class ASpaceShip : public APawn {
     void turn(FVector2D direction);
     void boost();
     void brake();
+    auto get_velocity() const { return velocity; }
+    auto get_speed() const { return get_velocity().Size(); }
 
     void fire_laser();
     void fire_bomb();
     void upgrade_laser();
     void add_bomb();
+    auto get_bombs() const { return bombs; }
 
     void upgrade_health();
     void add_gold_ring();
+    auto get_gold_rings() const { return gold_rings_collected; }
 
     void add_points(int32 x);
+    auto get_points() const { return points; }
 
     FOnShipHealthChanged on_health_changed;
     FOnShipSpeedChanged on_speed_changed;
