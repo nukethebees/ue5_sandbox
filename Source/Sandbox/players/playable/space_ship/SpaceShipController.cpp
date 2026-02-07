@@ -66,6 +66,8 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     hud_widget->set_gold_rings(ship->get_gold_rings());
     ship->on_points_changed.BindUObject(hud_widget, &UShipHudWidget::set_points);
     hud_widget->set_points(ship->get_points());
+    ship->on_lives_changed.BindUObject(hud_widget, &UShipHudWidget::set_lives);
+    hud_widget->set_lives(ship->get_lives());
 
     ship->SetActorTickEnabled(true);
 }
@@ -79,6 +81,7 @@ void ASpaceShipController::OnUnPossess() {
         ship->on_bombs_changed.Unbind();
         ship->on_gold_rings_changed.Unbind();
         ship->on_points_changed.Unbind();
+        ship->on_lives_changed.Unbind();
     }
 
     Super::OnUnPossess();

@@ -11,6 +11,7 @@ class UShipThrusterEnergyWidget;
 class UShipPointsWidget;
 class UShipBombCountWidget;
 class UShipGoldRingCountWidget;
+class UPlayerLivesWidget;
 
 UCLASS()
 class SANDBOX_API UShipHudWidget : public UUserWidget {
@@ -23,6 +24,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_points(int32 value);
     void set_bombs(int32 value);
     void set_gold_rings(int32 value);
+    void set_lives(int32 value);
   protected:
     UPROPERTY(meta = (BindWidget))
     UShipSpeedWidget* speed_widget{nullptr};
@@ -36,4 +38,6 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipBombCountWidget* bombs_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UShipGoldRingCountWidget* gold_rings_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UPlayerLivesWidget* lives_widget{nullptr};
 };

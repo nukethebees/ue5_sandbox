@@ -6,6 +6,7 @@
 #include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
+#include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 
 void UShipHudWidget::set_speed(float value) {
     if (!speed_widget) {
@@ -42,4 +43,10 @@ void UShipHudWidget::set_gold_rings(int32 value) {
         return;
     }
     gold_rings_widget->set_count(value);
+}
+void UShipHudWidget::set_lives(int32 value) {
+    if (!lives_widget) {
+        return;
+    }
+    lives_widget->set_value(value);
 }

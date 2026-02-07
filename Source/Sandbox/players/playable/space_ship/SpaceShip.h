@@ -22,6 +22,7 @@ DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
 
 UCLASS()
 class ASpaceShip : public APawn {
@@ -55,6 +56,7 @@ class ASpaceShip : public APawn {
 
     void add_points(int32 x);
     auto get_points() const { return points; }
+    auto get_lives() const { return lives; }
 
     FOnShipHealthChanged on_health_changed;
     FOnShipSpeedChanged on_speed_changed;
@@ -62,6 +64,7 @@ class ASpaceShip : public APawn {
     FOnShipBombsChanged on_bombs_changed;
     FOnShipGoldRingsChanged on_gold_rings_changed;
     FOnShipPointsChanged on_points_changed;
+    FOnLivesChanged on_lives_changed;
   protected:
     void BeginPlay() override;
 
@@ -140,6 +143,8 @@ class ASpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 points{0};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 lives{3};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
