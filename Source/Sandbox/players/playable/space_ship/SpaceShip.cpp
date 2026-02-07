@@ -24,6 +24,10 @@ ASpaceShip::ASpaceShip()
     spring_arm->SetupAttachment(RootComponent);
     ship_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
+
+    // Don't tick until the controller wires up the delegates
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 }
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
@@ -92,6 +96,7 @@ void ASpaceShip::Tick(float dt) {
 
     target_speed = cruise_speed;
     max_acceleration = cruise_acceleration;
+    on_speed_changed.Execute(new_speed);
 }
 
 void ASpaceShip::BeginPlay() {
@@ -121,6 +126,15 @@ void ASpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
+void ASpaceShip::boost() {
+    target_speed = boost_speed;
+    max_acceleration = boost_acceleration;
+}
+void ASpaceShip::brake() {
+    target_speed = brake_speed;
+    max_acceleration = brake_acceleration;
+}
+
 void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
@@ -181,7 +195,7 @@ void ASpaceShip::fire_bomb() {
     active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
     active_bomb->FinishSpawning(fire_point);
 
-    bombs--;
+    subtract_bomb();
 }
 void ASpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {
@@ -192,7 +206,13 @@ void ASpaceShip::upgrade_laser() {
 }
 void ASpaceShip::add_bomb() {
     bombs++;
+    on_bombs_changed.Execute(bombs);
 }
+void ASpaceShip::subtract_bomb() {
+    bombs--;
+    on_bombs_changed.Execute(bombs);
+}
+
 void ASpaceShip::upgrade_health() {}
 void ASpaceShip::add_gold_ring() {
     gold_rings_collected++;
@@ -200,12 +220,9 @@ void ASpaceShip::add_gold_ring() {
         upgrade_health();
         gold_rings_collected = 0;
     }
+    on_gold_rings_changed.Execute(gold_rings_collected);
 }
-void ASpaceShip::boost() {
-    target_speed = boost_speed;
-    max_acceleration = boost_acceleration;
-}
-void ASpaceShip::brake() {
-    target_speed = brake_speed;
-    max_acceleration = brake_acceleration;
+void ASpaceShip::add_points(int32 x) {
+    points += x;
+    on_points_changed.Execute(points);
 }

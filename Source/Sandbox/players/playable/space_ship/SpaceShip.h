@@ -16,6 +16,13 @@ class AShipLaser;
 class UShipLaserConfig;
 class AShipBomb;
 
+DECLARE_DELEGATE_OneParam(FOnShipSpeedChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipHealthChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
+
 UCLASS()
 class ASpaceShip : public APawn {
     GENERATED_BODY()
@@ -31,18 +38,30 @@ class ASpaceShip : public APawn {
     void Tick(float dt) override;
 
     void turn(FVector2D direction);
+    void boost();
+    void brake();
+
     void fire_laser();
     void fire_bomb();
     void upgrade_laser();
     void add_bomb();
+
     void upgrade_health();
     void add_gold_ring();
-    void boost();
-    void brake();
+
+    void add_points(int32 x);
+
+    FOnShipHealthChanged on_health_changed;
+    FOnShipSpeedChanged on_speed_changed;
+    FOnShipEnergyChanged on_energy_changed;
+    FOnShipBombsChanged on_bombs_changed;
+    FOnShipGoldRingsChanged on_gold_rings_changed;
+    FOnShipPointsChanged on_points_changed;
   protected:
     void BeginPlay() override;
 
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
+    void subtract_bomb();
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
@@ -54,7 +73,12 @@ class ASpaceShip : public APawn {
     UBoxComponent* collision_box{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float health{100.f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FVector velocity;
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float thrust_energy{100.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float target_speed{0.f};
@@ -108,6 +132,9 @@ class ASpaceShip : public APawn {
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 gold_rings_collected{0};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    int32 points{0};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

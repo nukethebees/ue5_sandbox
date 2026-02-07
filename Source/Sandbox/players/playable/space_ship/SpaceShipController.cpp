@@ -38,11 +38,7 @@ void ASpaceShipController::Tick(float dt) {
 
 void ASpaceShipController::BeginPlay() {
     Super::BeginPlay();
-
-    RETURN_IF_NULLPTR(hud_widget_class);
-    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class);
-    RETURN_IF_NULLPTR(hud_widget);
-    hud_widget->AddToViewport();
+    initialise_hud();
 }
 
 void ASpaceShipController::OnPossess(APawn* in_pawn) {
@@ -52,7 +48,46 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
     subsystem->AddMappingContext(input.base_context, 0);
+
+    initialise_hud();
+
+    RETURN_IF_NULLPTR(hud_widget);
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(in_pawn));
+
+    ship->on_health_changed.BindUObject(hud_widget, &UShipHudWidget::set_health);
+    ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
+    ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
+    ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
+    ship->on_gold_rings_changed.BindUObject(hud_widget, &UShipHudWidget::set_gold_rings);
+    ship->on_points_changed.BindUObject(hud_widget, &UShipHudWidget::set_points);
+
+    ship->SetActorTickEnabled(true);
 }
+void ASpaceShipController::OnUnPossess() {
+    if (auto* ship{Cast<ASpaceShip>(GetPawn())}) {
+        ship->SetActorTickEnabled(false);
+
+        ship->on_health_changed.Unbind();
+        ship->on_speed_changed.Unbind();
+        ship->on_energy_changed.Unbind();
+        ship->on_bombs_changed.Unbind();
+        ship->on_gold_rings_changed.Unbind();
+        ship->on_points_changed.Unbind();
+    }
+
+    Super::OnUnPossess();
+}
+void ASpaceShipController::initialise_hud() {
+    if (hud_widget) {
+        return;
+    }
+
+    RETURN_IF_NULLPTR(hud_widget_class);
+    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
+    RETURN_IF_NULLPTR(hud_widget);
+    hud_widget->AddToViewport();
+}
+
 void ASpaceShipController::turn(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->turn(value.Get<FVector2D>());

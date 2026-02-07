@@ -26,6 +26,9 @@ class ASpaceShipController
   protected:
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
+    void OnUnPossess() override;
+
+    void initialise_hud();
 
     // UI
     UPROPERTY(EditAnywhere, Category = "UI")
