@@ -1,12 +1,12 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
-#include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
-#include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
-#include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
-#include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
+#include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
-#include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
+#include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
+#include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
+#include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
+#include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
 
 void UShipHudWidget::set_speed(float value) {
     if (!speed_widget) {
@@ -14,7 +14,7 @@ void UShipHudWidget::set_speed(float value) {
     }
     speed_widget->set_speed(value);
 }
-void UShipHudWidget::set_health(float value) {
+void UShipHudWidget::set_health(FShipHealth value) {
     if (!health_widget) {
         return;
     }

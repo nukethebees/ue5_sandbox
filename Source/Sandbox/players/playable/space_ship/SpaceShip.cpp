@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/ShipBomb.h"
 #include "Sandbox/combat/weapons/ShipLaser.h"
+#include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Camera/CameraComponent.h"
@@ -17,7 +18,8 @@ ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , spring_arm(CreateDefaultSubobject<USpringArmComponent>(TEXT("spring_arm")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
-    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box"))) {
+    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
+    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(spring_arm);
@@ -225,4 +227,7 @@ void ASpaceShip::add_gold_ring() {
 void ASpaceShip::add_points(int32 x) {
     points += x;
     on_points_changed.Execute(points);
+}
+auto ASpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
+    return health->on_health_changed;
 }

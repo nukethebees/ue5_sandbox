@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/playable/space_ship/ShipLaserMode.h"
 
 #include "CoreMinimal.h"
@@ -15,9 +16,9 @@ class UBoxComponent;
 class AShipLaser;
 class UShipLaserConfig;
 class AShipBomb;
+class UShipHealthComponent;
 
 DECLARE_DELEGATE_OneParam(FOnShipSpeedChanged, float);
-DECLARE_DELEGATE_OneParam(FOnShipHealthChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
@@ -57,9 +58,10 @@ class ASpaceShip : public APawn {
     void add_points(int32 x);
     auto get_points() const { return points; }
     auto get_lives() const { return lives; }
+    auto get_health_info() const { return health->get_health_info(); }
 
-    FOnShipHealthChanged on_health_changed;
     FOnShipSpeedChanged on_speed_changed;
+    auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
     FOnShipEnergyChanged on_energy_changed;
     FOnShipBombsChanged on_bombs_changed;
     FOnShipGoldRingsChanged on_gold_rings_changed;
@@ -79,9 +81,6 @@ class ASpaceShip : public APawn {
     UStaticMeshComponent* ship_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    float health{100.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FVector velocity;
@@ -145,6 +144,8 @@ class ASpaceShip : public APawn {
     int32 points{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 lives{3};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UShipHealthComponent* health{nullptr};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

@@ -1,5 +1,6 @@
 #include "Sandbox/players/playable/space_ship/SpaceShipController.h"
 
+#include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/playable/space_ship/SpaceShip.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
@@ -54,8 +55,9 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     RETURN_IF_NULLPTR(hud_widget);
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(in_pawn));
 
-    ship->on_health_changed.BindUObject(hud_widget, &UShipHudWidget::set_health);
-    hud_widget->set_health(1.f);
+    auto& health_delegate{ship->get_on_health_changed_delegate()};
+    health_delegate.BindUObject(hud_widget, &UShipHudWidget::set_health);
+    hud_widget->set_health(ship->get_health_info());
     ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
     hud_widget->set_speed(ship->get_speed());
     ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
@@ -75,7 +77,7 @@ void ASpaceShipController::OnUnPossess() {
     if (auto* ship{Cast<ASpaceShip>(GetPawn())}) {
         ship->SetActorTickEnabled(false);
 
-        ship->on_health_changed.Unbind();
+        ship->get_on_health_changed_delegate().Unbind();
         ship->on_speed_changed.Unbind();
         ship->on_energy_changed.Unbind();
         ship->on_bombs_changed.Unbind();

@@ -4,7 +4,8 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
-void UShipHealthWidget::set_health(float health) {
+void UShipHealthWidget::set_health(FShipHealth health) {
     RETURN_IF_NULLPTR(health_bar);
-    health_bar->SetPercent(health);
+    health_bar->SetPercent(static_cast<float>(health.health) /
+                           static_cast<float>(health.max_health));
 }

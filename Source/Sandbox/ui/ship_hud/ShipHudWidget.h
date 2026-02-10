@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/health/ShipHealth.h"
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
@@ -19,7 +21,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_speed(float value);
-    void set_health(float value);
+    void set_health(FShipHealth value);
     void set_energy(float value);
     void set_points(int32 value);
     void set_bombs(int32 value);
