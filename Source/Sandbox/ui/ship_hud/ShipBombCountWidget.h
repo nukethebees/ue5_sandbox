@@ -5,7 +5,10 @@
 
 #include "ShipBombCountWidget.generated.h"
 
-class UValueWidget;
+class UUniformGridPanel;
+class UMaterialInterface;
+
+class UShipBombIconWidget;
 
 UCLASS()
 class SANDBOX_API UShipBombCountWidget : public UUserWidget {
@@ -15,5 +18,7 @@ class SANDBOX_API UShipBombCountWidget : public UUserWidget {
     void set_count(int32 count);
   protected:
     UPROPERTY(meta = (BindWidget))
-    UValueWidget* widget{nullptr};
+    UUniformGridPanel* grid{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TSubclassOf<UShipBombIconWidget> icon_widget_class;
 };
