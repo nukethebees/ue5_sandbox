@@ -121,10 +121,19 @@ void ASpaceShip::Tick(float dt) {
 #endif
 
     auto const starting_thrust_energy{thrust_energy};
-    if (boost_brake_state == EBoostBrakeState::None) {
-        thrust_energy += dt * thrust_recharge_rate;
-    } else {
-        thrust_energy -= dt * thrust_depletion_rate;
+    switch (boost_brake_state) {
+        case EBoostBrakeState::None: {
+            thrust_energy += dt * thrust_recharge_rate;
+            break;
+        }
+        case EBoostBrakeState::Boost: {
+            thrust_energy -= dt * boost_depletion_rate;
+            break;
+        }
+        case EBoostBrakeState::Brake: {
+            thrust_energy -= dt * brake_depletion_rate;
+            break;
+        }
     }
     thrust_energy = FMath::Clamp(thrust_energy, 0.f, thrust_energy_max);
     if (starting_thrust_energy != thrust_energy) {

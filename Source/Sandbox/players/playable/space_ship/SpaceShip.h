@@ -97,7 +97,9 @@ class ASpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
     float thrust_energy{100.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
-    float thrust_depletion_rate{20.f};
+    float boost_depletion_rate{50.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    float brake_depletion_rate{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
     float thrust_recharge_rate{20.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
