@@ -96,6 +96,18 @@ void ASpaceShip::Tick(float dt) {
     }
 #endif
 
+    auto const starting_thrust_energy{thrust_energy};
+    if (target_speed != cruise_speed) {
+        thrust_energy -= dt * thrust_depletion_rate;
+    } else {
+        thrust_energy += dt * thrust_recharge_rate;
+    }
+
+    thrust_energy = FMath::Clamp(thrust_energy, 0.f, thrust_energy_max);
+    if (starting_thrust_energy != thrust_energy) {
+        on_energy_changed.Execute(thrust_energy / thrust_energy_max);
+    }
+
     target_speed = cruise_speed;
     max_acceleration = cruise_acceleration;
     on_speed_changed.Execute(new_speed);
@@ -105,6 +117,7 @@ void ASpaceShip::BeginPlay() {
     Super::BeginPlay();
 
     velocity = GetActorForwardVector() * cruise_speed;
+    thrust_energy = thrust_energy_max;
 
     check(ship_mesh);
     RETURN_IF_NULLPTR(ship_mesh);
