@@ -30,8 +30,10 @@ void ASpaceShipController::SetupInputComponent() {
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.fire_laser, Started, &ThisClass::fire_laser);
     bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
-    bind(input.boost, Triggered, &ThisClass::boost);
-    bind(input.brake, Triggered, &ThisClass::brake);
+    bind(input.boost, Started, &ThisClass::start_boost);
+    bind(input.boost, Completed, &ThisClass::stop_boost);
+    bind(input.brake, Started, &ThisClass::start_brake);
+    bind(input.brake, Completed, &ThisClass::stop_brake);
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -115,11 +117,19 @@ void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->fire_bomb();
 }
-void ASpaceShipController::boost(FInputActionValue const& value) {
+void ASpaceShipController::start_boost(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
-    ship->boost();
+    ship->start_boost();
 }
-void ASpaceShipController::brake(FInputActionValue const& value) {
+void ASpaceShipController::stop_boost(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
-    ship->brake();
+    ship->stop_boost();
+}
+void ASpaceShipController::start_brake(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->start_brake();
+}
+void ASpaceShipController::stop_brake(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->stop_brake();
 }

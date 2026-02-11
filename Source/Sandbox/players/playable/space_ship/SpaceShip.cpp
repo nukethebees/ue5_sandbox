@@ -34,6 +34,30 @@ ASpaceShip::ASpaceShip()
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
 
+    switch (boost_brake_state) {
+        case EBoostBrakeState::None: {
+            target_speed = cruise_speed;
+            break;
+        }
+        case EBoostBrakeState::Boost: {
+            target_speed = boost_speed;
+            break;
+        }
+        case EBoostBrakeState::Brake: {
+            target_speed = brake_speed;
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
+            break;
+        }
+    }
+
+    if (thrust_energy <= 0.f) {
+        target_speed = cruise_speed;
+        boost_brake_state = EBoostBrakeState::None;
+    }
+
 #if WITH_EDITOR
     seconds_since_last_log += dt;
     auto const can_log{seconds_since_last_log >= seconds_per_log};
@@ -97,18 +121,16 @@ void ASpaceShip::Tick(float dt) {
 #endif
 
     auto const starting_thrust_energy{thrust_energy};
-    if (target_speed != cruise_speed) {
-        thrust_energy -= dt * thrust_depletion_rate;
-    } else {
+    if (boost_brake_state == EBoostBrakeState::None) {
         thrust_energy += dt * thrust_recharge_rate;
+    } else {
+        thrust_energy -= dt * thrust_depletion_rate;
     }
-
     thrust_energy = FMath::Clamp(thrust_energy, 0.f, thrust_energy_max);
     if (starting_thrust_energy != thrust_energy) {
         on_energy_changed.Execute(thrust_energy / thrust_energy_max);
     }
 
-    target_speed = cruise_speed;
     max_acceleration = cruise_acceleration;
     on_speed_changed.Execute(new_speed);
 }
@@ -141,13 +163,25 @@ void ASpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
-void ASpaceShip::boost() {
-    target_speed = boost_speed;
-    max_acceleration = boost_acceleration;
+void ASpaceShip::start_boost() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        boost_brake_state = EBoostBrakeState::Boost;
+    }
 }
-void ASpaceShip::brake() {
-    target_speed = brake_speed;
-    max_acceleration = brake_acceleration;
+void ASpaceShip::stop_boost() {
+    if (boost_brake_state == EBoostBrakeState::Boost) {
+        boost_brake_state = EBoostBrakeState::None;
+    }
+}
+void ASpaceShip::start_brake() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        boost_brake_state = EBoostBrakeState::Brake;
+    }
+}
+void ASpaceShip::stop_brake() {
+    if (boost_brake_state == EBoostBrakeState::Brake) {
+        boost_brake_state = EBoostBrakeState::None;
+    }
 }
 
 void ASpaceShip::fire_laser() {

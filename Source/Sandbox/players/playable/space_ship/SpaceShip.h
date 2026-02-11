@@ -25,6 +25,13 @@ DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
 
+UENUM()
+enum class EBoostBrakeState : uint8 {
+    None,
+    Boost,
+    Brake 
+};
+
 UCLASS()
 class ASpaceShip : public APawn {
     GENERATED_BODY()
@@ -40,8 +47,10 @@ class ASpaceShip : public APawn {
     void Tick(float dt) override;
 
     void turn(FVector2D direction);
-    void boost();
-    void brake();
+    void start_boost();
+    void stop_boost();
+    void start_brake();
+    void stop_brake();
     auto get_velocity() const { return velocity; }
     auto get_speed() const { return get_velocity().Size(); }
 
@@ -59,7 +68,7 @@ class ASpaceShip : public APawn {
     auto get_points() const { return points; }
     auto get_lives() const { return lives; }
     auto get_health_info() const { return health->get_health_info(); }
-    auto can_boost_or_break() const { return thrust_energy < thrust_energy_max; }
+    auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
 
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
@@ -91,6 +100,8 @@ class ASpaceShip : public APawn {
     float thrust_depletion_rate{20.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
     float thrust_recharge_rate{20.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
     FVector velocity;

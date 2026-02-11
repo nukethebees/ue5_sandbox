@@ -46,9 +46,13 @@ class ASpaceShipController
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
     UFUNCTION()
-    void boost(FInputActionValue const& value);
+    void start_boost(FInputActionValue const& value);
     UFUNCTION()
-    void brake(FInputActionValue const& value);
+    void stop_boost(FInputActionValue const& value);
+    UFUNCTION()
+    void start_brake(FInputActionValue const& value);
+    UFUNCTION()
+    void stop_brake(FInputActionValue const& value);
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;
