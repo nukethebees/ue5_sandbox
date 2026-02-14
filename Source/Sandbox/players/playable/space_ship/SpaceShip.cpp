@@ -34,6 +34,11 @@ ASpaceShip::ASpaceShip()
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
 
+#if WITH_EDITOR
+    seconds_since_last_log += dt;
+    auto const can_log{seconds_since_last_log >= seconds_per_log};
+#endif
+
     switch (boost_brake_state) {
         case EBoostBrakeState::None: {
             target_speed = cruise_speed;
@@ -58,11 +63,6 @@ void ASpaceShip::Tick(float dt) {
         boost_brake_state = EBoostBrakeState::None;
     }
 
-#if WITH_EDITOR
-    seconds_since_last_log += dt;
-    auto const can_log{seconds_since_last_log >= seconds_per_log};
-#endif
-
     constexpr auto clamp{
         [](auto x, auto dt, auto abs_max) { return FMath::Clamp(x * dt, -abs_max, abs_max); }};
 
@@ -73,26 +73,9 @@ void ASpaceShip::Tick(float dt) {
             clamp(-rot.Pitch, dt, drot), 0.0f, clamp(-rot.Roll, dt, drot)};
 
         AddActorLocalRotation(delta_rotation);
-#if WITH_EDITOR
-        if (can_log) {
-            UE_LOG(LogSandboxActor, Verbose, TEXT("Levelling off."));
-            UE_LOG(LogSandboxActor, Verbose, TEXT("Cur rot: %s"), *rot.ToCompactString());
-            UE_LOG(LogSandboxActor,
-                   Verbose,
-                   TEXT("delta Rotation: %s"),
-                   *delta_rotation.ToCompactString());
-        }
-#endif
     } else {
         FRotator const delta_rotation(rotation_input.Y * drot, rotation_input.X * drot, 0.0f);
         AddActorLocalRotation(delta_rotation);
-
-#if WITH_EDITOR
-        if (can_log) {
-            UE_LOG(LogSandboxActor, Verbose, TEXT("Turning."));
-            UE_LOG(LogSandboxActor, Verbose, TEXT("Rotation: %s"), *delta_rotation.ToString());
-        }
-#endif
     }
 
     auto const current_rotation{ship_mesh->GetRelativeRotation()};
@@ -113,12 +96,6 @@ void ASpaceShip::Tick(float dt) {
 
     auto const delta_pos{velocity * dt};
     SetActorLocation(GetActorLocation() + delta_pos, true);
-
-#if WITH_EDITOR
-    if (can_log) {
-        seconds_since_last_log = 0.f;
-    }
-#endif
 
     auto const starting_thrust_energy{thrust_energy};
     switch (boost_brake_state) {
@@ -142,6 +119,12 @@ void ASpaceShip::Tick(float dt) {
 
     max_acceleration = cruise_acceleration;
     on_speed_changed.Execute(new_speed);
+
+#if WITH_EDITOR
+    if (can_log) {
+        seconds_since_last_log = 0.f;
+    }
+#endif
 }
 
 void ASpaceShip::BeginPlay() {
