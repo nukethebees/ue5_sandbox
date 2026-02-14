@@ -63,14 +63,11 @@ void ASpaceShip::Tick(float dt) {
         boost_brake_state = EBoostBrakeState::None;
     }
 
-    constexpr auto clamp{
-        [](auto x, auto dt, auto abs_max) { return FMath::Clamp(x * dt, -abs_max, abs_max); }};
-
     auto const drot{rotation_speed * dt};
     if (rotation_input == FVector2D::ZeroVector) {
         auto const rot{GetActorRotation()};
         FRotator const delta_rotation{
-            clamp(-rot.Pitch, dt, drot), 0.0f, clamp(-rot.Roll, dt, drot)};
+            tick_clamp(-rot.Pitch, dt, drot), 0.0f, tick_clamp(-rot.Roll, dt, drot)};
 
         AddActorLocalRotation(delta_rotation);
     } else {
@@ -89,7 +86,7 @@ void ASpaceShip::Tick(float dt) {
     auto const current_speed{velocity.Size()};
     auto const target_speed_delta{target_speed - current_speed};
     auto const max_frame_speed_delta{max_acceleration * dt};
-    auto const frame_speed_delta{clamp(target_speed_delta, dt, max_frame_speed_delta)};
+    auto const frame_speed_delta{tick_clamp(target_speed_delta, dt, max_frame_speed_delta)};
     auto const new_speed{current_speed + frame_speed_delta};
 
     velocity = GetActorForwardVector() * new_speed;

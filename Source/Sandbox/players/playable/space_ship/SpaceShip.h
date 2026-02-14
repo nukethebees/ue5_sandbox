@@ -26,11 +26,7 @@ DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
 
 UENUM()
-enum class EBoostBrakeState : uint8 {
-    None,
-    Boost,
-    Brake 
-};
+enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
 UCLASS()
 class ASpaceShip : public APawn {
@@ -69,6 +65,10 @@ class ASpaceShip : public APawn {
     auto get_lives() const { return lives; }
     auto get_health_info() const { return health->get_health_info(); }
     auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
+
+    static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
+        return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
+    }
 
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
