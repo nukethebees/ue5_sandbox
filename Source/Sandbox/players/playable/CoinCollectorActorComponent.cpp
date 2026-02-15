@@ -1,4 +1,4 @@
-#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/CoinCollectorActorComponent.h"
 
 #include "Sandbox/game_flow/PlatformerGameState.h"
 

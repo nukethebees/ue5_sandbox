@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Sandbox/players/playable/data/JetpackState.h"
+#include "Sandbox/players/playable/JetpackState.h"
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"

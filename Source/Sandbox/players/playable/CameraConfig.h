@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/players/playable/enums/CharacterCameraMode.h"
+#include "Sandbox/players/playable/CharacterCameraMode.h"
 
 struct FCameraConfig {
     constexpr FCameraConfig(ECharacterCameraMode camera_mode,

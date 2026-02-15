@@ -18,11 +18,11 @@
 #include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/pathfinding/DroppableWaypoint.h"
 #include "Sandbox/players/common/ActorDescriptionScannerComponent.h"
-#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
-#include "Sandbox/players/playable/actor_components/InteractorComponent.h"
-#include "Sandbox/players/playable/actor_components/JetpackComponent.h"
-#include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/players/playable/actor_components/WarpComponent.h"
+#include "Sandbox/players/playable/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/InteractorComponent.h"
+#include "Sandbox/players/playable/JetpackComponent.h"
+#include "Sandbox/players/playable/SpeedBoostComponent.h"
+#include "Sandbox/players/playable/WarpComponent.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

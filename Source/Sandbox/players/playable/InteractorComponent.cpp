@@ -1,4 +1,4 @@
-#include "Sandbox/players/playable/actor_components/InteractorComponent.h"
+#include "Sandbox/players/playable/InteractorComponent.h"
 
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/Interactable.h"

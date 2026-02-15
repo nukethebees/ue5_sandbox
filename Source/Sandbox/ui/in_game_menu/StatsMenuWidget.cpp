@@ -5,8 +5,8 @@
 #include "Components/GridPanel.h"
 #include "Components/TextBlock.h"
 
-#include "Sandbox/players/playable/characters/MyCharacter.h"
-#include "Sandbox/players/playable/data/PlayerSkills.h"
+#include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/playable/PlayerSkills.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

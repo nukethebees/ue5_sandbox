@@ -4,7 +4,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "Sandbox/players/npcs/TestEnemy.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/players/playable/MyCharacter.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

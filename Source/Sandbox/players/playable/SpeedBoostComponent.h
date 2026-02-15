@@ -6,7 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 #include "Sandbox/items/SpeedBoost.h"
-#include "Sandbox/players/playable/interfaces/MovementMultiplierReceiver.h"
+#include "Sandbox/players/playable/MovementMultiplierReceiver.h"
 
 #include "SpeedBoostComponent.generated.h"
 

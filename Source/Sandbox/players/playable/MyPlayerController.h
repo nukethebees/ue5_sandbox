@@ -8,9 +8,9 @@
 #include "Sandbox/input/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
-#include "Sandbox/players/playable/data/MyPlayerControllerCache.h"
-#include "Sandbox/players/playable/data/MyPlayerControllerInputActions.h"
+#include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/playable/MyPlayerControllerCache.h"
+#include "Sandbox/players/playable/MyPlayerControllerInputActions.h"
 
 #include "MyPlayerController.generated.h"
 

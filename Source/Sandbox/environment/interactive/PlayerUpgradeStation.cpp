@@ -1,7 +1,7 @@
 #include "Sandbox/environment/interactive/PlayerUpgradeStation.h"
 
 #include "Sandbox/inventory/InventoryComponent.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/players/playable/MyCharacter.h"
 #include "Sandbox/ui/in_world/PlayerAttributesUpgradeWidget.h"
 #include "Sandbox/ui/in_world/PlayerPsiAbilitiesUpgradeWidget.h"
 #include "Sandbox/ui/in_world/PlayerTechSkillsUpgradeWidget.h"

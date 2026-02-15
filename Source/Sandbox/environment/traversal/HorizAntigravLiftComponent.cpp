@@ -3,7 +3,7 @@
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/players/playable/MyCharacter.h"
 
 UHorizAntigravLiftComponent::UHorizAntigravLiftComponent() {
     PrimaryComponentTick.bCanEverTick = true;

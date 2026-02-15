@@ -1,4 +1,4 @@
-#include "Sandbox/players/playable/actor_components/WarpToPlayerStartActorComponent.h"
+#include "Sandbox/players/playable/WarpToPlayerStartActorComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "EngineUtils.h"

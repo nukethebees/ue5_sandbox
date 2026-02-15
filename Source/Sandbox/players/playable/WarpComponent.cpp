@@ -1,5 +1,7 @@
 #include "WarpComponent.h"
 
+#include "GameFramework/Actor.h"
+
 UWarpComponent::UWarpComponent() {
     PrimaryComponentTick.bCanEverTick = false;
 }

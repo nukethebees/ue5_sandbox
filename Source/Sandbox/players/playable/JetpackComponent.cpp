@@ -1,4 +1,4 @@
-#include "Sandbox/players/playable/actor_components/JetpackComponent.h"
+#include "Sandbox/players/playable/JetpackComponent.h"
 
 #include "Engine/World.h"
 #include "GameFramework/Character.h"

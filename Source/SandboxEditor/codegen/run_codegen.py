@@ -17,7 +17,7 @@ def generate_skills() -> None:
         SkillConfig.weapon("small_guns"),
     ]
 
-    output_dir = pc.Paths.sandbox_source / "players/playable/data"
+    output_dir = pc.Paths.sandbox_source / "players/playable"
     ed_output_dir = Path("./Source/SandboxEditor/slate/")
     generator = SkillGenerator(player_skills, output_dir, ed_output_dir)
     generator.run()

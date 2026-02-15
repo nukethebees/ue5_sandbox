@@ -1,4 +1,4 @@
-#include "Sandbox/players/playable/data/generated/PlayerSkills.h"
+#include "Sandbox/players/playable/PlayerSkills.h"
 
 namespace ml {
 SANDBOX_API auto get_display_name(EPlayerSkillName value) -> FName {

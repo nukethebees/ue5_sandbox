@@ -5,9 +5,9 @@
 #include "Sandbox/interaction/CollisionContext.h"
 #include "Sandbox/items/SpeedBoost.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/players/playable/actor_components/CoinCollectorActorComponent.h"
-#include "Sandbox/players/playable/actor_components/SpeedBoostComponent.h"
-#include "Sandbox/players/playable/characters/MyCharacter.h"
+#include "Sandbox/players/playable/CoinCollectorActorComponent.h"
+#include "Sandbox/players/playable/SpeedBoostComponent.h"
+#include "Sandbox/players/playable/MyCharacter.h"
 
 #include "CoreMinimal.h"
 
