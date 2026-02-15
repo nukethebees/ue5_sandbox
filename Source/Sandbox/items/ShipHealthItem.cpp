@@ -2,7 +2,7 @@
 
 #include "Sandbox/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/items/ShipHealthItemConfig.h"
-#include "Sandbox/players/playable/space_ship/SpaceShip.h"
+#include "Sandbox/players/SpaceShip.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"

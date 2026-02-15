@@ -2,7 +2,7 @@
 
 #include "Sandbox/interaction/CollisionEffectSubsystem.h"
 #include "Sandbox/interaction/CollisionPayloads.h"
-#include "Sandbox/players/playable/SpeedBoostComponent.h"
+#include "Sandbox/players/SpeedBoostComponent.h"
 
 USpeedBoostItemComponent::USpeedBoostItemComponent() {
     PrimaryComponentTick.bCanEverTick = false;

@@ -2,8 +2,8 @@
 
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/DamageableShip.h"
-#include "Sandbox/players/playable/space_ship/ShipScoringSubsystem.h"
+#include "Sandbox/players/DamageableShip.h"
+#include "Sandbox/players/ShipScoringSubsystem.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"

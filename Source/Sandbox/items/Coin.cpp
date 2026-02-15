@@ -5,8 +5,8 @@
 
 #include "Sandbox/environment/effects/RotationManagerSubsystem.h"
 #include "Sandbox/interaction/CollisionEffectSubsystem.h"
-#include "Sandbox/players/playable/CoinCollectorActorComponent.h"
-#include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/CoinCollectorActorComponent.h"
+#include "Sandbox/players/MyCharacter.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

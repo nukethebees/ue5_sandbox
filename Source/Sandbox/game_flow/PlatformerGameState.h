@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
-#include "Sandbox/players/playable/CoinCollectorActorComponent.h"
+#include "Sandbox/players/CoinCollectorActorComponent.h"
 
 #include "PlatformerGameState.generated.h"
 

@@ -9,7 +9,7 @@
 #include "Sandbox/health/DeathHandler.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/interaction/Describable.h"
-#include "Sandbox/players/common/TeamID.h"
+#include "Sandbox/players/TeamID.h"
 
 #include "FloorTurret.generated.h"
 

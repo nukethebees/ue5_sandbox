@@ -3,8 +3,8 @@
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/DamageableShip.h"
-#include "Sandbox/players/playable/space_ship/ShipScoringSubsystem.h"
+#include "Sandbox/players/DamageableShip.h"
+#include "Sandbox/players/ShipScoringSubsystem.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"

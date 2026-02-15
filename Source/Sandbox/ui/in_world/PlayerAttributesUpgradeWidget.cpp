@@ -6,7 +6,7 @@
 
 #include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/MyCharacter.h"
 #include "Sandbox/ui/widgets/TextButtonWidget.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

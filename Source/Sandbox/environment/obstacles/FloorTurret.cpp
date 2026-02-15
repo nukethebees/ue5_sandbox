@@ -13,7 +13,7 @@
 #include "Sandbox/combat/bullets/BulletActor.h"
 #include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/TeamID.h"
+#include "Sandbox/players/TeamID.h"
 #include "Sandbox/utilities/line.h"
 #include "Sandbox/utilities/vision_maths.h"
 

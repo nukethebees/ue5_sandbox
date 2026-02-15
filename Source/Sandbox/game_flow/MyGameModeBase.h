@@ -5,8 +5,8 @@
 #include "Sandbox/core/destruction/RemoveGhostsOnStartComponent.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/common/TeamID.h"
-#include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/MyCharacter.h"
+#include "Sandbox/players/TeamID.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"

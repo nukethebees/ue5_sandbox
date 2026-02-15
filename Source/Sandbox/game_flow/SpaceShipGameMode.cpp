@@ -1,6 +1,6 @@
 #include "SpaceShipGameMode.h"
 
-#include "Sandbox/players/playable/space_ship/SpaceShip.h"
+#include "Sandbox/players/SpaceShip.h"
 
 #include "Kismet/GameplayStatics.h"
 

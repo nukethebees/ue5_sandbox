@@ -17,7 +17,7 @@ def generate_skills() -> None:
         SkillConfig.weapon("small_guns"),
     ]
 
-    output_dir = pc.Paths.sandbox_source / "players/playable"
+    output_dir = pc.Paths.sandbox_source / "players"
     ed_output_dir = Path("./Source/SandboxEditor/slate/")
     generator = SkillGenerator(player_skills, output_dir, ed_output_dir)
     generator.run()
@@ -41,7 +41,7 @@ def generate_string_constants() -> None:
         )
     ]
     name = "TestEnemyBlackboardConstants"
-    file_path = pc.Paths.sandbox_source / f"players/npcs/{name}.h"
+    file_path = pc.Paths.sandbox_source / f"players/{name}.h"
     gen = scg.ConstantGenerator(name, inputs)
 
     with open(file_path, "w") as file:
