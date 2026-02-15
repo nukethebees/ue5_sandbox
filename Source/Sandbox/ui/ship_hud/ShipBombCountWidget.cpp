@@ -11,11 +11,11 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 void UShipBombCountWidget::set_count(int32 count) {
+    constexpr int32 max_icons{8};
+    constexpr int32 columns{4};
+
     RETURN_IF_NULLPTR(grid);
     TRY_INIT_PTR(world, GetWorld());
-
-    int32 const max_icons{8};
-    int32 const columns{4};
 
     grid->ClearChildren();
 
