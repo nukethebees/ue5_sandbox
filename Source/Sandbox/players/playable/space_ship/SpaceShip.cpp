@@ -36,7 +36,6 @@ void ASpaceShip::Tick(float dt) {
 
 #if WITH_EDITOR
     seconds_since_last_log += dt;
-    auto const can_log{seconds_since_last_log >= seconds_per_log};
 #endif
 
     update_boost_brake(dt);
@@ -45,7 +44,7 @@ void ASpaceShip::Tick(float dt) {
     integrate_velocity(dt);
 
 #if WITH_EDITOR
-    if (can_log) {
+    if (can_log()) {
         seconds_since_last_log = 0.f;
     }
 #endif

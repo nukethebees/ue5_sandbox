@@ -87,6 +87,10 @@ class ASpaceShip : public APawn {
     void update_visual_orientation(this auto& self, float dt);
     void integrate_velocity(this auto& self, float dt);
 
+#if WITH_EDITOR
+    auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
+#endif
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
