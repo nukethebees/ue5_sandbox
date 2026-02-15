@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sandbox/combat/weapons/ShipProjectileType.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/playable/space_ship/ShipLaserMode.h"
 
@@ -62,8 +63,8 @@ class ASpaceShip : public APawn {
     void add_gold_ring();
     auto get_gold_rings() const { return gold_rings_collected; }
 
-    void add_points(int32 x);
     auto get_points() const { return points; }
+    auto record_kills(EShipProjectileType projectile_type, int32 kills);
     auto get_lives() const { return lives; }
     auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
 
@@ -87,6 +88,8 @@ class ASpaceShip : public APawn {
     void update_actor_rotation(this auto& self, float dt);
     void update_visual_orientation(this auto& self, float dt);
     void integrate_velocity(this auto& self, float dt);
+
+    void add_points(int32 x);
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
