@@ -69,6 +69,7 @@ class ASpaceShip
     auto get_points() const { return points; }
     void record_kills(int32 kills);
     auto get_lives() const { return lives; }
+    void add_life();
     auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {

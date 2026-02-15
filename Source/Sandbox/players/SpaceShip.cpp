@@ -296,3 +296,7 @@ auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDa
     FShipDamageResult result{type};
     return result;
 }
+void ASpaceShip::add_life() {
+    lives += 1;
+    on_lives_changed.Execute(lives);
+}
