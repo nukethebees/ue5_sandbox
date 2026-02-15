@@ -12,3 +12,9 @@ void UShipHealthComponent::set_health(int32 new_health) {
     health.health = new_health;
     on_health_changed.Execute(health);
 }
+void UShipHealthComponent::add_health(int32 new_health) {
+    set_health(health.health + new_health);
+}
+void UShipHealthComponent::upgrade_max_health() {
+    health.upgrade_max_health();
+}

@@ -45,7 +45,7 @@ class AShipHealthItem : public AActor {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UMaterialInterface* material{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    float health{50.f};
+    int32 health{50};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     EShipHealthItemType type{EShipHealthItemType::Silver};
 };

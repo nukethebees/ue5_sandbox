@@ -252,11 +252,16 @@ void ASpaceShip::subtract_bomb() {
     on_bombs_changed.Execute(bombs);
 }
 
-void ASpaceShip::upgrade_health() {}
+void ASpaceShip::add_health(int32 added_health) {
+    health->add_health(added_health);
+}
+void ASpaceShip::upgrade_max_health() {
+    health->upgrade_max_health();
+}
 void ASpaceShip::add_gold_ring() {
     gold_rings_collected++;
     if (gold_rings_collected >= 3) {
-        upgrade_health();
+        upgrade_max_health();
         gold_rings_collected = 0;
     }
     on_gold_rings_changed.Execute(gold_rings_collected);

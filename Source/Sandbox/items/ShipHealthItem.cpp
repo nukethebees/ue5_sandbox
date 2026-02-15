@@ -46,6 +46,7 @@ void AShipHealthItem::on_overlap_begin(UPrimitiveComponent* overlapped_comp,
                                        bool from_sweep,
                                        FHitResult const& sweep_result) {
     if (auto* ship{Cast<ASpaceShip>(other_actor)}) {
+        ship->add_health(health);
         if (type == EShipHealthItemType::Gold) {
             ship->add_gold_ring();
         }

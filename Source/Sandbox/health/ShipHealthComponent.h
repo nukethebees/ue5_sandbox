@@ -19,6 +19,8 @@ class SANDBOX_API UShipHealthComponent : public UActorComponent {
 
     auto get_health() const { return health.health; }
     void set_health(int32 new_health);
+    void add_health(int32 new_health);
+    void upgrade_max_health();
     auto get_max_health() const { return health.max_health; }
     auto get_health_info() const { return health; }
 

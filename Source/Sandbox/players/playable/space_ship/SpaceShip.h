@@ -56,14 +56,15 @@ class ASpaceShip : public APawn {
     void add_bomb();
     auto get_bombs() const { return bombs; }
 
-    void upgrade_health();
+    void upgrade_max_health();
+    void add_health(int32 added_health);
+    auto get_health_info() const { return health->get_health_info(); }
     void add_gold_ring();
     auto get_gold_rings() const { return gold_rings_collected; }
 
     void add_points(int32 x);
     auto get_points() const { return points; }
     auto get_lives() const { return lives; }
-    auto get_health_info() const { return health->get_health_info(); }
     auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
