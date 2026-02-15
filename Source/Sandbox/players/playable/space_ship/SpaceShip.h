@@ -84,6 +84,8 @@ class ASpaceShip : public APawn {
     void subtract_bomb();
     void update_boost_brake(this auto& self, float dt);
     void update_actor_rotation(this auto& self, float dt);
+    void update_visual_orientation(this auto& self, float dt);
+    void integrate_velocity(this auto& self, float dt);
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};

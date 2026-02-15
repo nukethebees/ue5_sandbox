@@ -41,28 +41,8 @@ void ASpaceShip::Tick(float dt) {
 
     update_boost_brake(dt);
     update_actor_rotation(dt);
-
-    auto const current_rotation{ship_mesh->GetRelativeRotation()};
-
-    auto const target_pitch{rotation_input.Y * pitch_angle_max};
-    auto const new_pitch{FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, pitch_speed)};
-    auto const target_roll{rotation_input.X * bank_angle_max};
-    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, bank_speed)};
-    ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
-
-    auto const current_speed{velocity.Size()};
-    auto const target_speed_delta{target_speed - current_speed};
-    auto const max_frame_speed_delta{max_acceleration * dt};
-    auto const frame_speed_delta{tick_clamp(target_speed_delta, dt, max_frame_speed_delta)};
-    auto const new_speed{current_speed + frame_speed_delta};
-
-    velocity = GetActorForwardVector() * new_speed;
-
-    auto const delta_pos{velocity * dt};
-    SetActorLocation(GetActorLocation() + delta_pos, true);
-
-    max_acceleration = cruise_acceleration;
-    on_speed_changed.Execute(new_speed);
+    update_visual_orientation(dt);
+    integrate_velocity(dt);
 
 #if WITH_EDITOR
     if (can_log) {
@@ -120,6 +100,30 @@ void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
             self.rotation_input.Y * drot, self.rotation_input.X * drot, 0.0f);
         self.AddActorLocalRotation(delta_rotation);
     }
+}
+void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
+    auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
+    auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
+    auto const new_pitch{
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
+    auto const target_roll{self.rotation_input.X * self.bank_angle_max};
+    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, self.bank_speed)};
+    self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
+}
+void ASpaceShip::integrate_velocity(this auto& self, float dt) {
+    auto const current_speed{self.velocity.Size()};
+    auto const target_speed_delta{self.target_speed - current_speed};
+    auto const max_frame_speed_delta{self.max_acceleration * dt};
+    auto const frame_speed_delta{self.tick_clamp(target_speed_delta, dt, max_frame_speed_delta)};
+    auto const new_speed{current_speed + frame_speed_delta};
+
+    self.velocity = self.GetActorForwardVector() * new_speed;
+
+    auto const delta_pos{self.velocity * dt};
+    self.SetActorLocation(self.GetActorLocation() + delta_pos, true);
+
+    self.max_acceleration = self.cruise_acceleration;
+    self.on_speed_changed.Execute(new_speed);
 }
 
 void ASpaceShip::BeginPlay() {
