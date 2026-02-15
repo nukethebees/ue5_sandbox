@@ -40,18 +40,7 @@ void ASpaceShip::Tick(float dt) {
 #endif
 
     update_boost_brake(dt);
-
-    auto const drot{rotation_speed * dt};
-    if (rotation_input == FVector2D::ZeroVector) {
-        auto const rot{GetActorRotation()};
-        FRotator const delta_rotation{
-            tick_clamp(-rot.Pitch, dt, drot), 0.0f, tick_clamp(-rot.Roll, dt, drot)};
-
-        AddActorLocalRotation(delta_rotation);
-    } else {
-        FRotator const delta_rotation(rotation_input.Y * drot, rotation_input.X * drot, 0.0f);
-        AddActorLocalRotation(delta_rotation);
-    }
+    update_actor_rotation(dt);
 
     auto const current_rotation{ship_mesh->GetRelativeRotation()};
 
@@ -116,6 +105,20 @@ void ASpaceShip::update_boost_brake(this auto& self, float dt) {
 
     if (starting_thrust_energy != self.thrust_energy) {
         self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
+    }
+}
+void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
+    auto const drot{self.rotation_speed * dt};
+    if (self.rotation_input == FVector2D::ZeroVector) {
+        auto const rot{self.GetActorRotation()};
+        FRotator const delta_rotation{
+            self.tick_clamp(-rot.Pitch, dt, drot), 0.0f, self.tick_clamp(-rot.Roll, dt, drot)};
+
+        self.AddActorLocalRotation(delta_rotation);
+    } else {
+        FRotator const delta_rotation(
+            self.rotation_input.Y * drot, self.rotation_input.X * drot, 0.0f);
+        self.AddActorLocalRotation(delta_rotation);
     }
 }
 
