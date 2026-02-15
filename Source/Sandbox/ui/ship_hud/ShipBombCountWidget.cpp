@@ -1,6 +1,6 @@
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 
-#include "Sandbox/ui/ship_hud/ShipBombIconWidget.h"
+#include "Sandbox/ui/ship_hud/ShipRenderIconWidget.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
@@ -22,7 +22,7 @@ void UShipBombCountWidget::set_count(int32 count) {
     auto const icons_to_show{FMath::Min(count, max_icons)};
 
     for (int32 i{0}; i < icons_to_show; ++i) {
-        auto* icon_widget{CreateWidget<UShipBombIconWidget>(world, icon_widget_class)};
+        auto* icon_widget{CreateWidget<UShipRenderIconWidget>(world, icon_widget_class)};
         check(icon_widget);
 
         auto const row{i / columns};

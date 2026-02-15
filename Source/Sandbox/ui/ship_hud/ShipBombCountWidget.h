@@ -8,7 +8,7 @@
 class UUniformGridPanel;
 class UMaterialInterface;
 
-class UShipBombIconWidget;
+class UShipRenderIconWidget;
 
 UCLASS()
 class SANDBOX_API UShipBombCountWidget : public UUserWidget {
@@ -20,5 +20,5 @@ class SANDBOX_API UShipBombCountWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UUniformGridPanel* grid{nullptr};
     UPROPERTY(EditAnywhere, Category = "Ship")
-    TSubclassOf<UShipBombIconWidget> icon_widget_class;
+    TSubclassOf<UShipRenderIconWidget> icon_widget_class;
 };
