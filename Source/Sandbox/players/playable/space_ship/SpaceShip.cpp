@@ -270,10 +270,8 @@ void ASpaceShip::add_points(int32 x) {
     points += x;
     on_points_changed.Execute(points);
 }
-auto ASpaceShip::record_kills(EShipProjectileType projectile_type, int32 kills) {
-    auto const added_points{projectile_type == EShipProjectileType::homing_laser ? (2 * kills - 1)
-                                                                                 : kills};
-    add_points(added_points);
+void ASpaceShip::record_kills(int32 kills) {
+    add_points(kills);
 }
 auto ASpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
     return health->on_health_changed;

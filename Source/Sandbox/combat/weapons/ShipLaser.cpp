@@ -4,6 +4,7 @@
 #include "Sandbox/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/common/DamageableShip.h"
+#include "Sandbox/players/playable/space_ship/ShipScoringSubsystem.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -89,15 +90,26 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
                         UPrimitiveComponent* other_component,
                         FVector NormalImpulse,
                         FHitResult const& Hit) {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Laser hit."));
-
-    if (auto* ship{Cast<IDamageableShip>(other_actor)}) {
-        if (auto const* instigator{this->GetInstigator()}) {
-            ship->apply_damage(damage, *instigator);
-        } else {
-            UE_LOG(LogSandboxActor, Error, TEXT("Instigator is nullptr"));
-        }
+    if (other_actor) {
+        do_hit(*other_actor);
     }
 
     Destroy();
+}
+void AShipLaser::do_hit(AActor& actor) {
+    TRY_INIT_PTR(ship, Cast<IDamageableShip>(&actor));
+    TRY_INIT_PTR(instigator, GetInstigator());
+    auto const damage_result{ship->apply_damage(damage, *instigator)};
+
+    if (!damage_result.was_killed()) {
+        return;
+    }
+
+    TRY_INIT_PTR(world, GetWorld());
+    TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
+
+    FShipAttackResult kill_result{
+        instigator, EShipProjectileType::laser, FShipAttackResult::Actors{&actor}};
+
+    ss->register_kills(kill_result);
 }

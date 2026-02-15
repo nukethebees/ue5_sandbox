@@ -67,7 +67,7 @@ class ASpaceShip
     auto get_gold_rings() const { return gold_rings_collected; }
 
     auto get_points() const { return points; }
-    auto record_kills(EShipProjectileType projectile_type, int32 kills);
+    void record_kills(int32 kills);
     auto get_lives() const { return lives; }
     auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
 

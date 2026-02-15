@@ -9,7 +9,7 @@ struct FShipDamageResult {
     FShipDamageResult(EDamageResult result_type)
         : result_type(result_type) {}
 
-    auto was_killed() const;
+    bool was_killed() const;
   protected:
     EDamageResult result_type;
 };
