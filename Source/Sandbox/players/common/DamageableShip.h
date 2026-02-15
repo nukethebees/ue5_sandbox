@@ -3,6 +3,7 @@
 #include "Sandbox/players/common/ShipDamageResult.h"
 
 #include "CoreMinimal.h"
+#include "UObject/Interface.h"
 
 #include "DamageableShip.generated.h"
 

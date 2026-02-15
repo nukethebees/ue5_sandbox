@@ -2,13 +2,14 @@
 
 #include "CoreMinimal.h"
 
-#include "ShipDamageResult.generated.h"
+enum class EDamageResult : uint8 { NoEffect, Damaged, Killed };
 
-USTRUCT()
 struct FShipDamageResult {
-    GENERATED_BODY()
+    FShipDamageResult() = delete;
+    FShipDamageResult(EDamageResult result_type)
+        : result_type(result_type) {}
 
-    FShipDamageResult() = default;
-
-    auto was_killed() const { return false; }
+    auto was_killed() const;
+  protected:
+    EDamageResult result_type;
 };

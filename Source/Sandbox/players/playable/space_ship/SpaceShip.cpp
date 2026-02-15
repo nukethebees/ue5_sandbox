@@ -280,8 +280,19 @@ auto ASpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
 }
 
 auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {
+    auto const original_health{health->get_health()};
+    EDamageResult type{EDamageResult::NoEffect};
+
     health->apply_damage(damage);
 
-    FShipDamageResult result;
+    if (health->is_dead()) {
+        type = EDamageResult::Killed;
+    } else if (health->get_health() < original_health) {
+        type = EDamageResult::Damaged;
+    } else {
+        type = EDamageResult::NoEffect;
+    }
+
+    FShipDamageResult result{type};
     return result;
 }

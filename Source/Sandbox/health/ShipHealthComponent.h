@@ -24,6 +24,7 @@ class SANDBOX_API UShipHealthComponent : public UActorComponent {
     void upgrade_max_health();
     auto get_max_health() const { return health.max_health; }
     auto get_health_info() const { return health; }
+    bool is_dead() const { return health.health <= 0; }
 
     FOnShipHealthChanged on_health_changed;
   protected:
