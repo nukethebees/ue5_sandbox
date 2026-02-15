@@ -97,7 +97,11 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
     Destroy();
 }
 void AShipLaser::do_hit(AActor& actor) {
-    TRY_INIT_PTR(ship, Cast<IDamageableShip>(&actor));
+    auto* ship{Cast<IDamageableShip>(&actor)};
+    if (!ship) {
+        return;
+    }
+
     TRY_INIT_PTR(instigator, GetInstigator());
     auto const damage_result{ship->apply_damage(damage, *instigator)};
 
