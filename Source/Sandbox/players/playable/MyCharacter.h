@@ -17,10 +17,10 @@
 #include "Sandbox/players/common/TeamID.h"
 #include "Sandbox/players/playable/CameraConfig.h"
 #include "Sandbox/players/playable/HumanoidMovement.h"
-#include "Sandbox/players/playable/PlayerSkills.h"
-#include "Sandbox/players/playable/MyCharacterDelegates.h"
 #include "Sandbox/players/playable/MaxSpeedChangeListener.h"
 #include "Sandbox/players/playable/MovementMultiplierReceiver.h"
+#include "Sandbox/players/playable/MyCharacterDelegates.h"
+#include "Sandbox/players/playable/PlayerSkills.h"
 #include "Sandbox/utilities/enums.h"
 
 #include "MyCharacter.generated.h"

@@ -15,7 +15,7 @@ class AShipItemCapture : public AActor {
     GENERATED_BODY()
   public:
     AShipItemCapture();
-    
+
     void Tick(float dt) override;
   protected:
     void BeginPlay() override;

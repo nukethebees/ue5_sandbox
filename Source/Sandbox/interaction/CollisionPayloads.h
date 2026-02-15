@@ -6,8 +6,8 @@
 #include "Sandbox/items/SpeedBoost.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/players/playable/CoinCollectorActorComponent.h"
-#include "Sandbox/players/playable/SpeedBoostComponent.h"
 #include "Sandbox/players/playable/MyCharacter.h"
+#include "Sandbox/players/playable/SpeedBoostComponent.h"
 
 #include "CoreMinimal.h"
 
