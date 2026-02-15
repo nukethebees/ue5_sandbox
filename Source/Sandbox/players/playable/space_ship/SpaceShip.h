@@ -82,6 +82,7 @@ class ASpaceShip : public APawn {
 
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
     void subtract_bomb();
+    void update_boost_brake(this auto& self, float dt);
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};

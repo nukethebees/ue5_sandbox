@@ -39,29 +39,7 @@ void ASpaceShip::Tick(float dt) {
     auto const can_log{seconds_since_last_log >= seconds_per_log};
 #endif
 
-    switch (boost_brake_state) {
-        case EBoostBrakeState::None: {
-            target_speed = cruise_speed;
-            break;
-        }
-        case EBoostBrakeState::Boost: {
-            target_speed = boost_speed;
-            break;
-        }
-        case EBoostBrakeState::Brake: {
-            target_speed = brake_speed;
-            break;
-        }
-        default: {
-            UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
-            break;
-        }
-    }
-
-    if (thrust_energy <= 0.f) {
-        target_speed = cruise_speed;
-        boost_brake_state = EBoostBrakeState::None;
-    }
+    update_boost_brake(dt);
 
     auto const drot{rotation_speed * dt};
     if (rotation_input == FVector2D::ZeroVector) {
@@ -94,26 +72,6 @@ void ASpaceShip::Tick(float dt) {
     auto const delta_pos{velocity * dt};
     SetActorLocation(GetActorLocation() + delta_pos, true);
 
-    auto const starting_thrust_energy{thrust_energy};
-    switch (boost_brake_state) {
-        case EBoostBrakeState::None: {
-            thrust_energy += dt * thrust_recharge_rate;
-            break;
-        }
-        case EBoostBrakeState::Boost: {
-            thrust_energy -= dt * boost_depletion_rate;
-            break;
-        }
-        case EBoostBrakeState::Brake: {
-            thrust_energy -= dt * brake_depletion_rate;
-            break;
-        }
-    }
-    thrust_energy = FMath::Clamp(thrust_energy, 0.f, thrust_energy_max);
-    if (starting_thrust_energy != thrust_energy) {
-        on_energy_changed.Execute(thrust_energy / thrust_energy_max);
-    }
-
     max_acceleration = cruise_acceleration;
     on_speed_changed.Execute(new_speed);
 
@@ -122,6 +80,43 @@ void ASpaceShip::Tick(float dt) {
         seconds_since_last_log = 0.f;
     }
 #endif
+}
+void ASpaceShip::update_boost_brake(this auto& self, float dt) {
+    auto const starting_thrust_energy{self.thrust_energy};
+
+    if (starting_thrust_energy <= 0.f) {
+        self.boost_brake_state = EBoostBrakeState::None;
+    }
+
+    switch (self.boost_brake_state) {
+        case EBoostBrakeState::None: {
+            self.target_speed = self.cruise_speed;
+            self.thrust_energy = starting_thrust_energy + dt * self.thrust_recharge_rate;
+            break;
+        }
+        case EBoostBrakeState::Boost: {
+            self.target_speed = self.boost_speed;
+            self.thrust_energy = starting_thrust_energy - dt * self.boost_depletion_rate;
+            break;
+        }
+        case EBoostBrakeState::Brake: {
+            self.target_speed = self.brake_speed;
+            self.thrust_energy = starting_thrust_energy - dt * self.brake_depletion_rate;
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
+            self.target_speed = self.cruise_speed;
+            self.boost_brake_state = EBoostBrakeState::None;
+            break;
+        }
+    }
+
+    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
+
+    if (starting_thrust_energy != self.thrust_energy) {
+        self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
+    }
 }
 
 void ASpaceShip::BeginPlay() {
