@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/ShipProjectileType.h"
 #include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/players/common/DamageableShip.h"
 #include "Sandbox/players/playable/space_ship/ShipLaserMode.h"
 
 #include "CoreMinimal.h"
@@ -30,7 +31,9 @@ UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
 UCLASS()
-class ASpaceShip : public APawn {
+class ASpaceShip
+    : public APawn
+    , public IDamageableShip {
     GENERATED_BODY()
   public:
     struct Sockets {
@@ -71,6 +74,9 @@ class ASpaceShip : public APawn {
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
     }
+
+    // IDamageableShip
+    auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
 
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;

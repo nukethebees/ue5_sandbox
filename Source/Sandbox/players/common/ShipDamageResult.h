@@ -10,7 +10,5 @@ struct FShipDamageResult {
 
     FShipDamageResult() = default;
 
-    auto was_killed() const { return was_killed_; }
-  protected:
-    bool was_killed_{false};
+    auto was_killed() const { return false; }
 };

@@ -278,3 +278,10 @@ auto ASpaceShip::record_kills(EShipProjectileType projectile_type, int32 kills) 
 auto ASpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
     return health->on_health_changed;
 }
+
+auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {
+    health->apply_damage(damage);
+
+    FShipDamageResult result;
+    return result;
+}

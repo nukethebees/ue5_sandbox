@@ -1,11 +1,13 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
-#include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/common/DamageableShip.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Materials/MaterialInstance.h"
 
@@ -65,9 +67,11 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
                         UPrimitiveComponent* other_component,
                         FVector NormalImpulse,
                         FHitResult const& Hit) {
-    if (other_actor) {
-        if (auto* health{other_actor->GetComponentByClass<UShipHealthComponent>()}) {
-            health->add_health(-damage);
+    if (auto* ship{Cast<IDamageableShip>(other_actor)}) {
+        if (auto const* instigator{this->GetInstigator()}) {
+            ship->apply_damage(damage, *instigator);
+        } else {
+            UE_LOG(LogSandboxActor, Error, TEXT("Instigator is nullptr"));
         }
     }
 
