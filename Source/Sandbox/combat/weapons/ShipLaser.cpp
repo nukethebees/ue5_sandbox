@@ -1,7 +1,7 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
-#include "Sandbox/health/HealthComponent.h"
+#include "Sandbox/health/ShipHealthComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -39,7 +39,7 @@ void AShipLaser::Tick(float dt) {
 void AShipLaser::set_config(UShipLaserConfig const& config) {
     material = config.material;
     set_speed(config.speed);
-    damage.value = config.damage;
+    damage = config.damage;
 }
 void AShipLaser::BeginPlay() {
     Super::BeginPlay();
@@ -65,5 +65,11 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
                         UPrimitiveComponent* other_component,
                         FVector NormalImpulse,
                         FHitResult const& Hit) {
+    if (other_actor) {
+        if (auto* health{other_actor->GetComponentByClass<UShipHealthComponent>()}) {
+            health->add_health(-damage);
+        }
+    }
+
     Destroy();
 }

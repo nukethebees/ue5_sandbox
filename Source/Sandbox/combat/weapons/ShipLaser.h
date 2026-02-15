@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Sandbox/health/HealthChange.h"
-
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -47,7 +45,7 @@ class SANDBOX_API AShipLaser : public AActor {
     UMaterialInterface* material{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
-    FHealthChange damage{5.0f, EHealthChangeType::Damage};
+    int32 damage{5};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
     float speed{10000.f};

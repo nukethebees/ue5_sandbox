@@ -18,5 +18,5 @@ class UShipLaserConfig : public UDataAsset {
     float speed{10000.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    float damage{10.f};
+    int32 damage{10};
 };
