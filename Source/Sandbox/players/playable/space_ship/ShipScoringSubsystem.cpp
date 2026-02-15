@@ -10,10 +10,12 @@ void UShipScoringSubsystem::register_kills(FShipAttackResult attack) {
         kills += kills - 1;
     }
 
+    UE_LOG(LogSandboxSubsystem, Verbose, TEXT("Registering %d kill(s)."), kills);
     if (attack.instigator.IsValid()) {
         if (auto* ship{Cast<ASpaceShip>(attack.instigator.Get())}) {
-            UE_LOG(LogSandboxSubsystem, Verbose, TEXT("Registering %d kill(s) with ship."), kills);
             ship->record_kills(kills);
+        } else {
+            UE_LOG(LogSandboxSubsystem, Verbose, TEXT("Instigator not a ship"));
         }
     } else {
         UE_LOG(LogSandboxSubsystem, Warning, TEXT("Ship pointer no longer valid"));

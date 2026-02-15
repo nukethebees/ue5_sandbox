@@ -10,6 +10,8 @@
 
 class UStaticMeshComponent;
 
+struct FShipDamageResult;
+
 UCLASS()
 class SANDBOX_API AShipBomb : public AActor {
     GENERATED_BODY()
@@ -18,8 +20,11 @@ class SANDBOX_API AShipBomb : public AActor {
 
     void Tick(float dt) override;
     void detonate();
+    bool has_detonated() const { return detonated; }
   protected:
     void BeginPlay() override;
+
+    bool explosion_complete() const { return time_since_detonation >= explosion_lifetime; }
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bomb")
     UStaticMeshComponent* mesh_component{nullptr};
@@ -34,7 +39,13 @@ class SANDBOX_API AShipBomb : public AActor {
     float explosion_radius{500.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bomb")
-    FHealthChange damage{50.f, EHealthChangeType::Damage};
+    float explosion_lifetime{3.f};
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bomb")
+    int32 damage{50};
+
+    bool detonated{false};
+    TSet<AActor const*> actors_hit;
     FTimerHandle timer;
+    float time_since_detonation{0.f};
 };

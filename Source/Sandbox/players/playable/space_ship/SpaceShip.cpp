@@ -215,9 +215,11 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->FinishSpawning(fire_point);
 }
 void ASpaceShip::fire_bomb() {
-    if (active_bomb.IsValid()) {
-        active_bomb.Get()->detonate();
-        return;
+    if (auto ab{active_bomb.Pin()}) {
+        if (!ab->has_detonated()) {
+            active_bomb.Get()->detonate();
+            return;
+        }
     }
 
     if (bombs <= 0) {
