@@ -15,6 +15,8 @@ class AShipItemCapture : public AActor {
     GENERATED_BODY()
   public:
     AShipItemCapture();
+    
+    void Tick(float dt) override;
   protected:
     void BeginPlay() override;
 
@@ -22,4 +24,6 @@ class AShipItemCapture : public AActor {
     UStaticMeshComponent* mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Ship")
     USceneCaptureComponent2D* camera{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    FRotator rotation_speed{0.f, 0.f, 0.f};
 };
