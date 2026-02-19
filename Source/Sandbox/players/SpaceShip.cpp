@@ -99,11 +99,14 @@ void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
 }
 void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
     auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
+
     auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
     auto const new_pitch{
         FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
-    auto const target_roll{self.rotation_input.X * self.bank_angle_max};
-    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, self.bank_speed)};
+
+    auto const target_roll{self.rotation_input.X * self.turn_bank_angle_max};
+    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, self.turn_bank_speed)};
+
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
 }
 void ASpaceShip::integrate_velocity(this auto& self, float dt) {

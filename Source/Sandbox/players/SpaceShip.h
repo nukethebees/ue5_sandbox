@@ -157,9 +157,9 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_speed{3.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float bank_angle_max{30.f};
+    float turn_bank_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float bank_speed{5.f};
+    float turn_bank_speed{5.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip | Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
