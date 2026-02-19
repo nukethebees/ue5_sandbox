@@ -34,10 +34,6 @@ ASpaceShip::ASpaceShip()
 void ASpaceShip::Tick(float dt) {
     Super::Tick(dt);
 
-#if WITH_EDITOR
-    seconds_since_last_log += dt;
-#endif
-
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);
@@ -47,6 +43,7 @@ void ASpaceShip::Tick(float dt) {
     if (can_log()) {
         seconds_since_last_log = 0.f;
     }
+    seconds_since_last_log += dt;
 #endif
 }
 void ASpaceShip::update_boost_brake(this auto& self, float dt) {
@@ -149,7 +146,11 @@ void ASpaceShip::BeginPlay() {
 }
 
 void ASpaceShip::turn(FVector2D direction) {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+#if WITH_EDITOR
+    if (can_log()) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+    }
+#endif
 
     rotation_input = direction;
 }
@@ -172,6 +173,20 @@ void ASpaceShip::stop_brake() {
     if (boost_brake_state == EBoostBrakeState::Brake) {
         boost_brake_state = EBoostBrakeState::None;
     }
+}
+void ASpaceShip::roll(float direction) {
+#if WITH_EDITOR
+    if (can_log()) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
+    }
+#endif
+}
+void ASpaceShip::barrel_roll(float direction) {
+#if WITH_EDITOR
+    if (can_log()) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
+    }
+#endif
 }
 
 void ASpaceShip::fire_laser() {

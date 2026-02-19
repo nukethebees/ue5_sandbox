@@ -28,12 +28,15 @@ void ASpaceShipController::SetupInputComponent() {
     // Movement
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
-    bind(input.fire_laser, Started, &ThisClass::fire_laser);
-    bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
+    bind(input.roll, Triggered, &ThisClass::roll);
+    bind(input.barrel_roll, Triggered, &ThisClass::barrel_roll);
     bind(input.boost, Started, &ThisClass::start_boost);
     bind(input.boost, Completed, &ThisClass::stop_boost);
     bind(input.brake, Started, &ThisClass::start_brake);
     bind(input.brake, Completed, &ThisClass::stop_brake);
+
+    bind(input.fire_laser, Started, &ThisClass::fire_laser);
+    bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -109,13 +112,13 @@ void ASpaceShipController::turn_completed(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->turn(FVector2D::ZeroVector);
 }
-void ASpaceShipController::fire_laser(FInputActionValue const& value) {
+void ASpaceShipController::roll(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
-    ship->fire_laser();
+    ship->roll(value.Get<float>());
 }
-void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
+void ASpaceShipController::barrel_roll(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
-    ship->fire_bomb();
+    ship->barrel_roll(value.Get<float>());
 }
 void ASpaceShipController::start_boost(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
@@ -132,4 +135,14 @@ void ASpaceShipController::start_brake(FInputActionValue const& value) {
 void ASpaceShipController::stop_brake(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->stop_brake();
+}
+
+
+void ASpaceShipController::fire_laser(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->fire_laser();
+}
+void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->fire_bomb();
 }

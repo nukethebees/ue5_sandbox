@@ -53,6 +53,8 @@ class ASpaceShip
     void stop_brake();
     auto get_velocity() const { return velocity; }
     auto get_speed() const { return get_velocity().Size(); }
+    void roll(float direction);
+    void barrel_roll(float direction);
 
     void fire_laser();
     void fire_bomb();
@@ -190,6 +192,6 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float seconds_since_last_log{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    float seconds_per_log{2.f};
+    float seconds_per_log{0.75f};
 #endif
 };

@@ -24,4 +24,8 @@ struct FSpaceShipControllerInputs {
     UInputAction* boost{nullptr};
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* brake{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* roll{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* barrel_roll{nullptr};
 };

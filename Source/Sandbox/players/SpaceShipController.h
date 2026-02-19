@@ -42,9 +42,9 @@ class ASpaceShipController
     UFUNCTION()
     void turn_completed(FInputActionValue const& value);
     UFUNCTION()
-    void fire_laser(FInputActionValue const& value);
+    void roll(FInputActionValue const& value);
     UFUNCTION()
-    void fire_bomb(FInputActionValue const& value);
+    void barrel_roll(FInputActionValue const& value);
     UFUNCTION()
     void start_boost(FInputActionValue const& value);
     UFUNCTION()
@@ -53,6 +53,12 @@ class ASpaceShipController
     void start_brake(FInputActionValue const& value);
     UFUNCTION()
     void stop_brake(FInputActionValue const& value);
+
+    // Combat
+    UFUNCTION()
+    void fire_laser(FInputActionValue const& value);
+    UFUNCTION()
+    void fire_bomb(FInputActionValue const& value);
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;
