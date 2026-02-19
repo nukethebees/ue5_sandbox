@@ -44,6 +44,8 @@ class ASpaceShipController
     UFUNCTION()
     void roll(FInputActionValue const& value);
     UFUNCTION()
+    void stop_roll(FInputActionValue const& value);
+    UFUNCTION()
     void barrel_roll(FInputActionValue const& value);
     UFUNCTION()
     void start_boost(FInputActionValue const& value);

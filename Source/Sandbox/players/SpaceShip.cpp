@@ -104,8 +104,14 @@ void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
     auto const new_pitch{
         FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
 
-    auto const target_roll{self.rotation_input.X * self.turn_bank_angle_max};
-    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, target_roll, dt, self.turn_bank_speed)};
+    self.manual_bank_angle = FMath::FInterpTo(
+        self.manual_bank_angle, self.manual_bank_angle_target, dt, self.manual_bank_speed);
+    auto const turn_target{self.rotation_input.X * self.turn_bank_angle_max};
+    self.turn_bank_angle =
+        FMath::FInterpTo(self.turn_bank_angle, turn_target, dt, self.turn_bank_speed);
+    // self.turn_bank_angle =
+    //     self.clamp(self.turn_bank_angle + delta_turn_bank_angle, self.turn_bank_angle_max);
+    auto const new_roll{self.clamp(self.turn_bank_angle + self.manual_bank_angle, self.roll_max)};
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, current_rotation.Yaw, new_roll));
 }
@@ -183,6 +189,7 @@ void ASpaceShip::roll(float direction) {
         UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
     }
 #endif
+    manual_bank_angle_target = direction * manual_bank_angle_max;
 }
 void ASpaceShip::barrel_roll(float direction) {
 #if WITH_EDITOR

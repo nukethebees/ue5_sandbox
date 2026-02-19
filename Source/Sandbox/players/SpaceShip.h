@@ -77,6 +77,9 @@ class ASpaceShip
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
     }
+    static constexpr auto clamp(auto value, auto abs_max_value) {
+        return FMath::Clamp(value, -abs_max_value, abs_max_value);
+    }
 
     // IDamageableShip
     auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
@@ -157,9 +160,21 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_speed{3.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float roll_max{75.f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
+    float turn_bank_angle{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float turn_bank_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float turn_bank_speed{5.f};
+    float turn_bank_speed{90.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float manual_bank_angle_target{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
+    float manual_bank_angle{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float manual_bank_angle_max{30.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float manual_bank_speed{120.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip | Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};

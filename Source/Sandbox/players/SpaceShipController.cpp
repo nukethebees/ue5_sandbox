@@ -29,6 +29,7 @@ void ASpaceShipController::SetupInputComponent() {
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.roll, Triggered, &ThisClass::roll);
+    bind(input.roll, Completed, &ThisClass::stop_roll);
     bind(input.barrel_roll, Triggered, &ThisClass::barrel_roll);
     bind(input.boost, Started, &ThisClass::start_boost);
     bind(input.boost, Completed, &ThisClass::stop_boost);
@@ -116,6 +117,10 @@ void ASpaceShipController::roll(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->roll(value.Get<float>());
 }
+void ASpaceShipController::stop_roll(FInputActionValue const&) {
+    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
+    ship->roll(0.f);
+}
 void ASpaceShipController::barrel_roll(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->barrel_roll(value.Get<float>());
@@ -136,7 +141,6 @@ void ASpaceShipController::stop_brake(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->stop_brake();
 }
-
 
 void ASpaceShipController::fire_laser(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
