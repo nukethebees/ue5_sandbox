@@ -160,6 +160,10 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_speed{3.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float yaw_angle_max{30.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float yaw_speed{3.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float roll_max{75.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
     float turn_bank_angle{0.f};
