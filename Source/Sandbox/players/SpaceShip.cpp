@@ -108,18 +108,17 @@ void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
     auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
 
     auto const turn_intensity{self.rotation_input.X};
-    auto const turn_speed{turn_intensity * self.turn_bank_speed};
     auto const turn_target{turn_intensity * self.turn_bank_angle_max};
+    auto const turn_speed{turn_intensity * self.turn_bank_speed};
 
     auto const manual_bank_intensity{self.manual_bank_direction};
-    auto const manual_bank_speed{self.manual_bank_speed * manual_bank_intensity};
-    auto const manual_bank_target{self.manual_bank_angle_max * manual_bank_intensity};
+    auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
+    auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
 
-    auto const roll_speed{FMath::Abs(turn_speed + manual_bank_speed)};
-    auto roll_target{turn_target};
-    if (FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)) {
-        roll_target = manual_bank_target;
-    }
+    auto const roll_speed{
+        FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
+    auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
+    auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
     auto const new_roll{FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed)};
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
