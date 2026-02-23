@@ -9,6 +9,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
 
@@ -40,6 +41,14 @@ void ASpaceShip::Tick(float dt) {
     integrate_velocity(dt);
 
 #if WITH_EDITOR
+    auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+
+    FVector const start = middle.GetLocation();
+    FVector const forward = middle.GetUnitAxis(EAxis::X);
+    constexpr float len{5000.f};
+    FVector const end = start + forward * len;
+    DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+
     if (can_log()) {
         seconds_since_last_log = 0.f;
     }
