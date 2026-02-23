@@ -167,23 +167,15 @@ class ASpaceShip
     float yaw_speed{3.f};
     
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float roll_max{75.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
-    float turn_bank_angle{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float turn_bank_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float turn_bank_speed{90.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float manual_bank_angle_target{0.f};
+    float turn_bank_speed{2.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float manual_bank_direction{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
-    float manual_bank_angle{0.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float manual_bank_angle_max{90.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float manual_bank_speed{120.f};
+    float manual_bank_speed{5.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip | Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};

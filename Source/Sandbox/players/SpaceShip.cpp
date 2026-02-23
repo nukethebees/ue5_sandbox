@@ -199,7 +199,6 @@ void ASpaceShip::roll(float direction) {
     }
 #endif
     manual_bank_direction = clamp(direction, 1.f);
-    manual_bank_angle_target = manual_bank_direction * manual_bank_angle_max;
 }
 void ASpaceShip::barrel_roll(float direction) {
 #if WITH_EDITOR
