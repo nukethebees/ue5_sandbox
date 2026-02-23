@@ -8,6 +8,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 
+#include <span>
+
 #include "SpaceShip.generated.h"
 
 class UCameraComponent;
@@ -26,6 +28,7 @@ DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnSpeedSampled, std::span<FVector2d>);
 
 UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
@@ -91,6 +94,10 @@ class ASpaceShip
     FOnShipGoldRingsChanged on_gold_rings_changed;
     FOnShipPointsChanged on_points_changed;
     FOnLivesChanged on_lives_changed;
+
+#if WITH_EDITORONLY_DATA
+    FOnSpeedSampled on_speed_sampled;
+#endif
   protected:
     void BeginPlay() override;
 
@@ -105,6 +112,7 @@ class ASpaceShip
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
+    void sample_speed();
 #endif
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
@@ -160,12 +168,12 @@ class ASpaceShip
     float pitch_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_speed{3.f};
-    
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float yaw_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float yaw_speed{3.f};
-    
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float turn_bank_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
@@ -205,6 +213,10 @@ class ASpaceShip
     UShipHealthComponent* health{nullptr};
 
 #if WITH_EDITORONLY_DATA
+    int32 speed_sample_index{0};
+    int32 speed_sample_max{0};
+    FTimerHandle speed_sample_timer;
+    TArray<FVector2d> speed_samples;
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     float seconds_since_last_log{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

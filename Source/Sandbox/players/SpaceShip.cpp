@@ -12,6 +12,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "TimerManager.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -169,6 +170,18 @@ void ASpaceShip::BeginPlay() {
 
     target_speed = cruise_speed;
     max_acceleration = cruise_acceleration;
+
+#if WITH_EDITOR
+    static constexpr float sample_rate_hz{60.0f};
+    static constexpr float sample_interval{1.0f / sample_rate_hz};
+    static constexpr float sample_window{5.0f};
+    speed_sample_index = 0;
+    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
+    speed_samples.AddDefaulted(speed_sample_max);
+
+    GetWorldTimerManager().SetTimer(
+        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
+#endif
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -341,4 +354,14 @@ auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDa
 void ASpaceShip::add_life() {
     lives += 1;
     on_lives_changed.Execute(lives);
+}
+
+void ASpaceShip::sample_speed() {
+    speed_samples[speed_sample_index] = {GetWorld()->GetTimeSeconds(), velocity.Size()};
+    speed_sample_index++;
+    if (speed_sample_index >= speed_sample_max) {
+        speed_sample_index = 0;
+    }
+
+    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()));
 }

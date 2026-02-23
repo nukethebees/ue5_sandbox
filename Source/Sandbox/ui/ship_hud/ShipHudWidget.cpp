@@ -7,6 +7,7 @@
 #include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
+#include "Sandbox/ui/widgets/DebugGraphWidget.h"
 
 void UShipHudWidget::set_speed(float value) {
     if (!speed_widget) {
@@ -49,4 +50,10 @@ void UShipHudWidget::set_lives(int32 value) {
         return;
     }
     lives_widget->set_value(value);
+}
+void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples) {
+    if (!speed_graph) {
+        return;
+    }
+    speed_graph->set_samples(samples);
 }

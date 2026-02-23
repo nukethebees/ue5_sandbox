@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
+#include <span>
+
 #include "ShipHudWidget.generated.h"
 
 class UShipSpeedWidget;
@@ -14,6 +16,8 @@ class UShipPointsWidget;
 class UShipBombCountWidget;
 class UShipGoldRingCountWidget;
 class UPlayerLivesWidget;
+
+class UDebugGraphWidget;
 
 UCLASS()
 class SANDBOX_API UShipHudWidget : public UUserWidget {
@@ -27,6 +31,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_bombs(int32 value);
     void set_gold_rings(int32 value);
     void set_lives(int32 value);
+
+#if WITH_EDITOR
+    void update_sampled_speed(std::span<FVector2d> samples);
+#endif
   protected:
     UPROPERTY(meta = (BindWidget))
     UShipSpeedWidget* speed_widget{nullptr};
@@ -42,4 +50,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipGoldRingCountWidget* gold_rings_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UPlayerLivesWidget* lives_widget{nullptr};
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(meta = (BindWidget))
+    UDebugGraphWidget* speed_graph{nullptr};
+#endif
 };
