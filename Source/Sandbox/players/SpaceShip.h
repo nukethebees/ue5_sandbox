@@ -155,14 +155,17 @@ class ASpaceShip
     float rotation_speed{0.5f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float pitch_speed{3.f};
+    
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float yaw_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float yaw_speed{3.f};
+    
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float roll_max{75.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
@@ -173,10 +176,12 @@ class ASpaceShip
     float turn_bank_speed{90.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float manual_bank_angle_target{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    float manual_bank_direction{0.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Steering")
     float manual_bank_angle{0.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
-    float manual_bank_angle_max{30.f};
+    float manual_bank_angle_max{90.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     float manual_bank_speed{120.f};
 

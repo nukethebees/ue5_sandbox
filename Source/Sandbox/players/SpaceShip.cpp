@@ -107,12 +107,20 @@ void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
     auto const target_yaw{self.rotation_input.X * self.yaw_angle_max};
     auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
 
-    self.manual_bank_angle = FMath::FInterpTo(
-        self.manual_bank_angle, self.manual_bank_angle_target, dt, self.manual_bank_speed);
-    auto const turn_target{self.rotation_input.X * self.turn_bank_angle_max};
-    self.turn_bank_angle =
-        FMath::FInterpTo(self.turn_bank_angle, turn_target, dt, self.turn_bank_speed);
-    auto const new_roll{self.clamp(self.turn_bank_angle + self.manual_bank_angle, self.roll_max)};
+    auto const turn_intensity{self.rotation_input.X};
+    auto const turn_speed{turn_intensity * self.turn_bank_speed};
+    auto const turn_target{turn_intensity * self.turn_bank_angle_max};
+
+    auto const manual_bank_intensity{self.manual_bank_direction};
+    auto const manual_bank_speed{self.manual_bank_speed * manual_bank_intensity};
+    auto const manual_bank_target{self.manual_bank_angle_max * manual_bank_intensity};
+
+    auto const roll_speed{FMath::Abs(turn_speed + manual_bank_speed)};
+    auto roll_target{turn_target};
+    if (FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)) {
+        roll_target = manual_bank_target;
+    }
+    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed)};
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
@@ -190,7 +198,8 @@ void ASpaceShip::roll(float direction) {
         UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
     }
 #endif
-    manual_bank_angle_target = direction * manual_bank_angle_max;
+    manual_bank_direction = clamp(direction, 1.f);
+    manual_bank_angle_target = manual_bank_direction * manual_bank_angle_max;
 }
 void ASpaceShip::barrel_roll(float direction) {
 #if WITH_EDITOR
