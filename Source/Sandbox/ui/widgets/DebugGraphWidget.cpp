@@ -2,14 +2,15 @@
 
 #include "Styling/CoreStyle.h"
 
-void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples) {
-    samples.Reset();
-    samples.Append(in_samples.data(), in_samples.size());
+#include <limits>
 
-    auto const first{samples[0].X};
-    for (auto& sample : samples) {
-        sample.X = FMath::Max(0.0, sample.X - first);
-        max_value = FMath::Max(max_value, sample.Y);
+void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 oldest_index) {
+    samples.Reset();
+    samples.AddZeroed(in_samples.size());
+
+    for (int32 i{0}; i < samples.Num(); ++i) {
+        auto const index{(oldest_index + i) % static_cast<int32>(in_samples.size())};
+        samples[i] = in_samples[index];
     }
 
     Invalidate(EInvalidateWidget::Paint);
@@ -77,8 +78,9 @@ int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
         points.Reserve(samples.Num());
 
         for (int32 i = 0; i < samples.Num(); ++i) {
+            auto& sample{samples[i]};
             float const x_alpha = static_cast<float>(i) / (samples.Num() - 1);
-            float const y_alpha = samples[i].Y / max_value;
+            auto const y_alpha{sample.Y / 10e3};
 
             points.Emplace(origin.X + x_alpha * graph_size.X,
                            origin.Y + (1.0f - y_alpha) * graph_size.Y);

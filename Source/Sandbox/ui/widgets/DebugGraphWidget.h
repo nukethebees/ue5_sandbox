@@ -11,7 +11,7 @@ UCLASS()
 class SANDBOX_API UDebugGraphWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_samples(std::span<FVector2d> in_samples);
+    void set_samples(std::span<FVector2d> in_samples, int32 oldest_index);
 
     int32 NativePaint(FPaintArgs const& args,
                       FGeometry const& geometry,
@@ -22,5 +22,4 @@ class SANDBOX_API UDebugGraphWidget : public UUserWidget {
                       bool parent_enabled) const override;
   private:
     TArray<FVector2d> samples;
-    double max_value{0.0};
 };

@@ -33,7 +33,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_lives(int32 value);
 
 #if WITH_EDITOR
-    void update_sampled_speed(std::span<FVector2d> samples);
+    void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
     UPROPERTY(meta = (BindWidget))

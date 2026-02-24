@@ -177,7 +177,10 @@ void ASpaceShip::BeginPlay() {
     static constexpr float sample_window{5.0f};
     speed_sample_index = 0;
     speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
-    speed_samples.AddDefaulted(speed_sample_max);
+    speed_samples.Reserve(speed_sample_max);
+    for (int32 i{0}; i < speed_sample_max; ++i) {
+        speed_samples.Add(FVector2d::ZeroVector);
+    }
 
     GetWorldTimerManager().SetTimer(
         speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
@@ -357,11 +360,13 @@ void ASpaceShip::add_life() {
 }
 
 void ASpaceShip::sample_speed() {
-    speed_samples[speed_sample_index] = {GetWorld()->GetTimeSeconds(), velocity.Size()};
+    speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
+                                         FMath::Clamp(velocity.Size(), 0.0, 100e3)};
     speed_sample_index++;
     if (speed_sample_index >= speed_sample_max) {
         speed_sample_index = 0;
     }
 
-    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()));
+    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
+                                    speed_sample_index);
 }

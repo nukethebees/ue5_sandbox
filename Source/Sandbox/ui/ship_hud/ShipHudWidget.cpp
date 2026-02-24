@@ -51,9 +51,9 @@ void UShipHudWidget::set_lives(int32 value) {
     }
     lives_widget->set_value(value);
 }
-void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples) {
+void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     if (!speed_graph) {
         return;
     }
-    speed_graph->set_samples(samples);
+    speed_graph->set_samples(samples, oldest_index);
 }

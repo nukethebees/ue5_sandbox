@@ -28,7 +28,7 @@ DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
-DECLARE_DELEGATE_OneParam(FOnSpeedSampled, std::span<FVector2d>);
+DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
 
 UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
