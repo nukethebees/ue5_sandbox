@@ -21,5 +21,6 @@ class SANDBOX_API UDebugGraphWidget : public UUserWidget {
                       FWidgetStyle const& widget_style,
                       bool parent_enabled) const override;
   private:
-    TArray<FVector2d> samples;
+    TArrayView<FVector2d> samples;
+    int32 oldest_index{0};
 };

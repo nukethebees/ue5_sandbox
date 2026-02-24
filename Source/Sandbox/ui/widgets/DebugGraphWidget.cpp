@@ -4,14 +4,9 @@
 
 #include <limits>
 
-void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 oldest_index) {
-    samples.Reset();
-    samples.AddZeroed(in_samples.size());
-
-    for (int32 i{0}; i < samples.Num(); ++i) {
-        auto const index{(oldest_index + i) % static_cast<int32>(in_samples.size())};
-        samples[i] = in_samples[index];
-    }
+void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 new_oldest_index) {
+    samples = TArrayView(in_samples.data(), static_cast<int32>(in_samples.size()));
+    oldest_index = new_oldest_index;
 
     Invalidate(EInvalidateWidget::Paint);
 }
@@ -73,13 +68,17 @@ int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
     // ------------------------------------------------------------
     // Graph line
     // ------------------------------------------------------------
-    if (samples.Num() >= 2) {
-        TArray<FVector2D> points;
-        points.Reserve(samples.Num());
+    auto const n_samples{samples.Num()};
 
-        for (int32 i = 0; i < samples.Num(); ++i) {
-            auto& sample{samples[i]};
-            float const x_alpha = static_cast<float>(i) / (samples.Num() - 1);
+    if (n_samples >= 2) {
+        TArray<FVector2D> points;
+        points.Reserve(n_samples);
+
+        for (int32 i = 0; i < n_samples; ++i) {
+            auto const index{(oldest_index + i) % n_samples};
+            auto& sample{samples[index]};
+
+            float const x_alpha = static_cast<float>(i) / (n_samples - 1);
             auto const y_alpha{sample.Y / 10e3};
 
             points.Emplace(origin.X + x_alpha * graph_size.X,
