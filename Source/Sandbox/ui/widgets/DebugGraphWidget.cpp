@@ -8,6 +8,14 @@ void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 new_o
     samples = TArrayView(in_samples.data(), static_cast<int32>(in_samples.size()));
     oldest_index = new_oldest_index;
 
+    for (auto const& elem : samples) {
+        max_value = FMath::Max(max_value, FMath::Abs(elem.Y));
+    }
+
+    if (max_value < 1e-9) {
+        max_value = 1.0;
+    }
+
     Invalidate(EInvalidateWidget::Paint);
 }
 
@@ -79,7 +87,7 @@ int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
             auto& sample{samples[index]};
 
             float const x_alpha = static_cast<float>(i) / (n_samples - 1);
-            auto const y_alpha{sample.Y / 10e3};
+            auto const y_alpha{sample.Y / max_value};
 
             points.Emplace(origin.X + x_alpha * graph_size.X,
                            origin.Y + (1.0f - y_alpha) * graph_size.Y);

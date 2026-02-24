@@ -23,4 +23,5 @@ class SANDBOX_API UDebugGraphWidget : public UUserWidget {
   private:
     TArrayView<FVector2d> samples;
     int32 oldest_index{0};
+    double max_value{0.0};
 };
