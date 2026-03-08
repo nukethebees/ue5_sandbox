@@ -2,11 +2,13 @@
 
 #include "Sandbox/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/items/ShipHealthItemConfig.h"
+#include "Sandbox/players/ShipScoringSubsystem.h"
 #include "Sandbox/players/SpaceShip.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -34,4 +36,11 @@ void AShipTrainingRing::on_overlap_begin(UPrimitiveComponent* overlapped_comp,
                                          UPrimitiveComponent* other_comp,
                                          int32 other_body_index,
                                          bool from_sweep,
-                                         FHitResult const& sweep_result) {}
+                                         FHitResult const& sweep_result) {
+    if (auto* ship{Cast<ASpaceShip>(other_actor)}) {
+        TRY_INIT_PTR(world, GetWorld());
+        TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
+        ss->register_points(*ship, 1);
+        Destroy();
+    }
+}

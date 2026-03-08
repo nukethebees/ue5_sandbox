@@ -21,3 +21,6 @@ void UShipScoringSubsystem::register_kills(FShipAttackResult attack) {
         UE_LOG(LogSandboxSubsystem, Warning, TEXT("Ship pointer no longer valid"));
     }
 }
+void UShipScoringSubsystem::register_points(ASpaceShip& ship, int32 pts) {
+    ship.record_kills(pts);
+}
