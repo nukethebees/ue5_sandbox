@@ -102,8 +102,16 @@ void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
 
         self.AddActorLocalRotation(delta_rotation);
     } else {
-        FRotator const delta_rotation(
-            self.rotation_input.Y * drot, self.rotation_input.X * drot, 0.0f);
+        auto const d_pitch{self.rotation_input.Y * drot};
+
+        auto const manual_bank_intensity{self.manual_bank_direction};
+        auto const d_yaw_bank{manual_bank_intensity * drot * 0.5};
+        auto const d_yaw_turn{self.rotation_input.X * drot};
+        auto const d_yaw{d_yaw_turn + d_yaw_bank};
+
+        auto const d_roll{0.f};
+
+        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
         self.AddActorLocalRotation(delta_rotation);
     }
 }
