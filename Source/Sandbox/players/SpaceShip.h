@@ -149,14 +149,14 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
     float cruise_acceleration{3000.0f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
     float boost_speed{5000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
     float boost_acceleration{5000.0f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
     float brake_speed{1000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
     float brake_acceleration{1000.0f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
@@ -164,25 +164,25 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Pitch")
     float pitch_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Pitch")
     float pitch_speed{3.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Yaw")
     float yaw_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Yaw")
     float yaw_speed{3.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
     float turn_bank_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
     float turn_bank_speed{2.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
     float manual_bank_direction{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
     float manual_bank_angle_max{90.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
     float manual_bank_speed{5.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip | Laser")
