@@ -10,6 +10,7 @@ class UBoxComponent;
 class UPrimitiveComponent;
 struct FHitResult;
 class UMaterialInterface;
+class UNiagaraSystem;
 
 class URotatingActorComponent;
 
@@ -36,4 +37,10 @@ class AShipTrainingRing : public AActor {
     UBoxComponent* collision_box{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     URotatingActorComponent* rotator{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UNiagaraSystem* shockwave{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float shockwave_ship_fwd{800.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float shockwave_ship_up{100.f};
 };

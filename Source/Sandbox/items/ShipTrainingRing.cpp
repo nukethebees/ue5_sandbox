@@ -9,6 +9,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "NiagaraFunctionLibrary.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -41,6 +42,28 @@ void AShipTrainingRing::on_overlap_begin(UPrimitiveComponent* overlapped_comp,
         TRY_INIT_PTR(world, GetWorld());
         TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
         ss->register_points(*ship, 1);
+
+        if (shockwave) {
+            auto const ring_loc{GetActorLocation()};
+            auto const ship_loc{ship->GetActorLocation()};
+            auto const ship_fwd{ship->GetActorForwardVector()};
+            auto const ship_up{ship->GetActorUpVector()};
+
+            auto const d_fwd{ship_fwd * shockwave_ship_fwd};
+            auto const d_up{ship_up * shockwave_ship_up};
+            auto const loc{ship_loc + d_fwd + d_up};
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+                                                           shockwave,
+                                                           loc,
+                                                           FRotator::ZeroRotator,
+                                                           FVector(1.0f),
+                                                           true,
+                                                           true,
+                                                           ENCPoolMethod::None,
+                                                           true);
+        }
+
         Destroy();
     }
 }
