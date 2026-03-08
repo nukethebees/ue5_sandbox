@@ -52,13 +52,20 @@ void AShipLaser::Tick(float dt) {
 
     TRY_INIT_PTR(world, GetWorld());
 
+    auto const actor_quat{GetActorQuat()};
+
+#if WITH_EDITOR && 0
+    DrawDebugBox(world, start_location, box_extent, actor_quat, FColor::Green, false, 1.f);
+    DrawDebugBox(world, end_location, box_extent, actor_quat, FColor::Red, false, 1.f);
+#endif
+
     auto had_hit{world->SweepSingleByChannel(hit,
-                                             start_location,
-                                             end_location,
-                                             FQuat::Identity,
-                                             ml::collision::projectile,
-                                             FCollisionShape::MakeBox(box_extent),
-                                             params)};
+                                                start_location,
+                                                end_location,
+                                                actor_quat,
+                                                ml::collision::projectile,
+                                                FCollisionShape::MakeBox(box_extent),
+                                                params)};
 
     if (had_hit) {
         on_hit(collision_component, hit.GetActor(), hit.GetComponent(), hit.ImpactNormal, hit);
