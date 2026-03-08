@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
 #include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
@@ -43,8 +44,6 @@ void AShipLaser::Tick(float dt) {
     auto const delta_location{velocity * dt};
     auto const end_location{start_location + delta_location};
 
-    SetActorLocation(end_location);
-
     FHitResult hit;
     FCollisionQueryParams params;
     params.AddIgnoredActor(this);
@@ -64,7 +63,10 @@ void AShipLaser::Tick(float dt) {
     if (had_hit) {
         on_hit(collision_component, hit.GetActor(), hit.GetComponent(), hit.ImpactNormal, hit);
         Destroy();
+        return;
     }
+
+    SetActorLocation(end_location);
 }
 void AShipLaser::set_config(UShipLaserConfig const& config) {
     material = config.material;
@@ -91,7 +93,13 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
                         FVector NormalImpulse,
                         FHitResult const& Hit) {
     if (other_actor) {
+        UE_LOG(LogSandboxWeapon,
+               Verbose,
+               TEXT("Laser hit: %s"),
+               *ml::get_best_display_name(*other_actor));
         do_hit(*other_actor);
+    } else {
+        UE_LOG(LogSandboxWeapon, Verbose, TEXT("Actor is null"));
     }
 
     Destroy();
