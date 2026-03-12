@@ -5,16 +5,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "IsmGrid.generated.h"
+#include "HISMGrid.generated.h"
 
-class UInstancedStaticMeshComponent;
+class UHierarchicalInstancedStaticMeshComponent;
 class UStaticMesh;
 
 UCLASS()
-class AIsmGrid : public AActor {
+class AHISMGrid : public AActor {
     GENERATED_BODY()
   public:
-    AIsmGrid();
+    AHISMGrid();
 
     auto num() const { return x_axis.num() * y_axis.num() * z_axis.num(); }
     static auto make_index(int32 x, int32 y, int32 z) -> FVector3d;
@@ -33,7 +33,7 @@ class AIsmGrid : public AActor {
                      FVector3d scale) -> int32;
 
     UPROPERTY(VisibleAnywhere, Category = "IsmGrid")
-    UInstancedStaticMeshComponent* ismc{nullptr};
+    UHierarchicalInstancedStaticMeshComponent* ismc{nullptr};
     UPROPERTY(EditAnywhere, Category = "IsmGrid")
     UStaticMesh* mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "IsmGrid")
