@@ -20,6 +20,15 @@ void AIsmGrid::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
     update_isms(false);
 }
+
+auto AIsmGrid::make_index(int32 x, int32 y, int32 z) -> FVector3d {
+    return {
+        static_cast<double>(x),
+        static_cast<double>(y),
+        static_cast<double>(z),
+    };
+}
+
 void AIsmGrid::update_isms_button() {
     return update_isms(true);
 }
@@ -36,8 +45,6 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
     ismc->ClearInstances();
     ismc->SetStaticMesh(mesh);
     ismc->PreAllocateInstancesMemory(num());
-
-    constexpr bool world_space{false};
 
     auto const origin{world_space ? GetActorLocation() : FVector3d::ZeroVector};
     auto const adjusted_origin{origin + fixed_offset};
@@ -74,17 +81,19 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
     for (int32 x{-x_axis.negative}; x < x_axis.positive; x++) {
         for (int32 y{-y_axis.negative}; y < y_axis.positive; y++) {
             for (int32 z{-z_axis.negative}; z < z_axis.positive; z++) {
-                FVector3d index{
-                    static_cast<double>(x),
-                    static_cast<double>(y),
-                    static_cast<double>(z),
-                };
-                auto const element_position{adjusted_origin + (index * full_element_offset)};
-
-                FTransform const element_transform{rotation, element_position, scale};
-
-                ismc->AddInstance(element_transform, world_space);
+                auto const index{make_index(x, y, z)};
+                add_element(index, adjusted_origin, full_element_offset, rotation, scale);
             }
         }
     }
+}
+
+auto AIsmGrid::add_element(FVector3d index,
+                           FVector3d origin,
+                           FVector3d elem_offset,
+                           FQuat rotation,
+                           FVector3d scale) -> int32 {
+    auto const element_position{origin + (index * elem_offset)};
+    FTransform const element_transform{rotation, element_position, scale};
+    return ismc->AddInstance(element_transform, world_space);
 }
