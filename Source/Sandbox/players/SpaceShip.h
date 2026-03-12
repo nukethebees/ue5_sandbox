@@ -121,92 +121,92 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy_max{100.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy{100.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float boost_depletion_rate{50.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float brake_depletion_rate{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float thrust_recharge_rate{20.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Energy")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FVector velocity;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float target_speed{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float max_acceleration{0.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float cruise_speed{3000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float cruise_acceleration{3000.0f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
     float boost_speed{5000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
     float boost_acceleration{5000.0f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
     float brake_speed{1000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Speed | Brake/Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
     float brake_acceleration{1000.0f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
     float rotation_speed{0.5f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Pitch")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Pitch")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_speed{3.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Yaw")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Yaw")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_speed{3.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float turn_bank_angle_max{30.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float turn_bank_speed{2.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float manual_bank_direction{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float manual_bank_angle_max{90.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Steering | Roll")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float manual_bank_speed{5.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip | Laser")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Laser")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     float laser_speed{1000.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Laser")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     TSubclassOf<AShipLaser> laser_class;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Laser")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* laser_config;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Laser")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* hyper_laser_config;
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Bomb")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
     TSubclassOf<AShipBomb> bomb_class;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Bomb")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
     int32 bombs{3};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip | Bomb")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Bomb")
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Health")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     int32 gold_rings_collected{0};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 points{0};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Health")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     int32 lives{3};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip | Health")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     UShipHealthComponent* health{nullptr};
 
 #if WITH_EDITORONLY_DATA
