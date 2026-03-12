@@ -69,7 +69,9 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
 
     auto const scale{GetActorScale()};
     auto const mesh_bounds{mesh->GetBounds().BoxExtent * 2.0};
-    auto const mesh_bounds_offset{offset_by_mesh_bounds ? mesh_bounds : FVector3d::ZeroVector};
+    auto const scaled_mesh_bounds{mesh_bounds * scale};
+    auto const mesh_bounds_offset{offset_by_mesh_bounds ? scaled_mesh_bounds
+                                                        : FVector3d::ZeroVector};
     auto const full_element_offset{mesh_bounds_offset + element_offset};
 
 #if WITH_EDITOR
