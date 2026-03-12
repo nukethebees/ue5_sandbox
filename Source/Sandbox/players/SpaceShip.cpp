@@ -18,14 +18,12 @@
 
 ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
-    , spring_arm(CreateDefaultSubobject<USpringArmComponent>(TEXT("spring_arm")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
     , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
-    camera->SetupAttachment(spring_arm);
-    spring_arm->SetupAttachment(RootComponent);
+    camera->SetupAttachment(RootComponent);
     ship_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
 

@@ -13,7 +13,6 @@
 #include "SpaceShip.generated.h"
 
 class UCameraComponent;
-class USpringArmComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 
@@ -117,8 +116,6 @@ class ASpaceShip
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    USpringArmComponent* spring_arm{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UStaticMeshComponent* ship_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
