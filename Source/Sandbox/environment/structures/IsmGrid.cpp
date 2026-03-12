@@ -37,16 +37,19 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
     ismc->SetStaticMesh(mesh);
     ismc->PreAllocateInstancesMemory(num());
 
-    auto const origin{GetActorLocation() + fixed_offset};
+    constexpr bool world_space{false};
+
+    auto const origin{world_space ? GetActorLocation() : FVector3d::ZeroVector};
+    auto const adjusted_origin{origin + fixed_offset};
     auto const rotation{[&]() -> FQuat {
         switch (rotation_mode) {
             case ERotationMode::parent: {
-                return GetActorQuat();
+                return FQuat::Identity;
             }
             case ERotationMode::from_centre: {
                 UE_LOG(
                     LogSandboxActor, Warning, TEXT("ERotationMode::from_centre not implemented."));
-                return GetActorQuat();
+                return FQuat::Identity;
             }
             default: {
                 break;
@@ -54,7 +57,7 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
         }
 
         UE_LOG(LogSandboxActor, Error, TEXT("Unhandled IsmGrid ERotationMode"));
-        return GetActorQuat();
+        return FQuat::Identity;
     }()};
 
     auto const scale{GetActorScale()};
@@ -76,10 +79,10 @@ void AIsmGrid::update_isms(bool warn_on_no_mesh) {
                     static_cast<double>(y),
                     static_cast<double>(z),
                 };
-                auto const element_position{origin + (index * full_element_offset)};
+                auto const element_position{adjusted_origin + (index * full_element_offset)};
 
                 FTransform const element_transform{rotation, element_position, scale};
-                constexpr bool world_space{true};
+
                 ismc->AddInstance(element_transform, world_space);
             }
         }
