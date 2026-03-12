@@ -17,23 +17,17 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 AShipLaser::AShipLaser()
-    : collision_component{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionComponent"))}
-    , mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))} {
+    : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
-    RootComponent->SetMobility(EComponentMobility::Movable);
-
-    collision_component->SetupAttachment(RootComponent);
-    collision_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    collision_component->SetCollisionResponseToAllChannels(ECR_Block);
-    collision_component->SetNotifyRigidBodyCollision(true);
-    collision_component->SetCollisionObjectType(ml::collision::projectile);
-    collision_component->BodyInstance.bUseCCD = true;
-
-    mesh_component->SetupAttachment(RootComponent);
-    mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    RootComponent = mesh_component;
+    mesh_component->SetMobility(EComponentMobility::Movable);
+    mesh_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    mesh_component->SetCollisionResponseToAllChannels(ECR_Block);
+    mesh_component->SetNotifyRigidBodyCollision(true);
+    mesh_component->SetCollisionObjectType(ml::collision::projectile);
+    mesh_component->BodyInstance.bUseCCD = true;
 }
 
 void AShipLaser::Tick(float dt) {
@@ -45,35 +39,12 @@ void AShipLaser::Tick(float dt) {
     auto const end_location{start_location + delta_location};
 
     FHitResult hit;
-    FCollisionQueryParams params;
-    params.AddIgnoredActor(this);
-    params.AddIgnoredActor(GetInstigator());
-    auto const box_extent{collision_component->GetScaledBoxExtent()};
-
-    TRY_INIT_PTR(world, GetWorld());
-
-    auto const actor_quat{GetActorQuat()};
-
-#if WITH_EDITOR && 0
-    DrawDebugBox(world, start_location, box_extent, actor_quat, FColor::Green, false, 1.f);
-    DrawDebugBox(world, end_location, box_extent, actor_quat, FColor::Red, false, 1.f);
-#endif
-
-    auto had_hit{world->SweepSingleByChannel(hit,
-                                                start_location,
-                                                end_location,
-                                                actor_quat,
-                                                ml::collision::projectile,
-                                                FCollisionShape::MakeBox(box_extent),
-                                                params)};
-
-    if (had_hit) {
-        on_hit(collision_component, hit.GetActor(), hit.GetComponent(), hit.ImpactNormal, hit);
+    SetActorLocation(end_location, true, &hit);
+    if (hit.bBlockingHit) {
+        on_hit(mesh_component, hit.GetActor(), hit.GetComponent(), hit.ImpactNormal, hit);
         Destroy();
         return;
     }
-
-    SetActorLocation(end_location);
 }
 void AShipLaser::set_config(UShipLaserConfig const& config) {
     material = config.material;
