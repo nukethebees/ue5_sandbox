@@ -6,43 +6,60 @@ float3 example_fn()
     return float3(0.0, 0.0, 0.0);
 }
 
-float3 water_0(float t, float x)
+struct Water0Result
 {
-    static const int n_waves = 4;
+    float3 displacement;
+    float max_amplitude;
+    float z_norm;
+};
+
+Water0Result water_0(float t, float x)
+{
+    static const int n_waves = 5;
+    static const int n_waves_simulated = n_waves - 0;
     static const float pi2 = 2.0 * 3.14159265;
     
-    float freqs[n_waves] =
+    float periods[n_waves] =
     {
-        0.001,
+        1000.0, 2000.0, 4000.0, 100000.0, 10000
     };
+    float amplitudes[n_waves] =
+    {
+        200.0, 100.0, 50.0, 100, 400
+    };
+    float speeds[n_waves] =
+    {
+        1.0, 0.5, 2.0, 0.1, 1.0
+    };
+    
+    // omega
     float ws[n_waves];
     for (int i = 0; i < n_waves; ++i)
     {
-        ws[i] = freqs[i] * pi2;
+        ws[i] = pi2 / periods[i];
     }
     
-    
-    float amplitudes[n_waves] =
+    Water0Result r =
     {
-        500.0,
+        float3(0.0, 0.0, 0.0), 
+        0.0,
+        0.0
     };
-    float speeds[n_waves] =
+   
+
+    for (int i = 0; i < n_waves_simulated; ++i)
     {
-        1.0,
-    };
-    float speeds[n_waves] =
+        r.displacement.z += amplitudes[i] * sin(ws[i] * x + speeds[i] * t);
+    }
+   
+    for (int i = 0; i < n_waves_simulated; ++i)
     {
-        1.0,
-    };
+        r.max_amplitude += amplitudes[i];
+    }
     
-    float3 d = float3(0, 0, 0); // Displacement
-    for (int i = 0; i < n_waves; ++i)
-    {
-        float z = amplitudes[i] * sin(ws[i] * x + speeds[i] * t);
-        d.z += z;
-    }    
+    r.z_norm = r.displacement.z / r.max_amplitude;
     
-    return d;
+    return r;
 }
 
 #endif
