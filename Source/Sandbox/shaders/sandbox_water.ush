@@ -31,30 +31,26 @@ Water0Result water_0(float t, float x)
     {
         1.0, 0.5, 2.0, 0.1, 1.0
     };
-    
-    // omega
-    float ws[n_waves];
-    for (int i = 0; i < n_waves; ++i)
+    float norm_phases[n_waves] =
     {
-        ws[i] = pi2 / periods[i];
-    }
-    
+        0.0, 0.0, 0.0, 0.0, 0.0
+    };
+     
     Water0Result r =
     {
         float3(0.0, 0.0, 0.0), 
         0.0,
         0.0
     };
-   
 
     for (int i = 0; i < n_waves_simulated; ++i)
     {
-        r.displacement.z += amplitudes[i] * sin(ws[i] * x + speeds[i] * t);
-    }
-   
-    for (int i = 0; i < n_waves_simulated; ++i)
-    {
-        r.max_amplitude += amplitudes[i];
+        float w = pi2 / periods[i];
+        float phase = norm_phases[i] * pi2;
+        float a = amplitudes[i];
+        
+        r.displacement.z += a * sin(w * x + speeds[i] * t + phase);
+        r.max_amplitude += a;
     }
     
     r.z_norm = r.displacement.z / r.max_amplitude;
