@@ -3,7 +3,46 @@
 
 float3 example_fn()
 {
-    return float3(0.5, 0.5, 0.5);
+    return float3(0.0, 0.0, 0.0);
+}
+
+float3 water_0(float t, float x)
+{
+    static const int n_waves = 4;
+    static const float pi2 = 2.0 * 3.14159265;
+    
+    float freqs[n_waves] =
+    {
+        0.001,
+    };
+    float ws[n_waves];
+    for (int i = 0; i < n_waves; ++i)
+    {
+        ws[i] = freqs[i] * pi2;
+    }
+    
+    
+    float amplitudes[n_waves] =
+    {
+        500.0,
+    };
+    float speeds[n_waves] =
+    {
+        1.0,
+    };
+    float speeds[n_waves] =
+    {
+        1.0,
+    };
+    
+    float3 d = float3(0, 0, 0); // Displacement
+    for (int i = 0; i < n_waves; ++i)
+    {
+        float z = amplitudes[i] * sin(ws[i] * x + speeds[i] * t);
+        d.z += z;
+    }    
+    
+    return d;
 }
 
 #endif
