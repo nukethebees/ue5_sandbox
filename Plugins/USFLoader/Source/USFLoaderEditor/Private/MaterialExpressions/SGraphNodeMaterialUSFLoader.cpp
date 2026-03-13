@@ -1,7 +1,8 @@
 #include "SGraphNodeMaterialUSFLoader.h"
 
-#include "GraphEditorSettings.h"
 #include "MaterialExpressionUSFLoader.h"
+
+#include "GraphEditorSettings.h"
 #include "MaterialGraph/MaterialGraphNode.h"
 #include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "Widgets/Images/SImage.h"
@@ -62,12 +63,25 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
     SGraphNodeMaterialBase::CreateBelowPinControls(PreviewBox);
 
     constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN};
+    // clang-format off
     MainBox->AddSlot()
         .Padding(Settings->GetNonPinNodeBodyPadding())
-        .AutoHeight()[SNew(SHorizontalBox) +
-                      SHorizontalBox::Slot().AutoWidth().Padding(FMargin(
-                          margin, padding, margin, margin))[GeneratedCodeTextBox.ToSharedRef()] +
-                      SHorizontalBox::Slot().AutoWidth()[PreviewBox.ToSharedRef()]];
+        .AutoHeight()
+        [
+            SNew(SHorizontalBox) 
+            + SHorizontalBox::Slot()
+                .AutoWidth()
+                .Padding(FMargin(margin, padding, margin, margin))
+                [
+                    GeneratedCodeTextBox.ToSharedRef()
+                ]
+                + SHorizontalBox::Slot()
+                    .AutoWidth()
+                    [
+                        PreviewBox.ToSharedRef()
+                    ]
+        ];
+    // clang-format on
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::CodeVisibility() const {
@@ -97,24 +111,29 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
     using My = SGraphNodeMaterialUSFLoader;
 
     constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL};
+    // clang-format off
     MainBox->AddSlot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
         .VAlign(VAlign_Top)
-        .Padding(
-            margin,
-            0,
-            margin,
-            margin)[SNew(SCheckBox)
-                        .Visibility(this, &My::AdvancedViewArrowVisibility)
-                        .OnCheckStateChanged(this, &My::OnAdvancedViewChanged)
-                        .IsChecked(this, &My::IsAdvancedViewChecked)
-                        .Cursor(EMouseCursor::Default)
-                        .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
-                            [SNew(SHorizontalBox) + SHorizontalBox::Slot()
-                                                        .VAlign(VAlign_Center)
-                                                        .HAlign(HAlign_Center)[SNew(SImage).Image(
-                                                            this, &My::GetAdvancedViewArrow)]]];
+        .Padding(margin, 0, margin, margin)
+        [
+           SNew(SCheckBox)
+               .Visibility(this, &My::AdvancedViewArrowVisibility)
+               .OnCheckStateChanged(this, &My::OnAdvancedViewChanged)
+               .IsChecked(this, &My::IsAdvancedViewChecked)
+               .Cursor(EMouseCursor::Default)
+               .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
+               [
+                   SNew(SHorizontalBox) + SHorizontalBox::Slot()
+                   .VAlign(VAlign_Center)
+                   .HAlign(HAlign_Center)
+                   [
+                       SNew(SImage).Image(this, &My::GetAdvancedViewArrow)
+                   ]
+               ]
+        ];
+    // clang-format on
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
