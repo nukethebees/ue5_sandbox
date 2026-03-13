@@ -10,7 +10,10 @@ class SMultiLineEditableTextBox;
 
 class SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
   public:
-    SLATE_BEGIN_ARGS(SGraphNodeMaterialUSFLoader) {}
+    using ThisClass = SGraphNodeMaterialUSFLoader;
+    using Expr = UMaterialExpressionUSFLoader;
+
+    SLATE_BEGIN_ARGS(ThisClass) {}
     SLATE_END_ARGS()
 
     void Construct(FArguments const& InArgs, UEdGraphNode* InNode);
@@ -25,6 +28,7 @@ class SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
     virtual ECheckBoxState IsAdvancedViewChecked() const override;
     virtual FSlateBrush const* GetAdvancedViewArrow() const override;
     //~ End SGraphNode Interface
+    FReply on_mark_dirty_clicked();
   private:
     /** Visibility of the generated code display */
     EVisibility CodeVisibility() const;

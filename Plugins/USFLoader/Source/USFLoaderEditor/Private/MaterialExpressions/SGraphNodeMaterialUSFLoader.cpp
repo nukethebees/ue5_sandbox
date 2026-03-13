@@ -44,7 +44,7 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
 
 void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox> MainBox) {
     TAttribute<FText> GetText{};
-    GetText.Bind(this, &SGraphNodeMaterialUSFLoader::GetGeneratedCodeText);
+    GetText.Bind(this, &ThisClass::GetGeneratedCodeText);
 
     // Create read-only text box for generated code
     constexpr auto padding{UMaterialExpressionUSFLoader::Constants::UI_PADDING};
@@ -53,7 +53,7 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
         .IsReadOnly(true) // Read-only unlike Custom expression
         .Margin(FMargin(padding, padding, padding, padding))
         .Text(GetText)
-        .Visibility(this, &SGraphNodeMaterialUSFLoader::CodeVisibility)
+        .Visibility(this, &ThisClass::CodeVisibility)
         .Marshaller(SyntaxHighlighter)
         .ToolTipText(FText::FromString(TEXT("Generated shader code from USF Loader (read-only)")));
 
@@ -62,7 +62,7 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
 
     SGraphNodeMaterialBase::CreateBelowPinControls(PreviewBox);
 
-    constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN};
+    constexpr auto margin{Expr::Constants::UI_MARGIN};
     // clang-format off
     MainBox->AddSlot()
         .Padding(Settings->GetNonPinNodeBodyPadding())
@@ -75,11 +75,20 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
                 [
                     GeneratedCodeTextBox.ToSharedRef()
                 ]
-                + SHorizontalBox::Slot()
-                    .AutoWidth()
-                    [
-                        PreviewBox.ToSharedRef()
-                    ]
+            + SHorizontalBox::Slot()
+                .AutoWidth()
+                [
+                    PreviewBox.ToSharedRef()
+                ]
+            + SHorizontalBox::Slot()
+                .AutoWidth()
+                .Padding(FMargin(margin, padding, margin, margin))
+                [
+                    SNew(SButton)
+                        .Text(FText::FromString(TEXT("Mark Dirty")))
+                        .ToolTipText(FText::FromString(TEXT("Mark this USF Loader node as dirty")))
+                        .OnClicked(this, &ThisClass::on_mark_dirty_clicked)
+                ]
         ];
     // clang-format on
 }
@@ -108,8 +117,6 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
         return;
     }
 
-    using My = SGraphNodeMaterialUSFLoader;
-
     constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL};
     // clang-format off
     MainBox->AddSlot()
@@ -119,18 +126,19 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
         .Padding(margin, 0, margin, margin)
         [
            SNew(SCheckBox)
-               .Visibility(this, &My::AdvancedViewArrowVisibility)
-               .OnCheckStateChanged(this, &My::OnAdvancedViewChanged)
-               .IsChecked(this, &My::IsAdvancedViewChecked)
+               .Visibility(this, &ThisClass::AdvancedViewArrowVisibility)
+               .OnCheckStateChanged(this, &ThisClass::OnAdvancedViewChanged)
+               .IsChecked(this, &ThisClass::IsAdvancedViewChecked)
                .Cursor(EMouseCursor::Default)
                .Style(FAppStyle::Get(), "Graph.Node.AdvancedView")
                [
-                   SNew(SHorizontalBox) + SHorizontalBox::Slot()
-                   .VAlign(VAlign_Center)
-                   .HAlign(HAlign_Center)
-                   [
-                       SNew(SImage).Image(this, &My::GetAdvancedViewArrow)
-                   ]
+                   SNew(SHorizontalBox) 
+                       + SHorizontalBox::Slot()
+                       .VAlign(VAlign_Center)
+                       .HAlign(HAlign_Center)
+                       [
+                           SNew(SImage).Image(this, &ThisClass::GetAdvancedViewArrow)
+                       ]
                ]
         ];
     // clang-format on
@@ -167,4 +175,28 @@ FSlateBrush const* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
 
     auto const state{IsAdvancedViewChecked()};
     return FAppStyle::GetBrush((state == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);
+}
+
+FReply SGraphNodeMaterialUSFLoader::on_mark_dirty_clicked() {
+    UE_LOG(LogTemp, Display, TEXT("on_mark_dirty_clicked."));
+
+    if (auto* usf_expression = GetUSFLoaderExpression()) {
+        usf_expression->Modify(true);
+        usf_expression->MarkPackageDirty();
+
+        if (auto mat{usf_expression->Material}) {
+            mat->PreEditChange(nullptr);
+            mat->PostEditChange();
+            mat->MarkPackageDirty();
+            mat->ForceRecompileForRendering();
+        }
+
+        if (MaterialNode) {
+            MaterialNode->ReconstructNode();
+        }
+
+        return FReply::Handled();
+    }
+    UE_LOG(LogTemp, Warning, TEXT("on_mark_dirty_clicked failed."));
+    return FReply::Unhandled();
 }
