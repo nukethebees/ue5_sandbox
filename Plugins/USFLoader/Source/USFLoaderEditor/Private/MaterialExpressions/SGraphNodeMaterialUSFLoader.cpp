@@ -2,6 +2,7 @@
 
 #include "MaterialExpressionUSFLoader.h"
 
+#include "GraphEditAction.h"
 #include "GraphEditorSettings.h"
 #include "MaterialGraph/MaterialGraphNode.h"
 #include "Text/HLSLSyntaxHighlighterMarshaller.h"
@@ -178,6 +179,7 @@ FSlateBrush const* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
 }
 
 FReply SGraphNodeMaterialUSFLoader::on_mark_dirty_clicked() {
+    // All non-functional
     UE_LOG(LogTemp, Display, TEXT("on_mark_dirty_clicked."));
 
     if (auto* usf_expression = GetUSFLoaderExpression()) {
@@ -186,13 +188,19 @@ FReply SGraphNodeMaterialUSFLoader::on_mark_dirty_clicked() {
 
         if (auto mat{usf_expression->Material}) {
             mat->PreEditChange(nullptr);
-            mat->PostEditChange();
             mat->MarkPackageDirty();
-            mat->ForceRecompileForRendering();
+            mat->Modify(true);
+            mat->PostEditChange();
+        } else {
+            UE_LOG(LogTemp, Warning, TEXT("usf_expression->Material is nullptr."));
         }
 
         if (MaterialNode) {
-            MaterialNode->ReconstructNode();
+            auto* graph{GraphNode->GetGraph()};
+            graph->NotifyGraphChanged();
+            graph->NotifyNodeChanged(MaterialNode);
+        } else {
+            UE_LOG(LogTemp, Warning, TEXT("MaterialNode is nullptr."));
         }
 
         return FReply::Handled();
