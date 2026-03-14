@@ -93,20 +93,24 @@ void ASpaceShip::update_boost_brake(this auto& self, float dt) {
 }
 void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
     auto const drot{self.rotation_speed * dt};
+
     if (self.rotation_input == FVector2D::ZeroVector) {
+
         auto const rot{self.GetActorRotation()};
         FRotator const delta_rotation{
             self.tick_clamp(-rot.Pitch, dt, drot), 0.0f, self.tick_clamp(-rot.Roll, dt, drot)};
 
         self.AddActorLocalRotation(delta_rotation);
     } else {
-        auto const d_pitch{self.rotation_input.Y * drot};
+        auto const drot_pitch{drot};
 
-        auto const manual_bank_intensity{self.manual_bank_direction};
-        auto const d_yaw_bank{manual_bank_intensity * drot * 0.5};
-        auto const d_yaw_turn{self.rotation_input.X * drot};
-        auto const d_yaw{d_yaw_turn + d_yaw_bank};
+        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
+        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
+        auto const yaw_speed{self.rotation_speed * abs_yaw_strength};
+        auto const drot_yaw{yaw_speed * dt};
 
+        auto const d_pitch{self.rotation_input.Y * drot_pitch};
+        auto const d_yaw{self.rotation_input.X * drot_yaw};
         auto const d_roll{0.f};
 
         FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
@@ -156,16 +160,6 @@ void ASpaceShip::integrate_velocity(this auto& self, float dt) {
     auto const delta_pos{self.velocity * dt};
 
     self.SetActorLocation(cur_pos + delta_pos, true);
-
-#if WITH_EDITOR
-    if (self.can_log()) {
-        UE_LOG(LogSandboxActor, Log, TEXT("Speed: %.f"), new_speed);
-        UE_LOG(LogSandboxActor, Log, TEXT("Drag: %.f"), drag);
-        UE_LOG(LogSandboxActor, Log, TEXT("Acceleration: %.f"), acceleration);
-        UE_LOG(LogSandboxActor, Log, TEXT("Net acceleration: %.f"), net_acceleration);
-    }
-#endif
-
     self.on_speed_changed.Execute(new_speed);
 }
 
