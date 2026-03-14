@@ -64,13 +64,11 @@ void ASpaceShip::update_boost_brake(this auto& self, float dt) {
     switch (self.boost_brake_state) {
         case EBoostBrakeState::None: {
             self.target_speed = self.cruise_speed;
-            self.max_acceleration = self.cruise_acceleration;
             self.thrust_energy = starting_thrust_energy + dt * self.thrust_recharge_rate;
             break;
         }
         case EBoostBrakeState::Boost: {
             self.target_speed = self.boost_speed;
-            self.max_acceleration = self.boost_acceleration;
             self.thrust_energy = starting_thrust_energy - dt * self.boost_depletion_rate;
             break;
         }
@@ -142,18 +140,32 @@ void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
 void ASpaceShip::integrate_velocity(this auto& self, float dt) {
+    auto const acceleration{self.drag_coeff_2 * (self.target_speed * self.target_speed) +
+                            (self.drag_coeff_1 * self.target_speed) + self.drag_coeff_0};
+
     auto const current_speed{self.velocity.Size()};
-    auto const target_speed_delta{self.target_speed - current_speed};
-    auto const max_frame_speed_delta{self.max_acceleration * dt};
-    auto const frame_speed_delta{self.tick_clamp(target_speed_delta, dt, max_frame_speed_delta)};
-    auto const new_speed{current_speed + frame_speed_delta};
+    auto const fwd{self.GetActorForwardVector()};
+    auto const drag{self.drag_coeff_2 * current_speed * current_speed +
+                    self.drag_coeff_1 * current_speed + self.drag_coeff_0};
+    auto const net_acceleration{acceleration - drag};
+    auto const delta_speed{net_acceleration * dt};
+    auto const new_speed{current_speed + delta_speed};
+    self.velocity = fwd * new_speed;
 
-    self.velocity = self.GetActorForwardVector() * new_speed;
-
+    auto const cur_pos{self.GetActorLocation()};
     auto const delta_pos{self.velocity * dt};
-    self.SetActorLocation(self.GetActorLocation() + delta_pos, true);
 
-    self.max_acceleration = self.cruise_acceleration;
+    self.SetActorLocation(cur_pos + delta_pos, true);
+
+#if WITH_EDITOR
+    if (self.can_log()) {
+        UE_LOG(LogSandboxActor, Log, TEXT("Speed: %.f"), new_speed);
+        UE_LOG(LogSandboxActor, Log, TEXT("Drag: %.f"), drag);
+        UE_LOG(LogSandboxActor, Log, TEXT("Acceleration: %.f"), acceleration);
+        UE_LOG(LogSandboxActor, Log, TEXT("Net acceleration: %.f"), net_acceleration);
+    }
+#endif
+
     self.on_speed_changed.Execute(new_speed);
 }
 
@@ -176,9 +188,6 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
 
-    target_speed = cruise_speed;
-    max_acceleration = cruise_acceleration;
-
 #if WITH_EDITOR
     static constexpr float sample_rate_hz{60.0f};
     static constexpr float sample_interval{1.0f / sample_rate_hz};
@@ -193,6 +202,10 @@ void ASpaceShip::BeginPlay() {
     GetWorldTimerManager().SetTimer(
         speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
 #endif
+
+    // Coeff 1 is chosen by the user
+    drag_coeff_2 =
+        (cruise_acceleration - drag_coeff_1 * cruise_speed) / (cruise_speed * cruise_speed);
 }
 
 void ASpaceShip::turn(FVector2D direction) {

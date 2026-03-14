@@ -134,27 +134,26 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     FVector velocity;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     float target_speed{0.f};
+
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
+    float drag_coeff_0{0.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    float max_acceleration{0.f};
+    float drag_coeff_1{0.2f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
+    float drag_coeff_2{0.0000125};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    float cruise_speed{3000.0f};
+    float cruise_speed{12000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    float cruise_acceleration{3000.0f};
-
+    float cruise_acceleration{6000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
-    float boost_speed{5000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
-    float boost_acceleration{5000.0f};
-
+    float boost_speed{30000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
     float brake_speed{1000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed|Brake/Boost")
-    float brake_acceleration{1000.0f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
     float rotation_speed{0.5f};
