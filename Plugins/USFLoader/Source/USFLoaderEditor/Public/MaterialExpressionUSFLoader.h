@@ -106,6 +106,7 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Optional input to chain USF blocks"))
     FExpressionInput previous_block;
 
+#if WITH_EDITOR
     //~ Begin UMaterialExpression Interface
     virtual int32 Compile(class FMaterialCompiler* compiler, int32 output_index) override;
     virtual void GetCaption(TArray<FString>& out_captions) const override;
@@ -115,7 +116,8 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     virtual FString GetEditableName() const override;
     virtual void SetEditableName(FString const& NewName) override;
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
-    //~ End UMaterialExpression Interface
+//~ End UMaterialExpression Interface
+#endif
   private:
     bool is_valid_include_path(FString const& path) const;
 

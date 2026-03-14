@@ -41,6 +41,7 @@ void set_input(UMaterialExpressionUSFLoader* loader,
     input_to_use.OutputIndex = 0;
 }
 
+#if WITH_EDITOR
 int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 output_index) {
     if (!compiler) {
         return INDEX_NONE;
@@ -127,7 +128,6 @@ int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 o
 
     return custom_expression->Compile(compiler, output_index);
 }
-
 void UMaterialExpressionUSFLoader::GetCaption(TArray<FString>& out_captions) const {
     if (usf_file_paths.Num() == 0) {
         out_captions.Add(TEXT("USF Loader: <No files>"));
@@ -140,11 +140,9 @@ void UMaterialExpressionUSFLoader::GetCaption(TArray<FString>& out_captions) con
         out_captions.Add(FString::Printf(TEXT("USF Loader: %d files"), usf_file_paths.Num()));
     }
 }
-
 FText UMaterialExpressionUSFLoader::GetCreationDescription() const {
     return Constants::CreationDescription();
 }
-
 FText UMaterialExpressionUSFLoader::GetCreationName() const {
     return Constants::DisplayName();
 }
@@ -154,15 +152,12 @@ bool UMaterialExpressionUSFLoader::CanRenameNode() const {
 FString UMaterialExpressionUSFLoader::GetEditableName() const {
     return instance_name;
 }
-
 void UMaterialExpressionUSFLoader::SetEditableName(FString const& NewName) {
     instance_name = NewName;
 }
-
 bool UMaterialExpressionUSFLoader::is_valid_include_path(FString const& path) const {
     return UUSFPathValidationSubsystem::ValidateUSFPath(path);
 }
-
 TSharedPtr<class SGraphNodeMaterialBase>
     UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget() {
     UE_LOGFMT(LogTemp, Display, "UMaterialExpressionUSFLoader::CreateCustomGraphNodeWidget called");
@@ -176,3 +171,4 @@ TSharedPtr<class SGraphNodeMaterialBase>
         return nullptr;
     }
 }
+#endif
