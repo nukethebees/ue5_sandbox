@@ -64,11 +64,13 @@ void ASpaceShip::update_boost_brake(this auto& self, float dt) {
     switch (self.boost_brake_state) {
         case EBoostBrakeState::None: {
             self.target_speed = self.cruise_speed;
+            self.max_acceleration = self.cruise_acceleration;
             self.thrust_energy = starting_thrust_energy + dt * self.thrust_recharge_rate;
             break;
         }
         case EBoostBrakeState::Boost: {
             self.target_speed = self.boost_speed;
+            self.max_acceleration = self.boost_acceleration;
             self.thrust_energy = starting_thrust_energy - dt * self.boost_depletion_rate;
             break;
         }
