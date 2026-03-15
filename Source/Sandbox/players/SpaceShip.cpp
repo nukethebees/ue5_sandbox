@@ -16,6 +16,27 @@
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
+auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
+    auto const z{damping_factor};
+    auto const w{natural_angular_frequency()};
+
+    auto const a{FMath::Cos(w * t)};
+    auto const b{z / FMath::Sqrt(1 - z * z)};
+    auto const c{FMath::Sin(w * t)};
+    auto const h{1.f - FMath::Exp(-z * w * t) * (a + b * c)};
+
+    return step_size() * h;
+}
+auto FSpaceShipFlightModel::update_y(float dt) -> float {
+    time += dt;
+    return old_speed + calculate_dy(time);
+}
+auto FSpaceShipFlightModel::set_new_impulse(float old_s, float target_s) {
+    old_speed = old_s;
+    target_speed = target_s;
+    time = 0.f;
+}
+
 ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
@@ -54,46 +75,51 @@ void ASpaceShip::Tick(float dt) {
     seconds_since_last_log += dt;
 #endif
 }
-void ASpaceShip::update_boost_brake(this auto& self, float dt) {
-    auto const starting_thrust_energy{self.thrust_energy};
 
-    if (starting_thrust_energy <= 0.f) {
-        self.boost_brake_state = EBoostBrakeState::None;
-    }
-
-    switch (self.boost_brake_state) {
+void ASpaceShip::set(EBoostBrakeState s) {
+    switch (s) {
         case EBoostBrakeState::None: {
-            self.target_speed = self.cruise_speed;
-            self.thrust_energy = starting_thrust_energy + dt * self.thrust_recharge_rate;
+            target_speed = cruise_speed;
+            thrust_change_rate = thrust_recharge_rate;
             break;
         }
         case EBoostBrakeState::Boost: {
-            self.target_speed = self.boost_speed;
-            self.thrust_energy = starting_thrust_energy - dt * self.boost_depletion_rate;
+            target_speed = boost_speed;
+            thrust_change_rate = -boost_depletion_rate;
             break;
         }
         case EBoostBrakeState::Brake: {
-            self.target_speed = self.brake_speed;
-            self.thrust_energy = starting_thrust_energy - dt * self.brake_depletion_rate;
+            target_speed = brake_speed;
+            thrust_change_rate = -brake_depletion_rate;
             break;
         }
         default: {
             UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
-            self.target_speed = self.cruise_speed;
-            self.boost_brake_state = EBoostBrakeState::None;
+            target_speed = cruise_speed;
+            thrust_change_rate = thrust_recharge_rate;
             break;
         }
     }
 
-    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
+    flight_model.set_new_impulse(get_speed(), target_speed);
+    boost_brake_state = s;
+}
 
+void ASpaceShip::update_boost_brake(this ASpaceShip& self, float dt) {
+    auto const starting_thrust_energy{self.thrust_energy};
+
+    if (starting_thrust_energy <= 0.f) {
+        self.set(EBoostBrakeState::None);
+    }
+
+    self.thrust_energy += dt * self.thrust_change_rate;
+    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
     if (starting_thrust_energy != self.thrust_energy) {
         self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
     }
 }
-void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
+void ASpaceShip::update_actor_rotation(this ASpaceShip& self, float dt) {
     auto const drot{self.rotation_speed * dt};
-
     if (self.rotation_input == FVector2D::ZeroVector) {
 
         auto const rot{self.GetActorRotation()};
@@ -117,7 +143,7 @@ void ASpaceShip::update_actor_rotation(this auto& self, float dt) {
         self.AddActorLocalRotation(delta_rotation);
     }
 }
-void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
+void ASpaceShip::update_visual_orientation(this ASpaceShip& self, float dt) {
     auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
 
     auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
@@ -143,17 +169,9 @@ void ASpaceShip::update_visual_orientation(this auto& self, float dt) {
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
-void ASpaceShip::integrate_velocity(this auto& self, float dt) {
-    auto const acceleration{self.drag_coeff_2 * (self.target_speed * self.target_speed) +
-                            (self.drag_coeff_1 * self.target_speed) + self.drag_coeff_0};
-
-    auto const current_speed{self.velocity.Size()};
+void ASpaceShip::integrate_velocity(this ASpaceShip& self, float dt) {
     auto const fwd{self.GetActorForwardVector()};
-    auto const drag{self.drag_coeff_2 * current_speed * current_speed +
-                    self.drag_coeff_1 * current_speed + self.drag_coeff_0};
-    auto const net_acceleration{acceleration - drag};
-    auto const delta_speed{net_acceleration * dt};
-    auto const new_speed{current_speed + delta_speed};
+    auto const new_speed{self.flight_model.update_y(dt)};
     self.velocity = fwd * new_speed;
 
     auto const cur_pos{self.GetActorLocation()};
@@ -200,6 +218,10 @@ void ASpaceShip::BeginPlay() {
     // Coeff 1 is chosen by the user
     drag_coeff_2 =
         (cruise_acceleration - drag_coeff_1 * cruise_speed) / (cruise_speed * cruise_speed);
+
+    thrust_change_rate = thrust_change_rate;
+    velocity = FVector3d::ZeroVector;
+    set(EBoostBrakeState::None);
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -213,22 +235,22 @@ void ASpaceShip::turn(FVector2D direction) {
 }
 void ASpaceShip::start_boost() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
-        boost_brake_state = EBoostBrakeState::Boost;
+        set(EBoostBrakeState::Boost);
     }
 }
 void ASpaceShip::stop_boost() {
     if (boost_brake_state == EBoostBrakeState::Boost) {
-        boost_brake_state = EBoostBrakeState::None;
+        set(EBoostBrakeState::None);
     }
 }
 void ASpaceShip::start_brake() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
-        boost_brake_state = EBoostBrakeState::Brake;
+        set(EBoostBrakeState::Brake);
     }
 }
 void ASpaceShip::stop_brake() {
     if (boost_brake_state == EBoostBrakeState::Brake) {
-        boost_brake_state = EBoostBrakeState::None;
+        set(EBoostBrakeState::None);
     }
 }
 void ASpaceShip::roll(float direction) {

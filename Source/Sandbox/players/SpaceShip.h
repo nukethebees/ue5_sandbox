@@ -32,6 +32,35 @@ DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
 UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
+USTRUCT(BlueprintType)
+struct FSpaceShipFlightModel {
+    GENERATED_BODY()
+
+    FSpaceShipFlightModel() = default;
+    FSpaceShipFlightModel(float settling_time, float damping_factor)
+        : settling_time(settling_time)
+        , damping_factor(damping_factor) {}
+
+    auto tau() const { return settling_time / 5.f; }
+    auto natural_angular_frequency() const { return 1 / tau(); }
+    auto step_size() const { return target_speed - old_speed; }
+
+    auto calculate_dy(float t) const -> float;
+    auto update_y(float dt) -> float;
+    auto set_new_impulse(float old_s, float target_s);
+  protected:
+    UPROPERTY(EditAnywhere)
+    float settling_time{3.f};
+    UPROPERTY(EditAnywhere)
+    float damping_factor{0.5f};
+    UPROPERTY(VisibleAnywhere)
+    float time{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float old_speed{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float target_speed{0.f};
+};
+
 UCLASS()
 class ASpaceShip
     : public APawn
@@ -100,12 +129,13 @@ class ASpaceShip
   protected:
     void BeginPlay() override;
 
+    void set(EBoostBrakeState s);
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
     void subtract_bomb();
-    void update_boost_brake(this auto& self, float dt);
-    void update_actor_rotation(this auto& self, float dt);
-    void update_visual_orientation(this auto& self, float dt);
-    void integrate_velocity(this auto& self, float dt);
+    void update_boost_brake(this ASpaceShip& self, float dt);
+    void update_actor_rotation(this ASpaceShip& self, float dt);
+    void update_visual_orientation(this ASpaceShip& self, float dt);
+    void integrate_velocity(this ASpaceShip& self, float dt);
 
     void add_points(int32 x);
 
@@ -126,13 +156,18 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy{100.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
+    float thrust_change_rate{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float boost_depletion_rate{50.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float brake_depletion_rate{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
     float thrust_recharge_rate{20.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FSpaceShipFlightModel flight_model{};
 
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     FVector velocity;
