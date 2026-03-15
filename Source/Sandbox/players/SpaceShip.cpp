@@ -17,24 +17,45 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
-    auto const z{damping_factor};
-    auto const w{natural_angular_frequency()};
+    auto const z{response.damping_factor};
+    auto const w{response.natural_angular_frequency()};
 
     auto const a{FMath::Cos(w * t)};
     auto const b{z / FMath::Sqrt(1 - z * z)};
     auto const c{FMath::Sin(w * t)};
     auto const h{1.f - FMath::Exp(-z * w * t) * (a + b * c)};
 
+#if WITH_EDITOR
+    h_dbg = h;
+#endif
+
     return step_size() * h;
 }
 auto FSpaceShipFlightModel::update_y(float dt) -> float {
     time += dt;
-    return old_speed + calculate_dy(time);
+    auto const delta_speed{calculate_dy(time)};
+
+#if WITH_EDITOR
+    dy_dbg = delta_speed;
+    step_size_dbg = step_size();
+#endif
+
+    return old_speed + delta_speed;
 }
-auto FSpaceShipFlightModel::set_new_impulse(float old_s, float target_s) {
+auto FSpaceShipFlightModel::set_new_impulse(FSpeedResponse sr, float old_s, float target_s) {
+    response = sr;
     old_speed = old_s;
     target_speed = target_s;
     time = 0.f;
+
+    // Fix issue where damping ratio is 1
+    if (FMath::Abs(1.f - response.damping_factor) < 1e-6) {
+        response.damping_factor = 0.9999;
+    }
+
+#if WITH_EDITOR
+    step_size_original_dbg = step_size();
+#endif
 }
 
 ASpaceShip::ASpaceShip()
@@ -77,31 +98,36 @@ void ASpaceShip::Tick(float dt) {
 }
 
 void ASpaceShip::set(EBoostBrakeState s) {
+    auto const cur_speed{get_speed()};
+    FSpeedResponse response{speed_responses.accelerating_to_cruise};
+
     switch (s) {
-        case EBoostBrakeState::None: {
-            target_speed = cruise_speed;
-            thrust_change_rate = 1.f / thrust_recharge_time;
-            break;
-        }
         case EBoostBrakeState::Boost: {
             target_speed = boost_speed;
             thrust_change_rate = -(1.f / boost_depletion_time);
+            response = speed_responses.boost;
             break;
         }
         case EBoostBrakeState::Brake: {
             target_speed = brake_speed;
             thrust_change_rate = -(1.f / brake_depletion_time);
+            response = speed_responses.brake;
             break;
         }
-        default: {
+        default:
             UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
+            [[fallthrough]];
+        case EBoostBrakeState::None: {
             target_speed = cruise_speed;
             thrust_change_rate = 1.f / thrust_recharge_time;
+            if (target_speed < cur_speed) {
+                response = speed_responses.slowing_to_cruise;
+            }
             break;
         }
     }
 
-    flight_model.set_new_impulse(get_speed(), target_speed);
+    flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }
 

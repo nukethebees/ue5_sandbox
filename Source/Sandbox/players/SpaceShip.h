@@ -33,32 +33,72 @@ UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
 USTRUCT(BlueprintType)
-struct FSpaceShipFlightModel {
+struct FSpeedResponse {
     GENERATED_BODY()
 
-    FSpaceShipFlightModel() = default;
-    FSpaceShipFlightModel(float settling_time, float damping_factor)
+    FSpeedResponse() = default;
+    FSpeedResponse(float settling_time, float damping_factor)
         : settling_time(settling_time)
         , damping_factor(damping_factor) {}
 
     auto tau() const { return settling_time / 5.f; }
     auto natural_angular_frequency() const { return 1 / tau(); }
-    auto step_size() const { return target_speed - old_speed; }
 
-    auto calculate_dy(float t) const -> float;
-    auto update_y(float dt) -> float;
-    auto set_new_impulse(float old_s, float target_s);
-  protected:
     UPROPERTY(EditAnywhere)
     float settling_time{3.f};
     UPROPERTY(EditAnywhere)
     float damping_factor{0.5f};
+};
+
+USTRUCT(BlueprintType)
+struct FSpeedResponses {
+    GENERATED_BODY()
+
+    FSpeedResponses() = default;
+
+    UPROPERTY(EditAnywhere)
+    FSpeedResponse boost{};
+    UPROPERTY(EditAnywhere)
+    FSpeedResponse brake{};
+    UPROPERTY(EditAnywhere)
+    FSpeedResponse slowing_to_cruise{};
+    UPROPERTY(EditAnywhere)
+    FSpeedResponse accelerating_to_cruise{};
+};
+
+USTRUCT(BlueprintType)
+struct FSpaceShipFlightModel {
+    GENERATED_BODY()
+
+    FSpaceShipFlightModel() = default;
+    FSpaceShipFlightModel(FSpeedResponse sr)
+        : response(sr) {}
+
+    auto step_size() const { return target_speed - old_speed; }
+
+    auto calculate_dy(float t) const -> float;
+    auto update_y(float dt) -> float;
+    auto set_new_impulse(FSpeedResponse sr, float old_s, float target_s);
+  protected:
+    UPROPERTY(VisibleAnywhere)
+    FSpeedResponse response{};
     UPROPERTY(VisibleAnywhere)
     float time{0.f};
     UPROPERTY(VisibleAnywhere)
     float old_speed{0.f};
     UPROPERTY(VisibleAnywhere)
     float target_speed{0.f};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Debug")
+    mutable float h_dbg{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "Debug")
+    float step_size_original_dbg{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "Debug")
+    float step_size_dbg{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "Debug")
+    float dy_dbg{0.f};
+#endif
 };
 
 UCLASS()
@@ -158,8 +198,10 @@ class ASpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpaceShipFlightModel flight_model{};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    FSpeedResponses speed_responses{};
 
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     FVector velocity;
@@ -167,21 +209,21 @@ class ASpaceShip
     float target_speed{0.f};
 
     // Cruising
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Cruise")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float cruise_speed{12000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Cruise")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float thrust_recharge_time{7.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
     // Boosting
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_speed{30000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Boost")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_depletion_time{4.f};
     // Braking
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Brake")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float brake_speed{1000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Brake")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float brake_depletion_time{6.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
