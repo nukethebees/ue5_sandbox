@@ -18,10 +18,8 @@
 
 auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
     auto const wd_t{wd * t};
-
-    auto const a{FMath::Cos(wd_t)};
-    auto const b{FMath::Sin(wd_t)};
-    auto const h{1.f - FMath::Exp(-z_wn * t) * (a + alpha * b)};
+    auto const inner{c * FMath::Cos(wd * t + delta)};
+    auto const h{1.f - FMath::Exp(-z_wn * t) * inner};
 
 #if WITH_EDITOR
     h_dbg = h;
@@ -57,9 +55,13 @@ auto FSpaceShipFlightModel::set_new_impulse(FSpeedResponse sr, float old_s, floa
 
     auto const z{response.damping_ratio};
     wn = response.natural_angular_frequency();
-    wd = wn * FMath::Sqrt(1 - z * z);
-    alpha = z / FMath::Sqrt(1 - z * z);
+    auto const x{FMath::Sqrt(1 - z * z)};
+    wd = wn * x;
+    alpha = z / x;
     z_wn = response.damping_ratio * wn;
+
+    delta = FMath::Atan2(-alpha, 1.f);
+    c = FMath::Sqrt(1.f + alpha * alpha);
 }
 
 ASpaceShip::ASpaceShip()

@@ -96,6 +96,12 @@ struct FSpaceShipFlightModel {
     float wd{0.f};
     UPROPERTY(VisibleAnywhere)
     float z_wn{0.f};
+    // Harmonic addition theorem
+    // sin(x) + b*cos(x) -> c * cos(x + delta)
+    UPROPERTY(VisibleAnywhere)
+    float delta{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float c{0.f};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleAnywhere, Category = "Debug")
