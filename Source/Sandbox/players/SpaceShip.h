@@ -37,9 +37,9 @@ struct FSpeedResponse {
     GENERATED_BODY()
 
     FSpeedResponse() = default;
-    FSpeedResponse(float settling_time, float damping_factor)
+    FSpeedResponse(float settling_time, float damping_ratio)
         : settling_time(settling_time)
-        , damping_factor(damping_factor) {}
+        , damping_ratio(damping_ratio) {}
 
     auto tau() const { return settling_time / 5.f; }
     auto natural_angular_frequency() const { return 1 / tau(); }
@@ -47,7 +47,7 @@ struct FSpeedResponse {
     UPROPERTY(EditAnywhere)
     float settling_time{3.f};
     UPROPERTY(EditAnywhere)
-    float damping_factor{0.5f};
+    float damping_ratio{0.5f};
 };
 
 USTRUCT(BlueprintType)

@@ -17,7 +17,7 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
-    auto const z{response.damping_factor};
+    auto const z{response.damping_ratio};
     auto const w{response.natural_angular_frequency()};
 
     auto const a{FMath::Cos(w * t)};
@@ -49,8 +49,8 @@ auto FSpaceShipFlightModel::set_new_impulse(FSpeedResponse sr, float old_s, floa
     time = 0.f;
 
     // Fix issue where damping ratio is 1
-    if (FMath::Abs(1.f - response.damping_factor) < 1e-6) {
-        response.damping_factor = 0.9999;
+    if (FMath::Abs(1.f - response.damping_ratio) < 1e-6) {
+        response.damping_ratio = 0.9999;
     }
 
 #if WITH_EDITOR
