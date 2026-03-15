@@ -80,23 +80,23 @@ void ASpaceShip::set(EBoostBrakeState s) {
     switch (s) {
         case EBoostBrakeState::None: {
             target_speed = cruise_speed;
-            thrust_change_rate = thrust_recharge_rate;
+            thrust_change_rate = 1.f / thrust_recharge_time;
             break;
         }
         case EBoostBrakeState::Boost: {
             target_speed = boost_speed;
-            thrust_change_rate = -boost_depletion_rate;
+            thrust_change_rate = -(1.f / boost_depletion_time);
             break;
         }
         case EBoostBrakeState::Brake: {
             target_speed = brake_speed;
-            thrust_change_rate = -brake_depletion_rate;
+            thrust_change_rate = -(1.f / brake_depletion_time);
             break;
         }
         default: {
             UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
             target_speed = cruise_speed;
-            thrust_change_rate = thrust_recharge_rate;
+            thrust_change_rate = 1.f / thrust_recharge_time;
             break;
         }
     }
