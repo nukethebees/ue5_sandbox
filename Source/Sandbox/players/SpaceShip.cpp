@@ -215,10 +215,6 @@ void ASpaceShip::BeginPlay() {
         speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
 #endif
 
-    // Coeff 1 is chosen by the user
-    drag_coeff_2 =
-        (cruise_acceleration - drag_coeff_1 * cruise_speed) / (cruise_speed * cruise_speed);
-
     thrust_change_rate = thrust_change_rate;
     velocity = FVector3d::ZeroVector;
     set(EBoostBrakeState::None);

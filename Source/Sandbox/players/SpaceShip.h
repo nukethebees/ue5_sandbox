@@ -157,10 +157,6 @@ class ASpaceShip
     float thrust_energy{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Energy")
-    float thrust_recharge_time{7.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
-    EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FSpaceShipFlightModel flight_model{};
@@ -170,21 +166,19 @@ class ASpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     float target_speed{0.f};
 
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
-    float drag_coeff_0{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    float drag_coeff_1{0.2f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
-    float drag_coeff_2{0.0000125};
-
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    // Cruising
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Cruise")
     float cruise_speed{12000.0f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    float cruise_acceleration{6000.0f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Cruise")
+    float thrust_recharge_time{7.f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip")
+    EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
+    // Boosting
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Boost")
     float boost_speed{30000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Boost")
     float boost_depletion_time{4.f};
+    // Braking
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Brake")
     float brake_speed{1000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Brake")
