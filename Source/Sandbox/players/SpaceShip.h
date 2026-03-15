@@ -88,6 +88,14 @@ struct FSpaceShipFlightModel {
     float old_speed{0.f};
     UPROPERTY(VisibleAnywhere)
     float target_speed{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float alpha{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float wn{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float wd{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float z_wn{0.f};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleAnywhere, Category = "Debug")

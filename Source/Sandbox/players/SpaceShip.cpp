@@ -17,13 +17,11 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
-    auto const z{response.damping_ratio};
-    auto const w{response.natural_angular_frequency()};
+    auto const wd_t{wd * t};
 
-    auto const a{FMath::Cos(w * t)};
-    auto const b{z / FMath::Sqrt(1 - z * z)};
-    auto const c{FMath::Sin(w * t)};
-    auto const h{1.f - FMath::Exp(-z * w * t) * (a + b * c)};
+    auto const a{FMath::Cos(wd_t)};
+    auto const b{FMath::Sin(wd_t)};
+    auto const h{1.f - FMath::Exp(-z_wn * t) * (a + alpha * b)};
 
 #if WITH_EDITOR
     h_dbg = h;
@@ -56,6 +54,12 @@ auto FSpaceShipFlightModel::set_new_impulse(FSpeedResponse sr, float old_s, floa
 #if WITH_EDITOR
     step_size_original_dbg = step_size();
 #endif
+
+    auto const z{response.damping_ratio};
+    wn = response.natural_angular_frequency();
+    wd = wn * FMath::Sqrt(1 - z * z);
+    alpha = z / FMath::Sqrt(1 - z * z);
+    z_wn = response.damping_ratio * wn;
 }
 
 ASpaceShip::ASpaceShip()
