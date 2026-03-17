@@ -12,7 +12,12 @@ class UBoxComponent;
 class UNiagaraSystem;
 
 UENUM()
-enum class EShipTrainingTargetMovementMode : uint8 { stationary, move_forward, sine };
+enum class EShipTrainingTargetMovementMode : uint8 {
+    stationary,
+    move_forward,
+    sine,
+    orbit_yz,
+};
 
 UCLASS()
 class AShipTrainingTarget
@@ -40,14 +45,20 @@ class AShipTrainingTarget
     UPROPERTY(EditAnywhere, Category = "Target")
     EShipTrainingTargetMovementMode movement_mode{EShipTrainingTargetMovementMode::stationary};
     UPROPERTY(EditAnywhere, Category = "Target")
-    FVector3d velocity{FVector3d::ZeroVector};
+    float speed{1000.f};
     UPROPERTY(EditAnywhere, Category = "Target|Sine")
-    float sine_frequency{1.f};
+    float frequency{1.f};
     UPROPERTY(EditAnywhere, Category = "Target|Sine")
     FVector3d sine_amplitude{0.f, 0.f, 1.f};
+    UPROPERTY(EditAnywhere, Category = "Target|Sine")
+    float orbit_radius{50.f};
 
     UPROPERTY(VisibleAnywhere, Category = "Target")
     FVector3d pos{FVector3d::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Target")
     FVector3d pos_offset{FVector3d::ZeroVector};
+    UPROPERTY(VisibleAnywhere, Category = "Target|Sine")
+    float angular_frequency{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "Target|Sine")
+    float wt{0.f};
 };

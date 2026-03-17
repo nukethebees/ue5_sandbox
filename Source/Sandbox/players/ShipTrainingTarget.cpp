@@ -36,20 +36,32 @@ void AShipTrainingTarget::Tick(float dt) {
 
     TRY_INIT_PTR(world, GetWorld());
 
+    auto const t{world->GetTimeSeconds()};
+    wt = angular_frequency * t;
+    if (wt >= 1.f) {
+        wt -= 1.f;
+    }
     auto const loc{GetActorLocation()};
     auto const fwd{GetActorForwardVector()};
+    auto const d_speed{speed * dt};
+
+    pos = loc + fwd * d_speed;
 
     switch (movement_mode) {
         using enum EShipTrainingTargetMovementMode;
         case move_forward: {
-            pos = loc + fwd * velocity;
             break;
         }
         case sine: {
-            pos = loc + fwd * velocity;
-
-            auto const t{world->GetTimeSeconds()};
-            pos_offset = sine_amplitude * FMath::Sin(sine_frequency * t);
+            pos_offset = sine_amplitude * FMath::Sin(wt);
+            break;
+        }
+        case orbit_yz: {
+            pos_offset = FVector3d{
+                0.f,
+                orbit_radius * FMath::Cos(wt),
+                orbit_radius * FMath::Sin(wt),
+            };
             break;
         }
         default: {
@@ -57,6 +69,9 @@ void AShipTrainingTarget::Tick(float dt) {
             [[fallthrough]];
         }
         case stationary: {
+            pos = GetActorLocation();
+            pos_offset = FVector3d::ZeroVector;
+
             break;
         }
     }
@@ -92,4 +107,6 @@ void AShipTrainingTarget::OnConstruction(FTransform const& transform) {
 void AShipTrainingTarget::BeginPlay() {
     Super::BeginPlay();
     pos = GetActorLocation();
+
+    angular_frequency = 2.f * 3.14159f * frequency;
 }
