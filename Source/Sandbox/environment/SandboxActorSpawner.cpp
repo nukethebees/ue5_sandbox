@@ -55,11 +55,20 @@ void ASandboxActorSpawner::spawn() {
     RETURN_IF_NULLPTR(arrow);
     TRY_INIT_PTR(world, GetWorld());
 
-    auto const transform{arrow->GetComponentTransform()};
     FActorSpawnParameters spawn_params;
 
-    auto* new_actor{world->SpawnActor<AActor>(actor_class, transform, spawn_params)};
+    auto const arrow_transform{arrow->GetComponentTransform()};
+    auto* new_actor{world->SpawnActor<AActor>(actor_class, arrow_transform, spawn_params)};
     RETURN_IF_NULLPTR(new_actor);
+
+    FVector origin{};
+    FVector box_extent{};
+    new_actor->GetActorBounds(false, origin, box_extent);
+    auto const arrow_fwd{arrow->GetForwardVector()};
+    auto const arrow_pos{arrow->GetComponentLocation()};
+    auto const spawn_pos{arrow_pos + arrow_fwd * box_extent};
+    FTransform const new_transform{GetActorQuat(), spawn_pos, GetActorScale()};
+    new_actor->SetActorTransform(new_transform);
 
     new_actor->SetLifeSpan(actor_lifespan);
     spawned_actors.Add(new_actor);
