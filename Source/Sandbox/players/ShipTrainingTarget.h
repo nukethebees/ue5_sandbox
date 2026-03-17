@@ -9,6 +9,7 @@
 
 class UStaticMeshComponent;
 class UBoxComponent;
+class UNiagaraSystem;
 
 UENUM()
 enum class EShipTrainingTargetMovementMode : uint8 { stationary, move_forward };
@@ -32,6 +33,9 @@ class AShipTrainingTarget
     UStaticMeshComponent* mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Target")
     UBoxComponent* collision_box{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UNiagaraSystem* death_particles{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "Target")
     EShipTrainingTargetMovementMode movement_mode{EShipTrainingTargetMovementMode::stationary};
     UPROPERTY(EditAnywhere, Category = "Target")

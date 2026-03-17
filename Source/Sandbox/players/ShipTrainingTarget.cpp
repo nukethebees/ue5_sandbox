@@ -7,6 +7,8 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "NiagaraFunctionLibrary.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -51,7 +53,19 @@ void AShipTrainingTarget::Tick(float dt) {
 auto AShipTrainingTarget::apply_damage(int32 damage, AActor const& instigator)
     -> FShipDamageResult {
     SetLifeSpan(0.01f);
-    return FShipDamageResult{EDamageResult::Killed};
+    FShipDamageResult const result{EDamageResult::Killed};
+
+    if (death_particles) {
+        INIT_OR_RETURN_VALUE_IF_FALSE(auto*, world, GetWorld(), result);
+
+        auto const loc{GetActorLocation()};
+        auto const rot{GetActorRotation()};
+
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            world, death_particles, loc, rot, FVector::OneVector);
+    }
+
+    return result;
 }
 
 void AShipTrainingTarget::OnConstruction(FTransform const& transform) {
