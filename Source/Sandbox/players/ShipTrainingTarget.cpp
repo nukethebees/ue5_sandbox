@@ -103,10 +103,9 @@ void AShipTrainingTarget::OnConstruction(FTransform const& transform) {
     TRY_INIT_PTR(tgt_mesh, mesh->GetStaticMesh());
     auto const bbox{tgt_mesh->GetBoundingBox()};
     collision_box->SetBoxExtent(bbox.GetExtent());
+    pos = GetActorLocation();
+    angular_frequency = 2.f * 3.14159f * frequency;
 }
 void AShipTrainingTarget::BeginPlay() {
     Super::BeginPlay();
-    pos = GetActorLocation();
-
-    angular_frequency = 2.f * 3.14159f * frequency;
 }
