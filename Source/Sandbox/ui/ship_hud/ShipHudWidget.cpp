@@ -2,6 +2,7 @@
 
 #include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
+#include "Sandbox/ui/ship_hud/ShipCrosshairWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
 #include "Sandbox/ui/ship_hud/ShipPointsWidget.h"

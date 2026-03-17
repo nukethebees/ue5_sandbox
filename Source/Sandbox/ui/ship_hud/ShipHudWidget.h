@@ -16,6 +16,7 @@ class UShipPointsWidget;
 class UShipBombCountWidget;
 class UShipGoldRingCountWidget;
 class UPlayerLivesWidget;
+class UShipCrosshairWidget;
 
 class UDebugGraphWidget;
 
@@ -50,6 +51,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipGoldRingCountWidget* gold_rings_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UPlayerLivesWidget* lives_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UShipCrosshairWidget* crosshair_widget{nullptr};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(meta = (BindWidget))
     UDebugGraphWidget* speed_graph{nullptr};
