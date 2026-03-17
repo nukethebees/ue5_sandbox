@@ -12,7 +12,7 @@ class UBoxComponent;
 class UNiagaraSystem;
 
 UENUM()
-enum class EShipTrainingTargetMovementMode : uint8 { stationary, move_forward };
+enum class EShipTrainingTargetMovementMode : uint8 { stationary, move_forward, sine };
 
 UCLASS()
 class AShipTrainingTarget
@@ -28,16 +28,26 @@ class AShipTrainingTarget
     auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
   protected:
     void OnConstruction(FTransform const& transform) override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, Category = "Target")
     UStaticMeshComponent* mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Target")
     UBoxComponent* collision_box{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Target")
     UNiagaraSystem* death_particles{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Target")
     EShipTrainingTargetMovementMode movement_mode{EShipTrainingTargetMovementMode::stationary};
     UPROPERTY(EditAnywhere, Category = "Target")
     FVector3d velocity{FVector3d::ZeroVector};
+    UPROPERTY(EditAnywhere, Category = "Target|Sine")
+    float sine_frequency{1.f};
+    UPROPERTY(EditAnywhere, Category = "Target|Sine")
+    FVector3d sine_amplitude{0.f, 0.f, 1.f};
+
+    UPROPERTY(VisibleAnywhere, Category = "Target")
+    FVector3d pos{FVector3d::ZeroVector};
+    UPROPERTY(VisibleAnywhere, Category = "Target")
+    FVector3d pos_offset{FVector3d::ZeroVector};
 };

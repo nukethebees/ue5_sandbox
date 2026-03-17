@@ -34,10 +34,22 @@ AShipTrainingTarget::AShipTrainingTarget()
 void AShipTrainingTarget::Tick(float dt) {
     Super::Tick(dt);
 
+    TRY_INIT_PTR(world, GetWorld());
+
+    auto const loc{GetActorLocation()};
+    auto const fwd{GetActorForwardVector()};
+
     switch (movement_mode) {
         using enum EShipTrainingTargetMovementMode;
         case move_forward: {
-            SetActorLocation(GetActorLocation() + GetActorForwardVector() * velocity);
+            pos = loc + fwd * velocity;
+            break;
+        }
+        case sine: {
+            pos = loc + fwd * velocity;
+
+            auto const t{world->GetTimeSeconds()};
+            pos_offset = sine_amplitude * FMath::Sin(sine_frequency * t);
             break;
         }
         default: {
@@ -48,6 +60,8 @@ void AShipTrainingTarget::Tick(float dt) {
             break;
         }
     }
+
+    SetActorLocation(pos + pos_offset);
 }
 
 auto AShipTrainingTarget::apply_damage(int32 damage, AActor const& instigator)
@@ -74,4 +88,8 @@ void AShipTrainingTarget::OnConstruction(FTransform const& transform) {
     TRY_INIT_PTR(tgt_mesh, mesh->GetStaticMesh());
     auto const bbox{tgt_mesh->GetBoundingBox()};
     collision_box->SetBoxExtent(bbox.GetExtent());
+}
+void AShipTrainingTarget::BeginPlay() {
+    Super::BeginPlay();
+    pos = GetActorLocation();
 }
