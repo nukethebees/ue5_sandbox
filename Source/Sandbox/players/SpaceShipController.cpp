@@ -70,18 +70,27 @@ void ASpaceShipController::Tick(float dt) {
     hud_widget->set_crosshairs(near_screen_pos, far_screen_pos);
 
 #if WITH_EDITOR
-    TRY_INIT_PTR(world, GetWorld());
-    DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-    DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+    if (debug_crosshair) {
+        TRY_INIT_PTR(world, GetWorld());
+        DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+        DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+
+        if (can_log()) {
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Near (W): %s"),
+                   *near_world_pos.ToCompactString());
+            UE_LOG(
+                LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Far (W): %s"),
+                   *far_world_pos.ToCompactString());
+            UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
+        }
+    }
 
     if (can_log()) {
-        UE_LOG(
-            LogSandboxController, Verbose, TEXT("Near (W): %s"), *near_world_pos.ToCompactString());
-        UE_LOG(LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
-        UE_LOG(
-            LogSandboxController, Verbose, TEXT("Far (W): %s"), *far_world_pos.ToCompactString());
-        UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
-
         seconds_since_last_log = 0.f;
     }
 
