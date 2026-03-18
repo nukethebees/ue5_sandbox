@@ -15,4 +15,5 @@ class SANDBOX_API ASpaceShipGameMode : public AGameModeBase {
   protected:
     void InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
     void BeginPlay() override;
+    void OnConstruction(FTransform const& transform) override;
 };
