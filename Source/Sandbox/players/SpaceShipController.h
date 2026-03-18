@@ -12,6 +12,22 @@
 
 class UShipHudWidget;
 
+USTRUCT(BlueprintType)
+struct FBarrelRollInputData {
+    GENERATED_BODY()
+
+    FBarrelRollInputData() = default;
+
+    UPROPERTY(EditAnywhere)
+    float input_strength_threshold{0.7f};
+    UPROPERTY(EditAnywhere)
+    float input_time_threshold{0.25f};
+    UPROPERTY(VisibleAnywhere)
+    bool threshold_crossed_this_input{false};
+    UPROPERTY(VisibleAnywhere)
+    float last_crossing_time{0.f};
+};
+
 UCLASS()
 class ASpaceShipController
     : public APlayerController
@@ -34,21 +50,13 @@ class ASpaceShipController
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
 #endif
 
-    // UI
-    UPROPERTY(EditAnywhere, Category = "UI")
-    TSubclassOf<UShipHudWidget> hud_widget_class;
-    UPROPERTY(VisibleAnywhere, Category = "UI")
-    UShipHudWidget* hud_widget{nullptr};
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float near_cursor_distance{3000.f};
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float far_cursor_distance{6000.f};
-
     // Movement
     UFUNCTION()
     void turn(FInputActionValue const& value);
     UFUNCTION()
     void turn_completed(FInputActionValue const& value);
+    UFUNCTION()
+    void start_roll(FInputActionValue const& value);
     UFUNCTION()
     void roll(FInputActionValue const& value);
     UFUNCTION()
@@ -69,6 +77,19 @@ class ASpaceShipController
     void fire_laser(FInputActionValue const& value);
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
+
+    // UI
+    UPROPERTY(EditAnywhere, Category = "UI")
+    TSubclassOf<UShipHudWidget> hud_widget_class;
+    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UShipHudWidget* hud_widget{nullptr};
+    UPROPERTY(EditAnywhere, Category = "UI")
+    float near_cursor_distance{3000.f};
+    UPROPERTY(EditAnywhere, Category = "UI")
+    float far_cursor_distance{6000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Input")
+    FBarrelRollInputData barrel_roll_input{};
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;
