@@ -166,6 +166,8 @@ class ASpaceShip
         return FMath::Clamp(value, -abs_max_value, abs_max_value);
     }
 
+    auto get_middle_socket() const -> FTransform;
+
     // IDamageableShip
     auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
 
@@ -192,6 +194,8 @@ class ASpaceShip
     void integrate_velocity(this ASpaceShip& self, float dt);
 
     void add_points(int32 x);
+
+    auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }

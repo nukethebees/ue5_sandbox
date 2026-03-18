@@ -88,7 +88,7 @@ void ASpaceShip::Tick(float dt) {
     integrate_velocity(dt);
 
 #if WITH_EDITOR
-    auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+    auto const middle{get_middle_socket(*ship_mesh)};
 
     FVector const start = middle.GetLocation();
     FVector const forward = middle.GetUnitAxis(EAxis::X);
@@ -400,6 +400,15 @@ void ASpaceShip::record_kills(int32 kills) {
 }
 auto ASpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
     return health->on_health_changed;
+}
+
+auto ASpaceShip::get_middle_socket() const -> FTransform {
+    check(ship_mesh);
+    return get_middle_socket(*ship_mesh);
+}
+auto ASpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
+    check(m.DoesSocketExist(Sockets::middle));
+    return m.GetSocketTransform(Sockets::middle, RTS_World);
 }
 
 auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {

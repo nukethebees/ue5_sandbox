@@ -30,6 +30,10 @@ class ASpaceShipController
 
     void initialise_hud();
 
+#if WITH_EDITOR
+    auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
+#endif
+
     // UI
     UPROPERTY(EditAnywhere, Category = "UI")
     TSubclassOf<UShipHudWidget> hud_widget_class;
@@ -64,4 +68,11 @@ class ASpaceShipController
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FSpaceShipControllerInputs input;
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float seconds_since_last_log{0};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    float seconds_per_log{0.75f};
+#endif
 };

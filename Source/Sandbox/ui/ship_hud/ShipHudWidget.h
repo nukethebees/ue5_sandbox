@@ -9,6 +9,8 @@
 
 #include "ShipHudWidget.generated.h"
 
+class UImage;
+
 class UShipSpeedWidget;
 class UShipHealthWidget;
 class UShipThrusterEnergyWidget;
@@ -16,7 +18,6 @@ class UShipPointsWidget;
 class UShipBombCountWidget;
 class UShipGoldRingCountWidget;
 class UPlayerLivesWidget;
-class UShipCrosshairWidget;
 
 class UDebugGraphWidget;
 
@@ -32,6 +33,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_bombs(int32 value);
     void set_gold_rings(int32 value);
     void set_lives(int32 value);
+    void set_crosshairs(FVector2d near, FVector2d far);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
@@ -52,7 +54,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UPlayerLivesWidget* lives_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UShipCrosshairWidget* crosshair_widget{nullptr};
+    UImage* far_crosshair_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UImage* near_crosshair_widget{nullptr};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(meta = (BindWidget))
     UDebugGraphWidget* speed_graph{nullptr};

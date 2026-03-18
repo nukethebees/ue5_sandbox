@@ -4,6 +4,8 @@
 #include "Sandbox/players/SpaceShip.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -41,6 +43,50 @@ void ASpaceShipController::SetupInputComponent() {
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
+
+    RETURN_IF_NULLPTR(hud_widget);
+    TRY_INIT_PTR(ss, Cast<ASpaceShip>(GetPawn()));
+
+    auto const ship_socket{ss->get_middle_socket()};
+
+    auto const ship_loc{ship_socket.GetLocation()};
+    auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
+    auto const near_world_pos{ship_loc + ship_fwd * 1000.f};
+    auto const far_world_pos{ship_loc + ship_fwd * 3000.f};
+    FVector2d near_screen_pos{};
+    FVector2d far_screen_pos{};
+
+    constexpr bool bPlayerViewportRelative{false};
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+            this, near_world_pos, near_screen_pos, bPlayerViewportRelative)) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project near position."));
+    }
+
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+            this, far_world_pos, far_screen_pos, bPlayerViewportRelative)) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project far position."));
+    }
+
+    hud_widget->set_crosshairs(near_screen_pos, far_screen_pos);
+
+#if WITH_EDITOR
+    TRY_INIT_PTR(world, GetWorld());
+    DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+    DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+
+    if (can_log()) {
+        UE_LOG(
+            LogSandboxController, Verbose, TEXT("Near (W): %s"), *near_world_pos.ToCompactString());
+        UE_LOG(LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
+        UE_LOG(
+            LogSandboxController, Verbose, TEXT("Far (W): %s"), *far_world_pos.ToCompactString());
+        UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
+
+        seconds_since_last_log = 0.f;
+    }
+
+    seconds_since_last_log += dt;
+#endif
 }
 
 void ASpaceShipController::BeginPlay() {
