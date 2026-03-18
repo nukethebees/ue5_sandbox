@@ -51,8 +51,8 @@ void ASpaceShipController::Tick(float dt) {
 
     auto const ship_loc{ship_socket.GetLocation()};
     auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * 1000.f};
-    auto const far_world_pos{ship_loc + ship_fwd * 3000.f};
+    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
+    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
     FVector2d near_screen_pos{};
     FVector2d far_screen_pos{};
 

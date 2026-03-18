@@ -39,6 +39,10 @@ class ASpaceShipController
     TSubclassOf<UShipHudWidget> hud_widget_class;
     UPROPERTY(VisibleAnywhere, Category = "UI")
     UShipHudWidget* hud_widget{nullptr};
+    UPROPERTY(EditAnywhere, Category = "UI")
+    float near_cursor_distance{3000.f};
+    UPROPERTY(EditAnywhere, Category = "UI")
+    float far_cursor_distance{6000.f};
 
     // Movement
     UFUNCTION()
