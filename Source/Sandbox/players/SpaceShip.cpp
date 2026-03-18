@@ -88,13 +88,15 @@ void ASpaceShip::Tick(float dt) {
     integrate_velocity(dt);
 
 #if WITH_EDITOR
-    auto const middle{get_middle_socket(*ship_mesh)};
+    if (debug_forward_direction) {
+        auto const middle{get_middle_socket(*ship_mesh)};
 
-    FVector const start = middle.GetLocation();
-    FVector const forward = middle.GetUnitAxis(EAxis::X);
-    constexpr float len{5000.f};
-    FVector const end = start + forward * len;
-    DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+        FVector const start = middle.GetLocation();
+        FVector const forward = middle.GetUnitAxis(EAxis::X);
+        constexpr float len{5000.f};
+        FVector const end = start + forward * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
 
     if (can_log()) {
         seconds_since_last_log = 0.f;

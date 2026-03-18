@@ -302,9 +302,11 @@ class ASpaceShip
     int32 speed_sample_max{0};
     FTimerHandle speed_sample_timer;
     TArray<FVector2d> speed_samples;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Debug")
     float seconds_since_last_log{0};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Debug")
     float seconds_per_log{0.75f};
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool debug_forward_direction{false};
 #endif
 };
