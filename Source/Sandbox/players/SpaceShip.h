@@ -115,6 +115,28 @@ struct FSpaceShipFlightModel {
 #endif
 };
 
+USTRUCT(BlueprintType)
+struct FBarrelRoll {
+    GENERATED_BODY()
+
+    FBarrelRoll() = default;
+
+    auto is_rolling() const { return time_remaining > 0.f; }
+    auto can_roll() const { return time_remaining < (-1.f * roll_cooldown); }
+
+    UPROPERTY(EditAnywhere)
+    float roll_speed{90.f};
+    UPROPERTY(EditAnywhere)
+    float roll_duration{2.5f};
+    UPROPERTY(EditAnywhere)
+    float roll_cooldown{0.5f};
+
+    UPROPERTY(VisibleAnywhere)
+    float direction{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float time_remaining{0.f};
+};
+
 UCLASS()
 class ASpaceShip
     : public APawn
@@ -269,6 +291,9 @@ class ASpaceShip
     float manual_bank_angle_max{90.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float manual_bank_speed{5.f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FBarrelRoll roll_state{};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};

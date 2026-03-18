@@ -87,6 +87,8 @@ void ASpaceShip::Tick(float dt) {
     update_visual_orientation(dt);
     integrate_velocity(dt);
 
+    roll_state.time_remaining -= dt;
+
 #if WITH_EDITOR
     if (debug_forward_direction) {
         auto const middle{get_middle_socket(*ship_mesh)};
@@ -195,11 +197,18 @@ void ASpaceShip::update_visual_orientation(this ASpaceShip& self, float dt) {
     auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
     auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
 
-    auto const roll_speed{
-        FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
-    auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
-    auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
-    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed)};
+    double new_roll{current_rotation.Roll};
+    if (self.roll_state.is_rolling()) {
+        auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
+        new_roll = current_rotation.Roll + delta_roll;
+    } else {
+        auto const roll_speed{
+            FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
+        auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
+        auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
+        new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
+    }
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
@@ -292,10 +301,15 @@ void ASpaceShip::roll(float direction) {
     manual_bank_direction = clamp(direction, 1.f);
 }
 void ASpaceShip::barrel_roll(float direction) {
-#if WITH_EDITOR
-    if (can_log()) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
+    if (!roll_state.can_roll()) {
+        return;
     }
+
+    roll_state.time_remaining = roll_state.roll_duration;
+    roll_state.direction = FMath::Sign(direction);
+
+#if WITH_EDITOR
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
 #endif
 }
 
