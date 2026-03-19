@@ -69,8 +69,8 @@ ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
-    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health")))
-    , boost_effect_instance{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))} {
+    , boost_effect_instance{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
+    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(RootComponent);
