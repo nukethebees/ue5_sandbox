@@ -235,7 +235,7 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
-    UNiagaraComponent* boost_effect_instance{nullptr};
+    UNiagaraComponent* boost_pulse{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     float boost_effect_colour_intensity{75.f};
 

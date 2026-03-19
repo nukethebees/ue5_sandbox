@@ -69,7 +69,7 @@ ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
-    , boost_effect_instance{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
+    , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
     , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
@@ -77,9 +77,9 @@ ASpaceShip::ASpaceShip()
     ship_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
 
-    boost_effect_instance->SetupAttachment(RootComponent);
-    boost_effect_instance->bAutoActivate = false;
-    boost_effect_instance->SetAutoDestroy(false);
+    boost_pulse->SetupAttachment(RootComponent);
+    boost_pulse->bAutoActivate = false;
+    boost_pulse->SetAutoDestroy(false);
 
     // Don't tick until the controller wires up the delegates
     PrimaryActorTick.bCanEverTick = true;
@@ -251,8 +251,8 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_NULLPTR(laser_config);
     check(hyper_laser_config);
     RETURN_IF_NULLPTR(hyper_laser_config);
-    check(boost_effect_instance);
-    RETURN_IF_NULLPTR(boost_effect_instance);
+    check(boost_pulse);
+    RETURN_IF_NULLPTR(boost_pulse);
 
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
@@ -277,10 +277,10 @@ void ASpaceShip::BeginPlay() {
     velocity = FVector3d::ZeroVector;
     set(EBoostBrakeState::None);
 
-    boost_effect_instance->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_effect_instance->SetFloatParameter(TEXT("ring_colour_intensity"),
+    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"),
                                              boost_effect_colour_intensity);
-    boost_effect_instance->SetFloatParameter(TEXT("sparks_colour_intensity"),
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                              boost_effect_colour_intensity);
 }
 
@@ -296,7 +296,7 @@ void ASpaceShip::turn(FVector2D direction) {
 void ASpaceShip::start_boost() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
         set(EBoostBrakeState::Boost);
-        boost_effect_instance->Activate();
+        boost_pulse->Activate();
     }
 }
 void ASpaceShip::stop_boost() {
