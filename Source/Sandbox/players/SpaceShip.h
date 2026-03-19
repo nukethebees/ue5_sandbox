@@ -190,6 +190,7 @@ class ASpaceShip
         return FMath::Clamp(value, -abs_max_value, abs_max_value);
     }
 
+    auto get_ship_forward_vector() const -> FVector;
     auto get_middle_socket() const -> FTransform;
 
     // IDamageableShip
@@ -337,6 +338,8 @@ class ASpaceShip
     float seconds_since_last_log{0};
     UPROPERTY(EditAnywhere, Category = "Debug")
     float seconds_per_log{0.75f};
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool debug_forward_socket_direction{false};
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool debug_forward_direction{false};
 #endif

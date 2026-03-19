@@ -96,13 +96,20 @@ void ASpaceShip::Tick(float dt) {
     roll_state.time_remaining -= dt;
 
 #if WITH_EDITOR
-    if (debug_forward_direction) {
+    if (debug_forward_socket_direction) {
         auto const middle{get_middle_socket(*ship_mesh)};
 
         FVector const start = middle.GetLocation();
         FVector const forward = middle.GetUnitAxis(EAxis::X);
         constexpr float len{5000.f};
         FVector const end = start + forward * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
+    if (debug_forward_direction) {
+        auto const fwd{GetActorForwardVector()};
+        auto const start{GetActorLocation()};
+        constexpr float len{5000.f};
+        FVector const end = start + fwd * len;
         DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
     }
 
@@ -432,6 +439,9 @@ auto ASpaceShip::get_middle_socket() const -> FTransform {
 auto ASpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
     check(m.DoesSocketExist(Sockets::middle));
     return m.GetSocketTransform(Sockets::middle, RTS_World);
+}
+auto ASpaceShip::get_ship_forward_vector() const -> FVector {
+    return get_middle_socket().GetLocation();
 }
 
 auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {
