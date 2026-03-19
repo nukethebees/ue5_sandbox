@@ -39,7 +39,7 @@ class SANDBOX_API ACombatDummy
     virtual FText get_description() const override { return FText::FromName(TEXT("Combat Dummy")); }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     // IDeathHandler
     virtual void handle_death() override { Destroy(); }

@@ -15,7 +15,7 @@ class SANDBOX_API AChangeLevelActor : public AActor {
   public:
     AChangeLevelActor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void on_overlap_begin(UPrimitiveComponent* overlapped_component,

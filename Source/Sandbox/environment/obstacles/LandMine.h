@@ -61,7 +61,7 @@ class SANDBOX_API ALandMine
     }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mine")
     UCapsuleComponent* warning_collision_component{};
@@ -118,7 +118,7 @@ class SANDBOX_API ALandMine
                          int32 other_body_index);
 
     // IDeathHandler
-    virtual void handle_death() override;
+    void handle_death() override;
   private:
     void update_debug_sphere();
     void update_trigger_sizes();

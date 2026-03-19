@@ -22,7 +22,7 @@ class SANDBOX_API UMainMenu2Widget
     , public ml::LogMsgMixin<"UMainMenu2Widget"> {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* widget_switcher{nullptr};

@@ -22,7 +22,7 @@ class SANDBOX_API ACombatDummyController : public AAIController {
     ACombatDummyController();
   protected:
     virtual void OnPossess(APawn* InPawn) override;
-    virtual void OnUnPossess() override;
+    void OnUnPossess() override;
 
     void set_bb_value(FName const& name, auto const& value) {
         check(Blackboard);

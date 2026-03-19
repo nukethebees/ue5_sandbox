@@ -18,7 +18,7 @@ class SANDBOX_API UCoinCollectorActorComponent : public UActorComponent {
 
     FCoinCountChangedSignature on_coin_count_changed;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   private:
     int32 coin_count_{0};
 };

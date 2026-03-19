@@ -20,7 +20,7 @@ class SANDBOX_API AMassBulletWeapon : public AWeaponBase {
   public:
     static constexpr StaticTCharString tag{"AMassBulletWeapon"};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 #if WITH_EDITOR
     virtual void OnConstruction(FTransform const& Transform) override;
 #endif

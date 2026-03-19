@@ -54,7 +54,7 @@ class SANDBOX_API AForcefieldActor
         }
     };
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void OnConstruction(FTransform const& Transform) override;
   public:
     void trigger_activation();

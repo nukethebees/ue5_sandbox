@@ -14,7 +14,7 @@ UCLASS()
 class SANDBOX_API UValueWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
     template <typename T>
         requires (std::integral<T> || std::floating_point<T>)
     void update(T value) {

@@ -32,7 +32,7 @@ class SANDBOX_API UMassArchetypeSubsystem
   protected:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void OnWorldBeginPlay(UWorld& in_world) override;
-    virtual void Deinitialize() override;
+    void Deinitialize() override;
   private:
     void build_archetypes(FMassEntityManager& entity_manager);
     void build_definitions(FMassEntityManager& entity_manager);

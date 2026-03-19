@@ -50,7 +50,7 @@ class SANDBOX_API UNiagaraNdcWriterSubsystem
     void add_payload(FNdcWriterIndex index, Args&&... args);
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
-    virtual void Deinitialize() override;
+    void Deinitialize() override;
     virtual void OnWorldBeginPlay(UWorld& world) override;
   private:
     void flush_ndc_writes();

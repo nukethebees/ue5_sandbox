@@ -38,7 +38,7 @@ class SANDBOX_API APawnSpawner
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
     ETeamID spawned_pawn_team_id{ETeamID::Enemy};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void Tick(float DeltaTime) override;
   private:

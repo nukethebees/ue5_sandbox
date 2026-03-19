@@ -19,7 +19,7 @@ class SANDBOX_API UFrameLogFooterSubsystem
     GENERATED_BODY()
   public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-    virtual void Deinitialize() override;
+    void Deinitialize() override;
     virtual bool ShouldCreateSubsystem(UObject* Outer) const { return enable_subsystem; }
 
     UPROPERTY(Config, EditAnywhere, Category = "Config")

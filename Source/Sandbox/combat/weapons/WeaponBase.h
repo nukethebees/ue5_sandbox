@@ -75,7 +75,7 @@ class SANDBOX_API AWeaponBase
 
     FOnAmmoChanged on_ammo_changed;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type reason) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")

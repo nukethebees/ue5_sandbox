@@ -37,7 +37,7 @@ class SANDBOX_API UVideoSettingRowWidget
 
     FOnVideoSettingChanged on_setting_changed;
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* setting_name_text{nullptr};

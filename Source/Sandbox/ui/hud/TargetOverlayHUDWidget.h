@@ -21,7 +21,7 @@ class SANDBOX_API UTargetOverlayHUDWidget
     void update_target_screen_bounds(APlayerController& pc, FActorCorners const& corners);
     void hide();
   protected:
-    virtual void NativeOnInitialized() override;
+    void NativeOnInitialized() override;
 
     UPROPERTY(meta = (BindWidget))
     UImage* outline_top_left{nullptr};

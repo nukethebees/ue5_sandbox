@@ -30,7 +30,7 @@ class SANDBOX_API AHealthStationActor : public AActor {
     UFUNCTION(BlueprintCallable, Category = "Health Station")
     bool is_ready() const { return health_station_payload.is_ready(); }
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type reason) override;
 
     UPROPERTY(EditInstanceOnly, Category = "UI")

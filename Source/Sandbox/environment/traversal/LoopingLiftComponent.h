@@ -14,7 +14,7 @@ class SANDBOX_API ULoopingLiftComponent : public UActorComponent {
   public:
     ULoopingLiftComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void TickComponent(float DeltaTime,
                                ELevelTick TickType,

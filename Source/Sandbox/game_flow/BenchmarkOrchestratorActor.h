@@ -26,7 +26,7 @@ class SANDBOX_API ABenchmarkOrchestratorActor
   public:
     ABenchmarkOrchestratorActor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type const EndPlayReason) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")

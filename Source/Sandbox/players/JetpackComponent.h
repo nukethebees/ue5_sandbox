@@ -33,7 +33,7 @@ class SANDBOX_API UJetpackComponent : public UActorComponent {
     float lift_force{15000.0f};
     FOnFuelChanged on_fuel_changed;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void TickComponent(float delta_time,
                                ELevelTick tick_type,
                                FActorComponentTickFunction* this_tick_function) override;

@@ -12,7 +12,7 @@ UCLASS()
 class SANDBOX_API AMainMenu2PlayerController : public APlayerController {
     GENERATED_BODY()
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
     TSubclassOf<UMainMenu2Widget> main_menu_widget_class;

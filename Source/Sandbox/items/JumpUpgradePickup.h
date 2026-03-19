@@ -16,7 +16,7 @@ class SANDBOX_API AJumpUpgradePickup : public APickupActor {
   public:
     AJumpUpgradePickup();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
     UStaticMeshComponent* mesh_component{};

@@ -16,5 +16,5 @@ class SANDBOX_API USpeedBoostItemComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
     FSpeedBoost speed_boost{};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 };

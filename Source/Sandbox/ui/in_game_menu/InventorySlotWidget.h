@@ -35,7 +35,7 @@ class SANDBOX_API UInventorySlotWidget
     void set_fallback_text_visibility(bool vis);
     void set_image_visibility(bool vis);
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     virtual void NativeOnDragDetected(FGeometry const& InGeometry,
                                       FPointerEvent const& InMouseEvent,

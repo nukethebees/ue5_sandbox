@@ -30,7 +30,7 @@ class SANDBOX_API APushZoneActor
   public:
     APushZoneActor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void OnConstruction(FTransform const& Transform) override;
   public:
     virtual void Tick(float DeltaTime) override;

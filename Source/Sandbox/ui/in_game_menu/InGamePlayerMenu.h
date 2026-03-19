@@ -38,9 +38,9 @@ class SANDBOX_API UInGamePlayerMenu
     // Close navigation event
     FBackRequested back_requested;
   protected:
-    virtual void NativeOnInitialized() override;
-    virtual void NativeConstruct() override;
-    virtual void NativeDestruct() override;
+    void NativeOnInitialized() override;
+    void NativeConstruct() override;
+    void NativeDestruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* tab_switcher{nullptr};

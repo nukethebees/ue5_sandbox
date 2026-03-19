@@ -22,7 +22,7 @@ class SANDBOX_API AHealthPackActor
   public:
     AHealthPackActor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void on_overlap_begin(UPrimitiveComponent* overlapped_component,

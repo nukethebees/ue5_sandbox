@@ -15,7 +15,7 @@ class SANDBOX_API ULoopingPlatformComponent : public UActorComponent {
   public:
     ULoopingPlatformComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float speed{200.0f};

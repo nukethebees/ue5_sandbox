@@ -13,7 +13,7 @@ class SANDBOX_API URandLaunchpadComponent : public UActorComponent {
   public:
     URandLaunchpadComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   private:
     UFUNCTION()
     void on_overlap_begin(UPrimitiveComponent* overlapped_comp,

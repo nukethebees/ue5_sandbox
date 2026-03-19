@@ -108,7 +108,7 @@ class SANDBOX_API UMassBulletSubsystem
     }
   protected:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
-    virtual void Deinitialize() override;
+    void Deinitialize() override;
   private:
     void on_archetypes_ready();
 

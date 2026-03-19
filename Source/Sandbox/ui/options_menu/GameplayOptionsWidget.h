@@ -11,7 +11,7 @@ UCLASS()
 class SANDBOX_API UGameplayOptionsWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     // Placeholder for future gameplay settings
     // Examples: difficulty, auto-save frequency, subtitles, etc.

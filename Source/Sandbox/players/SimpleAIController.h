@@ -20,9 +20,9 @@ class SANDBOX_API ASimpleAIController
   public:
     ASimpleAIController();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
-    virtual void OnUnPossess() override;
+    void OnUnPossess() override;
 
     UFUNCTION()
     void on_target_perception_updated(AActor* Actor, FAIStimulus Stimulus);

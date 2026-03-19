@@ -27,14 +27,14 @@ class SANDBOX_API AExplosiveProp
     AExplosiveProp();
 
     // IDeathHandler implementation
-    virtual void handle_death() override;
+    void handle_death() override;
 
     virtual FText get_description() const override {
         static auto const desc{FText::FromName(TEXT("Explosive Prop"))};
         return desc;
     }
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosive")
     UStaticMeshComponent* mesh_component{};

@@ -21,7 +21,7 @@ class SANDBOX_API ULevelSelect2Widget
 
     void populate_level_buttons(TArray<FName> const& level_names);
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UGridPanel* level_select_grid;

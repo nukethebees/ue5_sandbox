@@ -26,7 +26,7 @@ class SANDBOX_API ATestPistol
     ATestPistol();
 
     virtual bool can_fire() const override;
-    virtual void start_firing() override;
+    void start_firing() override;
     virtual void sustain_firing(float delta_time) override { return; }
     virtual void stop_firing() override { return; }
     virtual bool can_reload() const override;
@@ -44,7 +44,7 @@ class SANDBOX_API ATestPistol
         return desc;
     }
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun")
     float bullet_speed{5000.0f};

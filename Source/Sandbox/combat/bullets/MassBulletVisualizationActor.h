@@ -68,7 +68,7 @@ class SANDBOX_API AMassBulletVisualizationActor
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     int32 cull_max_distance{50000};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   private:
     int32 register_new_projectile(UBulletDataAsset& bullet_data);
 

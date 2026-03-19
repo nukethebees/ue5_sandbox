@@ -55,7 +55,7 @@ class SANDBOX_API ASimpleCharacter
     virtual EAIState get_default_ai_state() const override { return default_ai_state; }
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
     TSubclassOf<AAIController> controller_class{nullptr};
@@ -76,7 +76,7 @@ class SANDBOX_API ASimpleCharacter
     EAIState default_ai_state{EAIState::RandomlyMove};
   private:
     // IDeathHandler
-    virtual void handle_death() override;
+    void handle_death() override;
 
     void apply_material_colours();
     void apply_light_colours();

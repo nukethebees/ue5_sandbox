@@ -47,7 +47,7 @@ class SANDBOX_API AAmmoItem
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
     EAmmoType ammo_type{EAmmoType::Bullets};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
     UBoxComponent* collision_box{nullptr};

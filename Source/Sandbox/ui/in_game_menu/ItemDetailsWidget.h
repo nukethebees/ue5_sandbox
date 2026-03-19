@@ -9,5 +9,5 @@ UCLASS()
 class SANDBOX_API UItemDetailsWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 };

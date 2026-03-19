@@ -9,7 +9,7 @@ UCLASS()
 class SANDBOX_API UItemDescriptionHUDWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
   public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void set_description(FText const& description);

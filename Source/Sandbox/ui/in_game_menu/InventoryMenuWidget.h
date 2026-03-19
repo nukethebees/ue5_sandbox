@@ -23,8 +23,8 @@ class SANDBOX_API UInventoryMenuWidget : public UUserWidget {
     void update_money_display(int32 money);
     void update_ammo_counts();
   protected:
-    virtual void NativeOnInitialized() override;
-    virtual void NativeConstruct() override;
+    void NativeOnInitialized() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UHorizontalBox* main_box{nullptr};

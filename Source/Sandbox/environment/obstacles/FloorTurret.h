@@ -129,9 +129,9 @@ class SANDBOX_API AFloorTurret
 
     auto vision_half_height() const { return aim_config.vision_cone_height / 2.0f; }
 
-    virtual void handle_death() override;
+    void handle_death() override;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     auto search_for_enemy(float vision_radius, float vision_angle) const -> AActor*;
     void turn_towards_enemy(AActor& enemy, float dt);

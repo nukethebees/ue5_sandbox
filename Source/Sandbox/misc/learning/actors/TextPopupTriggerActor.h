@@ -23,7 +23,7 @@ class SANDBOX_API ATextPopupTriggerActor
   public:
     ATextPopupTriggerActor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void on_overlap_begin(UPrimitiveComponent* overlapped_component,

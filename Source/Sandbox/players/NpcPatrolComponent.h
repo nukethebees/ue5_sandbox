@@ -23,7 +23,7 @@ class SANDBOX_API UNpcPatrolComponent : public UActorComponent {
     void set_arrived_at_point();
     auto arrived_at_point() const -> bool;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     void set_current_waypoint(APatrolWaypoint& wp);
     void set_waypoint_to_default();

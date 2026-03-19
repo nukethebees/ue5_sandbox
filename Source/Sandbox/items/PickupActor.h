@@ -23,7 +23,7 @@ class SANDBOX_API APickupActor
     virtual UPrimitiveComponent* get_collision_component() override;
     virtual bool should_destroy_after_collision() const override;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
     UBoxComponent* collision_component{};

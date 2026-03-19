@@ -18,8 +18,8 @@ class SANDBOX_API UMoveToTargetActorComponent
   public:
     UMoveToTargetActorComponent();
   protected:
-    virtual void BeginPlay() override;
-    virtual void OnClicked() override;
+    void BeginPlay() override;
+    void OnClicked() override;
   public:
     virtual void TickComponent(float DeltaTime,
                                ELevelTick TickType,

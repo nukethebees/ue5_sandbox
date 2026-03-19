@@ -32,7 +32,7 @@ class SANDBOX_API AMassBulletSpawner
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     TObjectPtr<UBulletDataAsset> bullet_data{nullptr};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullets")

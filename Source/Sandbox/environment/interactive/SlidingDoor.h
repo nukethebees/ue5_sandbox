@@ -26,7 +26,7 @@ class SANDBOX_API ASlidingDoor : public AActor {
   public:
     ASlidingDoor();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void Tick(float DeltaTime) override;
 

@@ -11,7 +11,7 @@ UCLASS()
 class SANDBOX_API UAudioOptionsWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     // Placeholder for future audio settings
     // Examples: master volume, music volume, SFX volume, voice volume, etc.

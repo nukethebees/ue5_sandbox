@@ -48,7 +48,7 @@ class SANDBOX_API UMainHUDWidget
     UPROPERTY(meta = (BindWidget))
     UAmmoHUDWidget* ammo_display{nullptr};
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
   public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void update_health(FHealthData health_data);

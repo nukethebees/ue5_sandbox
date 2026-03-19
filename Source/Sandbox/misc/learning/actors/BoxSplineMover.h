@@ -14,7 +14,7 @@ class SANDBOX_API ABoxSplineMover : public AActor {
   public:
     ABoxSplineMover();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void Tick(float DeltaTime) override;
   protected:

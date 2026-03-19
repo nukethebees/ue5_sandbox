@@ -35,7 +35,7 @@ class SANDBOX_API ATriggerButtonActor
     UFUNCTION(BlueprintCallable, Category = "Trigger Button")
     bool has_valid_targets() const { return trigger_payload.n_targets > 0; }
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type reason) override;
   private:
     FTriggerOtherPayload trigger_payload{};

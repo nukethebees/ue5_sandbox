@@ -23,7 +23,7 @@ class SANDBOX_API ACoin
     virtual UPrimitiveComponent* get_collision_component() override;
     virtual bool should_destroy_after_collision() const;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Coin")
     UStaticMeshComponent* mesh_component{};

@@ -15,7 +15,7 @@ UCLASS()
 class SANDBOX_API UPlayerPsiAbilitiesUpgradeWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeOnInitialized() override;
-    virtual void NativeConstruct() override;
-    virtual void NativeDestruct() override;
+    void NativeOnInitialized() override;
+    void NativeConstruct() override;
+    void NativeDestruct() override;
 };

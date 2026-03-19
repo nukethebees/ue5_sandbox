@@ -28,7 +28,7 @@ class SANDBOX_API AObjectPoolWarmer
   public:
     AObjectPoolWarmer();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pool Warming")
     TArray<FPoolWarmupConfig> bullet_pool_warmups;

@@ -151,7 +151,7 @@ class SANDBOX_API AMyCharacter
     void reset_max_jump_count();
     UFUNCTION()
     void increase_max_jump_count(int32 jumps);
-    virtual void OnJumped_Implementation() override;
+    void OnJumped_Implementation() override;
     virtual void Landed(FHitResult const& Hit) override;
     void broadcast_jump_count() const;
     void broadcast_jump_count(int32 count) const;
@@ -230,7 +230,7 @@ class SANDBOX_API AMyCharacter
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
     ETeamID team_id{ETeamID::Player};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     // Movement
@@ -241,7 +241,7 @@ class SANDBOX_API AMyCharacter
     FHumanoidMovement movement{};
   private:
     // IDeathHandler
-    virtual void handle_death() override;
+    void handle_death() override;
 
     // Cameras
     void disable_all_cameras();

@@ -32,7 +32,7 @@ class SANDBOX_API UActorDescriptionScannerComponent
     FOnTargetScreenBoundsUpdate on_target_screen_bounds_update;
     FOnTargetScreenBoundsCleared on_target_screen_bounds_cleared;
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     void perform_raycast(APlayerController const& pc, FVector position, FRotator rotation);
     void set_hud_widget(UItemDescriptionHUDWidget* widget);

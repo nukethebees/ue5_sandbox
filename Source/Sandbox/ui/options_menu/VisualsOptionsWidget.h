@@ -23,7 +23,7 @@ class SANDBOX_API UVisualsOptionsWidget
     , public ml::LogMsgMixin<"UVisualsOptionsWidget"> {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UScrollBox* settings_scroll_box{nullptr};

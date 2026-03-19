@@ -11,7 +11,7 @@ class SANDBOX_API ALoopingLift : public AActor {
   public:
     ALoopingLift();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void Tick(float DeltaTime) override;
 

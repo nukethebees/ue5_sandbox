@@ -11,5 +11,5 @@ class SANDBOX_API UResearchMenuWidget : public UUserWidget {
   public:
     void on_widget_selected();
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 };

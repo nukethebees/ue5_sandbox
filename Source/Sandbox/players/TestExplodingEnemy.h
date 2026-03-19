@@ -17,7 +17,7 @@ class SANDBOX_API ATestExplodingEnemy : public ATestEnemy {
     virtual bool attack_actor(AActor& target) override;
   protected:
     // IDeathHandler
-    virtual void handle_death() override;
+    void handle_death() override;
     void explode(UWorld& world);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosion")

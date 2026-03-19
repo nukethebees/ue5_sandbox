@@ -12,7 +12,7 @@ UCLASS()
 class SANDBOX_API AWaterResetTriggerBox : public ATriggerBox {
     GENERATED_BODY()
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     UFUNCTION()
     void OnOverlapBegin(AActor* OverlappedActor, AActor* other_actor);

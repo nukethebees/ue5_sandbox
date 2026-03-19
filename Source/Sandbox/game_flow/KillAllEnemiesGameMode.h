@@ -19,7 +19,7 @@ class SANDBOX_API AKillAllEnemiesGameMode : public AMyGameModeBase {
   protected:
     virtual void
         InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     void handle_enemy_death();
 

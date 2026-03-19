@@ -17,7 +17,7 @@ class SANDBOX_API URotatingActorComponent : public UActorComponent {
   public:
     URotatingActorComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
   public:
     void register_scene_component(URotationManagerSubsystem& rotation_manager,

@@ -11,7 +11,7 @@ UCLASS()
 class SANDBOX_API UControlsOptionsWidget : public UUserWidget {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     // Placeholder for future control settings
     // Examples: key bindings, mouse sensitivity, invert mouse, gamepad settings, etc.

@@ -88,10 +88,10 @@ class SANDBOX_API ATestEnemy
     FOnPlayerKilled on_player_killed;
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     // IDeathHandler
-    virtual void handle_death() override;
+    void handle_death() override;
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     UArrowComponent* muzzle_point{nullptr};

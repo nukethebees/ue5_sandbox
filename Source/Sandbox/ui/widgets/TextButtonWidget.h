@@ -22,9 +22,9 @@ class SANDBOX_API UTextButtonWidget : public UUserWidget {
 
     FOnTextButtonClicked on_clicked;
   protected:
-    virtual void NativeConstruct() override;
-    virtual void NativeDestruct() override;
-    virtual void SynchronizeProperties() override;
+    void NativeConstruct() override;
+    void NativeDestruct() override;
+    void SynchronizeProperties() override;
 
     UPROPERTY(meta = (BindWidget))
     UButton* button_widget{nullptr};

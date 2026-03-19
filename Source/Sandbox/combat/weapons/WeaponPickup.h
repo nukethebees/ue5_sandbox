@@ -23,7 +23,7 @@ class SANDBOX_API AWeaponPickup
     AWeaponPickup();
   protected:
     virtual void OnConstruction(FTransform const& Transform) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     void spawn_weapon(UWorld& world);
     void update_weapon(UWorld& world);

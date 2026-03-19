@@ -27,5 +27,5 @@ class SANDBOX_API AKillableCube
     UHealthComponent* health_component_{nullptr};
   private:
     UFUNCTION()
-    virtual void handle_death() override;
+    void handle_death() override;
 };

@@ -15,7 +15,7 @@ class SANDBOX_API UStaticOrbitCameraComponent : public UActorComponent {
   public:
     UStaticOrbitCameraComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, Category = "Rotation")
     float rotation_speed_deg_per_sec{10.0f};

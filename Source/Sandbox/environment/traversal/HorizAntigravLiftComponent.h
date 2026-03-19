@@ -14,7 +14,7 @@ class SANDBOX_API UHorizAntigravLiftComponent : public UActorComponent {
   public:
     UHorizAntigravLiftComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Float")
     UBoxComponent* float_zone{nullptr};

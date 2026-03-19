@@ -15,8 +15,8 @@ class SANDBOX_API USlidingPlatformActorComponent
   public:
     USlidingPlatformActorComponent();
   protected:
-    virtual void BeginPlay() override;
-    virtual void OnClicked() override;
+    void BeginPlay() override;
+    void OnClicked() override;
   public:
     virtual void TickComponent(float DeltaTime,
                                ELevelTick TickType,

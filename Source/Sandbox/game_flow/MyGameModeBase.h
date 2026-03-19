@@ -24,7 +24,7 @@ class SANDBOX_API AMyGameModeBase
   protected:
     virtual void
         InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Mode")
     URemoveGhostsOnStartComponent* ghost_cleanup_component{nullptr};

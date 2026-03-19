@@ -15,7 +15,7 @@ class SANDBOX_API UWarpToPlayerStartActorComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     UBoxComponent* warp_zone{nullptr};
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp,

@@ -11,7 +11,7 @@ class SANDBOX_API UTeleporterActorComponent : public UActorComponent {
   public:
     UTeleporterActorComponent();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void HandleOverlap(UPrimitiveComponent* OverlappedComp,

@@ -17,7 +17,7 @@ class SANDBOX_API ULoadLevelButtonWidget : public UUserWidget {
     void set_level_path(FName value);
     void set_level_display_name(FText value);
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UButton* load_level_button{nullptr};

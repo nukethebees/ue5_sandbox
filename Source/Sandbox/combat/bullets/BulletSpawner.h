@@ -27,7 +27,7 @@ class SANDBOX_API ABulletSpawner
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullets")
     USceneComponent* fire_point{nullptr};
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
   public:
     virtual void Tick(float DeltaTime) override;
   private:

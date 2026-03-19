@@ -22,9 +22,9 @@ class SANDBOX_API UPlayerAttributesUpgradeWidget : public UUserWidget {
     void set_character(AMyCharacter& my_char);
     void refresh_values();
   protected:
-    virtual void NativeOnInitialized() override;
-    virtual void NativeConstruct() override;
-    virtual void NativeDestruct() override;
+    void NativeOnInitialized() override;
+    void NativeConstruct() override;
+    void NativeDestruct() override;
 
     UFUNCTION()
     void on_close_requested();

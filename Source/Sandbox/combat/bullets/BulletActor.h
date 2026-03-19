@@ -35,7 +35,7 @@ class SANDBOX_API ABulletActor
     void Activate();
     void Deactivate();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UFUNCTION()
     void on_hit(UPrimitiveComponent* HitComponent,

@@ -57,7 +57,7 @@ class SANDBOX_API AMyPlayerController
     GENERATED_BODY()
   public:
     AMyPlayerController();
-    virtual void SetupInputComponent() override;
+    void SetupInputComponent() override;
 
     // Movement
     UFUNCTION()
@@ -165,7 +165,7 @@ class SANDBOX_API AMyPlayerController
     UFUNCTION()
     void clear_target_screen_bounds();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void OnPossess(APawn* InPawn) override;
     virtual void Tick(float DeltaSeconds) override;
 

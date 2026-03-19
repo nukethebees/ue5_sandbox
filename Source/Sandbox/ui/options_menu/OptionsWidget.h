@@ -25,7 +25,7 @@ class SANDBOX_API UOptionsWidget
     , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* tab_switcher{nullptr};

@@ -30,7 +30,7 @@ class SANDBOX_API AMoneyPickupActor
         return desc;
     }
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Money")
     UStaticMeshComponent* mesh_component{};

@@ -23,8 +23,8 @@ class SANDBOX_API UStatsMenuWidget
     void on_widget_selected();
     void set_character(AMyCharacter& my_char);
   protected:
-    virtual void NativeOnInitialized() override;
-    virtual void NativeConstruct() override;
+    void NativeOnInitialized() override;
+    void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget))
     UHorizontalBox* stats_box{nullptr};

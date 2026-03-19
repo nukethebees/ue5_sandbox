@@ -75,7 +75,7 @@ class SANDBOX_API ASimpleManualAIController
   public:
     ASimpleManualAIController();
   protected:
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
     virtual void Tick(float delta_time) override;
 
     UFUNCTION()

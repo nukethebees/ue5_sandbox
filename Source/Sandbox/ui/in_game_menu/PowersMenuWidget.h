@@ -11,5 +11,5 @@ class SANDBOX_API UPowersMenuWidget : public UUserWidget {
   public:
     void on_widget_selected();
   protected:
-    virtual void NativeConstruct() override;
+    void NativeConstruct() override;
 };

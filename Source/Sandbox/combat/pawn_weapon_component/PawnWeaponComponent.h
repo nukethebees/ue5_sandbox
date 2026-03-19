@@ -23,7 +23,7 @@ class SANDBOX_API UPawnWeaponComponent
   public:
     UPawnWeaponComponent();
 
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     bool can_fire() const;
     void start_firing();
