@@ -100,6 +100,8 @@ void ASpaceShip::Tick(float dt) {
 
     roll_state.time_remaining -= dt;
 
+    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
+
 #if WITH_EDITOR
     if (debug_forward_socket_direction) {
         auto const middle{get_middle_socket(*ship_mesh)};
@@ -135,6 +137,7 @@ void ASpaceShip::set(EBoostBrakeState s) {
             thrust_change_rate = -(1.f / boost_depletion_time);
             response = speed_responses.boost;
             boost_pulse->Activate();
+
             boost_engine_effect->Activate();
             break;
         }
