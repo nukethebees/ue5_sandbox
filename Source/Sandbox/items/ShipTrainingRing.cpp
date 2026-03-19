@@ -53,15 +53,13 @@ void AShipTrainingRing::on_overlap_begin(UPrimitiveComponent* overlapped_comp,
             auto const d_up{ship_up * shockwave_ship_up};
             auto const loc{ship_loc + d_fwd + d_up};
 
-            UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
-                                                           shockwave,
-                                                           loc,
-                                                           FRotator::ZeroRotator,
-                                                           FVector(1.0f),
-                                                           true,
-                                                           true,
-                                                           ENCPoolMethod::None,
-                                                           true);
+            UNiagaraFunctionLibrary::SpawnSystemAttached(shockwave,
+                                                         ship->GetRootComponent(),
+                                                         NAME_None,
+                                                         FVector::ZeroVector,
+                                                         FRotator::ZeroRotator,
+                                                         EAttachLocation::KeepRelativeOffset,
+                                                         true);
         }
 
         Destroy();
