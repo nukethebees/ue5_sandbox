@@ -237,6 +237,8 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     UNiagaraComponent* boost_pulse{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    UNiagaraComponent* boost_engine_effect{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     float boost_effect_colour_intensity{75.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

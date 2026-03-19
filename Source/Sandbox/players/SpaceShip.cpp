@@ -70,6 +70,7 @@ ASpaceShip::ASpaceShip()
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
+    , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))}
     , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
@@ -80,6 +81,10 @@ ASpaceShip::ASpaceShip()
     boost_pulse->SetupAttachment(RootComponent);
     boost_pulse->bAutoActivate = false;
     boost_pulse->SetAutoDestroy(false);
+
+    boost_engine_effect->SetupAttachment(ship_mesh);
+    boost_engine_effect->bAutoActivate = false;
+    boost_engine_effect->SetAutoDestroy(false);
 
     // Don't tick until the controller wires up the delegates
     PrimaryActorTick.bCanEverTick = true;
@@ -129,6 +134,8 @@ void ASpaceShip::set(EBoostBrakeState s) {
             target_speed = boost_speed;
             thrust_change_rate = -(1.f / boost_depletion_time);
             response = speed_responses.boost;
+            boost_pulse->Activate();
+            boost_engine_effect->Activate();
             break;
         }
         case EBoostBrakeState::Brake: {
@@ -146,6 +153,9 @@ void ASpaceShip::set(EBoostBrakeState s) {
             if (target_speed < cur_speed) {
                 response = speed_responses.slowing_to_cruise;
             }
+
+            boost_engine_effect->Deactivate();
+
             break;
         }
     }
@@ -278,10 +288,12 @@ void ASpaceShip::BeginPlay() {
     set(EBoostBrakeState::None);
 
     boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"),
-                                             boost_effect_colour_intensity);
-    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                             boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+
+    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                           boost_effect_colour_intensity);
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -296,7 +308,6 @@ void ASpaceShip::turn(FVector2D direction) {
 void ASpaceShip::start_boost() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
         set(EBoostBrakeState::Boost);
-        boost_pulse->Activate();
     }
 }
 void ASpaceShip::stop_boost() {
