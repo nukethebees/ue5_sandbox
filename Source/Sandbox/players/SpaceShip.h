@@ -15,6 +15,8 @@
 class UCameraComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+class UNiagaraSystem;
+class UNiagaraComponent;
 
 class AShipLaser;
 class UShipLaserConfig;
@@ -219,6 +221,8 @@ class ASpaceShip
 
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
 
+    void set_boost_effect_speed(UNiagaraComponent& effect);
+
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
     void sample_speed();
@@ -230,6 +234,10 @@ class ASpaceShip
     UStaticMeshComponent* ship_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    UNiagaraSystem* boost_effect{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    UNiagaraComponent* boost_effect_instance{nullptr};
 
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy_max{1.f};
