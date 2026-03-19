@@ -69,12 +69,17 @@ ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
-    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
+    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health")))
+    , boost_effect_instance{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(RootComponent);
     ship_mesh->SetupAttachment(RootComponent);
     collision_box->SetupAttachment(RootComponent);
+
+    boost_effect_instance->SetupAttachment(RootComponent);
+    boost_effect_instance->bAutoActivate = false;
+    boost_effect_instance->SetAutoDestroy(false);
 
     // Don't tick until the controller wires up the delegates
     PrimaryActorTick.bCanEverTick = true;
@@ -276,18 +281,7 @@ void ASpaceShip::turn(FVector2D direction) {
 void ASpaceShip::start_boost() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
         set(EBoostBrakeState::Boost);
-
-        RETURN_IF_NULLPTR(boost_effect);
-        TRY_INIT_PTR(world, GetWorld());
-        auto const loc{GetActorLocation()};
-        auto const rot{GetActorRotation()};
-
-        auto const mid{get_middle_socket()};
-
-        boost_effect_instance = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            world, boost_effect, loc, rot, FVector::OneVector);
-        RETURN_IF_NULLPTR(boost_effect_instance);
-        set_boost_effect_speed(*boost_effect_instance);
+        boost_effect_instance->Activate();
     }
 }
 void ASpaceShip::stop_boost() {
@@ -438,14 +432,6 @@ auto ASpaceShip::get_middle_socket() const -> FTransform {
 auto ASpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
     check(m.DoesSocketExist(Sockets::middle));
     return m.GetSocketTransform(Sockets::middle, RTS_World);
-}
-
-void ASpaceShip::set_boost_effect_speed(UNiagaraComponent& effect) {
-    // This assumes we're travelling at the cruiing speed
-    // At other speeds it'll likely look odd
-    auto const speed{static_cast<float>(get_speed())};
-    FVector const particle_velocity{speed, 0.f, 0.f};
-    effect.SetVectorParameter(TEXT("ship_velocity"), particle_velocity);
 }
 
 auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {

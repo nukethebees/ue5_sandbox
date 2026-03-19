@@ -221,8 +221,6 @@ class ASpaceShip
 
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
 
-    void set_boost_effect_speed(UNiagaraComponent& effect);
-
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
     void sample_speed();
