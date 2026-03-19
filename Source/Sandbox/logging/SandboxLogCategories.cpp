@@ -18,3 +18,6 @@ DEFINE_LOG_CATEGORY(LogSandboxWeapon);
 DEFINE_LOG_CATEGORY(LogSandboxInput);
 DEFINE_LOG_CATEGORY(LogSandboxInventory);
 DEFINE_LOG_CATEGORY(LogSandboxHealth);
+
+// Misc
+DEFINE_LOG_CATEGORY(LogSandboxLearning);

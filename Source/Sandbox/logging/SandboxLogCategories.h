@@ -2,6 +2,8 @@
 
 #include "Logging/LogMacros.h"
 
+// Don't forget to update SandboxConsoleCommands.cpp
+
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxFrameCount, Log, All);
 
 // Systems
@@ -20,3 +22,6 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSandboxWeapon, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInput, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInventory, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxHealth, Log, All);
+
+// Misc
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxLearning, Log, All);

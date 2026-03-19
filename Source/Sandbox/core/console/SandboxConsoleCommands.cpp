@@ -80,7 +80,9 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             LogSandboxWeapon,
             LogSandboxInput,
             LogSandboxInventory,
-            LogSandboxHealth);
+            LogSandboxHealth,
+            // Misc
+            LogSandboxLearning);
 
         UE_LOG(LogSandboxCore,
                Display,
