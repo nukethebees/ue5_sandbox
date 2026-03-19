@@ -7,6 +7,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Math/Color.h"
 
 #include <span>
 
@@ -237,6 +238,11 @@ class ASpaceShip
     UNiagaraSystem* boost_effect{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     UNiagaraComponent* boost_effect_instance{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    float boost_effect_colour_intensity{75.f};
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    FLinearColor engine_colour{FLinearColor::Blue};
 
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy_max{1.f};

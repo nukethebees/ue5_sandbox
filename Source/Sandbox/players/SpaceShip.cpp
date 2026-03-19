@@ -251,6 +251,8 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_NULLPTR(laser_config);
     check(hyper_laser_config);
     RETURN_IF_NULLPTR(hyper_laser_config);
+    check(boost_effect_instance);
+    RETURN_IF_NULLPTR(boost_effect_instance);
 
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
@@ -274,6 +276,12 @@ void ASpaceShip::BeginPlay() {
     thrust_change_rate = thrust_change_rate;
     velocity = FVector3d::ZeroVector;
     set(EBoostBrakeState::None);
+
+    boost_effect_instance->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_effect_instance->SetFloatParameter(TEXT("ring_colour_intensity"),
+                                             boost_effect_colour_intensity);
+    boost_effect_instance->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                             boost_effect_colour_intensity);
 }
 
 void ASpaceShip::turn(FVector2D direction) {
