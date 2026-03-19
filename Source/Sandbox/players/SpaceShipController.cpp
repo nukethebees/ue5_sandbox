@@ -1,6 +1,7 @@
 #include "Sandbox/players/SpaceShipController.h"
 
 #include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/SpaceShip.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
