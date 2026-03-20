@@ -5,22 +5,25 @@
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
 
+#include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
-#include "TimerManager.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 AShipBomb::AShipBomb()
-    : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
+    : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}
+    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box"))} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
+    RootComponent = collision_box;
+    collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision_box->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -33,12 +36,48 @@ void AShipBomb::Tick(float dt) {
         Destroy();
     }
 
+    TRY_INIT_PTR(world, GetWorld());
+
     if (!detonated) {
-        auto const velocity{GetActorForwardVector() * speed};
-        auto const delta_pos{velocity * dt};
-        SetActorLocation(GetActorLocation() + delta_pos);
+        if (IsValid(target)) {
+            if (time_since_detonation > lock_on_fuse_time) {
+                detonate();
+                return;
+            }
+
+            auto const cur_loc{GetActorLocation()};
+            auto const tgt_loc{target->GetActorLocation()};
+
+            auto const direction{(tgt_loc - cur_loc).GetSafeNormal()};
+            auto const delta_movement{speed * dt};
+            auto const new_loc{cur_loc + direction * delta_movement};
+
+            FCollisionQueryParams params;
+            params.AddIgnoredActor(GetInstigator());
+            params.AddIgnoredActor(this);
+            FHitResult hit;
+
+            FCollisionObjectQueryParams obj_params;
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+
+            if (world->LineTraceSingleByObjectType(hit, cur_loc, new_loc, obj_params, params)) {
+                detonate();
+                return;
+            }
+            SetActorLocation(new_loc);
+        } else {
+            if (time_since_detonation > fuse_time) {
+                detonate();
+                return;
+            }
+
+            auto const velocity{GetActorForwardVector() * speed};
+            auto const delta_pos{velocity * dt};
+            SetActorLocation(GetActorLocation() + delta_pos);
+        }
     } else {
-        TRY_INIT_PTR(world, GetWorld());
         TRY_INIT_PTR(instigator, GetInstigator());
 
         TArray<FHitResult> hits;
@@ -81,9 +120,6 @@ void AShipBomb::Tick(float dt) {
 }
 void AShipBomb::BeginPlay() {
     Super::BeginPlay();
-
-    auto& tm{GetWorldTimerManager()};
-    tm.SetTimer(timer, this, &ThisClass::detonate, fuse_time, false);
 }
 
 void AShipBomb::detonate() {
@@ -92,9 +128,6 @@ void AShipBomb::detonate() {
     speed = 0.f;
     mesh_component->SetVisibility(false, true);
     detonated = true;
-
-    auto& tm{GetWorldTimerManager()};
-    tm.ClearTimer(timer);
 
 #if WITH_EDITOR
     if (debug_explosion) {

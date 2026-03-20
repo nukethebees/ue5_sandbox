@@ -42,6 +42,8 @@ void AShipHomingLaser::Tick(float dt) {
         return;
     }
 
+    TRY_INIT_PTR(world, GetWorld());
+
     auto const cur_loc{GetActorLocation()};
     auto const tgt_loc{target->GetActorLocation()};
 
@@ -49,11 +51,21 @@ void AShipHomingLaser::Tick(float dt) {
     auto const delta_movement{speed * dt};
     auto const new_loc{cur_loc + direction * delta_movement};
 
+    FCollisionQueryParams params;
+    params.AddIgnoredActor(GetInstigator());
+    params.AddIgnoredActor(this);
     FHitResult hit;
-    SetActorLocation(new_loc, true, &hit);
-    if (hit.bBlockingHit) {
+
+    FCollisionObjectQueryParams obj_params;
+    obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
+    obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+    obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+
+    if (world->LineTraceSingleByObjectType(hit, cur_loc, new_loc, obj_params, params)) {
         explode();
+        return;
     }
+    SetActorLocation(new_loc);
 }
 void AShipHomingLaser::BeginPlay() {
     Super::BeginPlay();

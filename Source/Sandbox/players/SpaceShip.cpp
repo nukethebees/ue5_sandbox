@@ -394,10 +394,10 @@ void ASpaceShip::start_fire_laser() {
 void ASpaceShip::stop_fire_laser() {
     if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
         fire_homing_laser();
+        set_lock_on_target(nullptr);
     }
 
     set_laser_mode(ELaserFiringMode::idle);
-    set_lock_on_target(nullptr);
 }
 void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
@@ -484,6 +484,11 @@ void ASpaceShip::fire_bomb() {
         LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
 
     active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
+    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+        active_bomb->set_target(this->lock_on_target);
+        set_lock_on_target(nullptr);
+        set_laser_mode(ELaserFiringMode::idle);
+    }
     active_bomb->FinishSpawning(fire_point);
 
     subtract_bomb();
