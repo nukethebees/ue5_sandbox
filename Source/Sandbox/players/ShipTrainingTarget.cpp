@@ -82,7 +82,10 @@ void AShipTrainingTarget::Tick(float dt) {
 
 auto AShipTrainingTarget::apply_damage(int32 damage, AActor const& instigator)
     -> FShipDamageResult {
-    SetLifeSpan(0.01f);
+    if (IsActorBeingDestroyed()) {
+        return {EDamageResult::AlreadyDestroyed};
+    }
+
     FShipDamageResult const result{EDamageResult::Killed};
 
     if (death_particles) {
@@ -95,6 +98,7 @@ auto AShipTrainingTarget::apply_damage(int32 damage, AActor const& instigator)
             world, death_particles, loc, rot, FVector::OneVector);
     }
 
+    Destroy();
     return result;
 }
 
