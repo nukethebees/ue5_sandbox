@@ -9,6 +9,7 @@
 #include "ShipBomb.generated.h"
 
 class UStaticMeshComponent;
+class UNiagaraSystem;
 
 struct FShipDamageResult;
 
@@ -32,6 +33,9 @@ class SANDBOX_API AShipBomb : public AActor {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bomb")
     UStaticMeshComponent* mesh_component{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Bomb")
+    UNiagaraSystem* explosion_effect{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bomb")
     float speed{10000.f};

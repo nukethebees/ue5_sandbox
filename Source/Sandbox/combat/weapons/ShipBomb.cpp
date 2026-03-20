@@ -9,6 +9,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "TimerManager.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -99,6 +101,24 @@ void AShipBomb::detonate() {
         draw_debug_sphere();
     }
 #endif
+
+    if (explosion_effect) {
+        auto* sys{UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(),
+                                                                 explosion_effect,
+                                                                 GetActorLocation(),
+                                                                 GetActorRotation(),
+                                                                 FVector::OneVector,
+                                                                 true,
+                                                                 false)};
+        if (sys) {
+            sys->SetFloatParameter(TEXT("explosion_radius"), explosion_radius);
+            sys->Activate();
+        } else {
+            WARN_IS_FALSE(LogSandboxActor, explosion_effect);
+        }
+    } else {
+        WARN_IS_FALSE(LogSandboxActor, explosion_effect);
+    }
 
     time_since_detonation = 0.f;
 }
