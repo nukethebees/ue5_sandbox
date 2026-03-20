@@ -5,4 +5,10 @@
 #include "LaserFiringMode.generated.h"
 
 UENUM()
-enum class ELaserFiringMode : uint8 { idle, burst, lock_on_transition, lock_on };
+enum class ELaserFiringMode : uint8 {
+    idle,
+    burst,
+    lock_on_transition,
+    lock_on_searching,
+    lock_on_acquired
+};

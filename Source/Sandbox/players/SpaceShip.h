@@ -39,6 +39,7 @@ DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
 DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
 DECLARE_DELEGATE_OneParam(FOnLaserModeChanged, ELaserFiringMode);
+DECLARE_DELEGATE_OneParam(FOnLockOnAcquired, AActor*);
 
 UCLASS()
 class ASpaceShip
@@ -72,6 +73,7 @@ class ASpaceShip
     void upgrade_laser();
     void add_bomb();
     auto get_bombs() const { return bombs; }
+    auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
 
     void upgrade_max_health();
     void add_health(int32 added_health);
@@ -106,6 +108,7 @@ class ASpaceShip
     FOnShipPointsChanged on_points_changed;
     FOnLivesChanged on_lives_changed;
     FOnLaserModeChanged on_laser_mode_changed;
+    FOnLockOnAcquired on_lock_on_acquired;
 
 #if WITH_EDITORONLY_DATA
     FOnSpeedSampled on_speed_sampled;
@@ -115,18 +118,21 @@ class ASpaceShip
 
     void set(EBoostBrakeState s);
     void set_laser_mode(ELaserFiringMode laser_mode);
-    void fire_laser();
-    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
-    void subtract_bomb();
     void update_boost_brake(this ASpaceShip& self, float dt);
     void update_actor_rotation(this ASpaceShip& self, float dt);
     void update_visual_orientation(this ASpaceShip& self, float dt);
     void integrate_velocity(this ASpaceShip& self, float dt);
     void update_laser_firing(float dt);
 
+    void fire_laser();
+    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
+    void subtract_bomb();
+    void fire_lock_on_laser();
+
     void add_points(int32 x);
 
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
+    void set_lock_on_target(AActor* target);
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
@@ -223,12 +229,16 @@ class ASpaceShip
     float laser_firing_period{0.15f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
     float laser_shot_cooldown{0.f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
-    float laser_lock_on_transition_delay{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
     int32 lasers_fired_this_burst{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     int32 lasers_per_burst{3};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    float laser_lock_on_transition_delay{1.f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    AActor* lock_on_target{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    float laser_lock_on_distance{10000.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
     ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
@@ -271,5 +281,9 @@ class ASpaceShip
     bool debug_forward_socket_direction{false};
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool debug_forward_direction{false};
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool debug_lock_on{false};
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    float debug_lock_on_sphere_radius{1000.f};
 #endif
 };

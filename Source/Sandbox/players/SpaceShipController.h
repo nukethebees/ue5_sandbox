@@ -12,6 +12,7 @@
 #include "SpaceShipController.generated.h"
 
 class UShipHudWidget;
+class ASpaceShip;
 
 USTRUCT(BlueprintType)
 struct FBarrelRollInputData {
@@ -46,6 +47,8 @@ class ASpaceShipController
     void OnUnPossess() override;
 
     void initialise_hud();
+    void update_crosshair_positions(ASpaceShip const& ship);
+    void update_lock_on_widget(ASpaceShip const& ship);
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
@@ -84,6 +87,8 @@ class ASpaceShipController
     // UI
     UFUNCTION()
     void on_laser_firing_mode_changed(ELaserFiringMode mode);
+    UFUNCTION()
+    void on_lock_on_acquired(AActor* target);
 
     // UI
     UPROPERTY(EditAnywhere, Category = "UI")

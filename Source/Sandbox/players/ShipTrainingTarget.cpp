@@ -22,6 +22,7 @@ AShipTrainingTarget::AShipTrainingTarget()
     mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     collision_box->SetupAttachment(RootComponent);
+    collision_box->SetCollisionObjectType(ECollisionChannel::ECC_Pawn);
     collision_box->SetMobility(EComponentMobility::Movable);
     collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision_box->SetCollisionResponseToChannel(ml::collision::projectile,

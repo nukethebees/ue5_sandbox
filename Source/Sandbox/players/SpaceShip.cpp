@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/ShipBomb.h"
 #include "Sandbox/combat/weapons/ShipLaser.h"
+#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
@@ -10,6 +11,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
@@ -284,10 +286,48 @@ void ASpaceShip::update_laser_firing(float dt) {
         }
         case ELaserFiringMode::lock_on_transition: {
             if (cooldown_finished) {
-                set_laser_mode(ELaserFiringMode::lock_on);
+                set_laser_mode(ELaserFiringMode::lock_on_searching);
             }
         }
-        case ELaserFiringMode::lock_on: {
+        case ELaserFiringMode::lock_on_searching: {
+            TRY_INIT_PTR(world, GetWorld());
+            auto const middle{get_middle_socket()};
+
+            auto const start{middle.GetLocation()};
+            auto const fwd{middle.Rotator().Vector()};
+            auto const distance{laser_lock_on_distance};
+            auto const end{start + fwd * distance};
+
+            FHitResult hit;
+            FCollisionQueryParams query_params;
+            FCollisionObjectQueryParams obj_query_params;
+            obj_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+
+            if (world->LineTraceSingleByObjectType(
+                    hit, start, end, obj_query_params, query_params)) {
+
+                auto const actor_hit{hit.GetActor()};
+                if (!actor_hit) {
+                    break;
+                }
+#if WITH_EDITOR
+                auto const actor_name{ml::get_best_display_name(*actor_hit)};
+                UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
+#endif
+                set_lock_on_target(hit.GetActor());
+                set_laser_mode(ELaserFiringMode::lock_on_acquired);
+            }
+
+#if WITH_EDITOR
+            if (debug_lock_on) {
+                DrawDebugLine(world, start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+                DrawDebugSphere(world, end, debug_lock_on_sphere_radius, 8, FColor::Orange);
+            }
+#endif
+
+            break;
+        }
+        case ELaserFiringMode::lock_on_acquired: {
             break;
         }
     }
@@ -349,14 +389,20 @@ void ASpaceShip::start_fire_laser() {
     set_laser_mode(ELaserFiringMode::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
+    set_lock_on_target(nullptr);
 }
 void ASpaceShip::stop_fire_laser() {
+    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+        fire_lock_on_laser();
+    }
+
     set_laser_mode(ELaserFiringMode::idle);
+    set_lock_on_target(nullptr);
 }
 void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
-    auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+    auto const middle{get_middle_socket()};
 
     switch (laser_mode) {
         case EShipLaserMode::Single: {
@@ -396,6 +442,11 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
+void ASpaceShip::fire_lock_on_laser() {
+    if (!IsValid(lock_on_target)) {
+        return;
+    }
+}
 void ASpaceShip::fire_bomb() {
     if (auto ab{active_bomb.Pin()}) {
         if (!ab->has_detonated()) {
@@ -419,6 +470,10 @@ void ASpaceShip::fire_bomb() {
     active_bomb->FinishSpawning(fire_point);
 
     subtract_bomb();
+}
+void ASpaceShip::set_lock_on_target(AActor* target) {
+    lock_on_target = target;
+    on_lock_on_acquired.ExecuteIfBound(lock_on_target);
 }
 void ASpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {

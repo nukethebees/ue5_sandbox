@@ -38,6 +38,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_colours(FLinearColor near, FLinearColor far);
 
+    void set_lock_on_widget_visibility(bool visible);
+    void set_lock_on_widget_position(FVector2d pos);
+
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
@@ -69,6 +72,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UMaterialInstanceDynamic* near_crosshair_material_instance{nullptr};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UImage* lock_on_widget{nullptr};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(meta = (BindWidget))
     UDebugGraphWidget* speed_graph{nullptr};

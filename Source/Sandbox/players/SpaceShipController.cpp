@@ -47,52 +47,11 @@ void ASpaceShipController::SetupInputComponent() {
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
 
-    RETURN_IF_NULLPTR(hud_widget);
     TRY_INIT_PTR(ss, Cast<ASpaceShip>(GetPawn()));
-
-    auto const ship_socket{ss->get_middle_socket()};
-
-    auto const ship_loc{ship_socket.GetLocation()};
-    auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
-    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
-    FVector2d near_screen_pos{};
-    FVector2d far_screen_pos{};
-
-    constexpr bool bPlayerViewportRelative{false};
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            this, near_world_pos, near_screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project near position."));
-    }
-
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            this, far_world_pos, far_screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project far position."));
-    }
-
-    hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
+    update_crosshair_positions(*ss);
+    update_lock_on_widget(*ss);
 
 #if WITH_EDITOR
-    if (debug_crosshair) {
-        TRY_INIT_PTR(world, GetWorld());
-        DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-        DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-
-        if (can_log()) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Near (W): %s"),
-                   *near_world_pos.ToCompactString());
-            UE_LOG(
-                LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Far (W): %s"),
-                   *far_world_pos.ToCompactString());
-            UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
-        }
-    }
-
     if (can_log()) {
         seconds_since_last_log = 0.f;
     }
@@ -136,6 +95,8 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     hud_widget->set_lives(ship->get_lives());
     ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
     on_laser_firing_mode_changed(ELaserFiringMode::idle);
+    ship->on_lock_on_acquired.BindUObject(this, &ThisClass::on_lock_on_acquired);
+    on_lock_on_acquired(nullptr);
 
 #if WITH_EDITOR
     ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
@@ -154,6 +115,8 @@ void ASpaceShipController::OnUnPossess() {
         ship->on_gold_rings_changed.Unbind();
         ship->on_points_changed.Unbind();
         ship->on_lives_changed.Unbind();
+        ship->on_laser_mode_changed.Unbind();
+        ship->on_lock_on_acquired.Unbind();
 
 #if WITH_EDITOR
         ship->on_speed_sampled.Unbind();
@@ -171,6 +134,71 @@ void ASpaceShipController::initialise_hud() {
     hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
     RETURN_IF_NULLPTR(hud_widget);
     hud_widget->AddToViewport();
+}
+void ASpaceShipController::update_crosshair_positions(ASpaceShip const& ship) {
+    RETURN_IF_NULLPTR(hud_widget);
+
+    auto const ship_socket{ship.get_middle_socket()};
+
+    auto const ship_loc{ship_socket.GetLocation()};
+    auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
+    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
+    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
+    FVector2d near_screen_pos{};
+    FVector2d far_screen_pos{};
+
+    constexpr bool bPlayerViewportRelative{false};
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+            this, near_world_pos, near_screen_pos, bPlayerViewportRelative)) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project near position."));
+    }
+
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+            this, far_world_pos, far_screen_pos, bPlayerViewportRelative)) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project far position."));
+    }
+
+    hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
+
+#if WITH_EDITOR
+    if (debug_crosshair) {
+        TRY_INIT_PTR(world, GetWorld());
+        DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+        DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
+
+        if (can_log()) {
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Near (W): %s"),
+                   *near_world_pos.ToCompactString());
+            UE_LOG(
+                LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
+            UE_LOG(LogSandboxController,
+                   Verbose,
+                   TEXT("Far (W): %s"),
+                   *far_world_pos.ToCompactString());
+            UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
+        }
+    }
+#endif
+}
+void ASpaceShipController::update_lock_on_widget(ASpaceShip const& ship) {
+    auto const* tgt{ship.get_lock_on_target()};
+    if (!tgt) {
+        return;
+    }
+    RETURN_IF_NULLPTR(hud_widget);
+
+    auto const actor_pos{tgt->GetActorLocation()};
+    FVector2d screen_pos{};
+
+    constexpr bool bPlayerViewportRelative{false};
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+            this, actor_pos, screen_pos, bPlayerViewportRelative)) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project actor position."));
+    }
+
+    hud_widget->set_lock_on_widget_position(screen_pos);
 }
 
 void ASpaceShipController::turn(FInputActionValue const& value) {
@@ -264,8 +292,11 @@ void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
     RETURN_IF_NULLPTR(hud_widget);
 
     switch (mode) {
-        case ELaserFiringMode::lock_on: {
+        case ELaserFiringMode::lock_on_searching: {
             hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
+            break;
+        }
+        case ELaserFiringMode::lock_on_acquired: {
             break;
         }
         default: {
@@ -281,4 +312,8 @@ void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
             break;
         }
     }
+}
+void ASpaceShipController::on_lock_on_acquired(AActor* target) {
+    RETURN_IF_NULLPTR(hud_widget);
+    hud_widget->set_lock_on_widget_visibility(target != nullptr);
 }

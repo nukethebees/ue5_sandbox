@@ -87,3 +87,15 @@ void UShipHudWidget::set_crosshair_colours(FLinearColor near, FLinearColor far) 
     near_crosshair_material_instance->SetVectorParameterValue(name, near);
     far_crosshair_material_instance->SetVectorParameterValue(name, far);
 }
+
+void UShipHudWidget::set_lock_on_widget_visibility(bool visible) {
+    RETURN_IF_NULLPTR(lock_on_widget);
+
+    lock_on_widget->SetVisibility(visible ? ESlateVisibility::Visible
+                                          : ESlateVisibility::Collapsed);
+}
+void UShipHudWidget::set_lock_on_widget_position(FVector2d pos) {
+    RETURN_IF_NULLPTR(lock_on_widget);
+    TRY_INIT_PTR(slot, Cast<UCanvasPanelSlot>(lock_on_widget->Slot));
+    slot->SetPosition(pos);
+}
