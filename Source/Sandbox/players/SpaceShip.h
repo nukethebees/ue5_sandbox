@@ -38,6 +38,9 @@ DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
 UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
+UENUM()
+enum class ELaserFiringMode : uint8 { idle, burst, lock_on };
+
 UCLASS()
 class ASpaceShip
     : public APawn
@@ -111,12 +114,14 @@ class ASpaceShip
     void BeginPlay() override;
 
     void set(EBoostBrakeState s);
+    void fire_laser();
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
     void subtract_bomb();
     void update_boost_brake(this ASpaceShip& self, float dt);
     void update_actor_rotation(this ASpaceShip& self, float dt);
     void update_visual_orientation(this ASpaceShip& self, float dt);
     void integrate_velocity(this ASpaceShip& self, float dt);
+    void update_laser_firing(float dt);
 
     void add_points(int32 x);
 
@@ -125,6 +130,7 @@ class ASpaceShip
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
     void sample_speed();
+    void tick_debugs(float dt);
 #endif
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
@@ -180,7 +186,7 @@ class ASpaceShip
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
     float rotation_speed{0.5f};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
@@ -211,6 +217,16 @@ class ASpaceShip
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     float laser_speed{1000.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    float laser_firing_period{0.15f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    float laser_shot_cooldown{0.f};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    int32 lasers_fired_this_burst{0};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    int32 lasers_per_burst{3};
+    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     TSubclassOf<AShipLaser> laser_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")

@@ -49,12 +49,68 @@ void ASpaceShip::Tick(float dt) {
     update_actor_rotation(dt);
     update_visual_orientation(dt);
     integrate_velocity(dt);
+    update_laser_firing(dt);
 
     roll_state.time_remaining -= dt;
-
     boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
 
 #if WITH_EDITOR
+    tick_debugs(dt);
+#endif
+}
+void ASpaceShip::BeginPlay() {
+    Super::BeginPlay();
+
+    velocity = GetActorForwardVector() * cruise_speed;
+    thrust_energy = thrust_energy_max;
+
+    check(ship_mesh);
+    RETURN_IF_NULLPTR(ship_mesh);
+    check(laser_class);
+    RETURN_IF_NULLPTR(laser_class);
+    check(laser_config);
+    RETURN_IF_NULLPTR(laser_config);
+    check(hyper_laser_config);
+    RETURN_IF_NULLPTR(hyper_laser_config);
+    check(boost_pulse);
+    RETURN_IF_NULLPTR(boost_pulse);
+
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
+
+    laser_firing_mode = ELaserFiringMode::idle;
+
+#if WITH_EDITOR
+    static constexpr float sample_rate_hz{60.0f};
+    static constexpr float sample_interval{1.0f / sample_rate_hz};
+    static constexpr float sample_window{5.0f};
+    speed_sample_index = 0;
+    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
+    speed_samples.Reserve(speed_sample_max);
+    for (int32 i{0}; i < speed_sample_max; ++i) {
+        speed_samples.Add(FVector2d::ZeroVector);
+    }
+
+    GetWorldTimerManager().SetTimer(
+        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
+#endif
+
+    thrust_change_rate = thrust_change_rate;
+    velocity = FVector3d::ZeroVector;
+    set(EBoostBrakeState::None);
+
+    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+
+    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                           boost_effect_colour_intensity);
+}
+
+#if WITH_EDITOR
+void ASpaceShip::tick_debugs(float dt) {
     if (debug_forward_socket_direction) {
         auto const middle{get_middle_socket(*ship_mesh)};
 
@@ -76,8 +132,8 @@ void ASpaceShip::Tick(float dt) {
         seconds_since_last_log = 0.f;
     }
     seconds_since_last_log += dt;
-#endif
 }
+#endif
 
 void ASpaceShip::set(EBoostBrakeState s) {
     auto const cur_speed{get_speed()};
@@ -201,54 +257,31 @@ void ASpaceShip::integrate_velocity(this ASpaceShip& self, float dt) {
     self.SetActorLocation(cur_pos + delta_pos, true);
     self.on_speed_changed.Execute(new_speed);
 }
+void ASpaceShip::update_laser_firing(float dt) {
+    switch (laser_firing_mode) {
+        case ELaserFiringMode::idle: {
+            break;
+        }
+        case ELaserFiringMode::burst: {
+            auto const cooldown_finished{laser_shot_cooldown <= 0.f};
 
-void ASpaceShip::BeginPlay() {
-    Super::BeginPlay();
+            if (cooldown_finished) {
+                fire_laser();
+                laser_shot_cooldown = laser_firing_period + dt;
 
-    velocity = GetActorForwardVector() * cruise_speed;
-    thrust_energy = thrust_energy_max;
+                if (lasers_fired_this_burst >= lasers_per_burst) {
+                    laser_firing_mode = ELaserFiringMode::lock_on;
+                }
+            }
 
-    check(ship_mesh);
-    RETURN_IF_NULLPTR(ship_mesh);
-    check(laser_class);
-    RETURN_IF_NULLPTR(laser_class);
-    check(laser_config);
-    RETURN_IF_NULLPTR(laser_config);
-    check(hyper_laser_config);
-    RETURN_IF_NULLPTR(hyper_laser_config);
-    check(boost_pulse);
-    RETURN_IF_NULLPTR(boost_pulse);
-
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
-
-#if WITH_EDITOR
-    static constexpr float sample_rate_hz{60.0f};
-    static constexpr float sample_interval{1.0f / sample_rate_hz};
-    static constexpr float sample_window{5.0f};
-    speed_sample_index = 0;
-    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
-    speed_samples.Reserve(speed_sample_max);
-    for (int32 i{0}; i < speed_sample_max; ++i) {
-        speed_samples.Add(FVector2d::ZeroVector);
+            break;
+        }
+        case ELaserFiringMode::lock_on: {
+            break;
+        }
     }
 
-    GetWorldTimerManager().SetTimer(
-        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
-#endif
-
-    thrust_change_rate = thrust_change_rate;
-    velocity = FVector3d::ZeroVector;
-    set(EBoostBrakeState::None);
-
-    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
-    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
-
-    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                           boost_effect_colour_intensity);
+    laser_shot_cooldown -= dt;
 }
 
 void ASpaceShip::turn(FVector2D direction) {
@@ -302,6 +335,14 @@ void ASpaceShip::barrel_roll(float direction) {
 }
 
 void ASpaceShip::start_fire_laser() {
+    laser_firing_mode = ELaserFiringMode::burst;
+    lasers_fired_this_burst = 0;
+    laser_shot_cooldown = 0.f;
+}
+void ASpaceShip::stop_fire_laser() {
+    laser_firing_mode = ELaserFiringMode::idle;
+}
+void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
     auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
@@ -326,8 +367,10 @@ void ASpaceShip::start_fire_laser() {
             break;
         }
     }
+
+    lasers_fired_this_burst++;
+    laser_shot_cooldown = laser_firing_period;
 }
-void ASpaceShip::stop_fire_laser() {}
 void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point) {
     TRY_INIT_PTR(world, GetWorld());
 
