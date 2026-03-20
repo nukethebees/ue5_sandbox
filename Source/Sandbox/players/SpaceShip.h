@@ -2,8 +2,11 @@
 
 #include "Sandbox/combat/weapons/ShipProjectileType.h"
 #include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/players/BarrelRoll.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipLaserMode.h"
+#include "Sandbox/players/SpaceShipFlightModel.h"
+#include "Sandbox/players/SpeedResponse.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -34,111 +37,6 @@ DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
 
 UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
-
-USTRUCT(BlueprintType)
-struct FSpeedResponse {
-    GENERATED_BODY()
-
-    FSpeedResponse() = default;
-    FSpeedResponse(float settling_time, float damping_ratio)
-        : settling_time(settling_time)
-        , damping_ratio(damping_ratio) {}
-
-    auto tau() const { return settling_time / 5.f; }
-    auto natural_angular_frequency() const { return 1 / tau(); }
-
-    UPROPERTY(EditAnywhere)
-    float settling_time{3.f};
-    UPROPERTY(EditAnywhere)
-    float damping_ratio{0.5f};
-};
-
-USTRUCT(BlueprintType)
-struct FSpeedResponses {
-    GENERATED_BODY()
-
-    FSpeedResponses() = default;
-
-    UPROPERTY(EditAnywhere)
-    FSpeedResponse boost{};
-    UPROPERTY(EditAnywhere)
-    FSpeedResponse brake{};
-    UPROPERTY(EditAnywhere)
-    FSpeedResponse slowing_to_cruise{};
-    UPROPERTY(EditAnywhere)
-    FSpeedResponse accelerating_to_cruise{};
-};
-
-USTRUCT(BlueprintType)
-struct FSpaceShipFlightModel {
-    GENERATED_BODY()
-
-    FSpaceShipFlightModel() = default;
-    FSpaceShipFlightModel(FSpeedResponse sr)
-        : response(sr) {}
-
-    auto step_size() const { return target_speed - old_speed; }
-
-    auto calculate_dy(float t) const -> float;
-    auto update_y(float dt) -> float;
-    auto set_new_impulse(FSpeedResponse sr, float old_s, float target_s);
-  protected:
-    UPROPERTY(VisibleAnywhere)
-    FSpeedResponse response{};
-    UPROPERTY(VisibleAnywhere)
-    float time{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float old_speed{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float target_speed{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float alpha{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float wn{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float wd{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float z_wn{0.f};
-    // Harmonic addition theorem
-    // sin(x) + b*cos(x) -> c * cos(x + delta)
-    UPROPERTY(VisibleAnywhere)
-    float delta{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float c{0.f};
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(VisibleAnywhere, Category = "Debug")
-    mutable float h_dbg{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "Debug")
-    float step_size_original_dbg{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "Debug")
-    float step_size_dbg{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "Debug")
-    float dy_dbg{0.f};
-#endif
-};
-
-USTRUCT(BlueprintType)
-struct FBarrelRoll {
-    GENERATED_BODY()
-
-    FBarrelRoll() = default;
-
-    auto is_rolling() const { return time_remaining > 0.f; }
-    auto can_roll() const { return time_remaining < (-1.f * roll_cooldown); }
-
-    UPROPERTY(EditAnywhere)
-    float roll_speed{90.f};
-    UPROPERTY(EditAnywhere)
-    float roll_duration{2.5f};
-    UPROPERTY(EditAnywhere)
-    float roll_cooldown{0.5f};
-
-    UPROPERTY(VisibleAnywhere)
-    float direction{0.f};
-    UPROPERTY(VisibleAnywhere)
-    float time_remaining{0.f};
-};
 
 UCLASS()
 class ASpaceShip
