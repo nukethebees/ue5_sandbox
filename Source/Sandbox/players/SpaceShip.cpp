@@ -301,7 +301,7 @@ void ASpaceShip::barrel_roll(float direction) {
 #endif
 }
 
-void ASpaceShip::fire_laser() {
+void ASpaceShip::start_fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
     auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
     auto const middle{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
@@ -327,6 +327,7 @@ void ASpaceShip::fire_laser() {
         }
     }
 }
+void ASpaceShip::stop_fire_laser() {}
 void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point) {
     TRY_INIT_PTR(world, GetWorld());
 

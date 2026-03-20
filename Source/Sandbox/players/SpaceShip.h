@@ -64,7 +64,8 @@ class ASpaceShip
     void roll(float direction);
     void barrel_roll(float direction);
 
-    void fire_laser();
+    void start_fire_laser();
+    void stop_fire_laser();
     void fire_bomb();
     void upgrade_laser();
     void add_bomb();

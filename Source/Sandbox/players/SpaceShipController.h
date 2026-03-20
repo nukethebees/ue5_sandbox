@@ -74,7 +74,9 @@ class ASpaceShipController
 
     // Combat
     UFUNCTION()
-    void fire_laser(FInputActionValue const& value);
+    void start_fire_laser();
+    UFUNCTION()
+    void stop_fire_laser();
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
 
