@@ -77,6 +77,12 @@ void AShipBomb::Tick(float dt) {
         time_since_detonation += dt;
     }
 }
+void AShipBomb::BeginPlay() {
+    Super::BeginPlay();
+
+    auto& tm{GetWorldTimerManager()};
+    tm.SetTimer(timer, this, &ThisClass::detonate, fuse_time, false);
+}
 
 void AShipBomb::detonate() {
     UE_LOG(LogSandboxActor, Verbose, TEXT("Bomb detonating."));
@@ -88,6 +94,17 @@ void AShipBomb::detonate() {
     auto& tm{GetWorldTimerManager()};
     tm.ClearTimer(timer);
 
+#if WITH_EDITOR
+    if (debug_explosion) {
+        draw_debug_sphere();
+    }
+#endif
+
+    time_since_detonation = 0.f;
+}
+
+#if WITH_EDITOR
+void AShipBomb::draw_debug_sphere() {
     TRY_INIT_PTR(world, GetWorld());
     auto const location{GetActorLocation()};
 
@@ -104,13 +121,5 @@ void AShipBomb::detonate() {
                     explosion_lifetime,
                     depth_priority,
                     thickness);
-
-    time_since_detonation = 0.f;
 }
-
-void AShipBomb::BeginPlay() {
-    Super::BeginPlay();
-
-    auto& tm{GetWorldTimerManager()};
-    tm.SetTimer(timer, this, &ThisClass::detonate, fuse_time, false);
-}
+#endif

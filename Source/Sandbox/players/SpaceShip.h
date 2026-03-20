@@ -25,6 +25,7 @@ class UNiagaraComponent;
 
 class AShipLaser;
 class UShipLaserConfig;
+class AShipHomingLaser;
 class AShipBomb;
 class UShipHealthComponent;
 
@@ -127,7 +128,7 @@ class ASpaceShip
     void fire_laser();
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
     void subtract_bomb();
-    void fire_lock_on_laser();
+    void fire_homing_laser();
 
     void add_points(int32 x);
 
@@ -243,6 +244,8 @@ class ASpaceShip
     ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     TSubclassOf<AShipLaser> laser_class;
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    TSubclassOf<AShipHomingLaser> homing_laser_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* laser_config;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")

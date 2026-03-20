@@ -1,6 +1,7 @@
 #include "Sandbox/players/SpaceShip.h"
 
 #include "Sandbox/combat/weapons/ShipBomb.h"
+#include "Sandbox/combat/weapons/ShipHomingLaser.h"
 #include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/health/ShipHealthComponent.h"
@@ -14,7 +15,6 @@
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
 #include "TimerManager.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -393,7 +393,7 @@ void ASpaceShip::start_fire_laser() {
 }
 void ASpaceShip::stop_fire_laser() {
     if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
-        fire_lock_on_laser();
+        fire_homing_laser();
     }
 
     set_laser_mode(ELaserFiringMode::idle);
@@ -442,10 +442,27 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
-void ASpaceShip::fire_lock_on_laser() {
+void ASpaceShip::fire_homing_laser() {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
+
     if (!IsValid(lock_on_target)) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
         return;
     }
+    TRY_INIT_PTR(world, GetWorld());
+    auto const fire_point{get_middle_socket()};
+
+    UE_LOG(LogSandboxActor,
+           Verbose,
+           TEXT("Spawning laser at %s"),
+           *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(
+        laser,
+        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
+    laser->set_speed(laser_speed);
+    laser->set_target(lock_on_target);
+    laser->FinishSpawning(fire_point);
 }
 void ASpaceShip::fire_bomb() {
     if (auto ab{active_bomb.Pin()}) {
