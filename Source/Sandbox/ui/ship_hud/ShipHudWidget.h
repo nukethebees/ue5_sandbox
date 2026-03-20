@@ -10,6 +10,8 @@
 #include "ShipHudWidget.generated.h"
 
 class UImage;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 class UShipSpeedWidget;
 class UShipHealthWidget;
@@ -33,12 +35,15 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_bombs(int32 value);
     void set_gold_rings(int32 value);
     void set_lives(int32 value);
-    void set_crosshairs(FVector2d near, FVector2d far);
+    void set_crosshair_positions(FVector2d near, FVector2d far);
+    void set_crosshair_colours(FLinearColor near, FLinearColor far);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
+    void NativeConstruct() override;
+
     UPROPERTY(meta = (BindWidget))
     UShipSpeedWidget* speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -53,10 +58,17 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipGoldRingCountWidget* gold_rings_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UPlayerLivesWidget* lives_widget{nullptr};
+
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UImage* near_crosshair_widget{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInterface* crosshair_material{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInstanceDynamic* near_crosshair_material_instance{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(meta = (BindWidget))
     UDebugGraphWidget* speed_graph{nullptr};

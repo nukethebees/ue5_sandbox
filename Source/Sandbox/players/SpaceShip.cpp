@@ -79,7 +79,7 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
 
-    laser_firing_mode = ELaserFiringMode::idle;
+    set_laser_mode(ELaserFiringMode::idle);
 
 #if WITH_EDITOR
     static constexpr float sample_rate_hz{60.0f};
@@ -174,6 +174,12 @@ void ASpaceShip::set(EBoostBrakeState s) {
     flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }
+void ASpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
+    if (laser_firing_mode != new_laser_mode) {
+        on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
+    }
+    laser_firing_mode = new_laser_mode;
+}
 
 void ASpaceShip::update_boost_brake(this ASpaceShip& self, float dt) {
     auto const starting_thrust_energy{self.thrust_energy};
@@ -258,23 +264,28 @@ void ASpaceShip::integrate_velocity(this ASpaceShip& self, float dt) {
     self.on_speed_changed.Execute(new_speed);
 }
 void ASpaceShip::update_laser_firing(float dt) {
+    auto const cooldown_finished{laser_shot_cooldown <= 0.f};
+
     switch (laser_firing_mode) {
         case ELaserFiringMode::idle: {
             break;
         }
         case ELaserFiringMode::burst: {
-            auto const cooldown_finished{laser_shot_cooldown <= 0.f};
-
             if (cooldown_finished) {
                 fire_laser();
                 laser_shot_cooldown = laser_firing_period + dt;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_firing_mode = ELaserFiringMode::lock_on;
+                    laser_shot_cooldown = laser_lock_on_transition_delay + dt;
+                    set_laser_mode(ELaserFiringMode::lock_on_transition);
                 }
             }
-
             break;
+        }
+        case ELaserFiringMode::lock_on_transition: {
+            if (cooldown_finished) {
+                set_laser_mode(ELaserFiringMode::lock_on);
+            }
         }
         case ELaserFiringMode::lock_on: {
             break;
@@ -335,12 +346,12 @@ void ASpaceShip::barrel_roll(float direction) {
 }
 
 void ASpaceShip::start_fire_laser() {
-    laser_firing_mode = ELaserFiringMode::burst;
+    set_laser_mode(ELaserFiringMode::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
 }
 void ASpaceShip::stop_fire_laser() {
-    laser_firing_mode = ELaserFiringMode::idle;
+    set_laser_mode(ELaserFiringMode::idle);
 }
 void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};

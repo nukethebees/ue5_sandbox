@@ -4,6 +4,7 @@
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/BarrelRoll.h"
 #include "Sandbox/players/DamageableShip.h"
+#include "Sandbox/players/LaserFiringMode.h"
 #include "Sandbox/players/ShipLaserMode.h"
 #include "Sandbox/players/SpaceShipFlightModel.h"
 #include "Sandbox/players/SpeedResponse.h"
@@ -27,6 +28,9 @@ class UShipLaserConfig;
 class AShipBomb;
 class UShipHealthComponent;
 
+UENUM()
+enum class EBoostBrakeState : uint8 { None, Boost, Brake };
+
 DECLARE_DELEGATE_OneParam(FOnShipSpeedChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
@@ -34,12 +38,7 @@ DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
 DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
-
-UENUM()
-enum class EBoostBrakeState : uint8 { None, Boost, Brake };
-
-UENUM()
-enum class ELaserFiringMode : uint8 { idle, burst, lock_on };
+DECLARE_DELEGATE_OneParam(FOnLaserModeChanged, ELaserFiringMode);
 
 UCLASS()
 class ASpaceShip
@@ -106,6 +105,7 @@ class ASpaceShip
     FOnShipGoldRingsChanged on_gold_rings_changed;
     FOnShipPointsChanged on_points_changed;
     FOnLivesChanged on_lives_changed;
+    FOnLaserModeChanged on_laser_mode_changed;
 
 #if WITH_EDITORONLY_DATA
     FOnSpeedSampled on_speed_sampled;
@@ -114,6 +114,7 @@ class ASpaceShip
     void BeginPlay() override;
 
     void set(EBoostBrakeState s);
+    void set_laser_mode(ELaserFiringMode laser_mode);
     void fire_laser();
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
     void subtract_bomb();
@@ -213,6 +214,7 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FBarrelRoll roll_state{};
 
+    // Laser
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
@@ -221,6 +223,8 @@ class ASpaceShip
     float laser_firing_period{0.15f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
     float laser_shot_cooldown{0.f};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    float laser_lock_on_transition_delay{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
     int32 lasers_fired_this_burst{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
@@ -234,17 +238,21 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* hyper_laser_config;
 
+    // Bombs
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
     TSubclassOf<AShipBomb> bomb_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
     int32 bombs{3};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Bomb")
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    int32 gold_rings_collected{0};
 
+    // Points
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 points{0};
+
+    // Health/lives
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
+    int32 gold_rings_collected{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     int32 lives{3};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")

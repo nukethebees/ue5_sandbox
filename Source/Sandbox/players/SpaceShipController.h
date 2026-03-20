@@ -3,6 +3,7 @@
 #include "Sandbox/input/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/LaserFiringMode.h"
 #include "Sandbox/players/SpaceShipControllerInputs.h"
 
 #include "CoreMinimal.h"
@@ -79,6 +80,10 @@ class ASpaceShipController
     void stop_fire_laser();
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
+
+    // UI
+    UFUNCTION()
+    void on_laser_firing_mode_changed(ELaserFiringMode mode);
 
     // UI
     UPROPERTY(EditAnywhere, Category = "UI")

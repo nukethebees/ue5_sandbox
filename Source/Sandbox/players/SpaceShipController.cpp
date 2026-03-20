@@ -70,7 +70,7 @@ void ASpaceShipController::Tick(float dt) {
         UE_LOG(LogSandboxController, Warning, TEXT("Failed to project far position."));
     }
 
-    hud_widget->set_crosshairs(near_screen_pos, far_screen_pos);
+    hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
 
 #if WITH_EDITOR
     if (debug_crosshair) {
@@ -134,6 +134,8 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     hud_widget->set_points(ship->get_points());
     ship->on_lives_changed.BindUObject(hud_widget, &UShipHudWidget::set_lives);
     hud_widget->set_lives(ship->get_lives());
+    ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
+    on_laser_firing_mode_changed(ELaserFiringMode::idle);
 
 #if WITH_EDITOR
     ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
@@ -256,4 +258,27 @@ void ASpaceShipController::stop_fire_laser() {
 void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->fire_bomb();
+}
+
+void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
+    RETURN_IF_NULLPTR(hud_widget);
+
+    switch (mode) {
+        case ELaserFiringMode::lock_on: {
+            hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxController, Warning, TEXT("Unhandled laser firing mode."));
+            [[fallthrough]];
+        }
+        case ELaserFiringMode::idle:
+            [[fallthrough]];
+        case ELaserFiringMode::lock_on_transition:
+            [[fallthrough]];
+        case ELaserFiringMode::burst: {
+            hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
+            break;
+        }
+    }
 }
