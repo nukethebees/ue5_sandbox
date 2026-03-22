@@ -41,9 +41,7 @@ class AMothershipBoss : public AActor {
     UPROPERTY(EditAnywhere, Category = "Boss|Search light")
     TArray<UStaticMeshComponent*> search_light_meshes{};
     UPROPERTY(EditAnywhere, Category = "Boss|Search light")
-    UMaterialInstance* search_light_mesh_material_base{nullptr};
-    UPROPERTY(VisibleAnywhere, Category = "Boss|Search light")
-    TArray<UMaterialInstanceDynamic*> light_material_instances;
+    UMaterialInstance* search_light_mesh_material{nullptr};
 
     // Point lights
     UPROPERTY(EditAnywhere, Category = "Boss|Point lights")

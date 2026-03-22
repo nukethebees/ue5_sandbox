@@ -65,18 +65,9 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
     set_meshes(hatch_mesh, hatch_meshes);
     set_meshes(search_light_mesh, search_light_meshes);
 
-    if (search_light_mesh_material_base) {
-        light_material_instances.Empty();
-        for (auto* c : search_light_meshes) {
-            auto* new_material{
-                UMaterialInstanceDynamic::Create(search_light_mesh_material_base, this)};
-            CONTINUE_IF_NULLPTR(new_material);
-            light_material_instances.Add(new_material);
-            c->SetMaterial(0, new_material);
-
-            auto const light_origin{c->GetComponentLocation()};
-            new_material->SetVectorParameterValue(TEXT("light_origin"), light_origin);
-        }
+    RETURN_IF_NULLPTR(search_light_mesh_material);
+    for (auto* c : search_light_meshes) {
+        c->SetMaterial(0, search_light_mesh_material);
     }
 }
 template <int32 N, typename T>
