@@ -42,6 +42,9 @@ void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& na
 
 void AMothershipBoss::Tick(float dt) {
     Super::Tick(dt);
+
+    auto const delta_rotation{rotation_speed * dt};
+    SetActorRotation(GetActorRotation() + delta_rotation);
 }
 void AMothershipBoss::BeginPlay() {
     Super::BeginPlay();

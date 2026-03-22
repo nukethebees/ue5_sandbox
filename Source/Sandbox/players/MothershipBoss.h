@@ -52,6 +52,10 @@ class AMothershipBoss : public AActor {
     FLinearColor point_light_colour{FLinearColor::Red};
     UPROPERTY(EditAnywhere, Category = "Boss|Point lights")
     float point_light_brightness{100e6};
+
+    // Movement
+    UPROPERTY(EditAnywhere, Category = "Boss|Movement")
+    FRotator rotation_speed{FRotator::ZeroRotator};
   private:
     template <int32 N, typename T>
     void add_n_components(TArray<T*>& components, FString const& name_base);
