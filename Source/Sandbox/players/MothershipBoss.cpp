@@ -5,6 +5,7 @@
 
 #include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -23,6 +24,7 @@ AMothershipBoss::AMothershipBoss()
     mesh_component->SetupAttachment(RootComponent);
 
     add_n_components<n_hatches>(hatch_meshes, TEXT("hatch"));
+    add_n_components<n_hatches>(hatch_lights, TEXT("hatch_light"));
     add_n_components<n_search_lights>(search_light_meshes, TEXT("search_light"));
     add_n_components<n_point_lights>(point_lights, TEXT("point_light"));
 }
@@ -45,6 +47,11 @@ void AMothershipBoss::Tick(float dt) {
 
     auto const delta_rotation{rotation_speed * dt};
     SetActorRotation(GetActorRotation() + delta_rotation);
+
+    auto const delta_hatch_light_rotation{hatch_light_rotation_speed * dt};
+    for (auto* light : hatch_lights) {
+        light->AddRelativeRotation(delta_hatch_light_rotation);
+    }
 }
 void AMothershipBoss::BeginPlay() {
     Super::BeginPlay();
@@ -58,6 +65,7 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
     TRY_INIT_PTR(mesh, mesh_component->GetStaticMesh());
 
     attach_components<n_hatches>(*mesh_component, *mesh, hatch_meshes, TEXT("Hatch"));
+    attach_components<n_hatches>(*mesh_component, *mesh, hatch_lights, TEXT("HatchLight"));
     attach_components<n_search_lights>(
         *mesh_component, *mesh, search_light_meshes, TEXT("SearchLight"));
     attach_components<n_point_lights>(*mesh_component, *mesh, point_lights, TEXT("ShipLight"));
@@ -69,6 +77,9 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
     for (auto* c : search_light_meshes) {
         c->SetMaterial(0, search_light_mesh_material);
     }
+
+    config_point_lights();
+    config_hatch_lights();
 }
 template <int32 N, typename T>
 void AMothershipBoss::attach_components(UStaticMeshComponent& parent,
@@ -101,7 +112,20 @@ void AMothershipBoss::set_meshes(UStaticMesh* mesh, TArray<UStaticMeshComponent*
 void AMothershipBoss::config_point_lights() {
     for (auto* pl : point_lights) {
         CONTINUE_IF_NULLPTR(pl);
-        pl->SetLightColor(point_light_colour);
-        pl->SetLightBrightness(point_light_brightness);
+        pl->SetLightColor(point_light_settings.colour);
+        pl->SetLightBrightness(point_light_settings.brightness);
+        pl->SetAttenuationRadius(point_light_settings.attenuation_radius);
+        pl->SetSourceRadius(point_light_settings.source_radius);
+    }
+}
+void AMothershipBoss::config_hatch_lights() {
+    for (auto* pl : hatch_lights) {
+        CONTINUE_IF_NULLPTR(pl);
+        pl->SetLightColor(hatch_light_settings.colour);
+        pl->SetLightBrightness(hatch_light_settings.brightness);
+        pl->SetSourceRadius(hatch_light_settings.source_radius);
+        pl->SetAttenuationRadius(hatch_light_settings.attenuation_radius);
+        pl->SetInnerConeAngle(hatch_light_settings.inner_cone_angle);
+        pl->SetOuterConeAngle(hatch_light_settings.outer_cone_angle);
     }
 }
