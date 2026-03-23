@@ -52,6 +52,19 @@ void AMothershipBoss::Tick(float dt) {
     for (auto* light : hatch_lights) {
         light->AddRelativeRotation(delta_hatch_light_rotation);
     }
+
+    auto const delta_pos{dt * movement_speed};
+    auto const loc{GetActorLocation()};
+    if (target) {
+        auto const tgt_loc{target->GetActorLocation()};
+        auto const tgt_loc_adjusted{tgt_loc + target_offset};
+        auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
+
+        if (dist > target_arrived_threshold) {
+            auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
+            SetActorLocation(loc + dir * delta_pos);
+        }
+    }
 }
 void AMothershipBoss::BeginPlay() {
     Super::BeginPlay();

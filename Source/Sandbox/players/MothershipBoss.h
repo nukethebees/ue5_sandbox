@@ -74,7 +74,6 @@ class AMothershipBoss : public AActor {
     UPROPERTY(EditAnywhere, Category = "Boss|Hatches")
     FRotator hatch_light_rotation_speed{FRotator::ZeroRotator};
 
-
     // Search lights
     UPROPERTY(EditAnywhere, Category = "Boss|Search light")
     UStaticMesh* search_light_mesh{nullptr};
@@ -91,7 +90,15 @@ class AMothershipBoss : public AActor {
 
     // Movement
     UPROPERTY(EditAnywhere, Category = "Boss|Movement")
+    float movement_speed{100.f};
+    UPROPERTY(EditAnywhere, Category = "Boss|Movement")
     FRotator rotation_speed{FRotator::ZeroRotator};
+    UPROPERTY(EditAnywhere, Category = "Boss|Movement")
+    AActor* target{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Boss|Movement")
+    FVector target_offset{0.f, 0.f, 500.f};
+    UPROPERTY(EditAnywhere, Category = "Boss|Movement")
+    float target_arrived_threshold{500.f};
   private:
     template <int32 N, typename T>
     void add_n_components(TArray<T*>& components, FString const& name_base);
