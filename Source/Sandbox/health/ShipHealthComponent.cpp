@@ -10,7 +10,7 @@ void UShipHealthComponent::BeginPlay() {
 }
 void UShipHealthComponent::set_health(int32 new_health) {
     health.health = FMath::Clamp(new_health, 0, health.max_health);
-    on_health_changed.Execute(health);
+    on_health_changed.ExecuteIfBound(health);
 }
 void UShipHealthComponent::add_health(int32 new_health) {
     set_health(health.health + new_health);
