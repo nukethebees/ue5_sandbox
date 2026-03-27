@@ -75,21 +75,21 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
                Verbose,
                TEXT("Laser hit: %s"),
                *ml::get_best_display_name(*other_actor));
-        do_hit(*other_actor, *HitComponent);
+        do_hit(*other_actor, *other_component);
     } else {
         UE_LOG(LogSandboxWeapon, Verbose, TEXT("Actor is null"));
     }
 
     Destroy();
 }
-void AShipLaser::do_hit(AActor& actor, UPrimitiveComponent& hit_component) {
+void AShipLaser::do_hit(AActor& actor, UPrimitiveComponent& other_component) {
     auto* ship{Cast<IDamageableShip>(&actor)};
     if (!ship) {
         return;
     }
 
     TRY_INIT_PTR(instigator, GetInstigator());
-    auto const damage_result{ship->apply_damage({damage, *instigator, hit_component})};
+    auto const damage_result{ship->apply_damage({damage, *instigator, other_component})};
 
     if (!damage_result.was_killed()) {
         return;

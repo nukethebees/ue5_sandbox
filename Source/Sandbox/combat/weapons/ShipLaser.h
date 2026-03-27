@@ -34,7 +34,7 @@ class SANDBOX_API AShipLaser : public AActor {
                 UPrimitiveComponent* other_component,
                 FVector NormalImpulse,
                 FHitResult const& Hit);
-    void do_hit(AActor& actor, UPrimitiveComponent& hit_component);
+    void do_hit(AActor& actor, UPrimitiveComponent& other_component);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Laser")
     UStaticMeshComponent* mesh_component{nullptr};
