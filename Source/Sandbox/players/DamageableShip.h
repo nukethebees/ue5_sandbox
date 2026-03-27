@@ -9,6 +9,16 @@
 
 class AActor;
 
+struct ShipDamageContext {
+    ShipDamageContext() = delete;
+    ShipDamageContext(int32 damage, AActor const& instigator)
+        : damage(damage)
+        , instigator(instigator) {}
+
+    int32 damage;
+    AActor const& instigator;
+};
+
 UINTERFACE(MinimalAPI)
 class UDamageableShip : public UInterface {
     GENERATED_BODY()
@@ -17,5 +27,5 @@ class UDamageableShip : public UInterface {
 class IDamageableShip {
     GENERATED_BODY()
   public:
-    virtual auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult = 0;
+    virtual auto apply_damage(ShipDamageContext context) -> FShipDamageResult = 0;
 };

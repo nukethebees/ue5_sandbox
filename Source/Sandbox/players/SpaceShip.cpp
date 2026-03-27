@@ -550,11 +550,11 @@ auto ASpaceShip::get_ship_forward_vector() const -> FVector {
     return get_middle_socket().GetLocation();
 }
 
-auto ASpaceShip::apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult {
+auto ASpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     auto const original_health{health->get_health()};
     EDamageResult type{EDamageResult::NoEffect};
 
-    health->apply_damage(damage);
+    health->apply_damage(context.damage);
 
     if (health->is_dead()) {
         type = EDamageResult::Killed;

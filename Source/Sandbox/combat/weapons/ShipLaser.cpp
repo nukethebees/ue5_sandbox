@@ -89,7 +89,7 @@ void AShipLaser::do_hit(AActor& actor) {
     }
 
     TRY_INIT_PTR(instigator, GetInstigator());
-    auto const damage_result{ship->apply_damage(damage, *instigator)};
+    auto const damage_result{ship->apply_damage({damage, *instigator})};
 
     if (!damage_result.was_killed()) {
         return;

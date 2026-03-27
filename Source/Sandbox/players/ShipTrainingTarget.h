@@ -30,7 +30,7 @@ class AShipTrainingTarget
     void Tick(float dt) override;
 
     // IDamageableShip
-    auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
+    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;

@@ -99,7 +99,7 @@ class ASpaceShip
     auto get_middle_socket() const -> FTransform;
 
     // IDamageableShip
-    auto apply_damage(int32 damage, AActor const& instigator) -> FShipDamageResult override;
+    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
 
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
