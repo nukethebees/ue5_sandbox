@@ -557,7 +557,7 @@ auto ASpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     health->apply_damage(context.damage);
 
     if (health->is_dead()) {
-        type = EDamageResult::Killed;
+        type = EDamageResult::ActorKilled;
     } else if (health->get_health() < original_health) {
         type = EDamageResult::Damaged;
     } else {

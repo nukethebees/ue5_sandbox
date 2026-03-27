@@ -2,7 +2,13 @@
 
 #include "CoreMinimal.h"
 
-enum class EDamageResult : uint8 { NoEffect, Damaged, Killed, AlreadyDestroyed };
+enum class EDamageResult : uint8 {
+    NoEffect,
+    Damaged,
+    ComponentDestroyed,
+    ActorKilled,
+    AlreadyDestroyed,
+};
 
 struct FShipDamageResult {
     FShipDamageResult() = delete;

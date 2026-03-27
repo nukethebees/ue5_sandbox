@@ -86,7 +86,7 @@ auto AShipTrainingTarget::apply_damage(ShipDamageContext context)
         return {EDamageResult::AlreadyDestroyed};
     }
 
-    FShipDamageResult const result{EDamageResult::Killed};
+    FShipDamageResult const result{EDamageResult::ActorKilled};
 
     if (death_particles) {
         INIT_OR_RETURN_VALUE_IF_FALSE(auto*, world, GetWorld(), result);
