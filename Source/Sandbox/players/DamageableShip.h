@@ -8,15 +8,21 @@
 #include "DamageableShip.generated.h"
 
 class AActor;
+class UPrimitiveComponent;
 
 struct ShipDamageContext {
     ShipDamageContext() = delete;
-    ShipDamageContext(int32 damage, AActor const& instigator)
+    ShipDamageContext(int32 damage,
+                      AActor const& instigator,
+                      UPrimitiveComponent const& component_hit)
         : damage(damage)
-        , instigator(instigator) {}
+        , instigator(instigator) 
+        , component_hit(component_hit)
+    {}
 
     int32 damage;
     AActor const& instigator;
+    UPrimitiveComponent const& component_hit;
 };
 
 UINTERFACE(MinimalAPI)

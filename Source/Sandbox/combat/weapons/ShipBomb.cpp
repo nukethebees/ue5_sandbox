@@ -106,7 +106,8 @@ void AShipBomb::Tick(float dt) {
                 continue;
             }
 
-            auto const damage_result{ship->apply_damage({damage, *instigator})};
+            auto const damage_result{ship->apply_damage({damage, *instigator, *hit.Component
+                })};
             if (damage_result.was_killed()) {
                 TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
                 FShipAttackResult kill_result{
