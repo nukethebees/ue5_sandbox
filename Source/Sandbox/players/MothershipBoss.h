@@ -1,16 +1,21 @@
 #pragma once
 
+#include "Sandbox/players/DamageableShip.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
 #include "MothershipBoss.generated.h"
 
 class UStaticMeshComponent;
+class UPrimitiveComponent;
 class UStaticMesh;
 class UPointLightComponent;
 class USpotLightComponent;
 class UMaterialInstance;
 class UMaterialInstanceDynamic;
+
+class UShipHealthComponent;
 
 USTRUCT(BlueprintType)
 struct FSpotLightSettings {
@@ -45,7 +50,9 @@ struct FPointLightSettings {
 };
 
 UCLASS()
-class AMothershipBoss : public AActor {
+class AMothershipBoss
+    : public AActor
+    , public IDamageableShip {
     GENERATED_BODY()
   public:
     AMothershipBoss();
@@ -55,6 +62,9 @@ class AMothershipBoss : public AActor {
     inline static constexpr int32 n_point_lights{8};
 
     void Tick(float dt) override;
+
+    // IDamageableShip
+    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
@@ -64,7 +74,7 @@ class AMothershipBoss : public AActor {
 
     // Hatches
     UPROPERTY(EditAnywhere, Category = "Boss|Hatches")
-    UStaticMesh* hatch_mesh{nullptr};
+    UStaticMesh* hatch_mesh_asset{nullptr};
     UPROPERTY(EditAnywhere, Category = "Boss|Hatches")
     TArray<UStaticMeshComponent*> hatch_meshes{};
     UPROPERTY(EditAnywhere, Category = "Boss|Hatches")
@@ -73,6 +83,8 @@ class AMothershipBoss : public AActor {
     FSpotLightSettings hatch_light_settings{};
     UPROPERTY(EditAnywhere, Category = "Boss|Hatches")
     FRotator hatch_light_rotation_speed{FRotator::ZeroRotator};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
+    TArray<UShipHealthComponent*> hatch_healths{};
 
     // Search lights
     UPROPERTY(EditAnywhere, Category = "Boss|Search light")
@@ -110,4 +122,6 @@ class AMothershipBoss : public AActor {
     void set_meshes(UStaticMesh* mesh, TArray<UStaticMeshComponent*>& components);
     void config_point_lights();
     void config_hatch_lights();
+    void set_mothership_collision();
+    void set_component_collision(UPrimitiveComponent& c);
 };

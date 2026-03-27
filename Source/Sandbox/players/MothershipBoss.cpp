@@ -1,5 +1,7 @@
 #include "Sandbox/players/MothershipBoss.h"
 
+#include "Sandbox/constants/collision_channels.h"
+#include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
 
@@ -8,7 +10,7 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
-#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInstance.h"
 
 #include <type_traits>
 
@@ -25,6 +27,7 @@ AMothershipBoss::AMothershipBoss()
 
     add_n_components<n_hatches>(hatch_meshes, TEXT("hatch"));
     add_n_components<n_hatches>(hatch_lights, TEXT("hatch_light"));
+    add_n_components<n_hatches>(hatch_healths, TEXT("hatch_health"));
     add_n_components<n_search_lights>(search_light_meshes, TEXT("search_light"));
     add_n_components<n_point_lights>(point_lights, TEXT("point_light"));
 }
@@ -37,7 +40,10 @@ void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& na
         if (!new_component) {
             WARN_IS_FALSE(LogSandboxActor, new_component);
         }
-        new_component->SetupAttachment(mesh_component);
+        if constexpr (std::is_base_of_v<USceneComponent, T>) {
+            new_component->SetupAttachment(mesh_component);
+        }
+
         components.Add(new_component);
     }
 }
@@ -83,7 +89,7 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
         *mesh_component, *mesh, search_light_meshes, TEXT("SearchLight"));
     attach_components<n_point_lights>(*mesh_component, *mesh, point_lights, TEXT("ShipLight"));
 
-    set_meshes(hatch_mesh, hatch_meshes);
+    set_meshes(hatch_mesh_asset, hatch_meshes);
     set_meshes(search_light_mesh, search_light_meshes);
 
     RETURN_IF_NULLPTR(search_light_mesh_material);
@@ -93,6 +99,8 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
 
     config_point_lights();
     config_hatch_lights();
+
+    set_mothership_collision();
 }
 template <int32 N, typename T>
 void AMothershipBoss::attach_components(UStaticMeshComponent& parent,
@@ -141,4 +149,47 @@ void AMothershipBoss::config_hatch_lights() {
         pl->SetInnerConeAngle(hatch_light_settings.inner_cone_angle);
         pl->SetOuterConeAngle(hatch_light_settings.outer_cone_angle);
     }
+}
+
+auto AMothershipBoss::apply_damage(ShipDamageContext context) -> FShipDamageResult {
+    for (int32 i{0}; i < n_hatches; ++i) {
+        auto* hatch_mesh{hatch_meshes[i]};
+        if (&context.component_hit == hatch_mesh) {
+            UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d hit."), i);
+
+            auto* health{hatch_healths[i]};
+            if (health->is_dead()) {
+                return {EDamageResult::AlreadyDestroyed};
+            }
+            health->apply_damage(context.damage);
+            if (health->is_dead()) {
+                return {EDamageResult::ComponentDestroyed};
+            } else {
+                UE_LOG(LogSandboxActor,
+                       Display,
+                       TEXT("Mothership hatch %d hp: %d/%d"),
+                       i,
+                       health->get_health(),
+                       health->get_max_health());
+                return {EDamageResult::Damaged};
+            }
+        }
+    }
+
+    UE_LOG(LogSandboxActor,
+           Display,
+           TEXT("Mothership hit but no hatch hit. (%s)"),
+           *context.component_hit.GetName());
+
+    return {EDamageResult::NoEffect};
+}
+void AMothershipBoss::set_mothership_collision() {
+    set_component_collision(*mesh_component);
+    for (auto* hatch : hatch_meshes) {
+        set_component_collision(*hatch);
+    }
+}
+void AMothershipBoss::set_component_collision(UPrimitiveComponent& c) {
+    c.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    c.SetCollisionResponseToChannel(ml::collision::projectile, ECollisionResponse::ECR_Block);
 }
