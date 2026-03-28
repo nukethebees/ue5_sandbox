@@ -35,11 +35,16 @@ public class SandboxEditorTools : ModuleRules
 			new string[]
 			{
 				"CoreUObject",
-				"Engine",
+                "DetailCustomizations",
+                "EditorStyle",
+                "Engine",
 				"Slate",
 				"SlateCore",
-				// ... add private dependencies that you statically link with here ...	
-			}
+                "ToolMenus",
+                "ToolWidgets",
+                "UnrealEd",
+                "WorkspaceMenuStructure",
+            }
 			);
 		
 		
