@@ -2,6 +2,8 @@
 
 #include "SandboxEditorTools.h"
 
+#include "SSandboxEditorToolsMainPanel.h"
+
 #include "Framework/Docking/TabManager.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
@@ -14,7 +16,7 @@ void FSandboxEditorToolsModule::StartupModule() {
             ->RegisterNomadTabSpawner(
                 tab_name,
                 FOnSpawnTab::CreateRaw(this, &FSandboxEditorToolsModule::SpawnMainPanelTab))
-            .SetDisplayName(LOCTEXT("Sandbox Tools", "Sandbox editor tools"))
+            .SetDisplayName(LOCTEXT("SandboxEditorToolsTab", "Sandbox Tools"))
             .SetMenuType(ETabSpawnerMenuType::Enabled)};
     menu_entry.SetGroup(WorkspaceMenu::GetMenuStructure().GetLevelEditorCategory());
 }
@@ -24,16 +26,14 @@ void FSandboxEditorToolsModule::ShutdownModule() {
 }
 
 auto FSandboxEditorToolsModule::SpawnMainPanelTab(FSpawnTabArgs const&) -> TSharedRef<SDockTab> {
-    // clang-format off
-    main_panel = 
-        SNew(SDockTab)
-        .TabRole(ETabRole::NomadTab)
-        [
-            SNew(STextBlock).Text(FText::FromString("Hello Editor"))
-        ];
-    // clang-format on
+    if (!main_panel.IsValid()) {
+        SAssignNew(main_panel, SSandboxEditorToolsMainPanel);
+    }
 
-    return main_panel.ToSharedRef();
+    auto const tab{SNew(SDockTab).TabRole(ETabRole::NomadTab)};
+    tab->SetContent(main_panel.ToSharedRef());
+
+    return tab;
 }
 
 #undef LOCTEXT_NAMESPACE

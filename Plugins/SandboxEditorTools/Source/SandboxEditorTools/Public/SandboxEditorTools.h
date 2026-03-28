@@ -4,7 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 
-class SDockTab;
+class SSandboxEditorToolsMainPanel;
 
 class FSandboxEditorToolsModule : public IModuleInterface {
   public:
@@ -15,5 +15,5 @@ class FSandboxEditorToolsModule : public IModuleInterface {
 
     inline static FName tab_name{TEXT("SandboxEditorTabPanel")};
 
-    TSharedPtr<SDockTab> main_panel;
+    TSharedPtr<SSandboxEditorToolsMainPanel> main_panel;
 };
