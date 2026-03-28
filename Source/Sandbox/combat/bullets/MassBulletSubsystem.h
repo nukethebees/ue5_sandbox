@@ -5,11 +5,11 @@
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
 #include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
 #include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
-#include "Sandbox/environment/utilities/world.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
+#include "Sandbox/utilities/world.h"
 
 #include "CoreMinimal.h"
 #include "MassArchetypeTypes.h"

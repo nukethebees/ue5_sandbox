@@ -4,9 +4,9 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/players/navigation.h"
 #include "Sandbox/players/TestEnemyController.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

@@ -1,4 +1,4 @@
-#include "Sandbox/environment/utilities/actor_utils.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"

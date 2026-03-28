@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/StrongIds.h"
 #include "Sandbox/interaction/TriggerableId.h"
 #include "Sandbox/interaction/TriggerContext.h"
@@ -8,6 +7,7 @@
 #include "Sandbox/interaction/TriggerResult.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/tuple.h"
 
 #include "CoreMinimal.h"

@@ -3,9 +3,9 @@
 #include "Sandbox/combat/weapons/ShipBomb.h"
 #include "Sandbox/combat/weapons/ShipHomingLaser.h"
 #include "Sandbox/combat/weapons/ShipLaser.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"

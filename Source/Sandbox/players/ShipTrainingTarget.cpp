@@ -80,8 +80,7 @@ void AShipTrainingTarget::Tick(float dt) {
     SetActorLocation(pos + pos_offset);
 }
 
-auto AShipTrainingTarget::apply_damage(ShipDamageContext context)
-    -> FShipDamageResult {
+auto AShipTrainingTarget::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     if (IsActorBeingDestroyed()) {
         return {EDamageResult::AlreadyDestroyed};
     }

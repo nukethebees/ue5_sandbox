@@ -3,10 +3,10 @@
 #include "Engine/World.h"
 
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/interaction/Describable.h"
 #include "Sandbox/ui/hud/ItemDescriptionHUDWidget.h"
 #include "Sandbox/ui/ui.h"
+#include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/geometry.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"

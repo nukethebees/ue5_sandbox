@@ -5,7 +5,7 @@
 #include "Math/UnrealMathUtility.h"
 #include "Math/Vector.h"
 
-#include "Sandbox/environment/data/ActorCorners.h"
+#include "Sandbox/utilities/ActorCorners.h"
 
 class AActor;
 

@@ -6,8 +6,8 @@
 #include "Engine/UserInterfaceSettings.h"
 #include "UnrealClient.h"
 
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 namespace ml {
 int32 scale_font_to_umg(int32 font_size) {

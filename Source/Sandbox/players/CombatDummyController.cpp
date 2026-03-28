@@ -2,10 +2,10 @@
 
 #include "BehaviorTree/BehaviorTree.h"
 
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/CombatDummy.h"
 #include "Sandbox/players/TestEnemyBlackboardConstants.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

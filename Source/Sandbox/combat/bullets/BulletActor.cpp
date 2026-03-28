@@ -12,9 +12,9 @@
 
 #include "Sandbox/core/object_pooling/ObjectPoolSubsystem.h"
 #include "Sandbox/core/object_pooling/PoolConfig.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/health/DamageManagerSubsystem.h"
 #include "Sandbox/health/HealthComponent.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

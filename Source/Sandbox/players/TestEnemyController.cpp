@@ -7,12 +7,12 @@
 #include "Perception/AISenseConfig_Sight.h"
 
 #include "Sandbox/core/SandboxDeveloperSettings.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/CombatActor.h"
 #include "Sandbox/players/SandboxMobInterface.h"
 #include "Sandbox/players/TestEnemy.h"
 #include "Sandbox/players/TestEnemyBlackboardConstants.h"
+#include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/array.h"
 #include "Sandbox/utilities/geometry.h"
 

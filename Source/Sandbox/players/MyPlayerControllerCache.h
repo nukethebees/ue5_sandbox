@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/environment/data/ActorCorners.h"
+#include "Sandbox/utilities/ActorCorners.h"
 
 #include "MyPlayerControllerCache.generated.h"
 

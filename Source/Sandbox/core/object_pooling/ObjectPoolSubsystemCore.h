@@ -9,9 +9,9 @@
 
 #include "Sandbox/core/object_pooling/ObjectPoolConcepts.h"
 #include "Sandbox/core/object_pooling/PoolConfig.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 UENUM(BlueprintType)
 enum class EObjectPoolSubsystemReturnStatus : uint8 {

@@ -9,9 +9,9 @@
 #include "Particles/ParticleSystemComponent.h"
 
 #include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/environment/utilities/actor_utils.h"
 #include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/interaction/CollisionEffectSubsystem.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

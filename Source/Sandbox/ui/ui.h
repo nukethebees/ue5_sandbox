@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Sandbox/environment/data/ActorCorners.h"
 #include "Sandbox/inventory/Coord.h"
 #include "Sandbox/inventory/Dimensions.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ScreenBounds.h"
+#include "Sandbox/utilities/ActorCorners.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
