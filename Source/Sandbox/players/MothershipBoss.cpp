@@ -51,29 +51,59 @@ void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& na
 void AMothershipBoss::Tick(float dt) {
     Super::Tick(dt);
 
-    auto const delta_rotation{rotation_speed * dt};
-    SetActorRotation(GetActorRotation() + delta_rotation);
-
     auto const delta_hatch_light_rotation{hatch_light_rotation_speed * dt};
     for (auto* light : hatch_lights) {
         light->AddRelativeRotation(delta_hatch_light_rotation);
     }
 
-    auto const delta_pos{dt * movement_speed};
-    auto const loc{GetActorLocation()};
-    if (target) {
-        auto const tgt_loc{target->GetActorLocation()};
-        auto const tgt_loc_adjusted{tgt_loc + target_offset};
-        auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
+    switch (state) {
+        case EMothershipBossState::Moving: {
+            auto const delta_pos{dt * movement_speed};
+            auto const loc{GetActorLocation()};
+            if (target) {
+                auto const tgt_loc{target->GetActorLocation()};
+                auto const tgt_loc_adjusted{tgt_loc + target_offset};
+                auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
 
-        if (dist > target_arrived_threshold) {
-            auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
-            SetActorLocation(loc + dir * delta_pos);
+                if (dist > target_arrived_threshold) {
+                    auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
+                    SetActorLocation(loc + dir * delta_pos);
+                } else {
+                    set_state(EMothershipBossState::SpawnCooldown);
+                }
+            }
+            break;
+        }
+        case EMothershipBossState::Spawning: {
+            idle_rotation(dt);
+            spawn_cycle -= dt;
+            spawn_interval -= dt;
+            if (spawn_interval.is_finished()) {
+                spawn_ships();
+                spawn_interval.reset();
+            }
+            if (spawn_cycle.is_finished()) {
+                set_state(EMothershipBossState::SpawnCooldown);
+            }
+            break;
+        }
+        case EMothershipBossState::SpawnCooldown: {
+            idle_rotation(dt);
+            spawn_cooldown -= dt;
+            if (spawn_cooldown.is_finished()) {
+                set_state(EMothershipBossState::Spawning);
+            }
+            break;
+        }
+        case EMothershipBossState::Destroyed: {
+            break;
         }
     }
 }
 void AMothershipBoss::BeginPlay() {
     Super::BeginPlay();
+
+    set_state(EMothershipBossState::Moving);
 }
 void AMothershipBoss::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
@@ -163,6 +193,7 @@ auto AMothershipBoss::apply_damage(ShipDamageContext context) -> FShipDamageResu
             }
             health->apply_damage(context.damage);
             if (health->is_dead()) {
+                on_hatch_destroyed(*hatch_mesh);
                 return {EDamageResult::ComponentDestroyed};
             } else {
                 UE_LOG(LogSandboxActor,
@@ -192,4 +223,30 @@ void AMothershipBoss::set_mothership_collision() {
 void AMothershipBoss::set_component_collision(UPrimitiveComponent& c) {
     c.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     c.SetCollisionResponseToChannel(ml::collision::projectile, ECollisionResponse::ECR_Block);
+}
+
+void AMothershipBoss::idle_rotation(float dt) {
+    auto const delta_rotation{rotation_speed * dt};
+    SetActorRotation(GetActorRotation() + delta_rotation);
+}
+void AMothershipBoss::set_state(EMothershipBossState new_state) {
+    state = new_state;
+
+    switch (new_state) {
+        case EMothershipBossState::SpawnCooldown: {
+            spawn_cooldown.reset();
+        }
+        case EMothershipBossState::Spawning: {
+            spawn_cycle.reset();
+            spawn_interval.reset();
+        }
+        default: {
+            break;
+        }
+    }
+}
+void AMothershipBoss::spawn_ships() {}
+void AMothershipBoss::on_hatch_destroyed(UStaticMeshComponent& hatch) {
+    hatch.SetVisibility(false);
+    hatch.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }

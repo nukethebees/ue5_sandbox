@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sandbox/players/DamageableShip.h"
+#include "Sandbox/core/Cooldown.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -47,6 +48,14 @@ struct FPointLightSettings {
     float attenuation_radius{1000.f};
     UPROPERTY(EditAnywhere)
     float brightness{10e6};
+};
+
+UENUM()
+enum class EMothershipBossState : uint8 {
+    Moving,
+    Spawning,
+    SpawnCooldown,
+    Destroyed
 };
 
 UCLASS()
@@ -111,6 +120,15 @@ class AMothershipBoss
     FVector target_offset{0.f, 0.f, 500.f};
     UPROPERTY(EditAnywhere, Category = "Boss|Movement")
     float target_arrived_threshold{500.f};
+
+    UPROPERTY(EditAnywhere, Category = "Boss")
+    EMothershipBossState state{EMothershipBossState::Moving};
+    UPROPERTY(EditAnywhere, Category = "Boss")
+    FCooldown spawn_cooldown{20.f};
+    UPROPERTY(EditAnywhere, Category = "Boss")
+    FCooldown spawn_cycle{20.f};
+    UPROPERTY(EditAnywhere, Category = "Boss")
+    FCooldown spawn_interval{1.f};
   private:
     template <int32 N, typename T>
     void add_n_components(TArray<T*>& components, FString const& name_base);
@@ -124,4 +142,9 @@ class AMothershipBoss
     void config_hatch_lights();
     void set_mothership_collision();
     void set_component_collision(UPrimitiveComponent& c);
+
+    void idle_rotation(float dt);
+    void set_state(EMothershipBossState new_state);
+    void spawn_ships();
+    void on_hatch_destroyed(UStaticMeshComponent& hatch);
 };
