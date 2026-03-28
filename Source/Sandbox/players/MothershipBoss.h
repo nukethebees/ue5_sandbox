@@ -53,6 +53,8 @@ struct FPointLightSettings {
 UENUM()
 enum class EMothershipBossState : uint8 { Moving, Spawning, SpawnCooldown, Destroyed };
 
+DECLARE_DELEGATE(FOnMothershipBossTargetReached);
+
 UCLASS()
 class AMothershipBoss
     : public AActor
@@ -70,6 +72,9 @@ class AMothershipBoss
     // IDamageableShip
     auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
     auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
+
+    FOnKilled on_killed;
+    FOnMothershipBossTargetReached on_target_reached;
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
@@ -132,8 +137,6 @@ class AMothershipBoss
     FCooldown spawn_cycle{20.f};
     UPROPERTY(EditAnywhere, Category = "Boss")
     FCooldown spawn_interval{1.f};
-
-    FOnKilled on_killed;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Debug")

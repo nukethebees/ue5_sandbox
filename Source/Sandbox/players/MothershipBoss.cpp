@@ -131,6 +131,7 @@ void AMothershipBoss::handle_moving(float dt) {
             auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
             SetActorLocation(loc + dir * delta_pos);
         } else {
+            on_target_reached.ExecuteIfBound();
             set_state(EMothershipBossState::Spawning);
         }
     }

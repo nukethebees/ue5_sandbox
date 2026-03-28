@@ -23,6 +23,8 @@ class AKatinaGameMode : public ASpaceShipGameMode {
 
     UFUNCTION()
     void on_boss_killed(AActor* actor);
+    UFUNCTION()
+    void on_boss_target_reached();
 
     AMothershipBoss* boss{nullptr};
     FDelegateHandle on_boss_killed_delegate;

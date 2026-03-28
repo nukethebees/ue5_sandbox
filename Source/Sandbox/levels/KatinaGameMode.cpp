@@ -26,14 +26,15 @@ void AKatinaGameMode::BeginPlay() {
     ml::get_first_actor(*world, boss);
 
     WARN_IF_EXPR_ELSE(boss == nullptr) {
-        on_boss_killed_delegate =
-            boss->get_on_killed_delegate().AddUObject(this, &ThisClass::on_boss_killed);
+        boss->on_target_reached.BindUObject(this, &ThisClass::on_boss_target_reached);
+        on_boss_killed_delegate = boss->on_killed.AddUObject(this, &ThisClass::on_boss_killed);
     }
 }
 void AKatinaGameMode::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);
 
     if (boss) {
+        boss->on_target_reached.Unbind();
         boss->get_on_killed_delegate().Remove(on_boss_killed_delegate);
     }
 }
@@ -42,3 +43,4 @@ void AKatinaGameMode::on_boss_killed(AActor* actor) {
 
     UE_LOG(LogSandboxActor, Display, TEXT("Boss is killed"));
 }
+void AKatinaGameMode::on_boss_target_reached() {}
