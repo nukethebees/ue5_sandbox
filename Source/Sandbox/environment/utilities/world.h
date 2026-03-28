@@ -12,6 +12,13 @@ T* get_first_actor(UWorld& world) {
     }
     return nullptr;
 }
+template <typename T>
+void get_first_actor(UWorld& world, T*& ptr) {
+    for (auto it{TActorIterator<T>(&world)}; it; ++it) {
+        ptr = *it;
+        break;
+    }
+}
 
 template <typename T>
 T* get_or_create_actor_singleton(UWorld& world) {
