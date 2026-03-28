@@ -1,0 +1,27 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+#include "Cooldown.generated.h"
+
+USTRUCT(BlueprintType)
+struct FCooldown {
+    GENERATED_BODY()
+
+    FCooldown() = default;
+    FCooldown(float duration)
+        : duration(duration) {}
+
+    auto is_finished() const { return remaining <= 0.f; }
+    void reset() { remaining = duration; }
+
+    auto& operator-=(float dt) { 
+        remaining -= dt; 
+        return *this;
+    }
+
+    UPROPERTY(EditAnywhere)
+    float duration{1.f};
+    UPROPERTY(VisibleAnywhere)
+    float remaining{0.f};
+};
