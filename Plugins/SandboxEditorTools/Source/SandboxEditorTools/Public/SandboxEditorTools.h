@@ -5,6 +5,7 @@
 #include "Modules/ModuleManager.h"
 
 class SSandboxEditorToolsMainPanel;
+class UEdToolsData;
 
 class FSandboxEditorToolsModule : public IModuleInterface {
   public:
@@ -15,5 +16,6 @@ class FSandboxEditorToolsModule : public IModuleInterface {
 
     inline static FName tab_name{TEXT("SandboxEditorTabPanel")};
 
-    TSharedPtr<SSandboxEditorToolsMainPanel> main_panel;
+    TSharedPtr<SSandboxEditorToolsMainPanel> main_panel{nullptr};
+    TSharedPtr<UEdToolsData> tool_data{nullptr};
 };
