@@ -44,6 +44,11 @@ void ASandboxActorSpawner::EndPlay(EEndPlayReason::Type const reason) {
 
     destroy_all_actors();
 }
+
+void ASandboxActorSpawner::stop() {
+    SetActorTickEnabled(false);
+}
+
 void ASandboxActorSpawner::spawn() {
     if (!actor_class) {
         if (!printed_null_actor_class_warning) {

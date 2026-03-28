@@ -16,6 +16,8 @@ class ASandboxActorSpawner : public AActor {
     ASandboxActorSpawner();
 
     void Tick(float dt) override;
+
+    void stop();
   protected:
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type const reason) override;
