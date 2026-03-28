@@ -69,9 +69,15 @@ class AMothershipBoss
 
     // IDamageableShip
     auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
+    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
+
+    void handle_moving(float dt);
+    void handle_spawning(float dt);
+    void handle_spawn_cooldown(float dt);
+    void handle_destroyed(float dt);
 
     UPROPERTY(EditAnywhere, Category = "Boss")
     UStaticMeshComponent* mesh_component{nullptr};
@@ -127,6 +133,8 @@ class AMothershipBoss
     UPROPERTY(EditAnywhere, Category = "Boss")
     FCooldown spawn_interval{1.f};
 
+    FOnKilled on_killed;
+
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Debug")
     FCooldown log_cooldown{0.75};
@@ -151,4 +159,8 @@ class AMothershipBoss
     void set_state(EMothershipBossState new_state);
     void spawn_ships();
     void on_hatch_destroyed(UStaticMeshComponent& hatch);
+
+    auto num_dead_hatches() -> int32;
+    auto num_alive_hatches() -> int32;
+    bool all_hatches_dead();
 };

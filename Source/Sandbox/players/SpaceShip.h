@@ -100,6 +100,7 @@ class ASpaceShip
 
     // IDamageableShip
     auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
+    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
 
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
@@ -270,6 +271,7 @@ class ASpaceShip
     int32 lives{3};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     UShipHealthComponent* health{nullptr};
+    FOnKilled on_killed;
 
 #if WITH_EDITORONLY_DATA
     int32 speed_sample_index{0};

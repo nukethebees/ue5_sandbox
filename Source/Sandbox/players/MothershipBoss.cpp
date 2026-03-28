@@ -63,44 +63,19 @@ void AMothershipBoss::Tick(float dt) {
 
     switch (state) {
         case EMothershipBossState::Moving: {
-            auto const delta_pos{dt * movement_speed};
-            auto const loc{GetActorLocation()};
-            if (target) {
-                auto const tgt_loc{target->GetActorLocation()};
-                auto const tgt_loc_adjusted{tgt_loc + target_offset};
-                auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
-
-                if (dist > target_arrived_threshold) {
-                    auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
-                    SetActorLocation(loc + dir * delta_pos);
-                } else {
-                    set_state(EMothershipBossState::Spawning);
-                }
-            }
+            handle_moving(dt);
             break;
         }
         case EMothershipBossState::Spawning: {
-            idle_rotation(dt);
-            spawn_cycle -= dt;
-            spawn_interval -= dt;
-            if (spawn_interval.is_finished()) {
-                spawn_ships();
-                spawn_interval.reset();
-            }
-            if (spawn_cycle.is_finished()) {
-                set_state(EMothershipBossState::SpawnCooldown);
-            }
+            handle_spawning(dt);
             break;
         }
         case EMothershipBossState::SpawnCooldown: {
-            idle_rotation(dt);
-            spawn_cooldown -= dt;
-            if (spawn_cooldown.is_finished()) {
-                set_state(EMothershipBossState::Spawning);
-            }
+            handle_spawn_cooldown(dt);
             break;
         }
         case EMothershipBossState::Destroyed: {
+            handle_destroyed(dt);
             break;
         }
     }
@@ -143,6 +118,44 @@ void AMothershipBoss::OnConstruction(FTransform const& transform) {
 
     set_mothership_collision();
 }
+
+void AMothershipBoss::handle_moving(float dt) {
+    auto const delta_pos{dt * movement_speed};
+    auto const loc{GetActorLocation()};
+    if (target) {
+        auto const tgt_loc{target->GetActorLocation()};
+        auto const tgt_loc_adjusted{tgt_loc + target_offset};
+        auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
+
+        if (dist > target_arrived_threshold) {
+            auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
+            SetActorLocation(loc + dir * delta_pos);
+        } else {
+            set_state(EMothershipBossState::Spawning);
+        }
+    }
+}
+void AMothershipBoss::handle_spawning(float dt) {
+    idle_rotation(dt);
+    spawn_cycle -= dt;
+    spawn_interval -= dt;
+    if (spawn_interval.is_finished()) {
+        spawn_ships();
+        spawn_interval.reset();
+    }
+    if (spawn_cycle.is_finished()) {
+        set_state(EMothershipBossState::SpawnCooldown);
+    }
+}
+void AMothershipBoss::handle_spawn_cooldown(float dt) {
+    idle_rotation(dt);
+    spawn_cooldown -= dt;
+    if (spawn_cooldown.is_finished()) {
+        set_state(EMothershipBossState::Spawning);
+    }
+}
+void AMothershipBoss::handle_destroyed(float dt) {}
+
 template <int32 N, typename T>
 void AMothershipBoss::attach_components(UStaticMeshComponent& parent,
                                         UStaticMesh& parent_mesh,
@@ -247,10 +260,16 @@ void AMothershipBoss::set_state(EMothershipBossState new_state) {
     switch (new_state) {
         case EMothershipBossState::SpawnCooldown: {
             spawn_cooldown.reset();
+            break;
         }
         case EMothershipBossState::Spawning: {
             spawn_cycle.reset();
             spawn_interval.reset();
+            break;
+        }
+        case EMothershipBossState::Destroyed: {
+            on_killed.Broadcast(this);
+            break;
         }
         default: {
             break;
@@ -294,4 +313,27 @@ void AMothershipBoss::spawn_ships() {
 void AMothershipBoss::on_hatch_destroyed(UStaticMeshComponent& hatch) {
     hatch.SetVisibility(false);
     hatch.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    auto const n{num_alive_hatches()};
+    UE_LOG(LogSandboxActor, Display, TEXT("%d/%d hatches alive"), n, n_hatches);
+    if (!n) {
+        set_state(EMothershipBossState::Destroyed);
+    }
+}
+auto AMothershipBoss::num_dead_hatches() -> int32 {
+    return n_hatches - num_alive_hatches();
+}
+auto AMothershipBoss::num_alive_hatches() -> int32 {
+    int32 out{0};
+
+    for (auto* health : hatch_healths) {
+        if (!health->is_dead()) {
+            out++;
+        }
+    }
+
+    return out;
+}
+bool AMothershipBoss::all_hatches_dead() {
+    return num_alive_hatches() == 0;
 }

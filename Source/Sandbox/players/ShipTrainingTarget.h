@@ -31,6 +31,7 @@ class AShipTrainingTarget
 
     // IDamageableShip
     auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
+    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
@@ -61,4 +62,5 @@ class AShipTrainingTarget
     float angular_frequency{0.f};
     UPROPERTY(VisibleAnywhere, Category = "Target|Sine")
     float wt{0.f};
+    FOnKilled on_killed;
 };
