@@ -1,5 +1,7 @@
 #include "Sandbox/levels/KatinaGameMode.h"
 
+#include "EngineUtils.h"
+#include "Sandbox/environment/SandboxActorSpawner.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/MothershipBoss.h"
 #include "Sandbox/utilities/world.h"
@@ -41,6 +43,14 @@ void AKatinaGameMode::EndPlay(EEndPlayReason::Type const reason) {
 void AKatinaGameMode::on_boss_killed(AActor* actor) {
     TRY_INIT_PTR(msb, Cast<AMothershipBoss>(actor));
 
-    UE_LOG(LogSandboxActor, Display, TEXT("Boss is killed"));
+    UE_LOG(LogSandboxGameMode, Display, TEXT("Boss is killed"));
 }
-void AKatinaGameMode::on_boss_target_reached() {}
+void AKatinaGameMode::on_boss_target_reached() {
+    UE_LOG(LogSandboxGameMode, Display, TEXT("Boss reached target; disabling spawners."));
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    for (auto it{TActorIterator<ASandboxActorSpawner>(world)}; it; ++it) {
+        it->stop();
+    }
+}
