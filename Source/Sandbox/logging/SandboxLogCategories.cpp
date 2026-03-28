@@ -12,6 +12,7 @@ DEFINE_LOG_CATEGORY(LogSandboxActor);
 DEFINE_LOG_CATEGORY(LogSandboxCharacter);
 DEFINE_LOG_CATEGORY(LogSandboxController);
 DEFINE_LOG_CATEGORY(LogSandboxActorComponent);
+DEFINE_LOG_CATEGORY(LogSandboxGameMode);
 
 // Gameplay
 DEFINE_LOG_CATEGORY(LogSandboxWeapon);

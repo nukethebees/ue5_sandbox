@@ -76,6 +76,7 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             LogSandboxActor,
             LogSandboxActorComponent,
             LogSandboxSubsystem,
+            LogSandboxGameMode,
             // Gameplay
             LogSandboxWeapon,
             LogSandboxInput,

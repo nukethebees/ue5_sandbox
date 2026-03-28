@@ -16,6 +16,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSandboxCharacter, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxController, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxActorComponent, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxSubsystem, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxGameMode, Log, All);
 
 // Gameplay
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxWeapon, Log, All);
