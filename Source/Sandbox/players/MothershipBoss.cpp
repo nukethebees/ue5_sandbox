@@ -10,6 +10,7 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 #include "Materials/MaterialInstance.h"
 
 #include <type_traits>
@@ -51,6 +52,10 @@ void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& na
 void AMothershipBoss::Tick(float dt) {
     Super::Tick(dt);
 
+#if WITH_EDITOR
+    log_cooldown -= dt;
+#endif
+
     auto const delta_hatch_light_rotation{hatch_light_rotation_speed * dt};
     for (auto* light : hatch_lights) {
         light->AddRelativeRotation(delta_hatch_light_rotation);
@@ -69,7 +74,7 @@ void AMothershipBoss::Tick(float dt) {
                     auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
                     SetActorLocation(loc + dir * delta_pos);
                 } else {
-                    set_state(EMothershipBossState::SpawnCooldown);
+                    set_state(EMothershipBossState::Spawning);
                 }
             }
             break;
@@ -99,6 +104,12 @@ void AMothershipBoss::Tick(float dt) {
             break;
         }
     }
+
+#if WITH_EDITOR
+    if (log_cooldown.is_finished()) {
+        log_cooldown.reset();
+    }
+#endif
 }
 void AMothershipBoss::BeginPlay() {
     Super::BeginPlay();
@@ -193,6 +204,7 @@ auto AMothershipBoss::apply_damage(ShipDamageContext context) -> FShipDamageResu
             }
             health->apply_damage(context.damage);
             if (health->is_dead()) {
+                UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d destroyed."), i);
                 on_hatch_destroyed(*hatch_mesh);
                 return {EDamageResult::ComponentDestroyed};
             } else {
@@ -245,7 +257,34 @@ void AMothershipBoss::set_state(EMothershipBossState new_state) {
         }
     }
 }
-void AMothershipBoss::spawn_ships() {}
+void AMothershipBoss::spawn_ships() {
+    if (!ship_class) {
+#if WITH_EDITOR
+        if (!no_ship_class_warning_logged) {
+            UE_LOG(LogSandboxActor, Warning, TEXT("ship_class is nullptr."));
+            no_ship_class_warning_logged = true;
+        }
+#endif
+        return;
+    }
+
+    TRY_INIT_PTR(world, GetWorld());
+    for (int32 i{0}; i < n_hatches; i++) {
+        auto* hatch_health{hatch_healths[i]};
+        if (hatch_health->is_dead()) {
+            continue;
+        }
+        auto* hatch{hatch_meshes[i]};
+        auto transform{hatch->GetComponentTransform()};
+        auto fwd{transform.GetRotation().GetForwardVector()};
+        auto location{transform.GetLocation() + fwd * 1000.f};
+        transform.SetLocation(location);
+
+        TRY_INIT_PTR(ship,
+                     world->SpawnActorDeferred<AActor>(ship_class, transform, nullptr, nullptr));
+        ship->FinishSpawning(transform);
+    }
+}
 void AMothershipBoss::on_hatch_destroyed(UStaticMeshComponent& hatch) {
     hatch.SetVisibility(false);
     hatch.SetCollisionEnabled(ECollisionEnabled::NoCollision);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/core/Cooldown.h"
+#include "Sandbox/players/DamageableShip.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -51,12 +51,7 @@ struct FPointLightSettings {
 };
 
 UENUM()
-enum class EMothershipBossState : uint8 {
-    Moving,
-    Spawning,
-    SpawnCooldown,
-    Destroyed
-};
+enum class EMothershipBossState : uint8 { Moving, Spawning, SpawnCooldown, Destroyed };
 
 UCLASS()
 class AMothershipBoss
@@ -122,6 +117,8 @@ class AMothershipBoss
     float target_arrived_threshold{500.f};
 
     UPROPERTY(EditAnywhere, Category = "Boss")
+    TSubclassOf<AActor> ship_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Boss")
     EMothershipBossState state{EMothershipBossState::Moving};
     UPROPERTY(EditAnywhere, Category = "Boss")
     FCooldown spawn_cooldown{20.f};
@@ -129,6 +126,13 @@ class AMothershipBoss
     FCooldown spawn_cycle{20.f};
     UPROPERTY(EditAnywhere, Category = "Boss")
     FCooldown spawn_interval{1.f};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    FCooldown log_cooldown{0.75};
+    UPROPERTY(VisibleAnywhere, Category = "Debug")
+    bool no_ship_class_warning_logged{false};
+#endif
   private:
     template <int32 N, typename T>
     void add_n_components(TArray<T*>& components, FString const& name_base);
