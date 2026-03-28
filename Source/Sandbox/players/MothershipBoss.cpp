@@ -268,6 +268,7 @@ void AMothershipBoss::spawn_ships() {
         return;
     }
 
+    FName const socket_name{TEXT("Ship_Spawn")};
     TRY_INIT_PTR(world, GetWorld());
     for (int32 i{0}; i < n_hatches; i++) {
         auto* hatch_health{hatch_healths[i]};
@@ -275,10 +276,15 @@ void AMothershipBoss::spawn_ships() {
             continue;
         }
         auto* hatch{hatch_meshes[i]};
-        auto transform{hatch->GetComponentTransform()};
-        auto fwd{transform.GetRotation().GetForwardVector()};
-        auto location{transform.GetLocation() + fwd * 1000.f};
-        transform.SetLocation(location);
+        if (!hatch->DoesSocketExist(socket_name)) {
+            UE_LOG(LogSandboxActor,
+                   Warning,
+                   TEXT("Hatch socket %s is missing."),
+                   *socket_name.ToString());
+            continue;
+        }
+
+        auto const transform{hatch->GetSocketTransform(socket_name, RTS_World)};
 
         TRY_INIT_PTR(ship,
                      world->SpawnActorDeferred<AActor>(ship_class, transform, nullptr, nullptr));
