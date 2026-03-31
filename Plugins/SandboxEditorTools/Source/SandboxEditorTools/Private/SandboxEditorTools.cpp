@@ -2,7 +2,6 @@
 
 #include "SandboxEditorTools.h"
 
-#include "EdToolsData.h"
 #include "SSandboxEditorToolsMainPanel.h"
 
 #include "Framework/Docking/TabManager.h"
@@ -20,8 +19,6 @@ void FSandboxEditorToolsModule::StartupModule() {
             .SetDisplayName(LOCTEXT("SandboxEditorToolsTab", "Sandbox Tools"))
             .SetMenuType(ETabSpawnerMenuType::Enabled)};
     menu_entry.SetGroup(WorkspaceMenu::GetMenuStructure().GetLevelEditorCategory());
-
-    tool_data = MakeShared<UEdToolsData>();
 }
 
 void FSandboxEditorToolsModule::ShutdownModule() {
