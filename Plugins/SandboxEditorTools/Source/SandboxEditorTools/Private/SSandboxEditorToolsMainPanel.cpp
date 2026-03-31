@@ -5,7 +5,6 @@
 
 #include "Engine/Engine.h"
 #include "IDetailsView.h"
-#include "PropertyCustomizationHelpers.h"
 #include "PropertyEditorModule.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
@@ -20,8 +19,12 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
     details_view_args.bAllowSearch = false;
     details_view_args.bShowOptions = true;
     details_view_args.bAllowFavoriteSystem = false;
+    details_view_args.NotifyHook = nullptr;
+    details_view_args.bShowOptions = true;
+    details_view_args.bLockable = false;
+    details_view_args.bShowObjectLabel = true;
 
-    actor_picker_detail = edit_module.CreateDetailView(details_view_args);
+    actor_picker = edit_module.CreateDetailView(details_view_args);
 
     // clang-format off
     ChildSlot
@@ -35,7 +38,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
 		]
         +SVerticalBox::Slot()
         .AutoHeight()
-        .HAlign(HAlign_Center)
+        .HAlign(HAlign_Left)
         [
             SNew(SButton)
             .Text(FText::FromString("Select Actor"))
@@ -43,17 +46,9 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         ]
         +SVerticalBox::Slot()
         .AutoHeight()
-        .HAlign(HAlign_Left)
+        .HAlign(HAlign_Fill)
         [
-            SAssignNew(actor_picker, SObjectPropertyEntryBox)
-            .AllowedClass(AActor::StaticClass())
-            .DisplayThumbnail(true)
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Left)
-        [
-            actor_picker_detail->AsShared()
+            actor_picker->AsShared()
         ]
     ];
     // clang-format on
@@ -68,7 +63,7 @@ auto SSandboxEditorToolsMainPanel::on_select_actor_button_clicked() -> FReply {
     if (selected_actors && selected_actors->Num() > 0) {
         auto* actor{Cast<AActor>(selected_actors->GetSelectedObject(0))};
         ss->set_selected_actor(actor);
-        actor_picker_detail->SetObject(ss);
+        actor_picker->SetObject(ss);
     } else {
         UE_LOG(LogSandboxEditorTools, Display, TEXT("No actors to select"));
     }

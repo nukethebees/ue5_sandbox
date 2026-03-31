@@ -4,7 +4,6 @@
 #include "Input/Reply.h"
 #include "Widgets/SCompoundWidget.h"
 
-class SObjectPropertyEntryBox;
 class IDetailsView;
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
@@ -18,6 +17,5 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   protected:
     auto on_select_actor_button_clicked() -> FReply;
 
-    TSharedPtr<SObjectPropertyEntryBox> actor_picker;
-    TSharedPtr<IDetailsView> actor_picker_detail;
+    TSharedPtr<IDetailsView> actor_picker;
 };
