@@ -6,6 +6,7 @@
 #include "Engine/Engine.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -31,7 +32,8 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
             .FillWidth(1.f)
             .VAlign(VAlign_Center)
             [
-                SAssignNew(selected_actor_name, STextBlock)
+                SAssignNew(selected_actor_name, SEditableTextBox)
+                .IsReadOnly(true)
             ]            
         ]
         

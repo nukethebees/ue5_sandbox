@@ -5,6 +5,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class STextBlock;
+class SEditableTextBox;
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
@@ -17,5 +18,5 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   protected:
     auto on_select_actor_button_clicked() -> FReply;
 
-    TSharedPtr<STextBlock> selected_actor_name;
+    TSharedPtr<SEditableTextBox> selected_actor_name;
 };
