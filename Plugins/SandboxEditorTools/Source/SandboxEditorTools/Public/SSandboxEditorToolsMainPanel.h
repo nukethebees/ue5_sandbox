@@ -4,7 +4,7 @@
 #include "Input/Reply.h"
 #include "Widgets/SCompoundWidget.h"
 
-class IDetailsView;
+class STextBlock;
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
@@ -17,5 +17,5 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   protected:
     auto on_select_actor_button_clicked() -> FReply;
 
-    TSharedPtr<IDetailsView> actor_picker;
+    TSharedPtr<STextBlock> selected_actor_name;
 };
