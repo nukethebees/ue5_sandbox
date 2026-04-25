@@ -21,14 +21,17 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
     void Deinitialize() override;
 
     void move_cursor_to_actor(AActor* actor);
-    auto get_cursor() -> ACursor*;
+    auto get_cursor() -> TWeakObjectPtr<ACursor>;
     void destroy_cursor();
+
+    void align_actors_to_cursor();
   protected:
     void spawn_cursor();
-    auto ensure_cursor_exists() -> ACursor*;
+    auto ensure_cursor_exists() -> TWeakObjectPtr<ACursor>;
+    void align_actor_to(AActor& actor, AActor const& ref);
 
     void on_map_opened(FString const&, bool);
 
-    UPROPERTY(EditAnywhere)
-    ACursor* cursor{nullptr};
+    UPROPERTY(EditAnywhere, Transient)
+    TWeakObjectPtr<ACursor> cursor{nullptr};
 };

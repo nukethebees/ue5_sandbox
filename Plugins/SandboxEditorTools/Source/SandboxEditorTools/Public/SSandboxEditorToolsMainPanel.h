@@ -24,5 +24,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
     auto on_spawn_cursor_button_clicked() -> FReply;
     auto on_destroy_cursor_button_clicked() -> FReply;
 
+    auto on_look_at_cursor_button_clicked() -> FReply;
+
     TSharedPtr<SEditableTextBox> selected_actor_name;
 };
