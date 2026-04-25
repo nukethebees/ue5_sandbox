@@ -4,10 +4,28 @@
 #include "Input/Reply.h"
 #include "Widgets/SCompoundWidget.h"
 
+#include "SSandboxEditorToolsMainPanel.generated.h"
+
 class STextBlock;
 class SEditableTextBox;
 
 class USandboxEditorToolsSubsystem;
+
+struct FBool3;
+
+USTRUCT()
+struct FAlignAxesCheckboxStates {
+    GENERATED_BODY()
+
+    UPROPERTY()
+    ECheckBoxState x{ECheckBoxState::Checked};
+    UPROPERTY()
+    ECheckBoxState y{ECheckBoxState::Checked};
+    UPROPERTY()
+    ECheckBoxState z{ECheckBoxState::Checked};
+
+    auto to_bools() const -> FBool3;
+};
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
@@ -26,5 +44,13 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     auto on_look_at_cursor_button_clicked() -> FReply;
 
+    auto get_align_x_state() const -> ECheckBoxState;
+    void set_align_x_state(ECheckBoxState state);
+    auto get_align_y_state() const -> ECheckBoxState;
+    void set_align_y_state(ECheckBoxState state);
+    auto get_align_z_state() const -> ECheckBoxState;
+    void set_align_z_state(ECheckBoxState state);
+
     TSharedPtr<SEditableTextBox> selected_actor_name;
+    FAlignAxesCheckboxStates align_axes_checkbox_states{};
 };

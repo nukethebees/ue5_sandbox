@@ -1,5 +1,6 @@
 #include "SSandboxEditorToolsMainPanel.h"
 
+#include "Bool3.h"
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
 
@@ -8,6 +9,12 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
+
+auto FAlignAxesCheckboxStates::to_bools() const -> FBool3 {
+    return {.x = x == ECheckBoxState::Checked,
+            .y = y == ECheckBoxState::Checked,
+            .z = z == ECheckBoxState::Checked};
+}
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
     // clang-format off
@@ -84,6 +91,51 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 .Justification(ETextJustify::Center)
             ]
         ]
+        +SVerticalBox::Slot()
+        .AutoHeight()
+        .HAlign(HAlign_Fill)
+        [
+            SNew(SHorizontalBox)
+            +SHorizontalBox::Slot() 
+            .FillWidth(1.f)
+            .VAlign(VAlign_Fill)
+            [
+                 SNew(SCheckBox)
+                .IsChecked(this, &ThisClass::get_align_x_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_x_state)
+                [
+                    SNew(STextBlock)
+                    .Text(FText::FromString(TEXT("X")))
+                    .Justification(ETextJustify::Center)
+                ]
+            ]
+            +SHorizontalBox::Slot() 
+            .FillWidth(1.f)
+            .VAlign(VAlign_Fill)
+            [
+                SNew(SCheckBox)
+                .IsChecked(this, &ThisClass::get_align_y_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_y_state)
+                [
+                    SNew(STextBlock)
+                    .Text(FText::FromString(TEXT("Y")))
+                    .Justification(ETextJustify::Center)
+                ]
+            ]
+            +SHorizontalBox::Slot() 
+            .FillWidth(1.f)
+            .VAlign(VAlign_Fill)
+            [
+                SNew(SCheckBox)
+                .IsChecked(this, &ThisClass::get_align_z_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_z_state)
+                [
+                    SNew(STextBlock)
+                    .Text(FText::FromString(TEXT("Z")))
+                    .Justification(ETextJustify::Center)
+                ]
+            ]
+        ]
     ];
     // clang-format on
 }
@@ -125,10 +177,29 @@ auto SSandboxEditorToolsMainPanel::on_destroy_cursor_button_clicked() -> FReply 
 auto SSandboxEditorToolsMainPanel::on_look_at_cursor_button_clicked() -> FReply {
     auto* ss{get_subsystem()};
     if (ss) {
-        ss->align_actors_to_cursor();
-    }    
+        ss->align_actors_to_cursor(align_axes_checkbox_states.to_bools());
+    }
 
     return FReply::Handled();
+}
+
+auto SSandboxEditorToolsMainPanel::get_align_x_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.x;
+}
+void SSandboxEditorToolsMainPanel::set_align_x_state(ECheckBoxState state) {
+    align_axes_checkbox_states.x = state;
+}
+auto SSandboxEditorToolsMainPanel::get_align_y_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.y;
+}
+void SSandboxEditorToolsMainPanel::set_align_y_state(ECheckBoxState state) {
+    align_axes_checkbox_states.y = state;
+}
+auto SSandboxEditorToolsMainPanel::get_align_z_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.z;
+}
+void SSandboxEditorToolsMainPanel::set_align_z_state(ECheckBoxState state) {
+    align_axes_checkbox_states.z = state;
 }
 
 auto SSandboxEditorToolsMainPanel::get_subsystem() -> USandboxEditorToolsSubsystem* {
