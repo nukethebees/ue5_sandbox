@@ -51,6 +51,8 @@ auto SSandboxEditorToolsMainPanel::on_select_actor_button_clicked() -> FReply {
         auto* actor{Cast<AActor>(selected_actors->GetSelectedObject(0))};
         ss->set_selected_actor(actor);
         selected_actor_name->SetText(FText::FromString(actor->GetName()));
+
+        ss->set_cursor_to(actor);
     } else {
         UE_LOG(LogSandboxEditorTools, Display, TEXT("No actors to select"));
     }
