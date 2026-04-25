@@ -1,5 +1,6 @@
 #include "SSandboxEditorToolsMainPanel.h"
 
+#include "AlignAxesCheckboxStates.h"
 #include "Bool3.h"
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
@@ -9,12 +10,6 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-
-auto FAlignAxesCheckboxStates::to_bools() const -> FRotationBool {
-    return {.pitch = pitch == ECheckBoxState::Checked,
-            .yaw = yaw == ECheckBoxState::Checked,
-            .roll = roll == ECheckBoxState::Checked};
-}
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
     // clang-format off

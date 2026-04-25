@@ -1,31 +1,15 @@
 #pragma once
 
+#include "AlignAxesCheckboxStates.h"
+
 #include "CoreMinimal.h"
 #include "Input/Reply.h"
 #include "Widgets/SCompoundWidget.h"
-
-#include "SSandboxEditorToolsMainPanel.generated.h"
 
 class STextBlock;
 class SEditableTextBox;
 
 class USandboxEditorToolsSubsystem;
-
-struct FRotationBool;
-
-USTRUCT()
-struct FAlignAxesCheckboxStates {
-    GENERATED_BODY()
-
-    UPROPERTY()
-    ECheckBoxState pitch{ECheckBoxState::Unchecked};
-    UPROPERTY()
-    ECheckBoxState yaw{ECheckBoxState::Checked};
-    UPROPERTY()
-    ECheckBoxState roll{ECheckBoxState::Unchecked};
-
-    auto to_bools() const -> FRotationBool;
-};
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
