@@ -17,14 +17,14 @@ void USandboxEditorToolsSubsystem::set_cursor_to(AActor* actor) {
     cursor->SetActorLocation(actor->GetActorLocation());
 }
 auto USandboxEditorToolsSubsystem::ensure_cursor_exists() -> ACursor* {
-    if (cursor) {
-        return cursor;
+    if (!cursor) {
+        spawn_cursor();
     }
-    
-    spawn_cursor();
 
     if (!cursor) {
         UE_LOG(LogSandboxEditorTools, Warning, TEXT("Failed to spawn cursor."));
+    } else {
+        cursor->SetFolderPath(TEXT("_Editor"));
     }
 
     return cursor;
