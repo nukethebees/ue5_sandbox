@@ -7,6 +7,8 @@
 class STextBlock;
 class SEditableTextBox;
 
+class USandboxEditorToolsSubsystem;
+
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
     using ThisClass = SSandboxEditorToolsMainPanel;
@@ -16,8 +18,11 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     void Construct(FArguments const& args);
   protected:
-    auto on_select_actor_button_clicked() -> FReply;
+    auto get_subsystem() -> USandboxEditorToolsSubsystem*;
+
+    auto on_move_cursor_to_button_clicked() -> FReply;
     auto on_spawn_cursor_button_clicked() -> FReply;
+    auto on_destroy_cursor_button_clicked() -> FReply;
 
     TSharedPtr<SEditableTextBox> selected_actor_name;
 };

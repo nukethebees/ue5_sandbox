@@ -5,16 +5,36 @@
 
 #include "Editor.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+
+void USandboxEditorToolsSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
+    Super::Initialize(Collection);
+
+    FEditorDelegates::OnMapOpened.AddUObject(this, &ThisClass::on_map_opened);
+}
+void USandboxEditorToolsSubsystem::Deinitialize() {
+    FEditorDelegates::OnMapOpened.RemoveAll(this);
+
+    Super::Deinitialize();
+}
 
 auto USandboxEditorToolsSubsystem::get_cursor() -> ACursor* {
     return ensure_cursor_exists();
 }
-void USandboxEditorToolsSubsystem::set_cursor_to(AActor* actor) {
+void USandboxEditorToolsSubsystem::move_cursor_to_actor(AActor* actor) {
     ensure_cursor_exists();
     if (!cursor) {
         return;
     }
     cursor->SetActorLocation(actor->GetActorLocation());
+}
+void USandboxEditorToolsSubsystem::destroy_cursor() {
+    if (!cursor) {
+        return;
+    }
+    cursor->Destroy();
+    cursor = nullptr;
+    return;
 }
 auto USandboxEditorToolsSubsystem::ensure_cursor_exists() -> ACursor* {
     if (!cursor) {
@@ -39,4 +59,17 @@ void USandboxEditorToolsSubsystem::spawn_cursor() {
     }
 
     cursor = world->SpawnActor<ACursor>(spawn_params);
+}
+
+void USandboxEditorToolsSubsystem::on_map_opened(FString const&, bool) {
+    UE_LOG(LogSandboxEditorTools, Verbose, TEXT("on_map_opened"));
+    auto* world{GEditor->GetEditorWorldContext().World()};
+    if (world) {
+        for (auto it{TActorIterator<ACursor>(world)}; it; ++it) {
+            if (it) {
+                cursor = *it;
+                break;
+            }
+        }
+    }
 }

@@ -19,13 +19,9 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         .AutoHeight()
         .HAlign(HAlign_Fill)
         [
-             SNew(SButton)
-            .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
-            [
-                SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Spawn cursor")))
-                    .Justification(ETextJustify::Center)
-            ]
+            SNew(STextBlock)
+                .Text(FText::FromString(TEXT("Cursor controls")))
+                .Justification(ETextJustify::Center)
         ]
         +SVerticalBox::Slot()
         .AutoHeight()
@@ -33,42 +29,52 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         [
             SNew(SHorizontalBox)
             +SHorizontalBox::Slot() 
-            .AutoWidth()
+            .FillWidth(1.f)
+            .VAlign(VAlign_Fill)
+            [
+                 SNew(SButton)
+                .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
+                [
+                    SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Spawn")))
+                        .Justification(ETextJustify::Center)
+                ]
+            ]
+            +SHorizontalBox::Slot() 
+            .FillWidth(1.f)
             .VAlign(VAlign_Fill)
             [
                 SNew(SButton)
-                .OnClicked(this, &ThisClass::on_select_actor_button_clicked)
+                .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Select Actor")))
-                    .Justification(ETextJustify::Center)
+                        .Text(FText::FromString(TEXT("Destroy")))
+                        .Justification(ETextJustify::Center)
                 ]
-                
             ]
-            +SHorizontalBox::Slot()
+            +SHorizontalBox::Slot() 
             .FillWidth(1.f)
-            .VAlign(VAlign_Center)
+            .VAlign(VAlign_Fill)
             [
-                SAssignNew(selected_actor_name, SEditableTextBox)
-                .IsReadOnly(true)
-            ]            
+                SNew(SButton)
+                .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
+                [
+                    SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Move to actor")))
+                        .Justification(ETextJustify::Center)
+                ]
+            ]
         ]
-        
     ];
     // clang-format on
 }
-auto SSandboxEditorToolsMainPanel::on_select_actor_button_clicked() -> FReply {
-    check(GEngine);
-    check(GEditor);
-
-    auto ss{GEditor->GetEditorSubsystem<USandboxEditorToolsSubsystem>()};
+auto SSandboxEditorToolsMainPanel::on_move_cursor_to_button_clicked() -> FReply {
+    auto* ss{get_subsystem()};
 
     auto* selected_actors{GEditor->GetSelectedActors()};
     if (selected_actors && selected_actors->Num() > 0) {
         auto* actor{Cast<AActor>(selected_actors->GetSelectedObject(0))};
-
-        ss->set_cursor_to(actor);
-        selected_actor_name->SetText(FText::FromString(actor->GetName()));
+        ss->move_cursor_to_actor(actor);
     } else {
         UE_LOG(LogSandboxEditorTools, Display, TEXT("No actors to select"));
     }
@@ -76,10 +82,7 @@ auto SSandboxEditorToolsMainPanel::on_select_actor_button_clicked() -> FReply {
     return FReply::Handled();
 }
 auto SSandboxEditorToolsMainPanel::on_spawn_cursor_button_clicked() -> FReply {
-    check(GEngine);
-    check(GEditor);
-
-    auto ss{GEditor->GetEditorSubsystem<USandboxEditorToolsSubsystem>()};
+    auto* ss{get_subsystem()};
 
     if (ss) {
         ss->get_cursor();
@@ -88,4 +91,21 @@ auto SSandboxEditorToolsMainPanel::on_spawn_cursor_button_clicked() -> FReply {
     }
 
     return FReply::Handled();
+}
+auto SSandboxEditorToolsMainPanel::on_destroy_cursor_button_clicked() -> FReply {
+    auto* ss{get_subsystem()};
+
+    if (ss) {
+        ss->destroy_cursor();
+    } else {
+        UE_LOG(LogSandboxEditorTools, Error, TEXT("Tools subsystem is nullptr."));
+    }
+
+    return FReply::Handled();
+}
+
+auto SSandboxEditorToolsMainPanel::get_subsystem() -> USandboxEditorToolsSubsystem* {
+    check(GEditor);
+    auto* ss{GEditor->GetEditorSubsystem<USandboxEditorToolsSubsystem>()};
+    return ss;
 }
