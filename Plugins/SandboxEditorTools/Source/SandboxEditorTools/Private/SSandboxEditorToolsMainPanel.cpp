@@ -10,10 +10,10 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-auto FAlignAxesCheckboxStates::to_bools() const -> FBool3 {
-    return {.x = x == ECheckBoxState::Checked,
-            .y = y == ECheckBoxState::Checked,
-            .z = z == ECheckBoxState::Checked};
+auto FAlignAxesCheckboxStates::to_bools() const -> FRotationBool {
+    return {.pitch = pitch == ECheckBoxState::Checked,
+            .yaw = yaw == ECheckBoxState::Checked,
+            .roll = roll == ECheckBoxState::Checked};
 }
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
@@ -99,39 +99,42 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
             +SHorizontalBox::Slot() 
             .FillWidth(1.f)
             .VAlign(VAlign_Fill)
+            .HAlign(EHorizontalAlignment::HAlign_Center)
             [
                  SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_x_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_x_state)
+                .IsChecked(this, &ThisClass::get_align_roll_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_roll_state)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("X")))
+                    .Text(FText::FromString(TEXT("Roll")))
                     .Justification(ETextJustify::Center)
                 ]
             ]
             +SHorizontalBox::Slot() 
             .FillWidth(1.f)
             .VAlign(VAlign_Fill)
+            .HAlign(EHorizontalAlignment::HAlign_Center)
             [
                 SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_y_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_y_state)
+                .IsChecked(this, &ThisClass::get_align_pitch_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_pitch_state)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Y")))
+                    .Text(FText::FromString(TEXT("Pitch")))
                     .Justification(ETextJustify::Center)
                 ]
             ]
             +SHorizontalBox::Slot() 
             .FillWidth(1.f)
             .VAlign(VAlign_Fill)
+            .HAlign(EHorizontalAlignment::HAlign_Center)
             [
                 SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_z_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_z_state)
+                .IsChecked(this, &ThisClass::get_align_yaw_state)
+                .OnCheckStateChanged(this, &ThisClass::set_align_yaw_state)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Z")))
+                    .Text(FText::FromString(TEXT("Yaw")))
                     .Justification(ETextJustify::Center)
                 ]
             ]
@@ -183,23 +186,23 @@ auto SSandboxEditorToolsMainPanel::on_look_at_cursor_button_clicked() -> FReply 
     return FReply::Handled();
 }
 
-auto SSandboxEditorToolsMainPanel::get_align_x_state() const -> ECheckBoxState {
-    return align_axes_checkbox_states.x;
+auto SSandboxEditorToolsMainPanel::get_align_roll_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.roll;
 }
-void SSandboxEditorToolsMainPanel::set_align_x_state(ECheckBoxState state) {
-    align_axes_checkbox_states.x = state;
+void SSandboxEditorToolsMainPanel::set_align_roll_state(ECheckBoxState state) {
+    align_axes_checkbox_states.roll = state;
 }
-auto SSandboxEditorToolsMainPanel::get_align_y_state() const -> ECheckBoxState {
-    return align_axes_checkbox_states.y;
+auto SSandboxEditorToolsMainPanel::get_align_pitch_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.pitch;
 }
-void SSandboxEditorToolsMainPanel::set_align_y_state(ECheckBoxState state) {
-    align_axes_checkbox_states.y = state;
+void SSandboxEditorToolsMainPanel::set_align_pitch_state(ECheckBoxState state) {
+    align_axes_checkbox_states.pitch = state;
 }
-auto SSandboxEditorToolsMainPanel::get_align_z_state() const -> ECheckBoxState {
-    return align_axes_checkbox_states.z;
+auto SSandboxEditorToolsMainPanel::get_align_yaw_state() const -> ECheckBoxState {
+    return align_axes_checkbox_states.yaw;
 }
-void SSandboxEditorToolsMainPanel::set_align_z_state(ECheckBoxState state) {
-    align_axes_checkbox_states.z = state;
+void SSandboxEditorToolsMainPanel::set_align_yaw_state(ECheckBoxState state) {
+    align_axes_checkbox_states.yaw = state;
 }
 
 auto SSandboxEditorToolsMainPanel::get_subsystem() -> USandboxEditorToolsSubsystem* {

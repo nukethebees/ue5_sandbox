@@ -12,3 +12,12 @@ struct FBool3 {
     bool y{true};
     bool z{true};
 };
+
+USTRUCT()
+struct FRotationBool {
+    GENERATED_BODY()
+
+    bool pitch{true};
+    bool yaw{true};
+    bool roll{true};
+};

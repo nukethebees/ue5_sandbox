@@ -68,7 +68,7 @@ void USandboxEditorToolsSubsystem::spawn_cursor() {
     cursor = world->SpawnActor<ACursor>(spawn_params);
 }
 
-void USandboxEditorToolsSubsystem::align_actors_to_cursor(FBool3 axes) {
+void USandboxEditorToolsSubsystem::align_actors_to_cursor(FRotationBool axes) {
     UE_LOG(LogSandboxEditorTools, Verbose, TEXT("align_actors_to_cursor"));
 
     if (ensure_cursor_exists() == nullptr) {
@@ -89,7 +89,9 @@ void USandboxEditorToolsSubsystem::align_actors_to_cursor(FBool3 axes) {
         }
     }
 }
-void USandboxEditorToolsSubsystem::align_actor_to(AActor& actor, AActor const& ref, FBool3 axes) {
+void USandboxEditorToolsSubsystem::align_actor_to(AActor& actor,
+                                                  AActor const& ref,
+                                                  FRotationBool axes) {
     UE_LOG(LogSandboxEditorTools,
            Verbose,
            TEXT("Aligning: %s to %s"),
@@ -101,16 +103,21 @@ void USandboxEditorToolsSubsystem::align_actor_to(AActor& actor, AActor const& r
     auto const to{ref.GetActorLocation()};
     auto look_at_rotation{(to - from).Rotation()};
 
-    UE_LOG(LogSandboxEditorTools, Verbose, TEXT("Axes bools: %d %d %d"), axes.x, axes.y, axes.z);
+    UE_LOG(LogSandboxEditorTools,
+           Verbose,
+           TEXT("Axes bools: Roll=%d Pitch=%d Yaw=%d"),
+           axes.roll,
+           axes.pitch,
+           axes.yaw);
 
-    if (!axes.x) {
+    if (!axes.roll) {
+        look_at_rotation.Roll = original_rotation.Roll;
+    }
+    if (!axes.pitch) {
         look_at_rotation.Pitch = original_rotation.Pitch;
     }
-    if (!axes.y) {
+    if (!axes.yaw) {
         look_at_rotation.Yaw = original_rotation.Yaw;
-    }
-    if (!axes.z) {
-        look_at_rotation.Roll = original_rotation.Roll;
     }
 
     actor.SetActorRotation(look_at_rotation);

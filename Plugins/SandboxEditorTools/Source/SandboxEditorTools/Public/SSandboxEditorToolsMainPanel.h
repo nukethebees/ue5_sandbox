@@ -11,20 +11,20 @@ class SEditableTextBox;
 
 class USandboxEditorToolsSubsystem;
 
-struct FBool3;
+struct FRotationBool;
 
 USTRUCT()
 struct FAlignAxesCheckboxStates {
     GENERATED_BODY()
 
     UPROPERTY()
-    ECheckBoxState x{ECheckBoxState::Checked};
+    ECheckBoxState pitch{ECheckBoxState::Unchecked};
     UPROPERTY()
-    ECheckBoxState y{ECheckBoxState::Checked};
+    ECheckBoxState yaw{ECheckBoxState::Checked};
     UPROPERTY()
-    ECheckBoxState z{ECheckBoxState::Checked};
+    ECheckBoxState roll{ECheckBoxState::Unchecked};
 
-    auto to_bools() const -> FBool3;
+    auto to_bools() const -> FRotationBool;
 };
 
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
@@ -44,12 +44,12 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     auto on_look_at_cursor_button_clicked() -> FReply;
 
-    auto get_align_x_state() const -> ECheckBoxState;
-    void set_align_x_state(ECheckBoxState state);
-    auto get_align_y_state() const -> ECheckBoxState;
-    void set_align_y_state(ECheckBoxState state);
-    auto get_align_z_state() const -> ECheckBoxState;
-    void set_align_z_state(ECheckBoxState state);
+    auto get_align_roll_state() const -> ECheckBoxState;
+    void set_align_roll_state(ECheckBoxState state);
+    auto get_align_pitch_state() const -> ECheckBoxState;
+    void set_align_pitch_state(ECheckBoxState state);
+    auto get_align_yaw_state() const -> ECheckBoxState;
+    void set_align_yaw_state(ECheckBoxState state);
 
     TSharedPtr<SEditableTextBox> selected_actor_name;
     FAlignAxesCheckboxStates align_axes_checkbox_states{};

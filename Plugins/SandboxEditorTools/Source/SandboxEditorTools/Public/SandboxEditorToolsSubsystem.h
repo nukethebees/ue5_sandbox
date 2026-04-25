@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Bool3.h"
-
 #include "CoreMinimal.h"
 #include "EditorSubsystem.h"
 
@@ -12,7 +10,7 @@ class UWorld;
 
 class ACursor;
 
-
+struct FRotationBool;
 
 UCLASS()
 class USandboxEditorToolsSubsystem : public UEditorSubsystem {
@@ -28,11 +26,11 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
     auto get_cursor() -> TWeakObjectPtr<ACursor>;
     void destroy_cursor();
 
-    void align_actors_to_cursor(FBool3 axes);
+    void align_actors_to_cursor(FRotationBool axes);
   protected:
     void spawn_cursor();
     auto ensure_cursor_exists() -> TWeakObjectPtr<ACursor>;
-    void align_actor_to(AActor& actor, AActor const& ref, FBool3 axes);
+    void align_actor_to(AActor& actor, AActor const& ref, FRotationBool axes);
 
     void on_map_opened(FString const&, bool);
 
