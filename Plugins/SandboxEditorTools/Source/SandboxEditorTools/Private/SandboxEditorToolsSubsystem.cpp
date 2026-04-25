@@ -6,16 +6,28 @@
 #include "Editor.h"
 #include "Engine/World.h"
 
+auto USandboxEditorToolsSubsystem::get_cursor() -> ACursor* {
+    return ensure_cursor_exists();
+}
 void USandboxEditorToolsSubsystem::set_cursor_to(AActor* actor) {
+    ensure_cursor_exists();
     if (!cursor) {
-        spawn_cursor();
-    }
-    if (!cursor) {
-        UE_LOG(LogSandboxEditorTools, Warning, TEXT("Cursor is nullptr."));
         return;
     }
-
     cursor->SetActorLocation(actor->GetActorLocation());
+}
+auto USandboxEditorToolsSubsystem::ensure_cursor_exists() -> ACursor* {
+    if (cursor) {
+        return cursor;
+    }
+    
+    spawn_cursor();
+
+    if (!cursor) {
+        UE_LOG(LogSandboxEditorTools, Warning, TEXT("Failed to spawn cursor."));
+    }
+
+    return cursor;
 }
 void USandboxEditorToolsSubsystem::spawn_cursor() {
     FActorSpawnParameters spawn_params{};

@@ -17,6 +17,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
     void Construct(FArguments const& args);
   protected:
     auto on_select_actor_button_clicked() -> FReply;
+    auto on_spawn_cursor_button_clicked() -> FReply;
 
     TSharedPtr<SEditableTextBox> selected_actor_name;
 };

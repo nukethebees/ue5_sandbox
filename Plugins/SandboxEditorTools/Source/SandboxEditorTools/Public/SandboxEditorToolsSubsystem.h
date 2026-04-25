@@ -14,15 +14,11 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
 
     USandboxEditorToolsSubsystem() = default;
 
-    void set_selected_actor(AActor* actor) { selected_actor = actor; }
-    auto get_selected_actor() { return selected_actor; }
-
     void set_cursor_to(AActor* actor);
+    auto get_cursor() -> ACursor*;
   protected:
     void spawn_cursor();
-
-    UPROPERTY(EditAnywhere)
-    AActor* selected_actor{nullptr};
+    auto ensure_cursor_exists() -> ACursor*;
 
     UPROPERTY(EditAnywhere)
     ACursor* cursor{nullptr};
