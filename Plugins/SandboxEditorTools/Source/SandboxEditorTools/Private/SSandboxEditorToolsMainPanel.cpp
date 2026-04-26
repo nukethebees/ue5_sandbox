@@ -42,13 +42,29 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
 
     FMargin const heading_padding{0.f, 4.f};
 
-    auto add_list_item{[&]() -> SVerticalBox::FSlot::FSlotArguments {
+    auto add_vlist_item{[&]() -> SVerticalBox::FSlot::FSlotArguments {
         // clang-format off
         return MoveTemp(SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
-        .VAlign(EVerticalAlignment::VAlign_Fill)
+        .VAlign(EVerticalAlignment::VAlign_Center)
         .Padding(section_padding));
+        // clang-format on
+    }};
+
+    auto add_heading{[&](TCHAR const* text) -> auto {
+        // clang-format off
+        return SNew(STextBlock)
+        .Text(FText::FromString(text))
+        .Justification(ETextJustify::Center);
+        // clang-format on
+    }};
+
+    auto add_button_text{[&](TCHAR const* text) -> auto {
+        // clang-format off
+        return SNew(STextBlock)
+        .Text(FText::FromString(text))
+        .Justification(ETextJustify::Center);
         // clang-format on
     }};
 
@@ -59,20 +75,16 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         // Cursor
         //------------------------------------------------------------------------------------------
         SNew(SVerticalBox)
-        +add_list_item()
+        +add_vlist_item()
         [
             SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +add_list_item()
+                +add_vlist_item()
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Cursor controls")))
-                    .Justification(ETextJustify::Center)
+                    add_heading(TEXT("Cursor controls"))
                 ]
-                +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
+                +add_vlist_item()
                 [
                     SNew(SHorizontalBox)
                     +SHorizontalBox::Slot() 
@@ -82,9 +94,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                          SNew(SButton)
                         .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Spawn")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Spawn"))
                         ]
                     ]
                     +SHorizontalBox::Slot() 
@@ -94,9 +104,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Destroy")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Destroy"))
                         ]
                     ]
                     +SHorizontalBox::Slot() 
@@ -106,9 +114,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Move to actor")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Move to actor"))
                         ]
                     ]
                 ]
@@ -117,33 +123,24 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         //------------------------------------------------------------------------------------------
         // Alignment
         //------------------------------------------------------------------------------------------
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        .Padding(section_padding)
+        +add_vlist_item()
         [
             SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +add_list_item()
+                +add_vlist_item()
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Alignment")))
-                    .Justification(ETextJustify::Center)
+                    add_heading(TEXT("Alignment"))
                 ]
-                +SVerticalBox::Slot()
-                +add_list_item()
+                +add_vlist_item()
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_look_at_cursor_button_clicked)
                     [
-                        SNew(STextBlock)
-                        .Text(FText::FromString(TEXT("Look at cursor")))
-                        .Justification(ETextJustify::Center)
+                        add_button_text(TEXT("Look at cursor"))
                     ]
                 ]
-                +SVerticalBox::Slot()
-                +add_list_item()
+                +add_vlist_item()
                 [
                     SNew(SHorizontalBox)
                     +SHorizontalBox::Slot() 
@@ -155,9 +152,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                         .IsChecked(this, &ThisClass::get_align_roll_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_roll_state)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Roll")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Roll"))
                         ]
                     ]
                     +SHorizontalBox::Slot() 
@@ -169,9 +164,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                         .IsChecked(this, &ThisClass::get_align_pitch_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_pitch_state)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Pitch")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Pitch"))
                         ]
                     ]
                     +SHorizontalBox::Slot() 
@@ -183,9 +176,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                         .IsChecked(this, &ThisClass::get_align_yaw_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_yaw_state)
                         [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("Yaw")))
-                            .Justification(ETextJustify::Center)
+                            add_button_text(TEXT("Yaw"))
                         ]
                     ]
                 ]
@@ -194,20 +185,16 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         //------------------------------------------------------------------------------------------
         // Layout
         //------------------------------------------------------------------------------------------
-        +SVerticalBox::Slot()
-        +add_list_item()
+        +add_vlist_item()
         [
             SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +add_list_item()
+                +add_vlist_item()
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Layout")))
-                    .Justification(ETextJustify::Center)
+                    add_heading(TEXT("Layout"))
                 ]
-                +SVerticalBox::Slot()
-                +add_list_item()
+                +add_vlist_item()
                 [
                     SNew(SNumericVectorInputBox<double>)
                     .X_Lambda([&]() { return layout_offset.X; })
@@ -217,15 +204,12 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                     .OnYChanged_Lambda([&](double v){ layout_offset.Y = v; })
                     .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
                 ]
-                +SVerticalBox::Slot()
-                +add_list_item()
+                +add_vlist_item()
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_align_cube_button_clicked)
                     [
-                        SNew(STextBlock)
-                        .Text(FText::FromString(TEXT("Align cube")))
-                        .Justification(ETextJustify::Center)
+                        add_button_text(TEXT("Align (Cube)"))
                     ]
                 ]
             ]
