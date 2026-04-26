@@ -7,7 +7,6 @@
 #include "Widgets/SCompoundWidget.h"
 
 class STextBlock;
-class SEditableTextBox;
 
 class USandboxEditorToolsSubsystem;
 
@@ -33,6 +32,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     void Construct(FArguments const& args);
   protected:
+    void construct_children(FArguments const& args);
     auto get_subsystem() -> USandboxEditorToolsSubsystem*;
 
     auto on_move_cursor_to_button_clicked() -> FReply;
@@ -48,7 +48,10 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
     auto get_align_yaw_state() const -> ECheckBoxState;
     void set_align_yaw_state(ECheckBoxState state);
 
-    TSharedPtr<SEditableTextBox> selected_actor_name;
+    void set_cursor_name(FString const& name);
+    void update_cursor_name();
+
+    TSharedPtr<STextBlock> cursor_name;
     FAlignAxesCheckboxStates align_axes_checkbox_states{};
     FVector layout_offset{};
 };

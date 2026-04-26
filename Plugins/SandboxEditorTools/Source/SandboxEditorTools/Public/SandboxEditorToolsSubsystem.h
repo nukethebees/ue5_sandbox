@@ -26,6 +26,7 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
 
     void move_cursor_to_actor(AActor* actor);
     auto get_cursor() -> TWeakObjectPtr<ACursor>;
+    auto get_cursor_name() const -> FString;
     void destroy_cursor();
 
     void align_actors_to_cursor(FRotationBool axes);

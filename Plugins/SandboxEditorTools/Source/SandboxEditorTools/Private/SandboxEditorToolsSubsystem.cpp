@@ -25,6 +25,13 @@ void USandboxEditorToolsSubsystem::Deinitialize() {
 auto USandboxEditorToolsSubsystem::get_cursor() -> TWeakObjectPtr<ACursor> {
     return ensure_cursor_exists();
 }
+auto USandboxEditorToolsSubsystem::get_cursor_name() const -> FString {
+    if (cursor.IsValid()) {
+        return cursor.Get()->GetName();
+    } else {
+        return TEXT("<invalid ptr>");
+    }
+}
 void USandboxEditorToolsSubsystem::move_cursor_to_actor(AActor* actor) {
     ensure_cursor_exists();
     if (!cursor.IsValid()) {

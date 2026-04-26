@@ -38,6 +38,10 @@ void SSandboxEditorToolsSection::Construct(FArguments const& in_args) {
 }
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
+    construct_children(in_args);
+    update_cursor_name();
+}
+void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args) {
     FMargin const heading_padding{0.f, 4.f};
 
     constexpr auto add_vlist_item{[]() -> SVerticalBox::FSlot::FSlotArguments {
@@ -53,10 +57,10 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         // clang-format on
     }};
 
-    auto add_hlist_item{[&]() -> SHorizontalBox::FSlot::FSlotArguments {
+    auto add_hlist_item{[&](float const fill_width = 1.f) -> SHorizontalBox::FSlot::FSlotArguments {
         // clang-format off
         return MoveTemp(SHorizontalBox::Slot() 
-        .FillWidth(1.f)
+        .FillWidth(fill_width)
         .VAlign(VAlign_Fill)
         .HAlign(EHorizontalAlignment::HAlign_Center));
         // clang-format on
@@ -92,7 +96,19 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 SNew(SVerticalBox)
                 +add_vlist_item()
                 [
-                    add_heading(TEXT("Cursor controls"))
+                    add_heading(TEXT("Cursor"))
+                ]
+                +add_vlist_item()
+                [
+                    SNew(SHorizontalBox)
+                    +SHorizontalBox::Slot() 
+                    .VAlign(VAlign_Fill)
+                    .HAlign(EHorizontalAlignment::HAlign_Fill)
+                    [
+                        SAssignNew(cursor_name, STextBlock)
+                        .Text(FText::FromString(TEXT("Cursor name: (no cursor)")))
+                        .Justification(ETextJustify::Left)
+                    ]
                 ]
                 +add_vlist_item()
                 [
@@ -212,6 +228,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
     ];
     // clang-format on
 }
+
 auto SSandboxEditorToolsMainPanel::on_move_cursor_to_button_clicked() -> FReply {
     auto* ss{get_subsystem()};
     auto* selected_actors{GEditor->GetSelectedActors()};
@@ -230,6 +247,7 @@ auto SSandboxEditorToolsMainPanel::on_spawn_cursor_button_clicked() -> FReply {
 
     if (ss) {
         ss->get_cursor();
+        update_cursor_name();
     } else {
         UE_LOG(LogSandboxEditorTools, Error, TEXT("Tools subsystem is nullptr."));
     }
@@ -241,6 +259,7 @@ auto SSandboxEditorToolsMainPanel::on_destroy_cursor_button_clicked() -> FReply 
 
     if (ss) {
         ss->destroy_cursor();
+        set_cursor_name(TEXT("<none>"));
     } else {
         UE_LOG(LogSandboxEditorTools, Error, TEXT("Tools subsystem is nullptr."));
     }
@@ -291,4 +310,21 @@ auto SSandboxEditorToolsMainPanel::get_subsystem() -> USandboxEditorToolsSubsyst
     check(GEditor);
     auto* ss{GEditor->GetEditorSubsystem<USandboxEditorToolsSubsystem>()};
     return ss;
+}
+
+void SSandboxEditorToolsMainPanel::set_cursor_name(FString const& name) {
+    if (!cursor_name) {
+        UE_LOG(LogSandboxEditorTools, Error, TEXT("cursor_name is nullptr. Cannot set name."));
+        return;
+    }
+    cursor_name->SetText(FText::FromString(FString::Printf(TEXT("Cursor name: %s"), *name)));
+}
+void SSandboxEditorToolsMainPanel::update_cursor_name() {
+    auto* ss{get_subsystem()};
+    if (!ss) {
+        set_cursor_name(TEXT("<unknown>"));
+        return;
+    }
+
+    set_cursor_name(ss->get_cursor_name());
 }
