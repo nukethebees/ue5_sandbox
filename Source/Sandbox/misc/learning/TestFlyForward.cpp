@@ -15,16 +15,9 @@ void ATestFlyForward::Tick(float dt) {
     auto const start{GetActorLocation()};
     auto const end{start + dpos};
 
-    FHitResult hit{};
-    FCollisionQueryParams params{};
-    FCollisionObjectQueryParams obj_params{};
-    params.AddIgnoredActor(this);
+    auto const hit{check_if_hit(start, end)};
 
-    auto* world{GetWorld()};
-
-    bool const blocked{world->LineTraceSingleByObjectType(hit, start, end, obj_params, params)};
-
-    if (blocked) {
+    if (hit.bBlockingHit) {
         Destroy();
     } else {
         SetActorLocation(end);
