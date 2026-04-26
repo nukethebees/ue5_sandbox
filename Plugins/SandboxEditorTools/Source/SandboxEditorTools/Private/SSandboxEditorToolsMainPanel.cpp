@@ -38,17 +38,27 @@ void SSandboxEditorToolsSection::Construct(FArguments const& in_args) {
 }
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
-    FMargin const section_padding{0.f, 0.f, 0.f, 8.f};
-
     FMargin const heading_padding{0.f, 4.f};
 
-    auto add_vlist_item{[&]() -> SVerticalBox::FSlot::FSlotArguments {
+    constexpr auto add_vlist_item{[]() -> SVerticalBox::FSlot::FSlotArguments {
+        auto const p{4.f};
+        FMargin const section_padding{0.f, p, 0.f, p};
+
         // clang-format off
         return MoveTemp(SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
         .VAlign(EVerticalAlignment::VAlign_Center)
         .Padding(section_padding));
+        // clang-format on
+    }};
+
+    auto add_hlist_item{[&]() -> SHorizontalBox::FSlot::FSlotArguments {
+        // clang-format off
+        return MoveTemp(SHorizontalBox::Slot() 
+        .FillWidth(1.f)
+        .VAlign(VAlign_Fill)
+        .HAlign(EHorizontalAlignment::HAlign_Center));
         // clang-format on
     }};
 
@@ -87,9 +97,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 +add_vlist_item()
                 [
                     SNew(SHorizontalBox)
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
+                    +add_hlist_item()
                     [
                          SNew(SButton)
                         .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
@@ -97,9 +105,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                             add_button_text(TEXT("Spawn"))
                         ]
                     ]
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
+                    +add_hlist_item()
                     [
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
@@ -107,9 +113,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                             add_button_text(TEXT("Destroy"))
                         ]
                     ]
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
+                    +add_hlist_item()
                     [
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
@@ -143,10 +147,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 +add_vlist_item()
                 [
                     SNew(SHorizontalBox)
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
-                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    +add_hlist_item()
                     [
                          SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_roll_state)
@@ -155,10 +156,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                             add_button_text(TEXT("Roll"))
                         ]
                     ]
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
-                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    +add_hlist_item()
                     [
                         SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_pitch_state)
@@ -167,10 +165,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                             add_button_text(TEXT("Pitch"))
                         ]
                     ]
-                    +SHorizontalBox::Slot() 
-                    .FillWidth(1.f)
-                    .VAlign(VAlign_Fill)
-                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    +add_hlist_item()
                     [
                         SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_yaw_state)
