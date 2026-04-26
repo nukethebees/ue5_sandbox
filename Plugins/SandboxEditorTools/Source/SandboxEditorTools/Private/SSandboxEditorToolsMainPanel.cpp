@@ -17,14 +17,40 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
-    FMargin const section_padding{0.f, 0.f, 0.f, 8.f};
-
+void SSandboxEditorToolsSection::Construct(FArguments const& in_args) {
     auto const border_image{FAppStyle::Get().GetBrush("WhiteBrush")};
     auto const border_bg_colour{FLinearColor(0.1f, 0.1f, 0.1f)};
     auto const border_padding{8.f};
 
+    // clang-format off
+    ChildSlot
+    [
+        SNew(SBorder)
+        .Padding(border_padding)
+        .BorderImage(border_image)
+        .BorderBackgroundColor(border_bg_colour)
+        .Content()
+        [
+            in_args._Content.Widget
+        ]
+    ];
+    // clang-format on
+}
+
+void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
+    FMargin const section_padding{0.f, 0.f, 0.f, 8.f};
+
     FMargin const heading_padding{0.f, 4.f};
+
+    auto add_list_item{[&]() -> SVerticalBox::FSlot::FSlotArguments {
+        // clang-format off
+        return MoveTemp(SVerticalBox::Slot()
+        .AutoHeight()
+        .HAlign(HAlign_Fill)
+        .VAlign(EVerticalAlignment::VAlign_Fill)
+        .Padding(section_padding));
+        // clang-format on
+    }};
 
     // clang-format off
     ChildSlot
@@ -33,23 +59,12 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         // Cursor
         //------------------------------------------------------------------------------------------
         SNew(SVerticalBox)
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        .VAlign(EVerticalAlignment::VAlign_Fill)
-        .Padding(section_padding)
+        +add_list_item()
         [
-            SNew(SBorder)
-            .Padding(border_padding)
-            .BorderImage(border_image)
-            .BorderBackgroundColor(border_bg_colour)
+            SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
-                .VAlign(EVerticalAlignment::VAlign_Center)
-                .Padding(heading_padding)
+                +add_list_item()
                 [
                     SNew(STextBlock)
                     .Text(FText::FromString(TEXT("Cursor controls")))
@@ -107,24 +122,17 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         .HAlign(HAlign_Fill)
         .Padding(section_padding)
         [
-            SNew(SBorder)
-            .Padding(border_padding)
-            .BorderImage(border_image)
-            .BorderBackgroundColor(border_bg_colour)
+            SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
-                .Padding(heading_padding)
+                +add_list_item()
                 [
                     SNew(STextBlock)
                     .Text(FText::FromString(TEXT("Alignment")))
                     .Justification(ETextJustify::Center)
                 ]
                 +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
+                +add_list_item()
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_look_at_cursor_button_clicked)
@@ -135,8 +143,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                     ]
                 ]
                 +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
+                +add_list_item()
                 [
                     SNew(SHorizontalBox)
                     +SHorizontalBox::Slot() 
@@ -188,28 +195,19 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         // Layout
         //------------------------------------------------------------------------------------------
         +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        .Padding(section_padding)
+        +add_list_item()
         [
-            SNew(SBorder)
-            .BorderImage(border_image)
-            .BorderBackgroundColor(border_bg_colour)
-            .Padding(border_padding)
+            SNew(SSandboxEditorToolsSection)
             [
                 SNew(SVerticalBox)
-                +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
-                .Padding(heading_padding)
+                +add_list_item()
                 [
                     SNew(STextBlock)
                     .Text(FText::FromString(TEXT("Layout")))
                     .Justification(ETextJustify::Center)
                 ]
                 +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
+                +add_list_item()
                 [
                     SNew(SNumericVectorInputBox<double>)
                     .X_Lambda([&]() { return layout_offset.X; })
@@ -220,8 +218,7 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                     .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
                 ]
                 +SVerticalBox::Slot()
-                .AutoHeight()
-                .HAlign(HAlign_Fill)
+                +add_list_item()
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_align_cube_button_clicked)

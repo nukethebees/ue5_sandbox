@@ -11,6 +11,19 @@ class SEditableTextBox;
 
 class USandboxEditorToolsSubsystem;
 
+class SSandboxEditorToolsSection : public SCompoundWidget {
+  public:
+    using ThisClass = SSandboxEditorToolsSection;
+
+    // clang-format off
+    SLATE_BEGIN_ARGS(class SSandboxEditorToolsSection) {}
+        SLATE_DEFAULT_SLOT(FArguments, Content)
+    SLATE_END_ARGS()
+    // clang-format on
+
+    void Construct(FArguments const& args);
+};
+
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
     using ThisClass = SSandboxEditorToolsMainPanel;
