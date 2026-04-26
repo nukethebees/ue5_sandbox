@@ -9,13 +9,23 @@
 #include "SandboxEditorToolsSubsystem.h"
 
 #include "Engine/Engine.h"
+#include "Layout/Margin.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SVectorInputBox.h"
+#include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
+    FMargin const section_padding{0.f, 0.f, 0.f, 8.f};
+
+    auto const border_image{FAppStyle::Get().GetBrush("WhiteBrush")};
+    auto const border_bg_colour{FLinearColor(0.1f, 0.1f, 0.1f)};
+    auto const border_padding{8.f};
+
+    FMargin const heading_padding{0.f, 4.f};
+
     // clang-format off
     ChildSlot
     [
@@ -26,50 +36,66 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         +SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
+        .VAlign(EVerticalAlignment::VAlign_Fill)
+        .Padding(section_padding)
         [
-            SNew(STextBlock)
-            .Text(FText::FromString(TEXT("Cursor controls")))
-            .Justification(ETextJustify::Center)
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        [
-            SNew(SHorizontalBox)
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
+            SNew(SBorder)
+            .Padding(border_padding)
+            .BorderImage(border_image)
+            .BorderBackgroundColor(border_bg_colour)
             [
-                 SNew(SButton)
-                .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
+                SNew(SVerticalBox)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
+                .VAlign(EVerticalAlignment::VAlign_Center)
+                .Padding(heading_padding)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Spawn")))
+                    .Text(FText::FromString(TEXT("Cursor controls")))
                     .Justification(ETextJustify::Center)
                 ]
-            ]
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
-            [
-                SNew(SButton)
-                .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Destroy")))
-                    .Justification(ETextJustify::Center)
-                ]
-            ]
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
-            [
-                SNew(SButton)
-                .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Move to actor")))
-                    .Justification(ETextJustify::Center)
+                    SNew(SHorizontalBox)
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    [
+                         SNew(SButton)
+                        .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Spawn")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    [
+                        SNew(SButton)
+                        .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Destroy")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    [
+                        SNew(SButton)
+                        .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Move to actor")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -79,68 +105,82 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         +SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
+        .Padding(section_padding)
         [
-            SNew(STextBlock)
-            .Text(FText::FromString(TEXT("Alignment")))
-            .Justification(ETextJustify::Center)
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        [
-            SNew(SButton)
-            .OnClicked(this, &ThisClass::on_look_at_cursor_button_clicked)
+            SNew(SBorder)
+            .Padding(border_padding)
+            .BorderImage(border_image)
+            .BorderBackgroundColor(border_bg_colour)
             [
-                SNew(STextBlock)
-                .Text(FText::FromString(TEXT("Look at cursor")))
-                .Justification(ETextJustify::Center)
-            ]
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        [
-            SNew(SHorizontalBox)
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
-            .HAlign(EHorizontalAlignment::HAlign_Center)
-            [
-                 SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_roll_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_roll_state)
+                SNew(SVerticalBox)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
+                .Padding(heading_padding)
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Roll")))
+                    .Text(FText::FromString(TEXT("Alignment")))
                     .Justification(ETextJustify::Center)
                 ]
-            ]
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
-            .HAlign(EHorizontalAlignment::HAlign_Center)
-            [
-                SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_pitch_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_pitch_state)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Pitch")))
-                    .Justification(ETextJustify::Center)
+                    SNew(SButton)
+                    .OnClicked(this, &ThisClass::on_look_at_cursor_button_clicked)
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Look at cursor")))
+                        .Justification(ETextJustify::Center)
+                    ]
                 ]
-            ]
-            +SHorizontalBox::Slot() 
-            .FillWidth(1.f)
-            .VAlign(VAlign_Fill)
-            .HAlign(EHorizontalAlignment::HAlign_Center)
-            [
-                SNew(SCheckBox)
-                .IsChecked(this, &ThisClass::get_align_yaw_state)
-                .OnCheckStateChanged(this, &ThisClass::set_align_yaw_state)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
                 [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Yaw")))
-                    .Justification(ETextJustify::Center)
+                    SNew(SHorizontalBox)
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    [
+                         SNew(SCheckBox)
+                        .IsChecked(this, &ThisClass::get_align_roll_state)
+                        .OnCheckStateChanged(this, &ThisClass::set_align_roll_state)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Roll")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    [
+                        SNew(SCheckBox)
+                        .IsChecked(this, &ThisClass::get_align_pitch_state)
+                        .OnCheckStateChanged(this, &ThisClass::set_align_pitch_state)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Pitch")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
+                    +SHorizontalBox::Slot() 
+                    .FillWidth(1.f)
+                    .VAlign(VAlign_Fill)
+                    .HAlign(EHorizontalAlignment::HAlign_Center)
+                    [
+                        SNew(SCheckBox)
+                        .IsChecked(this, &ThisClass::get_align_yaw_state)
+                        .OnCheckStateChanged(this, &ThisClass::set_align_yaw_state)
+                        [
+                            SNew(STextBlock)
+                            .Text(FText::FromString(TEXT("Yaw")))
+                            .Justification(ETextJustify::Center)
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -150,33 +190,47 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
         +SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
+        .Padding(section_padding)
         [
-            SNew(STextBlock)
-            .Text(FText::FromString(TEXT("Layout")))
-            .Justification(ETextJustify::Center)
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        [
-            SNew(SNumericVectorInputBox<double>)
-            .X_Lambda([&]() { return layout_offset.X; })
-			.Y_Lambda([&]() { return layout_offset.Y; })
-			.Z_Lambda([&]() { return layout_offset.Z; })
-            .OnXChanged_Lambda([&](double v){ layout_offset.X = v; })
-            .OnYChanged_Lambda([&](double v){ layout_offset.Y = v; })
-            .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
-        ]
-        +SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        [
-            SNew(SButton)
-            .OnClicked(this, &ThisClass::on_align_cube_button_clicked)
+            SNew(SBorder)
+            .BorderImage(border_image)
+            .BorderBackgroundColor(border_bg_colour)
+            .Padding(border_padding)
             [
-                SNew(STextBlock)
-                .Text(FText::FromString(TEXT("Align cube")))
-                .Justification(ETextJustify::Center)
+                SNew(SVerticalBox)
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
+                .Padding(heading_padding)
+                [
+                    SNew(STextBlock)
+                    .Text(FText::FromString(TEXT("Layout")))
+                    .Justification(ETextJustify::Center)
+                ]
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
+                [
+                    SNew(SNumericVectorInputBox<double>)
+                    .X_Lambda([&]() { return layout_offset.X; })
+			        .Y_Lambda([&]() { return layout_offset.Y; })
+			        .Z_Lambda([&]() { return layout_offset.Z; })
+                    .OnXChanged_Lambda([&](double v){ layout_offset.X = v; })
+                    .OnYChanged_Lambda([&](double v){ layout_offset.Y = v; })
+                    .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
+                ]
+                +SVerticalBox::Slot()
+                .AutoHeight()
+                .HAlign(HAlign_Fill)
+                [
+                    SNew(SButton)
+                    .OnClicked(this, &ThisClass::on_align_cube_button_clicked)
+                    [
+                        SNew(STextBlock)
+                        .Text(FText::FromString(TEXT("Align cube")))
+                        .Justification(ETextJustify::Center)
+                    ]
+                ]
             ]
         ]
     ];
