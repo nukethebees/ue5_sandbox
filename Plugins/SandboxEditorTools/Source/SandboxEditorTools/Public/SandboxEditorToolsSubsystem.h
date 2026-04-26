@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LayoutSettings.h"
+
 #include "CoreMinimal.h"
 #include "EditorSubsystem.h"
 
@@ -27,10 +29,12 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
     void destroy_cursor();
 
     void align_actors_to_cursor(FRotationBool axes);
+    void position_actors(FLayoutSettings const settings);
   protected:
     void spawn_cursor();
     auto ensure_cursor_exists() -> TWeakObjectPtr<ACursor>;
     void align_actor_to(AActor& actor, AActor const& ref, FRotationBool axes);
+    auto get_selected_actors() -> TArray<AActor*>;
 
     void on_map_opened(FString const&, bool);
 

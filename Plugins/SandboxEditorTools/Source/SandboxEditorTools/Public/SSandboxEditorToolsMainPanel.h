@@ -25,8 +25,8 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
     auto on_move_cursor_to_button_clicked() -> FReply;
     auto on_spawn_cursor_button_clicked() -> FReply;
     auto on_destroy_cursor_button_clicked() -> FReply;
-
     auto on_look_at_cursor_button_clicked() -> FReply;
+    auto on_align_cube_button_clicked() -> FReply;
 
     auto get_align_roll_state() const -> ECheckBoxState;
     void set_align_roll_state(ECheckBoxState state);
@@ -37,4 +37,5 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     TSharedPtr<SEditableTextBox> selected_actor_name;
     FAlignAxesCheckboxStates align_axes_checkbox_states{};
+    FVector layout_offset{};
 };

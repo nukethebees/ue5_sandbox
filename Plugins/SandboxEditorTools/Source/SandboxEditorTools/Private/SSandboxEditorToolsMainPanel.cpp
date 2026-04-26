@@ -2,12 +2,16 @@
 
 #include "AlignAxesCheckboxStates.h"
 #include "Bool3.h"
+#include "GridLayoutShape.h"
+#include "LayoutOffsetMode.h"
+#include "LayoutSettings.h"
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
 
 #include "Engine/Engine.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SVectorInputBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -15,6 +19,9 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
     // clang-format off
     ChildSlot
     [
+        //------------------------------------------------------------------------------------------
+        // Cursor
+        //------------------------------------------------------------------------------------------
         SNew(SVerticalBox)
         +SVerticalBox::Slot()
         .AutoHeight()
@@ -66,6 +73,9 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 ]
             ]
         ]
+        //------------------------------------------------------------------------------------------
+        // Alignment
+        //------------------------------------------------------------------------------------------
         +SVerticalBox::Slot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
@@ -134,6 +144,41 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
                 ]
             ]
         ]
+        //------------------------------------------------------------------------------------------
+        // Layout
+        //------------------------------------------------------------------------------------------
+        +SVerticalBox::Slot()
+        .AutoHeight()
+        .HAlign(HAlign_Fill)
+        [
+            SNew(STextBlock)
+            .Text(FText::FromString(TEXT("Layout")))
+            .Justification(ETextJustify::Center)
+        ]
+        +SVerticalBox::Slot()
+        .AutoHeight()
+        .HAlign(HAlign_Fill)
+        [
+            SNew(SNumericVectorInputBox<double>)
+            .X_Lambda([&]() { return layout_offset.X; })
+			.Y_Lambda([&]() { return layout_offset.Y; })
+			.Z_Lambda([&]() { return layout_offset.Z; })
+            .OnXChanged_Lambda([&](double v){ layout_offset.X = v; })
+            .OnYChanged_Lambda([&](double v){ layout_offset.Y = v; })
+            .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
+        ]
+        +SVerticalBox::Slot()
+        .AutoHeight()
+        .HAlign(HAlign_Fill)
+        [
+            SNew(SButton)
+            .OnClicked(this, &ThisClass::on_align_cube_button_clicked)
+            [
+                SNew(STextBlock)
+                .Text(FText::FromString(TEXT("Align cube")))
+                .Justification(ETextJustify::Center)
+            ]
+        ]
     ];
     // clang-format on
 }
@@ -176,6 +221,18 @@ auto SSandboxEditorToolsMainPanel::on_look_at_cursor_button_clicked() -> FReply 
     auto* ss{get_subsystem()};
     if (ss) {
         ss->align_actors_to_cursor(align_axes_checkbox_states.to_bools());
+    }
+
+    return FReply::Handled();
+}
+auto SSandboxEditorToolsMainPanel::on_align_cube_button_clicked() -> FReply {
+    auto* ss{get_subsystem()};
+    if (ss) {
+        ss->position_actors(FLayoutSettings{
+            .shape = EGridLayoutShape::Cuboid,
+            .offset_mode = ELayoutOffsetMode::CentreToCentre,
+            .offset = layout_offset,
+        });
     }
 
     return FReply::Handled();

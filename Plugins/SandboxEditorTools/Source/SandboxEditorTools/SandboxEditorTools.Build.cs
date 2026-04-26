@@ -47,6 +47,7 @@ public class SandboxEditorTools : ModuleRules
                 "ToolWidgets",
                 "UnrealEd",
                 "WorkspaceMenuStructure",
+                "InputCore", // For SVectorInputBox.h
             }
             );
 
