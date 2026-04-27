@@ -39,6 +39,9 @@ class USandboxEditorToolsSubsystem : public UEditorSubsystem {
 
     void on_map_opened(FString const&, bool);
 
+    // Store transient information in the subsystem
+    // For permanent info, put it in an actor that you spawn in the level
+    // Use a folder like _Editor to hide the instances
     UPROPERTY(EditAnywhere, Transient)
     TWeakObjectPtr<ACursor> cursor{nullptr};
 };
