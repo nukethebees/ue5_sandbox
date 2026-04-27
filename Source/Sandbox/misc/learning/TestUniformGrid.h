@@ -37,8 +37,13 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     UStaticMeshComponent* preview_mesh{nullptr};
 
+    // Box size
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector box_extent{1000.f, 1000.f, 1000.f};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FIntVector grid_dimensions{3, 3, 3};
+
+    // Visualisation
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool show_preview{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
