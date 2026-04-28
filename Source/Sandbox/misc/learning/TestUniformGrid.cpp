@@ -35,6 +35,7 @@ void ATestUniformGrid::OnConstruction(FTransform const& transform) {
     preview_mesh->SetRelativeScale3D(box_extent * 2.0 / 100.0);
 
     create_material_instance();
+    update_grid_dimensions();
 }
 void ATestUniformGrid::create_material_instance() {
     if (!preview_material_parent) {
@@ -49,4 +50,11 @@ void ATestUniformGrid::create_material_instance() {
                                                        preview_material_settings.colour);
     preview_material_instance->SetScalarParameterValue(
         TEXT("opacity_edge_start"), preview_material_settings.opacity_edge_start);
+}
+void ATestUniformGrid::update_grid_dimensions() {
+    auto const nx{FMath::FloorToInt32(box_extent.X / cell_size.X)};
+    auto const ny{FMath::FloorToInt32(box_extent.Y / cell_size.Y)};
+    auto const nz{FMath::FloorToInt32(box_extent.Z / cell_size.Z)};
+
+    grid_dimensions = {nx, ny, nz};
 }

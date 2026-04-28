@@ -21,6 +21,11 @@ struct FTestUniformGridPreviewMaterialSettings {
     float opacity_edge_start{0.3f};
 };
 
+USTRUCT()
+struct FTestUniformGridCell {
+    GENERATED_BODY()
+};
+
 UCLASS()
 class ATestUniformGrid : public AActor {
   public:
@@ -31,6 +36,7 @@ class ATestUniformGrid : public AActor {
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
     void create_material_instance();
+    void update_grid_dimensions();
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     UBoxComponent* volume_box{nullptr};
@@ -41,7 +47,9 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector box_extent{1000.f, 1000.f, 1000.f};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FIntVector grid_dimensions{3, 3, 3};
+    FVector cell_size{100.f, 100.f, 100.f};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    FIntVector grid_dimensions{};
 
     // Visualisation
     UPROPERTY(EditAnywhere, Category = "Grid")
