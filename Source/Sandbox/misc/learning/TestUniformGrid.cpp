@@ -94,7 +94,8 @@ void ATestUniformGrid::draw_grid_points() {
                 auto const offset{cell_size * cell_scale};
                 auto const pos{origin + offset};
 
-                DrawDebugPoint(world, pos, point_visuals.size, point_visuals.colour, false, 0.f);
+                DrawDebugPoint(world, pos, point_visuals.size, point_visuals.colour, false);
+                DrawDebugBox(world, pos, cell_extent, point_visuals.colour, false);
             }
         }
     }
