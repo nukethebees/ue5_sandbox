@@ -90,6 +90,8 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool show_preview{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
+    bool draw_grid_debug_shapes{false};
+    UPROPERTY(EditAnywhere, Category = "Grid")
     UMaterialInterface* preview_material_parent{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     UMaterialInstanceDynamic* preview_material_instance{nullptr};

@@ -34,7 +34,9 @@ void ATestUniformGrid::OnConstruction(FTransform const& transform) {
 void ATestUniformGrid::Tick(float dt) {
     Super::Tick(dt);
 
+    if (draw_grid_debug_shapes) {
     draw_grid_points();
+}
 }
 
 void ATestUniformGrid::create_material_instance() {
@@ -58,7 +60,10 @@ void ATestUniformGrid::update_grid() {
     update_dimensions();
 #endif
     update_grid_coordinates();
-    draw_grid_points();
+
+    if (draw_grid_debug_shapes) {
+        draw_grid_points();
+    }
 }
 void ATestUniformGrid::update_grid_coordinates() {
     auto const nx{FMath::FloorToInt32(box_extent.X / cell_extent.X)};
