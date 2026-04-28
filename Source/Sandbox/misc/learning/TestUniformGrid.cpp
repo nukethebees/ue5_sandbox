@@ -3,6 +3,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Logging/LogMacros.h"
@@ -10,10 +11,13 @@
 
 ATestUniformGrid::ATestUniformGrid()
     : volume_box{CreateDefaultSubobject<UBoxComponent>(TEXT("volume_box"))}
-    , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))} {
+    , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))}
+    , cell_instances{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
+          TEXT("cell_instances"))} {
 
     check(volume_box);
     check(preview_mesh);
+    check(cell_instances);
 
     RootComponent = volume_box;
 

@@ -10,6 +10,7 @@ class UBoxComponent;
 class UStaticMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UHierarchicalInstancedStaticMeshComponent;
 
 struct FPropertyChangedEvent;
 
@@ -83,6 +84,8 @@ class ATestUniformGrid : public AActor {
     UBoxComponent* volume_box{nullptr};
     UPROPERTY(EditAnywhere, Category = "Grid")
     UStaticMeshComponent* preview_mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    UHierarchicalInstancedStaticMeshComponent* cell_instances{nullptr};
 
     // Box size
     UPROPERTY(EditAnywhere, Category = "Grid")
