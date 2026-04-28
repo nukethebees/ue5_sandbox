@@ -47,7 +47,8 @@ class ATestUniformGrid : public AActor {
 
     void Tick(float dt) override;
 
-    auto get_origin() const -> FVector;
+    auto get_box_origin() const -> FVector;
+    auto get_grid_origin() const -> FVector;
     auto get_box_dimensions() const -> FVector { return 2.0 * box_extent; }
     auto get_cell_dimensions() const -> FVector { return 2.0 * cell_extent; }
   protected:
@@ -57,6 +58,7 @@ class ATestUniformGrid : public AActor {
     void update_grid();
     void update_grid_coordinates();
     void draw_grid_points();
+    void configure_preview_mesh();
 
 #if WITH_EDITOR
     void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

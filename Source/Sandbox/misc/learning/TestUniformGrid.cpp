@@ -28,13 +28,6 @@ void ATestUniformGrid::BeginPlay() {
 void ATestUniformGrid::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    volume_box->SetBoxExtent(box_extent);
-
-    preview_mesh->SetVisibility(show_preview, true);
-    // box_extent is half size
-    // Assuming standard 100x100x100 cube
-    preview_mesh->SetRelativeScale3D(box_extent * 2.0 / 100.0);
-
     create_material_instance();
     update_grid();
 }
@@ -59,6 +52,8 @@ void ATestUniformGrid::create_material_instance() {
         TEXT("opacity_edge_start"), preview_material_settings.opacity_edge_start);
 }
 void ATestUniformGrid::update_grid() {
+    volume_box->SetBoxExtent(box_extent);
+    configure_preview_mesh();
 #if WITH_EDITOR
     update_dimensions();
 #endif
@@ -79,7 +74,7 @@ void ATestUniformGrid::draw_grid_points() {
         return;
     }
 
-    auto const origin{get_origin()};
+    auto const origin{get_grid_origin()};
     auto const counts{grid_cell_counts};
     auto const cell_size{get_cell_dimensions()};
 
@@ -100,8 +95,17 @@ void ATestUniformGrid::draw_grid_points() {
         }
     }
 }
-auto ATestUniformGrid::get_origin() const -> FVector {
+auto ATestUniformGrid::get_box_origin() const -> FVector {
     return GetActorLocation() - box_extent;
+}
+auto ATestUniformGrid::get_grid_origin() const -> FVector {
+    return get_box_origin() + cell_extent;
+}
+void ATestUniformGrid::configure_preview_mesh() {
+    preview_mesh->SetVisibility(show_preview, true);
+    // box_extent is half size
+    // Assuming standard 100x100x100 cube
+    preview_mesh->SetRelativeScale3D(box_extent * 2.0 / 100.0);
 }
 
 #if WITH_EDITOR
