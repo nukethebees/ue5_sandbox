@@ -35,8 +35,8 @@ void ATestUniformGrid::Tick(float dt) {
     Super::Tick(dt);
 
     if (draw_grid_debug_shapes) {
-    draw_grid_points();
-}
+        draw_grid_points();
+    }
 }
 
 void ATestUniformGrid::create_material_instance() {
@@ -86,14 +86,7 @@ void ATestUniformGrid::draw_grid_points() {
     for (int32 x{0}; x < counts.X; ++x) {
         for (int32 y{0}; y < counts.Y; ++y) {
             for (int32 z{0}; z < counts.Z; ++z) {
-                FVector const cell_scale{
-                    static_cast<double>(x),
-                    static_cast<double>(y),
-                    static_cast<double>(z),
-                };
-                auto const offset{cell_size * cell_scale};
-                auto const pos{origin + offset};
-
+                auto const pos{get_cell_position(origin, cell_size, x, y, z)};
                 DrawDebugPoint(world, pos, point_visuals.size, point_visuals.colour, false);
                 DrawDebugBox(world, pos, cell_extent, point_visuals.colour, false);
             }

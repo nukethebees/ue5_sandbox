@@ -51,6 +51,19 @@ class ATestUniformGrid : public AActor {
     auto get_grid_origin() const -> FVector;
     auto get_box_dimensions() const -> FVector { return 2.0 * box_extent; }
     auto get_cell_dimensions() const -> FVector { return 2.0 * cell_extent; }
+    static auto get_cell_position(FVector const& origin,
+                                  FVector const& cell_size,
+                                  int32 const x,
+                                  int32 const y,
+                                  int32 const z) -> FVector {
+        FVector const offset{
+            static_cast<double>(x) * cell_size.X,
+            static_cast<double>(y) * cell_size.Y,
+            static_cast<double>(z) * cell_size.Z,
+        };
+        auto const pos{origin + offset};
+        return pos;
+    }
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
