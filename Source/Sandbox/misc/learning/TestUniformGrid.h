@@ -15,9 +15,11 @@ class UHierarchicalInstancedStaticMeshComponent;
 struct FPropertyChangedEvent;
 
 USTRUCT()
-struct FTestUniformGridPreviewMaterialSettings {
+struct FTestUniformGridBoxPreviewSettings {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    bool visible{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FLinearColor colour{FLinearColor::Blue};
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -29,9 +31,21 @@ struct FTestUniformGridPointVisuals {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Grid")
+    bool visible{false};
+    UPROPERTY(EditAnywhere, Category = "Grid")
     FColor colour{FColor::Green};
     UPROPERTY(EditAnywhere, Category = "Grid")
     float size{12.f};
+};
+
+USTRUCT()
+struct FTestUniformGridCellPreviewSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    bool visible{true};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FVector scale{FVector::OneVector};
 };
 
 USTRUCT()
@@ -65,14 +79,25 @@ class ATestUniformGrid : public AActor {
         auto const pos{origin + offset};
         return pos;
     }
+    auto get_cell_transform(FVector const& position, FVector const& mesh_extent) const
+        -> FTransform;
+    auto get_num_cells() const {
+        return grid_cell_counts.X * grid_cell_counts.Y * grid_cell_counts.Z;
+    }
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
-    void create_material_instance();
+    // Grid
     void update_grid();
     void update_grid_coordinates();
-    void draw_grid_points();
+    // Box
+    void configure_box();
     void configure_preview_mesh();
+    void create_material_instance();
+    // Cells
+    void configure_cell_ism();
+    void draw_cell_meshes();
+    void draw_grid_debug_points();
 
 #if WITH_EDITOR
     void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -81,11 +106,12 @@ class ATestUniformGrid : public AActor {
 #endif
 
     UPROPERTY(EditAnywhere, Category = "Grid")
-    UBoxComponent* volume_box{nullptr};
+    TObjectPtr<UBoxComponent> volume_box{nullptr};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    UStaticMeshComponent* preview_mesh{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Grid")
-    UHierarchicalInstancedStaticMeshComponent* cell_instances{nullptr};
+    TObjectPtr<UStaticMeshComponent> preview_mesh{nullptr};
+    // Can't show this in the editor due to performance issues
+    UPROPERTY(EditDefaultsOnly, Category = "Grid")
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> cell_instances{nullptr};
 
     // Box size
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -106,14 +132,13 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool show_preview{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    bool draw_grid_debug_shapes{false};
-    UPROPERTY(EditAnywhere, Category = "Grid")
     UMaterialInterface* preview_material_parent{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     UMaterialInstanceDynamic* preview_material_instance{nullptr};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FTestUniformGridPreviewMaterialSettings preview_material_settings{};
-
+    FTestUniformGridBoxPreviewSettings box_preview_settings{};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FTestUniformGridCellPreviewSettings cell_preview_settings{};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FTestUniformGridPointVisuals point_visuals{};
 };
