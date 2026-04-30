@@ -122,10 +122,12 @@ class ATestUniformGrid : public AActor {
     FIntVector grid_cell_counts{};
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
-    FVector box_dimensions{};
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
-    FVector cell_dimensions{};
+    UPROPERTY(VisibleAnywhere, Category = "Grid|Editor", meta = (DisplayName = "Num cells"))
+    int32 num_cells_{0};
+    UPROPERTY(VisibleAnywhere, Category = "Grid|Editor", meta = (DisplayName = "Box dimensions"))
+    FVector box_dimensions_{};
+    UPROPERTY(VisibleAnywhere, Category = "Grid|Editor", meta = (DisplayName = "Cell dimensions"))
+    FVector cell_dimensions_{};
 #endif
 
     // Visualisation

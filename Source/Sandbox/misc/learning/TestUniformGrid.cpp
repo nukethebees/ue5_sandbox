@@ -10,6 +10,8 @@
 #include "Logging/LogMacros.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+
+
 ATestUniformGrid::ATestUniformGrid()
     : volume_box{CreateDefaultSubobject<UBoxComponent>(TEXT("volume_box"))}
     , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))}
@@ -258,7 +260,8 @@ void ATestUniformGrid::PostEditChangeProperty(FPropertyChangedEvent& event) {
 }
 
 void ATestUniformGrid::update_dimensions() {
-    box_dimensions = get_box_dimensions();
-    cell_dimensions = get_cell_dimensions();
+    num_cells_ = get_num_cells();
+    box_dimensions_ = get_box_dimensions();
+    cell_dimensions_ = get_cell_dimensions();
 }
 #endif
