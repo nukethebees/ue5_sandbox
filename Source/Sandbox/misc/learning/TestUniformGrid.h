@@ -132,8 +132,6 @@ class ATestUniformGrid : public AActor {
 
     // Visualisation
     UPROPERTY(EditAnywhere, Category = "Grid")
-    bool show_preview{true};
-    UPROPERTY(EditAnywhere, Category = "Grid")
     UMaterialInterface* preview_material_parent{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     UMaterialInstanceDynamic* preview_material_instance{nullptr};

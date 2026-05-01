@@ -10,8 +10,6 @@
 #include "Logging/LogMacros.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-
-
 ATestUniformGrid::ATestUniformGrid()
     : volume_box{CreateDefaultSubobject<UBoxComponent>(TEXT("volume_box"))}
     , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))}
@@ -67,9 +65,7 @@ void ATestUniformGrid::update_grid() {
         draw_grid_debug_points();
     }
 
-    if (cell_preview_settings.visible) {
-        draw_cell_meshes();
-    }
+    draw_cell_meshes();
 }
 void ATestUniformGrid::update_grid_coordinates() {
     auto const nx{FMath::FloorToInt32(box_extent.X / cell_extent.X)};
@@ -125,7 +121,7 @@ void ATestUniformGrid::configure_box() {
     volume_box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 void ATestUniformGrid::configure_preview_mesh() {
-    preview_mesh->SetVisibility(show_preview, box_preview_settings.visible);
+    preview_mesh->SetVisibility(box_preview_settings.visible, box_preview_settings.visible);
     // box_extent is half size
     // Assuming standard 100x100x100 cube
     preview_mesh->SetRelativeScale3D(box_extent * 2.0 / 100.0);
@@ -160,6 +156,8 @@ void ATestUniformGrid::configure_cell_ism() {
 }
 void ATestUniformGrid::draw_cell_meshes() {
     UE_LOG(LogSandboxLearning, Display, TEXT("draw_cell_meshes()"));
+
+    cell_instances->SetVisibility(cell_preview_settings.visible);
 
     auto const cell_mesh{cell_instances->GetStaticMesh()};
 
