@@ -42,6 +42,10 @@ USTRUCT()
 struct FScale3D {
     GENERATED_BODY()
 
+    FScale3D() noexcept = default;
+    FScale3D(FVector non_uniform) noexcept;
+    FScale3D(float uniform) noexcept;
+
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool use_uniform_scale{true};
     UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "!use_uniform_scale"))
@@ -55,6 +59,10 @@ struct FScale3D {
 USTRUCT()
 struct FTestUniformGridCellPreviewSettings {
     GENERATED_BODY()
+
+    FTestUniformGridCellPreviewSettings() noexcept = default;
+    FTestUniformGridCellPreviewSettings(FVector non_uniform) noexcept;
+    FTestUniformGridCellPreviewSettings(float uniform) noexcept;
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool visible{true};
@@ -96,8 +104,9 @@ class ATestUniformGrid : public AActor {
         auto const pos{origin + offset};
         return pos;
     }
-    auto get_cell_transform(FVector const& position, FVector const& mesh_extent, FVector const& scale_factor) const
-        -> FTransform;
+    auto get_cell_transform(FVector const& position,
+                            FVector const& mesh_extent,
+                            FVector const& scale_factor) const -> FTransform;
     auto get_num_cells() const {
         return grid_cell_counts.X * grid_cell_counts.Y * grid_cell_counts.Z;
     }
@@ -158,9 +167,9 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     FTestUniformGridBoxPreviewSettings box_preview_settings{};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FTestUniformGridCellPreviewSettings cell_bounds_preview_settings{};
+    FTestUniformGridCellPreviewSettings cell_bounds_preview_settings{FVector::OneVector};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FTestUniformGridCellPreviewSettings cell_points_preview_settings{};
+    FTestUniformGridCellPreviewSettings cell_points_preview_settings{0.05f};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FTestUniformGridPointVisuals point_visuals{};
 };
