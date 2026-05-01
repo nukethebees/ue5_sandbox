@@ -44,8 +44,15 @@ struct FTestUniformGridCellPreviewSettings {
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool visible{true};
+
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FVector scale{FVector::OneVector};
+    bool use_uniform_scale{true};
+    UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "!use_uniform_scale"))
+    FVector non_uniform_scale{FVector::OneVector};
+    UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "use_uniform_scale"))
+    float uniform_scale{1.f};
+
+    auto get_scale() const -> FVector;
 };
 
 USTRUCT()

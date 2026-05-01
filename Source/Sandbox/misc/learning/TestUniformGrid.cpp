@@ -10,6 +10,14 @@
 #include "Logging/LogMacros.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+auto FTestUniformGridCellPreviewSettings::get_scale() const -> FVector {
+    if (use_uniform_scale) {
+        return {uniform_scale, uniform_scale, uniform_scale};
+    } else {
+        return non_uniform_scale;
+    }
+}
+
 ATestUniformGrid::ATestUniformGrid()
     : volume_box{CreateDefaultSubobject<UBoxComponent>(TEXT("volume_box"))}
     , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))}
@@ -131,7 +139,7 @@ void ATestUniformGrid::configure_preview_mesh() {
 // Cells
 auto ATestUniformGrid::get_cell_transform(FVector const& position, FVector const& mesh_extent) const
     -> FTransform {
-    auto const scale{cell_extent / mesh_extent * cell_preview_settings.scale};
+    auto const scale{cell_extent / mesh_extent * cell_preview_settings.get_scale()};
 
     return FTransform{FRotator::ZeroRotator, position, scale};
 }
