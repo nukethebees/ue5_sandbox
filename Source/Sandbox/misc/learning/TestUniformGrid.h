@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Scale3D.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
@@ -36,24 +38,6 @@ struct FTestUniformGridPointVisuals {
     FColor colour{FColor::Green};
     UPROPERTY(EditAnywhere, Category = "Grid")
     float size{12.f};
-};
-
-USTRUCT()
-struct FScale3D {
-    GENERATED_BODY()
-
-    FScale3D() noexcept = default;
-    FScale3D(FVector non_uniform) noexcept;
-    FScale3D(float uniform) noexcept;
-
-    UPROPERTY(EditAnywhere, Category = "Grid")
-    bool use_uniform_scale{true};
-    UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "!use_uniform_scale"))
-    FVector non_uniform_scale{FVector::OneVector};
-    UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "use_uniform_scale"))
-    float uniform_scale{1.f};
-
-    auto get() const -> FVector;
 };
 
 USTRUCT()
