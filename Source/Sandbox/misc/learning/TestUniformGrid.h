@@ -39,11 +39,8 @@ struct FTestUniformGridPointVisuals {
 };
 
 USTRUCT()
-struct FTestUniformGridCellPreviewSettings {
+struct FScale3D {
     GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, Category = "Grid")
-    bool visible{true};
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool use_uniform_scale{true};
@@ -52,7 +49,20 @@ struct FTestUniformGridCellPreviewSettings {
     UPROPERTY(EditAnywhere, Category = "Grid", meta = (EditCondition = "use_uniform_scale"))
     float uniform_scale{1.f};
 
-    auto get_scale() const -> FVector;
+    auto get() const -> FVector;
+};
+
+USTRUCT()
+struct FTestUniformGridCellPreviewSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    bool visible{true};
+
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FScale3D scale{};
+
+    auto get_scale() const -> FVector { return scale.get(); }
 };
 
 USTRUCT()
@@ -86,7 +96,7 @@ class ATestUniformGrid : public AActor {
         auto const pos{origin + offset};
         return pos;
     }
-    auto get_cell_transform(FVector const& position, FVector const& mesh_extent) const
+    auto get_cell_transform(FVector const& position, FVector const& mesh_extent, FVector const& scale_factor) const
         -> FTransform;
     auto get_num_cells() const {
         return grid_cell_counts.X * grid_cell_counts.Y * grid_cell_counts.Z;
@@ -102,6 +112,7 @@ class ATestUniformGrid : public AActor {
     void configure_preview_mesh();
     void create_material_instance();
     // Cells
+    void configure_cell_ism(UHierarchicalInstancedStaticMeshComponent& hism);
     void configure_cell_ism();
     void draw_cell_meshes();
     void draw_grid_debug_points();
@@ -118,7 +129,9 @@ class ATestUniformGrid : public AActor {
     TObjectPtr<UStaticMeshComponent> preview_mesh{nullptr};
     // Can't show this in the editor due to performance issues
     UPROPERTY(EditDefaultsOnly, Category = "Grid")
-    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> cell_instances{nullptr};
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> cell_bounds_instances{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Grid")
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> cell_points_instances{nullptr};
 
     // Box size
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -145,7 +158,9 @@ class ATestUniformGrid : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     FTestUniformGridBoxPreviewSettings box_preview_settings{};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    FTestUniformGridCellPreviewSettings cell_preview_settings{};
+    FTestUniformGridCellPreviewSettings cell_bounds_preview_settings{};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FTestUniformGridCellPreviewSettings cell_points_preview_settings{};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FTestUniformGridPointVisuals point_visuals{};
 };

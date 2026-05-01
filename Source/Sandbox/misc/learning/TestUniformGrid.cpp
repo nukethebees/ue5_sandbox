@@ -10,7 +10,7 @@
 #include "Logging/LogMacros.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-auto FTestUniformGridCellPreviewSettings::get_scale() const -> FVector {
+auto FScale3D::get() const -> FVector {
     if (use_uniform_scale) {
         return {uniform_scale, uniform_scale, uniform_scale};
     } else {
@@ -21,17 +21,21 @@ auto FTestUniformGridCellPreviewSettings::get_scale() const -> FVector {
 ATestUniformGrid::ATestUniformGrid()
     : volume_box{CreateDefaultSubobject<UBoxComponent>(TEXT("volume_box"))}
     , preview_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("preview_mesh"))}
-    , cell_instances{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
-          TEXT("cell_instances"))} {
+    , cell_bounds_instances{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
+          TEXT("cell_bounds_instances"))}
+    , cell_points_instances{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
+          TEXT("cell_points_instances"))} {
 
     check(volume_box);
     check(preview_mesh);
-    check(cell_instances);
+    check(cell_bounds_instances);
+    check(cell_points_instances);
 
     RootComponent = volume_box;
 
     preview_mesh->SetupAttachment(RootComponent);
-    cell_instances->SetupAttachment(RootComponent);
+    cell_bounds_instances->SetupAttachment(RootComponent);
+    cell_points_instances->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bStartWithTickEnabled = true;
     PrimaryActorTick.bCanEverTick = true;
@@ -137,64 +141,85 @@ void ATestUniformGrid::configure_preview_mesh() {
 }
 
 // Cells
-auto ATestUniformGrid::get_cell_transform(FVector const& position, FVector const& mesh_extent) const
-    -> FTransform {
-    auto const scale{cell_extent / mesh_extent * cell_preview_settings.get_scale()};
+auto ATestUniformGrid::get_cell_transform(FVector const& position,
+                                          FVector const& mesh_extent,
+                                          FVector const& scale_factor) const -> FTransform {
+    auto const scale{cell_extent / mesh_extent * scale_factor};
 
     return FTransform{FRotator::ZeroRotator, position, scale};
 }
-void ATestUniformGrid::configure_cell_ism() {
+void ATestUniformGrid::configure_cell_ism(UHierarchicalInstancedStaticMeshComponent& hism) {
     // Collision
-    cell_instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    cell_instances->SetCollisionResponseToAllChannels(ECR_Ignore);
-    cell_instances->SetGenerateOverlapEvents(false);
-    cell_instances->SetAllUseCCD(false);
-    cell_instances->SetAllUseMACD(false);
-    cell_instances->SetEnableGravity(false);
+    hism.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    hism.SetCollisionResponseToAllChannels(ECR_Ignore);
+    hism.SetGenerateOverlapEvents(false);
+    hism.SetAllUseCCD(false);
+    hism.SetAllUseMACD(false);
+    hism.SetEnableGravity(false);
 
     // Visuals
-    cell_instances->SetCastShadow(false);
-    cell_instances->bCastDynamicShadow = false;
-    cell_instances->bCastStaticShadow = false;
-    cell_instances->SetAffectDistanceFieldLighting(false);
-    cell_instances->SetAffectDynamicIndirectLighting(false);
-    cell_instances->SetAffectIndirectLightingWhileHidden(false);
+    hism.SetCastShadow(false);
+    hism.bCastDynamicShadow = false;
+    hism.bCastStaticShadow = false;
+    hism.SetAffectDistanceFieldLighting(false);
+    hism.SetAffectDynamicIndirectLighting(false);
+    hism.SetAffectIndirectLightingWhileHidden(false);
 
-    cell_instances->SetCanEverAffectNavigation(false);
+    hism.SetCanEverAffectNavigation(false);
+}
+void ATestUniformGrid::configure_cell_ism() {
+    configure_cell_ism(*cell_bounds_instances);
+    configure_cell_ism(*cell_points_instances);
 }
 void ATestUniformGrid::draw_cell_meshes() {
     UE_LOG(LogSandboxLearning, Display, TEXT("draw_cell_meshes()"));
 
-    cell_instances->SetVisibility(cell_preview_settings.visible);
+    cell_bounds_instances->SetVisibility(cell_bounds_preview_settings.visible);
+    cell_points_instances->SetVisibility(cell_points_preview_settings.visible);
 
-    auto const cell_mesh{cell_instances->GetStaticMesh()};
-
-    if (!cell_instances->GetStaticMesh()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("cell_instances has no static mesh."))
+    auto const bounds_mesh{cell_bounds_instances->GetStaticMesh()};
+    if (!bounds_mesh) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("cell_bounds_instances has no static mesh."))
+        return;
+    }
+    auto const point_mesh{cell_points_instances->GetStaticMesh()};
+    if (!point_mesh) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("cell_points_instances has no static mesh."))
         return;
     }
 
     auto const origin{get_grid_origin()};
     auto const counts{grid_cell_counts};
     auto const cell_size{get_cell_dimensions()};
-    auto const mesh_bounds{cell_mesh->GetBounds()};
+    auto const bounds_mesh_bounds{bounds_mesh->GetBounds()};
+    auto const points_mesh_bounds{point_mesh->GetBounds()};
 
-    TArray<FTransform> transforms;
     auto const num_cells{get_num_cells()};
-    transforms.Reserve(num_cells);
+    TArray<FTransform> bounds_transforms;
+    bounds_transforms.Reserve(num_cells);
+    TArray<FTransform> points_transforms;
+    points_transforms.Reserve(num_cells);
+
+    auto const bounds_scale_factor{cell_bounds_preview_settings.get_scale()};
+    auto const points_scale_factor{cell_points_preview_settings.get_scale()};
 
     for (int32 x{0}; x < counts.X; ++x) {
         for (int32 y{0}; y < counts.Y; ++y) {
             for (int32 z{0}; z < counts.Z; ++z) {
                 auto const pos{get_cell_position(origin, cell_size, x, y, z)};
-                auto const transform{get_cell_transform(pos, mesh_bounds.BoxExtent)};
-                transforms.Emplace(transform);
+                auto const bounds_transform{
+                    get_cell_transform(pos, bounds_mesh_bounds.BoxExtent, bounds_scale_factor)};
+                bounds_transforms.Emplace(bounds_transform);
+
+                auto const point_transform{
+                    get_cell_transform(pos, points_mesh_bounds.BoxExtent, points_scale_factor)};
+                points_transforms.Emplace(point_transform);
             }
         }
     }
 
     // Get current instance count
-    auto const num_hism_instances{cell_instances->GetInstanceCount()};
+    auto const num_hism_instances{cell_bounds_instances->GetInstanceCount()};
     auto const num_new_hism_instances_needed{num_cells - num_hism_instances};
 
     UE_LOG(LogSandboxLearning, Verbose, TEXT("num_cells: %d"), num_cells);
@@ -211,13 +236,17 @@ void ATestUniformGrid::draw_cell_meshes() {
     constexpr bool teleport{true};
 
     if (num_new_hism_instances_needed > 0) {
-        cell_instances->PreAllocateInstancesMemory(num_new_hism_instances_needed);
+        cell_bounds_instances->PreAllocateInstancesMemory(num_new_hism_instances_needed);
+        cell_points_instances->PreAllocateInstancesMemory(num_new_hism_instances_needed);
+
         TArray<FTransform> dummies;
         dummies.Reserve(num_new_hism_instances_needed);
         for (int32 i{0}; i < num_new_hism_instances_needed; i++) {
             dummies.Add(FTransform::Identity);
         }
-        cell_instances->AddInstances(dummies, return_indices, world_space, update_nav);
+
+        cell_bounds_instances->AddInstances(dummies, return_indices, world_space, update_nav);
+        cell_points_instances->AddInstances(dummies, return_indices, world_space, update_nav);
     } else if (num_new_hism_instances_needed < 0) {
         auto const num_instances_to_hide{FMath::Abs(num_new_hism_instances_needed)};
 
@@ -232,24 +261,33 @@ void ATestUniformGrid::draw_cell_meshes() {
                num_instances_to_hide,
                start_index);
 
-        cell_instances->BatchUpdateInstancesTransform(start_index,
-                                                      num_instances_to_hide,
-                                                      hidden_transform,
-                                                      world_space,
-                                                      mark_render_dirty,
-                                                      teleport);
+        cell_bounds_instances->BatchUpdateInstancesTransform(start_index,
+                                                             num_instances_to_hide,
+                                                             hidden_transform,
+                                                             world_space,
+                                                             mark_render_dirty,
+                                                             teleport);
+        cell_points_instances->BatchUpdateInstancesTransform(start_index,
+                                                             num_instances_to_hide,
+                                                             hidden_transform,
+                                                             world_space,
+                                                             mark_render_dirty,
+                                                             teleport);
     }
 
     UE_LOG(LogSandboxLearning,
            Verbose,
            TEXT("Updating %d transforms for %d cells"),
-           transforms.Num(),
+           bounds_transforms.Num(),
            num_cells);
 
-    cell_instances->BatchUpdateInstancesTransforms(
-        0, transforms, world_space, mark_render_dirty, teleport);
+    cell_bounds_instances->BatchUpdateInstancesTransforms(
+        0, bounds_transforms, world_space, mark_render_dirty, teleport);
+    cell_points_instances->BatchUpdateInstancesTransforms(
+        0, points_transforms, world_space, mark_render_dirty, teleport);
 
-    cell_instances->MarkRenderStateDirty();
+    cell_bounds_instances->MarkRenderStateDirty();
+    cell_points_instances->MarkRenderStateDirty();
 }
 
 #if WITH_EDITOR
