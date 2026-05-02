@@ -209,8 +209,7 @@ void ATestUniformGrid::draw_cell_meshes() {
                     get_cell_transform(pos, bounds_mesh_bounds.BoxExtent, bounds_scale_factor)};
                 bounds_transforms.Emplace(bounds_transform);
 
-                auto const point_transform{
-                    get_cell_transform(pos, points_mesh_bounds.BoxExtent, points_scale_factor)};
+                FTransform const point_transform{FRotator::ZeroRotator, pos, points_scale_factor};
                 points_transforms.Emplace(point_transform);
             }
         }
