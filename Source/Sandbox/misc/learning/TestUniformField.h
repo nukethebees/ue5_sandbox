@@ -13,6 +13,7 @@
 #include "TestUniformField.generated.h"
 
 class UHierarchicalInstancedStaticMeshComponent;
+class UWorld;
 
 USTRUCT()
 struct FTestUniformFieldCell {
@@ -32,9 +33,12 @@ class ATestUniformField : public AActor {
 
     void Tick(float dt) override;
 
+    static auto find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField>;
+    auto sample_field(FVector const& position) const -> FTestUniformFieldCell;
+
     void add_source(FTestUniformFieldPointSourceData const& source);
     auto get_coord(FVector const& pos) const -> FIntVector;
-    auto get_index(FIntVector const& pos) const -> int32;
+    auto get_index(FIntVector const& coord) const -> int32;
     auto get_index(FVector const& pos) const -> int32;
 
     auto get_num_cells() const -> int32;

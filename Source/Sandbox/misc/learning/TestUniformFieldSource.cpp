@@ -1,7 +1,6 @@
 #include "TestUniformFieldSource.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/world.h"
 #include "TestUniformField.h"
 
 #include "Components/SceneComponent.h"
@@ -47,7 +46,7 @@ void ATestUniformFieldPointSource::update_source() {
     source.coordinate = GetActorLocation();
 }
 void ATestUniformFieldPointSource::find_field() {
-    field = ml::get_first_actor<ATestUniformField>(*GetWorld());
+    field = ATestUniformField::find_field(*GetWorld());
 }
 void ATestUniformFieldPointSource::broadcast_to_field() {
     if (!field.IsValid()) {

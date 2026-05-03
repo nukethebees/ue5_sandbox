@@ -1,6 +1,7 @@
 #include "TestUniformField.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/world.h"
 
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -52,6 +53,14 @@ void ATestUniformField::OnConstruction(FTransform const& transform) {
     construct_grid();
     configure_visualisation_component();
     update_visualisation();
+}
+
+auto ATestUniformField::find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField> {
+    return ml::get_first_actor<ATestUniformField>(world);
+}
+auto ATestUniformField::sample_field(FVector const& position) const -> FTestUniformFieldCell {
+    auto const i{get_index(position)};
+    return cells[i];
 }
 
 void ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) {
@@ -216,10 +225,23 @@ void ATestUniformField::update_visualisation() {
 }
 
 auto ATestUniformField::get_coord(FVector const& pos) const -> FIntVector {
-    return {};
+    auto const origin{get_origin_cell_centre()};
+    auto const delta{pos - origin};
+    auto const dimensions{get_cell_dimensions()};
+    FIntVector coord{delta / dimensions};
+
+    return coord;
 }
-auto ATestUniformField::get_index(FIntVector const& pos) const -> int32 {
-    return {};
+auto ATestUniformField::get_index(FIntVector const& coord) const -> int32 {
+    auto const gx{grid_dimensions.X};
+    auto const gy{grid_dimensions.Y};
+    auto const gz{grid_dimensions.Z};
+
+    auto const cx{coord.X};
+    auto const cy{coord.Y};
+    auto const cz{coord.Z};
+
+    return (cx * (gy * gz)) + (cy * gz) + (cz % gz);
 }
 auto ATestUniformField::get_index(FVector const& pos) const -> int32 {
     return get_index(get_coord(pos));
