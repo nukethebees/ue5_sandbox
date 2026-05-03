@@ -6,6 +6,7 @@
 #include "TestUniformFieldSource.generated.h"
 
 class UStaticMeshComponent;
+class ATestUniformField;
 
 USTRUCT()
 struct FTestUniformFieldPointSourceData {
@@ -14,7 +15,7 @@ struct FTestUniformFieldPointSourceData {
     UPROPERTY(EditAnywhere, Category = "Field")
     FVector coordinate{};
     UPROPERTY(EditAnywhere, Category = "Field")
-    float strength{0.f};
+    float strength{0.f}; // Positive is repulsive
     UPROPERTY(EditAnywhere, Category = "Field")
     float falloff{-2.f}; // pow(distance, falloff)
     UPROPERTY(EditAnywhere, Category = "Field")
@@ -32,9 +33,27 @@ class ATestUniformFieldPointSource : public AActor {
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
 
+    void update_source();
+    void find_field();
+    void broadcast_to_field();
+
     UPROPERTY(EditAnywhere, Category = "Field")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
 
+    UPROPERTY()
+    TWeakObjectPtr<ATestUniformField> field{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "Field")
     FTestUniformFieldPointSourceData source{};
+
+#if WITH_EDITOR
+    auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
+#endif
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    float dbg_log_cooldown{1.f};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    float dbg_log_timer{0};
+#endif
 };

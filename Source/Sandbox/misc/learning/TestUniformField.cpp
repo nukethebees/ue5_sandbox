@@ -28,11 +28,20 @@ void ATestUniformField::BeginPlay() {
 void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);
 
+#if WITH_EDITOR
+    dbg_log_timer += dt;
+#endif
+
+    reset_cells();
     update_cells();
 
-    if (display_vectors) {
-        update_visualisation();
+    update_visualisation();
+
+#if WITH_EDITOR
+    if (dbg_log_timer >= dbg_log_cooldown) {
+        dbg_log_timer = 0.f;
     }
+#endif
 }
 void ATestUniformField::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
@@ -66,8 +75,16 @@ void ATestUniformField::update_cells() {
             auto const displacement{cell_pos - source_pos};
             auto const dist{displacement.Length()};
 
-            auto const strength{ps.strength * FMath::Pow(dist, dist)};
+            auto const strength{ps.strength * FMath::Pow(dist, ps.falloff)};
             auto const potential{displacement.GetSafeNormal() * strength};
+
+#if WITH_EDITOR
+            if (can_log()) {
+                if (((i % 5) == 0) && (i < 25)) {
+                    UE_LOG(LogSandboxLearning, Display, TEXT("i(%d): strength=%.2f"), i, strength);
+                }
+            }
+#endif
 
             auto& cell{cells[i]};
             cell.potential += potential;

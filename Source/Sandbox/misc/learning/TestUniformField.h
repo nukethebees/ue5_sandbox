@@ -81,4 +81,15 @@ class ATestUniformField : public AActor {
     bool display_vectors{true};
 
     TArray<FTransform> vector_transforms;
+
+#if WITH_EDITOR
+    auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
+#endif
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    float dbg_log_cooldown{1.f};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    float dbg_log_timer{0};
+#endif
 };
