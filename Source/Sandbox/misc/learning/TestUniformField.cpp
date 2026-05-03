@@ -5,6 +5,8 @@
 
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 
 #include <algorithm>
 #include <limits>
@@ -14,10 +16,12 @@ void FTestUniformFieldCell::reset() {
 }
 
 ATestUniformField::ATestUniformField()
-    : vector_meshes{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
+    : box_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("box_mesh"))}
+    , vector_meshes{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(
           TEXT("vector_meshes"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
+    box_mesh->SetupAttachment(RootComponent);
     vector_meshes->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = true;
@@ -50,8 +54,9 @@ void ATestUniformField::Tick(float dt) {
 void ATestUniformField::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
+    point_sources.Reset();
     construct_grid();
-    configure_visualisation_component();
+    configure_hism();
     update_visualisation();
 }
 
@@ -116,31 +121,49 @@ void ATestUniformField::reset_cells() {
     min_abs_strength = inf;
     max_abs_strength = 0.f;
 }
-void ATestUniformField::configure_visualisation_component() {
+void ATestUniformField::configure_visualisation_component(UStaticMeshComponent& mc) {
+    // Collision
+    mc.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    mc.SetCollisionResponseToAllChannels(ECR_Ignore);
+    mc.SetGenerateOverlapEvents(false);
+    mc.SetAllUseCCD(false);
+    mc.SetAllUseMACD(false);
+    mc.SetEnableGravity(false);
+
+    mc.SetCastShadow(false);
+    mc.bCastDynamicShadow = false;
+    mc.bCastStaticShadow = false;
+    mc.SetAffectDistanceFieldLighting(false);
+    mc.SetAffectDynamicIndirectLighting(false);
+    mc.SetAffectIndirectLightingWhileHidden(false);
+
+    mc.SetCanEverAffectNavigation(false);
+}
+void ATestUniformField::configure_box_mesh() {
+    configure_visualisation_component(*box_mesh);
+}
+void ATestUniformField::configure_hism() {
     auto& hism{*vector_meshes};
 
-    // Collision
-    hism.SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    hism.SetCollisionResponseToAllChannels(ECR_Ignore);
-    hism.SetGenerateOverlapEvents(false);
-    hism.SetAllUseCCD(false);
-    hism.SetAllUseMACD(false);
-    hism.SetEnableGravity(false);
+    configure_visualisation_component(hism);
 
     // Visuals
-    // hism.NumCustomDataFloats = 1;
     hism.SetNumCustomDataFloats(1);
-
-    hism.SetCastShadow(false);
-    hism.bCastDynamicShadow = false;
-    hism.bCastStaticShadow = false;
-    hism.SetAffectDistanceFieldLighting(false);
-    hism.SetAffectDynamicIndirectLighting(false);
-    hism.SetAffectIndirectLightingWhileHidden(false);
-
-    hism.SetCanEverAffectNavigation(false);
 }
 void ATestUniformField::update_visualisation() {
+    update_box_visualisation();
+    update_hism_visualisation();
+}
+void ATestUniformField::update_box_visualisation() {
+    box_mesh->SetVisibility(display_box);
+    auto box_mesh_src{box_mesh->GetStaticMesh()};
+    if (!box_mesh_src) {
+        return;
+    }
+
+    box_mesh->SetRelativeScale3D(get_grid_extent() / box_mesh_src->GetBounds().BoxExtent);
+}
+void ATestUniformField::update_hism_visualisation() {
     auto& hism{*vector_meshes};
 
     hism.SetVisibility(display_vectors);
@@ -168,7 +191,7 @@ void ATestUniformField::update_visualisation() {
         auto const rot_vec{potential.Rotation()};
 
         auto const strength{static_cast<float>(potential.Size())};
-        auto const length_scale{FMath::Max(0.2f, strength / max_abs_strength)};
+        auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
 
         FVector scale{
             length_scale,

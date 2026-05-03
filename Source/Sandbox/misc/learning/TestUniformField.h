@@ -14,6 +14,7 @@
 
 class UHierarchicalInstancedStaticMeshComponent;
 class UWorld;
+class UStaticMeshComponent;
 
 USTRUCT()
 struct FTestUniformFieldCell {
@@ -63,21 +64,24 @@ class ATestUniformField : public AActor {
     void construct_grid();
     void update_cells();
     void reset_cells();
-    void configure_visualisation_component();
-    void update_visualisation();
+    void configure_visualisation_component(UStaticMeshComponent& mc);
+    void configure_box_mesh();
+    void configure_hism();
 
+    void update_visualisation();
+    void update_box_visualisation();
+    void update_hism_visualisation();
+
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
     UPROPERTY(EditDefaultsOnly, Category = "Grid")
     TObjectPtr<UHierarchicalInstancedStaticMeshComponent> vector_meshes{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "Grid")
     FIntVector grid_dimensions{1, 1, 1};
-
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector cell_extent{50.f};
-
     UPROPERTY()
     TArray<FTestUniformFieldCell> cells{};
-
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     TArray<FTestUniformFieldPointSourceData> point_sources{};
 
@@ -90,8 +94,12 @@ class ATestUniformField : public AActor {
     float min_abs_strength{};
     UPROPERTY(VisibleAnywhere, Category = "Field")
     float max_abs_strength{};
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    bool display_box{true};
+    UPROPERTY(EditAnywhere, Category = "Grid")
     bool display_vectors{true};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    float min_length_scale{0.2};
 
     TArray<FTransform> vector_transforms;
     TArray<float> vector_intensities;
@@ -101,7 +109,7 @@ class ATestUniformField : public AActor {
 #endif
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    UPROPERTY(EditAnywhere, Category = "Grid")
     float dbg_log_cooldown{2.f};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     float dbg_log_timer{0};
