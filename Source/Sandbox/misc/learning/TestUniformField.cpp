@@ -161,7 +161,7 @@ void ATestUniformField::update_visualisation() {
         vector_transforms.Emplace(rot_vec, pos, FVector::OneVector);
 
         auto const potential_len{static_cast<float>(potential.Size())};
-        vector_intensities[i] = potential_len / max_abs_strength;
+        vector_intensities[i] = potential_len;
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
