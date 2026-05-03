@@ -56,12 +56,6 @@ void ATestUniformFieldPointSource::broadcast_to_field() {
     }
 
     if (auto field_ref{field.Pin()}) {
-#if WITH_EDITOR
-        if (can_log()) {
-            UE_LOG(LogSandboxLearning, Display, TEXT("Broadcasting to field."));
-        }
-#endif
-
         field_ref->add_source(source);
     } else {
         UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));

@@ -5,6 +5,9 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 
+#include <algorithm>
+#include <limits>
+
 void FTestUniformFieldCell::reset() {
     potential = FVector::ZeroVector;
 }
@@ -73,18 +76,17 @@ void ATestUniformField::update_cells() {
             auto const delta_pos{get_position_from_origin_cell_centre(i)};
             auto const cell_pos{origin + delta_pos};
             auto const displacement{cell_pos - source_pos};
-            auto const dist{displacement.Length()};
+            auto const dist_cm{static_cast<float>(displacement.Length())};
+            auto const dist_m{dist_cm / 100.f};
 
-            auto const strength{ps.strength * FMath::Pow(dist, ps.falloff)};
+            auto const strength{ps.strength * FMath::Pow(dist_m, ps.falloff)};
             auto const potential{displacement.GetSafeNormal() * strength};
 
-#if WITH_EDITOR
-            if (can_log()) {
-                if (((i % 5) == 0) && (i < 25)) {
-                    UE_LOG(LogSandboxLearning, Display, TEXT("i(%d): strength=%.2f"), i, strength);
-                }
-            }
-#endif
+            max_strength = std::max(max_strength, strength);
+            min_strength = std::min(min_strength, strength);
+            auto const abs_strength{std::abs(strength)};
+            max_abs_strength = std::max(max_abs_strength, abs_strength);
+            min_abs_strength = std::min(min_abs_strength, abs_strength);
 
             auto& cell{cells[i]};
             cell.potential += potential;
@@ -97,6 +99,13 @@ void ATestUniformField::reset_cells() {
     for (auto& cell : cells) {
         cell.reset();
     }
+
+    constexpr auto inf{std::numeric_limits<float>::infinity()};
+
+    max_strength = -inf;
+    min_strength = inf;
+    min_abs_strength = inf;
+    max_abs_strength = 0.f;
 }
 void ATestUniformField::configure_visualisation_component() {
     auto& hism{*vector_meshes};
@@ -110,6 +119,9 @@ void ATestUniformField::configure_visualisation_component() {
     hism.SetEnableGravity(false);
 
     // Visuals
+    // hism.NumCustomDataFloats = 1;
+    hism.SetNumCustomDataFloats(1);
+
     hism.SetCastShadow(false);
     hism.bCastDynamicShadow = false;
     hism.bCastStaticShadow = false;
@@ -131,17 +143,25 @@ void ATestUniformField::update_visualisation() {
     }
 
     auto const num_cells{get_num_cells()};
+    auto const origin{get_origin_cell_centre()};
+
     vector_transforms.Reset();
     vector_transforms.Reserve(num_cells);
-    auto const origin{get_origin_cell_centre()};
+    vector_intensities.Reset();
+    vector_intensities.Reserve(num_cells);
+    vector_intensities.AddDefaulted(num_cells);
 
     for (int32 i{0}; i < num_cells; ++i) {
         auto const delta_pos{get_position_from_origin_cell_centre(i)};
         auto const pos{origin + delta_pos};
 
-        auto const rot_vec{cells[i].potential.Rotation()};
+        auto const& potential{cells[i].potential};
+        auto const rot_vec{potential.Rotation()};
 
         vector_transforms.Emplace(rot_vec, pos, FVector::OneVector);
+
+        auto const potential_len{static_cast<float>(potential.Size())};
+        vector_intensities[i] = potential_len / max_abs_strength;
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
@@ -179,18 +199,12 @@ void ATestUniformField::update_visualisation() {
     hism.BatchUpdateInstancesTransforms(
         0, vector_transforms, world_space, mark_render_dirty, teleport);
 
-    hism.MarkRenderStateDirty();
+    constexpr int32 data_idx{0};
+    for (int32 i{0}; i < num_cells; ++i) {
+        hism.SetCustomDataValue(i, data_idx, vector_intensities[i], mark_render_dirty);
+    }
 
-    UE_LOG(LogSandboxLearning,
-           Verbose,
-           TEXT(R"(Updating HISM.
-    Num cells: %d
-    Delta instances: %d
-    Existing HISM instances: %d
-)"),
-           num_cells,
-           num_new_hism_instances_needed,
-           num_hism_instances);
+    hism.MarkRenderStateDirty();
 }
 
 auto ATestUniformField::get_coord(FVector const& pos) const -> FIntVector {

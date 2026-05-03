@@ -77,10 +77,20 @@ class ATestUniformField : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     TArray<FTestUniformFieldPointSourceData> point_sources{};
 
+    // Visualisation
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    float max_strength{};
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    float min_strength{};
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    float min_abs_strength{};
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    float max_abs_strength{};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     bool display_vectors{true};
 
     TArray<FTransform> vector_transforms;
+    TArray<float> vector_intensities;
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
@@ -88,7 +98,7 @@ class ATestUniformField : public AActor {
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleAnywhere, Category = "Grid")
-    float dbg_log_cooldown{1.f};
+    float dbg_log_cooldown{2.f};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     float dbg_log_timer{0};
 #endif
