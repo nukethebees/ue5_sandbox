@@ -32,6 +32,8 @@ ATestUniformField::ATestUniformField()
 
 void ATestUniformField::BeginPlay() {
     Super::BeginPlay();
+
+    vector_meshes->ClearInstances();
 }
 void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);
@@ -78,6 +80,8 @@ void ATestUniformField::construct_grid() {
     cells.AddDefaulted(n);
 }
 void ATestUniformField::update_cells() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
+
     auto const n_cells{get_num_cells()};
     auto const origin{get_origin_cell_centre()};
 
@@ -141,6 +145,14 @@ void ATestUniformField::configure_visualisation_component(UStaticMeshComponent& 
 }
 void ATestUniformField::configure_box_mesh() {
     configure_visualisation_component(*box_mesh);
+
+    box_mesh->SetVisibility(display_box);
+    auto box_mesh_src{box_mesh->GetStaticMesh()};
+    if (!box_mesh_src) {
+        return;
+    }
+
+    box_mesh->SetRelativeScale3D(get_grid_extent() / box_mesh_src->GetBounds().BoxExtent);
 }
 void ATestUniformField::configure_hism() {
     auto& hism{*vector_meshes};
@@ -154,16 +166,10 @@ void ATestUniformField::update_visualisation() {
     update_box_visualisation();
     update_hism_visualisation();
 }
-void ATestUniformField::update_box_visualisation() {
-    box_mesh->SetVisibility(display_box);
-    auto box_mesh_src{box_mesh->GetStaticMesh()};
-    if (!box_mesh_src) {
-        return;
-    }
-
-    box_mesh->SetRelativeScale3D(get_grid_extent() / box_mesh_src->GetBounds().BoxExtent);
-}
+void ATestUniformField::update_box_visualisation() {}
 void ATestUniformField::update_hism_visualisation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation"));
+
     auto& hism{*vector_meshes};
 
     hism.SetVisibility(display_vectors);
@@ -183,25 +189,30 @@ void ATestUniformField::update_hism_visualisation() {
     vector_intensities.Reserve(num_cells);
     vector_intensities.AddDefaulted(num_cells);
 
-    for (int32 i{0}; i < num_cells; ++i) {
-        auto const delta_pos{get_position_from_origin_cell_centre(i)};
-        auto const pos{origin + delta_pos};
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("ATestUniformField::update_hism_visualisation::transform_loop"));
 
-        auto const& potential{cells[i].potential};
-        auto const rot_vec{potential.Rotation()};
+        for (int32 i{0}; i < num_cells; ++i) {
+            auto const delta_pos{get_position_from_origin_cell_centre(i)};
+            auto const pos{origin + delta_pos};
 
-        auto const strength{static_cast<float>(potential.Size())};
-        auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
+            auto const& potential{cells[i].potential};
+            auto const rot_vec{potential.Rotation()};
 
-        FVector scale{
-            length_scale,
-            1.f,
-            1.f,
-        };
+            auto const strength{static_cast<float>(potential.Size())};
+            auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
 
-        vector_transforms.Emplace(rot_vec, pos, scale);
+            FVector scale{
+                length_scale,
+                1.f,
+                1.f,
+            };
 
-        vector_intensities[i] = strength;
+            vector_transforms.Emplace(rot_vec, pos, scale);
+
+            vector_intensities[i] = strength;
+        }
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
@@ -214,6 +225,9 @@ void ATestUniformField::update_hism_visualisation() {
     constexpr bool teleport{true};
 
     if (num_new_hism_instances_needed > 0) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("ATestUniformField::update_hism_visualisation::dummies"));
+
         hism.PreAllocateInstancesMemory(num_new_hism_instances_needed);
 
         TArray<FTransform> dummies;
@@ -223,11 +237,28 @@ void ATestUniformField::update_hism_visualisation() {
         }
 
         hism.AddInstances(dummies, return_indices, world_space, update_nav);
+
+        UE_LOG(LogSandboxLearning,
+               Verbose,
+               TEXT("Added %d new HISM instances (total: %d)"),
+               num_new_hism_instances_needed,
+               hism.GetInstanceCount());
+
     } else if (num_new_hism_instances_needed < 0) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("ATestUniformField::update_hism_visualisation::hide_loop"));
+
         auto const num_instances_to_hide{FMath::Abs(num_new_hism_instances_needed)};
         int32 const start_index{num_hism_instances - num_instances_to_hide};
         auto hidden_transform{FTransform::Identity};
         hidden_transform.SetScale3D(FVector::ZeroVector);
+
+#if WITH_EDITOR
+        if (can_log()) {
+            UE_LOG(LogSandboxLearning, Verbose, TEXT("Hiding %d instances"), num_instances_to_hide);
+        }
+#endif
+
         hism.BatchUpdateInstancesTransform(start_index,
                                            num_instances_to_hide,
                                            hidden_transform,
@@ -236,12 +267,20 @@ void ATestUniformField::update_hism_visualisation() {
                                            teleport);
     }
 
-    hism.BatchUpdateInstancesTransforms(
-        0, vector_transforms, world_space, mark_render_dirty, teleport);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("ATestUniformField::update_hism_visualisation::batch_update"));
+        hism.BatchUpdateInstancesTransforms(
+            0, vector_transforms, world_space, mark_render_dirty, teleport);
+    }
 
-    constexpr int32 data_idx{0};
-    for (int32 i{0}; i < num_cells; ++i) {
-        hism.SetCustomDataValue(i, data_idx, vector_intensities[i], mark_render_dirty);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            TEXT("ATestUniformField::update_hism_visualisation::custom_data"));
+        constexpr int32 data_idx{0};
+        for (int32 i{0}; i < num_cells; ++i) {
+            hism.SetCustomDataValue(i, data_idx, vector_intensities[i], mark_render_dirty);
+        }
     }
 
     hism.MarkRenderStateDirty();
