@@ -125,6 +125,7 @@ void ATestUniformField::reset_cells() {
     min_abs_strength = inf;
     max_abs_strength = 0.f;
 }
+
 void ATestUniformField::configure_visualisation_component(UStaticMeshComponent& mc) {
     // Collision
     mc.SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -173,6 +174,9 @@ void ATestUniformField::update_hism_visualisation() {
     auto& hism{*vector_meshes};
 
     hism.SetVisibility(display_vectors);
+    if (!display_vectors) {
+        return;
+    }
 
     auto const mesh{hism.GetStaticMesh()};
     if (!mesh) {
