@@ -158,10 +158,18 @@ void ATestUniformField::update_visualisation() {
         auto const& potential{cells[i].potential};
         auto const rot_vec{potential.Rotation()};
 
-        vector_transforms.Emplace(rot_vec, pos, FVector::OneVector);
+        auto const strength{static_cast<float>(potential.Size())};
+        auto const length_scale{FMath::Max(0.2f, strength / max_abs_strength)};
 
-        auto const potential_len{static_cast<float>(potential.Size())};
-        vector_intensities[i] = potential_len;
+        FVector scale{
+            length_scale,
+            1.f,
+            1.f,
+        };
+
+        vector_transforms.Emplace(rot_vec, pos, scale);
+
+        vector_intensities[i] = strength;
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
