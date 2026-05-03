@@ -57,6 +57,8 @@ class ATestUniformField : public AActor {
 
     auto get_grid_extent() const -> FVector;
     auto get_grid_dimensions() const -> FVector;
+
+    void mark_all_dirty();
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
@@ -64,6 +66,8 @@ class ATestUniformField : public AActor {
     void construct_grid();
     void update_cells();
     void reset_cells();
+    void reset_sources();
+
     void configure_visualisation_component(UStaticMeshComponent& mc);
     void configure_box_mesh();
     void configure_hism();
@@ -84,6 +88,10 @@ class ATestUniformField : public AActor {
     TArray<FTestUniformFieldCell> cells{};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     TArray<FTestUniformFieldPointSourceData> point_sources{};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    bool grid_dirty{false};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    bool visualisation_dirty{false};
 
     // Visualisation
     UPROPERTY(VisibleAnywhere, Category = "Field")

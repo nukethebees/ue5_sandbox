@@ -13,28 +13,19 @@ ATestUniformFieldPointSource::ATestUniformFieldPointSource()
     point_mesh->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
 void ATestUniformFieldPointSource::Tick(float dt) {
     Super::Tick(dt);
 
-#if WITH_EDITOR
-    dbg_log_timer += dt;
-#endif
-
     update_source();
     broadcast_to_field();
-
-#if WITH_EDITOR
-    if (dbg_log_timer >= dbg_log_cooldown) {
-        dbg_log_timer = 0.f;
-    }
-#endif
 }
 void ATestUniformFieldPointSource::BeginPlay() {
     Super::BeginPlay();
     find_field();
+    broadcast_to_field();
 }
 void ATestUniformFieldPointSource::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
