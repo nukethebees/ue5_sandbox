@@ -115,7 +115,9 @@ void ATestUniformField::update_cells() {
             auto const dist_cm{static_cast<float>(displacement.Length())};
             auto const dist_m{dist_cm / 100.f};
 
-            auto const strength{ps.strength * FMath::Pow(dist_m, ps.falloff)};
+            auto const within_radii{(dist_cm > ps.inner_radius) && (dist_cm < ps.outer_radius)};
+
+            auto const strength{within_radii ? ps.strength * FMath::Pow(dist_m, ps.falloff) : 0.f};
             auto const dir{ps.rotation.RotateVector(displacement).GetSafeNormal()};
             auto const potential{dir * strength};
 
