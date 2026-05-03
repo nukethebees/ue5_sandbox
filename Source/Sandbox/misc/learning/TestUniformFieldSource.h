@@ -29,10 +29,11 @@ class ATestUniformFieldPointSource : public AActor {
 
     void Tick(float dt) override;
   protected:
-    TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
-
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
+
+    UPROPERTY(EditAnywhere, Category = "Field")
+    TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Field")
     FTestUniformFieldPointSourceData source{};

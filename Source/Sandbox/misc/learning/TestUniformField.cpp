@@ -121,7 +121,10 @@ void ATestUniformField::update_visualisation() {
     for (int32 i{0}; i < num_cells; ++i) {
         auto const delta_pos{get_position_from_origin_cell_centre(i)};
         auto const pos{origin + delta_pos};
-        vector_transforms.Emplace(FRotator::ZeroRotator, pos, FVector::OneVector);
+
+        auto const rot_vec{cells[i].potential.Rotation()};
+
+        vector_transforms.Emplace(rot_vec, pos, FVector::OneVector);
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
