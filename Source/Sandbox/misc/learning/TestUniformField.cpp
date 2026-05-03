@@ -87,6 +87,8 @@ void ATestUniformField::add_source(FTestUniformFieldPointSourceData const& sourc
 }
 
 void ATestUniformField::construct_grid() {
+    grid_dimensions = FIntVector{box_extent / cell_extent};
+
     auto const n{get_num_cells()};
     cells.Reset();
     cells.AddDefaulted(n);
@@ -175,7 +177,7 @@ void ATestUniformField::configure_box_mesh() {
         return;
     }
 
-    box_mesh->SetRelativeScale3D(get_grid_extent() / box_mesh_src->GetBounds().BoxExtent);
+    box_mesh->SetRelativeScale3D(get_field_extent() / box_mesh_src->GetBounds().BoxExtent);
 }
 void ATestUniformField::configure_hism() {
     auto& hism{*vector_meshes};
@@ -354,7 +356,7 @@ auto ATestUniformField::get_grid_centre() const -> FVector {
 auto ATestUniformField::get_grid_origin() const -> FVector {
     auto const loc{get_grid_centre()};
 
-    return loc - get_grid_extent();
+    return loc - get_field_extent();
 }
 auto ATestUniformField::get_origin_cell_centre() const -> FVector {
     return get_grid_origin() + get_cell_extent();
@@ -383,9 +385,9 @@ auto ATestUniformField::get_cell_dimensions() const -> FVector {
     return cell_extent * 2.0;
 }
 
-auto ATestUniformField::get_grid_extent() const -> FVector {
-    return cell_extent * FVector{grid_dimensions};
+auto ATestUniformField::get_field_extent() const -> FVector {
+    return box_extent;
 }
-auto ATestUniformField::get_grid_dimensions() const -> FVector {
-    return get_grid_extent() * 2.0;
+auto ATestUniformField::get_field_dimensions() const -> FVector {
+    return get_field_extent() * 2.0;
 }

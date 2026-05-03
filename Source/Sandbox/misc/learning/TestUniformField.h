@@ -55,8 +55,8 @@ class ATestUniformField : public AActor {
     auto get_cell_extent() const -> FVector;
     auto get_cell_dimensions() const -> FVector;
 
-    auto get_grid_extent() const -> FVector;
-    auto get_grid_dimensions() const -> FVector;
+    auto get_field_extent() const -> FVector;
+    auto get_field_dimensions() const -> FVector;
 
     void mark_all_dirty();
   protected:
@@ -81,8 +81,10 @@ class ATestUniformField : public AActor {
     TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
     UPROPERTY(EditDefaultsOnly, Category = "Grid")
     TObjectPtr<UHierarchicalInstancedStaticMeshComponent> vector_meshes{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Grid")
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
     FIntVector grid_dimensions{1, 1, 1};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FVector box_extent{500.f};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector cell_extent{50.f};
     UPROPERTY()
