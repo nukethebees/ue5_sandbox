@@ -24,7 +24,9 @@ class ATestUniformFieldPointSink : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sink")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sink")
-    float speed{1000.f};
+    float base_speed{1000.f};
+    UPROPERTY(EditAnywhere, Category = "Sink")
+    float max_speed{2000.f};
 
     UPROPERTY()
     TWeakObjectPtr<ATestUniformField> field{nullptr};
