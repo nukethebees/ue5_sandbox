@@ -62,6 +62,7 @@ class ATestUniformField : public AActor {
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
+    void PostActorCreated() override;
 
     void construct_grid();
     void update_cells();

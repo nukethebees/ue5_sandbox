@@ -58,11 +58,14 @@ void ATestUniformField::Tick(float dt) {
 void ATestUniformField::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    reset_sources();
     construct_grid();
-
     configure_box_mesh();
     configure_hism();
+}
+void ATestUniformField::PostActorCreated() {
+    Super::PostActorCreated();
+
+    reset_sources();
 }
 
 auto ATestUniformField::find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField> {
@@ -111,7 +114,8 @@ void ATestUniformField::update_cells() {
             auto const dist_m{dist_cm / 100.f};
 
             auto const strength{ps.strength * FMath::Pow(dist_m, ps.falloff)};
-            auto const potential{displacement.GetSafeNormal() * strength};
+            auto const dir{ps.rotation.RotateVector(displacement).GetSafeNormal()};
+            auto const potential{dir * strength};
 
             max_strength = std::max(max_strength, strength);
             min_strength = std::min(min_strength, strength);
@@ -178,8 +182,8 @@ void ATestUniformField::configure_hism() {
 
     configure_visualisation_component(hism);
 
-    // Visuals
     hism.SetNumCustomDataFloats(1);
+    vector_meshes->ClearInstances();
 }
 void ATestUniformField::update_visualisation() {
     update_box_visualisation();
