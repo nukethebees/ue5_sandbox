@@ -24,10 +24,23 @@ void ATestUniformFieldPointSink::Tick(float dt) {
         auto const pos{GetActorLocation()};
         auto const sample{field_ref->sample_field(pos)};
 
-        auto const delta_pos{sample.potential * base_speed * dt};
-        auto const clamped_delta_pos{delta_pos.GetClampedToMaxSize(max_speed)};
+        auto const potential_mag{sample.potential.Size()};
 
-        SetActorLocation(pos + delta_pos);
+        auto const new_speed{base_speed * potential_mag};
+        auto const last_speed{speed};
+        auto const delta_speed{new_speed - last_speed};
+
+        auto const new_acceleration{delta_speed / dt};
+        auto const clamped_acceleration{
+            FMath::Clamp(new_acceleration, -max_acceleration, max_acceleration)};
+
+        auto const clamped_speed{
+            FMath::Clamp(last_speed + (clamped_acceleration * dt), -max_speed, max_speed)};
+        auto const clamped_delta_pos{sample.potential.GetSafeNormal() * clamped_speed * dt};
+
+        SetActorLocation(pos + clamped_delta_pos);
+
+        speed = clamped_speed;
     } else {
         UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));
     }

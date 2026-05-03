@@ -27,6 +27,10 @@ class ATestUniformFieldPointSink : public AActor {
     float base_speed{1000.f};
     UPROPERTY(EditAnywhere, Category = "Sink")
     float max_speed{2000.f};
+    UPROPERTY(EditAnywhere, Category = "Sink")
+    float max_acceleration{100.f};
+    UPROPERTY(VisibleAnywhere, Category = "Sink")
+    float speed{0.f};
 
     UPROPERTY()
     TWeakObjectPtr<ATestUniformField> field{nullptr};

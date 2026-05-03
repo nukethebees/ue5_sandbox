@@ -108,6 +108,8 @@ void ATestUniformField::update_cells() {
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
 
+        auto const inner_radius_m{ps.inner_radius / 100.f};
+
         for (int32 i{0}; i < n_cells; ++i) {
             auto const delta_pos{get_position_from_origin_cell_centre(i)};
             auto const cell_pos{origin + delta_pos};
@@ -115,9 +117,15 @@ void ATestUniformField::update_cells() {
             auto const dist_cm{static_cast<float>(displacement.Length())};
             auto const dist_m{dist_cm / 100.f};
 
+            auto const dist_from_radius_m{dist_m - inner_radius_m};
+
             auto const within_radii{(dist_cm > ps.inner_radius) && (dist_cm < ps.outer_radius)};
 
-            auto const strength{within_radii ? ps.strength * FMath::Pow(dist_m, ps.falloff) : 0.f};
+            if (!within_radii) {
+                continue;
+            }
+
+            auto const strength{ps.strength * FMath::Pow(dist_from_radius_m, ps.falloff)};
             auto const dir{ps.rotation.RotateVector(displacement).GetSafeNormal()};
             auto const potential{dir * strength};
 
@@ -190,10 +198,8 @@ void ATestUniformField::configure_hism() {
     vector_meshes->ClearInstances();
 }
 void ATestUniformField::update_visualisation() {
-    update_box_visualisation();
     update_hism_visualisation();
 }
-void ATestUniformField::update_box_visualisation() {}
 void ATestUniformField::update_hism_visualisation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation"));
 
@@ -238,6 +244,7 @@ void ATestUniformField::update_hism_visualisation() {
                 1.f,
                 1.f,
             };
+            scale *= vector_base_scale;
 
             vector_transforms.Emplace(rot_vec, pos, scale);
 

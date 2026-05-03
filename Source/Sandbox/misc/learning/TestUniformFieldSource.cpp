@@ -19,22 +19,26 @@ ATestUniformFieldPointSource::ATestUniformFieldPointSource()
 void ATestUniformFieldPointSource::Tick(float dt) {
     Super::Tick(dt);
 
-    update_source();
+    update_sources();
     broadcast_to_field();
 }
 void ATestUniformFieldPointSource::BeginPlay() {
     Super::BeginPlay();
+
+    update_sources();
     find_field();
     broadcast_to_field();
 }
 void ATestUniformFieldPointSource::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    update_source();
+    update_sources();
     find_field();
 }
-void ATestUniformFieldPointSource::update_source() {
-    source.coordinate = GetActorLocation();
+void ATestUniformFieldPointSource::update_sources() {
+    for (auto& source : sources) {
+        source.coordinate = GetActorLocation();
+    }
 }
 void ATestUniformFieldPointSource::find_field() {
     field = ATestUniformField::find_field(*GetWorld());
@@ -46,7 +50,9 @@ void ATestUniformFieldPointSource::broadcast_to_field() {
     }
 
     if (auto field_ref{field.Pin()}) {
-        field_ref->add_source(source);
+        for (auto& source : sources) {
+            field_ref->add_source(source);
+        }
     } else {
         UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));
     }

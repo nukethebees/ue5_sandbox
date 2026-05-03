@@ -40,7 +40,7 @@ class ATestUniformFieldPointSource : public AActor {
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
 
-    void update_source();
+    void update_sources();
     void find_field();
     void broadcast_to_field();
 
@@ -51,7 +51,7 @@ class ATestUniformFieldPointSource : public AActor {
     TWeakObjectPtr<ATestUniformField> field{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Field")
-    FTestUniformFieldPointSourceData source{};
+    TArray<FTestUniformFieldPointSourceData> sources{};
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }

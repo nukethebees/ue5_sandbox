@@ -74,7 +74,6 @@ class ATestUniformField : public AActor {
     void configure_hism();
 
     void update_visualisation();
-    void update_box_visualisation();
     void update_hism_visualisation();
 
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -111,6 +110,8 @@ class ATestUniformField : public AActor {
     bool display_vectors{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
     float min_length_scale{0.2};
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    FVector vector_base_scale{FVector::OneVector};
 
     TArray<FTransform> vector_transforms;
     TArray<float> vector_intensities;
