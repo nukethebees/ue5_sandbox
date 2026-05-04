@@ -18,6 +18,9 @@ ATestUniformFieldPointSource::ATestUniformFieldPointSource()
 
 void ATestUniformFieldPointSource::Tick(float dt) {
     Super::Tick(dt);
+
+    update_sources();
+    broadcast_update_to_field();
 }
 void ATestUniformFieldPointSource::BeginPlay() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformFieldPointSource::BeginPlay"));
@@ -27,6 +30,8 @@ void ATestUniformFieldPointSource::BeginPlay() {
     update_sources();
     find_field();
     broadcast_to_field();
+
+    SetActorTickEnabled(use_tick);
 }
 void ATestUniformFieldPointSource::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
@@ -34,6 +39,7 @@ void ATestUniformFieldPointSource::OnConstruction(FTransform const& transform) {
     update_sources();
     find_field();
 }
+
 void ATestUniformFieldPointSource::update_sources() {
     for (auto& source : sources) {
         source.coordinate = GetActorLocation();
@@ -43,20 +49,15 @@ void ATestUniformFieldPointSource::find_field() {
     field = ATestUniformField::find_field(*GetWorld());
 }
 void ATestUniformFieldPointSource::broadcast_to_field() {
-    if (!field.IsValid()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("Field is not valid."));
-        return;
-    }
-
     if (auto field_ref{field.Pin()}) {
-        UE_LOG(LogSandboxLearning,
-               Verbose,
-               TEXT("(%s) Broadcasting to field."),
-               *GetActorNameOrLabel());
-
-        for (auto& source : sources) {
-            field_ref->add_source(source);
-        }
+        source_id = field_ref->add_sources(sources);
+    } else {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));
+    }
+}
+void ATestUniformFieldPointSource::broadcast_update_to_field() {
+    if (auto field_ref{field.Pin()}) {
+        field_ref->update_sources(sources, source_id);
     } else {
         UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));
     }

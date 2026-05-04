@@ -17,13 +17,41 @@ class UWorld;
 class UStaticMesh;
 class UStaticMeshComponent;
 
+namespace ml {
+struct QuantisedPotential {
+    using Value = uint8;
+
+    inline static constexpr Value strength_levels{10};
+    inline static constexpr Value max_strength_coord{strength_levels - 1u};
+
+    inline static constexpr Value grid_side_length{3};
+    inline static constexpr Value max_grid_side_coord{grid_side_length - 1u};
+    inline static constexpr Value grid_cells{grid_side_length * grid_side_length *
+                                             grid_side_length};
+
+    bool operator==(QuantisedPotential const&) const = default;
+
+    static auto get_strength(float strength) -> Value;
+    // Requires normalised vector
+    static auto get_axis_section(float coord) -> Value;
+    static auto get_direction_index(Value x, Value y, Value z) -> Value;
+
+    // Default to invalid values
+    Value strength{255};
+    Value direction{255};
+};
+}
+
 USTRUCT()
 struct FTestUniformFieldCell {
     GENERATED_BODY()
 
     UPROPERTY()
     FVector3f potential{FVector3f::ZeroVector};
+    ml::QuantisedPotential old_quantised_potential{};
+    ml::QuantisedPotential new_quantised_potential{};
 
+    bool quantised_changed() const;
     void reset();
 };
 
@@ -31,6 +59,11 @@ UCLASS()
 class ATestUniformField : public AActor {
     GENERATED_BODY()
   public:
+    struct DirtyRun {
+        int32 offset;
+        int32 length;
+    };
+
     ATestUniformField();
 
     void Tick(float dt) override;
@@ -38,7 +71,13 @@ class ATestUniformField : public AActor {
     static auto find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField>;
     auto sample_field(FVector const& position) const -> FTestUniformFieldCell;
 
-    void add_source(FTestUniformFieldPointSourceData const& source);
+    [[nodiscard]]
+    auto add_source(FTestUniformFieldPointSourceData const& source) -> int32;
+    [[nodiscard]]
+    auto add_sources(TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32;
+    void update_source(FTestUniformFieldPointSourceData const& source, int32 i);
+    void update_sources(TArrayView<FTestUniformFieldPointSourceData const> sources, int32 offset);
+
     auto get_coord(FVector const& pos) const -> FIntVector;
     auto get_index(FIntVector const& coord) const -> int32;
     auto get_index(FVector const& pos) const -> int32;
@@ -79,7 +118,7 @@ class ATestUniformField : public AActor {
     void update_visualisation();
     void initialise_hism_visualisation();
     void update_hism_visualisation();
-    void update_hism_data(FVector const& origin);
+    void update_hism_data(FVector const& origin, int32 offset, int32 length);
     void update_hism_visibility();
 
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -115,6 +154,7 @@ class ATestUniformField : public AActor {
 
     TArray<FTransform> vector_transforms;
     TArray<float> vector_intensities;
+    TArray<DirtyRun> dirty_runs;
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }

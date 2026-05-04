@@ -12,6 +12,32 @@
 #include <algorithm>
 #include <limits>
 
+namespace ml {
+auto QuantisedPotential::get_strength(float strength) -> Value {
+    return std::min(max_strength_coord, static_cast<Value>(strength / 0.1f));
+}
+auto QuantisedPotential::get_axis_section(float coord) -> Value {
+    check(coord <= 1.f);
+    check(coord >= -1.f);
+
+    constexpr float scale{grid_side_length};
+
+    // translate from [-1, 1] to [0, 3]
+    auto const c{(coord + 1.f) * 1.5f};
+
+    return std::min(max_grid_side_coord, static_cast<Value>(c * scale));
+}
+auto QuantisedPotential::get_direction_index(Value x, Value y, Value z) -> Value {
+    constexpr auto len{grid_side_length};
+    constexpr auto len_sq{len * len};
+
+    return z + (y * len) + (x * len_sq);
+}
+}
+
+bool FTestUniformFieldCell::quantised_changed() const {
+    return old_quantised_potential != new_quantised_potential;
+}
 void FTestUniformFieldCell::reset() {
     potential = FVector3f::ZeroVector;
 }
@@ -41,6 +67,9 @@ void ATestUniformField::BeginPlay() {
 
     max_abs_strength = 1.f; // Placeholder for initial drawing
     initialise_hism_visualisation();
+
+    dirty_runs.Reset();
+    dirty_runs.Reserve(50);
 
     mark_all_dirty();
 }
@@ -87,11 +116,35 @@ auto ATestUniformField::sample_field(FVector const& position) const -> FTestUnif
     }
 }
 
-void ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::add_source"));
-
+auto ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) -> int32 {
+    int const i{point_sources.Num()};
     point_sources.Add(source);
+    mark_all_dirty();
 
+    return i;
+}
+auto ATestUniformField::add_sources(TArrayView<FTestUniformFieldPointSourceData const> sources)
+    -> int32 {
+    int const i{point_sources.Num()};
+
+    for (auto const& src : sources) {
+        point_sources.Add(src);
+    }
+
+    mark_all_dirty();
+
+    return i;
+}
+void ATestUniformField::update_source(FTestUniformFieldPointSourceData const& source, int32 i) {
+    point_sources[i] = source;
+    mark_all_dirty();
+}
+void ATestUniformField::update_sources(TArrayView<FTestUniformFieldPointSourceData const> sources,
+                                       int32 offset) {
+    auto const n{sources.Num()};
+    for (int32 i{0}; i < n; ++i) {
+        point_sources[offset + i] = sources[i];
+    }
     mark_all_dirty();
 }
 
@@ -114,8 +167,6 @@ void ATestUniformField::update_cells() {
     auto const origin{get_origin_cell_centre()};
 
     reset_cells();
-
-    UE_LOG(LogSandboxLearning, Verbose, TEXT("Processing %d point sources."), n_sources);
 
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
@@ -153,7 +204,24 @@ void ATestUniformField::update_cells() {
     }
     max_abs_strength = FMath::Sqrt(max_abs_strength);
 
-    reset_sources();
+    ParallelFor(n_cells, [this](int32 i) -> void {
+        using QP = ml::QuantisedPotential;
+
+        auto& cell{this->cells[i]};
+        cell.old_quantised_potential = cell.new_quantised_potential;
+
+        auto const strength{cell.potential.Size()};
+
+        cell.new_quantised_potential.strength = QP::get_strength(strength);
+
+        auto const dir{cell.potential.GetSafeNormal()};
+        auto const x{QP::get_axis_section(dir.X)};
+        auto const y{QP::get_axis_section(dir.Y)};
+        auto const z{QP::get_axis_section(dir.Z)};
+
+        cell.new_quantised_potential.direction = QP::get_direction_index(x, y, z);
+    });
+
     grid_dirty = false;
 }
 void ATestUniformField::reset_cells() {
@@ -226,7 +294,7 @@ void ATestUniformField::initialise_hism_visualisation() {
 
     vector_transforms.SetNumUninitialized(num_cells, EAllowShrinking::No);
     vector_intensities.SetNumUninitialized(num_cells, EAllowShrinking::No);
-    update_hism_data(origin);
+    update_hism_data(origin, 0, num_cells);
 
     constexpr bool return_indices{false};
     constexpr bool world_space{true};
@@ -247,10 +315,13 @@ void ATestUniformField::update_hism_visualisation() {
         return;
     }
 
+    constexpr bool world_space{true};
+    constexpr bool mark_render_dirty{false};
+    constexpr bool teleport{true};
+
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation"));
 
     auto& hism{*vector_meshes};
-
     update_hism_visibility();
     if (!display_vectors) {
         visualisation_dirty = false;
@@ -260,37 +331,84 @@ void ATestUniformField::update_hism_visualisation() {
     auto const num_cells{get_num_cells()};
     auto const origin{get_origin_cell_centre()};
     auto const num_hism_instances{hism.GetInstanceCount()};
-
     check(num_cells == num_hism_instances);
 
-    update_hism_data(origin);
+    constexpr int32 run_end_threshold{10};
 
-    constexpr bool world_space{true};
-    constexpr bool mark_render_dirty{false};
-    constexpr bool teleport{true};
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation::mutate"));
-        hism.BatchUpdateInstancesTransforms(
-            0, vector_transforms, world_space, mark_render_dirty, teleport);
+    TArray<int32> dirty_cells{};
+    for (int32 i{0}; i < num_cells; ++i) {
+        auto& cell{cells[i]};
+        if (cell.quantised_changed()) {
+            dirty_cells.Emplace(i);
+        }
     }
 
-    hism.PerInstanceSMCustomData = vector_intensities;
+    auto const n_dirty{dirty_cells.Num()};
+
+    if (n_dirty == 0) {
+        visualisation_dirty = false;
+        return;
+    }
+
+    if (n_dirty >= (num_cells / 2)) {
+        update_hism_data(origin, 0, num_cells);
+        hism.BatchUpdateInstancesTransforms(
+            0, vector_transforms, world_space, mark_render_dirty, teleport);
+        hism.PerInstanceSMCustomData = vector_intensities;
+    } else {
+        auto const remaining_dirty{MakeConstArrayView(dirty_cells).Slice(1, n_dirty - 1)};
+        auto const n_remaining_dirty{remaining_dirty.Num()};
+
+        int32 run_start{dirty_cells[0]};
+        int32 run_end{dirty_cells[0]};
+
+        for (int32 i{0}; i < n_remaining_dirty; ++i) {
+            auto const cell_i{remaining_dirty[i]};
+            auto const dist{cell_i - run_end};
+
+            if (dist > run_end_threshold) {
+                dirty_runs.Emplace(run_start, 1 + (run_end - run_start));
+                run_start = cell_i;
+                run_end = cell_i;
+            } else {
+                run_end = cell_i;
+            }
+        }
+
+        // Add final if it wasn't done
+        if (run_end == run_start) {
+            dirty_runs.Emplace(run_start, 1 + (run_end - run_start));
+        }
+
+        for (auto const& run : dirty_runs) {
+            update_hism_data(origin, run.offset, run.length);
+            auto const dirty_transform{
+                MakeConstArrayView(vector_transforms).Slice(run.offset, run.length)};
+
+            hism.BatchUpdateInstancesTransforms(
+                run.offset, dirty_transform, world_space, mark_render_dirty, teleport);
+        }
+
+        for (int32 i : dirty_cells) {
+            hism.SetCustomDataValue(i, 0, vector_intensities[i], false);
+        }
+    }
 
     hism.MarkRenderStateDirty();
     visualisation_dirty = false;
 }
-void ATestUniformField::update_hism_data(FVector const& origin) {
+void ATestUniformField::update_hism_data(FVector const& origin, int32 offset, int32 length) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_data"));
 
     auto& hism{*vector_meshes};
-    auto const num_cells{get_num_cells()};
 
-    ParallelFor(num_cells, [=, this, &hism](int i) -> void {
-        auto const delta_pos{get_position_from_origin_cell_centre(i)};
+    ParallelFor(length, [=, this, &hism](int32 local_index) -> void {
+        auto const full_index{offset + local_index};
+
+        auto const delta_pos{get_position_from_origin_cell_centre(full_index)};
         auto const pos{origin + delta_pos};
 
-        auto const& potential{cells[i].potential};
+        auto const& potential{cells[full_index].potential};
         auto const rot_vec{FVector{potential}.Rotation()};
 
         auto const strength{static_cast<float>(potential.Size())};
@@ -302,8 +420,8 @@ void ATestUniformField::update_hism_data(FVector const& origin) {
             1.f * vector_base_scale.Z,
         };
 
-        vector_transforms[i] = FTransform{rot_vec, pos, scale};
-        vector_intensities[i] = strength;
+        vector_transforms[full_index] = FTransform{rot_vec, pos, scale};
+        vector_intensities[full_index] = strength;
     });
 }
 void ATestUniformField::update_hism_visibility() {

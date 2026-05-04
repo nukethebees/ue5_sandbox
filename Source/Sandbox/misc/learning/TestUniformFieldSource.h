@@ -43,15 +43,18 @@ class ATestUniformFieldPointSource : public AActor {
     void update_sources();
     void find_field();
     void broadcast_to_field();
+    void broadcast_update_to_field();
 
     UPROPERTY(EditAnywhere, Category = "Field")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
-
     UPROPERTY()
     TWeakObjectPtr<ATestUniformField> field{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "Field")
     TArray<FTestUniformFieldPointSourceData> sources{};
+    UPROPERTY(EditAnywhere, Category = "Field")
+    bool use_tick{false};
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    int32 source_id{0};
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
