@@ -220,6 +220,11 @@ void ATestUniformField::update_hism_visualisation() {
     auto const num_cells{get_num_cells()};
     auto const origin{get_origin_cell_centre()};
 
+    auto const num_hism_instances{hism.GetInstanceCount()};
+    auto const num_hism_instances_to_mutate{FMath::Min(num_cells, num_hism_instances)};
+    auto const num_hism_instances_to_add{FMath::Max(0, num_cells - num_hism_instances)};
+    auto const num_hism_instances_to_hide{FMath::Max(0, num_hism_instances - num_cells)};
+
     vector_transforms.SetNumUninitialized(num_cells, false);
     hism.PerInstanceSMCustomData.SetNumUninitialized(num_cells, false);
 
@@ -248,8 +253,10 @@ void ATestUniformField::update_hism_visualisation() {
         });
     }
 
-    auto const num_hism_instances{hism.GetInstanceCount()};
-    auto const num_new_hism_instances_needed{num_cells - num_hism_instances};
+    auto const transforms_view{MakeArrayView(vector_transforms)};
+    auto const transforms_to_mutate{transforms_view.Slice(0, num_hism_instances_to_mutate)};
+    auto const transforms_to_add{
+        transforms_view.Slice(num_hism_instances_to_mutate, num_hism_instances_to_add)};
 
     constexpr bool return_indices{false};
     constexpr bool world_space{true};
@@ -257,37 +264,22 @@ void ATestUniformField::update_hism_visualisation() {
     constexpr bool mark_render_dirty{false};
     constexpr bool teleport{true};
 
-    if (num_new_hism_instances_needed > 0) {
+    if (num_hism_instances_to_add > 0) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("ATestUniformField::update_hism_visualisation::dummies"));
 
-        hism.PreAllocateInstancesMemory(num_new_hism_instances_needed);
-
-        TArray<FTransform> dummies;
-        dummies.Reserve(num_new_hism_instances_needed);
-        for (int32 i{0}; i < num_new_hism_instances_needed; i++) {
-            dummies.Add(FTransform::Identity);
-        }
-
-        hism.AddInstances(dummies, return_indices, world_space, update_nav);
-
-        UE_LOG(LogSandboxLearning,
-               Verbose,
-               TEXT("Added %d new HISM instances (total: %d)"),
-               num_new_hism_instances_needed,
-               hism.GetInstanceCount());
-
-    } else if (num_new_hism_instances_needed < 0) {
+        hism.AddInstances(
+            TArray<FTransform>{transforms_to_add}, return_indices, world_space, update_nav);
+    } else if (num_hism_instances_to_hide) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("ATestUniformField::update_hism_visualisation::hide_loop"));
 
-        auto const num_instances_to_hide{FMath::Abs(num_new_hism_instances_needed)};
-        int32 const start_index{num_hism_instances - num_instances_to_hide};
+        int32 const start_index{num_hism_instances - num_hism_instances_to_hide};
         auto hidden_transform{FTransform::Identity};
         hidden_transform.SetScale3D(FVector::ZeroVector);
 
         hism.BatchUpdateInstancesTransform(start_index,
-                                           num_instances_to_hide,
+                                           num_hism_instances_to_hide,
                                            hidden_transform,
                                            world_space,
                                            mark_render_dirty,
@@ -295,10 +287,9 @@ void ATestUniformField::update_hism_visualisation() {
     }
 
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("ATestUniformField::update_hism_visualisation::batch_update"));
+        TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation::mutate"));
         hism.BatchUpdateInstancesTransforms(
-            0, vector_transforms, world_space, mark_render_dirty, teleport);
+            0, transforms_to_mutate, world_space, mark_render_dirty, teleport);
     }
 
     hism.MarkRenderStateDirty();
