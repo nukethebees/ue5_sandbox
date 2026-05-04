@@ -398,9 +398,8 @@ void ATestUniformField::update_hism_visualisation() {
                 run.offset, dirty_transform, world_space, mark_render_dirty, teleport);
         }
 
-        for (int32 i : dirty_cells) {
-            hism.SetCustomDataValue(i, 0, vector_intensities[i], false);
-        }
+        hism.PerInstanceSMCustomData = vector_intensities;
+        hism.BuildTreeIfOutdated(true, true);
     }
 
     hism.MarkRenderStateDirty();
