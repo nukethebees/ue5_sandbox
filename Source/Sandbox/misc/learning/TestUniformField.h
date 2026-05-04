@@ -167,5 +167,7 @@ class ATestUniformField : public AActor {
     float dbg_log_cooldown{2.f};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     float dbg_log_timer{0};
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    int32 dbg_num_cells{0};
 #endif
 };

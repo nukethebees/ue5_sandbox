@@ -152,6 +152,10 @@ void ATestUniformField::construct_grid() {
     auto const n{get_num_cells()};
     cells.Reset();
     cells.AddDefaulted(n);
+
+#if WITH_EDITOR
+    dbg_num_cells = n;
+#endif
 }
 void ATestUniformField::update_cells() {
     if (!grid_dirty) {
