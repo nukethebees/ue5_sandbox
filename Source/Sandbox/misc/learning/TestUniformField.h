@@ -60,6 +60,8 @@ class ATestUniformField : public AActor {
     auto get_field_dimensions() const -> FVector;
 
     void mark_all_dirty();
+    void mark_grid_dirty();
+    void mark_visualisation_dirty();
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;

@@ -57,6 +57,8 @@ void ATestUniformField::Tick(float dt) {
         dbg_log_timer = 0.f;
     }
 #endif
+
+    SetActorTickEnabled(false);
 }
 void ATestUniformField::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
@@ -86,7 +88,7 @@ auto ATestUniformField::sample_field(FVector const& position) const -> FTestUnif
 void ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) {
     point_sources.Add(source);
 
-    grid_dirty = true;
+    mark_all_dirty();
 }
 
 void ATestUniformField::construct_grid() {
@@ -146,7 +148,6 @@ void ATestUniformField::update_cells() {
 
     reset_sources();
     grid_dirty = false;
-    visualisation_dirty = true;
 }
 void ATestUniformField::reset_cells() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells::reset_cells"));
@@ -236,6 +237,7 @@ void ATestUniformField::update_hism_visualisation() {
 
     update_hism_visibility();
     if (!display_vectors) {
+        visualisation_dirty = false;
         return;
     }
 
@@ -291,8 +293,16 @@ void ATestUniformField::update_hism_visibility() {
 }
 
 void ATestUniformField::mark_all_dirty() {
+    mark_grid_dirty();
+    mark_visualisation_dirty();
+}
+void ATestUniformField::mark_grid_dirty() {
     grid_dirty = true;
+    SetActorTickEnabled(true);
+}
+void ATestUniformField::mark_visualisation_dirty() {
     visualisation_dirty = true;
+    SetActorTickEnabled(true);
 }
 
 auto ATestUniformField::get_coord(FVector const& pos) const -> FIntVector {
