@@ -38,7 +38,7 @@ void ATestUniformFieldPointSink::Tick(float dt) {
             FMath::Clamp(last_speed + (clamped_acceleration * dt), -max_speed, max_speed)};
         auto const clamped_delta_pos{sample.potential.GetSafeNormal() * clamped_speed * dt};
 
-        SetActorLocation(pos + clamped_delta_pos);
+        SetActorLocation(pos + FVector{clamped_delta_pos});
 
         speed = clamped_speed;
     } else {

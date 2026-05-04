@@ -3,6 +3,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/world.h"
 
+#include "Async/ParallelFor.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -12,7 +13,7 @@
 #include <limits>
 
 void FTestUniformFieldCell::reset() {
-    potential = FVector::ZeroVector;
+    potential = FVector3f::ZeroVector;
 }
 
 ATestUniformField::ATestUniformField()
@@ -94,11 +95,11 @@ void ATestUniformField::construct_grid() {
     cells.AddDefaulted(n);
 }
 void ATestUniformField::update_cells() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
-
     if (!grid_dirty) {
         return;
     }
+
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
 
     auto const n_cells{get_num_cells()};
     auto const origin{get_origin_cell_centre()};
@@ -107,11 +108,10 @@ void ATestUniformField::update_cells() {
 
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
-
         auto const inner_radius_m{ps.inner_radius / 100.f};
 
-        for (int32 i{0}; i < n_cells; ++i) {
-            auto const delta_pos{get_position_from_origin_cell_centre(i)};
+        auto compute_cell{[=, this](int32 i) -> void {
+            auto const delta_pos{this->get_position_from_origin_cell_centre(i)};
             auto const cell_pos{origin + delta_pos};
             auto const displacement{cell_pos - source_pos};
             auto const dist_cm{static_cast<float>(displacement.Length())};
@@ -122,38 +122,38 @@ void ATestUniformField::update_cells() {
             auto const within_radii{(dist_cm > ps.inner_radius) && (dist_cm < ps.outer_radius)};
 
             if (!within_radii) {
-                continue;
+                return;
             }
 
             auto const strength{ps.strength * FMath::Pow(dist_from_radius_m, ps.falloff)};
-            auto const dir{ps.rotation.RotateVector(displacement).GetSafeNormal()};
+            auto const dir{
+                static_cast<FVector3f>(ps.rotation.RotateVector(displacement).GetSafeNormal())};
             auto const potential{dir * strength};
-
-            max_strength = std::max(max_strength, strength);
-            min_strength = std::min(min_strength, strength);
-            auto const abs_strength{std::abs(strength)};
-            max_abs_strength = std::max(max_abs_strength, abs_strength);
-            min_abs_strength = std::min(min_abs_strength, abs_strength);
 
             auto& cell{cells[i]};
             cell.potential += potential;
-        }
+        }};
+
+        ParallelFor(n_cells, compute_cell);
     }
+
+    for (auto& cell : cells) {
+        max_abs_strength = std::max(max_abs_strength, cell.potential.SquaredLength());
+    }
+    max_abs_strength = FMath::Sqrt(max_abs_strength);
 
     reset_sources();
     grid_dirty = false;
     visualisation_dirty = true;
 }
 void ATestUniformField::reset_cells() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells::reset_cells"));
+
     for (auto& cell : cells) {
         cell.reset();
     }
 
     constexpr auto inf{std::numeric_limits<float>::infinity()};
-
-    max_strength = -inf;
-    min_strength = inf;
-    min_abs_strength = inf;
     max_abs_strength = 0.f;
 }
 void ATestUniformField::reset_sources() {
@@ -197,6 +197,7 @@ void ATestUniformField::configure_hism() {
     hism.SetNumCustomDataFloats(1);
     vector_meshes->ClearInstances();
 }
+
 void ATestUniformField::update_visualisation() {
     update_hism_visualisation();
 }
@@ -234,7 +235,7 @@ void ATestUniformField::update_hism_visualisation() {
             auto const pos{origin + delta_pos};
 
             auto const& potential{cells[i].potential};
-            auto const rot_vec{potential.Rotation()};
+            auto const rot_vec{FVector{potential}.Rotation()};
 
             auto const strength{static_cast<float>(potential.Size())};
             auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
@@ -289,12 +290,6 @@ void ATestUniformField::update_hism_visualisation() {
         int32 const start_index{num_hism_instances - num_instances_to_hide};
         auto hidden_transform{FTransform::Identity};
         hidden_transform.SetScale3D(FVector::ZeroVector);
-
-#if WITH_EDITOR
-        if (can_log()) {
-            UE_LOG(LogSandboxLearning, Verbose, TEXT("Hiding %d instances"), num_instances_to_hide);
-        }
-#endif
 
         hism.BatchUpdateInstancesTransform(start_index,
                                            num_instances_to_hide,

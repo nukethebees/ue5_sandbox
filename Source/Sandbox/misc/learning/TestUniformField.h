@@ -21,7 +21,7 @@ struct FTestUniformFieldCell {
     GENERATED_BODY()
 
     UPROPERTY()
-    FVector potential{FVector::ZeroVector};
+    FVector3f potential{FVector3f::ZeroVector};
 
     void reset();
 };
@@ -96,12 +96,6 @@ class ATestUniformField : public AActor {
     bool visualisation_dirty{false};
 
     // Visualisation
-    UPROPERTY(VisibleAnywhere, Category = "Field")
-    float max_strength{};
-    UPROPERTY(VisibleAnywhere, Category = "Field")
-    float min_strength{};
-    UPROPERTY(VisibleAnywhere, Category = "Field")
-    float min_abs_strength{};
     UPROPERTY(VisibleAnywhere, Category = "Field")
     float max_abs_strength{};
     UPROPERTY(EditAnywhere, Category = "Grid")
