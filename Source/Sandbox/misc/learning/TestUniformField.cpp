@@ -26,21 +26,23 @@ ATestUniformField::ATestUniformField()
     vector_meshes->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
     // Run when everyone else is finished
     PrimaryActorTick.TickGroup = ETickingGroup::TG_PostPhysics;
 }
 
 void ATestUniformField::BeginPlay() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::BeginPlay"));
+
     Super::BeginPlay();
 
     vector_meshes->ClearInstances();
     check(vector_meshes->GetStaticMesh());
 
-    mark_all_dirty();
-    update_cells();
-
+    max_abs_strength = 1.f; // Placeholder for initial drawing
     initialise_hism_visualisation();
+
+    mark_all_dirty();
 }
 void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);
@@ -86,6 +88,8 @@ auto ATestUniformField::sample_field(FVector const& position) const -> FTestUnif
 }
 
 void ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::add_source"));
+
     point_sources.Add(source);
 
     mark_all_dirty();
@@ -106,9 +110,12 @@ void ATestUniformField::update_cells() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
 
     auto const n_cells{get_num_cells()};
+    auto const n_sources{point_sources.Num()};
     auto const origin{get_origin_cell_centre()};
 
     reset_cells();
+
+    UE_LOG(LogSandboxLearning, Verbose, TEXT("Processing %d point sources."), n_sources);
 
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
@@ -160,6 +167,8 @@ void ATestUniformField::reset_cells() {
     max_abs_strength = 0.f;
 }
 void ATestUniformField::reset_sources() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::reset_sources"));
+
     point_sources.Reset();
 }
 
@@ -192,17 +201,19 @@ void ATestUniformField::configure_box_mesh() {
 
     box_mesh->SetRelativeScale3D(get_field_extent() / box_mesh_src->GetBounds().BoxExtent);
 }
-void ATestUniformField::configure_hism() {
-    auto& hism{*vector_meshes};
-
-    configure_visualisation_component(hism);
-
-    hism.SetNumCustomDataFloats(1);
-    vector_meshes->ClearInstances();
-}
 
 void ATestUniformField::update_visualisation() {
     update_hism_visualisation();
+}
+
+void ATestUniformField::configure_hism() {
+    auto& hism{*vector_meshes};
+
+    hism.ClearInstances();
+    hism.SetNumCustomDataFloats(1); // Must be set before preallocation
+    hism.PreAllocateInstancesMemory(get_num_cells());
+
+    configure_visualisation_component(hism);
 }
 void ATestUniformField::initialise_hism_visualisation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::initialise_hism_visualisation"));
@@ -214,7 +225,7 @@ void ATestUniformField::initialise_hism_visualisation() {
     auto const origin{get_origin_cell_centre()};
 
     vector_transforms.SetNumUninitialized(num_cells, EAllowShrinking::No);
-    hism.PerInstanceSMCustomData.SetNumUninitialized(num_cells, EAllowShrinking::No);
+    vector_intensities.SetNumUninitialized(num_cells, EAllowShrinking::No);
     update_hism_data(origin);
 
     constexpr bool return_indices{false};
@@ -222,6 +233,11 @@ void ATestUniformField::initialise_hism_visualisation() {
     constexpr bool update_nav{false};
 
     hism.AddInstances(vector_transforms, return_indices, world_space, update_nav);
+
+    for (int32 i{0}; i < num_cells; ++i) {
+        hism.SetCustomDataValue(i, 0, vector_intensities[i], false);
+    }
+
     hism.MarkRenderStateDirty();
 
     visualisation_dirty = false;
@@ -259,6 +275,8 @@ void ATestUniformField::update_hism_visualisation() {
             0, vector_transforms, world_space, mark_render_dirty, teleport);
     }
 
+    hism.PerInstanceSMCustomData = vector_intensities;
+
     hism.MarkRenderStateDirty();
     visualisation_dirty = false;
 }
@@ -285,7 +303,7 @@ void ATestUniformField::update_hism_data(FVector const& origin) {
         };
 
         vector_transforms[i] = FTransform{rot_vec, pos, scale};
-        hism.PerInstanceSMCustomData[i] = strength;
+        vector_intensities[i] = strength;
     });
 }
 void ATestUniformField::update_hism_visibility() {

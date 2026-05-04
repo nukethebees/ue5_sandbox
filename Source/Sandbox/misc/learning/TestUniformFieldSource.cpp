@@ -18,11 +18,10 @@ ATestUniformFieldPointSource::ATestUniformFieldPointSource()
 
 void ATestUniformFieldPointSource::Tick(float dt) {
     Super::Tick(dt);
-
-    update_sources();
-    broadcast_to_field();
 }
 void ATestUniformFieldPointSource::BeginPlay() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformFieldPointSource::BeginPlay"));
+
     Super::BeginPlay();
 
     update_sources();
@@ -50,6 +49,11 @@ void ATestUniformFieldPointSource::broadcast_to_field() {
     }
 
     if (auto field_ref{field.Pin()}) {
+        UE_LOG(LogSandboxLearning,
+               Verbose,
+               TEXT("(%s) Broadcasting to field."),
+               *GetActorNameOrLabel());
+
         for (auto& source : sources) {
             field_ref->add_source(source);
         }
