@@ -14,6 +14,7 @@
 
 class UHierarchicalInstancedStaticMeshComponent;
 class UWorld;
+class UStaticMesh;
 class UStaticMeshComponent;
 
 USTRUCT()
@@ -74,7 +75,10 @@ class ATestUniformField : public AActor {
     void configure_hism();
 
     void update_visualisation();
+    void initialise_hism_visualisation();
     void update_hism_visualisation();
+    void update_hism_data(FVector const& origin);
+    void update_hism_visibility();
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
