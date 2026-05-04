@@ -202,14 +202,14 @@ void ATestUniformField::update_visualisation() {
     update_hism_visualisation();
 }
 void ATestUniformField::update_hism_visualisation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation"));
-
     auto& hism{*vector_meshes};
 
     hism.SetVisibility(display_vectors);
     if (!display_vectors || !visualisation_dirty) {
         return;
     }
+
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_visualisation"));
 
     auto const mesh{hism.GetStaticMesh()};
     if (!mesh) {
@@ -220,11 +220,8 @@ void ATestUniformField::update_hism_visualisation() {
     auto const num_cells{get_num_cells()};
     auto const origin{get_origin_cell_centre()};
 
-    vector_transforms.Reset();
-    vector_transforms.Reserve(num_cells);
-    vector_intensities.Reset();
-    vector_intensities.Reserve(num_cells);
-    vector_intensities.AddDefaulted(num_cells);
+    vector_transforms.SetNumUninitialized(num_cells, false);
+    hism.PerInstanceSMCustomData.SetNumUninitialized(num_cells, false);
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(
@@ -240,16 +237,14 @@ void ATestUniformField::update_hism_visualisation() {
             auto const strength{static_cast<float>(potential.Size())};
             auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
 
-            FVector scale{
-                length_scale,
-                1.f,
-                1.f,
+            FVector const scale{
+                length_scale * vector_base_scale.X,
+                1.f * vector_base_scale.Y,
+                1.f * vector_base_scale.Z,
             };
-            scale *= vector_base_scale;
 
-            vector_transforms.Emplace(rot_vec, pos, scale);
-
-            vector_intensities[i] = strength;
+            vector_transforms[i] = FTransform{rot_vec, pos, scale};
+            hism.PerInstanceSMCustomData[i] = strength;
         }
     }
 
@@ -304,15 +299,6 @@ void ATestUniformField::update_hism_visualisation() {
             TEXT("ATestUniformField::update_hism_visualisation::batch_update"));
         hism.BatchUpdateInstancesTransforms(
             0, vector_transforms, world_space, mark_render_dirty, teleport);
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            TEXT("ATestUniformField::update_hism_visualisation::custom_data"));
-        constexpr int32 data_idx{0};
-        for (int32 i{0}; i < num_cells; ++i) {
-            hism.SetCustomDataValue(i, data_idx, vector_intensities[i], mark_render_dirty);
-        }
     }
 
     hism.MarkRenderStateDirty();

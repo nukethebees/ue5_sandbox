@@ -108,7 +108,6 @@ class ATestUniformField : public AActor {
     FVector vector_base_scale{FVector::OneVector};
 
     TArray<FTransform> vector_transforms;
-    TArray<float> vector_intensities;
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
