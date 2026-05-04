@@ -118,8 +118,9 @@ class ATestUniformField : public AActor {
     void update_visualisation();
     void initialise_hism_visualisation();
     void update_hism_visualisation();
-    void update_hism_data(FVector const& origin, int32 offset, int32 length);
     void update_hism_visibility();
+    void update_hism_data(FVector const& origin, int32 offset, int32 length);
+    void update_hism_instance(FVector const& origin, int32 index);
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
@@ -154,6 +155,7 @@ class ATestUniformField : public AActor {
 
     TArray<FTransform> vector_transforms;
     TArray<float> vector_intensities;
+    TArray<int32> dirty_cells{};
     TArray<DirtyRun> dirty_runs;
 
 #if WITH_EDITOR

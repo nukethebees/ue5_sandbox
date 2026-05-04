@@ -58,8 +58,6 @@ ATestUniformField::ATestUniformField()
 }
 
 void ATestUniformField::BeginPlay() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::BeginPlay"));
-
     Super::BeginPlay();
 
     vector_meshes->ClearInstances();
@@ -335,7 +333,7 @@ void ATestUniformField::update_hism_visualisation() {
 
     constexpr int32 run_end_threshold{10};
 
-    TArray<int32> dirty_cells{};
+    dirty_cells.Reset();
     for (int32 i{0}; i < num_cells; ++i) {
         auto& cell{cells[i]};
         if (cell.quantised_changed()) {
@@ -359,6 +357,7 @@ void ATestUniformField::update_hism_visualisation() {
         auto const remaining_dirty{MakeConstArrayView(dirty_cells).Slice(1, n_dirty - 1)};
         auto const n_remaining_dirty{remaining_dirty.Num()};
 
+        dirty_runs.Reset();
         int32 run_start{dirty_cells[0]};
         int32 run_end{dirty_cells[0]};
 
@@ -380,8 +379,18 @@ void ATestUniformField::update_hism_visualisation() {
             dirty_runs.Emplace(run_start, 1 + (run_end - run_start));
         }
 
+        auto const n_dirty_runs{dirty_runs.Num()};
+
         for (auto const& run : dirty_runs) {
-            update_hism_data(origin, run.offset, run.length);
+            ParallelFor(
+                run.length,
+                [=, this, offset = run.offset](int32 local_index) -> void {
+                    update_hism_instance(origin, offset + local_index);
+                },
+                EParallelForFlags::Unbalanced);
+        }
+
+        for (auto const& run : dirty_runs) {
             auto const dirty_transform{
                 MakeConstArrayView(vector_transforms).Slice(run.offset, run.length)};
 
@@ -400,29 +409,28 @@ void ATestUniformField::update_hism_visualisation() {
 void ATestUniformField::update_hism_data(FVector const& origin, int32 offset, int32 length) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_hism_data"));
 
-    auto& hism{*vector_meshes};
-
-    ParallelFor(length, [=, this, &hism](int32 local_index) -> void {
-        auto const full_index{offset + local_index};
-
-        auto const delta_pos{get_position_from_origin_cell_centre(full_index)};
-        auto const pos{origin + delta_pos};
-
-        auto const& potential{cells[full_index].potential};
-        auto const rot_vec{FVector{potential}.Rotation()};
-
-        auto const strength{static_cast<float>(potential.Size())};
-        auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
-
-        FVector const scale{
-            length_scale * vector_base_scale.X,
-            1.f * vector_base_scale.Y,
-            1.f * vector_base_scale.Z,
-        };
-
-        vector_transforms[full_index] = FTransform{rot_vec, pos, scale};
-        vector_intensities[full_index] = strength;
+    ParallelFor(length, [=, this](int32 local_index) -> void {
+        update_hism_instance(origin, offset + local_index);
     });
+}
+void ATestUniformField::update_hism_instance(FVector const& origin, int32 index) {
+    auto const delta_pos{get_position_from_origin_cell_centre(index)};
+    auto const pos{origin + delta_pos};
+
+    auto const& potential{cells[index].potential};
+    auto const rot_vec{FVector{potential}.Rotation()};
+
+    auto const strength{static_cast<float>(potential.Size())};
+    auto const length_scale{FMath::Max(min_length_scale, strength / max_abs_strength)};
+
+    FVector const scale{
+        length_scale * vector_base_scale.X,
+        1.f * vector_base_scale.Y,
+        1.f * vector_base_scale.Z,
+    };
+
+    vector_transforms[index] = FTransform{rot_vec, pos, scale};
+    vector_intensities[index] = strength;
 }
 void ATestUniformField::update_hism_visibility() {
     vector_meshes->SetVisibility(display_vectors);
