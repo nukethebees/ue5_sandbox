@@ -227,7 +227,7 @@ void ATestUniformField::update_hism_visualisation() {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("ATestUniformField::update_hism_visualisation::transform_loop"));
 
-        for (int32 i{0}; i < num_cells; ++i) {
+        ParallelFor(num_cells, [=, this, &hism](int i) -> void {
             auto const delta_pos{get_position_from_origin_cell_centre(i)};
             auto const pos{origin + delta_pos};
 
@@ -245,7 +245,7 @@ void ATestUniformField::update_hism_visualisation() {
 
             vector_transforms[i] = FTransform{rot_vec, pos, scale};
             hism.PerInstanceSMCustomData[i] = strength;
-        }
+        });
     }
 
     auto const num_hism_instances{hism.GetInstanceCount()};
