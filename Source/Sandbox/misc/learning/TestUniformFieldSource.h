@@ -37,8 +37,9 @@ class ATestUniformFieldPointSource : public AActor {
 
     void Tick(float dt) override;
   protected:
-    void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
+    void BeginPlay() override;
+    void EndPlay(EEndPlayReason::Type const reason) override;
 
     void update_sources();
     void broadcast_to_field(ATestUniformField& field_ref);

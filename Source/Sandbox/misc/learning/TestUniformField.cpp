@@ -96,6 +96,8 @@ void ATestUniformField::on_world_match_starting() {
 
     update_cells();
     update_visualisation();
+
+    on_field_post_construction.Broadcast(*this);
 }
 void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);

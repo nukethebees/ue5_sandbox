@@ -101,12 +101,10 @@ class ATestUniformField : public AActor {
     auto get_field_extent() const -> FVector;
     auto get_field_dimensions() const -> FVector;
 
-    void mark_all_dirty();
-    void mark_grid_dirty();
-    void mark_visualisation_dirty();
-
     DECLARE_MULTICAST_DELEGATE_OneParam(FOnFieldPreConstruction, ATestUniformField&);
     FOnFieldPreConstruction on_field_pre_construction;
+    DECLARE_MULTICAST_DELEGATE_OneParam(FOnFieldPostConstruction, ATestUniformField&);
+    FOnFieldPostConstruction on_field_post_construction;
   protected:
     void PostActorCreated() override;
     void OnConstruction(FTransform const& transform) override;
@@ -133,6 +131,10 @@ class ATestUniformField : public AActor {
     void update_hism_visibility();
     void update_hism_data(FVector const& origin, int32 offset, int32 length);
     void update_hism_instance(FVector const& origin, int32 index);
+
+    void mark_all_dirty();
+    void mark_grid_dirty();
+    void mark_visualisation_dirty();
 
     UPROPERTY(EditAnywhere, Category = "Grid")
     TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};

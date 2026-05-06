@@ -40,6 +40,13 @@ void ATestUniformFieldPointSource::Tick(float dt) {
     update_sources();
     broadcast_update_to_field();
 }
+void ATestUniformFieldPointSource::EndPlay(EEndPlayReason::Type const reason) {
+    WARN_IF_EXPR_ELSE(field == nullptr) {
+        field->on_field_pre_construction.RemoveAll(this);
+    }
+
+    Super::EndPlay(reason);
+}
 
 void ATestUniformFieldPointSource::update_sources() {
     for (auto& source : sources) {
@@ -67,6 +74,4 @@ void ATestUniformFieldPointSource::on_field_pre_construction(ATestUniformField& 
            *ml::get_best_display_name(*this));
 
     broadcast_to_field(field_ref);
-
-    field_ref.on_field_pre_construction.RemoveAll(this);
 }
