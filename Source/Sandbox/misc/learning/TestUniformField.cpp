@@ -1,6 +1,8 @@
 #include "TestUniformField.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 #include "Sandbox/utilities/world.h"
 
 #include "Async/ParallelFor.h"
@@ -57,19 +59,43 @@ ATestUniformField::ATestUniformField()
     PrimaryActorTick.TickGroup = ETickingGroup::TG_PostPhysics;
 }
 
+// Actor lifecycle
+void ATestUniformField::PostLoad() {
+    Super::PostLoad();
+}
+void ATestUniformField::PostActorCreated() {
+    Super::PostActorCreated();
+}
+void ATestUniformField::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+
+    reset();
+    default_construct();
+}
 void ATestUniformField::BeginPlay() {
     Super::BeginPlay();
 
-    vector_meshes->ClearInstances();
     check(vector_meshes->GetStaticMesh());
 
-    max_abs_strength = 1.f; // Placeholder for initial drawing
-    initialise_hism_visualisation();
+    reset();
+    default_construct();
 
-    dirty_runs.Reset();
-    dirty_runs.Reserve(50);
+    TRY_INIT_PTR(world, GetWorld());
+    on_world_match_starting_handle =
+        world->OnWorldMatchStarting.AddUObject(this, &ThisClass::on_world_match_starting);
+}
+void ATestUniformField::on_world_match_starting() {
+    UE_LOG(LogSandboxLearning, Verbose, TEXT("ATestUniformField::on_world_match_starting"));
 
-    mark_all_dirty();
+    UE_LOG(LogSandboxLearning,
+           Verbose,
+           TEXT("%s::on_world_match_starting"),
+           *ml::get_best_display_name(*this));
+
+    on_field_pre_construction.Broadcast(*this);
+
+    update_cells();
+    update_visualisation();
 }
 void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);
@@ -89,22 +115,24 @@ void ATestUniformField::Tick(float dt) {
 
     SetActorTickEnabled(false);
 }
-void ATestUniformField::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
+void ATestUniformField::EndPlay(EEndPlayReason::Type const reason) {
+    auto* world{GetWorld()};
+    if (world) {
+        world->OnWorldMatchStarting.Remove(on_world_match_starting_handle);
+        reset();
+    } else {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("world is nullptr"));
+    }
 
-    construct_grid();
-    configure_box_mesh();
-    configure_hism();
+    Super::EndPlay(reason);
 }
-void ATestUniformField::PostActorCreated() {
-    Super::PostActorCreated();
+void ATestUniformField::BeginDestroy() {
+    Super::BeginDestroy();
+}
+void ATestUniformField::FinishDestroy() {
+    Super::FinishDestroy();
+}
 
-    reset_sources();
-}
-
-auto ATestUniformField::find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField> {
-    return ml::get_first_actor<ATestUniformField>(world);
-}
 auto ATestUniformField::sample_field(FVector const& position) const -> FTestUniformFieldCell {
     auto const i{get_index(position)};
     if (cells.IsValidIndex(i)) {
@@ -114,6 +142,7 @@ auto ATestUniformField::sample_field(FVector const& position) const -> FTestUnif
     }
 }
 
+// Source registration
 auto ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) -> int32 {
     int const i{point_sources.Num()};
     point_sources.Add(source);
@@ -146,17 +175,25 @@ void ATestUniformField::update_sources(TArrayView<FTestUniformFieldPointSourceDa
     mark_all_dirty();
 }
 
+// Field construction
+void ATestUniformField::default_construct() {
+    construct_grid();
+    configure_box_mesh();
+    configure_hism();
+    initialise_hism_visualisation();
+}
 void ATestUniformField::construct_grid() {
     grid_dimensions = FIntVector{box_extent / cell_extent};
 
     auto const n{get_num_cells()};
-    cells.Reset();
     cells.AddDefaulted(n);
 
 #if WITH_EDITOR
     dbg_num_cells = n;
 #endif
 }
+
+// Field update
 void ATestUniformField::update_cells() {
     if (!grid_dirty) {
         return;
@@ -168,7 +205,7 @@ void ATestUniformField::update_cells() {
     auto const n_sources{point_sources.Num()};
     auto const origin{get_origin_cell_centre()};
 
-    reset_cells();
+    reset_cells_to_default();
 
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
@@ -226,22 +263,17 @@ void ATestUniformField::update_cells() {
 
     grid_dirty = false;
 }
-void ATestUniformField::reset_cells() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells::reset_cells"));
+void ATestUniformField::reset_cells_to_default() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::reset_cells"));
 
     for (auto& cell : cells) {
         cell.reset();
     }
 
-    constexpr auto inf{std::numeric_limits<float>::infinity()};
     max_abs_strength = 0.f;
 }
-void ATestUniformField::reset_sources() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::reset_sources"));
 
-    point_sources.Reset();
-}
-
+// Visualiation - configuration
 void ATestUniformField::configure_visualisation_component(UStaticMeshComponent& mc) {
     // Collision
     mc.SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -271,11 +303,6 @@ void ATestUniformField::configure_box_mesh() {
 
     box_mesh->SetRelativeScale3D(get_field_extent() / box_mesh_src->GetBounds().BoxExtent);
 }
-
-void ATestUniformField::update_visualisation() {
-    update_hism_visualisation();
-}
-
 void ATestUniformField::configure_hism() {
     auto& hism{*vector_meshes};
 
@@ -285,6 +312,8 @@ void ATestUniformField::configure_hism() {
 
     configure_visualisation_component(hism);
 }
+
+// Visualisation - initialisation
 void ATestUniformField::initialise_hism_visualisation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::initialise_hism_visualisation"));
 
@@ -311,6 +340,11 @@ void ATestUniformField::initialise_hism_visualisation() {
     hism.MarkRenderStateDirty();
 
     visualisation_dirty = false;
+}
+
+// Visualisation - updates
+void ATestUniformField::update_visualisation() {
+    update_hism_visualisation();
 }
 void ATestUniformField::update_hism_visualisation() {
     if (!visualisation_dirty) {
@@ -452,6 +486,7 @@ void ATestUniformField::mark_visualisation_dirty() {
     SetActorTickEnabled(true);
 }
 
+// Field geometry
 auto ATestUniformField::get_coord(FVector const& pos) const -> FIntVector {
     auto const origin{get_origin_cell_centre()};
     auto const delta{pos - origin};
@@ -522,4 +557,23 @@ auto ATestUniformField::get_field_extent() const -> FVector {
 }
 auto ATestUniformField::get_field_dimensions() const -> FVector {
     return get_field_extent() * 2.0;
+}
+
+// Reset
+void ATestUniformField::reset() {
+    vector_meshes->ClearInstances();
+
+    reset_sources();
+    cells.Reset();
+    reset_cells_to_default();
+
+    vector_transforms.Reset();
+    vector_intensities.Reset();
+    dirty_cells.Reset();
+
+    dirty_runs.Reset();
+    dirty_runs.Reserve(50);
+}
+void ATestUniformField::reset_sources() {
+    point_sources.Reset();
 }

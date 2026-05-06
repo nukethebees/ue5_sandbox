@@ -41,14 +41,16 @@ class ATestUniformFieldPointSource : public AActor {
     void OnConstruction(FTransform const& transform) override;
 
     void update_sources();
-    void find_field();
+    void broadcast_to_field(ATestUniformField& field_ref);
     void broadcast_to_field();
+    void broadcast_update_to_field(ATestUniformField& field_ref);
     void broadcast_update_to_field();
+    void on_field_pre_construction(ATestUniformField& field_ref);
 
     UPROPERTY(EditAnywhere, Category = "Field")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
-    UPROPERTY()
-    TWeakObjectPtr<ATestUniformField> field{nullptr};
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Field")
+    TObjectPtr<class ATestUniformField> field{};
     UPROPERTY(EditAnywhere, Category = "Field")
     TArray<FTestUniformFieldPointSourceData> sources{};
     UPROPERTY(EditAnywhere, Category = "Field")

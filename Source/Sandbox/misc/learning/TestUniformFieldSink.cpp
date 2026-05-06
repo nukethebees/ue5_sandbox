@@ -1,6 +1,7 @@
 #include "TestUniformFieldSink.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/macros/null_checks.hpp"
 #include "Sandbox/utilities/world.h"
 #include "TestUniformField.h"
 
@@ -20,9 +21,9 @@ ATestUniformFieldPointSink::ATestUniformFieldPointSink()
 void ATestUniformFieldPointSink::Tick(float dt) {
     Super::Tick(dt);
 
-    if (auto field_ref{field.Pin()}) {
+    WARN_IF_EXPR_ELSE(!field) {
         auto const pos{GetActorLocation()};
-        auto const sample{field_ref->sample_field(pos)};
+        auto const sample{field->sample_field(pos)};
 
         auto const potential_mag{sample.potential.Size()};
 
@@ -41,21 +42,11 @@ void ATestUniformFieldPointSink::Tick(float dt) {
         SetActorLocation(pos + FVector{clamped_delta_pos});
 
         speed = clamped_speed;
-    } else {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to pin field."));
     }
 }
 void ATestUniformFieldPointSink::BeginPlay() {
     Super::BeginPlay();
-
-    find_field();
 }
 void ATestUniformFieldPointSink::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-
-    find_field();
-}
-
-void ATestUniformFieldPointSink::find_field() {
-    field = ATestUniformField::find_field(*GetWorld());
 }

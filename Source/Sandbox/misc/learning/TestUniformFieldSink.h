@@ -19,8 +19,6 @@ class ATestUniformFieldPointSink : public AActor {
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
 
-    void find_field();
-
     UPROPERTY(EditAnywhere, Category = "Sink")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sink")
@@ -32,6 +30,6 @@ class ATestUniformFieldPointSink : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sink")
     float speed{0.f};
 
-    UPROPERTY()
-    TWeakObjectPtr<ATestUniformField> field{nullptr};
+    UPROPERTY(EditInstanceOnly, Category = "Sink")
+    TObjectPtr<ATestUniformField> field{nullptr};
 };

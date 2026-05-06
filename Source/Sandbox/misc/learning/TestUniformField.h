@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Containers/Array.h"
+#include "Delegates/IDelegateInstance.h"
 #include "GameFramework/Actor.h"
 #include "HAL/Platform.h"
 #include "Math/MathFwd.h"
@@ -66,9 +67,11 @@ class ATestUniformField : public AActor {
 
     ATestUniformField();
 
+    void PostLoad() override;
     void Tick(float dt) override;
+    void BeginDestroy() override;
+    void FinishDestroy() override;
 
-    static auto find_field(UWorld& world) -> TWeakObjectPtr<ATestUniformField>;
     auto sample_field(FVector const& position) const -> FTestUniformFieldCell;
 
     [[nodiscard]]
@@ -101,14 +104,23 @@ class ATestUniformField : public AActor {
     void mark_all_dirty();
     void mark_grid_dirty();
     void mark_visualisation_dirty();
+
+    DECLARE_MULTICAST_DELEGATE_OneParam(FOnFieldPreConstruction, ATestUniformField&);
+    FOnFieldPreConstruction on_field_pre_construction;
   protected:
-    void BeginPlay() override;
-    void OnConstruction(FTransform const& transform) override;
     void PostActorCreated() override;
+    void OnConstruction(FTransform const& transform) override;
+    void BeginPlay() override;
+    void EndPlay(EEndPlayReason::Type const reason);
+
+    void on_world_match_starting();
+
+    void reset();
+    void default_construct();
 
     void construct_grid();
     void update_cells();
-    void reset_cells();
+    void reset_cells_to_default();
     void reset_sources();
 
     void configure_visualisation_component(UStaticMeshComponent& mc);
@@ -157,6 +169,8 @@ class ATestUniformField : public AActor {
     TArray<float> vector_intensities;
     TArray<int32> dirty_cells{};
     TArray<DirtyRun> dirty_runs;
+
+    FDelegateHandle on_world_match_starting_handle;
 
 #if WITH_EDITOR
     auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
