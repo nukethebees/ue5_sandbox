@@ -128,7 +128,13 @@ bool ATestUniformFieldFly0::at_target() const {
            (acceptance_radius * acceptance_radius);
 }
 void ATestUniformFieldFly0::display_destination() {
-    DrawDebugLine(GetWorld(), GetActorLocation(), destination, FColor::Green, false, 0.f, 0u, 8.f);
+    TRY_INIT_PTR(world, GetWorld());
+
+    constexpr float thickness{8.f};
+    auto const colour{FColor::Green};
+
+    DrawDebugLine(world, GetActorLocation(), destination, colour, false, 0.f, 0u, thickness);
+    DrawDebugSphere(world, destination, acceptance_radius, 8, colour, false, 0.f, 0u, thickness);
 }
 void ATestUniformFieldFly0::handle_oob() {
     if (!ml::actor_is_within(*this, *field, false)) {

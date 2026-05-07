@@ -38,24 +38,24 @@ class ATestUniformFieldFly0 : public AActor {
     TObjectPtr<ATestUniformField> field{nullptr};
 
     // Navigation
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     FVector destination{FVector::ZeroVector};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     bool show_destination{true};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     float acceptance_radius{1000.f};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     float min_dist{5000.f};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     float max_dist{10000.f};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     FCooldown arrival_cooldown{0.5f};
     // Movement
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     float speed{1000.f};
     // Learning
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     bool enable_prints{false};
-    UPROPERTY(EditInstanceOnly, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     FCooldown log_cooldown{2.f};
 };
