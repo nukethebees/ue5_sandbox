@@ -1,8 +1,10 @@
 #include "Sandbox/utilities/actor_utils.h"
 
-#include "Components/StaticMeshComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/geometry.h"
+
+#include <Kismet/KismetMathLibrary.h>
+#include "Components/StaticMeshComponent.h"
 
 namespace ml {
 auto get_actor_corners(AActor const& actor) -> FActorCorners {
@@ -26,5 +28,13 @@ auto get_static_meshes_bounding_box(AActor const& actor) -> FBox {
     }
 
     return box;
+}
+auto actor_is_within(AActor const& actor, AActor const& other, bool only_colliding_components)
+    -> bool {
+    FVector origin;
+    FVector extent;
+    other.GetActorBounds(only_colliding_components, origin, extent);
+
+    return UKismetMathLibrary::IsPointInBox(actor.GetActorLocation(), origin, extent);
 }
 }

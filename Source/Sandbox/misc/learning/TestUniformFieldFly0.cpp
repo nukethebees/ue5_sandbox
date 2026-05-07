@@ -7,7 +7,6 @@
 
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
-#include <Kismet/KismetMathLibrary.h>
 
 ATestUniformFieldFly0::ATestUniformFieldFly0()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
@@ -34,13 +33,7 @@ void ATestUniformFieldFly0::BeginPlay() {
         return;
     }
 
-    FVector origin;
-    FVector extent;
-    field->GetActorBounds(false, origin, extent);
-
-    auto const is_in_field(UKismetMathLibrary::IsPointInBox(GetActorLocation(), origin, extent));
-
-    if (!is_in_field) {
+    if (!ml::actor_is_within(*this, *field, false)) {
         UE_LOG(LogSandboxLearning,
                Error,
                TEXT("%s is not within the vector field"),

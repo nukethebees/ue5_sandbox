@@ -38,4 +38,7 @@ inline FString get_best_display_name(AActor const& actor) {
 auto get_actor_corners(AActor const& actor) -> FActorCorners;
 auto get_static_meshes_bounding_box(AActor const& actor) -> FBox;
 
+auto actor_is_within(AActor const& actor, AActor const& other, bool only_colliding_components)
+    -> bool;
+
 } // namespace ml
