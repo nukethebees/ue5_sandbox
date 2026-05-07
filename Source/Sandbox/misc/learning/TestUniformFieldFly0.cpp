@@ -23,21 +23,36 @@ void ATestUniformFieldFly0::OnConstruction(FTransform const& transform) {
 void ATestUniformFieldFly0::BeginPlay() {
     Super::BeginPlay();
 
-    WARN_IF_EXPR_ELSE(field == nullptr) {
-        field->on_field_post_construction.AddUObject(this, &ThisClass::on_field_post_construction);
-    }
+    // Force a new destination on the first tick
+    destination = GetActorLocation();
 }
 void ATestUniformFieldFly0::Tick(float dt) {
     Super::Tick(dt);
+
+    if (at_target()) {
+        set_new_destination();
+    } else {
+        move_to_destination();
+    }
 }
 void ATestUniformFieldFly0::EndPlay(EEndPlayReason::Type const reason) {
-    WARN_IF_EXPR_ELSE(field == nullptr) {
-        field->on_field_post_construction.RemoveAll(this);
-    }
-
     Super::EndPlay(reason);
 }
+void ATestUniformFieldFly0::set_new_destination() {
+    // Sample the vector field
 
-void ATestUniformFieldFly0::on_field_post_construction(ATestUniformField& field_) {
-    // Sample the first point
+    // Use its magnitude and distance to decide where to fly to
+
+    // Do a raycast to the edge of the field so you don't leave it
+
+    // Check if you are outside it
+
+    // Consider adding some randomness
+
+    // Constrain the distance that you can fly
+}
+void ATestUniformFieldFly0::move_to_destination() {}
+bool ATestUniformFieldFly0::at_target() const {
+    return FVector::DistSquared(GetActorLocation(), destination) <=
+           (acceptance_radius * acceptance_radius);
 }
