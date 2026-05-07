@@ -14,6 +14,7 @@ struct FCooldown {
 
     auto is_finished() const { return remaining <= 0.f; }
     void reset() { remaining = duration; }
+    void finish() { remaining = -1.f; }
 
     auto& operator-=(float dt) {
         remaining -= dt;
