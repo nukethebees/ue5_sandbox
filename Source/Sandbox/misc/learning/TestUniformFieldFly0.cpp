@@ -1,11 +1,13 @@
 #include "TestUniformFieldFly0.h"
 
+#include <Sandbox/utilities/actor_utils.h>
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
 #include "TestUniformField.h"
 
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include <Components/SceneComponent.h>
+#include <Components/StaticMeshComponent.h>
+#include <Kismet/KismetMathLibrary.h>
 
 ATestUniformFieldFly0::ATestUniformFieldFly0()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
@@ -25,6 +27,27 @@ void ATestUniformFieldFly0::BeginPlay() {
 
     // Force a new destination on the first tick
     destination = GetActorLocation();
+
+    if (field == nullptr) {
+        WARN_IS_FALSE(LogSandboxLearning, field);
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    FVector origin;
+    FVector extent;
+    field->GetActorBounds(false, origin, extent);
+
+    auto const is_in_field(UKismetMathLibrary::IsPointInBox(GetActorLocation(), origin, extent));
+
+    if (!is_in_field) {
+        UE_LOG(LogSandboxLearning,
+               Error,
+               TEXT("%s is not within the vector field"),
+               *ml::get_best_display_name(*this));
+        SetActorTickEnabled(false);
+        return;
+    }
 }
 void ATestUniformFieldFly0::Tick(float dt) {
     Super::Tick(dt);
