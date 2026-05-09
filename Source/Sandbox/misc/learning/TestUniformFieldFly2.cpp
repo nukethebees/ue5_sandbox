@@ -58,6 +58,7 @@ void ATestUniformFieldFly2::Tick(float dt) {
 
     if (target.IsValid()) {
         destination = target->GetActorLocation();
+        ml::face_point(*this, destination);
     } else {
         try_find_target();
     }
