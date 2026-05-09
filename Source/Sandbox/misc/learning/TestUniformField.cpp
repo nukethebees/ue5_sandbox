@@ -88,6 +88,8 @@ void ATestUniformField::on_world_match_starting() {
 
     on_field_pre_construction.Broadcast(*this);
 
+    update_cells_array(static_cells, static_point_sources);
+
     update_cells();
     update_visualisation();
 
@@ -133,34 +135,35 @@ auto ATestUniformField::sample_field(FVector const& position) const -> FTestUnif
 }
 
 // Source registration
-auto ATestUniformField::add_source(FTestUniformFieldPointSourceData const& source) -> int32 {
-    int const i{point_sources.Num()};
-    point_sources.Add(source);
-    mark_all_dirty();
-
-    return i;
-}
-auto ATestUniformField::add_sources(TArrayView<FTestUniformFieldPointSourceData const> sources)
-    -> int32 {
-    int const i{point_sources.Num()};
+auto ATestUniformField::add_static_sources(
+    TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32 {
+    auto const i{static_point_sources.Num()};
 
     for (auto const& src : sources) {
-        point_sources.Add(src);
+        static_point_sources.Add(src);
     }
 
     mark_all_dirty();
 
     return i;
 }
-void ATestUniformField::update_source(FTestUniformFieldPointSourceData const& source, int32 i) {
-    point_sources[i] = source;
+auto ATestUniformField::add_dynamic_sources(
+    TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32 {
+    auto const i{dynamic_point_sources.Num()};
+
+    for (auto const& src : sources) {
+        dynamic_point_sources.Add(src);
+    }
+
     mark_all_dirty();
+
+    return i;
 }
-void ATestUniformField::update_sources(TArrayView<FTestUniformFieldPointSourceData const> sources,
-                                       int32 offset) {
+void ATestUniformField::update_dynamic_sources(
+    TArrayView<FTestUniformFieldPointSourceData const> sources, int32 offset) {
     auto const n{sources.Num()};
     for (int32 i{0}; i < n; ++i) {
-        point_sources[offset + i] = sources[i];
+        dynamic_point_sources[offset + i] = sources[i];
     }
     mark_all_dirty();
 }
@@ -177,6 +180,7 @@ void ATestUniformField::construct_grid() {
 
     auto const n{get_num_cells()};
     cells.AddDefaulted(n);
+    static_cells.AddDefaulted(n);
 
 #if WITH_EDITOR
     dbg_num_cells = n;
@@ -184,18 +188,14 @@ void ATestUniformField::construct_grid() {
 }
 
 // Field update
-void ATestUniformField::update_cells() {
-    if (!grid_dirty) {
-        return;
-    }
+void ATestUniformField::update_cells_array(
+    TArrayView<FTestUniformFieldCell> updating_cells,
+    TArrayView<FTestUniformFieldPointSourceData const> point_sources) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells[static]"));
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
-
-    auto const n_cells{get_num_cells()};
+    auto const n_cells{cells.Num()};
     auto const n_sources{point_sources.Num()};
     auto const origin{get_origin_cell_centre()};
-
-    reset_cells_to_default();
 
     for (auto const& ps : point_sources) {
         auto const source_pos{ps.coordinate};
@@ -221,12 +221,29 @@ void ATestUniformField::update_cells() {
                 static_cast<FVector3f>(ps.rotation.RotateVector(displacement).GetSafeNormal())};
             auto const potential{dir * strength};
 
-            auto& cell{cells[i]};
+            auto& cell{updating_cells[i]};
             cell.potential += potential;
         }};
 
         ParallelFor(n_cells, compute_cell);
     }
+}
+
+void ATestUniformField::update_cells() {
+    if (!grid_dirty) {
+        return;
+    }
+
+    auto const n_cells{get_num_cells()};
+
+    TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("ATestUniformField::update_cells"));
+
+    reset_cells_to_default();
+
+    update_cells_array(cells, dynamic_point_sources);
+
+    ParallelFor(n_cells,
+                [this](int32 i) -> void { cells[i].potential += static_cells[i].potential; });
 
     for (auto& cell : cells) {
         max_abs_strength = std::max(max_abs_strength, cell.potential.SquaredLength());
@@ -553,9 +570,12 @@ auto ATestUniformField::get_field_dimensions() const -> FVector {
 void ATestUniformField::reset() {
     vector_meshes->ClearInstances();
 
-    reset_sources();
+    static_point_sources.Reset();
+    dynamic_point_sources.Reset();
+
     cells.Reset();
     reset_cells_to_default();
+    static_cells.Reset();
 
     vector_transforms.Reset();
     vector_intensities.Reset();
@@ -563,9 +583,6 @@ void ATestUniformField::reset() {
 
     dirty_runs.Reset();
     dirty_runs.Reserve(50);
-}
-void ATestUniformField::reset_sources() {
-    point_sources.Reset();
 }
 
 #if WITH_EDITOR

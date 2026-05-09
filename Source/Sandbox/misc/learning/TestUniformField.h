@@ -73,11 +73,11 @@ class ATestUniformField : public AActor {
     auto sample_field(FVector const& position) const -> FTestUniformFieldCell;
 
     [[nodiscard]]
-    auto add_source(FTestUniformFieldPointSourceData const& source) -> int32;
+    auto add_static_sources(TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32;
     [[nodiscard]]
-    auto add_sources(TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32;
-    void update_source(FTestUniformFieldPointSourceData const& source, int32 i);
-    void update_sources(TArrayView<FTestUniformFieldPointSourceData const> sources, int32 offset);
+    auto add_dynamic_sources(TArrayView<FTestUniformFieldPointSourceData const> sources) -> int32;
+    void update_dynamic_sources(TArrayView<FTestUniformFieldPointSourceData const> sources,
+                                int32 offset);
 
     auto get_coord(FVector const& pos) const -> FIntVector;
     auto get_index(FIntVector const& coord) const -> int32;
@@ -113,10 +113,11 @@ class ATestUniformField : public AActor {
     void reset();
     void default_construct();
 
+    void update_cells_array(TArrayView<FTestUniformFieldCell> updating_cells,
+                           TArrayView<FTestUniformFieldPointSourceData const> point_sources);
     void construct_grid();
     void update_cells();
     void reset_cells_to_default();
-    void reset_sources();
 
     void configure_visualisation_component(UStaticMeshComponent& mc);
     void configure_box_mesh();
@@ -143,16 +144,23 @@ class ATestUniformField : public AActor {
     FVector box_extent{500.f};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector cell_extent{50.f};
+
     UPROPERTY()
     TArray<FTestUniformFieldCell> cells{};
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
-    TArray<FTestUniformFieldPointSourceData> point_sources{};
+    UPROPERTY()
+    TArray<FTestUniformFieldCell> static_cells{};
+
+    UPROPERTY()
+    TArray<FTestUniformFieldPointSourceData> static_point_sources{};
+    UPROPERTY()
+    TArray<FTestUniformFieldPointSourceData> dynamic_point_sources{};
+
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     bool grid_dirty{false};
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
-    bool visualisation_dirty{false};
 
     // Visualisation
+    UPROPERTY(VisibleAnywhere, Category = "Grid")
+    bool visualisation_dirty{false};
     UPROPERTY(VisibleAnywhere, Category = "Field")
     float max_abs_strength{};
     UPROPERTY(EditAnywhere, Category = "Grid")

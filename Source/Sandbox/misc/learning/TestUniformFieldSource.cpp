@@ -54,14 +54,14 @@ void ATestUniformFieldPointSource::update_sources() {
     }
 }
 void ATestUniformFieldPointSource::broadcast_to_field(ATestUniformField& field_ref) {
-    source_id = field_ref.add_sources(sources);
+    source_id = field_ref.add_dynamic_sources(sources);
 }
 void ATestUniformFieldPointSource::broadcast_to_field() {
     RETURN_IF_NULLPTR(field);
     broadcast_to_field(*field);
 }
 void ATestUniformFieldPointSource::broadcast_update_to_field(ATestUniformField& field_ref) {
-    field_ref.update_sources(sources, source_id);
+    field_ref.update_dynamic_sources(sources, source_id);
 }
 void ATestUniformFieldPointSource::broadcast_update_to_field() {
     RETURN_IF_NULLPTR(field);
