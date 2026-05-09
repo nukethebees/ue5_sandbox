@@ -53,19 +53,21 @@ void ATestUniformFieldPointSource::update_sources() {
         source.coordinate = GetActorLocation();
     }
 }
-void ATestUniformFieldPointSource::broadcast_to_field(ATestUniformField& field_ref) {
-    source_id = field_ref.add_dynamic_sources(sources);
-}
 void ATestUniformFieldPointSource::broadcast_to_field() {
     RETURN_IF_NULLPTR(field);
-    broadcast_to_field(*field);
-}
-void ATestUniformFieldPointSource::broadcast_update_to_field(ATestUniformField& field_ref) {
-    field_ref.update_dynamic_sources(sources, source_id);
+    if (is_dynamic) {
+        source_id = field->add_dynamic_sources(sources);
+    } else {
+        source_id = field->add_static_sources(sources);
+    }
 }
 void ATestUniformFieldPointSource::broadcast_update_to_field() {
+    if (!is_dynamic) {
+        return;
+    }
+
     RETURN_IF_NULLPTR(field);
-    broadcast_update_to_field(*field);
+    field->update_dynamic_sources(sources, source_id);
 }
 void ATestUniformFieldPointSource::on_field_pre_construction(ATestUniformField& field_ref) {
     UE_LOG(LogSandboxLearning,
@@ -73,5 +75,7 @@ void ATestUniformFieldPointSource::on_field_pre_construction(ATestUniformField& 
            TEXT("%s::on_field_pre_construction"),
            *ml::get_best_display_name(*this));
 
-    broadcast_to_field(field_ref);
+    check(&field_ref == &*field);
+
+    broadcast_to_field();
 }

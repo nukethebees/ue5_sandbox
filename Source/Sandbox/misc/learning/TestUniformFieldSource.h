@@ -42,9 +42,7 @@ class ATestUniformFieldPointSource : public AActor {
     void EndPlay(EEndPlayReason::Type const reason) override;
 
     void update_sources();
-    void broadcast_to_field(ATestUniformField& field_ref);
     void broadcast_to_field();
-    void broadcast_update_to_field(ATestUniformField& field_ref);
     void broadcast_update_to_field();
     void on_field_pre_construction(ATestUniformField& field_ref);
 
@@ -56,6 +54,8 @@ class ATestUniformFieldPointSource : public AActor {
     TArray<FTestUniformFieldPointSourceData> sources{};
     UPROPERTY(EditAnywhere, Category = "Field")
     bool use_tick{false};
+    UPROPERTY(EditAnywhere, Category = "Field")
+    bool is_dynamic{false};
     UPROPERTY(VisibleAnywhere, Category = "Field")
     int32 source_id{0};
 
