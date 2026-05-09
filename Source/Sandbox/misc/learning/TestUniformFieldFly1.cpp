@@ -28,7 +28,7 @@ void ATestUniformFieldFly1::BeginPlay() {
     arrival_cooldown.finish();
     log_cooldown.finish();
 
-    if (enable_prints) {
+    if (enable_log_prints) {
         UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::BeginPlay"));
     }
 
@@ -68,7 +68,7 @@ void ATestUniformFieldFly1::Tick(float dt) {
 
     if (arrival_cooldown.is_finished()) {
         if (at_target()) {
-            if (enable_prints) {
+            if (enable_log_prints) {
                 UE_LOG(LogSandboxLearning, Display, TEXT("At the target."));
             }
             set_new_destination();
@@ -85,7 +85,7 @@ void ATestUniformFieldFly1::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);
 }
 void ATestUniformFieldFly1::set_new_destination() {
-    if (enable_prints) {
+    if (enable_log_prints) {
         UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::set_new_destination"));
     }
 
@@ -113,7 +113,7 @@ void ATestUniformFieldFly1::set_new_destination() {
         pos.Z + (sample_direction.Z * dist_to_move),
     };
 
-    if (enable_prints) {
+    if (enable_log_prints) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("New destination: %s (dist=%.f)"),
@@ -160,5 +160,5 @@ bool ATestUniformFieldFly1::assert_field_exists() {
 }
 
 bool ATestUniformFieldFly1::can_log() const {
-    return enable_prints && log_cooldown.is_finished();
+    return enable_log_prints && log_cooldown.is_finished();
 }

@@ -81,12 +81,12 @@ void ATestUniformField::BeginPlay() {
     SetActorTickInterval(update_period);
 }
 void ATestUniformField::on_world_match_starting() {
-    UE_LOG(LogSandboxLearning, Verbose, TEXT("ATestUniformField::on_world_match_starting"));
-
-    UE_LOG(LogSandboxLearning,
-           Verbose,
-           TEXT("%s::on_world_match_starting"),
-           *ml::get_best_display_name(*this));
+    if (enable_log_prints) {
+        UE_LOG(LogSandboxLearning,
+               Verbose,
+               TEXT("%s::on_world_match_starting"),
+               *ml::get_best_display_name(*this));
+    }
 
     on_field_pre_construction.Broadcast(*this);
 

@@ -55,7 +55,7 @@ class ATestUniformFieldFly0 : public AActor {
     float speed{1000.f};
     // Learning
     UPROPERTY(EditAnywhere, Category = "Ship")
-    bool enable_prints{false};
+    bool enable_log_prints{false};
     UPROPERTY(EditAnywhere, Category = "Ship")
     FCooldown log_cooldown{2.f};
 };

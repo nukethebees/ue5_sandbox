@@ -192,6 +192,10 @@ class ATestUniformField : public AActor {
     auto can_log() const;
 #endif
 
+
+    // Logging
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    bool enable_log_prints{false};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     FCooldown dbg_timer{2.f};

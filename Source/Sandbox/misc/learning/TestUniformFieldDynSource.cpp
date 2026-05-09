@@ -43,7 +43,7 @@ void ATestUniformFieldDynPointSource::Tick(float dt) {
     log_cooldown.tick(dt);
 
     if (at_destination()) {
-        if (printing_enabled) {
+        if (enable_log_prints) {
             UE_LOG(LogSandboxLearning, Display, TEXT("At destination"));
         }
 
@@ -87,10 +87,12 @@ void ATestUniformFieldDynPointSource::broadcast_update_to_field() {
     field->update_dynamic_sources(sources, source_id);
 }
 void ATestUniformFieldDynPointSource::on_field_pre_construction(ATestUniformField& field_ref) {
-    UE_LOG(LogSandboxLearning,
-           Verbose,
-           TEXT("%s::on_field_pre_construction"),
-           *ml::get_best_display_name(*this));
+    if (enable_log_prints) {
+        UE_LOG(LogSandboxLearning,
+               Verbose,
+               TEXT("%s::on_field_pre_construction"),
+               *ml::get_best_display_name(*this));
+    }
 
     check(&field_ref == &*field);
 
@@ -110,7 +112,7 @@ void ATestUniformFieldDynPointSource::update_destination() {
 
     destination = UKismetMathLibrary::RandomPointInBoundingBox(origin, extents);
 
-    if (printing_enabled) {
+    if (enable_log_prints) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("Set new destination: %s (origin: %s, extents: %s)"),
@@ -127,5 +129,5 @@ void ATestUniformFieldDynPointSource::move_to_destination(float dt) {
 }
 
 bool ATestUniformFieldDynPointSource::can_log() const {
-    return printing_enabled && log_cooldown.is_finished();
+    return enable_log_prints && log_cooldown.is_finished();
 }

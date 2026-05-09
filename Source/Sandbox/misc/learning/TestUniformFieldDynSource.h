@@ -59,7 +59,7 @@ class ATestUniformFieldDynPointSource : public AActor {
     float speed{3000.f};
 
     UPROPERTY(EditAnywhere, Category = "Source")
-    bool printing_enabled{false};
+    bool enable_log_prints{false};
     UPROPERTY(VisibleAnywhere, Category = "Source")
     FCooldown log_cooldown{1.f};
 };

@@ -37,8 +37,12 @@ void ATestUniformFieldPointSource::BeginPlay() {
 void ATestUniformFieldPointSource::Tick(float dt) {
     Super::Tick(dt);
 
+    log_cooldown.tick(dt);
+
     update_sources();
     broadcast_update_to_field();
+
+    log_cooldown.reset_if_done();
 }
 void ATestUniformFieldPointSource::EndPlay(EEndPlayReason::Type const reason) {
     WARN_IF_EXPR_ELSE(field == nullptr) {
@@ -70,12 +74,18 @@ void ATestUniformFieldPointSource::broadcast_update_to_field() {
     field->update_dynamic_sources(sources, source_id);
 }
 void ATestUniformFieldPointSource::on_field_pre_construction(ATestUniformField& field_ref) {
-    UE_LOG(LogSandboxLearning,
-           Verbose,
-           TEXT("%s::on_field_pre_construction"),
-           *ml::get_best_display_name(*this));
+    if (enable_log_prints) {
+        UE_LOG(LogSandboxLearning,
+               Verbose,
+               TEXT("%s::on_field_pre_construction"),
+               *ml::get_best_display_name(*this));
+    }
 
     check(&field_ref == &*field);
 
     broadcast_to_field();
+}
+
+auto ATestUniformFieldPointSource::can_log() const {
+    return enable_log_prints && log_cooldown.is_finished();
 }

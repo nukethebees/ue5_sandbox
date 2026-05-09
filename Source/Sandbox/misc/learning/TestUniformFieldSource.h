@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/core/Cooldown.h"
+
 #include "TestUniformFieldPointSourceData.h"
 
 #include "CoreMinimal.h"
@@ -9,7 +11,6 @@
 
 class UStaticMeshComponent;
 class ATestUniformField;
-
 
 UCLASS()
 class ATestUniformFieldPointSource : public AActor {
@@ -28,6 +29,8 @@ class ATestUniformFieldPointSource : public AActor {
     void broadcast_update_to_field();
     void on_field_pre_construction(ATestUniformField& field_ref);
 
+    auto can_log() const;
+
     UPROPERTY(EditAnywhere, Category = "Field")
     TObjectPtr<UStaticMeshComponent> point_mesh{nullptr};
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Field")
@@ -41,14 +44,8 @@ class ATestUniformFieldPointSource : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Field")
     int32 source_id{0};
 
-#if WITH_EDITOR
-    auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
-#endif
-
-#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Field")
+    bool enable_log_prints{false};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
-    float dbg_log_cooldown{1.f};
-    UPROPERTY(VisibleAnywhere, Category = "Grid")
-    float dbg_log_timer{0};
-#endif
+    FCooldown log_cooldown{1.f};
 };
