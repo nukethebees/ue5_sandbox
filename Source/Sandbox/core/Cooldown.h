@@ -16,6 +16,14 @@ struct FCooldown {
     void reset() { remaining = duration; }
     void finish() { remaining = -1.f; }
     void tick(float delta_time) { remaining -= delta_time; }
+    // Return true if the timer was finished
+    bool reset_if_done() {
+        if (is_finished()) {
+            reset();
+            return true;
+        }
+        return false;
+    }
 
     auto& operator-=(float dt) {
         tick(dt);
