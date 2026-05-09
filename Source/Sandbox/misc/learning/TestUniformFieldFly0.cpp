@@ -86,6 +86,7 @@ void ATestUniformFieldFly0::Tick(float dt) {
 void ATestUniformFieldFly0::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);
 }
+
 void ATestUniformFieldFly0::set_new_destination() {
     if (enable_prints) {
         UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly0::set_new_destination"));

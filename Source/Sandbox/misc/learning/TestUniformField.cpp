@@ -559,6 +559,9 @@ auto ATestUniformField::get_cell_dimensions() const -> FVector {
     return cell_extent * 2.0;
 }
 
+auto ATestUniformField::get_field_centre() const -> FVector {
+    return GetActorLocation();
+}
 auto ATestUniformField::get_field_extent() const -> FVector {
     return box_extent;
 }

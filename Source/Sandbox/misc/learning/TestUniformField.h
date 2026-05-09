@@ -96,6 +96,7 @@ class ATestUniformField : public AActor {
     auto get_cell_extent() const -> FVector;
     auto get_cell_dimensions() const -> FVector;
 
+    auto get_field_centre() const -> FVector;
     auto get_field_extent() const -> FVector;
     auto get_field_dimensions() const -> FVector;
 
@@ -114,7 +115,7 @@ class ATestUniformField : public AActor {
     void default_construct();
 
     void update_cells_array(TArrayView<FTestUniformFieldCell> updating_cells,
-                           TArrayView<FTestUniformFieldPointSourceData const> point_sources);
+                            TArrayView<FTestUniformFieldPointSourceData const> point_sources);
     void construct_grid();
     void update_cells();
     void reset_cells_to_default();
