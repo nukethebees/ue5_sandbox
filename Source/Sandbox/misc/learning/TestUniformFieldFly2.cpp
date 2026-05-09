@@ -170,7 +170,20 @@ bool ATestUniformFieldFly2::is_oob() const {
 
 // Vision
 void ATestUniformFieldFly2::display_vision_cone() {
+    auto const angle{FMath::DegreesToRadians(vision_angle_deg / 2.f)};
 
+    DrawDebugCone(GetWorld(),
+                  GetActorLocation(),
+                  GetActorForwardVector(),
+                  vision_radius,
+                  angle,
+                  angle,
+                  16,
+                  FColor::Orange,
+                  false,
+                  0.f,
+                  0u,
+                  8.f);
 }
 
 // Field
@@ -186,7 +199,7 @@ bool ATestUniformFieldFly2::assert_field_exists() {
 
 // Targets
 void ATestUniformFieldFly2::try_find_target() {
-    if (enable_log_prints) {
+    if (can_log()) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("%s: Finding a new target"),
