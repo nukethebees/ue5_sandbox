@@ -60,12 +60,6 @@ ATestUniformField::ATestUniformField()
 }
 
 // Actor lifecycle
-void ATestUniformField::PostLoad() {
-    Super::PostLoad();
-}
-void ATestUniformField::PostActorCreated() {
-    Super::PostActorCreated();
-}
 void ATestUniformField::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
@@ -127,12 +121,6 @@ void ATestUniformField::EndPlay(EEndPlayReason::Type const reason) {
     }
 
     Super::EndPlay(reason);
-}
-void ATestUniformField::BeginDestroy() {
-    Super::BeginDestroy();
-}
-void ATestUniformField::FinishDestroy() {
-    Super::FinishDestroy();
 }
 
 auto ATestUniformField::sample_field(FVector const& position) const -> FTestUniformFieldCell {

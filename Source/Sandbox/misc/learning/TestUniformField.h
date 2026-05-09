@@ -67,10 +67,7 @@ class ATestUniformField : public AActor {
 
     ATestUniformField();
 
-    void PostLoad() override;
     void Tick(float dt) override;
-    void BeginDestroy() override;
-    void FinishDestroy() override;
 
     auto sample_field(FVector const& position) const -> FTestUniformFieldCell;
 
@@ -106,7 +103,6 @@ class ATestUniformField : public AActor {
     DECLARE_MULTICAST_DELEGATE_OneParam(FOnFieldPostConstruction, ATestUniformField&);
     FOnFieldPostConstruction on_field_post_construction;
   protected:
-    void PostActorCreated() override;
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type const reason);
