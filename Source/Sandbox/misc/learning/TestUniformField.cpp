@@ -97,15 +97,15 @@ void ATestUniformField::Tick(float dt) {
     Super::Tick(dt);
 
 #if WITH_EDITOR
-    dbg_log_timer += dt;
+    dbg_timer.tick(dt);
 #endif
 
     update_cells();
     update_visualisation();
 
 #if WITH_EDITOR
-    if (dbg_log_timer >= dbg_log_cooldown) {
-        dbg_log_timer = 0.f;
+    if (dbg_timer.is_finished()) {
+        dbg_timer.reset();
     }
 #endif
 
@@ -567,3 +567,9 @@ void ATestUniformField::reset() {
 void ATestUniformField::reset_sources() {
     point_sources.Reset();
 }
+
+#if WITH_EDITOR
+auto ATestUniformField::can_log() const {
+    return dbg_timer.is_finished();
+}
+#endif

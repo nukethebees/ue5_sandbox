@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sandbox/core/Cooldown.h"
 #include "TestUniformFieldSource.h"
 
 #include "CoreMinimal.h"
@@ -171,14 +172,12 @@ class ATestUniformField : public AActor {
     FDelegateHandle on_world_match_starting_handle;
 
 #if WITH_EDITOR
-    auto can_log() const { return dbg_log_timer >= dbg_log_cooldown; }
+    auto can_log() const;
 #endif
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Grid")
-    float dbg_log_cooldown{2.f};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
-    float dbg_log_timer{0};
+    FCooldown dbg_timer{2.f};
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     int32 dbg_num_cells{0};
 #endif
