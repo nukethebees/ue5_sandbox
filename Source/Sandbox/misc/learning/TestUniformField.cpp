@@ -444,7 +444,7 @@ void ATestUniformField::update_hism_visualisation() {
         }
 
         hism.PerInstanceSMCustomData = vector_intensities;
-        hism.BuildTreeIfOutdated(true, true);
+        hism.BuildTreeIfOutdated(false, true);
     }
 
     hism.MarkRenderStateDirty();
