@@ -1,4 +1,4 @@
-#include "TestUniformFieldFly0.h"
+#include "TestUniformFieldFly1.h"
 
 #include <Sandbox/utilities/actor_utils.h>
 #include "Sandbox/logging/SandboxLogCategories.h"
@@ -9,7 +9,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
 
-ATestUniformFieldFly0::ATestUniformFieldFly0()
+ATestUniformFieldFly1::ATestUniformFieldFly1()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
@@ -19,17 +19,17 @@ ATestUniformFieldFly0::ATestUniformFieldFly0()
     PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
-void ATestUniformFieldFly0::OnConstruction(FTransform const& transform) {
+void ATestUniformFieldFly1::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 }
-void ATestUniformFieldFly0::BeginPlay() {
+void ATestUniformFieldFly1::BeginPlay() {
     Super::BeginPlay();
 
     arrival_cooldown.finish();
     log_cooldown.finish();
 
     if (enable_prints) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly0::BeginPlay"));
+        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::BeginPlay"));
     }
 
     // Force a new destination on the first tick
@@ -48,14 +48,14 @@ void ATestUniformFieldFly0::BeginPlay() {
         return;
     }
 }
-void ATestUniformFieldFly0::Tick(float dt) {
+void ATestUniformFieldFly1::Tick(float dt) {
     Super::Tick(dt);
 
     log_cooldown -= dt;
     arrival_cooldown -= dt;
 
     if (can_log()) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly0::Tick"));
+        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::Tick"));
     }
 
     if (!assert_field_exists()) {
@@ -75,24 +75,29 @@ void ATestUniformFieldFly0::Tick(float dt) {
         } else {
             move_to_destination(dt);
         }
-
-        handle_oob();
     }
 
     if (log_cooldown.is_finished()) {
         log_cooldown.reset();
     }
 }
-void ATestUniformFieldFly0::EndPlay(EEndPlayReason::Type const reason) {
+void ATestUniformFieldFly1::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);
 }
-void ATestUniformFieldFly0::set_new_destination() {
+void ATestUniformFieldFly1::set_new_destination() {
     if (enable_prints) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly0::set_new_destination"));
+        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::set_new_destination"));
     }
 
     auto const pos{GetActorLocation()};
-    auto const sample{field->sample_field(pos).potential};
+
+    auto const sample{[&] -> FVector3f {
+        if (is_oob()) {
+            return FVector3f{field->GetActorLocation() - pos};
+        } else {
+            return field->sample_field(pos).potential;
+        }
+    }()};
 
     auto const sample_direction{sample.GetSafeNormal()};
 
@@ -120,7 +125,7 @@ void ATestUniformFieldFly0::set_new_destination() {
 
     SetActorRotation(direction.Rotation());
 }
-void ATestUniformFieldFly0::move_to_destination(float dt) {
+void ATestUniformFieldFly1::move_to_destination(float dt) {
     auto const old_pos{GetActorLocation()};
     auto const delta_dist{dt * speed};
     auto const delta_pos{GetActorForwardVector() * delta_dist};
@@ -128,11 +133,11 @@ void ATestUniformFieldFly0::move_to_destination(float dt) {
 
     SetActorLocation(new_pos);
 }
-bool ATestUniformFieldFly0::at_target() const {
+bool ATestUniformFieldFly1::at_target() const {
     return FVector::DistSquared(GetActorLocation(), destination) <=
            (acceptance_radius * acceptance_radius);
 }
-void ATestUniformFieldFly0::display_destination() {
+void ATestUniformFieldFly1::display_destination() {
     TRY_INIT_PTR(world, GetWorld());
 
     constexpr float thickness{8.f};
@@ -141,14 +146,10 @@ void ATestUniformFieldFly0::display_destination() {
     DrawDebugLine(world, GetActorLocation(), destination, colour, false, 0.f, 0u, thickness);
     DrawDebugSphere(world, destination, acceptance_radius, 8, colour, false, 0.f, 0u, thickness);
 }
-void ATestUniformFieldFly0::handle_oob() {
-    if (!ml::actor_is_within(*this, *field, false)) {
-        auto const field_pos{field->GetActorLocation()};
-        SetActorLocation(field_pos);
-        destination = field_pos;
-    }
+bool ATestUniformFieldFly1::is_oob() const {
+    return !ml::actor_is_within(*this, *field, false);
 }
-bool ATestUniformFieldFly0::assert_field_exists() {
+bool ATestUniformFieldFly1::assert_field_exists() {
     if (field == nullptr) {
         WARN_IS_FALSE(LogSandboxLearning, field);
         SetActorTickEnabled(false);
@@ -158,6 +159,6 @@ bool ATestUniformFieldFly0::assert_field_exists() {
     return true;
 }
 
-bool ATestUniformFieldFly0::can_log() const {
+bool ATestUniformFieldFly1::can_log() const {
     return enable_prints && log_cooldown.is_finished();
 }
