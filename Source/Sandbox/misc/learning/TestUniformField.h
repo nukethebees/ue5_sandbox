@@ -136,10 +136,7 @@ class ATestUniformField : public AActor {
     void mark_grid_dirty();
     void mark_visualisation_dirty();
 
-    UPROPERTY(EditAnywhere, Category = "Grid")
-    TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
-    UPROPERTY(EditDefaultsOnly, Category = "Grid")
-    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> vector_meshes{nullptr};
+    // Grid dimensions
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     FIntVector grid_dimensions{1, 1, 1};
     UPROPERTY(EditAnywhere, Category = "Grid")
@@ -147,6 +144,7 @@ class ATestUniformField : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector cell_extent{50.f};
 
+    // Grid data
     UPROPERTY()
     TArray<FTestUniformFieldCell> cells{};
     UPROPERTY()
@@ -157,10 +155,19 @@ class ATestUniformField : public AActor {
     UPROPERTY()
     TArray<FTestUniformFieldPointSourceData> dynamic_point_sources{};
 
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    float update_period{1.f / 10.f};
+
+    // Grid updates
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     bool grid_dirty{false};
 
     // Visualisation
+    UPROPERTY(EditAnywhere, Category = "Grid")
+    TObjectPtr<UStaticMeshComponent> box_mesh{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Grid")
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> vector_meshes{nullptr};
+
     UPROPERTY(VisibleAnywhere, Category = "Grid")
     bool visualisation_dirty{false};
     UPROPERTY(VisibleAnywhere, Category = "Field")

@@ -77,6 +77,8 @@ void ATestUniformField::BeginPlay() {
     TRY_INIT_PTR(world, GetWorld());
     on_world_match_starting_handle =
         world->OnWorldMatchStarting.AddUObject(this, &ThisClass::on_world_match_starting);
+
+    SetActorTickInterval(update_period);
 }
 void ATestUniformField::on_world_match_starting() {
     UE_LOG(LogSandboxLearning, Verbose, TEXT("ATestUniformField::on_world_match_starting"));
