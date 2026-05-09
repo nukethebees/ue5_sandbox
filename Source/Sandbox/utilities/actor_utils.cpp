@@ -37,4 +37,10 @@ auto actor_is_within(AActor const& actor, AActor const& other, bool only_collidi
 
     return UKismetMathLibrary::IsPointInBox(actor.GetActorLocation(), origin, extent);
 }
+void face_actor(AActor& actor, AActor const& other) {
+    return face_point(actor, other.GetActorLocation());
+}
+void face_point(AActor& actor, FVector const& point) {
+    actor.SetActorRotation((point - actor.GetActorLocation()).Rotation());
+}
 }

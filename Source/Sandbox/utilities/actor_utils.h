@@ -41,4 +41,7 @@ auto get_static_meshes_bounding_box(AActor const& actor) -> FBox;
 auto actor_is_within(AActor const& actor, AActor const& other, bool only_colliding_components)
     -> bool;
 
+void face_actor(AActor& actor, AActor const& other);
+void face_point(AActor& actor, FVector const& point);
+
 } // namespace ml
