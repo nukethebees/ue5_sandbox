@@ -258,7 +258,7 @@ void ATestUniformField::update_cells() {
 
         auto const strength{cell.potential.Size()};
 
-        cell.new_quantised_potential.strength = QP::get_strength(strength);
+        cell.new_quantised_potential.strength = QP::get_strength(strength / max_abs_strength);
 
         auto const dir{cell.potential.GetSafeNormal()};
         auto const x{QP::get_axis_section(dir.X)};

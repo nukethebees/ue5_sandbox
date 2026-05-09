@@ -33,6 +33,7 @@ struct QuantisedPotential {
 
     bool operator==(QuantisedPotential const&) const = default;
 
+    // Requires normalised strength
     static auto get_strength(float strength) -> Value;
     // Requires normalised vector
     static auto get_axis_section(float coord) -> Value;
