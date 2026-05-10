@@ -4,13 +4,14 @@
 #include "Sandbox/utilities/FloatBounds.h"
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
 
 #include "TestUniformFieldFly2.generated.h"
 
 class UStaticMeshComponent;
 
 class ATestUniformField;
+class AShipLaser;
 
 // This version can track an enemy
 
@@ -21,7 +22,7 @@ enum class ETestUniformFieldFly2State : uint8 {
 };
 
 UCLASS()
-class ATestUniformFieldFly2 : public AActor {
+class ATestUniformFieldFly2 : public APawn {
     GENERATED_BODY()
   public:
     ATestUniformFieldFly2();
@@ -96,6 +97,14 @@ class ATestUniformFieldFly2 : public AActor {
     TArray<TSubclassOf<AActor>> target_classes;
     UPROPERTY(VisibleInstanceOnly, Category = "Ship")
     TWeakObjectPtr<AActor> target{nullptr};
+
+    // Combat
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TSubclassOf<AShipLaser> laser_class;
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    FCooldown fire_cooldown{0.3f};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    float fire_point_distance{100.f};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "Ship")

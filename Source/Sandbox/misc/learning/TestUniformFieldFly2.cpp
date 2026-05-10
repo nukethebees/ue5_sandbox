@@ -1,5 +1,6 @@
 #include "TestUniformFieldFly2.h"
 
+#include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
@@ -9,6 +10,7 @@
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
+#include <Engine/World.h>
 
 ATestUniformFieldFly2::ATestUniformFieldFly2()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
@@ -44,6 +46,12 @@ void ATestUniformFieldFly2::BeginPlay() {
         return;
     }
 
+    if (!laser_class) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("laser_class is nullptr"));
+        SetActorTickEnabled(false);
+        return;
+    }
+
     if (!ml::actor_is_within(*this, *field, false)) {
         UE_LOG(LogSandboxLearning,
                Error,
@@ -57,6 +65,7 @@ void ATestUniformFieldFly2::Tick(float dt) {
     Super::Tick(dt);
 
     log_cooldown.tick(dt);
+    fire_cooldown.tick(dt);
 
     switch (state) {
         case ETestUniformFieldFly2State::exploring: {
@@ -109,7 +118,7 @@ void ATestUniformFieldFly2::explore(float dt) {
     }
 }
 void ATestUniformFieldFly2::track(float dt) {
-    if (target.IsValid()) {
+    if (!target.IsValid()) {
         // Lost the target
         set_state(ETestUniformFieldFly2State::exploring);
         return;
@@ -117,6 +126,22 @@ void ATestUniformFieldFly2::track(float dt) {
 
     ml::face_actor(*this, *target);
     move_to_destination(dt);
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    FVector const fire_point{GetActorLocation() + GetActorForwardVector() * fire_point_distance};
+    FTransform const laser_transform{
+        GetActorRotation(),
+        fire_point,
+        FVector::OneVector,
+    };
+
+    if (fire_cooldown.reset_if_done()) {
+        TRY_INIT_PTR(
+            laser,
+            world->SpawnActorDeferred<AShipLaser>(laser_class, laser_transform, nullptr, this));
+        laser->FinishSpawning(laser_transform);
+    }
 }
 
 // Navigation
