@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sandbox/core/Cooldown.h"
+#include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/utilities/FloatBounds.h"
 
 #include "CoreMinimal.h"
@@ -56,7 +57,8 @@ class ATestUniformFieldFly2 : public APawn {
     bool try_find_target();
 
     // Logging
-    bool can_log() const;
+    bool can_log(EActorLoggingVerbosity msg_verbosity) const;
+    bool can_tick_log(EActorLoggingVerbosity msg_verbosity) const;
 
     // State
     UPROPERTY(VisibleAnywhere, Category = "Ship")
@@ -108,7 +110,5 @@ class ATestUniformFieldFly2 : public APawn {
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "Ship")
-    bool enable_log_prints{false};
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    FCooldown log_cooldown{2.f};
+    FActorLoggingConfig log_config{2.f};
 };
