@@ -27,6 +27,8 @@ void ATestUniformFieldFly2::OnConstruction(FTransform const& transform) {
 void ATestUniformFieldFly2::BeginPlay() {
     Super::BeginPlay();
 
+    set_state(ETestUniformFieldFly2State::exploring);
+
     log_cooldown.finish();
 
     if (enable_log_prints) {
@@ -56,32 +58,16 @@ void ATestUniformFieldFly2::Tick(float dt) {
 
     log_cooldown.tick(dt);
 
-    if (target.IsValid()) {
-        destination = target->GetActorLocation();
-        ml::face_point(*this, destination);
-    } else {
-        try_find_target();
-    }
-
-    if (show_destination) {
-        display_destination();
-    }
-
-    if (show_vision_cone) {
-        display_vision_cone();
-    }
-
-    if (at_target()) {
-        if (enable_log_prints) {
-            UE_LOG(LogSandboxLearning,
-                   Display,
-                   TEXT("%s: At the target."),
-                   *ml::get_best_display_name(*this));
+    switch (state) {
+        case ETestUniformFieldFly2State::exploring: {
+            explore(dt);
+            break;
         }
-        set_new_destination();
+        case ETestUniformFieldFly2State::tracking: {
+            track(dt);
+            break;
+        }
     }
-
-    move_to_destination(dt);
 
     if (log_cooldown.is_finished()) {
         log_cooldown.reset();
@@ -89,6 +75,48 @@ void ATestUniformFieldFly2::Tick(float dt) {
 }
 void ATestUniformFieldFly2::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);
+}
+
+// State
+void ATestUniformFieldFly2::set_state(ETestUniformFieldFly2State new_state) {
+    state = new_state;
+
+    switch (state) {
+        case ETestUniformFieldFly2State::exploring: {
+            destination = GetActorLocation();
+            target = nullptr;
+            break;
+        }
+        case ETestUniformFieldFly2State::tracking: {
+            break;
+        }
+    }
+}
+void ATestUniformFieldFly2::explore(float dt) {
+    if (show_vision_cone) {
+        display_vision_cone();
+    }
+
+    if (at_target()) {
+        set_new_destination();
+    }
+
+    ml::face_point(*this, destination);
+    move_to_destination(dt);
+
+    if (try_find_target()) {
+        set_state(ETestUniformFieldFly2State::tracking);
+    }
+}
+void ATestUniformFieldFly2::track(float dt) {
+    if (target.IsValid()) {
+        // Lost the target
+        set_state(ETestUniformFieldFly2State::exploring);
+        return;
+    }
+
+    ml::face_actor(*this, *target);
+    move_to_destination(dt);
 }
 
 // Navigation
@@ -198,7 +226,7 @@ bool ATestUniformFieldFly2::assert_field_exists() {
 }
 
 // Targets
-void ATestUniformFieldFly2::try_find_target() {
+bool ATestUniformFieldFly2::try_find_target() {
     if (can_log()) {
         UE_LOG(LogSandboxLearning,
                Display,
@@ -220,32 +248,33 @@ void ATestUniformFieldFly2::try_find_target() {
     // Get the one closest to the centre
     auto const num_hits{hits.Num()};
     if (num_hits == 0) {
-        return;
+        return false;
     }
-
-    if (num_hits == 1) {
-        target = hits[0];
-        return;
-    }
-
-    auto const pos{GetActorLocation()};
-    auto const fwd{GetActorForwardVector()};
 
     target = hits[0];
-    auto target_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *target)};
-    for (int32 i{1}; i < num_hits; ++i) {
-        auto* hit_actor{hits[i]};
-        auto const hit_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
 
-        if (hit_angle < target_angle) {
-            target = hit_actor;
-            target_angle = hit_angle;
+    if (num_hits == 1) {
+        return true;
+    } else {
+        auto const pos{GetActorLocation()};
+        auto const fwd{GetActorForwardVector()};
+        auto target_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *target)};
+        for (int32 i{1}; i < num_hits; ++i) {
+            auto* hit_actor{hits[i]};
+            auto const hit_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
+
+            if (hit_angle < target_angle) {
+                target = hit_actor;
+                target_angle = hit_angle;
+            }
         }
     }
 
     if (enable_log_prints) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ml::get_best_display_name(*target));
     }
+
+    return true;
 }
 
 // Logging

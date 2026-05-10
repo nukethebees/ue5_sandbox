@@ -14,6 +14,12 @@ class ATestUniformField;
 
 // This version can track an enemy
 
+UENUM()
+enum class ETestUniformFieldFly2State : uint8 {
+    exploring,
+    tracking,
+};
+
 UCLASS()
 class ATestUniformFieldFly2 : public AActor {
     GENERATED_BODY()
@@ -26,6 +32,11 @@ class ATestUniformFieldFly2 : public AActor {
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
     void EndPlay(EEndPlayReason::Type const reason) override;
+
+    // State
+    void set_state(ETestUniformFieldFly2State new_state);
+    void explore(float dt);
+    void track(float dt);
 
     // Navigation
     void set_new_destination();
@@ -41,10 +52,14 @@ class ATestUniformFieldFly2 : public AActor {
     bool assert_field_exists();
 
     // Targets
-    void try_find_target();
+    bool try_find_target();
 
     // Logging
     bool can_log() const;
+
+    // State
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    ETestUniformFieldFly2State state{ETestUniformFieldFly2State::exploring};
 
     // Visuals
     UPROPERTY(EditAnywhere, Category = "Ship")
