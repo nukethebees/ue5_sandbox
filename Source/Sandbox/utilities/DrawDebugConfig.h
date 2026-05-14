@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Math/Color.h>
 #include "CoreMinimal.h"
 #include "Misc/Optional.h"
 
@@ -13,17 +14,27 @@ struct FDrawDebugConfig {
 
     FDrawDebugConfig() = default;
 
+    auto get_colour() const -> FColor;
+    auto get_colour(TOptional<FColor> c) const -> FColor;
+    auto get_thickness() const -> float;
+    auto get_thickness(TOptional<float> t) const -> float;
+    auto get_segments() const -> int32;
+    auto get_segments(TOptional<int32> t) const -> int32;
+
     void draw_line(UWorld const* world, FVector const& start, FVector const& end) const;
+
+    void draw_point(UWorld const* world, FVector const& location) const;
+
+    void draw_circle(UWorld const* world,
+                     FTransform const& transform,
+                     float const circle_radius) const;
+    auto get_circle_xy_rotation() const -> FRotator;
+
     void draw_circle_arc(UWorld const* world,
                          FVector const& start,
                          float const arc_radius,
-                         float const half_angle_rad) const;
-
-    auto get_line_colour() const -> FColor;
-    auto get_line_thickness() const -> float;
-
-    auto get_circle_arc_colour() const -> FColor;
-    auto get_circle_arc_thickness() const -> float;
+                         float const half_angle_rad,
+                         FQuat const& rotation) const;
 
     // General
     UPROPERTY(EditAnywhere, Category = "Debug")
@@ -48,24 +59,26 @@ struct FDrawDebugConfig {
     float length{1000.f};
 
     // Lines
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Debug|Line")
     TOptional<float> line_thickness{};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    TOptional<float> line_length{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Line")
+    TOptional<FColor> line_colour{};
 
     // Point
     UPROPERTY(EditAnywhere, Category = "Debug|Point")
     float point_size{10.f};
+    UPROPERTY(EditAnywhere, Category = "Debug|Point")
+    TOptional<FColor> point_colour{};
 
     // Arrow
     UPROPERTY(EditAnywhere, Category = "Debug|Arrow")
     float arrow_size{10.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Arrow")
-    FColor arrow_colour{FColor::Red};
+    TOptional<FColor> arrow_colour{};
 
     // Box
     UPROPERTY(EditAnywhere, Category = "Debug|Box")
-    FColor box_colour{FColor::Green};
+    TOptional<FColor> box_colour{};
 
     // Coordinate system
     UPROPERTY(EditAnywhere, Category = "Debug|Coord")
@@ -73,13 +86,21 @@ struct FDrawDebugConfig {
 
     // Circle
     UPROPERTY(EditAnywhere, Category = "Debug|Circle")
-    bool draw_axis{true};
+    bool circle_draw_axis{true};
+    UPROPERTY(EditAnywhere, Category = "Debug|Circle")
+    TOptional<FColor> circle_colour{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Circle")
+    TOptional<float> circle_thickness{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Circle")
+    TOptional<int32> circle_segments{};
 
     // CircleArc
     UPROPERTY(EditAnywhere, Category = "Debug|CircleArc")
-    FColor circle_arc_colour{FColor::Purple};
+    TOptional<FColor> circle_arc_colour{FColor::Purple};
     UPROPERTY(EditAnywhere, Category = "Debug|CircleArc")
-    float circle_arc_angle{45.0f};
+    TOptional<float> circle_arc_thickness{};
+    UPROPERTY(EditAnywhere, Category = "Debug|CircleArc")
+    TOptional<int32> circle_arc_segments{};
 
     // Donut
     UPROPERTY(EditAnywhere, Category = "Debug|Donut")
@@ -89,13 +110,13 @@ struct FDrawDebugConfig {
     UPROPERTY(EditAnywhere, Category = "Debug|Donut")
     int32 donut_segments{16};
     UPROPERTY(EditAnywhere, Category = "Debug|Donut")
-    FColor donut_colour{FColor::Orange};
+    TOptional<FColor> donut_colour{};
 
     // Sphere
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
     int32 sphere_segments{16};
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
-    FColor sphere_colour{FColor::Blue};
+    TOptional<FColor> sphere_colour{};
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
@@ -103,7 +124,7 @@ struct FDrawDebugConfig {
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
     float cone_angle_height{45.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
-    FColor cone_colour{FColor::Blue};
+    TOptional<FColor> cone_colour{};
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
@@ -111,5 +132,8 @@ struct FDrawDebugConfig {
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
     float capsule_half_height{1000.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
-    FColor capsule_colour{FColor::Blue};
+    TOptional<FColor> capsule_colour{};
+  private:
+    template <typename T>
+    auto get_optional(TOptional<T> value, T const& default_value) const -> T;
 };
