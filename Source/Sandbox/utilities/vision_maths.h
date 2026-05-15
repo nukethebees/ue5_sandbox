@@ -20,4 +20,6 @@ auto find_actors_within_cone(AActor const& actor,
                              FCollisionQueryParams query_params =
                                  FCollisionQueryParams::DefaultQueryParam) -> TArray<AActor*>;
 
+auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -> AActor*;
+
 }

@@ -96,4 +96,31 @@ auto find_actors_within_cone(AActor const& actor,
     return actors;
 }
 
+auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -> AActor* {
+    auto const num_hits{options.Num()};
+    if (num_hits == 0) {
+        return nullptr;
+    }
+
+    AActor* result{options[0]};
+
+    if (num_hits > 1) {
+        auto const pos{actor.GetActorLocation()};
+        auto const fwd{actor.GetActorForwardVector()};
+        auto target_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *result)};
+
+        for (int32 i{1}; i < num_hits; ++i) {
+            auto* hit_actor{options[i]};
+            auto const hit_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
+
+            if (hit_angle < target_angle) {
+                result = hit_actor;
+                target_angle = hit_angle;
+            }
+        }
+    }
+
+    return result;
+}
+
 }
