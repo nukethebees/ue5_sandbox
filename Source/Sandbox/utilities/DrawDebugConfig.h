@@ -33,6 +33,7 @@ struct FDrawDebugConfig {
                          float const half_angle_rad,
                          FQuat const& rotation) const;
 
+    void draw_sphere(FVector const& start, float const radius) const;
     void draw_cone(FVector const& start, FVector const& direction, float const length) const;
 
     // General
@@ -116,7 +117,7 @@ struct FDrawDebugConfig {
 
     // Sphere
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
-    int32 sphere_segments{16};
+    TOptional<int32> sphere_segments;
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
     TOptional<FColor> sphere_colour{};
 

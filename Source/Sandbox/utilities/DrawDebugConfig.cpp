@@ -98,6 +98,22 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
                        get_thickness(circle_arc_thickness));
 }
 
+void FDrawDebugConfig::draw_sphere(FVector const& start, float const sphere_radius) const {
+    if (!check_world_valid()) {
+        return;
+    }
+
+    DrawDebugSphere(world.Get(),
+                    start,
+                    sphere_radius,
+                    get_segments(sphere_segments),
+                    get_colour(sphere_colour),
+                    persistent,
+                    lifetime,
+                    depth_priority,
+                    get_thickness());
+}
+
 void FDrawDebugConfig::draw_cone(FVector const& start,
                                  FVector const& direction,
                                  float const cone_length) const {
