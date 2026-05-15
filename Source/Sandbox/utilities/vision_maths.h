@@ -19,6 +19,15 @@ auto find_actors_within_cone(AActor const& actor,
                                  FCollisionObjectQueryParams::DefaultObjectQueryParam,
                              FCollisionQueryParams query_params =
                                  FCollisionQueryParams::DefaultQueryParam) -> TArray<AActor*>;
+auto find_actors_within_cone(AActor const& actor,
+                             float const vision_radius,
+                             float const capsule_half_height,
+                             float const vision_half_angle_rads,
+                             TSubclassOf<AActor> actor_filter,
+                             FCollisionObjectQueryParams object_query_params =
+                                 FCollisionObjectQueryParams::DefaultObjectQueryParam,
+                             FCollisionQueryParams query_params =
+                                 FCollisionQueryParams::DefaultQueryParam) -> TArray<AActor*>;
 
 auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -> AActor*;
 

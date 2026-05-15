@@ -95,6 +95,21 @@ auto find_actors_within_cone(AActor const& actor,
 
     return actors;
 }
+auto find_actors_within_cone(AActor const& actor,
+                             float const vision_radius,
+                             float const capsule_half_height,
+                             float const vision_half_angle_rads,
+                             TSubclassOf<AActor> actor_filter,
+                             FCollisionObjectQueryParams object_query_params,
+                             FCollisionQueryParams query_params) -> TArray<AActor*> {
+    return find_actors_within_cone(actor,
+                                   vision_radius,
+                                   capsule_half_height,
+                                   vision_half_angle_rads,
+                                   {&actor_filter, 1},
+                                   object_query_params,
+                                   query_params);
+}
 
 auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -> AActor* {
     auto const num_hits{options.Num()};
