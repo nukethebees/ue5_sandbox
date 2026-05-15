@@ -9,6 +9,12 @@ auto FDrawDebugConfig::get_optional(TOptional<T> value, T const& default_value) 
     return value ? value.GetValue() : default_value;
 }
 
+auto FDrawDebugConfig::get_length() const -> float {
+    return length;
+}
+auto FDrawDebugConfig::get_length(TOptional<float> c) const -> float {
+    return get_optional(c, length);
+}
 auto FDrawDebugConfig::get_colour() const -> FColor {
     return colour;
 }
@@ -116,7 +122,7 @@ void FDrawDebugConfig::draw_sphere(FVector const& start, float const sphere_radi
 
 void FDrawDebugConfig::draw_cone(FVector const& start,
                                  FVector const& direction,
-                                 float const cone_length) const {
+                                 float const cone_len) const {
     if (!check_world_valid()) {
         return;
     }
@@ -124,7 +130,25 @@ void FDrawDebugConfig::draw_cone(FVector const& start,
     DrawDebugCone(world.Get(),
                   start,
                   direction,
-                  cone_length,
+                  cone_len,
+                  FMath::DegreesToRadians(cone_angle_half_width_deg),
+                  FMath::DegreesToRadians(cone_angle_half_height_deg),
+                  get_segments(cone_segments),
+                  get_colour(cone_colour),
+                  persistent,
+                  lifetime,
+                  depth_priority,
+                  get_thickness(cone_thickness));
+}
+void FDrawDebugConfig::draw_cone(FVector const& start, FVector const& direction) const {
+    if (!check_world_valid()) {
+        return;
+    }
+
+    DrawDebugCone(world.Get(),
+                  start,
+                  direction,
+                  get_length(cone_length),
                   FMath::DegreesToRadians(cone_angle_half_width_deg),
                   FMath::DegreesToRadians(cone_angle_half_height_deg),
                   get_segments(cone_segments),

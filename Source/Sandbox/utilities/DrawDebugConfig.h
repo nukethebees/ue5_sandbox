@@ -14,6 +14,8 @@ struct FDrawDebugConfig {
 
     FDrawDebugConfig() = default;
 
+    auto get_length() const -> float;
+    auto get_length(TOptional<float> c) const -> float;
     auto get_colour() const -> FColor;
     auto get_colour(TOptional<FColor> c) const -> FColor;
     auto get_thickness() const -> float;
@@ -35,6 +37,7 @@ struct FDrawDebugConfig {
 
     void draw_sphere(FVector const& start, float const radius) const;
     void draw_cone(FVector const& start, FVector const& direction, float const length) const;
+    void draw_cone(FVector const& start, FVector const& direction) const;
 
     // General
     UPROPERTY(EditAnywhere, Category = "Debug")
@@ -123,6 +126,8 @@ struct FDrawDebugConfig {
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
+    TOptional<float> cone_length;
+    UPROPERTY(EditAnywhere, Category = "Debug|Cone")
     float cone_angle_half_width_deg{45.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
     float cone_angle_half_height_deg{45.f};
@@ -133,7 +138,7 @@ struct FDrawDebugConfig {
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
     TOptional<float> cone_thickness;
 
-    // Cone
+    // Capsule
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
     float capsule_radius{500.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
