@@ -167,7 +167,7 @@ void ATestFlySearchChase::draw_debug_shapes() {
             draw_config.draw_line(pos, search_destination);
             draw_config.draw_cone(pos, GetActorForwardVector(), vision.radius);
 
-            draw_config.draw_sphere(search_destination, 100.f);
+            draw_config.draw_sphere(search_destination, destination_sphere_radius);
 
             break;
         }
