@@ -21,22 +21,24 @@ struct FDrawDebugConfig {
     auto get_segments() const -> int32;
     auto get_segments(TOptional<int32> t) const -> int32;
 
-    void draw_line(UWorld const* world, FVector const& start, FVector const& end) const;
+    void draw_line(FVector const& start, FVector const& end) const;
 
-    void draw_point(UWorld const* world, FVector const& location) const;
+    void draw_point(FVector const& location) const;
 
-    void draw_circle(UWorld const* world,
-                     FTransform const& transform,
-                     float const circle_radius) const;
+    void draw_circle(FTransform const& transform, float const circle_radius) const;
     auto get_circle_xy_rotation() const -> FRotator;
 
-    void draw_circle_arc(UWorld const* world,
-                         FVector const& start,
+    void draw_circle_arc(FVector const& start,
                          float const arc_radius,
                          float const half_angle_rad,
                          FQuat const& rotation) const;
 
+    void draw_cone(FVector const& start, FVector const& direction, float const length) const;
+
     // General
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    TWeakObjectPtr<UWorld> world{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "Debug")
     float spacing{1000.f};
     UPROPERTY(EditAnywhere, Category = "Debug")
@@ -120,11 +122,15 @@ struct FDrawDebugConfig {
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
-    float cone_angle_width{45.f};
+    float cone_angle_half_width_deg{45.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
-    float cone_angle_height{45.f};
+    float cone_angle_half_height_deg{45.f};
+    UPROPERTY(EditAnywhere, Category = "Debug|Cone")
+    TOptional<int32> cone_segments;
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")
     TOptional<FColor> cone_colour{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Cone")
+    TOptional<float> cone_thickness;
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
@@ -133,6 +139,8 @@ struct FDrawDebugConfig {
     float capsule_half_height{1000.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Capsule")
     TOptional<FColor> capsule_colour{};
+  protected:
+    auto check_world_valid() const -> bool;
   private:
     template <typename T>
     auto get_optional(TOptional<T> value, T const& default_value) const -> T;
