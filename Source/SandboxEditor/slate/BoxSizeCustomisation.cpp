@@ -12,6 +12,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 
+namespace box_size_edit_mode {
 auto to_name(EBoxSizeEditMode mode) -> FName {
     switch (mode) {
         case EBoxSizeEditMode::xyz:
@@ -26,6 +27,25 @@ auto to_name(EBoxSizeEditMode mode) -> FName {
 }
 auto to_text(EBoxSizeEditMode mode) -> FText {
     return FText::FromName(to_name(mode));
+}
+auto from_name(FName name) -> TOptional<EBoxSizeEditMode> {
+    if (name == TEXT("xyz")) {
+        return EBoxSizeEditMode::xyz;
+    } else if (name == TEXT("uniform")) {
+        return EBoxSizeEditMode::uniform;
+    } else if (name == TEXT("xy_and_z")) {
+        return EBoxSizeEditMode::xy_and_z;
+    }
+
+    return {};
+}
+auto get_names() -> TArray<FName> {
+    return {
+        "xyz",
+        "uniform",
+        "xy_and_z",
+    };
+}
 }
 
 void FBoxSizeCustomisation::CustomizeHeader(TSharedRef<IPropertyHandle> prop_handle,
@@ -55,11 +75,7 @@ void
     y_handle = box_size_handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVector, Y));
     z_handle = box_size_handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVector, Z));
 
-    edit_options = {
-        "xyz",
-        "uniform",
-        "xy_and_z",
-    };
+    edit_options = box_size_edit_mode::get_names();
 
     // clang-format off
     child_builder.AddCustomRow(INVTEXT("Vector Edit Mode"))
@@ -82,26 +98,28 @@ void
 		    })
 		    .OnSelectionChanged_Lambda(
                 [this](FName new_selection, ESelectInfo::Type select_info) {
-                    auto const old_edit_mode{edit_mode};
+                     // clang-format on
+                     auto const old_edit_mode{edit_mode};
 
-                    if (new_selection == TEXT("xyz")) {
-                        edit_mode = EBoxSizeEditMode::xyz;
-                    } else if (new_selection == TEXT("uniform")) {
-                        edit_mode = EBoxSizeEditMode::uniform;
-                    } else if (new_selection == TEXT("xy_and_z")) {
-                        edit_mode = EBoxSizeEditMode::xy_and_z;
-                    } else {
-                        UE_LOG(LogSandboxEditor, Error, TEXT("Invalid selection: %s"), *new_selection.ToString());
-                    }
+                     auto const new_edit_mode{box_size_edit_mode::from_name(new_selection)};
+                     if (!new_edit_mode) {
+                         UE_LOG(LogSandboxEditor,
+                                Error,
+                                TEXT("Invalid selection: %s"),
+                                *new_selection.ToString());
+                     } else {
+                         edit_mode = new_edit_mode.GetValue();
+                     }
 
-                    if (old_edit_mode != edit_mode) {
-                        box_size_widget_container->SetContent(make_box_size_value_widget());
-                    }
+                     if (old_edit_mode != edit_mode) {
+                         box_size_widget_container->SetContent(make_box_size_value_widget());
+                     }
+                     // clang-format off
                 }
             )
             [
                 SNew(STextBlock)
-                .Text_Lambda([this] { return to_text(edit_mode); })
+                .Text_Lambda([this] { return box_size_edit_mode::to_text(edit_mode); })
                 .Font(IDetailLayoutBuilder::GetDetailFont())
             ]
         ];
