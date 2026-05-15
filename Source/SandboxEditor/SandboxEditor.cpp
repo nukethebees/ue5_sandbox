@@ -1,12 +1,5 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "LevelEditor.h"
-#include "Misc/CoreDelegates.h"
-#include "Modules/ModuleManager.h"
-#include "PropertyEditorModule.h"
-#include "ToolMenus.h"
-
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/pathfinding/PatrolPath.h"
 #include "Sandbox/pathfinding/PatrolWaypoint.h"
@@ -15,6 +8,13 @@
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/utilities/patrol_points.h"
+
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "LevelEditor.h"
+#include "Misc/CoreDelegates.h"
+#include "Modules/ModuleManager.h"
+#include "PropertyEditorModule.h"
+#include "ToolMenus.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -77,6 +77,8 @@ void FSandboxEditorModule::create_sandbox_editor_menus() {
         &FSandboxEditorModule::on_extend_level_editor_menu));
     context_menu_delegate = extenders.Last().GetHandle();
 }
+
+// Editor toolbar menu
 void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
     FMenuBarBuilder& menu_bar_builder) {
     menu_bar_builder.AddPullDownMenu(
@@ -104,6 +106,7 @@ void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder
                             }));
 }
 
+// Editor context menu
 auto
     FSandboxEditorModule::on_extend_level_editor_menu(TSharedRef<FUICommandList> const command_list,
                                                       TArray<AActor*> selected_actors)
@@ -147,6 +150,7 @@ void FSandboxEditorModule::create_sandbox_editor_context_menu_items(FMenuBuilder
     menu_builder.EndSection();
 }
 
+// Menu Extensions
 void FSandboxEditorModule::register_menu_extensions() {
     constexpr auto logger{NestedLogger<"register_menu_extensions">()};
 
@@ -164,13 +168,29 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     logger.log_log(TEXT("Registered menu extensions"));
 }
+void FSandboxEditorModule::on_generate_typedefs() {
+    constexpr auto logger{NestedLogger<"on_generate_typedefs">()};
+    logger.log_log(TEXT("Generating strong typedefs..."));
+
+    bool const success{FTypedefCodeGenerator::generate_typedefs()};
+
+    if (success) {
+        logger.log_log(TEXT("Typedef generation completed successfully!"));
+    } else {
+        logger.log_error(TEXT("Typedef generation failed!"));
+    }
+}
+
+// Custom properties
 void FSandboxEditorModule::register_custom_properties() {
     auto& property_module{
         FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
+
     property_module.RegisterCustomPropertyTypeLayout(
         "Dimensions",
         FOnGetPropertyTypeCustomizationInstance::CreateStatic(
             &FStrongTypedefPreview::MakeInstance));
+
     property_module.RegisterCustomPropertyTypeLayout(
         "PlayerSkills",
         FOnGetPropertyTypeCustomizationInstance::CreateStatic(
@@ -183,19 +203,7 @@ void FSandboxEditorModule::unregister_custom_properties() {
             FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor")};
 
         property_module.UnregisterCustomPropertyTypeLayout("Dimensions");
-    }
-}
-
-void FSandboxEditorModule::on_generate_typedefs() {
-    constexpr auto logger{NestedLogger<"on_generate_typedefs">()};
-    logger.log_log(TEXT("Generating strong typedefs..."));
-
-    bool const success{FTypedefCodeGenerator::generate_typedefs()};
-
-    if (success) {
-        logger.log_log(TEXT("Typedef generation completed successfully!"));
-    } else {
-        logger.log_error(TEXT("Typedef generation failed!"));
+        property_module.UnregisterCustomPropertyTypeLayout("PlayerSkills");
     }
 }
 
