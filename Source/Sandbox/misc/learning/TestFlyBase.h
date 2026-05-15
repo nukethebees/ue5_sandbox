@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/misc/learning/TestMaterialConfig.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -17,8 +19,16 @@ class ATestFlyBase : public AActor {
 
     ATestFlyBase();
   protected:
+    void OnConstruction(FTransform const& transform) override;
+    void BeginPlay() override;
+
+    void configure_material();
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Fly")
     UStaticMeshComponent* main_mesh{nullptr};
+    UPROPERTY(EditAnywhere, Category = "target")
+    FTestMaterialConfig material_config;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Fly")
     UBoxComponent* main_collision{nullptr};
 

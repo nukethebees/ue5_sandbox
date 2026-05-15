@@ -16,6 +16,18 @@ ATestFlyBase::ATestFlyBase()
     PrimaryActorTick.bStartWithTickEnabled = true;
     PrimaryActorTick.bCanEverTick = true;
 }
+
+void ATestFlyBase::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+
+    configure_material();
+}
+void ATestFlyBase::BeginPlay() {
+    Super::BeginPlay();
+
+    configure_material();
+}
+
 auto ATestFlyBase::check_if_hit(FVector start, FVector end) -> FHitResult {
     FHitResult hit{};
     FCollisionQueryParams params{};
@@ -28,4 +40,7 @@ auto ATestFlyBase::check_if_hit(FVector start, FVector end) -> FHitResult {
     }
 
     return hit;
+}
+void ATestFlyBase::configure_material() {
+    material_config.initialise_mesh_material(this, *main_mesh, 0);
 }
