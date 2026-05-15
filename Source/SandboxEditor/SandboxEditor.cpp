@@ -5,6 +5,7 @@
 #include "Sandbox/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
+#include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/utilities/patrol_points.h"
@@ -181,20 +182,30 @@ void FSandboxEditorModule::on_generate_typedefs() {
     }
 }
 
+namespace {
+struct PropAdder {
+    FPropertyEditorModule& editor_mod;
+    TArray<FName>& registered_properties;
+
+    template <typename T>
+    void register_property(FName property_name) {
+        editor_mod.RegisterCustomPropertyTypeLayout(
+            property_name, FOnGetPropertyTypeCustomizationInstance::CreateStatic(&T::MakeInstance));
+        registered_properties.Add(property_name);
+    }
+};
+}
+
 // Custom properties
 void FSandboxEditorModule::register_custom_properties() {
     auto& property_module{
         FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
 
-    property_module.RegisterCustomPropertyTypeLayout(
-        "Dimensions",
-        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
-            &FStrongTypedefPreview::MakeInstance));
+    PropAdder adder{property_module, registered_properties};
 
-    property_module.RegisterCustomPropertyTypeLayout(
-        "PlayerSkills",
-        FOnGetPropertyTypeCustomizationInstance::CreateStatic(
-            &FPlayerSkillsPropDisplay::MakeInstance));
+    adder.register_property<FStrongTypedefPreview>(TEXT("Dimensions"));
+    adder.register_property<FPlayerSkillsPropDisplay>(TEXT("PlayerSkills"));
+    adder.register_property<FBoxSizeCustomisation>(TEXT("BoxSize"));
 }
 void FSandboxEditorModule::unregister_custom_properties() {
     // ToolMenus are automatically cleaned up when the module is unloaded
@@ -202,8 +213,9 @@ void FSandboxEditorModule::unregister_custom_properties() {
         auto& property_module{
             FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor")};
 
-        property_module.UnregisterCustomPropertyTypeLayout("Dimensions");
-        property_module.UnregisterCustomPropertyTypeLayout("PlayerSkills");
+        for (FName p : registered_properties) {
+            property_module.UnregisterCustomPropertyTypeLayout(p);
+        }
     }
 }
 

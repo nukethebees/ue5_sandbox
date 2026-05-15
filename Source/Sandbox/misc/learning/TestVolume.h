@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/utilities/BoxSize.h"
+
 #include <GameFramework/Actor.h>
 #include <UObject/ObjectMacros.h>
 #include <UObject/ObjectPtr.h>
@@ -16,6 +18,9 @@ class ATestVolume : public AActor {
 
     auto get_box() const -> UBoxComponent*;
   protected:
-    UPROPERTY(EditAnywhere, Category = "Warp")
+    UPROPERTY(EditAnywhere, Category = "Volume")
     TObjectPtr<UBoxComponent> box{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Volume")
+    FBoxSize box_size;
 };

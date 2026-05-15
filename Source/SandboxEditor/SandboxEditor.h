@@ -11,6 +11,7 @@ class FMenuBuilder;
 class FExtender;
 class FUICommandList;
 class AActor;
+class FPropertyEditorModule;
 
 class FSandboxEditorModule
     : public IModuleInterface
@@ -40,4 +41,5 @@ class FSandboxEditorModule
     void unregister_custom_properties();
 
     FDelegateHandle context_menu_delegate;
+    TArray<FName> registered_properties;
 };

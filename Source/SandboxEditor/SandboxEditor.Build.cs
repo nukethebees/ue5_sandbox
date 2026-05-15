@@ -33,6 +33,7 @@ public class SandboxEditor : ModuleRules
             "Sandbox", // Reference to runtime module
             "Slate",
             "SlateCore",
+            "InputCore", // For SNumericVectorInputBox 
             "ToolWidgets",
             "ToolMenus", // For editor toolbar buttons
             "USFLoaderEditor" // USF Loader plugin dependency            
