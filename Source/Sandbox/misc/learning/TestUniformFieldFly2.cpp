@@ -262,35 +262,15 @@ bool ATestUniformFieldFly2::try_find_target() {
 
     GetActorBounds(false, origin, extent);
 
-    auto const hits{ml::find_actors_within_cone(*this,
-                                                vision_radius,
-                                                extent.Z * 2.0,
-                                                FMath::RadiansToDegrees(vision_angle_deg / 2.f),
-                                                target_classes)};
+    auto hits{ml::find_actors_within_cone(*this,
+                                          vision_radius,
+                                          extent.Z * 2.0,
+                                          FMath::RadiansToDegrees(vision_angle_deg / 2.f),
+                                          target_classes)};
 
-    // Get the one closest to the centre
-    auto const num_hits{hits.Num()};
-    if (num_hits == 0) {
+    target = ml::get_centre_actor_in_fov(*this, hits);
+    if (!target.IsValid()) {
         return false;
-    }
-
-    target = hits[0];
-
-    if (num_hits == 1) {
-        return true;
-    } else {
-        auto const pos{GetActorLocation()};
-        auto const fwd{GetActorForwardVector()};
-        auto target_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *target)};
-        for (int32 i{1}; i < num_hits; ++i) {
-            auto* hit_actor{hits[i]};
-            auto const hit_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
-
-            if (hit_angle < target_angle) {
-                target = hit_actor;
-                target_angle = hit_angle;
-            }
-        }
     }
 
     if (can_log(EActorLoggingVerbosity::Basic)) {

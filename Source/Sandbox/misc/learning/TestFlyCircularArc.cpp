@@ -6,6 +6,7 @@
 
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
+#include <Engine/World.h>
 
 ATestFlyCircularArc::ATestFlyCircularArc()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
@@ -148,7 +149,9 @@ void ATestFlyCircularArc::BeginPlay() {
     SetActorTickEnabled(true);
     SetActorTickInterval(tick_interval);
     initial_setup(*target_actor);
+
     draw_config.lifetime = tick_interval;
+    draw_config.world = GetWorld();
 }
 
 bool ATestFlyCircularArc::on_same_z() const {
@@ -191,12 +194,12 @@ void ATestFlyCircularArc::draw_shapes() const {
     auto const a1{(destination - circle_centre).GetSafeNormal()};
     auto const angle_between{ml::get_angle_between_norm_lines(a0, a1)};
 
-    c.draw_point(world, mid_point);
+    c.draw_point(mid_point);
 
-    c.draw_line(world, circle_centre, starting_point);
-    c.draw_line(world, circle_centre, destination);
-    c.draw_line(world, circle_centre, GetActorLocation());
-    c.draw_line(world, starting_point, destination);
+    c.draw_line(circle_centre, starting_point);
+    c.draw_line(circle_centre, destination);
+    c.draw_line(circle_centre, GetActorLocation());
+    c.draw_line(starting_point, destination);
 
     FTransform circle_transform{
         c.get_circle_xy_rotation(),
@@ -204,5 +207,5 @@ void ATestFlyCircularArc::draw_shapes() const {
         FVector::OneVector,
     };
 
-    c.draw_circle(world, circle_transform, radius);
+    c.draw_circle(circle_transform, radius);
 }

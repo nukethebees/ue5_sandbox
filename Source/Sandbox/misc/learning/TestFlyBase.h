@@ -27,7 +27,7 @@ class ATestFlyBase : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Fly")
     UStaticMeshComponent* main_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "target")
-    FTestMaterialConfig material_config;
+    FTestMaterialState material_state;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Fly")
     UBoxComponent* main_collision{nullptr};

@@ -42,5 +42,5 @@ auto ATestFlyBase::check_if_hit(FVector start, FVector end) -> FHitResult {
     return hit;
 }
 void ATestFlyBase::configure_material() {
-    material_config.initialise_mesh_material(this, *main_mesh, 0);
+    material_state.initialise_mesh_material(this, *main_mesh, 0);
 }

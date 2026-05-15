@@ -8,7 +8,7 @@
 #include <Materials/MaterialInterface.h>
 #include <UObject/Object.h>
 
-auto FTestMaterialConfig::initialise(UObject* outer) -> bool {
+auto FTestMaterialState::initialise(UObject* outer) -> bool {
     if (!material_interface) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("material_interface is nullptr."));
 
@@ -23,7 +23,7 @@ auto FTestMaterialConfig::initialise(UObject* outer) -> bool {
 
     return true;
 }
-auto FTestMaterialConfig::create_dynamic_instance(UMaterialInterface& interface, UObject* outer)
+auto FTestMaterialState::create_dynamic_instance(UMaterialInterface& interface, UObject* outer)
     -> UMaterialInstanceDynamic* {
     auto* mat{UMaterialInstanceDynamic::Create(&interface, outer)};
 
@@ -36,26 +36,26 @@ auto FTestMaterialConfig::create_dynamic_instance(UMaterialInterface& interface,
 
     return mat;
 }
-void FTestMaterialConfig::configure_instance(UMaterialInstanceDynamic& inst) {
-    inst.SetVectorParameterValue(TEXT("base_colour"), base_colour);
+void FTestMaterialState::configure_instance(UMaterialInstanceDynamic& inst) {
+    inst.SetVectorParameterValue(TEXT("base_colour"), config.base_colour);
 
-    inst.SetScalarParameterValue(TEXT("metallic"), metallic);
-    inst.SetScalarParameterValue(TEXT("specular"), specular);
-    inst.SetScalarParameterValue(TEXT("roughness"), roughness);
+    inst.SetScalarParameterValue(TEXT("metallic"), config.metallic);
+    inst.SetScalarParameterValue(TEXT("specular"), config.specular);
+    inst.SetScalarParameterValue(TEXT("roughness"), config.roughness);
 
-    inst.SetVectorParameterValue(TEXT("emissive_colour"), emissive_colour);
-    inst.SetScalarParameterValue(TEXT("emissive_intensity"), emissive_intensity);
+    inst.SetVectorParameterValue(TEXT("emissive_colour"), config.emissive_colour);
+    inst.SetScalarParameterValue(TEXT("emissive_intensity"), config.emissive_intensity);
 
-    inst.SetScalarParameterValue(TEXT("opacity"), opacity);
+    inst.SetScalarParameterValue(TEXT("opacity"), config.opacity);
 }
-void FTestMaterialConfig::set_mesh_material(UStaticMeshComponent& mesh, int32 slot) {
+void FTestMaterialState::set_mesh_material(UStaticMeshComponent& mesh, int32 slot) {
     if (!material_instance) {
         return;
     }
 
     mesh.SetMaterial(slot, material_instance);
 }
-void FTestMaterialConfig::initialise_mesh_material(UObject* outer,
+void FTestMaterialState::initialise_mesh_material(UObject* outer,
                                                    UStaticMeshComponent& mesh,
                                                    int32 slot) {
     if (!initialise(outer)) {
@@ -63,4 +63,15 @@ void FTestMaterialConfig::initialise_mesh_material(UObject* outer,
     }
 
     mesh.SetMaterial(slot, material_instance);
+}
+
+auto FTestMaterialState::update_instance() -> bool {
+    if (!material_instance) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("material_instance is nullptr."));
+        return false;
+    }
+
+    configure_instance(*material_instance);
+
+    return true;
 }

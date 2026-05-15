@@ -31,7 +31,7 @@ class ATestRotatorToTarget : public AActor {
     UPROPERTY(EditAnywhere, Category = "target")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "target")
-    FTestMaterialConfig material_config;
+    FTestMaterialState material_config;
 
     UPROPERTY(EditAnywhere, Category = "target")
     TWeakObjectPtr<AActor> target{nullptr};
