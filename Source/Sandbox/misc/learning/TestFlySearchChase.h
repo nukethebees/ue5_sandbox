@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
 #include "Sandbox/players/VisionConfig.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
@@ -30,6 +31,7 @@ class ATestFlySearchChase : public ATestFlyBase {
 
     // Movement
     void move_to_location(float dt, FVector const& location);
+    auto within_radius(FVector const& point, float const r) const -> bool;
     auto at_destination() const -> bool;
 
     // State
@@ -74,6 +76,8 @@ class ATestFlySearchChase : public ATestFlyBase {
     FVector search_destination;
     UPROPERTY(EditAnywhere, Category = "Fly")
     TObjectPtr<ATestVolume> search_volume{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    float min_distance_to_new_point{5000.f};
 
     // Chase
     UPROPERTY(VisibleAnywhere, Category = "Fly")
@@ -84,4 +88,6 @@ class ATestFlySearchChase : public ATestFlyBase {
     bool show_debug_shapes{false};
     UPROPERTY(EditAnywhere, Category = "Fly")
     FDrawDebugConfig draw_config;
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    FActorLoggingConfig log_config{1.f};
 };

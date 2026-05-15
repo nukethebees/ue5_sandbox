@@ -41,17 +41,23 @@ void ATestFlySearchChase::BeginPlay() {
     }
 
     draw_config.world = GetWorld();
+    set_state(ETestFlySearchChaseState::searching);
+
+    draw_config.cone_angle_half_width_deg = vision.half_angle_deg;
+    draw_config.cone_angle_half_height_deg = vision.half_angle_deg;
 }
 
 // Movement
+auto ATestFlySearchChase::within_radius(FVector const& point, float const r) const -> bool {
+    return FVector::DistSquared(point, GetActorLocation()) <= (r * r);
+}
 auto ATestFlySearchChase::at_destination() const -> bool {
-    return (search_destination - GetActorLocation()).SizeSquared() <=
-           (acceptance_radius * acceptance_radius);
+    return within_radius(search_destination, acceptance_radius);
 }
 
 // State
 void ATestFlySearchChase::set_state(ETestFlySearchChaseState new_state) {
-    state = ETestFlySearchChaseState::searching;
+    state = new_state;
 
     switch (state) {
         case ETestFlySearchChaseState::searching: {
@@ -60,7 +66,6 @@ void ATestFlySearchChase::set_state(ETestFlySearchChaseState new_state) {
             break;
         }
         case ETestFlySearchChaseState::chasing: {
-            chase_target = nullptr;
             material_state.config = chase_material_config;
             break;
         }
@@ -77,6 +82,13 @@ void ATestFlySearchChase::handle_search(float dt) {
     }
 
     if (at_destination()) {
+        if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+            UE_LOG(LogSandboxLearning,
+                   Display,
+                   TEXT("(%s) At destination. Finding new destination."),
+                   *ml::get_best_display_name(*this));
+        }
+
         set_new_search_destination();
     }
 
@@ -84,10 +96,20 @@ void ATestFlySearchChase::handle_search(float dt) {
 }
 void ATestFlySearchChase::set_new_search_destination() {
     auto* box{search_volume->get_box()};
-    auto const point{UKismetMathLibrary::RandomPointInBoundingBox(box->GetComponentLocation(),
-                                                                  box->GetScaledBoxExtent())};
+    auto const box_pos{box->GetComponentLocation()};
+    auto const box_extent{box->GetScaledBoxExtent()};
 
-    search_destination = point;
+    while (within_radius(search_destination, min_distance_to_new_point)) {
+        search_destination = UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent);
+    }
+
+    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+        UE_LOG(LogSandboxLearning,
+               Display,
+               TEXT("(%s) New destination: %s"),
+               *ml::get_best_display_name(*this),
+               *search_destination.ToCompactString());
+    }
 }
 void ATestFlySearchChase::reset_search_destination() {
     search_destination = GetActorLocation();
@@ -99,7 +121,7 @@ auto ATestFlySearchChase::scan_for_target() -> bool {
     GetActorBounds(false, origin, extent);
 
     auto hits{ml::find_actors_within_cone(
-        *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), {})};
+        *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), ThisClass::StaticClass())};
 
     chase_target = ml::get_centre_actor_in_fov(*this, hits);
     if (!chase_target.IsValid()) {
@@ -138,10 +160,15 @@ void ATestFlySearchChase::draw_debug_shapes() {
     TRY_INIT_PTR(world, GetWorld());
     auto const pos{GetActorLocation()};
 
+    draw_config.draw_sphere(pos, acceptance_radius);
+
     switch (state) {
         case ETestFlySearchChaseState::searching: {
             draw_config.draw_line(pos, search_destination);
-            draw_config.draw_cone(pos, (search_destination - pos).GetSafeNormal(), vision.radius);
+            draw_config.draw_cone(pos, GetActorForwardVector(), vision.radius);
+
+            draw_config.draw_sphere(search_destination, 100.f);
+
             break;
         }
         case ETestFlySearchChaseState::chasing: {
