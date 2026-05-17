@@ -6,9 +6,11 @@
 #include <DetailWidgetRow.h>
 #include <IDetailChildrenBuilder.h>
 #include <PropertyHandle.h>
+#include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SComboBox.h>
 #include <Widgets/Input/SVectorInputBox.h>
 #include <Widgets/Layout/SBox.h>
+#include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
 namespace ml {
@@ -77,38 +79,32 @@ void SBoxSizePropInput::set_value(TSharedPtr<IPropertyHandle> const& handle, val
 }
 
 auto SBoxSizePropInput::make_edit_mode_row() -> TSharedRef<SWidget> {
-    return SAssignNew(edit_mode_combobox, SComboBox<FName>)
-        .OptionsSource(&edit_options)
-        .OnGenerateWidget_Lambda([](FName mode) -> TSharedRef<SWidget> {
-            return SNew(STextBlock)
-                .Text(FText::FromName(mode))
-                .Font(IDetailLayoutBuilder::GetDetailFont());
-        })
-        .OnSelectionChanged_Lambda([this](FName new_selection, ESelectInfo::Type select_info) {
-            auto const old_edit_mode{edit_mode};
+    using Box = SHorizontalBox;
 
-            auto const new_edit_mode{box_size_edit_mode::from_name(new_selection)};
-            if (!new_edit_mode) {
-                UE_LOG(LogSandboxEditor,
-                       Error,
-                       TEXT("Invalid selection: %s"),
-                       *new_selection.ToString());
-            } else {
-                edit_mode = new_edit_mode.GetValue();
-            }
+    auto add_slot{[&]() -> Box::FSlot::FSlotArguments {
+        // clang-format off
+        return MoveTemp(Box::Slot() 
+            .FillWidth(1.f)
+            .VAlign(VAlign_Fill)
+            .HAlign(EHorizontalAlignment::HAlign_Center));
+        // clang-format on
+    }};
 
-            if (old_edit_mode != edit_mode) {
-                box_size_widget_container->SetContent(make_box_size_value_widget());
-            }
-        })
-            // clang-format off
+    // clang-format off
+    return SNew(Box)
+        +add_slot()
         [
-            SNew(STextBlock)
-            .Text_Lambda([this] { 
-                return box_size_edit_mode::to_text(edit_mode); 
-            })
-            .Font(IDetailLayoutBuilder::GetDetailFont())
-        ];
+            make_mode_button(EBoxSizeEditMode::xyz, INVTEXT("X | Y | Z"))
+        ]
+        +add_slot()
+        [
+            make_mode_button(EBoxSizeEditMode::xy_and_z, INVTEXT("XY | Z"))
+        ]
+        +add_slot()
+        [
+            make_mode_button(EBoxSizeEditMode::uniform, INVTEXT("XYZ"))
+        ]
+    ;
     // clang-format on
 }
 auto SBoxSizePropInput::make_box_size_row() -> TSharedRef<SWidget> {
@@ -169,5 +165,30 @@ auto SBoxSizePropInput::make_xy_and_z_widget() -> TSharedRef<SWidget> {
             set_value(y_handle, value);
         })
         .OnYChanged_Lambda([&](value_type value) { set_value(z_handle, value); });
+}
+
+auto SBoxSizePropInput::make_mode_button(EBoxSizeEditMode const mode, FText const& label)
+    -> TSharedRef<SWidget> {
+
+    // clang-format off
+    return SNew(SCheckBox)
+        .Style(FAppStyle::Get(), "RadioButton")
+        .IsChecked_Lambda([this, mode]() -> ECheckBoxState {
+            return edit_mode == mode ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+        })
+        .OnCheckStateChanged_Lambda([this, mode](ECheckBoxState const new_state) {
+            if (new_state != ECheckBoxState::Checked) {
+                return;
+            }
+
+            edit_mode = mode;
+
+            box_size_widget_container->SetContent(make_box_size_value_widget());
+        })
+        [
+            SNew(STextBlock)
+            .Text(label)
+        ];
+    // clang-format on
 }
 }

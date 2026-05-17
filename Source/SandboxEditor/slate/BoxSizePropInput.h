@@ -45,8 +45,9 @@ class SBoxSizePropInput final : public SCompoundWidget {
     auto make_uniform_widget() -> TSharedRef<SWidget>;
     auto make_xy_and_z_widget() -> TSharedRef<SWidget>;
 
+    auto make_mode_button(EBoxSizeEditMode const mode, FText const& label) -> TSharedRef<SWidget>;
+
     // Edit mode
-    TSharedPtr<SComboBox<FName>> edit_mode_combobox{nullptr};
     EBoxSizeEditMode edit_mode{EBoxSizeEditMode::uniform};
     TArray<FName> edit_options;
 
