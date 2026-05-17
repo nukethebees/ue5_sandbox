@@ -220,12 +220,8 @@ void ATestFlySeekDestroy::fire_laser() {
     FVector const fire_point{GetActorLocation() +
                              GetActorForwardVector() * attack_state.fire_point_distance};
 
-    auto const pos{GetActorLocation()};
-    auto const target_pos{target_state.target->GetActorLocation()};
-    auto const rot_to_enemy{(target_pos - pos).GetSafeNormal().Rotation()};
-
     FTransform const laser_transform{
-        rot_to_enemy,
+        GetActorForwardVector().Rotation(),
         fire_point,
         FVector::OneVector,
     };
@@ -256,12 +252,12 @@ void ATestFlySeekDestroy::draw_debug_shapes() {
             break;
         }
         case ETestFlySeekDestroyState::chasing: {
-            chase_state.draw_config.draw_line(pos, target_state.target->GetActorLocation());
+            chase_state.draw_config.draw_arrow(pos, target_state.target->GetActorLocation());
             chase_state.draw_config.draw_sphere(pos, chase_state.acceptance_radius);
             break;
         }
         case ETestFlySeekDestroyState::attacking: {
-            attack_state.draw_config.draw_line(pos, target_state.target->GetActorLocation());
+            attack_state.draw_config.draw_arrow(pos, target_state.target->GetActorLocation());
             break;
         }
     }

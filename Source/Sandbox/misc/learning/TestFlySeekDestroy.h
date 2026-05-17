@@ -86,7 +86,7 @@ struct FTestFlySeekDestroyAttackState {
     UPROPERTY(EditAnywhere)
     float fire_point_distance{100.f};
     UPROPERTY(EditAnywhere)
-    float max_fire_angle_degrees{10.f};
+    float max_fire_angle_degrees{3.f};
     UPROPERTY(EditAnywhere)
     int32 laser_damage{40};
 
