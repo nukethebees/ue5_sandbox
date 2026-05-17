@@ -42,7 +42,4 @@ class ASandboxActorSpawner : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Spawner")
     TArray<AActor*> spawned_actors{};
-
-    // Errors
-    bool printed_null_actor_class_warning{false};
 };

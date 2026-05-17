@@ -35,7 +35,12 @@ void ASandboxActorSpawner::Tick(float dt) {
 void ASandboxActorSpawner::BeginPlay() {
     Super::BeginPlay();
 
-    printed_null_actor_class_warning = false;
+    if (!actor_class) {
+        WARN_IS_FALSE(LogSandboxActor, actor_class);
+        SetActorTickEnabled(false);
+        return;
+    }
+
     PrimaryActorTick.TickInterval = spawn_period;
     SetActorTickEnabled(true);
 }
@@ -50,13 +55,6 @@ void ASandboxActorSpawner::stop() {
 }
 
 void ASandboxActorSpawner::spawn() {
-    if (!actor_class) {
-        if (!printed_null_actor_class_warning) {
-            WARN_IS_FALSE(LogSandboxActor, actor_class);
-            printed_null_actor_class_warning = true;
-        }
-        return;
-    }
     RETURN_IF_NULLPTR(arrow);
     TRY_INIT_PTR(world, GetWorld());
 
