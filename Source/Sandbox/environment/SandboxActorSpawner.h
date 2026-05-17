@@ -26,6 +26,8 @@ class ASandboxActorSpawner : public AActor {
     void destroy_all_actors();
     auto clear_destroyed_actors() -> int32;
 
+    virtual void configure_instance(AActor& instance);
+
     UPROPERTY(EditAnywhere, Category = "Spawner")
     UStaticMeshComponent* mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Spawner")
