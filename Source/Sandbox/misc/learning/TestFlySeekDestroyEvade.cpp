@@ -1,6 +1,9 @@
 #include "TestFlySeekDestroyEvade.h"
 
-ATestFlySeekDestroyEvade::ATestFlySeekDestroyEvade() {}
+#include <Components/ArrowComponent.h>
+
+ATestFlySeekDestroyEvade::ATestFlySeekDestroyEvade()
+    : fire_point{CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point"))} {}
 
 void ATestFlySeekDestroyEvade::OnConstruction(FTransform const& t) {
     Super::OnConstruction(t);

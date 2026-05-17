@@ -11,6 +11,8 @@
 
 #include "TestFlySeekDestroyEvade.generated.h"
 
+class UArrowComponent;
+
 UENUM()
 enum class ETestFlySeekDestroyEvadeState : uint8 {
     searching,
@@ -100,12 +102,24 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     void set_movement(FTestFlySeekDestroyEvadeMovementConfig const& new_config);
 
     UPROPERTY(EditAnywhere, Category = "Fly")
-    ETestFlySeekDestroyEvadeState state{ETestFlySeekDestroyEvadeState::searching};
+    TObjectPtr<UArrowComponent> fire_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeConfig config;
+
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    ETestFlySeekDestroyEvadeState state{ETestFlySeekDestroyEvadeState::searching};
+
+    // Movement
     UPROPERTY(EditAnywhere, Category = "Fly|Movement")
     float turn_speed_deg_per_s{60.f};
     UPROPERTY(VisibleAnywhere, Category = "Fly|Movement")
     float speed{0.f};
+
+    UPROPERTY(VisibleAnywhere)
+    FVector destination;
+
+    // Target
+    UPROPERTY(VisibleAnywhere)
+    TWeakObjectPtr<AActor> target{nullptr};
 };
