@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "Selection.h"
 
+// Setup
 void USandboxEditorToolsSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);
 
@@ -21,7 +22,28 @@ void USandboxEditorToolsSubsystem::Deinitialize() {
 
     Super::Deinitialize();
 }
+void USandboxEditorToolsSubsystem::on_map_opened(FString const&, bool) {
+    UE_LOG(LogSandboxEditorTools, Verbose, TEXT("on_map_opened"));
 
+    cursor = nullptr;
+
+    if (!GEditor) {
+        UE_LOG(LogSandboxEditorTools, Verbose, TEXT("GEditor is nullptr."));
+        return;
+    }
+
+    auto* world{GEditor->GetEditorWorldContext().World()};
+    if (world) {
+        for (auto it{TActorIterator<ACursor>(world)}; it; ++it) {
+            if (it) {
+                cursor = *it;
+                break;
+            }
+        }
+    }
+}
+
+// Cursor
 auto USandboxEditorToolsSubsystem::get_cursor() -> TWeakObjectPtr<ACursor> {
     return ensure_cursor_exists();
 }
@@ -75,6 +97,7 @@ void USandboxEditorToolsSubsystem::spawn_cursor() {
     cursor = world->SpawnActor<ACursor>(spawn_params);
 }
 
+// Alignment
 void USandboxEditorToolsSubsystem::align_actors_to_cursor(FRotationBool axes) {
     UE_LOG(LogSandboxEditorTools, Verbose, TEXT("align_actors_to_cursor"));
 
@@ -88,39 +111,56 @@ void USandboxEditorToolsSubsystem::align_actors_to_cursor(FRotationBool axes) {
         align_actor_to(*actor, *cursor, axes);
     }
 }
+void USandboxEditorToolsSubsystem::align_actors_away_from_cursor(FRotationBool axes) {
+    UE_LOG(LogSandboxEditorTools, Verbose, TEXT("align_actors_away_from_cursor"));
+
+    if (ensure_cursor_exists() == nullptr) {
+        return;
+    }
+
+    auto selected_actors{get_selected_actors()};
+
+    for (auto* actor : selected_actors) {
+        align_actor_away_from(*actor, *cursor, axes);
+    }
+}
 void USandboxEditorToolsSubsystem::align_actor_to(AActor& actor,
                                                   AActor const& ref,
                                                   FRotationBool axes) {
-    UE_LOG(LogSandboxEditorTools,
-           Verbose,
-           TEXT("Aligning: %s to %s"),
-           *actor.GetName(),
-           *ref.GetName());
-
-    auto const from{actor.GetActorLocation()};
     auto const original_rotation{actor.GetActorRotation()};
-    auto const to{ref.GetActorLocation()};
-    auto look_at_rotation{(to - from).Rotation()};
+    auto look_at_rotation{get_rotation_to(actor, ref)};
 
-    UE_LOG(LogSandboxEditorTools,
-           Verbose,
-           TEXT("Axes bools: Roll=%d Pitch=%d Yaw=%d"),
-           axes.roll,
-           axes.pitch,
-           axes.yaw);
+    finish_rotation(actor, original_rotation, look_at_rotation, axes);
+}
+void USandboxEditorToolsSubsystem::align_actor_away_from(AActor& actor,
+                                                         AActor const& ref,
+                                                         FRotationBool axes) {
+    auto const original_rotation{actor.GetActorRotation()};
+    auto look_at_rotation{get_rotation_to(ref, actor)};
 
+    finish_rotation(actor, original_rotation, look_at_rotation, axes);
+}
+auto USandboxEditorToolsSubsystem::get_rotation_to(AActor const& a, AActor const& b) -> FRotator {
+    return (b.GetActorLocation() - a.GetActorLocation()).Rotation();
+}
+void USandboxEditorToolsSubsystem::finish_rotation(AActor& actor,
+                                                   FRotator const& original_rot,
+                                                   FRotator& new_rot,
+                                                   FRotationBool axes) {
     if (!axes.roll) {
-        look_at_rotation.Roll = original_rotation.Roll;
+        new_rot.Roll = original_rot.Roll;
     }
     if (!axes.pitch) {
-        look_at_rotation.Pitch = original_rotation.Pitch;
+        new_rot.Pitch = original_rot.Pitch;
     }
     if (!axes.yaw) {
-        look_at_rotation.Yaw = original_rotation.Yaw;
+        new_rot.Yaw = original_rot.Yaw;
     }
 
-    actor.SetActorRotation(look_at_rotation);
+    actor.SetActorRotation(new_rot);
 }
+
+// Position
 void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const settings) {
     UE_LOG(LogSandboxEditorTools, Verbose, TEXT("position_actors"));
 
@@ -153,6 +193,7 @@ void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const setting
     }
 }
 
+// Selection
 auto USandboxEditorToolsSubsystem::get_selected_actors() -> TArray<AActor*> {
     UE_LOG(LogSandboxEditorTools, Verbose, TEXT("get_selected_actors"));
 
@@ -178,24 +219,4 @@ auto USandboxEditorToolsSubsystem::get_selected_actors() -> TArray<AActor*> {
     }
 
     return actors;
-}
-void USandboxEditorToolsSubsystem::on_map_opened(FString const&, bool) {
-    UE_LOG(LogSandboxEditorTools, Verbose, TEXT("on_map_opened"));
-
-    cursor = nullptr;
-
-    if (!GEditor) {
-        UE_LOG(LogSandboxEditorTools, Verbose, TEXT("GEditor is nullptr."));
-        return;
-    }
-
-    auto* world{GEditor->GetEditorWorldContext().World()};
-    if (world) {
-        for (auto it{TActorIterator<ACursor>(world)}; it; ++it) {
-            if (it) {
-                cursor = *it;
-                break;
-            }
-        }
-    }
 }

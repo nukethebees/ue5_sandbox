@@ -162,6 +162,14 @@ void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args)
                 ]
                 +add_vlist_item()
                 [
+                    SNew(SButton)
+                    .OnClicked(this, &ThisClass::on_look_away_from_cursor_button_clicked)
+                    [
+                        add_button_text(TEXT("Look away from cursor"))
+                    ]
+                ]
+                +add_vlist_item()
+                [
                     SNew(SHorizontalBox)
                     +add_hlist_item()
                     [
@@ -270,6 +278,14 @@ auto SSandboxEditorToolsMainPanel::on_look_at_cursor_button_clicked() -> FReply 
     auto* ss{get_subsystem()};
     if (ss) {
         ss->align_actors_to_cursor(align_axes_checkbox_states.to_bools());
+    }
+
+    return FReply::Handled();
+}
+auto SSandboxEditorToolsMainPanel::on_look_away_from_cursor_button_clicked() -> FReply {
+    auto* ss{get_subsystem()};
+    if (ss) {
+        ss->align_actors_away_from_cursor(align_axes_checkbox_states.to_bools());
     }
 
     return FReply::Handled();

@@ -39,6 +39,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
     auto on_spawn_cursor_button_clicked() -> FReply;
     auto on_destroy_cursor_button_clicked() -> FReply;
     auto on_look_at_cursor_button_clicked() -> FReply;
+    auto on_look_away_from_cursor_button_clicked() -> FReply;
     auto on_align_cube_button_clicked() -> FReply;
 
     auto get_align_roll_state() const -> ECheckBoxState;
