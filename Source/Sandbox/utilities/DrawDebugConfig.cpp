@@ -63,6 +63,22 @@ void FDrawDebugConfig::draw_point(FVector const& location) const {
                    depth_priority);
 }
 
+void FDrawDebugConfig::draw_arrow(FVector const& start, FVector const& end) const {
+    if (!check_world_valid()) {
+        return;
+    }
+
+    DrawDebugDirectionalArrow(world.Get(),
+                              start,
+                              end,
+                              arrow_size,
+                              get_colour(arrow_colour),
+                              persistent,
+                              lifetime,
+                              depth_priority,
+                              get_thickness(arrow_thickness));
+}
+
 void FDrawDebugConfig::draw_circle(FTransform const& transform, float const circle_radius) const {
     if (!check_world_valid()) {
         return;

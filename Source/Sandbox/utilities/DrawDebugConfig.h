@@ -24,8 +24,8 @@ struct FDrawDebugConfig {
     auto get_segments(TOptional<int32> t) const -> int32;
 
     void draw_line(FVector const& start, FVector const& end) const;
-
     void draw_point(FVector const& location) const;
+    void draw_arrow(FVector const& start, FVector const& end) const;
 
     void draw_circle(FTransform const& transform, float const circle_radius) const;
     auto get_circle_xy_rotation() const -> FRotator;
@@ -81,6 +81,8 @@ struct FDrawDebugConfig {
     float arrow_size{10.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Arrow")
     TOptional<FColor> arrow_colour{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Arrow")
+    TOptional<float> arrow_thickness{};
 
     // Box
     UPROPERTY(EditAnywhere, Category = "Debug|Box")
