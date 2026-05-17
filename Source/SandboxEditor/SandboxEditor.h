@@ -42,4 +42,5 @@ class FSandboxEditorModule
 
     FDelegateHandle context_menu_delegate;
     TArray<FName> registered_properties;
+    TArray<FName> registered_class_layouts;
 };

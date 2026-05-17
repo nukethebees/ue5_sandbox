@@ -20,7 +20,4 @@ class ATestVolume : public AActor {
   protected:
     UPROPERTY(EditAnywhere, Category = "Volume")
     TObjectPtr<UBoxComponent> box{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Volume")
-    FBoxSize box_size;
 };

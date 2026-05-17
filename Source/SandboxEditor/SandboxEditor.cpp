@@ -8,6 +8,7 @@
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
+#include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
 #include "SandboxEditor/utilities/patrol_points.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -183,15 +184,23 @@ void FSandboxEditorModule::on_generate_typedefs() {
 }
 
 namespace {
-struct PropAdder {
+struct Adder {
     FPropertyEditorModule& editor_mod;
     TArray<FName>& registered_properties;
+    TArray<FName>& registered_class_layouts;
 
     template <typename T>
-    void register_property(FName property_name) {
+    void add_property(FName property_name) {
         editor_mod.RegisterCustomPropertyTypeLayout(
             property_name, FOnGetPropertyTypeCustomizationInstance::CreateStatic(&T::MakeInstance));
         registered_properties.Add(property_name);
+    }
+
+    template <typename T>
+    void add_class_layout(FName property_name) {
+        editor_mod.RegisterCustomClassLayout(
+            property_name, FOnGetDetailCustomizationInstance::CreateStatic(&T::MakeInstance));
+        registered_class_layouts.Add(property_name);
     }
 };
 }
@@ -201,11 +210,13 @@ void FSandboxEditorModule::register_custom_properties() {
     auto& property_module{
         FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor")};
 
-    PropAdder adder{property_module, registered_properties};
+    Adder adder{property_module, registered_properties, registered_class_layouts};
 
-    adder.register_property<FStrongTypedefPreview>(TEXT("Dimensions"));
-    adder.register_property<FPlayerSkillsPropDisplay>(TEXT("PlayerSkills"));
-    adder.register_property<FBoxSizeCustomisation>(TEXT("BoxSize"));
+    adder.add_property<FStrongTypedefPreview>(TEXT("Dimensions"));
+    adder.add_property<FPlayerSkillsPropDisplay>(TEXT("PlayerSkills"));
+    adder.add_property<FBoxSizeCustomisation>(TEXT("BoxSize"));
+
+    adder.add_class_layout<FTestVolumeDetailsCustomisation>(TEXT("TestVolume"));
 }
 void FSandboxEditorModule::unregister_custom_properties() {
     // ToolMenus are automatically cleaned up when the module is unloaded
@@ -215,6 +226,10 @@ void FSandboxEditorModule::unregister_custom_properties() {
 
         for (FName p : registered_properties) {
             property_module.UnregisterCustomPropertyTypeLayout(p);
+        }
+
+        for (FName cl : registered_class_layouts) {
+            property_module.UnregisterCustomClassLayout(cl);
         }
     }
 }
