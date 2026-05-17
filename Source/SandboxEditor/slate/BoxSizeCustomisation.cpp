@@ -1,6 +1,7 @@
 #include "BoxSizeCustomisation.h"
 
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
+#include "SandboxEditor/slate/BoxSizeEditMode.h"
 
 #include "Sandbox/utilities/BoxSize.h"
 
@@ -11,42 +12,6 @@
 #include "Widgets/Input/SVectorInputBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
-
-namespace box_size_edit_mode {
-auto to_name(EBoxSizeEditMode mode) -> FName {
-    switch (mode) {
-        case EBoxSizeEditMode::xyz:
-            return TEXT("xyz");
-        case EBoxSizeEditMode::uniform:
-            return TEXT("uniform");
-        case EBoxSizeEditMode::xy_and_z:
-            return TEXT("xy_and_z");
-    }
-
-    return TEXT("???");
-}
-auto to_text(EBoxSizeEditMode mode) -> FText {
-    return FText::FromName(to_name(mode));
-}
-auto from_name(FName name) -> TOptional<EBoxSizeEditMode> {
-    if (name == TEXT("xyz")) {
-        return EBoxSizeEditMode::xyz;
-    } else if (name == TEXT("uniform")) {
-        return EBoxSizeEditMode::uniform;
-    } else if (name == TEXT("xy_and_z")) {
-        return EBoxSizeEditMode::xy_and_z;
-    }
-
-    return {};
-}
-auto get_names() -> TArray<FName> {
-    return {
-        "xyz",
-        "uniform",
-        "xy_and_z",
-    };
-}
-}
 
 void FBoxSizeCustomisation::CustomizeHeader(TSharedRef<IPropertyHandle> prop_handle,
                                             FDetailWidgetRow& header_row,

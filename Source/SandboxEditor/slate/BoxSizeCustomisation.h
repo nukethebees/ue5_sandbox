@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SandboxEditor/slate/BoxSizeEditMode.h"
+
 #include "IPropertyTypeCustomization.h"
 #include "Widgets/Input/SVectorInputBox.h"
 
@@ -7,19 +9,7 @@ template <typename OptionType>
 class SComboBox;
 class SWidget;
 class SBox;
-
-enum class EBoxSizeEditMode {
-    xyz,
-    uniform,
-    xy_and_z,
-};
-
-namespace box_size_edit_mode {
-auto to_name(EBoxSizeEditMode mode) -> FName;
-auto to_text(EBoxSizeEditMode mode) -> FText;
-auto from_name(FName name) -> TOptional<EBoxSizeEditMode>;
-auto get_names() -> TArray<FName>;
-}
+class IPropertyHandle;
 
 class FBoxSizeCustomisation : public IPropertyTypeCustomization {
   public:
