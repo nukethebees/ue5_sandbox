@@ -55,6 +55,13 @@ void AShipLaser::BeginPlay() {
     Super::BeginPlay();
 
     SetLifeSpan(20.0f);
+
+    if (auto* owner{GetOwner()}) {
+        mesh_component->IgnoreActorWhenMoving(owner, true);
+    }
+    if (auto* instigator{GetInstigator()}) {
+        mesh_component->IgnoreActorWhenMoving(instigator, true);
+    }
 }
 void AShipLaser::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);

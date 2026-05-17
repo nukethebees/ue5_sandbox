@@ -23,6 +23,8 @@ class SANDBOX_API AShipLaser : public AActor {
 
     void set_speed(float s) { speed = s; }
     auto get_speed(float s) const { return speed; }
+    void set_damage(int32 new_damage) { damage = new_damage; }
+    auto get_damage() const { return damage; }
     void set_config(UShipLaserConfig const& config);
   protected:
     void BeginPlay() override;
