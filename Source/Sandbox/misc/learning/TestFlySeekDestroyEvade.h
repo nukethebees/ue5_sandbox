@@ -13,6 +13,9 @@
 
 class UArrowComponent;
 
+class ATestVolume;
+class AShipLaser;
+
 UENUM()
 enum class ETestFlySeekDestroyEvadeState : uint8 {
     searching,
@@ -37,6 +40,13 @@ struct FTestFlySeekDestroyEvadeSearchStateConfig {
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
+
+    UPROPERTY(EditAnywhere)
+    TObjectPtr<ATestVolume> search_volume{nullptr};
+    UPROPERTY(EditAnywhere)
+    float min_distance_to_new_point{5000.f};
+    UPROPERTY(EditAnywhere)
+    float acceptance_radius{500.f};
 };
 
 USTRUCT()
@@ -75,6 +85,8 @@ struct FTestFlySeekDestroyEvadeConfig {
     FTestFlySeekDestroyEvadeAttackStateConfig attack;
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeEvadeStateConfig evade;
+    UPROPERTY(EditAnywhere, Category = "Fly|Vision")
+    FVisionConfig vision{5000.f, 25.f};
 };
 
 UCLASS()
@@ -86,19 +98,35 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
 
     void Tick(float dt) override;
 
+    // Config
     void set_config(FTestFlySeekDestroyEvadeConfig const& new_config);
+
+    // Movement
+    auto within_radius(FVector const& point, float const r) const -> bool;
   protected:
     void OnConstruction(FTransform const& t) override;
     void BeginPlay() override;
 
+    // State
     void set_state(ETestFlySeekDestroyEvadeState new_state);
     void transition_to_state();
 
+    // Search
     void handle_search(float dt);
+    void set_new_search_destination();
+    auto scan_for_target() -> bool;
+
+    // Chase
     void handle_chase(float dt);
+
+    // Attack
     void handle_attack(float dt);
+
+    // Evade
     void handle_evade(float dt);
 
+    // Movement
+    void move_to_location(float dt, FVector const& location);
     void set_movement(FTestFlySeekDestroyEvadeMovementConfig const& new_config);
 
     UPROPERTY(EditAnywhere, Category = "Fly")
