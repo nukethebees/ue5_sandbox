@@ -23,6 +23,7 @@ public class Sandbox : ModuleRules
             "GameplayTasks",
             "InputCore",
             "MassEntity",
+            "MassCore",
             "MassCommon",
             "MassSimulation",
             "Niagara",           
@@ -32,5 +33,7 @@ public class Sandbox : ModuleRules
             "TraceLog",
             "UMG"
         });
+
+        
     }
 }

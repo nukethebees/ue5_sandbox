@@ -11,6 +11,5 @@ public class SandboxEditorTarget : TargetRules
         DefaultBuildSettings = BuildSettingsVersion.Latest;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         ExtraModuleNames.AddRange(new string[] { "Sandbox", "SandboxEditor" });
-        bCompileAgainstEditor = true;
     }
 }

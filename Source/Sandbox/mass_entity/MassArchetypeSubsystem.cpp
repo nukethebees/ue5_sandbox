@@ -1,9 +1,5 @@
 #include "Sandbox/mass_entity/MassArchetypeSubsystem.h"
 
-#include "MassEntityManager.h"
-#include "MassEntitySubsystem.h"
-#include "MassEntityTypes.h"
-
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
@@ -11,6 +7,11 @@
 #include "Sandbox/environment/effects/NiagaraNdcWriterSubsystem.h"
 #include "Sandbox/mass_entity/mass_utils.h"
 #include "Sandbox/utilities/world.h"
+
+#include "MassEntityManager.h"
+#include "MassEntitySubsystem.h"
+#include "MassEntityTypes.h"
+#include "Subsystems/SubsystemCollection.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -65,16 +66,20 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
 
     {
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
-        ml::add_fragments<FMassBulletTransformFragment,
-                          FMassBulletVelocityFragment,
-                          FMassBulletLastPositionFragment,
-                          FMassBulletHitInfoFragment,
-                          FMassBulletStateFragment,
-                          FMassBulletDamageFragment,
-                          FMassBulletSourceFragment>(descriptor.GetFragments());
-        ml::add_fragments<FMassBulletImpactEffectFragment,
-                          FMassBulletVisualizationActorFragment,
-                          FMassBulletDataFragment>(descriptor.GetConstSharedFragments());
+        auto& bitset{descriptor.GetElementsBitSet()};
+
+        descriptor.GetFragments().Add(*FMassBulletTransformFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletVelocityFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletLastPositionFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletHitInfoFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletStateFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletDamageFragment::StaticStruct());
+        descriptor.GetFragments().Add(*FMassBulletSourceFragment::StaticStruct());
+
+        descriptor.GetConstSharedFragments().Add(*FMassBulletImpactEffectFragment::StaticStruct());
+        descriptor.GetConstSharedFragments().Add(
+            *FMassBulletVisualizationActorFragment::StaticStruct());
+        descriptor.GetConstSharedFragments().Add(*FMassBulletDataFragment::StaticStruct());
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));

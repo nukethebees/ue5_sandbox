@@ -13,12 +13,13 @@
 
 #include "CoreMinimal.h"
 #include "MassArchetypeTypes.h"
-#include "MassEntityHandle.h"
+#include "Mass/EntityHandle.h"
 #include "MassEntityTypes.h"
 #include "MassSubsystemBase.h"
 
 #include <atomic>
 #include <cstddef>
+#include <span>
 
 #include "MassBulletSubsystem.generated.h"
 
