@@ -25,7 +25,7 @@ void FBurstFire::tick(float dt) {
     }
 }
 auto FBurstFire::can_fire() const -> bool {
-    return state == EBurstFireState::ready;
+    return (state == EBurstFireState::ready) && (shots_remaining > 0);
 }
 auto FBurstFire::fire() -> bool {
     if (!can_fire()) {
@@ -43,4 +43,10 @@ auto FBurstFire::fire() -> bool {
     }
 
     return true;
+}
+void FBurstFire::reset() {
+    shot_cooldown.reset();
+    burst_cooldown.reset();
+    shots_remaining = burst_size;
+    state = EBurstFireState::ready;
 }

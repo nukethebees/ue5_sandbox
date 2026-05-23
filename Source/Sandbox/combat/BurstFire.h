@@ -10,7 +10,7 @@ UENUM()
 enum class EBurstFireState {
     ready,
     shot_cooldown,
-    burst_cooldown,
+    burst_cooldown
 };
 
 USTRUCT()
@@ -22,6 +22,7 @@ struct FBurstFire {
     void tick(float dt);
     auto can_fire() const -> bool;
     auto fire() -> bool;
+    void reset();
 
     UPROPERTY(EditAnywhere)
     FCooldown shot_cooldown{0.33f};
