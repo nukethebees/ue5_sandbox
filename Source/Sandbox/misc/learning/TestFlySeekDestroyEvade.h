@@ -25,18 +25,36 @@ enum class ETestFlySeekDestroyEvadeState : uint8 {
 };
 
 USTRUCT()
+struct FTestFlySeekDestroyEvadeStateVisualsConfig {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+    UPROPERTY(EditAnywhere)
+    FTestMaterialConfig material{};
+};
+
+USTRUCT()
 struct FTestFlySeekDestroyEvadeMovementConfig {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, Category = "Fly|Movement")
+    FTestFlySeekDestroyEvadeMovementConfig() noexcept = default;
+    FTestFlySeekDestroyEvadeMovementConfig(float turn_speed_deg_per_s, float speed)
+        : turn_speed_deg_per_s(turn_speed_deg_per_s)
+        , speed(speed) {}
+
+    UPROPERTY(EditAnywhere)
     float turn_speed_deg_per_s{60.f};
-    UPROPERTY(VisibleAnywhere, Category = "Fly|Movement")
-    float speed{0.f};
+    UPROPERTY(VisibleAnywhere)
+    float speed{3000.f};
 };
 
 USTRUCT()
 struct FTestFlySeekDestroyEvadeSearchStateConfig {
     GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
@@ -53,6 +71,9 @@ USTRUCT()
 struct FTestFlySeekDestroyEvadeChaseStateConfig {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere)
+    FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
+
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
 };
@@ -61,6 +82,8 @@ USTRUCT()
 struct FTestFlySeekDestroyEvadeAttackStateConfig {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere)
+    FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
 };
@@ -68,6 +91,9 @@ struct FTestFlySeekDestroyEvadeAttackStateConfig {
 USTRUCT()
 struct FTestFlySeekDestroyEvadeEvadeStateConfig {
     GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;

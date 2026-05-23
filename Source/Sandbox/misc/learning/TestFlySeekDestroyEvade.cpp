@@ -69,20 +69,28 @@ void ATestFlySeekDestroyEvade::set_state(ETestFlySeekDestroyEvadeState new_state
 void ATestFlySeekDestroyEvade::transition_to_state() {
     switch (state) {
         case ETestFlySeekDestroyEvadeState::searching: {
+            material_state.config = config.search.visuals_config.material;
+
             set_movement(config.search.movement);
             destination = GetActorLocation();
             target.Reset();
             break;
         }
         case ETestFlySeekDestroyEvadeState::chasing: {
+            material_state.config = config.chase.visuals_config.material;
+
             set_movement(config.chase.movement);
             break;
         }
         case ETestFlySeekDestroyEvadeState::attacking: {
+            material_state.config = config.attack.visuals_config.material;
+
             set_movement(config.attack.movement);
             break;
         }
         case ETestFlySeekDestroyEvadeState::evading: {
+            material_state.config = config.evade.visuals_config.material;
+
             set_movement(config.evade.movement);
             break;
         }
