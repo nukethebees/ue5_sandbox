@@ -21,6 +21,7 @@ enum class ETestFlySeekDestroyEvadeState : uint8 {
     searching,
     chasing,
     attacking,
+    attack_repositioning,
     evading,
 };
 
@@ -76,6 +77,8 @@ struct FTestFlySeekDestroyEvadeChaseStateConfig {
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
+    UPROPERTY(EditAnywhere)
+    float acceptance_radius{3000.f};
 };
 
 USTRUCT()
@@ -84,8 +87,34 @@ struct FTestFlySeekDestroyEvadeAttackStateConfig {
 
     UPROPERTY(EditAnywhere)
     FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
+
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    float reposition_radius{1000.f};
+
+    // Laser
+    UPROPERTY(EditAnywhere)
+    TSubclassOf<AShipLaser> laser_class;
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    int32 laser_damage{10};
+
+    // Aiming
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    float max_fire_angle_degrees{3.f};
+};
+
+USTRUCT()
+struct FTestFlySeekDestroyEvadeAttackRepositioningStateConfig {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
+
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FTestFlySeekDestroyEvadeMovementConfig movement;
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    float acceptance_radius{1000.f};
 };
 
 USTRUCT()
@@ -109,6 +138,8 @@ struct FTestFlySeekDestroyEvadeConfig {
     FTestFlySeekDestroyEvadeChaseStateConfig chase;
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeAttackStateConfig attack;
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FTestFlySeekDestroyEvadeAttackRepositioningStateConfig attack_reposition;
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeEvadeStateConfig evade;
     UPROPERTY(EditAnywhere, Category = "Fly|Vision")
@@ -135,7 +166,7 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
 
     // State
     void set_state(ETestFlySeekDestroyEvadeState new_state);
-    void transition_to_state();
+    void transition_to_state(ETestFlySeekDestroyEvadeState const old_state);
 
     // Search
     void handle_search(float dt);
@@ -147,6 +178,11 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
 
     // Attack
     void handle_attack(float dt);
+    void fire_laser();
+
+    // Attack repositioning
+    void handle_attack_repositioning(float dt);
+    void set_reposition_destination();
 
     // Evade
     void handle_evade(float dt);
@@ -154,6 +190,14 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     // Movement
     void move_to_location(float dt, FVector const& location);
     void set_movement(FTestFlySeekDestroyEvadeMovementConfig const& new_config);
+
+    // IDamageableShip
+    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
+
+    // Debugging
+    void draw_debug_shapes();
+
+    void log_target_not_valid();
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     TObjectPtr<UArrowComponent> fire_point{nullptr};
@@ -164,16 +208,28 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     UPROPERTY(EditAnywhere, Category = "Fly")
     ETestFlySeekDestroyEvadeState state{ETestFlySeekDestroyEvadeState::searching};
 
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    bool show_debug_shapes{false};
+
     // Movement
     UPROPERTY(EditAnywhere, Category = "Fly|Movement")
     float turn_speed_deg_per_s{60.f};
     UPROPERTY(VisibleAnywhere, Category = "Fly|Movement")
     float speed{0.f};
 
-    UPROPERTY(VisibleAnywhere)
+    // Objective
+    UPROPERTY(VisibleAnywhere, Category = "Fly")
     FVector destination;
-
-    // Target
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Fly")
     TWeakObjectPtr<AActor> target{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Fly")
+    FVector target_previous_position;
+
+    // Attacking
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FBurstFire burst{};
+
+    // Logging
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FActorLoggingConfig log_config{1.f};
 };

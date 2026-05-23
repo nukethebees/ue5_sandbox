@@ -88,8 +88,8 @@ class ATestFlySearchChase : public ATestFlyBase {
     bool show_debug_shapes{false};
     UPROPERTY(EditAnywhere, Category = "Fly")
     FDrawDebugConfig draw_config;
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FActorLoggingConfig log_config{1.f};
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Fly")
     float destination_sphere_radius{100.f};
 };
