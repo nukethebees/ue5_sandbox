@@ -91,6 +91,22 @@ class ATestUniformField : public AActor {
     auto get_grid_origin() const -> FVector;
     auto get_origin_cell_centre() const -> FVector;
 
+    struct IntVecs {
+        TArray<int32> x;
+        TArray<int32> y;
+        TArray<int32> z;
+    };
+
+    static auto get_grid_coordinate(FIntVector const& grid_dimensions, int32 i) -> FIntVector;
+    static auto get_grid_coordinates(FIntVector const& grid_dimensions,
+                                     TConstArrayView<int32> indexes) -> IntVecs;
+    static void get_grid_coordinates_impl(int32 const grid_y,
+                                          int32 const grid_z,
+                                          int32 const* RESTRICT is,
+                                          int32* RESTRICT xs_out,
+                                          int32* RESTRICT ys_out,
+                                          int32* RESTRICT zs_out,
+                                          int32 const n);
     auto get_grid_coordinate(int32 i) const -> FIntVector;
     auto get_position_from_origin_cell_centre(int32 i) const -> FVector;
 
@@ -191,7 +207,6 @@ class ATestUniformField : public AActor {
 #if WITH_EDITOR
     auto can_log() const;
 #endif
-
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "Grid")

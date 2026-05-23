@@ -538,7 +538,8 @@ auto ATestUniformField::get_origin_cell_centre() const -> FVector {
     return get_grid_origin() + get_cell_extent();
 }
 
-auto ATestUniformField::get_grid_coordinate(int32 i) const -> FIntVector {
+auto ATestUniformField::get_grid_coordinate(FIntVector const& grid_dimensions, int32 i)
+    -> FIntVector {
     auto const gy{grid_dimensions.Y};
     auto const gz{grid_dimensions.Z};
 
@@ -547,6 +548,47 @@ auto ATestUniformField::get_grid_coordinate(int32 i) const -> FIntVector {
     auto const z{i % gz};
 
     return {x, y, z};
+}
+auto ATestUniformField::get_grid_coordinates(FIntVector const& grid_dimensions,
+                                             TConstArrayView<int32> indexes) -> IntVecs {
+    auto const n{indexes.Num()};
+    IntVecs out;
+    out.x.SetNumUninitialized(n);
+    out.y.SetNumUninitialized(n);
+    out.z.SetNumUninitialized(n);
+
+    get_grid_coordinates_impl(grid_dimensions.Y,
+                              grid_dimensions.Z,
+                              indexes.GetData(),
+                              out.x.GetData(),
+                              out.y.GetData(),
+                              out.z.GetData(),
+                              n);
+
+    return out;
+}
+void ATestUniformField::get_grid_coordinates_impl(int32 const grid_y,
+                                                  int32 const grid_z,
+                                                  int32 const* RESTRICT is,
+                                                  int32* RESTRICT xs_out,
+                                                  int32* RESTRICT ys_out,
+                                                  int32* RESTRICT zs_out,
+                                                  int32 const n) {
+    auto const grid_yz{grid_y * grid_z};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const grid_i{is[i]};
+        auto const x{grid_i / grid_yz};
+        auto const y{(grid_i / grid_z) % grid_y};
+        auto const z{grid_i % grid_z};
+
+        xs_out[i] = x;
+        ys_out[i] = y;
+        zs_out[i] = z;
+    }
+}
+auto ATestUniformField::get_grid_coordinate(int32 i) const -> FIntVector {
+    return get_grid_coordinate(grid_dimensions, i);
 }
 auto ATestUniformField::get_position_from_origin_cell_centre(int32 i) const -> FVector {
     FVector const coord{get_grid_coordinate(i)};
