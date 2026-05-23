@@ -12,6 +12,7 @@
 #include "Engine/StaticMesh.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 
 namespace ml {
@@ -574,13 +575,27 @@ void ATestUniformField::get_grid_coordinates_impl(int32 const grid_y,
                                                   int32* RESTRICT ys_out,
                                                   int32* RESTRICT zs_out,
                                                   int32 const n) {
-    auto const grid_yz{grid_y * grid_z};
-
     for (int32 i{0}; i < n; ++i) {
         auto const grid_i{is[i]};
-        auto const x{grid_i / grid_yz};
-        auto const y{(grid_i / grid_z) % grid_y};
-        auto const z{grid_i % grid_z};
+
+#ifdef WIN32
+        auto const div_z{std::div(grid_i, grid_z)};
+        auto const div_yz{std::div(div_z.quot, grid_y)};
+
+        auto const x{div_yz.quot};
+        auto const y{div_yz.rem};
+        auto const z{div_z.rem};
+#else
+        auto const quot_z{grid_i / grid_z};
+        auto const rem_z{grid_i % grid_z};
+
+        auto const quot_yz{quot_z / grid_y};
+        auto const rem_yz{quot_z % grid_y};
+
+        auto const x{quot_yz};
+        auto const y{rem_yz};
+        auto const z{rem_z};
+#endif
 
         xs_out[i] = x;
         ys_out[i] = y;
