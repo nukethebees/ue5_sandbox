@@ -33,6 +33,13 @@ void ATestFlySeekDestroyEvade::BeginPlay() {
         return;
     }
 
+    if (config.randomise_at_begin_play) {
+        SetActorLocation(get_random_position_in_volume(GetActorLocation(), 1.f));
+    }
+
+    burst.reset();
+    stale_attack_timeout.reset();
+
     set_state(ETestFlySeekDestroyEvadeState::searching);
 
     TRY_INIT_PTR(world, GetWorld());
@@ -52,6 +59,7 @@ void ATestFlySeekDestroyEvade::Tick(float dt) {
     Super::Tick(dt);
 
     burst.tick(dt);
+    stale_attack_timeout.tick(dt);
 
     switch (state) {
         case ETestFlySeekDestroyEvadeState::searching: {
@@ -81,7 +89,8 @@ void ATestFlySeekDestroyEvade::Tick(float dt) {
     }
 
     if (target.IsValid()) {
-        target_previous_position = target->GetActorLocation();
+        target_previous_position_0 = target_previous_position_1;
+        target_previous_position_1 = target->GetActorLocation();
     }
 }
 
@@ -130,6 +139,7 @@ void ATestFlySeekDestroyEvade::transition_to_state(ETestFlySeekDestroyEvadeState
             break;
         }
         case ETestFlySeekDestroyEvadeState::attacking: {
+            stale_attack_timeout.reset();
             material_state.config = config.attack.visuals_config.material;
             set_movement(config.attack.movement);
             break;
@@ -141,6 +151,8 @@ void ATestFlySeekDestroyEvade::transition_to_state(ETestFlySeekDestroyEvadeState
             break;
         }
     }
+
+    material_state.update_instance();
 }
 
 void ATestFlySeekDestroyEvade::handle_search(float dt) {
@@ -156,20 +168,12 @@ void ATestFlySeekDestroyEvade::handle_search(float dt) {
         return handle_chase(dt);
     }
 
-    if (within_radius(destination, config.search.acceptance_radius)) {
-        set_new_search_destination();
+    if (within_radius(GetActorLocation(), destination, config.search.acceptance_radius)) {
+        destination = get_random_position_in_volume(GetActorLocation(),
+                                                    config.search.min_distance_to_new_point);
     }
 
     move_to_location(dt, destination);
-}
-void ATestFlySeekDestroyEvade::set_new_search_destination() {
-    auto* box{config.search.search_volume->get_box()};
-    auto const box_pos{box->GetComponentLocation()};
-    auto const box_extent{box->GetScaledBoxExtent()};
-
-    while (within_radius(destination, config.search.min_distance_to_new_point)) {
-        destination = UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent);
-    }
 }
 auto ATestFlySeekDestroyEvade::scan_for_target() -> bool {
     FVector origin;
@@ -185,22 +189,25 @@ auto ATestFlySeekDestroyEvade::scan_for_target() -> bool {
 
     target = ml::get_centre_actor_in_fov(*this, hits);
     if (!target.IsValid()) {
+        target.Reset();
         return false;
     }
+    target_previous_position_0 = target->GetActorLocation();
+    target_previous_position_1 = target->GetActorLocation();
 
     return true;
 }
 
 void ATestFlySeekDestroyEvade::handle_chase(float dt) {
-    if (!target.IsValid()) {
-        log_target_not_valid();
+    if (!validate_target()) {
         set_state(ETestFlySeekDestroyEvadeState::searching);
+        handle_search(dt);
         return;
     }
 
     auto const target_pos{target->GetActorLocation()};
 
-    if (within_radius(target_pos, config.chase.acceptance_radius)) {
+    if (within_radius(GetActorLocation(), target_pos, config.chase.acceptance_radius)) {
         set_state(ETestFlySeekDestroyEvadeState::attacking);
         return handle_attack(dt);
     }
@@ -209,37 +216,75 @@ void ATestFlySeekDestroyEvade::handle_chase(float dt) {
 }
 
 void ATestFlySeekDestroyEvade::handle_attack(float dt) {
-    if (!target.IsValid()) {
-        log_target_not_valid();
+    if (!validate_target()) {
         set_state(ETestFlySeekDestroyEvadeState::searching);
+        handle_search(dt);
+        return;
+    }
+
+    // If you haven't attacked in a while, reposition
+    if (stale_attack_timeout.reset_if_done()) {
+        set_state(ETestFlySeekDestroyEvadeState::attack_repositioning);
+        handle_attack_repositioning(dt);
         return;
     }
 
     auto const pos{GetActorLocation()};
     auto const target_pos{target->GetActorLocation()};
 
-    if (within_radius(target_pos, config.attack.reposition_radius)) {
+    if (within_radius(GetActorLocation(), target_pos, config.attack.reposition_radius)) {
         if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning, Display, TEXT("Too close to target, repositioning."));
         }
 
         set_state(ETestFlySeekDestroyEvadeState::attack_repositioning);
         handle_attack_repositioning(dt);
+        return;
     }
 
-    // Work out the attack position
-
-    move_to_location(dt, target_pos);
+    auto const attack_position{get_attack_position(dt)};
+    destination = attack_position;
+    move_to_location(dt, attack_position);
 
     auto const cos_threshold{
         FMath::Cos(FMath::DegreesToRadians(config.attack.max_fire_angle_degrees))};
-    auto const to_enemy{(target_pos - pos).GetSafeNormal()};
+    auto const to_attack_pos{(attack_position - pos).GetSafeNormal()};
     auto const forward{GetActorForwardVector()};
-    auto const can_fire{FVector::DotProduct(forward, to_enemy) >= cos_threshold};
+    auto const can_fire{FVector::DotProduct(forward, to_attack_pos) >= cos_threshold};
 
     if (can_fire) {
         fire_laser();
     }
+}
+auto ATestFlySeekDestroyEvade::get_attack_position(float dt) const -> FVector {
+    auto const target_pos{target->GetActorLocation()};
+    auto const target_fwd{target->GetActorForwardVector()};
+
+    // Work out the attack position
+    // Do a rough version for now
+    auto const target_delta_pos{target_previous_position_1 - target_previous_position_0};
+    auto const target_velocity{FMath::IsNearlyZero(dt) ? FVector::ZeroVector
+                                                       : target_delta_pos / dt};
+
+    auto const* laser_cdo{config.attack.laser_class->GetDefaultObject<AShipLaser>()};
+    auto const laser_speed{laser_cdo->get_speed()};
+
+    auto const pos{GetActorLocation()};
+    auto const dist{FVector::Dist(pos, target_pos)};
+    // speed = m/s
+    // dist = m
+    // time = dist / speed
+
+    auto const intercept_time{dist / laser_speed};
+    auto const new_target_pos{target_pos + target_velocity * intercept_time};
+
+    // Second time to reduce the error
+    auto const dist_2{FVector::Dist(pos, new_target_pos)};
+
+    auto const intercept_time_2{dist_2 / laser_speed};
+    auto const new_target_pos_2{target_pos + target_velocity * intercept_time};
+
+    return new_target_pos_2;
 }
 void ATestFlySeekDestroyEvade::fire_laser() {
     if (!burst.can_fire()) {
@@ -265,28 +310,76 @@ void ATestFlySeekDestroyEvade::fire_laser() {
     laser->FinishSpawning(laser_transform);
 
     burst.fire();
+    stale_attack_timeout.reset();
 }
 
 void ATestFlySeekDestroyEvade::handle_attack_repositioning(float dt) {
-    if (!target.IsValid()) {
-        log_target_not_valid();
-        set_state(ETestFlySeekDestroyEvadeState::searching);
-        return;
-    }
-
-    if (within_radius(destination, config.attack_reposition.acceptance_radius)) {
+    if (within_radius(
+            GetActorLocation(), destination, config.attack_reposition.acceptance_radius)) {
         set_state(ETestFlySeekDestroyEvadeState::chasing);
     }
 
     move_to_location(dt, destination);
 }
 void ATestFlySeekDestroyEvade::set_reposition_destination() {
-    set_new_search_destination();
+    destination = get_random_position(GetActorLocation(),
+                                      config.attack_reposition.new_position_bounds.min,
+                                      config.attack_reposition.new_position_bounds.max);
 }
 
-void ATestFlySeekDestroyEvade::handle_evade(float dt) {}
+void ATestFlySeekDestroyEvade::handle_evade(float dt) {
+    if (within_radius(GetActorLocation(), destination, config.search.acceptance_radius)) {
+        set_state(ETestFlySeekDestroyEvadeState::searching);
+        handle_search(dt);
+        return;
+    }
+
+    move_to_location(dt, destination);
+}
 
 // Movement
+auto ATestFlySeekDestroyEvade::get_random_position_in_volume(FVector const& reference,
+                                                             float min_dist) const -> FVector {
+    auto* box{config.search.search_volume->get_box()};
+    auto const box_pos{box->GetComponentLocation()};
+    FVector const box_extent{box->GetScaledBoxExtent()};
+
+    auto pos{UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent)};
+    int32 count{1};
+    int32 limit{100};
+    while (within_radius(reference, pos, min_dist)) {
+        pos = UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent);
+        count++;
+
+        if (count > limit) {
+            UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to find point: (min=%.2f)"), min_dist);
+            return pos;
+        }
+    }
+
+    return pos;
+}
+auto ATestFlySeekDestroyEvade::get_random_position(FVector const& reference,
+                                                   float min_dist,
+                                                   float max_dist) const -> FVector {
+    FVector const box_extent{max_dist};
+
+    auto pos{UKismetMathLibrary::RandomPointInBoundingBox(reference, box_extent)};
+    int32 count{1};
+    int32 limit{100};
+    while (within_radius(reference, pos, min_dist)) {
+        pos = UKismetMathLibrary::RandomPointInBoundingBox(reference, box_extent);
+        count++;
+
+        if (count > limit) {
+            UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to find point: (min=%.2f)"), min_dist);
+            return pos;
+        }
+    }
+
+    return pos;
+}
+
 void ATestFlySeekDestroyEvade::move_to_location(float dt, FVector const& location) {
     auto const current_rotation{GetActorRotation()};
     auto const direction_to_target{(location - GetActorLocation()).GetSafeNormal()};
@@ -302,8 +395,24 @@ void ATestFlySeekDestroyEvade::move_to_location(float dt, FVector const& locatio
 
     SetActorLocation(pos + max_delta_dist * new_rotation.Vector());
 }
-auto ATestFlySeekDestroyEvade::within_radius(FVector const& point, float const r) const -> bool {
-    return FVector::DistSquared(point, GetActorLocation()) <= (r * r);
+auto ATestFlySeekDestroyEvade::within_radius(FVector const& point_a,
+                                             FVector const& point_b,
+                                             float const r) const -> bool {
+    return FVector::DistSquared(point_a, point_b) <= (r * r);
+}
+auto ATestFlySeekDestroyEvade::within_bounds(FVector const& point_a,
+                                             FVector const& point_b,
+                                             float const min_bound,
+                                             float const max_bound) const -> bool {
+    check(min_bound >= 0.f);
+    check(max_bound >= 0.f);
+    check(max_bound > min_bound);
+
+    auto const min_sq{min_bound * min_bound};
+    auto const max_sq{max_bound * max_bound};
+    auto const dist_sq{FVector::DistSquared(point_a, point_b)};
+
+    return (dist_sq >= min_sq) && (dist_sq <= max_sq);
 }
 
 auto ATestFlySeekDestroyEvade::apply_damage(ShipDamageContext context) -> FShipDamageResult {
@@ -321,6 +430,12 @@ auto ATestFlySeekDestroyEvade::apply_damage(ShipDamageContext context) -> FShipD
                 set_state(ETestFlySeekDestroyEvadeState::attacking);
             }
             break;
+        }
+        case ETestFlySeekDestroyEvadeState::evading: {
+            // Change direction
+            destination = get_random_position(GetActorLocation(),
+                                              config.evade.new_position_bounds.min,
+                                              config.evade.new_position_bounds.max);
         }
         default: {
             break;
@@ -350,21 +465,31 @@ void ATestFlySeekDestroyEvade::draw_debug_shapes() {
         case ETestFlySeekDestroyEvadeState::chasing: {
             auto const& drawer{config.chase.visuals_config.debug_drawer};
 
-            drawer.draw_arrow(pos, target->GetActorLocation());
-            drawer.draw_sphere(pos, config.chase.acceptance_radius);
+            if (target.IsValid()) {
+                auto const target_pos{target->GetActorLocation()};
+                drawer.draw_arrow(pos, target_pos);
+                drawer.draw_sphere(target_pos, config.chase.acceptance_radius);
+            }
+
             break;
         }
         case ETestFlySeekDestroyEvadeState::attacking: {
             auto const& drawer{config.attack.visuals_config.debug_drawer};
 
-            drawer.draw_arrow(pos, target->GetActorLocation());
+            drawer.draw_arrow(pos, destination);
+
+            // Show where we're trying to attack
+            drawer.draw_sphere(destination, config.attack.target_sphere_radius);
+            if (target.IsValid()) {
+                drawer.draw_sphere(target->GetActorLocation(), config.attack.reposition_radius);
+            }
 
             break;
         }
         case ETestFlySeekDestroyEvadeState::attack_repositioning: {
             auto const& drawer{config.attack_reposition.visuals_config.debug_drawer};
 
-            drawer.draw_sphere(destination, config.search.acceptance_radius);
+            drawer.draw_sphere(destination, config.attack_reposition.acceptance_radius);
             drawer.draw_line(pos, destination);
 
             break;
@@ -381,4 +506,14 @@ void ATestFlySeekDestroyEvade::log_target_not_valid() {
     if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Target is no longer valid."));
     }
+}
+
+auto ATestFlySeekDestroyEvade::validate_target() -> bool {
+    if (!target.IsValid()) {
+        target.Reset();
+        log_target_not_valid();
+        return false;
+    }
+
+    return true;
 }

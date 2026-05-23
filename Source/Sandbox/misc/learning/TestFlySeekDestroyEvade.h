@@ -5,6 +5,7 @@
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
 #include "Sandbox/players/VisionConfig.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
+#include "Sandbox/utilities/FloatBounds.h"
 #include "TestFlyBase.h"
 
 #include "CoreMinimal.h"
@@ -29,9 +30,9 @@ USTRUCT()
 struct FTestFlySeekDestroyEvadeStateVisualsConfig {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FTestMaterialConfig material{};
 };
 
@@ -44,9 +45,9 @@ struct FTestFlySeekDestroyEvadeMovementConfig {
         : turn_speed_deg_per_s(turn_speed_deg_per_s)
         , speed(speed) {}
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     float turn_speed_deg_per_s{60.f};
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     float speed{3000.f};
 };
 
@@ -72,12 +73,12 @@ USTRUCT()
 struct FTestFlySeekDestroyEvadeChaseStateConfig {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     float acceptance_radius{3000.f};
 };
 
@@ -85,16 +86,20 @@ USTRUCT()
 struct FTestFlySeekDestroyEvadeAttackStateConfig {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
+    // Visuals
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    float target_sphere_radius{200.f};
 
+    // Movement
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
     UPROPERTY(EditAnywhere, Category = "Fly")
     float reposition_radius{1000.f};
 
     // Laser
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     TSubclassOf<AShipLaser> laser_class;
     UPROPERTY(EditAnywhere, Category = "Fly")
     int32 laser_damage{10};
@@ -115,17 +120,21 @@ struct FTestFlySeekDestroyEvadeAttackRepositioningStateConfig {
     FTestFlySeekDestroyEvadeMovementConfig movement;
     UPROPERTY(EditAnywhere, Category = "Fly")
     float acceptance_radius{1000.f};
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FFloatBounds new_position_bounds{1000.f, 1500.f};
 };
 
 USTRUCT()
 struct FTestFlySeekDestroyEvadeEvadeStateConfig {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeStateVisualsConfig visuals_config{};
 
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeMovementConfig movement;
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    FFloatBounds new_position_bounds{1000.f, 1500.f};
 };
 
 USTRUCT()
@@ -142,8 +151,12 @@ struct FTestFlySeekDestroyEvadeConfig {
     FTestFlySeekDestroyEvadeAttackRepositioningStateConfig attack_reposition;
     UPROPERTY(EditAnywhere, Category = "Fly")
     FTestFlySeekDestroyEvadeEvadeStateConfig evade;
+
     UPROPERTY(EditAnywhere, Category = "Fly|Vision")
     FVisionConfig vision{5000.f, 25.f};
+
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    bool randomise_at_begin_play{false};
 };
 
 UCLASS()
@@ -159,7 +172,11 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     void set_config(FTestFlySeekDestroyEvadeConfig const& new_config);
 
     // Movement
-    auto within_radius(FVector const& point, float const r) const -> bool;
+    auto within_radius(FVector const& point_a, FVector const& point_b, float const r) const -> bool;
+    auto within_bounds(FVector const& point_a,
+                       FVector const& point_b,
+                       float const min_bound,
+                       float const max_bound) const -> bool;
   protected:
     void OnConstruction(FTransform const& t) override;
     void BeginPlay() override;
@@ -170,7 +187,6 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
 
     // Search
     void handle_search(float dt);
-    void set_new_search_destination();
     auto scan_for_target() -> bool;
 
     // Chase
@@ -178,6 +194,7 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
 
     // Attack
     void handle_attack(float dt);
+    auto get_attack_position(float dt) const -> FVector;
     void fire_laser();
 
     // Attack repositioning
@@ -188,6 +205,10 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     void handle_evade(float dt);
 
     // Movement
+    auto get_random_position_in_volume(FVector const& reference, float min_dist = 0.f) const
+        -> FVector;
+    auto get_random_position(FVector const& reference, float min_dist, float max_dist) const
+        -> FVector;
     void move_to_location(float dt, FVector const& location);
     void set_movement(FTestFlySeekDestroyEvadeMovementConfig const& new_config);
 
@@ -197,6 +218,8 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     // Debugging
     void draw_debug_shapes();
 
+    // Target
+    auto validate_target() -> bool;
     void log_target_not_valid();
 
     UPROPERTY(EditAnywhere, Category = "Fly")
@@ -222,12 +245,17 @@ class ATestFlySeekDestroyEvade : public ATestFlyBase {
     FVector destination;
     UPROPERTY(VisibleAnywhere, Category = "Fly")
     TWeakObjectPtr<AActor> target{nullptr};
+
     UPROPERTY(VisibleAnywhere, Category = "Fly")
-    FVector target_previous_position;
+    FVector target_previous_position_0;
+    UPROPERTY(VisibleAnywhere, Category = "Fly")
+    FVector target_previous_position_1;
 
     // Attacking
-    UPROPERTY(EditAnywhere, Category = "Fly")
+    UPROPERTY(EditAnywhere, Category = "Fly|Attack")
     FBurstFire burst{};
+    UPROPERTY(EditAnywhere, Category = "Fly|Attack")
+    FCooldown stale_attack_timeout{5.f};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "Fly")
