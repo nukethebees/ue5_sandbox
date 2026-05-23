@@ -3,7 +3,7 @@
 	"EngineAssociation": "{AD122A74-412F-917C-F1C9-5599355C1466}",
 	"Category": "",
 	"Description": "",
-    "DisableEnginePluginsByDefault": true,
+	"DisableEnginePluginsByDefault": true,
 	"Modules": [
 		{
 			"Name": "Sandbox",
@@ -391,7 +391,7 @@
 			"Name": "MediaCompositing",
 			"Enabled": false
 		},
-        {
+		{
 			"Name": "PluginBrowser",
 			"Enabled": true
 		},
@@ -419,12 +419,23 @@
 			"Name": "PropertyAccessNode",
 			"Enabled": true
 		},
-        {
+		{
 			"Name": "EnhancedInput",
 			"Enabled": true
 		},
-        {
+		{
 			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "XInputDevice",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "SteamController",
 			"Enabled": true
 		}
 	],

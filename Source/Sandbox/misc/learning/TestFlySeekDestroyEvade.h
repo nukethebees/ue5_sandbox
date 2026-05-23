@@ -122,6 +122,9 @@ struct FTestFlySeekDestroyEvadeAttackRepositioningStateConfig {
     float acceptance_radius{1000.f};
     UPROPERTY(EditAnywhere, Category = "Fly")
     FFloatBounds new_position_bounds{1000.f, 1500.f};
+    UPROPERTY(EditAnywhere, Category = "Fly")
+    // Abandon the reposition if the target moves this far away
+    float target_threshold_distance{2000.f};
 };
 
 USTRUCT()

@@ -6,6 +6,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/enums.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
+#include "Sandbox/utilities/spatial.h"
 #include "Sandbox/utilities/vision_maths.h"
 
 #include <Components/ArrowComponent.h>
@@ -314,9 +315,22 @@ void ATestFlySeekDestroyEvade::fire_laser() {
 }
 
 void ATestFlySeekDestroyEvade::handle_attack_repositioning(float dt) {
-    if (within_radius(
-            GetActorLocation(), destination, config.attack_reposition.acceptance_radius)) {
+    if (!validate_target()) {
+        set_state(ETestFlySeekDestroyEvadeState::searching);
+        handle_search(dt);
+        return;
+    }
+
+    auto const loc{GetActorLocation()};
+
+    if (within_radius(loc, destination, config.attack_reposition.acceptance_radius)) {
         set_state(ETestFlySeekDestroyEvadeState::chasing);
+    }
+
+    // Attack again if the target moves far enough away
+    if (!within_radius(
+            loc, target->GetActorLocation(), config.attack_reposition.target_threshold_distance)) {
+        set_state(ETestFlySeekDestroyEvadeState::attacking);
     }
 
     move_to_location(dt, destination);
@@ -362,22 +376,7 @@ auto ATestFlySeekDestroyEvade::get_random_position_in_volume(FVector const& refe
 auto ATestFlySeekDestroyEvade::get_random_position(FVector const& reference,
                                                    float min_dist,
                                                    float max_dist) const -> FVector {
-    FVector const box_extent{max_dist};
-
-    auto pos{UKismetMathLibrary::RandomPointInBoundingBox(reference, box_extent)};
-    int32 count{1};
-    int32 limit{100};
-    while (within_radius(reference, pos, min_dist)) {
-        pos = UKismetMathLibrary::RandomPointInBoundingBox(reference, box_extent);
-        count++;
-
-        if (count > limit) {
-            UE_LOG(LogSandboxLearning, Warning, TEXT("Failed to find point: (min=%.2f)"), min_dist);
-            return pos;
-        }
-    }
-
-    return pos;
+    return ml::get_random_point(reference, min_dist, max_dist);
 }
 
 void ATestFlySeekDestroyEvade::move_to_location(float dt, FVector const& location) {
