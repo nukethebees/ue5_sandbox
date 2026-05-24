@@ -1,5 +1,6 @@
 #pragma once
 
+#include "array_utils.h"
 #include "numeric.h"
 
 #include "CoreMinimal.h"
@@ -191,4 +192,23 @@ void rotate_towards_1d_degrees_normalised_inplace(T* RESTRICT current,
         int32 const count) noexcept
 ML_EXTERN_FN(float);
 #undef ML_EXTERN_FN
+}
+
+namespace ml {
+template <std::floating_point T>
+bool rotate_towards_1d_degrees_normalised_inplace(TArrayView<T> current,
+                                                  TConstArrayView<T> target,
+                                                  T const speed,
+                                                  T const delta_time) noexcept {
+    auto const count{current.Num()};
+
+    if (!ml::detail::all_num_equal(count, target)) {
+        return false;
+    }
+
+    ml::kernel::rotate_towards_1d_degrees_normalised_inplace(
+        current.GetData(), target.GetData(), speed, delta_time, count);
+
+    return true;
+}
 }
