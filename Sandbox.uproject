@@ -435,6 +435,10 @@
 			]
 		},
 		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		},
+		{
 			"Name": "SteamController",
 			"Enabled": true
 		}

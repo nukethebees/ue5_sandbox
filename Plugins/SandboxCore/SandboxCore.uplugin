@@ -19,11 +19,6 @@
 			"Name": "SandboxCore",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-        {
-          "Name": "SandboxCoreTests",
-          "Type": "Editor",
-          "LoadingPhase": "Default"
-        }
+		}
 	]
 }
