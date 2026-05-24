@@ -24,6 +24,19 @@ inline constexpr T full_turn_degrees{static_cast<T>(360.0)};
 }
 
 namespace ml {
+// Restrict angle to [-180, 180)
+template <std::floating_point T>
+auto normalise_degrees_signed_half_open_once(T const degrees) noexcept -> T {
+    constexpr auto ht{ml::constants::half_turn_degrees<T>};
+    constexpr auto ft{ml::constants::full_turn_degrees<T>};
+
+    auto out{degrees};
+    out -= ft * (out >= ht);
+    out += ft * (out < -ht);
+
+    return out;
+}
+
 template <std::floating_point T>
 auto shortest_signed_angle_delta(T const from, T const to) -> T {
     constexpr auto ht{ml::constants::half_turn_degrees<T>};
@@ -45,12 +58,7 @@ auto shortest_signed_angle_delta_normalised(T const current, T const target) noe
     constexpr auto ht{ml::constants::half_turn_degrees<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
 
-    T delta{target - current};
-
-    delta -= ft * (delta >= ht);
-    delta += ft * (delta < -ht);
-
-    return delta;
+    return normalise_degrees_signed_half_open_once(target - current);
 }
 }
 
@@ -129,8 +137,7 @@ void rotate_towards_1d_degrees_normalised(T const* RESTRICT current,
         auto const clamped_delta{FMath::Clamp(delta, -max_step, max_step)};
 
         auto new_out{current[i] + clamped_delta};
-        new_out -= ft * (new_out > ht);
-        new_out += ft * (new_out < -ht);
+        new_out = ml::normalise_degrees_signed_half_open_once(new_out);
 
         out[i] = new_out;
     }
@@ -143,6 +150,44 @@ void rotate_towards_1d_degrees_normalised(T const* RESTRICT current,
         T const speed,                                                            \
         T const delta_time,                                                       \
         T* RESTRICT out,                                                          \
+        int32 const count) noexcept
+ML_EXTERN_FN(float);
+#undef ML_EXTERN_FN
+
+template <std::floating_point T>
+void rotate_towards_1d_degrees_normalised_inplace(T* RESTRICT current,
+                                                  T const* RESTRICT target,
+                                                  T const speed,
+                                                  T const delta_time,
+                                                  int32 const count) noexcept {
+    constexpr auto one{ml::constants::one<T>};
+    constexpr auto ht{ml::constants::half_turn_degrees<T>};
+    constexpr auto ft{ml::constants::full_turn_degrees<T>};
+    constexpr auto zero{ml::constants::zero<T>};
+
+    auto const max_step{speed * delta_time};
+
+    if (max_step <= zero) {
+        return;
+    }
+
+    for (int32 i{0}; i < count; ++i) {
+        auto const delta{ml::shortest_signed_angle_delta_normalised(current[i], target[i])};
+        auto const clamped_delta{FMath::Clamp(delta, -max_step, max_step)};
+
+        auto new_out{current[i] + clamped_delta};
+        new_out = ml::normalise_degrees_signed_half_open_once(new_out);
+
+        current[i] = new_out;
+    }
+}
+
+#define ML_EXTERN_FN(T)                                                                \
+    extern template SANDBOXCORE_API void rotate_towards_1d_degrees_normalised_inplace( \
+        T* RESTRICT current,                                                           \
+        T const* RESTRICT target,                                                      \
+        T const speed,                                                                 \
+        T const delta_time,                                                            \
         int32 const count) noexcept
 ML_EXTERN_FN(float);
 #undef ML_EXTERN_FN
