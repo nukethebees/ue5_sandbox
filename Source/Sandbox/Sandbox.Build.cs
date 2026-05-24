@@ -12,6 +12,8 @@ public class Sandbox : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
 
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
+
         CppCompileWarningSettings.AmbiguousReversedOperatorWarningLevel = WarningLevel.Error;
         CppCompileWarningSettings.UnreachableCodeWarningLevel = WarningLevel.Error;
         CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
