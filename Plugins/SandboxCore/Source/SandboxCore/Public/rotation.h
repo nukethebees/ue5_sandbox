@@ -38,6 +38,20 @@ auto shortest_signed_angle_delta(T const from, T const to) -> T {
 
     return delta - ht;
 }
+
+// A simpler version assuming values are within (-360.0, 360.0)
+template <std::floating_point T>
+auto shortest_signed_angle_delta_normalised(T const current, T const target) noexcept -> T {
+    constexpr auto ht{ml::constants::half_turn_degrees<T>};
+    constexpr auto ft{ml::constants::full_turn_degrees<T>};
+
+    T delta{target - current};
+
+    delta -= ft * (delta > ht);
+    delta += ft * (delta < -ht);
+
+    return delta;
+}
 }
 
 namespace ml::kernel {
