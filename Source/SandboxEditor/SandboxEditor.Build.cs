@@ -10,6 +10,7 @@ public class SandboxEditor : ModuleRules
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]
         {
+            "SandboxCore",
             "Core",
             "CoreUObject",
             "Engine",

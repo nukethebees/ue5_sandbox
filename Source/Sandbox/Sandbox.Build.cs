@@ -17,6 +17,7 @@ public class Sandbox : ModuleRules
         CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
 
         PublicDependencyModuleNames.AddRange(new string[] {
+            "SandboxCore",
             "Core", 
             "CoreUObject", 
             "Engine", 

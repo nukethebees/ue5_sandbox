@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "SandboxCore",
+	"Description": "",
+	"Category": "Other",
+	"CreatedBy": "NukeTheBees",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SandboxCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
