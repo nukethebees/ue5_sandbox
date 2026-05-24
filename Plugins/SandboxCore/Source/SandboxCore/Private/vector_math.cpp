@@ -1,0 +1,35 @@
+#include "SandboxCore/Public/vector_math.h"
+
+namespace ml {
+#define ML_INSTANTIATE_VEC3(T)                                      \
+    template SANDBOXCORE_API void add_vector3<T>(T const* RESTRICT, \
+                                                 T const* RESTRICT, \
+                                                 T const* RESTRICT, \
+                                                 T const* RESTRICT, \
+                                                 T const* RESTRICT, \
+                                                 T const* RESTRICT, \
+                                                 T* RESTRICT,       \
+                                                 T* RESTRICT,       \
+                                                 T* RESTRICT,       \
+                                                 int32 const)
+
+ML_INSTANTIATE_VEC3(uint8);
+ML_INSTANTIATE_VEC3(float);
+ML_INSTANTIATE_VEC3(double);
+ML_INSTANTIATE_VEC3(int32);
+#undef ML_INSTANTIATE_VEC3
+
+#define ML_INSTANTIATE_VEC3(T)                                                    \
+    template SANDBOXCORE_API void add_vector3_inplace<T>(T * dst_x,               \
+                                                         T * dst_y,               \
+                                                         T * dst_z,               \
+                                                         T const* RESTRICT src_x, \
+                                                         T const* RESTRICT src_y, \
+                                                         T const* RESTRICT src_z, \
+                                                         int32 const count)
+ML_INSTANTIATE_VEC3(uint8);
+ML_INSTANTIATE_VEC3(float);
+ML_INSTANTIATE_VEC3(double);
+ML_INSTANTIATE_VEC3(int32);
+#undef ML_INSTANTIATE_VEC3
+}
