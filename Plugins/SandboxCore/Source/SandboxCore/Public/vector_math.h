@@ -17,14 +17,14 @@ void add_vector3(T const* RESTRICT lhs_x,
                  T* RESTRICT out_y,
                  T* RESTRICT out_z,
                  int32 const count) {
-    for (int32 i{}; i < count; ++i) {
+    for (int32 i{0}; i < count; ++i) {
         out_x[i] = lhs_x[i] + rhs_x[i];
         out_y[i] = lhs_y[i] + rhs_y[i];
         out_z[i] = lhs_z[i] + rhs_z[i];
     }
 }
 
-#define ML_EXTERN_VEC3(T)                                                  \
+#define ML_EXTERN_FN(T)                                                  \
     extern template SANDBOXCORE_API void add_vector3<T>(T const* RESTRICT, \
                                                         T const* RESTRICT, \
                                                         T const* RESTRICT, \
@@ -35,11 +35,11 @@ void add_vector3(T const* RESTRICT lhs_x,
                                                         T* RESTRICT,       \
                                                         T* RESTRICT,       \
                                                         int32 const)
-ML_EXTERN_VEC3(uint8);
-ML_EXTERN_VEC3(float);
-ML_EXTERN_VEC3(double);
-ML_EXTERN_VEC3(int32);
-#undef ML_EXTERN_VEC3
+ML_EXTERN_FN(uint8);
+ML_EXTERN_FN(float);
+ML_EXTERN_FN(double);
+ML_EXTERN_FN(int32);
+#undef ML_EXTERN_FN
 
 template <Numeric T>
 void add_vector3_inplace(T* dst_x,
@@ -49,14 +49,14 @@ void add_vector3_inplace(T* dst_x,
                          T const* RESTRICT src_y,
                          T const* RESTRICT src_z,
                          int32 const count) {
-    for (int32 i{}; i < count; ++i) {
+    for (int32 i{0}; i < count; ++i) {
         dst_x[i] += src_x[i];
         dst_y[i] += src_y[i];
         dst_z[i] += src_z[i];
     }
 }
 
-#define ML_EXTERN_VEC3(T)                                                                \
+#define ML_EXTERN_FN(T)                                                                \
     extern template SANDBOXCORE_API void add_vector3_inplace<T>(T * dst_x,               \
                                                                 T * dst_y,               \
                                                                 T * dst_z,               \
@@ -64,11 +64,11 @@ void add_vector3_inplace(T* dst_x,
                                                                 T const* RESTRICT src_y, \
                                                                 T const* RESTRICT src_z, \
                                                                 int32 const count)
-ML_EXTERN_VEC3(uint8);
-ML_EXTERN_VEC3(float);
-ML_EXTERN_VEC3(double);
-ML_EXTERN_VEC3(int32);
-#undef ML_EXTERN_VEC3
+ML_EXTERN_FN(uint8);
+ML_EXTERN_FN(float);
+ML_EXTERN_FN(double);
+ML_EXTERN_FN(int32);
+#undef ML_EXTERN_FN
 
 }
 
