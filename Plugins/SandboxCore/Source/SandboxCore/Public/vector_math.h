@@ -16,7 +16,7 @@ void add_vector3(T const* RESTRICT lhs_x,
                  T* RESTRICT out_x,
                  T* RESTRICT out_y,
                  T* RESTRICT out_z,
-                 int32 const count) {
+                 int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = lhs_x[i] + rhs_x[i];
         out_y[i] = lhs_y[i] + rhs_y[i];
@@ -34,7 +34,7 @@ void add_vector3(T const* RESTRICT lhs_x,
                                                         T* RESTRICT,       \
                                                         T* RESTRICT,       \
                                                         T* RESTRICT,       \
-                                                        int32 const)
+                                                        int32 const) noexcept
 ML_EXTERN_FN(uint8);
 ML_EXTERN_FN(float);
 ML_EXTERN_FN(double);
@@ -48,7 +48,7 @@ void add_vector3_inplace(T* dst_x,
                          T const* RESTRICT src_x,
                          T const* RESTRICT src_y,
                          T const* RESTRICT src_z,
-                         int32 const count) {
+                         int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         dst_x[i] += src_x[i];
         dst_y[i] += src_y[i];
@@ -63,7 +63,7 @@ void add_vector3_inplace(T* dst_x,
                                                                 T const* RESTRICT src_x, \
                                                                 T const* RESTRICT src_y, \
                                                                 T const* RESTRICT src_z, \
-                                                                int32 const count)
+                                                                int32 const count) noexcept
 ML_EXTERN_FN(uint8);
 ML_EXTERN_FN(float);
 ML_EXTERN_FN(double);
@@ -83,7 +83,7 @@ bool add_vector3(TConstArrayView<T> lhs_x,
                  TConstArrayView<T> rhs_z,
                  TArrayView<T> out_x,
                  TArrayView<T> out_y,
-                 TArrayView<T> out_z) {
+                 TArrayView<T> out_z) noexcept {
     auto const count{lhs_x.Num()};
 
     if (!ml::detail::all_num_equal(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {

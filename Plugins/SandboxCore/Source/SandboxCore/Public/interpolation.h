@@ -11,7 +11,7 @@ void lerp_1d(T const* RESTRICT from,
              T const* RESTRICT to,
              T const* RESTRICT alpha,
              T* RESTRICT out,
-             int32 const count) {
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = from[i] + alpha[i] * (to[i] - from[i]);
     }
@@ -22,14 +22,17 @@ void lerp_1d(T const* RESTRICT from,
                                                     T const* RESTRICT to,    \
                                                     T const* RESTRICT alpha, \
                                                     T* RESTRICT out,         \
-                                                    int32 const count)
+                                                    int32 const count) noexcept
 ML_EXTERN_FN(float);
 ML_EXTERN_FN(double);
 #undef ML_EXTERN_FN
 
 template <Numeric T>
-void lerp_1d(
-    T const* RESTRICT from, T const* RESTRICT to, T alpha, T* RESTRICT out, int32 const count) {
+void lerp_1d(T const* RESTRICT from,
+             T const* RESTRICT to,
+             T alpha,
+             T* RESTRICT out,
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = from[i] + alpha * (to[i] - from[i]);
     }
@@ -43,7 +46,7 @@ void lerp_2d(T const* RESTRICT from_x,
              T const* RESTRICT alpha,
              T* RESTRICT out_x,
              T* RESTRICT out_y,
-             int32 const count) {
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = from_x[i] + alpha[i] * (to_x[i] - from_x[i]);
         out_y[i] = from_y[i] + alpha[i] * (to_y[i] - from_y[i]);
@@ -58,7 +61,7 @@ void lerp_2d(T const* RESTRICT from_x,
              T const alpha,
              T* RESTRICT out_x,
              T* RESTRICT out_y,
-             int32 const count) {
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);
         out_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);
@@ -76,7 +79,7 @@ void lerp_3d(T const* RESTRICT from_x,
              T* RESTRICT out_x,
              T* RESTRICT out_y,
              T* RESTRICT out_z,
-             int32 const count) {
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = from_x[i] + alpha[i] * (to_x[i] - from_x[i]);
         out_y[i] = from_y[i] + alpha[i] * (to_y[i] - from_y[i]);
@@ -95,7 +98,7 @@ void lerp_3d(T const* RESTRICT from_x,
              T* RESTRICT out_x,
              T* RESTRICT out_y,
              T* RESTRICT out_z,
-             int32 const count) {
+             int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);
         out_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);
@@ -109,7 +112,7 @@ template <Numeric T>
 bool lerp_1d(TConstArrayView<T> from,
              TConstArrayView<T> to,
              TConstArrayView<T> alpha,
-             TArrayView<T> out) {
+             TArrayView<T> out) noexcept {
     auto const count{from.Num()};
 
     if (!ml::detail::all_num_equal(count, to, alpha, out)) {
@@ -122,7 +125,10 @@ bool lerp_1d(TConstArrayView<T> from,
 }
 
 template <Numeric T>
-bool lerp_1d(TConstArrayView<T> from, TConstArrayView<T> to, T const alpha, TArrayView<T> out) {
+bool lerp_1d(TConstArrayView<T> from,
+             TConstArrayView<T> to,
+             T const alpha,
+             TArrayView<T> out) noexcept {
     auto const count{from.Num()};
 
     if (!ml::detail::all_num_equal(count, to, out)) {
@@ -141,7 +147,7 @@ bool lerp_2d(TConstArrayView<T> from_x,
              TConstArrayView<T> to_y,
              TConstArrayView<T> alpha,
              TArrayView<T> out_x,
-             TArrayView<T> out_y) {
+             TArrayView<T> out_y) noexcept {
     auto const count{from_x.Num()};
 
     if (!ml::detail::all_num_equal(count, from_y, to_x, to_y, alpha, out_x, out_y)) {
@@ -167,7 +173,7 @@ bool lerp_2d(TConstArrayView<T> from_x,
              TConstArrayView<T> to_y,
              T const alpha,
              TArrayView<T> out_x,
-             TArrayView<T> out_y) {
+             TArrayView<T> out_y) noexcept {
     auto const count{from_x.Num()};
 
     if (!ml::detail::all_num_equal(count, from_y, to_x, to_y, out_x, out_y)) {
@@ -196,7 +202,7 @@ bool lerp_3d(TConstArrayView<T> from_x,
              TConstArrayView<T> alpha,
              TArrayView<T> out_x,
              TArrayView<T> out_y,
-             TArrayView<T> out_z) {
+             TArrayView<T> out_z) noexcept {
     auto const count{from_x.Num()};
 
     if (!ml::detail::all_num_equal(
@@ -229,7 +235,7 @@ bool lerp_3d(TConstArrayView<T> from_x,
              T const alpha,
              TArrayView<T> out_x,
              TArrayView<T> out_y,
-             TArrayView<T> out_z) {
+             TArrayView<T> out_z) noexcept {
     auto const count{from_x.Num()};
 
     if (!ml::detail::all_num_equal(count, from_y, from_z, to_x, to_y, to_z, out_x, out_y, out_z)) {

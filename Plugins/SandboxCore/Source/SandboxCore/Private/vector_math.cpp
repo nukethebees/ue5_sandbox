@@ -11,7 +11,7 @@ namespace ml::kernel {
                                                  T* RESTRICT,       \
                                                  T* RESTRICT,       \
                                                  T* RESTRICT,       \
-                                                 int32 const)
+                                                 int32 const) noexcept
 
 ML_INSTANTIATE_VEC3(uint8);
 ML_INSTANTIATE_VEC3(float);
@@ -26,7 +26,7 @@ ML_INSTANTIATE_VEC3(int32);
                                                          T const* RESTRICT src_x, \
                                                          T const* RESTRICT src_y, \
                                                          T const* RESTRICT src_z, \
-                                                         int32 const count)
+                                                         int32 const count) noexcept
 ML_INSTANTIATE_VEC3(uint8);
 ML_INSTANTIATE_VEC3(float);
 ML_INSTANTIATE_VEC3(double);

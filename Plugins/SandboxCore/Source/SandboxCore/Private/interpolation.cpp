@@ -6,7 +6,7 @@ namespace ml::kernel {
                                              T const* RESTRICT to, \
                                              T const* RESTRICT alpha,  \
                                              T* RESTRICT out,      \
-                                             int32 const count)
+                                             int32 const count) noexcept
 ML_INSTANTIATE_FN(float);
 ML_INSTANTIATE_FN(double);
 #undef ML_INSTANTIATE_FN
