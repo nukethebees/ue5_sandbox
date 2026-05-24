@@ -9,7 +9,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D returns current angle when target is
     float const Target[]{0.0f, 90.0f, 0.0f};
     float Out[]{-1.0f, -1.0f, -1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 90.0f, 1.0f, Out, 3);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 90.0f, 1.0f, Out, 3);
 
     CHECK(Out[0] == 0.0f);
     CHECK(Out[1] == 90.0f);
@@ -22,7 +22,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D rotates positively when target is cl
     float const Target[]{90.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 30.0f, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 30.0f, 1.0f, Out, 1);
 
     CHECK(Out[0] == 30.0f);
 }
@@ -33,7 +33,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D rotates negatively when target is an
     float const Target[]{0.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 30.0f, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 30.0f, 1.0f, Out, 1);
 
     CHECK(Out[0] == 60.0f);
 }
@@ -46,7 +46,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D clamps to target when positive step 
 
     constexpr float speed{90.f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, speed, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, speed, 1.0f, Out, 1);
 
     CHECK(Out[0] == 20.0f);
 }
@@ -58,7 +58,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D clamps to target when negative step 
     float Out[]{-1.0f};
 
     constexpr float speed{90.f};
-    ml::kernel::rotate_towards_1d(Current, Target, speed, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, speed, 1.0f, Out, 1);
 
     CHECK(Out[0] == 0.0f);
 }
@@ -71,7 +71,7 @@ TEST_CASE(
     float Out[]{-1.0f};
 
     constexpr float speed{5.0f};
-    ml::kernel::rotate_towards_1d(Current, Target, speed, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, speed, 1.0f, Out, 1);
 
     CHECK(Out[0] == 355.0f);
 }
@@ -83,7 +83,7 @@ TEST_CASE(
     float const Target[]{350.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 5.0f, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 5.0f, 1.0f, Out, 1);
 
     CHECK(Out[0] == 5.0f);
 }
@@ -94,7 +94,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D clamps to wrapped target when crossi
     float const Target[]{10.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 90.0f, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 90.0f, 1.0f, Out, 1);
 
     CHECK(Out[0] == 10.0f);
 }
@@ -106,7 +106,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D clamps to wrapped target when crossi
     float Out[]{-1.0f};
 
     constexpr float speed{90.f};
-    ml::kernel::rotate_towards_1d(Current, Target, speed, 1.0f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, speed, 1.0f, Out, 1);
 
     CHECK(Out[0] == 350.0f);
 }
@@ -117,7 +117,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D scales step by delta time",
     float const Target[]{90.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 60.0f, 0.5f, Out, 1);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 60.0f, 0.5f, Out, 1);
 
     CHECK(Out[0] == 30.0f);
 }
@@ -128,7 +128,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D writes multiple rotated angles",
     float const Target[]{90.0f, 0.0f, 10.0f, 350.0f};
     float Out[]{-1.0f, -1.0f, -1.0f, -1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 30.0f, 1.0f, Out, 4);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 30.0f, 1.0f, Out, 4);
 
     CHECK(Out[0] == 30.0f);
     CHECK(Out[1] == 60.0f);
@@ -142,7 +142,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1D does not write output when count is 
     float const Target[]{90.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 90.0f, 1.0f, Out, 0);
+    ml::kernel::rotate_towards_1d_degrees(Current, Target, 90.0f, 1.0f, Out, 0);
 
     CHECK(Out[0] == -1.0f);
 }
