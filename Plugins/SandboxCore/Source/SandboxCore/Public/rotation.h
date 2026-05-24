@@ -56,12 +56,12 @@ auto shortest_signed_angle_delta_normalised(T const current, T const target) noe
 
 namespace ml::kernel {
 template <std::floating_point T>
-void rotate_towards_1d(T const* RESTRICT current,
-                       T const* RESTRICT target,
-                       T const speed,
-                       T const delta_time,
-                       T* RESTRICT out,
-                       int32 const count) noexcept {
+void rotate_towards_1d_degrees(T const* RESTRICT current,
+                               T const* RESTRICT target,
+                               T const speed,
+                               T const delta_time,
+                               T* RESTRICT out,
+                               int32 const count) noexcept {
     constexpr auto one{ml::constants::one<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
     constexpr auto zero{ml::constants::zero<T>};
@@ -86,13 +86,13 @@ void rotate_towards_1d(T const* RESTRICT current,
     }
 }
 
-#define ML_EXTERN_FN(T)                                                                  \
-    extern template SANDBOXCORE_API void rotate_towards_1d<T>(T const* RESTRICT current, \
-                                                              T const* RESTRICT target,  \
-                                                              T const speed,             \
-                                                              T const delta_time,        \
-                                                              T* RESTRICT out,           \
-                                                              int32 const count) noexcept
+#define ML_EXTERN_FN(T)                                                                          \
+    extern template SANDBOXCORE_API void rotate_towards_1d_degrees<T>(T const* RESTRICT current, \
+                                                                      T const* RESTRICT target,  \
+                                                                      T const speed,             \
+                                                                      T const delta_time,        \
+                                                                      T* RESTRICT out,           \
+                                                                      int32 const count) noexcept
 ML_EXTERN_FN(float);
 #undef ML_EXTERN_FN
 }
