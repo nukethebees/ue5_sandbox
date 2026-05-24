@@ -55,16 +55,12 @@ void rotate_towards_1d(T const* RESTRICT current,
     check(delta_time >= zero);
     check(speed >= zero);
 
-    auto const max_abs_delta{speed * delta_time};
+    auto const max_step{speed * delta_time};
 
     for (int32 i{0}; i < count; ++i) {
-        auto const angle_remaining{ml::shortest_signed_angle_delta(current[i], target[i])};
-        auto const proportion_left{max_abs_delta / angle_remaining};
-        auto const abs_proportion_left{FMath::Abs(proportion_left)};
-        auto const delta_proportion_left{FMath::Min(abs_proportion_left, one)};
-
-        auto const delta{angle_remaining * delta_proportion_left};
-        auto const new_out{current[i] + delta};
+        auto const delta{ml::shortest_signed_angle_delta(current[i], target[i])};
+        auto const clamped_delta{FMath::Clamp(delta, -max_step, max_step)};
+        auto const new_out{current[i] + clamped_delta};
 
         if (new_out > ft) {
             out[i] = new_out - ft;

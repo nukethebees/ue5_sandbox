@@ -70,7 +70,8 @@ TEST_CASE(
     float const Target[]{10.0f};
     float Out[]{-1.0f};
 
-    ml::kernel::rotate_towards_1d(Current, Target, 5.0f, 1.0f, Out, 1);
+    constexpr float speed{5.0f};
+    ml::kernel::rotate_towards_1d(Current, Target, speed, 1.0f, Out, 1);
 
     CHECK(Out[0] == 355.0f);
 }
