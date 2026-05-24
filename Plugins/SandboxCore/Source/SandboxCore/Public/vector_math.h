@@ -1,15 +1,11 @@
 #pragma once
 
 #include "array_utils.h"
+#include "numeric.h"
 
 #include "CoreMinimal.h"
 
-#include <concepts>
-
-namespace ml {
-template <typename T>
-concept Numeric = std::integral<T> || std::floating_point<T>;
-
+namespace ml::kernel {
 template <Numeric T>
 void add_vector3(T const* RESTRICT lhs_x,
                  T const* RESTRICT lhs_y,
@@ -46,36 +42,6 @@ ML_EXTERN_VEC3(int32);
 #undef ML_EXTERN_VEC3
 
 template <Numeric T>
-bool add_vector3(TConstArrayView<T> lhs_x,
-                 TConstArrayView<T> lhs_y,
-                 TConstArrayView<T> lhs_z,
-                 TConstArrayView<T> rhs_x,
-                 TConstArrayView<T> rhs_y,
-                 TConstArrayView<T> rhs_z,
-                 TArrayView<T> out_x,
-                 TArrayView<T> out_y,
-                 TArrayView<T> out_z) {
-    auto const count{lhs_x.Num()};
-
-    if (!all_num_equal(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {
-        return false;
-    }
-
-    add_vector3(lhs_x.GetData(),
-                lhs_y.GetData(),
-                lhs_z.GetData(),
-                rhs_x.GetData(),
-                rhs_y.GetData(),
-                rhs_z.GetData(),
-                out_x.GetData(),
-                out_y.GetData(),
-                out_z.GetData(),
-                count);
-
-    return true;
-}
-
-template <Numeric T>
 void add_vector3_inplace(T* dst_x,
                          T* dst_y,
                          T* dst_z,
@@ -104,4 +70,37 @@ ML_EXTERN_VEC3(double);
 ML_EXTERN_VEC3(int32);
 #undef ML_EXTERN_VEC3
 
+}
+
+namespace ml {
+
+template <Numeric T>
+bool add_vector3(TConstArrayView<T> lhs_x,
+                 TConstArrayView<T> lhs_y,
+                 TConstArrayView<T> lhs_z,
+                 TConstArrayView<T> rhs_x,
+                 TConstArrayView<T> rhs_y,
+                 TConstArrayView<T> rhs_z,
+                 TArrayView<T> out_x,
+                 TArrayView<T> out_y,
+                 TArrayView<T> out_z) {
+    auto const count{lhs_x.Num()};
+
+    if (!ml::detail::all_num_equal(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {
+        return false;
+    }
+
+    ml::kernel::add_vector3(lhs_x.GetData(),
+                            lhs_y.GetData(),
+                            lhs_z.GetData(),
+                            rhs_x.GetData(),
+                            rhs_y.GetData(),
+                            rhs_z.GetData(),
+                            out_x.GetData(),
+                            out_y.GetData(),
+                            out_z.GetData(),
+                            count);
+
+    return true;
+}
 }
