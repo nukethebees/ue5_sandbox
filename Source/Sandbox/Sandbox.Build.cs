@@ -12,6 +12,8 @@ public class Sandbox : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
 
+        bAllowUETypesInNamespaces = true;
+
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         CppCompileWarningSettings.AmbiguousReversedOperatorWarningLevel = WarningLevel.Error;
@@ -20,9 +22,9 @@ public class Sandbox : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "SandboxCore",
-            "Core", 
-            "CoreUObject", 
-            "Engine", 
+            "Core",
+            "CoreUObject",
+            "Engine",
             "RenderCore"
         });
 
@@ -36,12 +38,13 @@ public class Sandbox : ModuleRules
             "MassCore",
             "MassCommon",
             "MassSimulation",
-            "Niagara",           
-            "NavigationSystem",            
+            "Niagara",
+            "NavigationSystem",
             "Slate",
             "SlateCore",
             "TraceLog",
-            "UMG"
+            "UMG",
+            "UnrealEd" // Scoped transaction
         });
 
         Target.Logger.LogInformation("=== Sandbox Build.cs [Start] ===");
