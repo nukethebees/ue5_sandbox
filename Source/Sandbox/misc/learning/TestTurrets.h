@@ -9,6 +9,7 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class UBoxComponent;
 class UCapsuleComponent;
+class UArrowComponent;
 
 class AShipLaser;
 class UTestTurretsConfig;
@@ -41,8 +42,11 @@ class ATestTurrets : public AActor {
     void apply_rotations_to_components();
 
     void create_turrets(int32 const n);
+    void configure_collision(UStaticMeshComponent& sm);
 
+#if WITH_EDITOR
     void capture_turret_layout(int32 const i);
+#endif
   private:
     // Spawning
 #if WITH_EDITOR
@@ -54,6 +58,12 @@ class ATestTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turret")
     TObjectPtr<UTestTurretsConfig> turret_config{nullptr};
 
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    TObjectPtr<UArrowComponent> fire_point_marker;
+#endif
+
+    // Visuals
     UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
     UPROPERTY(VisibleAnywhere)

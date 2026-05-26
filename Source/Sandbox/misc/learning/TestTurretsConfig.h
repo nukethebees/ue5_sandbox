@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CollisionShape.h"
 #include "Engine/DataAsset.h"
 
 #include "TestTurretsConfig.generated.h"
@@ -23,9 +24,6 @@ class UTestTurretsConfig : public UDataAsset {
     TObjectPtr<UStaticMesh> cannon_mesh{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    FTransform collision_offset{FTransform::Identity};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform body_offset{FTransform::Identity};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -37,9 +35,22 @@ class UTestTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform pitch_pivot_offset{FTransform::Identity};
 
+    // Collision
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FTransform collision_offset{FTransform::Identity};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float collision_radius{100.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float collision_half_height{100.f};
+
     // Laser
     UPROPERTY(VisibleAnywhere, Category = "Turret|Laser")
     TSubclassOf<AShipLaser> laser_class{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FTransform fire_point_offset{FTransform::Identity};
 
     // Rotation
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

@@ -7,6 +7,8 @@
 #include <SandboxCore/Public/interpolation.h>
 #include <SandboxCore/Public/rotation.h>
 
+#include "CollisionShape.h"
+#include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
@@ -32,8 +34,17 @@ void destroy_components(TArray<T>& components) {
 };
 }
 
-ATestTurrets::ATestTurrets() {
+ATestTurrets::ATestTurrets()
+    :
+#if WITH_EDITOR
+    fire_point_marker{CreateDefaultSubobject<UArrowComponent>(TEXT("fire_point_marker"))}
+#endif
+{
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
+
+#if WITH_EDITOR
+    fire_point_marker->SetupAttachment(RootComponent);
+#endif
 
     PrimaryActorTick.bStartWithTickEnabled = true;
     PrimaryActorTick.bCanEverTick = true;
@@ -41,6 +52,11 @@ ATestTurrets::ATestTurrets() {
 
 void ATestTurrets::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
+
+#if WITH_EDITOR
+    fire_point_marker->bIsEditorOnly = true;
+    fire_point_marker->SetHiddenInGame(true);
+#endif
 }
 void ATestTurrets::BeginPlay() {
     Super::BeginPlay();
@@ -162,14 +178,22 @@ void ATestTurrets::create_turrets(int32 const n) {
         cannon_meshes.Emplace(cannon);
 
         body->SetStaticMesh(turret_config->body_mesh);
+        configure_collision(*body);
         cannon->SetStaticMesh(turret_config->cannon_mesh);
+        configure_collision(*cannon);
 
         collision->SetRelativeTransform(turret_config->collision_offset);
         yaw_pivot->SetRelativeTransform(turret_config->yaw_pivot_offset);
         pitch_pivot->SetRelativeTransform(turret_config->pitch_pivot_offset);
         body->SetRelativeTransform(turret_config->body_offset);
         cannon->SetRelativeTransform(turret_config->cannon_offset);
+
+        collision->SetCapsuleSize(turret_config->collision_radius,
+                                  turret_config->collision_half_height);
     }
+}
+void ATestTurrets::configure_collision(UStaticMeshComponent& sm) {
+    sm.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 void ATestTurrets::clear_all_turrets() {
     destroy_components(collision_shapes);
@@ -186,6 +210,7 @@ void ATestTurrets::clear_all_turrets() {
     target_yaw_degrees.Reset();
 }
 
+#if WITH_EDITOR
 void ATestTurrets::capture_turret_layout(int32 const i) {
     if (!turret_config) {
         UE_LOG(LogSandboxLearning, Error, TEXT("Cannot capture layout. Turret config is nullptr."));
@@ -211,18 +236,24 @@ void ATestTurrets::capture_turret_layout(int32 const i) {
     conf.Modify();
 #endif
 
-    conf.collision_offset = collision_shapes[i]->GetRelativeTransform();
+    auto const root_transform{collision_shapes[i]->GetRelativeTransform()};
+
+    conf.collision_offset = root_transform;
     conf.body_offset = body_meshes[i]->GetRelativeTransform();
     conf.cannon_offset = cannon_meshes[i]->GetRelativeTransform();
     conf.yaw_pivot_offset = yaw_pivots[i]->GetRelativeTransform();
     conf.pitch_pivot_offset = pitch_pivots[i]->GetRelativeTransform();
 
+    conf.fire_point_offset =
+        fire_point_marker->GetComponentTransform().GetRelativeTransform(root_transform);
+
+    conf.collision_radius = collision_shapes[i]->GetUnscaledCapsuleRadius();
+    conf.collision_half_height = collision_shapes[i]->GetUnscaledCapsuleHalfHeight();
+
 #if WITH_EDITOR
     conf.MarkPackageDirty();
 #endif
 }
-
-#if WITH_EDITOR
 void ATestTurrets::create_turrets_button() {
     create_turrets(num_turrets_to_create);
 }
