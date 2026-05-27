@@ -34,6 +34,39 @@ void destroy_components(TArray<T>& components) {
 };
 }
 
+auto FTestTurretsSearchData::num_turrets() const -> int32 {
+    return yaw_degrees.Num();
+}
+void FTestTurretsSearchData::reset() {
+    yaw_degrees.Reset();
+}
+void FTestTurretsSearchData::rotate_by(float* yaw_degrees,
+                                       int32 const n,
+                                       float const dt,
+                                       float const r) {
+    auto const delta{dt * r};
+
+    for (int32 i{0}; i < n; ++i) {
+        yaw_degrees[i] += delta;
+        if (yaw_degrees[i] >= 360.f) {
+            yaw_degrees[i] -= 360.f;
+        }
+    }
+}
+void FTestTurretsSearchData::rotate_by(float const dt, float const r) {
+    rotate_by(yaw_degrees.GetData(), yaw_degrees.Num(), dt, r);
+}
+
+auto FTestTurretsAttackData::num_turrets() const -> int32 {
+    return yaw_degrees.Num();
+}
+void FTestTurretsAttackData::reset() {
+    yaw_degrees.Reset();
+    yaw_degrees.Reset();
+    target_pitch_degrees.Reset();
+    target_yaw_degrees.Reset();
+}
+
 ATestTurrets::ATestTurrets()
     :
 #if WITH_EDITOR
@@ -82,46 +115,16 @@ void ATestTurrets::Tick(float dt) {
 }
 
 auto ATestTurrets::num_turrets() const noexcept -> int32 {
-    return ai_states.Num();
+    return searching.num_turrets() + attacking.num_turrets();
 }
 
 void ATestTurrets::update_target_rotations() {
     auto const n{num_turrets()};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const ai_state{ai_states[i]};
-
-        switch (ai_state) {
-            case ETestTurretState::scanning: {
-                break;
-            }
-            case ETestTurretState::attacking: {
-                break;
-            }
-        }
-    }
 }
 void ATestTurrets::integrate_rotations(float const dt) {
-    auto const n{num_turrets()};
-
-    ml::rotate_towards_1d_degrees_normalised_inplace(TArrayView<float>{pitch_degrees},
-                                                     TConstArrayView<float>{target_pitch_degrees},
-                                                     pitch_rotation_speed_degrees,
-                                                     dt);
-
-    ml::rotate_towards_1d_degrees_normalised_inplace(TArrayView<float>{yaw_degrees},
-                                                     TConstArrayView<float>{target_yaw_degrees},
-                                                     yaw_rotation_speed_degrees,
-                                                     dt);
+    searching.rotate_by(dt, yaw_rotation_speed_degrees);
 }
-void ATestTurrets::apply_rotations_to_components() {
-    auto const n{num_turrets()};
-
-    for (int32 i{0}; i < n; ++i) {
-        body_meshes[i]->SetRelativeRotation(FRotator{0.f, yaw_degrees[i], 0.f});
-        cannon_meshes[i]->SetRelativeRotation(FRotator{pitch_degrees[i], 0.f, 0.f});
-    }
-}
+void ATestTurrets::apply_rotations_to_components() {}
 
 void ATestTurrets::create_turrets(int32 const n) {
     if (!turret_config) {
@@ -138,12 +141,7 @@ void ATestTurrets::create_turrets(int32 const n) {
     body_meshes.Reserve(new_total);
     cannon_meshes.Reserve(new_total);
 
-    ai_states.AddDefaulted(n);
-
-    pitch_degrees.AddDefaulted(n);
-    yaw_degrees.AddDefaulted(n);
-    target_pitch_degrees.AddDefaulted(n);
-    target_yaw_degrees.AddDefaulted(n);
+    searching.yaw_degrees.AddDefaulted(n);
 
     for (int32 i{0}; i < n; ++i) {
         auto const component_index{num_components + i};
@@ -202,12 +200,8 @@ void ATestTurrets::clear_all_turrets() {
     destroy_components(body_meshes);
     destroy_components(cannon_meshes);
 
-    ai_states.Reset();
-
-    pitch_degrees.Reset();
-    yaw_degrees.Reset();
-    target_pitch_degrees.Reset();
-    target_yaw_degrees.Reset();
+    searching.reset();
+    attacking.reset();
 }
 
 #if WITH_EDITOR

@@ -20,6 +20,40 @@ enum class ETestTurretState {
     attacking,
 };
 
+USTRUCT()
+struct FTestTurretsSearchData {
+    GENERATED_BODY()
+
+    auto num_turrets() const -> int32;
+    void reset();
+
+    void rotate_by(float const dt, float const r);
+  private:
+    static void rotate_by(float* yaw_degrees, int32 const n, float dt, float const r);
+  public:
+
+    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    TArray<float> yaw_degrees{};
+};
+
+USTRUCT()
+struct FTestTurretsAttackData {
+    GENERATED_BODY()
+
+    auto num_turrets() const -> int32;
+    void reset();
+
+    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    TArray<float> pitch_degrees{};
+    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    TArray<float> yaw_degrees{};
+
+    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    TArray<float> target_pitch_degrees{};
+    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    TArray<float> target_yaw_degrees{};
+};
+
 UCLASS()
 class ATestTurrets : public AActor {
   public:
@@ -79,25 +113,17 @@ class ATestTurrets : public AActor {
     UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
 
-    // AI state
-    UPROPERTY(VisibleAnywhere, Category = "Turret|AI")
-    TArray<ETestTurretState> ai_states{};
-
     // Rotation
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     float pitch_rotation_speed_degrees{90.f};
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     float yaw_rotation_speed_degrees{90.f};
 
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
-    TArray<float> pitch_degrees{};
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
-    TArray<float> yaw_degrees{};
-
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
-    TArray<float> target_pitch_degrees{};
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
-    TArray<float> target_yaw_degrees{};
+    // Searching
+    UPROPERTY(VisibleAnywhere, Category = "Turret")
+    FTestTurretsSearchData searching{};
+    UPROPERTY(VisibleAnywhere, Category = "Turret")
+    FTestTurretsAttackData attacking{};
 
 // Spawning
 #if WITH_EDITORONLY_DATA
