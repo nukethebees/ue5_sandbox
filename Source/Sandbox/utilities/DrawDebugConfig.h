@@ -24,6 +24,7 @@ struct FDrawDebugConfig {
     auto get_segments(TOptional<int32> t) const -> int32;
 
     void draw_line(FVector const& start, FVector const& end) const;
+    void draw_line(FVector const& start, FRotator const& fwd) const;
     void draw_point(FVector const& location) const;
     void draw_arrow(FVector const& start, FVector const& end) const;
 
@@ -69,6 +70,8 @@ struct FDrawDebugConfig {
     // Lines
     UPROPERTY(EditAnywhere, Category = "Debug|Line")
     TOptional<float> line_thickness{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Line")
+    float line_length{100.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Line")
     TOptional<FColor> line_colour{};
 

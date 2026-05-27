@@ -48,6 +48,11 @@ void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end) const
                   depth_priority,
                   get_thickness(line_thickness));
 }
+void FDrawDebugConfig::draw_line(FVector const& start, FRotator const& fwd) const {
+    auto const end{start + fwd.Vector() * line_length};
+
+    draw_line(start, end);
+}
 
 void FDrawDebugConfig::draw_point(FVector const& location) const {
     if (!check_world_valid()) {
