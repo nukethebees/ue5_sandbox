@@ -45,5 +45,7 @@ class AWarpingTarget : public AActor {
     UPROPERTY(EditAnywhere, Category = "target")
     bool warp_periodically{true};
     UPROPERTY(EditAnywhere, Category = "target")
+    bool warp_on_first_tick{true};
+    UPROPERTY(EditAnywhere, Category = "target")
     FCooldown warp_cooldown{10.f};
 };

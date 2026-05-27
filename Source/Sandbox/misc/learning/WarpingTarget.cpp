@@ -34,6 +34,12 @@ void AWarpingTarget::BeginPlay() {
     if (!assert_valid_volume()) {
         SetActorTickEnabled(false);
     }
+
+    if (warp_on_first_tick) {
+        warp_cooldown.finish();
+    } else {
+        warp_cooldown.reset();
+    }
 }
 void AWarpingTarget::Tick(float dt) {
     Super::Tick(dt);
