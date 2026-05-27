@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/logging/ActorLoggingConfig.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -34,7 +36,7 @@ struct FTestTurretsSearchData {
     static void rotate_by(float* yaw_degrees, int32 const n, float dt, float const r);
   public:
     // Visuals
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(EditAnywhere)
     TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
     UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
@@ -157,11 +159,20 @@ class ATestTurrets : public AActor {
 #if WITH_EDITOR
     void capture_turret_layout(int32 const i);
 #endif
-  private:
+
     // Spawning
 #if WITH_EDITOR
-    UFUNCTION(CallInEditor, Category = "Turret") void create_turrets_button();
-    UFUNCTION(CallInEditor, Category = "Turret") void capture_turret_0_layout_button();
+    UFUNCTION(CallInEditor, Category = "Turret")
+    void create_turrets_button();
+    UFUNCTION(CallInEditor, Category = "Turret")
+    void capture_turret_0_layout_button();
+#endif
+
+    // Debugging
+#if WITH_EDITOR
+    void draw_debug_shapes();
+    void draw_searching_debug_shapes();
+    void draw_attacking_debug_shapes();
 #endif
 
     // Config
@@ -191,7 +202,16 @@ class ATestTurrets : public AActor {
 
 // Spawning
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Laser")
+    UPROPERTY(EditAnywhere, Category = "Turret|Laser")
     int32 num_turrets_to_create{1};
+#endif
+
+    // Debugging
+    UPROPERTY(EditAnywhere, Category = "Turret|Logging")
+    FActorLoggingConfig log_config{1.f};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Turret|Debugging")
+    bool debug_shapes_enabled{false};
 #endif
 };

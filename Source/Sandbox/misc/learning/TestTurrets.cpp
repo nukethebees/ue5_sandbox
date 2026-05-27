@@ -18,6 +18,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
+#include "UObject/UObjectGlobals.h"
 
 #if WITH_EDITOR
 #include "ScopedTransaction.h"
@@ -31,17 +32,19 @@ auto FTestTurretsSearchData::num_turrets_to_move() const -> int32 {
 }
 
 void FTestTurretsSearchData::add_uninitialised(int32 const n) {
-    body_meshes.AddUninitialized(n);
-    cannon_meshes.AddUninitialized(n);
-    yaw_pivots.AddUninitialized(n);
-    pitch_pivots.AddUninitialized(n);
-    collision_shapes.AddUninitialized(n);
+    body_meshes.AddDefaulted(n);
+    cannon_meshes.AddDefaulted(n);
+    yaw_pivots.AddDefaulted(n);
+    pitch_pivots.AddDefaulted(n);
+    collision_shapes.AddDefaulted(n);
 
     location_xs.AddUninitialized(n);
     location_ys.AddUninitialized(n);
     location_zs.AddUninitialized(n);
 
     yaw_degrees.AddUninitialized(n);
+
+    healths.AddUninitialized(n);
 }
 void FTestTurretsSearchData::reset() {
     ml::destroy_components_array(body_meshes);
@@ -132,6 +135,14 @@ void ATestTurrets::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+
+#if WITH_EDITOR
+    {
+        auto* world{GetWorld()};
+        turret_config->searching_debug_drawer.world = world;
+        turret_config->attacking_debug_drawer.world = world;
+    }
+#endif
 }
 void ATestTurrets::Tick(float dt) {
     Super::Tick(dt);
@@ -139,6 +150,14 @@ void ATestTurrets::Tick(float dt) {
     update_target_rotations();
     integrate_rotations(dt);
     apply_rotations_to_components();
+
+    log_config.tick(dt);
+
+#if WITH_EDITOR
+    if (debug_shapes_enabled) {
+        draw_debug_shapes();
+    }
+#endif
 }
 
 auto ATestTurrets::num_turrets() const noexcept -> int32 {
@@ -294,26 +313,32 @@ void ATestTurrets::create_turrets(int32 const n) {
         return;
     }
 
-    auto const num_components{num_turrets()};
-    auto const new_total{num_components + n};
+    auto const cur_num_turrets{num_turrets()};
+    auto const cur_num_searching_turrets{searching.num_turrets()};
 
     searching.add_uninitialised(n);
 
     auto const hp{turret_config->max_health};
+    FName name;
 
     for (int32 i{0}; i < n; ++i) {
-        auto const component_index{num_components + i};
+        auto const turret_index{cur_num_turrets + i};
+        auto const search_index{cur_num_searching_turrets + i};
 
-        auto* collision{NewObject<UCapsuleComponent>(
-            this, FName{*FString::Printf(TEXT("Turret_%d"), component_index)})};
-        auto* yaw_pivot{NewObject<USceneComponent>(
-            this, FName{*FString::Printf(TEXT("YawPivot_%d"), component_index)})};
-        auto* pitch_pivot{NewObject<USceneComponent>(
-            this, FName{*FString::Printf(TEXT("PitchPivot_%d"), component_index)})};
-        auto* body{NewObject<UStaticMeshComponent>(
-            this, FName{*FString::Printf(TEXT("BodyMesh_%d"), component_index)})};
-        auto* cannon{NewObject<UStaticMeshComponent>(
-            this, FName{*FString::Printf(TEXT("CannonMesh_%d"), component_index)})};
+        name = MakeUniqueObjectName(this, UCapsuleComponent::StaticClass(), TEXT("Turret"));
+        auto* collision{NewObject<UCapsuleComponent>(this, name)};
+
+        name = MakeUniqueObjectName(this, USceneComponent::StaticClass(), TEXT("YawPivot"));
+        auto* yaw_pivot{NewObject<USceneComponent>(this, name)};
+
+        name = MakeUniqueObjectName(this, USceneComponent::StaticClass(), TEXT("PitchPivot"));
+        auto* pitch_pivot{NewObject<USceneComponent>(this, name)};
+
+        name = MakeUniqueObjectName(this, UStaticMeshComponent::StaticClass(), TEXT("BodyMesh"));
+        auto* body{NewObject<UStaticMeshComponent>(this, name)};
+
+        name = MakeUniqueObjectName(this, UStaticMeshComponent::StaticClass(), TEXT("CannonMesh"));
+        auto* cannon{NewObject<UStaticMeshComponent>(this, name)};
 
         collision->SetupAttachment(RootComponent);
         yaw_pivot->SetupAttachment(collision);
@@ -327,11 +352,21 @@ void ATestTurrets::create_turrets(int32 const n) {
         body->RegisterComponent();
         cannon->RegisterComponent();
 
-        searching.collision_shapes[component_index] = collision;
-        searching.yaw_pivots[component_index] = yaw_pivot;
-        searching.pitch_pivots[component_index] = pitch_pivot;
-        searching.body_meshes[component_index] = body;
-        searching.cannon_meshes[component_index] = cannon;
+        AddInstanceComponent(collision);
+        // We use the first turret for positioning components
+        // but we don't want the panel getting filled up
+        if (turret_index == 0) {
+            AddInstanceComponent(yaw_pivot);
+            AddInstanceComponent(pitch_pivot);
+            AddInstanceComponent(body);
+            AddInstanceComponent(cannon);
+        }
+
+        searching.collision_shapes[search_index] = collision;
+        searching.yaw_pivots[search_index] = yaw_pivot;
+        searching.pitch_pivots[search_index] = pitch_pivot;
+        searching.body_meshes[search_index] = body;
+        searching.cannon_meshes[search_index] = cannon;
 
         body->SetStaticMesh(turret_config->body_mesh);
         configure_collision(*body);
@@ -384,12 +419,10 @@ void ATestTurrets::capture_turret_layout(int32 const i) {
 
     auto& conf{*turret_config};
 
-#if WITH_EDITOR
     FScopedTransaction const transaction{
         NSLOCTEXT("SandboxLearning", "CaptureTurretLayout", "Capture Turret Layout")};
 
     conf.Modify();
-#endif
 
     auto const root_transform{searching.collision_shapes[i]->GetRelativeTransform()};
 
@@ -405,9 +438,7 @@ void ATestTurrets::capture_turret_layout(int32 const i) {
     conf.collision_radius = searching.collision_shapes[i]->GetUnscaledCapsuleRadius();
     conf.collision_half_height = searching.collision_shapes[i]->GetUnscaledCapsuleHalfHeight();
 
-#if WITH_EDITOR
     conf.MarkPackageDirty();
-#endif
 }
 void ATestTurrets::create_turrets_button() {
     create_turrets(num_turrets_to_create);
@@ -415,4 +446,29 @@ void ATestTurrets::create_turrets_button() {
 void ATestTurrets::capture_turret_0_layout_button() {
     capture_turret_layout(0);
 }
+
+// Debugging
+void ATestTurrets::draw_debug_shapes() {
+    if (log_config.can_tick_log(EActorLoggingVerbosity::Verbose)) {
+        UE_LOG(LogSandboxLearning, Verbose, TEXT("Drawing debug shapes"));
+    }
+
+    draw_searching_debug_shapes();
+    draw_attacking_debug_shapes();
+}
+void ATestTurrets::draw_searching_debug_shapes() {
+    auto const n{searching.num_turrets()};
+    auto const& drawer{turret_config->searching_debug_drawer};
+
+    for (int32 i{0}; i < n; i++) {
+        FVector const loc{
+            searching.location_xs[i],
+            searching.location_ys[i],
+            searching.location_zs[i],
+        };
+
+        drawer.draw_sphere(loc);
+    }
+}
+void ATestTurrets::draw_attacking_debug_shapes() {}
 #endif
