@@ -182,8 +182,6 @@ void ATestTurrets::update_target_rotations() {
     auto const n{num_turrets()};
 }
 void ATestTurrets::integrate_rotations(float const dt) {
-    searching.rotate_by(dt, yaw_rotation_speed_degrees);
-
     ml::rotate_towards_1d_degrees_normalised_inplace(
         TArrayView<float>{attacking.pitch_degrees},
         TConstArrayView<float>{attacking.target_pitch_degrees},
@@ -483,6 +481,14 @@ void ATestTurrets::draw_searching_debug_shapes() {
         };
 
         drawer.draw_sphere(loc);
+
+        FRotator const rotation{
+            0.0,
+            searching.yaw_degrees[i],
+            0.0,
+        };
+
+        drawer.draw_line(loc, rotation);
     }
 }
 void ATestTurrets::draw_attacking_debug_shapes() {}
