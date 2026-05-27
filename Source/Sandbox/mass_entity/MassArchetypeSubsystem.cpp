@@ -68,18 +68,20 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         auto descriptor{FMassArchetypeCompositionDescriptor{}};
         auto& bitset{descriptor.GetElementsBitSet()};
 
-        descriptor.GetFragments().Add(*FMassBulletTransformFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletVelocityFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletLastPositionFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletHitInfoFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletStateFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletDamageFragment::StaticStruct());
-        descriptor.GetFragments().Add(*FMassBulletSourceFragment::StaticStruct());
+        using Ptr = TNotNull<UScriptStruct const*>;
+        descriptor.GetFragments().Add(Ptr{FMassBulletTransformFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletVelocityFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletLastPositionFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletHitInfoFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletStateFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletDamageFragment::StaticStruct()});
+        descriptor.GetFragments().Add(Ptr{FMassBulletSourceFragment::StaticStruct()});
 
-        descriptor.GetConstSharedFragments().Add(*FMassBulletImpactEffectFragment::StaticStruct());
         descriptor.GetConstSharedFragments().Add(
-            *FMassBulletVisualizationActorFragment::StaticStruct());
-        descriptor.GetConstSharedFragments().Add(*FMassBulletDataFragment::StaticStruct());
+            Ptr{FMassBulletImpactEffectFragment::StaticStruct()});
+        descriptor.GetConstSharedFragments().Add(
+            Ptr{FMassBulletVisualizationActorFragment::StaticStruct()});
+        descriptor.GetConstSharedFragments().Add(Ptr{FMassBulletDataFragment::StaticStruct()});
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));
