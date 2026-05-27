@@ -123,6 +123,18 @@ void ATestTurrets::update_target_rotations() {
 }
 void ATestTurrets::integrate_rotations(float const dt) {
     searching.rotate_by(dt, yaw_rotation_speed_degrees);
+
+    ml::rotate_towards_1d_degrees_normalised_inplace(
+        TArrayView<float>{attacking.pitch_degrees},
+        TConstArrayView<float>{attacking.target_pitch_degrees},
+        pitch_rotation_speed_degrees,
+        dt);
+
+    ml::rotate_towards_1d_degrees_normalised_inplace(
+        TArrayView<float>{attacking.yaw_degrees},
+        TConstArrayView<float>{attacking.target_yaw_degrees},
+        yaw_rotation_speed_degrees,
+        dt);
 }
 void ATestTurrets::apply_rotations_to_components() {}
 
