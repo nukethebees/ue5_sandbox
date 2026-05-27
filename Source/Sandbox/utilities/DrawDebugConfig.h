@@ -27,7 +27,8 @@ struct FDrawDebugConfig {
     void draw_point(FVector const& location) const;
     void draw_arrow(FVector const& start, FVector const& end) const;
 
-    void draw_circle(FTransform const& transform, float const circle_radius) const;
+    void draw_circle(FTransform const& transform, float const circle_r) const;
+    void draw_circle(FTransform const& transform) const;
     auto get_circle_xy_rotation() const -> FRotator;
 
     void draw_circle_arc(FVector const& start,
@@ -36,6 +37,7 @@ struct FDrawDebugConfig {
                          FQuat const& rotation) const;
 
     void draw_sphere(FVector const& start, float const radius) const;
+    void draw_sphere(FVector const& start) const;
     void draw_cone(FVector const& start, FVector const& direction, float const length) const;
     void draw_cone(FVector const& start, FVector const& direction) const;
 
@@ -96,6 +98,8 @@ struct FDrawDebugConfig {
     UPROPERTY(EditAnywhere, Category = "Debug|Circle")
     bool circle_draw_axis{true};
     UPROPERTY(EditAnywhere, Category = "Debug|Circle")
+    float circle_radius{100.f};
+    UPROPERTY(EditAnywhere, Category = "Debug|Circle")
     TOptional<FColor> circle_colour{};
     UPROPERTY(EditAnywhere, Category = "Debug|Circle")
     TOptional<float> circle_thickness{};
@@ -123,6 +127,8 @@ struct FDrawDebugConfig {
     // Sphere
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
     TOptional<int32> sphere_segments;
+    UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
+    float sphere_radius{100.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
     TOptional<FColor> sphere_colour{};
 

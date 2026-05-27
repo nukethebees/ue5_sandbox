@@ -79,14 +79,14 @@ void FDrawDebugConfig::draw_arrow(FVector const& start, FVector const& end) cons
                               get_thickness(arrow_thickness));
 }
 
-void FDrawDebugConfig::draw_circle(FTransform const& transform, float const circle_radius) const {
+void FDrawDebugConfig::draw_circle(FTransform const& transform, float const radius_) const {
     if (!check_world_valid()) {
         return;
     }
 
     DrawDebugCircle(world.Get(),
                     transform.ToMatrixWithScale(),
-                    circle_radius,
+                    radius_,
                     get_segments(circle_segments),
                     get_colour(circle_colour),
                     persistent,
@@ -94,6 +94,9 @@ void FDrawDebugConfig::draw_circle(FTransform const& transform, float const circ
                     depth_priority,
                     get_thickness(circle_thickness),
                     circle_draw_axis);
+}
+void FDrawDebugConfig::draw_circle(FTransform const& transform) const {
+    return draw_circle(transform, circle_radius);
 }
 auto FDrawDebugConfig::get_circle_xy_rotation() const -> FRotator {
     return FRotator{90.f, 0.f, 0.f};
@@ -120,20 +123,23 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
                        get_thickness(circle_arc_thickness));
 }
 
-void FDrawDebugConfig::draw_sphere(FVector const& start, float const sphere_radius) const {
+void FDrawDebugConfig::draw_sphere(FVector const& start, float const radius_) const {
     if (!check_world_valid()) {
         return;
     }
 
     DrawDebugSphere(world.Get(),
                     start,
-                    sphere_radius,
+                    radius_,
                     get_segments(sphere_segments),
                     get_colour(sphere_colour),
                     persistent,
                     lifetime,
                     depth_priority,
                     get_thickness());
+}
+void FDrawDebugConfig::draw_sphere(FVector const& start) const {
+    return draw_sphere(start, sphere_radius);
 }
 
 void FDrawDebugConfig::draw_cone(FVector const& start,
