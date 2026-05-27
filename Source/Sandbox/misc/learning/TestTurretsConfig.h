@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/utilities/DrawDebugConfig.h"
+
 #include "CoreMinimal.h"
 #include "CollisionShape.h"
 #include "Engine/DataAsset.h"
@@ -46,7 +48,7 @@ class UTestTurretsConfig : public UDataAsset {
     float collision_half_height{100.f};
 
     // Laser
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Laser")
+    UPROPERTY(EditAnywhere)
     TSubclassOf<AShipLaser> laser_class{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -62,6 +64,12 @@ class UTestTurretsConfig : public UDataAsset {
     // Health
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 max_health{20};
+
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig searching_debug_drawer;
+
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig attacking_debug_drawer;
 
     auto is_ready() const noexcept -> bool;
 };
