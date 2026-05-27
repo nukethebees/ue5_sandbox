@@ -25,15 +25,51 @@ struct FTestTurretsSearchData {
     GENERATED_BODY()
 
     auto num_turrets() const -> int32;
+    auto num_turrets_to_move() const -> int32;
+    void add_uninitialised(int32 const n);
     void reset();
 
     void rotate_by(float const dt, float const r);
   private:
     static void rotate_by(float* yaw_degrees, int32 const n, float dt, float const r);
   public:
+    // Visuals
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
 
+    // Pivots
+    UPROPERTY(EditAnywhere)
+    TArray<TObjectPtr<USceneComponent>> yaw_pivots;
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<USceneComponent>> pitch_pivots;
+
+    // Collision
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
+
+    // Location
+    UPROPERTY()
+    TArray<float> location_xs;
+    UPROPERTY()
+    TArray<float> location_ys;
+    UPROPERTY()
+    TArray<float> location_zs;
+
+    // Rotation
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     TArray<float> yaw_degrees{};
+
+    // Health
+    UPROPERTY()
+    TArray<int32> healths;
+
+    // Transition
+    UPROPERTY()
+    TArray<int32> to_attack;
+    UPROPERTY()
+    TArray<TWeakObjectPtr<AActor>> attack_targets;
 };
 
 USTRUCT()
@@ -43,6 +79,31 @@ struct FTestTurretsAttackData {
     auto num_turrets() const -> int32;
     void reset();
 
+    // Visuals
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
+
+    // Pivots
+    UPROPERTY(EditAnywhere)
+    TArray<TObjectPtr<USceneComponent>> yaw_pivots;
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<USceneComponent>> pitch_pivots;
+
+    // Collision
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
+
+    // Location
+    UPROPERTY()
+    TArray<float> location_xs;
+    UPROPERTY()
+    TArray<float> location_ys;
+    UPROPERTY()
+    TArray<float> location_zs;
+
+    // Rotation
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     TArray<float> pitch_degrees{};
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
@@ -52,6 +113,18 @@ struct FTestTurretsAttackData {
     TArray<float> target_pitch_degrees{};
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     TArray<float> target_yaw_degrees{};
+
+    // Targets
+    UPROPERTY()
+    TArray<TWeakObjectPtr<AActor>> targets;
+
+    // Transition
+    UPROPERTY()
+    TArray<int32> to_search;
+
+    // Health
+    UPROPERTY()
+    TArray<int32> healths;
 };
 
 UCLASS()
@@ -78,6 +151,9 @@ class ATestTurrets : public AActor {
     void create_turrets(int32 const n);
     void configure_collision(UStaticMeshComponent& sm);
 
+    void perform_search();
+    void change_turret_state();
+
 #if WITH_EDITOR
     void capture_turret_layout(int32 const i);
 #endif
@@ -97,22 +173,6 @@ class ATestTurrets : public AActor {
     TObjectPtr<UArrowComponent> fire_point_marker;
 #endif
 
-    // Visuals
-    UPROPERTY(VisibleAnywhere)
-    TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
-    UPROPERTY(VisibleAnywhere)
-    TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
-
-    // Pivots
-    UPROPERTY(EditAnywhere)
-    TArray<TObjectPtr<USceneComponent>> yaw_pivots;
-    UPROPERTY(VisibleAnywhere)
-    TArray<TObjectPtr<USceneComponent>> pitch_pivots;
-
-    // Collision
-    UPROPERTY(VisibleAnywhere)
-    TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
-
     // Rotation
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     float pitch_rotation_speed_degrees{90.f};
@@ -122,6 +182,10 @@ class ATestTurrets : public AActor {
     // Searching
     UPROPERTY(VisibleAnywhere, Category = "Turret")
     FTestTurretsSearchData searching{};
+    UPROPERTY(VisibleAnywhere, Category = "Turret")
+    float detection_radius{4000.f};
+
+    // Attacking
     UPROPERTY(VisibleAnywhere, Category = "Turret")
     FTestTurretsAttackData attacking{};
 

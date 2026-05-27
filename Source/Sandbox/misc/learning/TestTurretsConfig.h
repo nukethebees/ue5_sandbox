@@ -59,5 +59,9 @@ class UTestTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float pitch_speed_degrees{60.f};
 
+    // Health
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 max_health{20};
+
     auto is_ready() const noexcept -> bool;
 };
