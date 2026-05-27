@@ -204,7 +204,7 @@ class ATestTurrets : public AActor {
 
 // Spawning
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Turret|Laser")
+    UPROPERTY(EditAnywhere, Category = "Turret|Spawning")
     int32 num_turrets_to_create{1};
 #endif
 

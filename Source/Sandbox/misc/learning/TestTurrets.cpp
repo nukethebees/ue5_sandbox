@@ -473,12 +473,13 @@ void ATestTurrets::draw_debug_shapes() {
 void ATestTurrets::draw_searching_debug_shapes() {
     auto const n{searching.num_turrets()};
     auto const& drawer{turret_config->searching_debug_drawer};
+    auto const offset{turret_config->debug_sphere_offset};
 
     for (int32 i{0}; i < n; i++) {
         FVector const loc{
-            searching.location_xs[i],
-            searching.location_ys[i],
-            searching.location_zs[i],
+            searching.location_xs[i] + offset.X,
+            searching.location_ys[i] + offset.Y,
+            searching.location_zs[i] + offset.Z,
         };
 
         drawer.draw_sphere(loc);

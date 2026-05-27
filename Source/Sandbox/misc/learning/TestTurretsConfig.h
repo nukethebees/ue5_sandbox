@@ -18,6 +18,8 @@ class UTestTurretsConfig : public UDataAsset {
   public:
     UTestTurretsConfig();
 
+    auto is_ready() const noexcept -> bool;
+
     // Visuals
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UStaticMesh> body_mesh{nullptr};
@@ -71,5 +73,7 @@ class UTestTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig attacking_debug_drawer;
 
-    auto is_ready() const noexcept -> bool;
+    // Debugging
+    UPROPERTY(EditAnywhere)
+    FVector3f debug_sphere_offset{FVector3f::ZeroVector};
 };
