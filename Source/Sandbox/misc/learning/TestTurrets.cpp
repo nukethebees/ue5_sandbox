@@ -84,6 +84,9 @@ void FTestTurretsSearchData::rotate_by(float const dt, float const r) {
 auto FTestTurretsAttackData::num_turrets() const -> int32 {
     return yaw_degrees.Num();
 }
+auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
+    return to_search.Num();
+}
 void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(body_meshes);
     ml::destroy_components_array(cannon_meshes);
@@ -152,6 +155,10 @@ void ATestTurrets::Tick(float dt) {
     update_target_rotations();
     integrate_rotations(dt);
     apply_rotations_to_components();
+
+    perform_search();
+
+    change_turret_state();
 
     log_config.tick(dt);
 
@@ -231,11 +238,13 @@ void ATestTurrets::perform_search() {
             auto* actor{overlap.GetActor()};
 
             if ((!IsValid(actor)) || (actor == this)) {
+                // UE_LOG(LogSandboxLearning, Display, TEXT("Invalid actor"));
                 continue;
             }
 
             auto const is_enemy{true};
             if (!is_enemy) {
+                // UE_LOG(LogSandboxLearning, Display, TEXT("Not enemy"));
                 continue;
             }
 
@@ -309,14 +318,14 @@ void ATestTurrets::change_turret_state() {
     searching.to_attack.Reset();
     searching.attack_targets.Reset();
 
-    auto const n_to_search{0};
+    auto const n_to_search{attacking.num_turrets_to_move()};
     for (int32 move_i{0}; move_i < n_to_search; ++move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
         move_common(searching, attacking, turret_i);
     }
 
-    for (int32 move_i{n_to_attack - 1}; move_i >= 0; --move_i) {
+    for (int32 move_i{n_to_search - 1}; move_i >= 0; --move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
         remove_common(attacking, move_i);
@@ -505,5 +514,25 @@ void ATestTurrets::draw_searching_debug_shapes() {
         drawer.draw_line(loc, rotation);
     }
 }
-void ATestTurrets::draw_attacking_debug_shapes() {}
+void ATestTurrets::draw_attacking_debug_shapes() {
+    auto const n{attacking.num_turrets()};
+    auto const& drawer{turret_config->attacking_debug_drawer};
+    auto const offset{turret_config->debug_sphere_offset};
+
+    for (int32 i{0}; i < n; i++) {
+        FVector const loc{
+            attacking.location_xs[i] + offset.X,
+            attacking.location_ys[i] + offset.Y,
+            attacking.location_zs[i] + offset.Z,
+        };
+
+        drawer.draw_sphere(loc);
+
+        auto const target{attacking.targets[i]};
+
+        if (target.IsValid()) {
+            drawer.draw_line(loc, target->GetActorLocation());
+        }
+    }
+}
 #endif

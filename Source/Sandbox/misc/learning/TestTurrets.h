@@ -79,22 +79,23 @@ struct FTestTurretsAttackData {
     GENERATED_BODY()
 
     auto num_turrets() const -> int32;
+    auto num_turrets_to_move() const -> int32;
     void reset();
 
     // Visuals
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
 
     // Pivots
-    UPROPERTY(EditAnywhere)
+    UPROPERTY()
     TArray<TObjectPtr<USceneComponent>> yaw_pivots;
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<TObjectPtr<USceneComponent>> pitch_pivots;
 
     // Collision
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
 
     // Location
@@ -106,18 +107,18 @@ struct FTestTurretsAttackData {
     TArray<float> location_zs;
 
     // Rotation
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    UPROPERTY()
     TArray<float> pitch_degrees{};
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    UPROPERTY()
     TArray<float> yaw_degrees{};
 
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    UPROPERTY()
     TArray<float> target_pitch_degrees{};
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    UPROPERTY()
     TArray<float> target_yaw_degrees{};
 
     // Targets
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TWeakObjectPtr<AActor>> targets;
 
     // Transition
