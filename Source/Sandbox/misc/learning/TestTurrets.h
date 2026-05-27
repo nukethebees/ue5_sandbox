@@ -146,6 +146,8 @@ class ATestTurrets : public AActor {
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
 
+    void update_locations_from_components();
+
     void update_target_rotations();
     void integrate_rotations(float const dt);
     void apply_rotations_to_components();

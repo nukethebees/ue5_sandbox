@@ -143,6 +143,8 @@ void ATestTurrets::BeginPlay() {
         turret_config->attacking_debug_drawer.world = world;
     }
 #endif
+
+    update_locations_from_components();
 }
 void ATestTurrets::Tick(float dt) {
     Super::Tick(dt);
@@ -162,6 +164,18 @@ void ATestTurrets::Tick(float dt) {
 
 auto ATestTurrets::num_turrets() const noexcept -> int32 {
     return searching.num_turrets() + attacking.num_turrets();
+}
+
+void ATestTurrets::update_locations_from_components() {
+    auto const n_searching{searching.num_turrets()};
+
+    for (int32 i{0}; i < n_searching; ++i) {
+        auto const loc{searching.collision_shapes[i]->GetComponentLocation()};
+
+        searching.location_xs[i] = loc.X;
+        searching.location_ys[i] = loc.Y;
+        searching.location_zs[i] = loc.Z;
+    }
 }
 
 void ATestTurrets::update_target_rotations() {
