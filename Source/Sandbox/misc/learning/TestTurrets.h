@@ -195,8 +195,6 @@ class ATestTurrets : public AActor {
     // Searching
     UPROPERTY(VisibleAnywhere, Category = "Turret")
     FTestTurretsSearchData searching{};
-    UPROPERTY(VisibleAnywhere, Category = "Turret")
-    float detection_radius{4000.f};
 
     // Attacking
     UPROPERTY(VisibleAnywhere, Category = "Turret")

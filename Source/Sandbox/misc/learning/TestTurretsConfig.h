@@ -39,6 +39,10 @@ class UTestTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform pitch_pivot_offset{FTransform::Identity};
 
+    // Vision
+    UPROPERTY(VisibleAnywhere, Category = "Turret")
+    float detection_radius{4000.f};
+
     // Collision
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform collision_offset{FTransform::Identity};

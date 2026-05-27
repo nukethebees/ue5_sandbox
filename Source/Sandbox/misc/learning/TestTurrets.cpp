@@ -205,9 +205,17 @@ void ATestTurrets::perform_search() {
 
     FCollisionObjectQueryParams object_query_params{};
     FCollisionQueryParams query_params{};
+    query_params.AddIgnoredActor(this);
+
+    auto const detection_radius{turret_config->detection_radius};
+
     auto const shape{FCollisionShape::MakeSphere(detection_radius)};
 
+    FHitResult los_hit;
+
     for (int32 i{0}; i < n; ++i) {
+        overlaps.Reset();
+
         FVector const loc{
             searching.location_xs[i],
             searching.location_ys[i],
@@ -222,7 +230,7 @@ void ATestTurrets::perform_search() {
         for (auto& overlap : overlaps) {
             auto* actor{overlap.GetActor()};
 
-            if ((actor == nullptr) || (actor == this)) {
+            if ((!IsValid(actor)) || (actor == this)) {
                 continue;
             }
 
@@ -231,15 +239,18 @@ void ATestTurrets::perform_search() {
                 continue;
             }
 
-            auto const is_in_los{true};
-            if (is_in_los) {
+            auto const end{actor->GetActorLocation()};
+            los_hit.Reset();
+
+            bool const los_blocked{
+                world->LineTraceSingleByChannel(los_hit, loc, end, ECC_Visibility, query_params)};
+
+            if ((!los_blocked) || (los_hit.GetActor() == actor)) {
                 searching.to_attack.Add(i);
                 searching.attack_targets.Add(actor);
                 break;
             }
         }
-
-        overlaps.Reset();
     }
 }
 void ATestTurrets::change_turret_state() {
@@ -473,6 +484,8 @@ void ATestTurrets::draw_searching_debug_shapes() {
     auto const& drawer{turret_config->searching_debug_drawer};
     auto const offset{turret_config->debug_sphere_offset};
 
+    auto const search_radius{turret_config->detection_radius};
+
     for (int32 i{0}; i < n; i++) {
         FVector const loc{
             searching.location_xs[i] + offset.X,
@@ -481,6 +494,7 @@ void ATestTurrets::draw_searching_debug_shapes() {
         };
 
         drawer.draw_sphere(loc);
+        drawer.draw_sphere(loc, search_radius);
 
         FRotator const rotation{
             0.0,
