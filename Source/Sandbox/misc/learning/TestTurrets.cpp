@@ -325,6 +325,8 @@ void ATestTurrets::change_turret_state() {
     constexpr auto remove_elem{
         [](auto& arr, int32 const i) { arr.RemoveAtSwap(i, 1, EAllowShrinking::No); }};
 
+    auto remove_from_all{[](int32 const i, auto&... arrays) { (remove_elem(arrays, i), ...); }};
+
     constexpr auto remove_common{[](auto& array, int32 const i) {
         remove_elem(array.body_meshes, i);
         remove_elem(array.cannon_meshes, i);
@@ -341,6 +343,7 @@ void ATestTurrets::change_turret_state() {
         remove_elem(array.healths, i);
     }};
 
+    // Searching -> Attacking
     for (int32 move_i{0}; move_i < n_to_attack; ++move_i) {
         auto const turret_i{searching.to_attack[move_i]};
 
@@ -354,32 +357,33 @@ void ATestTurrets::change_turret_state() {
         attacking.targets.Add(searching.attack_targets[move_i]);
     }
 
-    // Remove old elements
-    for (int32 move_i{n_to_attack - 1}; move_i >= 0; --move_i) {
-        auto const turret_i{searching.to_attack[move_i]};
-
-        remove_common(searching, move_i);
-    }
-    searching.to_attack.Reset();
-    searching.attack_targets.Reset();
-
+    // Attacking -> searching
     auto const n_to_search{attacking.num_turrets_to_move()};
     for (int32 move_i{0}; move_i < n_to_search; ++move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
-        move_common(searching, attacking, turret_i);
+        move_common(attacking, searching, turret_i);
     }
 
+    // Remove searching elements
+    for (int32 move_i{n_to_attack - 1}; move_i >= 0; --move_i) {
+        auto const turret_i{searching.to_attack[move_i]};
+
+        remove_common(searching, turret_i);
+    }
+    searching.to_attack.Reset();
+    searching.attack_targets.Reset();
+
+    // Remove attack elements
     for (int32 move_i{n_to_search - 1}; move_i >= 0; --move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
-        remove_common(attacking, move_i);
-
-        remove_elem(attacking.pitch_degrees, move_i);
-        remove_elem(attacking.target_pitch_degrees, move_i);
-        remove_elem(attacking.target_yaw_degrees, move_i);
-
-        remove_elem(attacking.targets, move_i);
+        remove_common(attacking, turret_i);
+        remove_from_all(turret_i,
+                        attacking.pitch_degrees,
+                        attacking.target_pitch_degrees,
+                        attacking.target_yaw_degrees,
+                        attacking.targets);
     }
 
     attacking.to_search.Reset();

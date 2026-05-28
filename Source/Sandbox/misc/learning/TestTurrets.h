@@ -56,25 +56,25 @@ struct FTestTurretsSearchData {
     TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
 
     // Location
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_xs;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_ys;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_zs;
 
     // Rotation
-    UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
+    UPROPERTY(VisibleAnywhere)
     TArray<float> yaw_degrees{};
 
     // Health
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<int32> healths;
 
     // Transition
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<int32> to_attack;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TWeakObjectPtr<AActor>> attack_targets;
 };
 
@@ -90,38 +90,38 @@ struct FTestTurretsAttackData {
     bool array_sizes_consistent() const;
 
     // Visuals
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UStaticMeshComponent>> body_meshes{};
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UStaticMeshComponent>> cannon_meshes{};
 
     // Pivots
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<USceneComponent>> yaw_pivots;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<USceneComponent>> pitch_pivots;
 
     // Collision
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<TObjectPtr<UCapsuleComponent>> collision_shapes{};
 
     // Location
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_xs;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_ys;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> location_zs;
 
     // Rotation
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> pitch_degrees{};
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> yaw_degrees{};
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> target_pitch_degrees{};
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<float> target_yaw_degrees{};
 
     // Targets
@@ -129,11 +129,11 @@ struct FTestTurretsAttackData {
     TArray<TWeakObjectPtr<AActor>> targets;
 
     // Health
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<int32> healths;
 
     // Transition
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     TArray<int32> to_search;
 };
 
