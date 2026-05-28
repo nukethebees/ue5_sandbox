@@ -28,8 +28,12 @@ struct FTestTurretsSearchData {
 
     auto num_turrets() const -> int32;
     auto num_turrets_to_move() const -> int32;
+
     void add_uninitialised(int32 const n);
+
     void reset();
+
+    bool array_sizes_consistent() const;
 
     void rotate_by(float const dt, float const r);
   private:
@@ -80,7 +84,10 @@ struct FTestTurretsAttackData {
 
     auto num_turrets() const -> int32;
     auto num_turrets_to_move() const -> int32;
+
     void reset();
+
+    bool array_sizes_consistent() const;
 
     // Visuals
     UPROPERTY()
@@ -121,13 +128,13 @@ struct FTestTurretsAttackData {
     UPROPERTY(VisibleAnywhere)
     TArray<TWeakObjectPtr<AActor>> targets;
 
-    // Transition
-    UPROPERTY()
-    TArray<int32> to_search;
-
     // Health
     UPROPERTY()
     TArray<int32> healths;
+
+    // Transition
+    UPROPERTY()
+    TArray<int32> to_search;
 };
 
 UCLASS()
@@ -156,6 +163,8 @@ class ATestTurrets : public AActor {
     void create_turrets(int32 const n);
     void configure_collision(UStaticMeshComponent& sm);
 
+    bool is_enemy(AActor const& actor) const;
+
     void perform_search();
     void change_turret_state();
 
@@ -172,6 +181,7 @@ class ATestTurrets : public AActor {
 #endif
 
     // Debugging
+    void check_arrays_synced() const;
 #if WITH_EDITOR
     void draw_debug_shapes();
     void draw_searching_debug_shapes();
@@ -192,6 +202,10 @@ class ATestTurrets : public AActor {
     float pitch_rotation_speed_degrees{90.f};
     UPROPERTY(VisibleAnywhere, Category = "Turret|Rotation")
     float yaw_rotation_speed_degrees{90.f};
+
+    // Targets
+    UPROPERTY(EditAnywhere, Category = "Turret|Targeting")
+    TArray<TSubclassOf<AActor>> valid_target_classes;
 
     // Searching
     UPROPERTY(VisibleAnywhere, Category = "Turret")

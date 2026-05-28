@@ -7,6 +7,7 @@
 #include "TestTurretsConfig.h"
 
 #include <SandboxCore/Public/actor_components.h>
+#include <SandboxCore/Public/array_utils.h>
 #include <SandboxCore/Public/interpolation.h>
 #include <SandboxCore/Public/rotation.h>
 
@@ -64,6 +65,20 @@ void FTestTurretsSearchData::reset() {
 
     healths.Reset();
 }
+bool FTestTurretsSearchData::array_sizes_consistent() const {
+    auto const n{body_meshes.Num()};
+
+    return ml::detail::all_num_equal(n,
+                                     cannon_meshes,
+                                     yaw_pivots,
+                                     pitch_pivots,
+                                     collision_shapes,
+                                     location_xs,
+                                     location_ys,
+                                     location_zs,
+                                     yaw_degrees,
+                                     healths);
+}
 void FTestTurretsSearchData::rotate_by(float* yaw_degrees,
                                        int32 const n,
                                        float const dt,
@@ -86,6 +101,24 @@ auto FTestTurretsAttackData::num_turrets() const -> int32 {
 }
 auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
     return to_search.Num();
+}
+bool FTestTurretsAttackData::array_sizes_consistent() const {
+    auto const n{body_meshes.Num()};
+
+    return ml::detail::all_num_equal(n,
+                                     cannon_meshes,
+                                     yaw_pivots,
+                                     pitch_pivots,
+                                     collision_shapes,
+                                     location_xs,
+                                     location_ys,
+                                     location_zs,
+                                     pitch_degrees,
+                                     yaw_degrees,
+                                     target_pitch_degrees,
+                                     target_yaw_degrees,
+                                     targets,
+                                     healths);
 }
 void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(body_meshes);
@@ -148,6 +181,7 @@ void ATestTurrets::BeginPlay() {
 #endif
 
     update_locations_from_components();
+    check_arrays_synced();
 }
 void ATestTurrets::Tick(float dt) {
     Super::Tick(dt);
@@ -203,6 +237,16 @@ void ATestTurrets::integrate_rotations(float const dt) {
 }
 void ATestTurrets::apply_rotations_to_components() {}
 
+bool ATestTurrets::is_enemy(AActor const& actor) const {
+    for (auto const& target_class : valid_target_classes) {
+        if (actor.IsA(target_class)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ATestTurrets::perform_search() {
     auto const n{searching.num_turrets()};
 
@@ -238,13 +282,10 @@ void ATestTurrets::perform_search() {
             auto* actor{overlap.GetActor()};
 
             if ((!IsValid(actor)) || (actor == this)) {
-                // UE_LOG(LogSandboxLearning, Display, TEXT("Invalid actor"));
                 continue;
             }
 
-            auto const is_enemy{true};
-            if (!is_enemy) {
-                // UE_LOG(LogSandboxLearning, Display, TEXT("Not enemy"));
+            if (!is_enemy(*actor)) {
                 continue;
             }
 
@@ -305,8 +346,12 @@ void ATestTurrets::change_turret_state() {
 
         move_common(searching, attacking, turret_i);
 
+        attacking.pitch_degrees.AddDefaulted();
+
         attacking.target_pitch_degrees.AddDefaulted();
-        attacking.targets.Add(searching.attack_targets[turret_i]);
+        attacking.target_yaw_degrees.AddDefaulted();
+
+        attacking.targets.Add(searching.attack_targets[move_i]);
     }
 
     // Remove old elements
@@ -336,7 +381,10 @@ void ATestTurrets::change_turret_state() {
 
         remove_elem(attacking.targets, move_i);
     }
+
     attacking.to_search.Reset();
+
+    check_arrays_synced();
 }
 
 void ATestTurrets::create_turrets(int32 const n) {
@@ -423,6 +471,8 @@ void ATestTurrets::create_turrets(int32 const n) {
 
         searching.yaw_degrees[i] = 0.f;
     }
+
+    check_arrays_synced();
 }
 void ATestTurrets::configure_collision(UStaticMeshComponent& sm) {
     sm.SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -430,6 +480,11 @@ void ATestTurrets::configure_collision(UStaticMeshComponent& sm) {
 void ATestTurrets::clear_all_turrets() {
     searching.reset();
     attacking.reset();
+}
+
+void ATestTurrets::check_arrays_synced() const {
+    check(searching.array_sizes_consistent());
+    check(attacking.array_sizes_consistent());
 }
 
 #if WITH_EDITOR
@@ -532,6 +587,10 @@ void ATestTurrets::draw_attacking_debug_shapes() {
 
         if (target.IsValid()) {
             drawer.draw_line(loc, target->GetActorLocation());
+        } else {
+            if (log_config.can_tick_log(EActorLoggingVerbosity::Basic)) {
+                UE_LOG(LogSandboxLearning, Warning, TEXT("Target is invalid"));
+            }
         }
     }
 }
