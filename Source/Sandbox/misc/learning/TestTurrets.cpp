@@ -25,6 +25,48 @@
 #include "ScopedTransaction.h"
 #endif
 
+namespace {
+void move_common(auto const& from_state, auto& to_state, int32 const i) {
+    to_state.body_meshes.Add(from_state.body_meshes[i]);
+    to_state.cannon_meshes.Add(from_state.cannon_meshes[i]);
+    to_state.yaw_pivots.Add(from_state.yaw_pivots[i]);
+    to_state.pitch_pivots.Add(from_state.pitch_pivots[i]);
+    to_state.collision_shapes.Add(from_state.collision_shapes[i]);
+
+    to_state.location_xs.Add(from_state.location_xs[i]);
+    to_state.location_ys.Add(from_state.location_ys[i]);
+    to_state.location_zs.Add(from_state.location_zs[i]);
+
+    to_state.yaw_degrees.Add(from_state.yaw_degrees[i]);
+
+    to_state.healths.Add(from_state.healths[i]);
+};
+
+void remove_elem(auto& arr, int32 const i) {
+    arr.RemoveAtSwap(i, 1, EAllowShrinking::No);
+}
+
+void remove_from_all(int32 const i, auto&... arrays) {
+    (remove_elem(arrays, i), ...);
+}
+
+auto remove_common(auto& array, int32 const i) {
+    remove_elem(array.body_meshes, i);
+    remove_elem(array.cannon_meshes, i);
+    remove_elem(array.yaw_pivots, i);
+    remove_elem(array.pitch_pivots, i);
+    remove_elem(array.collision_shapes, i);
+
+    remove_elem(array.location_xs, i);
+    remove_elem(array.location_ys, i);
+    remove_elem(array.location_zs, i);
+
+    remove_elem(array.yaw_degrees, i);
+
+    remove_elem(array.healths, i);
+}
+}
+
 auto FTestTurretsSearchData::num_turrets() const -> int32 {
     return yaw_degrees.Num();
 }
@@ -113,6 +155,9 @@ bool FTestTurretsAttackData::array_sizes_consistent() const {
                                      location_xs,
                                      location_ys,
                                      location_zs,
+                                     target_location_xs,
+                                     target_location_ys,
+                                     target_location_zs,
                                      pitch_degrees,
                                      yaw_degrees,
                                      target_pitch_degrees,
@@ -186,13 +231,15 @@ void ATestTurrets::BeginPlay() {
 void ATestTurrets::Tick(float dt) {
     Super::Tick(dt);
 
+    // Handles may be invalid so we want to prune them quickly
+    handle_transitions_to_searching();
+
     update_target_rotations();
     integrate_rotations(dt);
     apply_rotations_to_components();
 
     perform_search();
-
-    change_turret_state();
+    handle_transitions_to_attacking();
 
     log_config.tick(dt);
 
@@ -220,7 +267,16 @@ void ATestTurrets::update_locations_from_components() {
 }
 
 void ATestTurrets::update_target_rotations() {
-    auto const n{num_turrets()};
+    auto const n{attacking.num_turrets()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const target_location{attacking.targets[i]->GetActorLocation()};
+        attacking.target_location_xs[i] = target_location.X;
+        attacking.target_location_ys[i] = target_location.Y;
+        attacking.target_location_zs[i] = target_location.Z;
+    }
+
+    for (int32 i{0}; i < n; ++i) {}
 }
 void ATestTurrets::integrate_rotations(float const dt) {
     ml::rotate_towards_1d_degrees_normalised_inplace(
@@ -303,84 +359,32 @@ void ATestTurrets::perform_search() {
         }
     }
 }
-void ATestTurrets::change_turret_state() {
-    auto const n_to_attack{searching.num_turrets_to_move()};
+void ATestTurrets::handle_transitions_to_searching() {
+    auto const n_attacking{attacking.num_turrets()};
 
-    constexpr auto move_common{[](auto const& from_array, auto& to_array, int32 const i) {
-        to_array.body_meshes.Add(from_array.body_meshes[i]);
-        to_array.cannon_meshes.Add(from_array.cannon_meshes[i]);
-        to_array.yaw_pivots.Add(from_array.yaw_pivots[i]);
-        to_array.pitch_pivots.Add(from_array.pitch_pivots[i]);
-        to_array.collision_shapes.Add(from_array.collision_shapes[i]);
-
-        to_array.location_xs.Add(from_array.location_xs[i]);
-        to_array.location_ys.Add(from_array.location_ys[i]);
-        to_array.location_zs.Add(from_array.location_zs[i]);
-
-        to_array.yaw_degrees.Add(from_array.yaw_degrees[i]);
-
-        to_array.healths.Add(from_array.healths[i]);
-    }};
-
-    constexpr auto remove_elem{
-        [](auto& arr, int32 const i) { arr.RemoveAtSwap(i, 1, EAllowShrinking::No); }};
-
-    auto remove_from_all{[](int32 const i, auto&... arrays) { (remove_elem(arrays, i), ...); }};
-
-    constexpr auto remove_common{[](auto& array, int32 const i) {
-        remove_elem(array.body_meshes, i);
-        remove_elem(array.cannon_meshes, i);
-        remove_elem(array.yaw_pivots, i);
-        remove_elem(array.pitch_pivots, i);
-        remove_elem(array.collision_shapes, i);
-
-        remove_elem(array.location_xs, i);
-        remove_elem(array.location_ys, i);
-        remove_elem(array.location_zs, i);
-
-        remove_elem(array.yaw_degrees, i);
-
-        remove_elem(array.healths, i);
-    }};
-
-    // Searching -> Attacking
-    for (int32 move_i{0}; move_i < n_to_attack; ++move_i) {
-        auto const turret_i{searching.to_attack[move_i]};
-
-        move_common(searching, attacking, turret_i);
-
-        attacking.pitch_degrees.AddDefaulted();
-
-        attacking.target_pitch_degrees.AddDefaulted();
-        attacking.target_yaw_degrees.AddDefaulted();
-
-        attacking.targets.Add(searching.attack_targets[move_i]);
+    for (int32 i{0}; i < n_attacking; ++i) {
+        if (!attacking.targets[i].IsValid()) {
+            attacking.to_search.Add(i);
+        }
     }
 
-    // Attacking -> searching
     auto const n_to_search{attacking.num_turrets_to_move()};
+
     for (int32 move_i{0}; move_i < n_to_search; ++move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
         move_common(attacking, searching, turret_i);
     }
 
-    // Remove searching elements
-    for (int32 move_i{n_to_attack - 1}; move_i >= 0; --move_i) {
-        auto const turret_i{searching.to_attack[move_i]};
-
-        remove_common(searching, turret_i);
-    }
-    searching.to_attack.Reset();
-    searching.attack_targets.Reset();
-
-    // Remove attack elements
     for (int32 move_i{n_to_search - 1}; move_i >= 0; --move_i) {
         auto const turret_i{attacking.to_search[move_i]};
 
         remove_common(attacking, turret_i);
         remove_from_all(turret_i,
                         attacking.pitch_degrees,
+                        attacking.target_location_xs,
+                        attacking.target_location_ys,
+                        attacking.target_location_zs,
                         attacking.target_pitch_degrees,
                         attacking.target_yaw_degrees,
                         attacking.targets);
@@ -389,6 +393,34 @@ void ATestTurrets::change_turret_state() {
     attacking.to_search.Reset();
 
     check_arrays_synced();
+}
+void ATestTurrets::handle_transitions_to_attacking() {
+    auto const n_to_attack{searching.num_turrets_to_move()};
+
+    for (int32 move_i{0}; move_i < n_to_attack; ++move_i) {
+        auto const turret_i{searching.to_attack[move_i]};
+
+        move_common(searching, attacking, turret_i);
+
+        attacking.pitch_degrees.AddDefaulted();
+
+        attacking.target_location_xs.AddDefaulted();
+        attacking.target_location_ys.AddDefaulted();
+        attacking.target_location_zs.AddDefaulted();
+
+        attacking.target_pitch_degrees.AddDefaulted();
+        attacking.target_yaw_degrees.AddDefaulted();
+
+        attacking.targets.Add(searching.attack_targets[move_i]);
+    }
+
+    for (int32 move_i{n_to_attack - 1}; move_i >= 0; --move_i) {
+        auto const turret_i{searching.to_attack[move_i]};
+
+        remove_common(searching, turret_i);
+    }
+    searching.to_attack.Reset();
+    searching.attack_targets.Reset();
 }
 
 void ATestTurrets::create_turrets(int32 const n) {

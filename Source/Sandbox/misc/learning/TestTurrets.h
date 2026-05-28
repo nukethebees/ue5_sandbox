@@ -113,6 +113,13 @@ struct FTestTurretsAttackData {
     UPROPERTY(VisibleAnywhere)
     TArray<float> location_zs;
 
+    UPROPERTY(VisibleAnywhere)
+    TArray<float> target_location_xs;
+    UPROPERTY(VisibleAnywhere)
+    TArray<float> target_location_ys;
+    UPROPERTY(VisibleAnywhere)
+    TArray<float> target_location_zs;
+
     // Rotation
     UPROPERTY(VisibleAnywhere)
     TArray<float> pitch_degrees{};
@@ -166,7 +173,9 @@ class ATestTurrets : public AActor {
     bool is_enemy(AActor const& actor) const;
 
     void perform_search();
-    void change_turret_state();
+    
+    void handle_transitions_to_searching();
+    void handle_transitions_to_attacking();
 
 #if WITH_EDITOR
     void capture_turret_layout(int32 const i);
