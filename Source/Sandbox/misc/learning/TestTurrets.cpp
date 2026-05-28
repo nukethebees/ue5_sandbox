@@ -596,6 +596,14 @@ void ATestTurrets::draw_attacking_debug_shapes() {
                 UE_LOG(LogSandboxLearning, Warning, TEXT("Target is invalid"));
             }
         }
+
+        FRotator const rotation{
+            attacking.pitch_degrees[i],
+            attacking.yaw_degrees[i],
+            0.0,
+        };
+
+        drawer.draw_line(loc, rotation);
     }
 }
 #endif
