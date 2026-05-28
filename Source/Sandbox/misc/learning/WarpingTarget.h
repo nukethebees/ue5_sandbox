@@ -48,4 +48,8 @@ class AWarpingTarget : public AActor {
     bool warp_on_first_tick{true};
     UPROPERTY(EditAnywhere, Category = "target")
     FCooldown warp_cooldown{10.f};
+
+    // Destruction
+    UPROPERTY(EditAnywhere, Category = "target")
+    float destroy_after{-1.f};
 };

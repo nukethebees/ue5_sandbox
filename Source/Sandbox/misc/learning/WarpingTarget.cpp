@@ -49,6 +49,10 @@ void AWarpingTarget::Tick(float dt) {
     if (warp_cooldown.reset_if_done()) {
         warp();
     }
+
+    if ((destroy_after >= 0.f) && (GetGameTimeSinceCreation() > destroy_after)) {
+        Destroy();
+    }
 }
 
 auto AWarpingTarget::warp() -> bool {
