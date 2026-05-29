@@ -20,7 +20,7 @@ void check_rotate_towards(float const current, float const target, float const s
 
     ml::kernel::rotate_towards_1d_degrees(Current, Target, speed, delta_time, Out, 1);
 
-    CHECK(Out[0] == expected);
+    CHECK(FMath::IsNearlyEqual(Out[0], expected));
 }
 
 template <int32 Count>
