@@ -263,7 +263,7 @@ void rotate_towards_1d_normalised_inplace(TArrayView<T> current,
                                           T const delta_time) noexcept {
     auto const count{current.Num()};
 
-    auto const are_equal{ml::detail::all_num_equal(count, target)};
+    auto const are_equal{ml::all_num_equal_to(count, target)};
     check(are_equal);
     if (!are_equal) {
         UE_LOG(LogSandboxCore,
@@ -306,7 +306,7 @@ void compute_desired_yaws_radians(TConstArrayView<T> const start_xs,
     auto const count{start_xs.Num()};
 
     auto const are_equal{
-        ml::detail::all_num_equal(count, start_ys, end_xs, end_ys, out_yaws_radians)};
+        ml::all_num_equal_to(count, start_ys, end_xs, end_ys, out_yaws_radians)};
     check(are_equal);
     if (!are_equal) {
         UE_LOG(

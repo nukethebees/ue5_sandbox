@@ -54,7 +54,7 @@ bool add_vector3(TConstArrayView<T> lhs_x,
                  TArrayView<T> out_z) noexcept {
     auto const count{lhs_x.Num()};
 
-    if (!ml::detail::all_num_equal(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {
+    if (!ml::all_num_equal_to(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {
         return false;
     }
 

@@ -115,7 +115,7 @@ bool lerp_1d(TConstArrayView<T> from,
              TArrayView<T> out) noexcept {
     auto const count{from.Num()};
 
-    if (!ml::detail::all_num_equal(count, to, alpha, out)) {
+    if (!ml::all_num_equal_to(count, to, alpha, out)) {
         return false;
     }
 
@@ -131,7 +131,7 @@ bool lerp_1d(TConstArrayView<T> from,
              TArrayView<T> out) noexcept {
     auto const count{from.Num()};
 
-    if (!ml::detail::all_num_equal(count, to, out)) {
+    if (!ml::all_num_equal_to(count, to, out)) {
         return false;
     }
 
@@ -150,7 +150,7 @@ bool lerp_2d(TConstArrayView<T> from_x,
              TArrayView<T> out_y) noexcept {
     auto const count{from_x.Num()};
 
-    if (!ml::detail::all_num_equal(count, from_y, to_x, to_y, alpha, out_x, out_y)) {
+    if (!ml::all_num_equal_to(count, from_y, to_x, to_y, alpha, out_x, out_y)) {
         return false;
     }
 
@@ -176,7 +176,7 @@ bool lerp_2d(TConstArrayView<T> from_x,
              TArrayView<T> out_y) noexcept {
     auto const count{from_x.Num()};
 
-    if (!ml::detail::all_num_equal(count, from_y, to_x, to_y, out_x, out_y)) {
+    if (!ml::all_num_equal_to(count, from_y, to_x, to_y, out_x, out_y)) {
         return false;
     }
 
@@ -205,7 +205,7 @@ bool lerp_3d(TConstArrayView<T> from_x,
              TArrayView<T> out_z) noexcept {
     auto const count{from_x.Num()};
 
-    if (!ml::detail::all_num_equal(
+    if (!ml::all_num_equal_to(
             count, from_y, from_z, to_x, to_y, to_z, alpha, out_x, out_y, out_z)) {
         return false;
     }
@@ -238,7 +238,7 @@ bool lerp_3d(TConstArrayView<T> from_x,
              TArrayView<T> out_z) noexcept {
     auto const count{from_x.Num()};
 
-    if (!ml::detail::all_num_equal(count, from_y, from_z, to_x, to_y, to_z, out_x, out_y, out_z)) {
+    if (!ml::all_num_equal_to(count, from_y, from_z, to_x, to_y, to_z, out_x, out_y, out_z)) {
         return false;
     }
 
