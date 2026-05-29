@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns true and writes interpolated values when array "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns true and writes interpolated values when array "
           "sizes match",
           "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const FromX{0.0f, 10.0f, -10.0f, 100.0f};
@@ -44,7 +44,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns true and writes interpolated val
     CHECK(OutZ[3] == 1250.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns true for empty arrays",
+TEST_CASE("SandboxCore.Math.Lerp3D View returns true for empty arrays",
           "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const FromX;
     TArray<float> const FromY;
@@ -66,7 +66,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns true for empty arrays",
     CHECK(OutZ.Num() == 0);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "FromY has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -100,7 +100,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "FromZ has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -134,7 +134,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when ToX has "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when ToX has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const FromX{0.0f, 10.0f};
@@ -167,7 +167,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when ToY has "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when ToY has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const FromX{0.0f, 10.0f};
@@ -200,7 +200,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when ToZ has "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when ToZ has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const FromX{0.0f, 10.0f};
@@ -233,7 +233,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "Alpha has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -267,7 +267,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "OutX has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -300,7 +300,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "OutY has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -333,7 +333,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchanged when "
+TEST_CASE("SandboxCore.Math.Lerp3D View returns false and leaves output unchanged when "
           "OutZ has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D]") {
@@ -366,7 +366,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View returns false and leaves output unchange
     CHECK(OutZ[0] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns true and writes interpolated values when array "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns true and writes interpolated values when array "
           "sizes match",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f, -10.0f};
@@ -404,7 +404,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns true and writes interpolated v
     CHECK(out_z[2] == 4500.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha zero",
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar supports alpha zero",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
@@ -438,7 +438,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha zero",
     CHECK(out_z[1] == 6.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha one",
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar supports alpha one",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
@@ -472,7 +472,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha one",
     CHECK(out_z[1] == 60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when FromY "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when FromY "
           "has the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -507,7 +507,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when FromZ "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when FromZ "
           "has the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -542,7 +542,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when ToX has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when ToX has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -577,7 +577,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when ToY has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when ToY has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -612,7 +612,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when ToZ has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when ToZ has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -647,7 +647,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when OutX has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when OutX has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -681,7 +681,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when OutY has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when OutY has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -715,7 +715,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[1] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchanged when OutZ has "
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns false and leaves output unchanged when OutZ has "
           "the wrong size",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f};
@@ -749,7 +749,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns false and leaves output unchan
     CHECK(out_z[0] == -3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar returns true for empty arrays",
+TEST_CASE("SandboxCore.Math.Lerp3D Scalar returns true for empty arrays",
           "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x;
     TArray<float> const from_y;
