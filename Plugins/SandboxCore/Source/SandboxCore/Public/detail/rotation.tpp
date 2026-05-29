@@ -1,27 +1,13 @@
 #pragma once
 
-#include "array_utils.h"
-#include "numeric.h"
+#include "SandboxCore/public/numeric_constants.h"
+#include "SandboxCore/public/array_utils.h"
+#include "SandboxCore/public/numeric.h"
 
 #include "CoreMinimal.h"
 
 #include <algorithm>
 #include <concepts>
-
-namespace ml::constants {
-
-template <typename T>
-inline constexpr T zero{static_cast<T>(0.0)};
-
-template <typename T>
-inline constexpr T one{static_cast<T>(1.0)};
-
-template <typename T>
-inline constexpr T half_turn_degrees{static_cast<T>(180.0)};
-
-template <typename T>
-inline constexpr T full_turn_degrees{static_cast<T>(360.0)};
-}
 
 namespace ml {
 // Restrict angle to [-180, 180)
@@ -41,11 +27,10 @@ template <std::floating_point T>
 auto shortest_signed_angle_delta(T const from, T const to) -> T {
     constexpr auto ht{ml::constants::half_turn_degrees<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
-    constexpr auto zero{ml::constants::zero<T>};
 
     auto delta{FMath::Fmod(to - from + ht, ft)};
 
-    if (delta < zero) {
+    if (delta < T{0.0}) {
         delta += ft;
     }
 
@@ -70,13 +55,11 @@ void rotate_towards_1d_degrees(T const* RESTRICT current,
                                T const delta_time,
                                T* RESTRICT out,
                                int32 const count) noexcept {
-    constexpr auto one{ml::constants::one<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
-    constexpr auto zero{ml::constants::zero<T>};
 
     auto const max_step{speed * delta_time};
 
-    if (max_step <= zero) {
+    if (max_step <= T{0.0}) {
         for (int32 i{0}; i < count; ++i) {
             out[i] = current[i];
         }
@@ -91,7 +74,7 @@ void rotate_towards_1d_degrees(T const* RESTRICT current,
 
         if (new_out > ft) {
             out[i] = new_out - ft;
-        } else if (new_out < zero) {
+        } else if (new_out < T{0.0}) {
             out[i] = new_out + ft;
         } else {
             out[i] = new_out;
@@ -107,14 +90,12 @@ void rotate_towards_1d_degrees_normalised(T const* RESTRICT current,
                                           T const delta_time,
                                           T* RESTRICT out,
                                           int32 const count) noexcept {
-    constexpr auto one{ml::constants::one<T>};
     constexpr auto ht{ml::constants::half_turn_degrees<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
-    constexpr auto zero{ml::constants::zero<T>};
 
     auto const max_step{speed * delta_time};
 
-    if (max_step <= zero) {
+    if (max_step <= T{0.0}) {
         for (int32 i{0}; i < count; ++i) {
             out[i] = current[i];
         }
@@ -139,14 +120,12 @@ void rotate_towards_1d_degrees_normalised_inplace(T* RESTRICT current,
                                                   T const speed,
                                                   T const delta_time,
                                                   int32 const count) noexcept {
-    constexpr auto one{ml::constants::one<T>};
     constexpr auto ht{ml::constants::half_turn_degrees<T>};
     constexpr auto ft{ml::constants::full_turn_degrees<T>};
-    constexpr auto zero{ml::constants::zero<T>};
 
     auto const max_step{speed * delta_time};
 
-    if (max_step <= zero) {
+    if (max_step <= T{0.0}) {
         return;
     }
 
