@@ -41,7 +41,7 @@ void ASpaceShipGameMode::BeginPlay() {
     }
 
     if (pps != 1) {
-        UE_LOG(LogSandboxCore, Warning, TEXT("%d post processing volumes found."), pps);
+        UE_LOG(LogSandboxGameMode, Warning, TEXT("%d post processing volumes found."), pps);
     }
 }
 void ASpaceShipGameMode::OnConstruction(FTransform const& transform) {

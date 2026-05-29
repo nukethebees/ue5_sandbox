@@ -4,8 +4,8 @@
 
 static void cmd_sandbox_log(TArray<FString> const& args) {
     if (args.Num() != 1) {
-        UE_LOG(LogSandboxCore, Warning, TEXT("Usage: set_all_sandbox_logs <VerbosityLevel>"));
-        UE_LOG(LogSandboxCore,
+        UE_LOG(LogSandbox, Warning, TEXT("Usage: set_all_sandbox_logs <VerbosityLevel>"));
+        UE_LOG(LogSandbox,
                Warning,
                TEXT("Available levels: NoLogging, Fatal, Error, Warning, Display, Log, Verbose, "
                     "VeryVerbose, All"));
@@ -50,8 +50,8 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
         new_verbosity = ELogVerbosity::All;
     } else {
         valid_verbosity = false;
-        UE_LOG(LogSandboxCore, Warning, TEXT("Invalid verbosity level: %s"), *verbosity_string);
-        UE_LOG(LogSandboxCore,
+        UE_LOG(LogSandbox, Warning, TEXT("Invalid verbosity level: %s"), *verbosity_string);
+        UE_LOG(LogSandbox,
                Warning,
                TEXT("Available levels: NoLogging, Fatal, Error, Warning, Display, Log, Verbose, "
                     "VeryVerbose, All"));
@@ -67,7 +67,7 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
     if (valid_verbosity) {
         set(LogSandboxFrameCount,
             // Systems
-            LogSandboxCore,
+            LogSandbox,
             LogSandboxUI,
             LogSandboxMassEntity,
             LogSandboxCharacter,
@@ -85,7 +85,7 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             // Misc
             LogSandboxLearning);
 
-        UE_LOG(LogSandboxCore,
+        UE_LOG(LogSandbox,
                Display,
                TEXT("Set all sandbox log categories to %s"),
                *verbosity_string);

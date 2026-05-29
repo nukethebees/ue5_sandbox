@@ -17,7 +17,7 @@
 UCLASS()
 class SANDBOX_API AMyGameModeBase
     : public AGameModeBase
-    , public ml::LogMsgMixin<"AMyGameModeBase", LogSandboxCore> {
+    , public ml::LogMsgMixin<"AMyGameModeBase", LogSandboxGameMode> {
     GENERATED_BODY()
   public:
     AMyGameModeBase();

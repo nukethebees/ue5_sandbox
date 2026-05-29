@@ -269,6 +269,7 @@ void ATestTurrets::update_locations_from_components() {
 void ATestTurrets::update_target_rotations() {
     auto const n{attacking.num_turrets()};
 
+    // Update locations
     for (int32 i{0}; i < n; ++i) {
         auto const target_location{attacking.targets[i]->GetActorLocation()};
         attacking.target_location_xs[i] = target_location.X;
@@ -276,7 +277,15 @@ void ATestTurrets::update_target_rotations() {
         attacking.target_location_zs[i] = target_location.Z;
     }
 
-    for (int32 i{0}; i < n; ++i) {}
+    // Update yaws
+    using T = float;
+    for (int32 i{0}; i < n; ++i) {
+        ml::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
+                                         TConstArrayView<T>{attacking.location_ys},
+                                         TConstArrayView<T>{attacking.target_location_xs},
+                                         TConstArrayView<T>{attacking.target_location_ys},
+                                         TArrayView<T>{attacking.target_yaw_degrees});
+    }
 }
 void ATestTurrets::integrate_rotations(float const dt) {
     ml::rotate_towards_1d_degrees_normalised_inplace(

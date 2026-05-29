@@ -1,10 +1,12 @@
 #pragma once
 
-#include "SandboxCore/public/numeric_constants.h"
 #include "SandboxCore/public/array_utils.h"
+#include "SandboxCore/public/log_categories.h"
 #include "SandboxCore/public/numeric.h"
+#include "SandboxCore/public/numeric_constants.h"
 
 #include "CoreMinimal.h"
+#include "Containers/StringConv.h"
 
 #include <algorithm>
 #include <concepts>
@@ -158,19 +160,49 @@ void compute_desired_yaws_radians(T const* RESTRICT const start_xs,
 
 namespace ml {
 template <std::floating_point T>
-bool rotate_towards_1d_degrees_normalised_inplace(TArrayView<T> current,
+void rotate_towards_1d_degrees_normalised_inplace(TArrayView<T> current,
                                                   TConstArrayView<T> target,
                                                   T const speed,
                                                   T const delta_time) noexcept {
     auto const count{current.Num()};
 
-    if (!ml::detail::all_num_equal(count, target)) {
-        return false;
+    auto const are_equal{ml::detail::all_num_equal(count, target)};
+    check(are_equal);
+    if (!are_equal) {
+        UE_LOG(LogSandboxCore,
+               Error,
+               TEXT("rotate_towards_1d_degrees_normalised_inplace: Mismatched array sizes."));
+        checkNoEntry();
+        return;
     }
 
     ml::kernel::rotate_towards_1d_degrees_normalised_inplace(
         current.GetData(), target.GetData(), speed, delta_time, count);
+}
 
-    return true;
+template <std::floating_point T>
+void compute_desired_yaws_radians(TConstArrayView<T> const start_xs,
+                                  TConstArrayView<T> const start_ys,
+                                  TConstArrayView<T> const end_xs,
+                                  TConstArrayView<T> const end_ys,
+                                  TArrayView<T> const out_yaws_radians) {
+    auto const count{start_xs.Num()};
+
+    auto const are_equal{
+        ml::detail::all_num_equal(count, start_ys, end_xs, end_ys, out_yaws_radians)};
+    check(are_equal);
+    if (!are_equal) {
+        UE_LOG(
+            LogSandboxCore, Error, TEXT("compute_desired_yaws_radians: Mismatched array sizes."));
+        checkNoEntry();
+        return;
+    }
+
+    ml::kernel::compute_desired_yaws_radians<T>(start_xs.GetData(),
+                                                start_ys.GetData(),
+                                                end_xs.GetData(),
+                                                end_ys.GetData(),
+                                                out_yaws_radians.GetData(),
+                                                count);
 }
 }

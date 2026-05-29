@@ -191,7 +191,7 @@ auto FDrawDebugConfig::check_world_valid() const -> bool {
         return true;
     }
 
-    UE_LOG(LogSandboxCore, Warning, TEXT("world is invalid"));
+    UE_LOG(LogSandbox, Warning, TEXT("world is invalid"));
 
     return false;
 }

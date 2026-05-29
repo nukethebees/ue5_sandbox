@@ -3,7 +3,7 @@
 DEFINE_LOG_CATEGORY(LogSandboxFrameCount);
 
 // Systems
-DEFINE_LOG_CATEGORY(LogSandboxCore);
+DEFINE_LOG_CATEGORY(LogSandbox);
 DEFINE_LOG_CATEGORY(LogSandboxUI);
 DEFINE_LOG_CATEGORY(LogSandboxMassEntity);
 DEFINE_LOG_CATEGORY(LogSandboxSubsystem);

@@ -7,7 +7,7 @@
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxFrameCount, Log, All);
 
 // Systems
-DECLARE_LOG_CATEGORY_EXTERN(LogSandboxCore, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandbox, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxUI, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxMassEntity, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxAI, Log, All);

@@ -29,13 +29,13 @@ void AKillAllEnemiesGameMode::BeginPlay() {
     TRY_INIT_PTR(my_character, Cast<AMyCharacter>(character_actor));
     pc->Possess(my_character);
 
-    UE_LOG(LogSandboxCore, Verbose, TEXT("Registering actors."));
+    UE_LOG(LogSandboxGameMode, Verbose, TEXT("Registering actors."));
     using T = ATestEnemy;
     for (auto it{TActorIterator<ATestEnemy>{GetWorld()}}; it; ++it) {
         enemies_left++;
         it->on_player_killed.AddUObject(this, &AKillAllEnemiesGameMode::handle_enemy_death);
     }
-    UE_LOG(LogSandboxCore, Verbose, TEXT("Registered %d actors."), enemies_left);
+    UE_LOG(LogSandboxGameMode, Verbose, TEXT("Registered %d actors."), enemies_left);
 }
 
 void AKillAllEnemiesGameMode::handle_enemy_death() {

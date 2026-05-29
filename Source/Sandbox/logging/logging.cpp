@@ -10,7 +10,7 @@ void log_value_is_x(FString const& var_name,
                     std::source_location const loc) {
     FString const fn_name{StringCast<TCHAR>(loc.function_name())};
     FString const file_name{StringCast<TCHAR>(loc.file_name())};
-    UE_LOGFMT(LogSandboxCore,
+    UE_LOGFMT(LogSandbox,
               Warning,
               "{0} is {1}.\n    File: {4}\n    Line: {3}\n    Function: {2}",
               *var_name,
