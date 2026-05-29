@@ -71,7 +71,11 @@ void ATestLasers::configure_ismc() {
     instances->SetMaterial(0, laser_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    instances->SetGenerateOverlapEvents(false);
+
     instances->SetCanEverAffectNavigation(false);
+
+    instances->SetMobility(EComponentMobility::Movable);
 }
 
 // Movement
