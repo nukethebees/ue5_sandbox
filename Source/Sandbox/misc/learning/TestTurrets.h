@@ -163,17 +163,23 @@ class ATestTurrets : public AActor {
 
     void update_locations_from_components();
 
+    // Spawning
+    void create_turrets(int32 const n);
+    void configure_collision(UStaticMeshComponent& sm);
+
+    // Searching
+    bool is_enemy(AActor const& actor) const;
+    void perform_search();
+
+    // Tracking
     void update_target_rotations();
     void integrate_rotations(float const dt);
     void apply_rotations_to_components();
 
-    void create_turrets(int32 const n);
-    void configure_collision(UStaticMeshComponent& sm);
+    // Attacking
+    void fire_when_aligned();
 
-    bool is_enemy(AActor const& actor) const;
-
-    void perform_search();
-    
+    // Transitions
     void handle_transitions_to_searching();
     void handle_transitions_to_attacking();
 

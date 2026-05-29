@@ -194,6 +194,7 @@ ATestTurrets::ATestTurrets()
     PrimaryActorTick.bCanEverTick = true;
 }
 
+// Actor lifecycle
 void ATestTurrets::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
@@ -238,6 +239,8 @@ void ATestTurrets::Tick(float dt) {
     integrate_rotations(dt);
     apply_rotations_to_components();
 
+    fire_when_aligned();
+
     perform_search();
     handle_transitions_to_attacking();
 
@@ -266,36 +269,7 @@ void ATestTurrets::update_locations_from_components() {
     }
 }
 
-void ATestTurrets::update_target_rotations() {
-    auto const n{attacking.num_turrets()};
-
-    // Update locations
-    for (int32 i{0}; i < n; ++i) {
-        auto const target_location{attacking.targets[i]->GetActorLocation()};
-        attacking.target_location_xs[i] = target_location.X;
-        attacking.target_location_ys[i] = target_location.Y;
-        attacking.target_location_zs[i] = target_location.Z;
-    }
-
-    // Update yaws
-    using T = float;
-    for (int32 i{0}; i < n; ++i) {
-        ml::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
-                                         TConstArrayView<T>{attacking.location_ys},
-                                         TConstArrayView<T>{attacking.target_location_xs},
-                                         TConstArrayView<T>{attacking.target_location_ys},
-                                         TArrayView<T>{attacking.target_yaw_radians});
-    }
-}
-void ATestTurrets::integrate_rotations(float const dt) {
-    ml::rotate_towards_1d_radians_normalised_inplace(
-        TArrayView<float>{attacking.yaw_radians},
-        TConstArrayView<float>{attacking.target_yaw_radians},
-        FMath::DegreesToRadians(yaw_rotation_speed_degrees),
-        dt);
-}
-void ATestTurrets::apply_rotations_to_components() {}
-
+// Searching
 bool ATestTurrets::is_enemy(AActor const& actor) const {
     for (auto const& target_class : valid_target_classes) {
         if (actor.IsA(target_class)) {
@@ -305,7 +279,6 @@ bool ATestTurrets::is_enemy(AActor const& actor) const {
 
     return false;
 }
-
 void ATestTurrets::perform_search() {
     auto const n{searching.num_turrets()};
 
@@ -362,6 +335,42 @@ void ATestTurrets::perform_search() {
         }
     }
 }
+
+// Tracking
+void ATestTurrets::update_target_rotations() {
+    auto const n{attacking.num_turrets()};
+
+    // Update locations
+    for (int32 i{0}; i < n; ++i) {
+        auto const target_location{attacking.targets[i]->GetActorLocation()};
+        attacking.target_location_xs[i] = target_location.X;
+        attacking.target_location_ys[i] = target_location.Y;
+        attacking.target_location_zs[i] = target_location.Z;
+    }
+
+    // Update yaws
+    using T = float;
+    for (int32 i{0}; i < n; ++i) {
+        ml::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
+                                         TConstArrayView<T>{attacking.location_ys},
+                                         TConstArrayView<T>{attacking.target_location_xs},
+                                         TConstArrayView<T>{attacking.target_location_ys},
+                                         TArrayView<T>{attacking.target_yaw_radians});
+    }
+}
+void ATestTurrets::integrate_rotations(float const dt) {
+    ml::rotate_towards_1d_radians_normalised_inplace(
+        TArrayView<float>{attacking.yaw_radians},
+        TConstArrayView<float>{attacking.target_yaw_radians},
+        FMath::DegreesToRadians(yaw_rotation_speed_degrees),
+        dt);
+}
+void ATestTurrets::apply_rotations_to_components() {}
+
+// Attacking
+void ATestTurrets::fire_when_aligned() {}
+
+// Transitions
 void ATestTurrets::handle_transitions_to_searching() {
     auto const n_attacking{attacking.num_turrets()};
 
@@ -426,6 +435,7 @@ void ATestTurrets::handle_transitions_to_attacking() {
     searching.attack_targets.Reset();
 }
 
+// Spawning
 void ATestTurrets::create_turrets(int32 const n) {
     if (!turret_config) {
         UE_LOG(LogSandboxLearning, Error, TEXT("Cannot create turrets. Turret config is nullptr."));
@@ -518,12 +528,6 @@ void ATestTurrets::clear_all_turrets() {
     searching.reset();
     attacking.reset();
 }
-
-void ATestTurrets::check_arrays_synced() const {
-    check(searching.array_sizes_consistent());
-    check(attacking.array_sizes_consistent());
-}
-
 #if WITH_EDITOR
 void ATestTurrets::capture_turret_layout(int32 const i) {
     if (!turret_config) {
@@ -570,7 +574,15 @@ void ATestTurrets::create_turrets_button() {
 void ATestTurrets::capture_turret_0_layout_button() {
     capture_turret_layout(0);
 }
+#endif
 
+// Debugging
+void ATestTurrets::check_arrays_synced() const {
+    check(searching.array_sizes_consistent());
+    check(attacking.array_sizes_consistent());
+}
+
+#if WITH_EDITOR
 // Debugging
 void ATestTurrets::draw_debug_shapes() {
     if (log_config.can_tick_log(EActorLoggingVerbosity::Verbose)) {
