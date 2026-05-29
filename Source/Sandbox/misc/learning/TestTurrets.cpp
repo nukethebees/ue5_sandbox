@@ -163,7 +163,8 @@ bool FTestTurretsAttackData::array_sizes_consistent() const {
                                      target_pitch_radians,
                                      target_yaw_radians,
                                      targets,
-                                     healths);
+                                     healths,
+                                     firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(body_meshes);
@@ -239,6 +240,7 @@ void ATestTurrets::Tick(float dt) {
     integrate_rotations(dt);
     apply_rotations_to_components();
 
+    tick_attacking_cooldowns(dt);
     fire_when_aligned();
 
     perform_search();
@@ -368,7 +370,70 @@ void ATestTurrets::integrate_rotations(float const dt) {
 void ATestTurrets::apply_rotations_to_components() {}
 
 // Attacking
-void ATestTurrets::fire_when_aligned() {}
+void ATestTurrets::fire_when_aligned() {
+    auto const n{attacking.num_turrets()};
+
+    auto const fire_threshold{FMath::DegreesToRadians(turret_config->valid_attack_angle_degrees)};
+    auto const cooldown{turret_config->attack_cooldown};
+    auto const laser_class{turret_config->laser_class};
+    auto const laser_damage{turret_config->laser_damage};
+    auto const laser_offset{turret_config->fire_point_offset};
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    for (int32 i{0}; i < n; ++i) {
+        if (attacking.firing_cooldowns[i] > 0.f) {
+            continue;
+        }
+
+        if (attacking.yaw_radians[i] <= fire_threshold) {
+            continue;
+        }
+
+        FVector const base_location{
+            attacking.location_xs[i],
+            attacking.location_ys[i],
+            attacking.location_zs[i],
+        };
+        FVector const fire_point{base_location + laser_offset.GetLocation()};
+
+        FVector const attack_location{
+            attacking.target_location_xs[i],
+            attacking.target_location_ys[i],
+            attacking.target_location_zs[i],
+        };
+#if 0
+        FRotator const attack_direction{
+            FMath::RadiansToDegrees(attacking.pitch_radians[i]),
+            FMath::RadiansToDegrees(attacking.yaw_radians[i]),
+            FMath::RadiansToDegrees(0.f),
+        };
+#else
+        auto const attack_direction{(attack_location - fire_point).GetSafeNormal().Rotation()};
+#endif
+
+        FTransform const laser_transform{
+            attack_direction,
+            fire_point,
+            FVector::OneVector,
+        };
+
+        if (auto* laser{world->SpawnActorDeferred<AShipLaser>(
+                laser_class, laser_transform, this, nullptr)}) {
+            laser->set_damage(laser_damage);
+            laser->FinishSpawning(laser_transform);
+        }
+
+        attacking.firing_cooldowns[i] = cooldown;
+    }
+}
+void ATestTurrets::tick_attacking_cooldowns(float const dt) {
+    auto const n{attacking.num_turrets()};
+
+    for (int32 i{0}; i < n; ++i) {
+        attacking.firing_cooldowns[i] -= dt;
+    }
+}
 
 // Transitions
 void ATestTurrets::handle_transitions_to_searching() {
@@ -409,19 +474,22 @@ void ATestTurrets::handle_transitions_to_searching() {
 void ATestTurrets::handle_transitions_to_attacking() {
     auto const n_to_attack{searching.num_turrets_to_move()};
 
+    constexpr auto add_defaulted{
+        [](int32 const n, auto&... arrays) { (arrays.AddDefaulted(n), ...); }};
+
+    add_defaulted(n_to_attack,
+                  attacking.pitch_radians,
+                  attacking.target_location_xs,
+                  attacking.target_location_ys,
+                  attacking.target_location_zs,
+                  attacking.target_pitch_radians,
+                  attacking.target_yaw_radians,
+                  attacking.firing_cooldowns);
+
     for (int32 move_i{0}; move_i < n_to_attack; ++move_i) {
         auto const turret_i{searching.to_attack[move_i]};
 
         move_common(searching, attacking, turret_i);
-
-        attacking.pitch_radians.AddDefaulted();
-
-        attacking.target_location_xs.AddDefaulted();
-        attacking.target_location_ys.AddDefaulted();
-        attacking.target_location_zs.AddDefaulted();
-
-        attacking.target_pitch_radians.AddDefaulted();
-        attacking.target_yaw_radians.AddDefaulted();
 
         attacking.targets.Add(searching.attack_targets[move_i]);
     }

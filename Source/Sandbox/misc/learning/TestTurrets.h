@@ -139,6 +139,10 @@ struct FTestTurretsAttackData {
     UPROPERTY(VisibleAnywhere)
     TArray<int32> healths;
 
+    // Cooldowns
+    UPROPERTY(VisibleAnywhere)
+    TArray<float> firing_cooldowns;
+
     // Transition
     UPROPERTY(VisibleAnywhere)
     TArray<int32> to_search;
@@ -178,6 +182,7 @@ class ATestTurrets : public AActor {
 
     // Attacking
     void fire_when_aligned();
+    void tick_attacking_cooldowns(float const dt);
 
     // Transitions
     void handle_transitions_to_searching();

@@ -60,6 +60,16 @@ class UTestTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform fire_point_offset{FTransform::Identity};
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 laser_damage{5};
+
+    // Attacking
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float valid_attack_angle_degrees{2.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float attack_cooldown{0.33f};
+
     // Rotation
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float yaw_speed_degrees{60.f};
