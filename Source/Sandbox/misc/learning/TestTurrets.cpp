@@ -37,7 +37,7 @@ void move_common(auto const& from_state, auto& to_state, int32 const i) {
     to_state.location_ys.Add(from_state.location_ys[i]);
     to_state.location_zs.Add(from_state.location_zs[i]);
 
-    to_state.yaw_degrees.Add(from_state.yaw_degrees[i]);
+    to_state.yaw_radians.Add(from_state.yaw_radians[i]);
 
     to_state.healths.Add(from_state.healths[i]);
 };
@@ -61,14 +61,14 @@ auto remove_common(auto& array, int32 const i) {
     remove_elem(array.location_ys, i);
     remove_elem(array.location_zs, i);
 
-    remove_elem(array.yaw_degrees, i);
+    remove_elem(array.yaw_radians, i);
 
     remove_elem(array.healths, i);
 }
 }
 
 auto FTestTurretsSearchData::num_turrets() const -> int32 {
-    return yaw_degrees.Num();
+    return yaw_radians.Num();
 }
 auto FTestTurretsSearchData::num_turrets_to_move() const -> int32 {
     return to_attack.Num();
@@ -85,7 +85,7 @@ void FTestTurretsSearchData::add_uninitialised(int32 const n) {
     location_ys.AddUninitialized(n);
     location_zs.AddUninitialized(n);
 
-    yaw_degrees.AddUninitialized(n);
+    yaw_radians.AddUninitialized(n);
 
     healths.AddUninitialized(n);
 }
@@ -100,7 +100,7 @@ void FTestTurretsSearchData::reset() {
     location_ys.Reset();
     location_zs.Reset();
 
-    yaw_degrees.Reset();
+    yaw_radians.Reset();
 
     to_attack.Reset();
     attack_targets.Reset();
@@ -118,28 +118,28 @@ bool FTestTurretsSearchData::array_sizes_consistent() const {
                                      location_xs,
                                      location_ys,
                                      location_zs,
-                                     yaw_degrees,
+                                     yaw_radians,
                                      healths);
 }
-void FTestTurretsSearchData::rotate_by(float* yaw_degrees,
+void FTestTurretsSearchData::rotate_by(float* yaw_radians,
                                        int32 const n,
                                        float const dt,
                                        float const r) {
     auto const delta{dt * r};
 
     for (int32 i{0}; i < n; ++i) {
-        yaw_degrees[i] += delta;
-        if (yaw_degrees[i] >= 360.f) {
-            yaw_degrees[i] -= 360.f;
+        yaw_radians[i] += delta;
+        if (yaw_radians[i] >= 360.f) {
+            yaw_radians[i] -= 360.f;
         }
     }
 }
 void FTestTurretsSearchData::rotate_by(float const dt, float const r) {
-    rotate_by(yaw_degrees.GetData(), yaw_degrees.Num(), dt, r);
+    rotate_by(yaw_radians.GetData(), yaw_radians.Num(), dt, r);
 }
 
 auto FTestTurretsAttackData::num_turrets() const -> int32 {
-    return yaw_degrees.Num();
+    return yaw_radians.Num();
 }
 auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
     return to_search.Num();
@@ -158,10 +158,10 @@ bool FTestTurretsAttackData::array_sizes_consistent() const {
                                      target_location_xs,
                                      target_location_ys,
                                      target_location_zs,
-                                     pitch_degrees,
-                                     yaw_degrees,
-                                     target_pitch_degrees,
-                                     target_yaw_degrees,
+                                     pitch_radians,
+                                     yaw_radians,
+                                     target_pitch_radians,
+                                     target_yaw_radians,
                                      targets,
                                      healths);
 }
@@ -172,10 +172,10 @@ void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(pitch_pivots);
     ml::destroy_components_array(collision_shapes);
 
-    yaw_degrees.Reset();
-    yaw_degrees.Reset();
-    target_pitch_degrees.Reset();
-    target_yaw_degrees.Reset();
+    yaw_radians.Reset();
+    yaw_radians.Reset();
+    target_pitch_radians.Reset();
+    target_yaw_radians.Reset();
 }
 
 ATestTurrets::ATestTurrets()
@@ -284,20 +284,14 @@ void ATestTurrets::update_target_rotations() {
                                          TConstArrayView<T>{attacking.location_ys},
                                          TConstArrayView<T>{attacking.target_location_xs},
                                          TConstArrayView<T>{attacking.target_location_ys},
-                                         TArrayView<T>{attacking.target_yaw_degrees});
+                                         TArrayView<T>{attacking.target_yaw_radians});
     }
 }
 void ATestTurrets::integrate_rotations(float const dt) {
-    ml::rotate_towards_1d_degrees_normalised_inplace(
-        TArrayView<float>{attacking.pitch_degrees},
-        TConstArrayView<float>{attacking.target_pitch_degrees},
-        pitch_rotation_speed_degrees,
-        dt);
-
-    ml::rotate_towards_1d_degrees_normalised_inplace(
-        TArrayView<float>{attacking.yaw_degrees},
-        TConstArrayView<float>{attacking.target_yaw_degrees},
-        yaw_rotation_speed_degrees,
+    ml::rotate_towards_1d_radians_normalised_inplace(
+        TArrayView<float>{attacking.yaw_radians},
+        TConstArrayView<float>{attacking.target_yaw_radians},
+        FMath::DegreesToRadians(yaw_rotation_speed_degrees),
         dt);
 }
 void ATestTurrets::apply_rotations_to_components() {}
@@ -390,12 +384,12 @@ void ATestTurrets::handle_transitions_to_searching() {
 
         remove_common(attacking, turret_i);
         remove_from_all(turret_i,
-                        attacking.pitch_degrees,
+                        attacking.pitch_radians,
                         attacking.target_location_xs,
                         attacking.target_location_ys,
                         attacking.target_location_zs,
-                        attacking.target_pitch_degrees,
-                        attacking.target_yaw_degrees,
+                        attacking.target_pitch_radians,
+                        attacking.target_yaw_radians,
                         attacking.targets);
     }
 
@@ -411,14 +405,14 @@ void ATestTurrets::handle_transitions_to_attacking() {
 
         move_common(searching, attacking, turret_i);
 
-        attacking.pitch_degrees.AddDefaulted();
+        attacking.pitch_radians.AddDefaulted();
 
         attacking.target_location_xs.AddDefaulted();
         attacking.target_location_ys.AddDefaulted();
         attacking.target_location_zs.AddDefaulted();
 
-        attacking.target_pitch_degrees.AddDefaulted();
-        attacking.target_yaw_degrees.AddDefaulted();
+        attacking.target_pitch_radians.AddDefaulted();
+        attacking.target_yaw_radians.AddDefaulted();
 
         attacking.targets.Add(searching.attack_targets[move_i]);
     }
@@ -512,7 +506,7 @@ void ATestTurrets::create_turrets(int32 const n) {
 
         searching.healths[i] = hp;
 
-        searching.yaw_degrees[i] = 0.f;
+        searching.yaw_radians[i] = 0.f;
     }
 
     check_arrays_synced();
@@ -605,7 +599,7 @@ void ATestTurrets::draw_searching_debug_shapes() {
 
         FRotator const rotation{
             0.0,
-            searching.yaw_degrees[i],
+            searching.yaw_radians[i],
             0.0,
         };
 
@@ -637,9 +631,9 @@ void ATestTurrets::draw_attacking_debug_shapes() {
         }
 
         FRotator const rotation{
-            attacking.pitch_degrees[i],
-            attacking.yaw_degrees[i],
-            0.0,
+            FMath::RadiansToDegrees(attacking.pitch_radians[i]),
+            FMath::RadiansToDegrees(attacking.yaw_radians[i]),
+            FMath::RadiansToDegrees(0.0),
         };
 
         drawer.draw_line(loc, rotation);

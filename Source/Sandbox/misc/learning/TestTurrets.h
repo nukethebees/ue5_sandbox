@@ -37,7 +37,7 @@ struct FTestTurretsSearchData {
 
     void rotate_by(float const dt, float const r);
   private:
-    static void rotate_by(float* yaw_degrees, int32 const n, float dt, float const r);
+    static void rotate_by(float* yaw_radians, int32 const n, float dt, float const r);
   public:
     // Visuals
     UPROPERTY(EditAnywhere)
@@ -65,7 +65,7 @@ struct FTestTurretsSearchData {
 
     // Rotation
     UPROPERTY(VisibleAnywhere)
-    TArray<float> yaw_degrees{};
+    TArray<float> yaw_radians{};
 
     // Health
     UPROPERTY(VisibleAnywhere)
@@ -122,14 +122,14 @@ struct FTestTurretsAttackData {
 
     // Rotation
     UPROPERTY(VisibleAnywhere)
-    TArray<float> pitch_degrees{};
+    TArray<float> pitch_radians{};
     UPROPERTY(VisibleAnywhere)
-    TArray<float> yaw_degrees{};
+    TArray<float> yaw_radians{};
 
     UPROPERTY(VisibleAnywhere)
-    TArray<float> target_pitch_degrees{};
+    TArray<float> target_pitch_radians{};
     UPROPERTY(VisibleAnywhere)
-    TArray<float> target_yaw_degrees{};
+    TArray<float> target_yaw_radians{};
 
     // Targets
     UPROPERTY(VisibleAnywhere)
