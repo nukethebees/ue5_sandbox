@@ -1,0 +1,39 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Containers/EnumAsByte.h"
+#include "Engine/DataAsset.h"
+#include "Engine/EngineTypes.h"
+
+#include "TestLasersConfig.generated.h"
+
+class UStaticMesh;
+class UMaterialInterface;
+
+UCLASS()
+class UTestLasersConfig : public UDataAsset {
+    GENERATED_BODY()
+  public:
+    auto is_ready() const noexcept -> bool;
+
+    UPROPERTY(EditAnywhere)
+    TObjectPtr<UStaticMesh> mesh;
+
+    UPROPERTY(EditAnywhere)
+    TObjectPtr<UMaterialInterface> material;
+
+    UPROPERTY(EditAnywhere)
+    float speed{5000.0f};
+
+    UPROPERTY(EditAnywhere)
+    float lifetime{20.0f};
+
+    UPROPERTY(EditAnywhere)
+    float damage{10.0f};
+
+    UPROPERTY(EditAnywhere)
+    float radius{5.0f};
+
+    UPROPERTY(EditAnywhere)
+    TEnumAsByte<ECollisionChannel> collision_channel{ECC_Visibility};
+};

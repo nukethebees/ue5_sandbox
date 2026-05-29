@@ -1,0 +1,62 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
+#include "TestLasers.generated.h"
+
+class USceneComponent;
+class UInstancedStaticMeshComponent;
+
+class UTestLasersConfig;
+
+UCLASS()
+class ATestLasers : public AActor {
+    GENERATED_BODY()
+  public:
+    ATestLasers();
+
+    void Tick(float dt) override;
+
+    // Accessors
+    auto get_num_instances() const noexcept -> int32;
+
+    // Spawning / configuration
+    void spawn_laser(FTransform const& transform, AActor const& owner_to_ignore);
+  protected:
+    void BeginPlay() override;
+
+    // Spawning / Configuration
+    void configure_ismc();
+
+    // Movement
+    void update_locations(float const dt);
+    void handle_collisions(float const dt);
+
+    // Visuals
+    void update_ismc();
+
+    // Lifetimes
+    void tick_lifetimes(float const dt);
+    void prune_old_instances();
+
+    // Debugging
+    bool array_sizes_consistent() const;
+
+    UPROPERTY(EditAnywhere, Category = "Laser")
+    TObjectPtr<UTestLasersConfig> laser_config{nullptr};
+
+    UPROPERTY()
+    TObjectPtr<UInstancedStaticMeshComponent> instances;
+
+    UPROPERTY()
+    TArray<FTransform> transforms;
+    UPROPERTY()
+    TArray<FVector> velocities;
+
+    UPROPERTY()
+    TArray<float> lifetimes;
+
+    UPROPERTY()
+    TArray<int32> to_remove;
+};

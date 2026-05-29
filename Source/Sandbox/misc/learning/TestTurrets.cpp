@@ -1,9 +1,9 @@
 #include "TestTurrets.h"
 
-#include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
 #include "Sandbox/utilities/vision_maths.h"
+#include "TestLasers.h"
 #include "TestTurretsConfig.h"
 
 #include <SandboxCore/Public/actor_components.h>
@@ -110,16 +110,16 @@ void FTestTurretsSearchData::reset() {
 bool FTestTurretsSearchData::array_sizes_consistent() const {
     auto const n{body_meshes.Num()};
 
-    return ml::detail::all_num_equal(n,
-                                     cannon_meshes,
-                                     yaw_pivots,
-                                     pitch_pivots,
-                                     collision_shapes,
-                                     location_xs,
-                                     location_ys,
-                                     location_zs,
-                                     yaw_radians,
-                                     healths);
+    return ml::all_num_equal_to(n,
+                                cannon_meshes,
+                                yaw_pivots,
+                                pitch_pivots,
+                                collision_shapes,
+                                location_xs,
+                                location_ys,
+                                location_zs,
+                                yaw_radians,
+                                healths);
 }
 void FTestTurretsSearchData::rotate_by(float* yaw_radians,
                                        int32 const n,
@@ -147,24 +147,24 @@ auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
 bool FTestTurretsAttackData::array_sizes_consistent() const {
     auto const n{body_meshes.Num()};
 
-    return ml::detail::all_num_equal(n,
-                                     cannon_meshes,
-                                     yaw_pivots,
-                                     pitch_pivots,
-                                     collision_shapes,
-                                     location_xs,
-                                     location_ys,
-                                     location_zs,
-                                     target_location_xs,
-                                     target_location_ys,
-                                     target_location_zs,
-                                     pitch_radians,
-                                     yaw_radians,
-                                     target_pitch_radians,
-                                     target_yaw_radians,
-                                     targets,
-                                     healths,
-                                     firing_cooldowns);
+    return ml::all_num_equal_to(n,
+                                cannon_meshes,
+                                yaw_pivots,
+                                pitch_pivots,
+                                collision_shapes,
+                                location_xs,
+                                location_ys,
+                                location_zs,
+                                target_location_xs,
+                                target_location_ys,
+                                target_location_zs,
+                                pitch_radians,
+                                yaw_radians,
+                                target_pitch_radians,
+                                target_yaw_radians,
+                                targets,
+                                healths,
+                                firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(body_meshes);
@@ -207,6 +207,13 @@ void ATestTurrets::OnConstruction(FTransform const& transform) {
 void ATestTurrets::BeginPlay() {
     Super::BeginPlay();
 
+    if (!laser_actor) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("laser_actor is nullptr"));
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    check(turret_config);
     if (!turret_config) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("turret_config is nullptr"));
         SetActorTickEnabled(false);
@@ -402,27 +409,17 @@ void ATestTurrets::fire_when_aligned() {
             attacking.target_location_ys[i],
             attacking.target_location_zs[i],
         };
-#if 0
-        FRotator const attack_direction{
-            FMath::RadiansToDegrees(attacking.pitch_radians[i]),
-            FMath::RadiansToDegrees(attacking.yaw_radians[i]),
-            FMath::RadiansToDegrees(0.f),
-        };
-#else
-        auto const attack_direction{(attack_location - fire_point).GetSafeNormal().Rotation()};
-#endif
+
+        auto const attack_direction_vec{(attack_location - fire_point).GetSafeNormal()};
+        auto const attack_direction_rot{attack_direction_vec.Rotation()};
 
         FTransform const laser_transform{
-            attack_direction,
+            attack_direction_rot,
             fire_point,
             FVector::OneVector,
         };
 
-        if (auto* laser{world->SpawnActorDeferred<AShipLaser>(
-                laser_class, laser_transform, this, nullptr)}) {
-            laser->set_damage(laser_damage);
-            laser->FinishSpawning(laser_transform);
-        }
+        laser_actor->spawn_laser(laser_transform, *this);
 
         attacking.firing_cooldowns[i] = cooldown;
     }

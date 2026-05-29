@@ -13,7 +13,7 @@ class UBoxComponent;
 class UCapsuleComponent;
 class UArrowComponent;
 
-class AShipLaser;
+class ATestLasers;
 class UTestTurretsConfig;
 
 UENUM()
@@ -211,6 +211,8 @@ class ATestTurrets : public AActor {
     // Config
     UPROPERTY(EditAnywhere, Category = "Turret")
     TObjectPtr<UTestTurretsConfig> turret_config{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    TObjectPtr<ATestLasers> laser_actor{nullptr};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Turret")
