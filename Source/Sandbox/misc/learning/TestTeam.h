@@ -10,4 +10,5 @@ enum class ETestTeam : uint8 {
     foo,
     bar,
     baz,
+    COUNT,
 };
