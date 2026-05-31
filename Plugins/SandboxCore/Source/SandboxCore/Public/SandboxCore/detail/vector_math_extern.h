@@ -20,18 +20,32 @@ ML_EXTERN_FN(double);
 ML_EXTERN_FN(int32);
 #undef ML_EXTERN_FN
 
-#define ML_EXTERN_FN(T)                                                                  \
+#define ML_EXTERN_FN(T)                                                                   \
     extern template SANDBOXCORE_API void add_vector3_in_place<T>(T * dst_x,               \
-                                                                T * dst_y,               \
-                                                                T * dst_z,               \
-                                                                T const* RESTRICT src_x, \
-                                                                T const* RESTRICT src_y, \
-                                                                T const* RESTRICT src_z, \
-                                                                int32 const count) noexcept
+                                                                 T * dst_y,               \
+                                                                 T * dst_z,               \
+                                                                 T const* RESTRICT src_x, \
+                                                                 T const* RESTRICT src_y, \
+                                                                 T const* RESTRICT src_z, \
+                                                                 int32 const count) noexcept
 ML_EXTERN_FN(uint8);
 ML_EXTERN_FN(float);
 ML_EXTERN_FN(double);
 ML_EXTERN_FN(int32);
 #undef ML_EXTERN_FN
 
+#define ML_EXTERN_FN(T)                                          \
+    extern template SANDBOXCORE_API void size_squared_vector<T>( \
+        T const* RESTRICT vecs, int32 const count, VectorElementT<T>* RESTRICT out) noexcept
+ML_EXTERN_FN(FVector);
+#undef ML_EXTERN_FN
+
+#define ML_EXTERN_FN(T)                                                               \
+    extern template SANDBOXCORE_API void size_squared_vector<T>(T const* RESTRICT xs, \
+                                                                T const* RESTRICT ys, \
+                                                                T const* RESTRICT zs, \
+                                                                int32 const count,    \
+                                                                T* RESTRICT out) noexcept
+ML_EXTERN_FN(float);
+#undef ML_EXTERN_FN
 }
