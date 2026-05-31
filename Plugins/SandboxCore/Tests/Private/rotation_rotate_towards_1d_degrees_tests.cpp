@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/rotation.h"
+#include "SandboxCore/rotation.h"
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"

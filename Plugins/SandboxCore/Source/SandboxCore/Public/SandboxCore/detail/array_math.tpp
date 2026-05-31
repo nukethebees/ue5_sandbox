@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxCore/Public/numeric.h>
+#include <SandboxCore/numeric.h>
 
 #include "CoreMinimal.h"
 

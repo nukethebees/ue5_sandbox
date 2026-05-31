@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxCore/Public/generation_index.h"
+#include "SandboxCore/generation_index.h"
 #include "TestTeam.h"
 
 #include "CoreMinimal.h"

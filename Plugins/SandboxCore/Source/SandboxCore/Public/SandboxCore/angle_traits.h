@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxCore/Public/numeric_constants.h>
+#include <SandboxCore/numeric_constants.h>
 
 #include <concepts>
 

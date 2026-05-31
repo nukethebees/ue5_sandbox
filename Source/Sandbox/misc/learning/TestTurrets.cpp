@@ -6,10 +6,10 @@
 #include "TestLasers.h"
 #include "TestTurretsConfig.h"
 
-#include <SandboxCore/Public/actor_components.h>
-#include <SandboxCore/Public/array_utils.h>
-#include <SandboxCore/Public/interpolation.h>
-#include <SandboxCore/Public/rotation.h>
+#include <SandboxCore/actor_components.h>
+#include <SandboxCore/array_utils.h>
+#include <SandboxCore/interpolation.h>
+#include <SandboxCore/rotation.h>
 
 #include "CollisionShape.h"
 #include "Components/ArrowComponent.h"

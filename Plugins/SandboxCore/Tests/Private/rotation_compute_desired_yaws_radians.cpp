@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/rotation.h"
+#include "SandboxCore/rotation.h"
 
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 

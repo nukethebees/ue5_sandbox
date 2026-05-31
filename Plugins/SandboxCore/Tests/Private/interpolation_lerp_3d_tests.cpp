@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/interpolation.h"
+#include "SandboxCore/interpolation.h"
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"

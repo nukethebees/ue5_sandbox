@@ -4,7 +4,7 @@
 #include "TestCapitalShips.h"
 #include "TestCapitalShipsConfig.h"
 
-#include <SandboxCore/Public/actor_components.h>
+#include <SandboxCore/actor_components.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>

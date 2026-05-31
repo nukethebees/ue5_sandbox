@@ -4,7 +4,7 @@
 #include "TestCapitalShipFightersConfig.h"
 #include "TestLasers.h"
 
-#include <SandboxCore/Public/array_math.h>
+#include <SandboxCore/array_math.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>

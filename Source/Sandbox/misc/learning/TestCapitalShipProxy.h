@@ -2,7 +2,7 @@
 
 #include "TestTeam.h"
 
-#include <SandboxCore/Public/generation_index.h>
+#include <SandboxCore/generation_index.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

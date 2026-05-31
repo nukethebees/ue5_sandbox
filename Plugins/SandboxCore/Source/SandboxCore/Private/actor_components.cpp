@@ -1,2 +1,2 @@
-#include <SandboxCore/Public/actor_components.h>
+#include <SandboxCore/actor_components.h>
 

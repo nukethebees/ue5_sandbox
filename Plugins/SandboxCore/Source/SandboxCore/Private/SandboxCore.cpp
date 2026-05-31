@@ -1,6 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "SandboxCore.h"
+#include "SandboxCore/SandboxCore.h"
 
 #define LOCTEXT_NAMESPACE "FSandboxCoreModule"
 

@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/interpolation.h"
+#include "SandboxCore/interpolation.h"
 
 namespace ml::kernel {
 #define ML_INSTANTIATE_FN(T)                                       \

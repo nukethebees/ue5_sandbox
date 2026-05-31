@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/vector_math.h"
+#include "SandboxCore/vector_math.h"
 
 namespace ml::kernel {
 #define ML_INSTANTIATE_VEC3(T)                                      \

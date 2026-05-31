@@ -5,9 +5,9 @@
 #include "TestCapitalShipProxy.h"
 #include "TestCapitalShipsConfig.h"
 
-#include <SandboxCore/Public/actor_components.h>
-#include <SandboxCore/Public/array_math.h>
-#include <SandboxCore/Public/array_utils.h>
+#include <SandboxCore/actor_components.h>
+#include <SandboxCore/array_math.h>
+#include <SandboxCore/array_utils.h>
 
 #include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>

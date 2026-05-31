@@ -1,4 +1,4 @@
-#include "SandboxCore/Public/array_math.h"
+#include "SandboxCore/array_math.h"
 
 namespace ml::detail {
 #define ML_EXTERN_FN(T)                                 \

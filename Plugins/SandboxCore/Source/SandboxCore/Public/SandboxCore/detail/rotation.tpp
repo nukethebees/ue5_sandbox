@@ -1,11 +1,11 @@
 #pragma once
 
-#include "SandboxCore/Public/angle_traits.h"
-#include "SandboxCore/Public/angle_unit.h"
-#include "SandboxCore/Public/array_utils.h"
-#include "SandboxCore/Public/log_categories.h"
-#include "SandboxCore/Public/numeric.h"
-#include "SandboxCore/Public/numeric_constants.h"
+#include "SandboxCore/angle_traits.h"
+#include "SandboxCore/angle_unit.h"
+#include "SandboxCore/array_utils.h"
+#include "SandboxCore/log_categories.h"
+#include "SandboxCore/numeric.h"
+#include "SandboxCore/numeric_constants.h"
 
 #include "CoreMinimal.h"
 #include "Containers/StringConv.h"

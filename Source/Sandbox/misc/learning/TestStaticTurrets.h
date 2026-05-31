@@ -2,7 +2,7 @@
 
 #include "TestTeam.h"
 
-#include "SandboxCore/Public/countdown_timers.h"
+#include "SandboxCore/countdown_timers.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

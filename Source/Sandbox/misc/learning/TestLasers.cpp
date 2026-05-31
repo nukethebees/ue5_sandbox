@@ -3,7 +3,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestLasersConfig.h"
 
-#include <SandboxCore/Public/array_utils.h>
+#include <SandboxCore/array_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
