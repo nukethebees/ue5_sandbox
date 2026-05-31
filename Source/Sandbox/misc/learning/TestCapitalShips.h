@@ -28,6 +28,10 @@ class ATestCapitalShips : public AActor {
   protected:
     void BeginPlay() override;
 
+    // Visuals
+    void configure_ismc();
+
+    // Misc
     void clear_runtime_state();
 
     // Debugging

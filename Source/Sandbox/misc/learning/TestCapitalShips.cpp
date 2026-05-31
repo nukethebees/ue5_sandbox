@@ -1,6 +1,7 @@
 #include "TestCapitalShips.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestCapitalShipsConfig.h"
 
 #include <SandboxCore/Public/actor_components.h>
 #include <SandboxCore/Public/array_utils.h>
@@ -39,6 +40,8 @@ void ATestCapitalShips::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+
+    configure_ismc();
 }
 void ATestCapitalShips::Tick(float dt) {
     Super::Tick(dt);
@@ -49,8 +52,31 @@ void ATestCapitalShips::Tick(float dt) {
 }
 
 // Spawning
-void ATestCapitalShips::spawn_ship(FTransform const& proxy) {
+void ATestCapitalShips::spawn_ship(FTransform const& transform) {
+    instances->AddInstance(transform, true);
+
+    // Collision
+    auto const collision_name{
+        MakeUniqueObjectName(this, UBoxComponent::StaticClass(), TEXT("Box"))};
+    auto* collision{NewObject<UBoxComponent>(this, collision_name)};
+
+    collision->SetupAttachment(RootComponent);
+    collision->RegisterComponent();
+    AddInstanceComponent(collision);
+    collision_boxes.Add(collision);
+
+    // Data
+    transforms.Add(transform);
+    targets.Add(nullptr);
+    target_entity_indexes.AddDefaulted();
+
     check(array_sizes_consistent());
+}
+
+// Visuals
+void ATestCapitalShips::configure_ismc() {
+    instances->SetStaticMesh(ship_config->mesh);
+    instances->SetMobility(EComponentMobility::Movable);
 }
 
 // Misc

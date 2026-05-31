@@ -441,6 +441,10 @@
 		{
 			"Name": "SteamController",
 			"Enabled": true
+		},
+		{
+			"Name": "AdvancedRenamer",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
