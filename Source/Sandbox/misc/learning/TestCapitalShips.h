@@ -68,11 +68,10 @@ class ATestCapitalShips : public AActor {
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
-    UPROPERTY()
-    TArray<int32> ships_ready_to_spawn_fighters;
-
     UPROPERTY(EditAnywhere, Category = "Ship")
     FCountdownTimers spawn_timers;
+    UPROPERTY()
+    TArray<int32> ships_ready_to_spawn_fighters;
 
     // Teams
     UPROPERTY(VisibleAnywhere, Category = "Ship")
