@@ -21,7 +21,7 @@ ML_EXTERN_FN(int32);
 #undef ML_EXTERN_FN
 
 #define ML_EXTERN_FN(T)                                                                  \
-    extern template SANDBOXCORE_API void add_vector3_inplace<T>(T * dst_x,               \
+    extern template SANDBOXCORE_API void add_vector3_in_place<T>(T * dst_x,               \
                                                                 T * dst_y,               \
                                                                 T * dst_z,               \
                                                                 T const* RESTRICT src_x, \

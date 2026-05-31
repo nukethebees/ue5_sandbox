@@ -239,26 +239,26 @@ TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple 
 }
 
 // -------------------------------------------------------------------------------------------------
-// check_rotate_towards_inplace
+// check_rotate_towards_in_place
 // -------------------------------------------------------------------------------------------------
 
 namespace {
-void check_rotate_towards_inplace(
+void check_rotate_towards_in_place(
     TArray<float> current, TArray<float> const& target, float const speed, float const delta_time, TArray<float> const& expected) {
     REQUIRE(current.Num() == target.Num());
     REQUIRE(current.Num() == expected.Num());
 
-    ml::kernel::rotate_towards_1d_degrees_normalised_inplace(current.GetData(), target.GetData(), speed, delta_time, current.Num());
+    ml::kernel::rotate_towards_1d_degrees_normalised_in_place(current.GetData(), target.GetData(), speed, delta_time, current.Num());
 
     CHECK(current == expected);
 }
 
 void
-    check_rotate_towards_inplace(float const current, float const target, float const speed, float const delta_time, float const expected) {
+    check_rotate_towards_in_place(float const current, float const target, float const speed, float const delta_time, float const expected) {
     auto current_array{TArray<float>{current}};
     auto const target_array{TArray<float>{target}};
 
-    ml::kernel::rotate_towards_1d_degrees_normalised_inplace(
+    ml::kernel::rotate_towards_1d_degrees_normalised_in_place(
         current_array.GetData(), target_array.GetData(), speed, delta_time, current_array.Num());
 
     CHECK(current_array[0] == expected);
@@ -267,42 +267,42 @@ void
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace does nothing when already at target",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace({0.0f, 90.0f, -90.0f}, {0.0f, 90.0f, -90.0f}, 90.0f, 1.0f, {0.0f, 90.0f, -90.0f});
+    check_rotate_towards_in_place({0.0f, 90.0f, -90.0f}, {0.0f, 90.0f, -90.0f}, 90.0f, 1.0f, {0.0f, 90.0f, -90.0f});
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates towards target without overshoot",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(0.0f, 90.0f, 30.0f, 1.0f, 30.0f);
-    check_rotate_towards_inplace(90.0f, 0.0f, 30.0f, 1.0f, 60.0f);
+    check_rotate_towards_in_place(0.0f, 90.0f, 30.0f, 1.0f, 30.0f);
+    check_rotate_towards_in_place(90.0f, 0.0f, 30.0f, 1.0f, 60.0f);
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace snaps to target when step reaches target",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(0.0f, 30.0f, 90.0f, 1.0f, 30.0f);
-    check_rotate_towards_inplace(30.0f, 0.0f, 90.0f, 1.0f, 0.0f);
+    check_rotate_towards_in_place(0.0f, 30.0f, 90.0f, 1.0f, 30.0f);
+    check_rotate_towards_in_place(30.0f, 0.0f, 90.0f, 1.0f, 0.0f);
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace uses delta time", "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(0.0f, 90.0f, 60.0f, 0.5f, 30.0f);
+    check_rotate_towards_in_place(0.0f, 90.0f, 60.0f, 0.5f, 30.0f);
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace does nothing when speed is zero",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace({0.0f, 45.0f, -45.0f}, {90.0f, 90.0f, -90.0f}, 0.0f, 1.0f, {0.0f, 45.0f, -45.0f});
+    check_rotate_towards_in_place({0.0f, 45.0f, -45.0f}, {90.0f, 90.0f, -90.0f}, 0.0f, 1.0f, {0.0f, 45.0f, -45.0f});
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates across positive wrap boundary",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(170.0f, -170.0f, 10.0f, 1.0f, -180.0f);
+    check_rotate_towards_in_place(170.0f, -170.0f, 10.0f, 1.0f, -180.0f);
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates across negative wrap boundary",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(-170.0f, 170.0f, 10.0f, 1.0f, -180.0f);
+    check_rotate_towards_in_place(-170.0f, 170.0f, 10.0f, 1.0f, -180.0f);
 }
 
 TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace handles mixed batch",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
-    check_rotate_towards_inplace(
+    check_rotate_towards_in_place(
         {0.0f, 90.0f, 170.0f, -170.0f}, {90.0f, 0.0f, -170.0f, 170.0f}, 10.0f, 1.0f, {10.0f, 80.0f, -180.0f, -180.0f});
 }

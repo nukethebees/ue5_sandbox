@@ -149,7 +149,7 @@ void rotate_towards_1d_normalised(T const* RESTRICT current,
 }
 
 template <template <typename> typename AngleTraits, std::floating_point T>
-void rotate_towards_1d_normalised_inplace(T* RESTRICT current,
+void rotate_towards_1d_normalised_in_place(T* RESTRICT current,
                                           T const* RESTRICT target,
                                           T const speed,
                                           T const delta_time,
@@ -221,21 +221,21 @@ void rotate_towards_1d_radians_normalised(T const* RESTRICT current,
 }
 
 template <std::floating_point T>
-void rotate_towards_1d_degrees_normalised_inplace(T* RESTRICT current,
+void rotate_towards_1d_degrees_normalised_in_place(T* RESTRICT current,
                                                   T const* RESTRICT target,
                                                   T const speed,
                                                   T const delta_time,
                                                   int32 const count) noexcept {
-    ml::kernel::detail::rotate_towards_1d_normalised_inplace<DegreesAngleTraits, T>(
+    ml::kernel::detail::rotate_towards_1d_normalised_in_place<DegreesAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
 template <std::floating_point T>
-void rotate_towards_1d_radians_normalised_inplace(T* RESTRICT current,
+void rotate_towards_1d_radians_normalised_in_place(T* RESTRICT current,
                                                   T const* RESTRICT target,
                                                   T const speed,
                                                   T const delta_time,
                                                   int32 const count) noexcept {
-    ml::kernel::detail::rotate_towards_1d_normalised_inplace<RadiansAngleTraits, T>(
+    ml::kernel::detail::rotate_towards_1d_normalised_in_place<RadiansAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
 
@@ -257,7 +257,7 @@ void compute_desired_yaws_radians(T const* RESTRICT const start_xs,
 
 namespace ml::detail {
 template <template <typename> typename AngleTraits, std::floating_point T>
-void rotate_towards_1d_normalised_inplace(TArrayView<T> current,
+void rotate_towards_1d_normalised_in_place(TArrayView<T> current,
                                           TConstArrayView<T> target,
                                           T const speed,
                                           T const delta_time) noexcept {
@@ -268,32 +268,32 @@ void rotate_towards_1d_normalised_inplace(TArrayView<T> current,
     if (!are_equal) {
         UE_LOG(LogSandboxCore,
                Error,
-               TEXT("rotate_towards_1d_normalised_inplace: Mismatched array sizes."));
+               TEXT("rotate_towards_1d_normalised_in_place: Mismatched array sizes."));
         checkNoEntry();
         return;
     }
 
-    ml::kernel::detail::rotate_towards_1d_normalised_inplace<AngleTraits, T>(
+    ml::kernel::detail::rotate_towards_1d_normalised_in_place<AngleTraits, T>(
         current.GetData(), target.GetData(), speed, delta_time, count);
 }
 } // namespace ml::detail
 
 namespace ml {
 template <std::floating_point T>
-void rotate_towards_1d_degrees_normalised_inplace(TArrayView<T> current,
+void rotate_towards_1d_degrees_normalised_in_place(TArrayView<T> current,
                                                   TConstArrayView<T> target,
                                                   T const speed,
                                                   T const delta_time) noexcept {
-    ml::detail::rotate_towards_1d_normalised_inplace<DegreesAngleTraits, T>(
+    ml::detail::rotate_towards_1d_normalised_in_place<DegreesAngleTraits, T>(
         current, target, speed, delta_time);
 }
 
 template <std::floating_point T>
-void rotate_towards_1d_radians_normalised_inplace(TArrayView<T> current,
+void rotate_towards_1d_radians_normalised_in_place(TArrayView<T> current,
                                                   TConstArrayView<T> target,
                                                   T const speed,
                                                   T const delta_time) noexcept {
-    ml::detail::rotate_towards_1d_normalised_inplace<RadiansAngleTraits, T>(
+    ml::detail::rotate_towards_1d_normalised_in_place<RadiansAngleTraits, T>(
         current, target, speed, delta_time);
 }
 

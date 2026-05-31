@@ -25,7 +25,7 @@ void add_vector3(T const* RESTRICT lhs_x,
 }
 
 template <Numeric T>
-void add_vector3_inplace(T* dst_x,
+void add_vector3_in_place(T* dst_x,
                          T* dst_y,
                          T* dst_z,
                          T const* RESTRICT src_x,

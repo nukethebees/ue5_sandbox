@@ -20,7 +20,7 @@ ML_INSTANTIATE_VEC3(int32);
 #undef ML_INSTANTIATE_VEC3
 
 #define ML_INSTANTIATE_VEC3(T)                                                    \
-    template SANDBOXCORE_API void add_vector3_inplace<T>(T * dst_x,               \
+    template SANDBOXCORE_API void add_vector3_in_place<T>(T * dst_x,               \
                                                          T * dst_y,               \
                                                          T * dst_z,               \
                                                          T const* RESTRICT src_x, \

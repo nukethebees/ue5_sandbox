@@ -368,7 +368,7 @@ void ATestTurrets::update_target_rotations() {
     }
 }
 void ATestTurrets::integrate_rotations(float const dt) {
-    ml::rotate_towards_1d_radians_normalised_inplace(
+    ml::rotate_towards_1d_radians_normalised_in_place(
         TArrayView<float>{attacking.yaw_radians},
         TConstArrayView<float>{attacking.target_yaw_radians},
         FMath::DegreesToRadians(yaw_rotation_speed_degrees),
