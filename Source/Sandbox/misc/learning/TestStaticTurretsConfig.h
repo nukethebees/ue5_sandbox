@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/utilities/DrawDebugConfig.h"
+
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
@@ -22,4 +24,7 @@ class UTestStaticTurretsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform fire_point_offset{FTransform::Identity};
+
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
 };

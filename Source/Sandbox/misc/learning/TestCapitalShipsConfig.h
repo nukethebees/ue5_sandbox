@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/utilities/DrawDebugConfig.h"
+
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
@@ -15,6 +17,11 @@ class UTestCapitalShipsConfig : public UDataAsset {
   public:
     UTestCapitalShipsConfig() = default;
 
+#if WITH_EDITOR
+    void PostEditChangeProperty(FPropertyChangedEvent& event) override;
+    void PostLoad() override;
+#endif
+
     // Visuals
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -24,4 +31,9 @@ class UTestCapitalShipsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
+
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+  private:
+    void synchronise_data();
 };

@@ -18,6 +18,8 @@ class ATestStaticTurrets : public AActor {
     ATestStaticTurrets();
 
     void Tick(float dt) override;
+
+    void spawn_instance(FTransform const& transform);
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
@@ -25,7 +27,7 @@ class ATestStaticTurrets : public AActor {
     void configure_ismc();
 
     UPROPERTY(EditAnywhere, Category = "Laser")
-    TObjectPtr<UTestStaticTurretsConfig> turrets_config{nullptr};
+    TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;

@@ -11,17 +11,17 @@ ATestStaticTurrets::ATestStaticTurrets()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
+    RootComponent->SetMobility(EComponentMobility::Static);
+    instances->SetMobility(EComponentMobility::Static);
+
     instances->SetupAttachment(RootComponent);
 }
 
 // Actor life cycle
-void ATestStaticTurrets::Tick(float dt) {
-    Super::Tick(dt);
-}
 void ATestStaticTurrets::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    if (!turrets_config) {
+    if (!actor_config) {
         return;
     }
 
@@ -29,12 +29,29 @@ void ATestStaticTurrets::OnConstruction(FTransform const& transform) {
 }
 void ATestStaticTurrets::BeginPlay() {
     Super::BeginPlay();
+
+    if (actor_config == nullptr) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: actor_config is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    configure_ismc();
+}
+void ATestStaticTurrets::Tick(float dt) {
+    Super::Tick(dt);
 }
 
 void ATestStaticTurrets::configure_ismc() {
+    RootComponent->SetMobility(EComponentMobility::Static);
+
     instances->SetCanEverAffectNavigation(false);
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    instances->SetMobility(EComponentMobility::Static);
 
-    instances->SetStaticMesh(turrets_config->mesh);
+    instances->SetStaticMesh(actor_config->mesh);
+}
+
+// Spawning
+void ATestStaticTurrets::spawn_instance(FTransform const& transform) {
+    instances->AddInstance(transform, true);
 }

@@ -21,11 +21,18 @@ class ATestCapitalShips : public AActor {
 
     ATestCapitalShips();
 
+    void PostInitializeComponents() override;
     void Tick(float dt) override;
 
     void spawn_ship(FTransform const& transform);
   protected:
     void BeginPlay() override;
+
+    void clear_runtime_state();
+
+    // Debugging
+    bool array_sizes_consistent() const;
+    void draw_debugging_shapes() const;
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
@@ -45,4 +52,7 @@ class ATestCapitalShips : public AActor {
     TArray<TWeakObjectPtr<ATestCapitalShips>> targets;
     UPROPERTY()
     TArray<FGenerationIndex> target_entity_indexes;
+
+    UPROPERTY()
+    bool debugging_shapes_enabled{false};
 };

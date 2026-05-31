@@ -1,6 +1,7 @@
 #include "TestStaticTurretsProxy.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestStaticTurrets.h"
 #include "TestStaticTurretsConfig.h"
 
 #include <Components/CapsuleComponent.h>
@@ -39,10 +40,11 @@ void ATestStaticTurretsProxy::BeginPlay() {
     Super::BeginPlay();
 
     if (!batch_actor) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipProxy: batch_actor is nullptr."));
+        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurretsProxy: batch_actor is nullptr."));
         return;
     }
 
+    batch_actor->spawn_instance(GetActorTransform());
     Destroy();
 }
 

@@ -9,6 +9,7 @@
 
 class UStaticMeshComponent;
 class UBoxComponent;
+class UArrowComponent;
 
 class UTestCapitalShipsConfig;
 class ATestCapitalShips;
@@ -24,6 +25,8 @@ class ATestCapitalShipProxy : public AActor {
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Ship")
+    void spawn_fighter_spawn_slots();
+    UFUNCTION(CallInEditor, Category = "Ship")
     void save_configuration_to_asset();
 #endif
 
@@ -37,7 +40,7 @@ class ATestCapitalShipProxy : public AActor {
     TObjectPtr<UBoxComponent> collision_box{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
-    TArray<TObjectPtr<USceneComponent>> fighter_spawn_slots;
+    TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShips> batch_actor{nullptr};
