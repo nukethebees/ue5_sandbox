@@ -14,6 +14,7 @@ class UInstancedStaticMeshComponent;
 class ATestStaticTurretsProxy;
 class UTestStaticTurretsConfig;
 class ATestLasers;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestStaticTurrets : public AActor {
@@ -25,6 +26,8 @@ class ATestStaticTurrets : public AActor {
     void Tick(float dt) override;
 
     void spawn_instance(FTransform const& transform);
+
+    auto get_num_instances() const noexcept -> int32;
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
@@ -40,6 +43,9 @@ class ATestStaticTurrets : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     // Visuals
     UPROPERTY()

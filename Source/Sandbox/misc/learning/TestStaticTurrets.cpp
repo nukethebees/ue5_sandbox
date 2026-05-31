@@ -36,6 +36,12 @@ void ATestStaticTurrets::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+    if (entity_registry == nullptr) {
+        UE_LOG(
+            LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: entity_registry is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
 
     configure_ismc();
 }
@@ -58,7 +64,11 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
 }
 
-// Searchng
+auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
+    return instances->GetNumInstances();
+}
+
+// Searching
 void ATestStaticTurrets::perform_search() {}
 
 // Attacking
