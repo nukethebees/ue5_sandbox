@@ -10,6 +10,11 @@ struct SANDBOXCORE_API FGenerationIndex {
 
     static constexpr int32 INDEX_NONE{-1};
 
+    FGenerationIndex() = default;
+    FGenerationIndex(int32 index, int32 generation)
+        : index(index)
+        , generation(generation) {}
+
     UPROPERTY()
     int32 index{INDEX_NONE};
 
