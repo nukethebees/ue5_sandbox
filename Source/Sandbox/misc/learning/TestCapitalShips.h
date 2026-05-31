@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TestTeam.h"
+
 #include <SandboxCore/Public/generation_index.h>
 
 #include "CoreMinimal.h"
@@ -32,6 +34,7 @@ class ATestCapitalShips : public AActor {
 
     void register_all_proxies_in_level();
     void spawn_ship(FTransform const& transform,
+                    ETestTeam const team,
                     ATestCapitalShips* target_actor,
                     FGenerationIndex target_index);
 
@@ -59,6 +62,11 @@ class ATestCapitalShips : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<FTransform> transforms;
 
+    // Teams
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    TArray<ETestTeam> teams;
+
+    // Targets
     UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<TWeakObjectPtr<ATestCapitalShips>> target_actors;
     UPROPERTY(VisibleAnywhere, Category = "Ship")

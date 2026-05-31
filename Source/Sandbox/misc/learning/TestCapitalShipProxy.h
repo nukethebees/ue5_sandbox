@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TestTeam.h"
+
 #include <SandboxCore/Public/generation_index.h>
 
 #include "CoreMinimal.h"
@@ -47,4 +49,7 @@ class ATestCapitalShipProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipProxy> target_ship{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    ETestTeam team{ETestTeam::neutral};
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TestTeam.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -26,9 +28,12 @@ class ATestStaticTurrets : public AActor {
 
     void configure_ismc();
 
-    UPROPERTY(EditAnywhere, Category = "Laser")
+    UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    ETestTeam team{ETestTeam::neutral};
 };

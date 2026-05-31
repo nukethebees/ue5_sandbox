@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TestTeam.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -24,9 +26,12 @@ class ATestCapitalShipFighters : public AActor {
     // Misc
     void clear_runtime_state();
 
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
     UPROPERTY()
     TArray<FTransform> world_transforms;
+
+    UPROPERTY(EditAnywhere, Category = "Ships")
+    ETestTeam team{ETestTeam::neutral};
 };
