@@ -51,6 +51,11 @@ void ATestCapitalShips::Tick(float dt) {
     }
 }
 
+// Accessors
+auto ATestCapitalShips::get_num_instances() const -> int32 {
+    return instances->GetNumInstances();
+}
+
 // Spawning
 void ATestCapitalShips::spawn_ship(FTransform const& transform) {
     instances->AddInstance(transform, true);
@@ -95,6 +100,13 @@ void ATestCapitalShips::clear_runtime_state() {
 bool ATestCapitalShips::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
-    return ml::all_num_equal_to(n, collision_boxes, transforms, targets, target_entity_indexes);
+    return ml::all_num_equal_to(n, collision_boxes, transforms, target_entity_indexes);
 }
-void ATestCapitalShips::draw_debugging_shapes() const {}
+void ATestCapitalShips::draw_debugging_shapes() const {
+    auto const n{get_num_instances()};
+    auto const& drawer{ship_config->debug_drawer};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const ship_loc{transforms[i].GetLocation()};
+    }
+}

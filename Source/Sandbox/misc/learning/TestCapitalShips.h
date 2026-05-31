@@ -25,6 +25,7 @@ class ATestCapitalShips : public AActor {
     void Tick(float dt) override;
 
     void spawn_ship(FTransform const& transform);
+    auto get_num_instances() const -> int32;
   protected:
     void BeginPlay() override;
 
@@ -41,7 +42,7 @@ class ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
 
     UPROPERTY()
