@@ -1,0 +1,47 @@
+#pragma once
+
+#include <SandboxCore/Public/generation_index.h>
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
+#include "TestCapitalShipProxy.generated.h"
+
+class UStaticMeshComponent;
+class UBoxComponent;
+
+class UTestCapitalShipsConfig;
+class ATestCapitalShips;
+
+UCLASS()
+class ATestCapitalShipProxy : public AActor {
+    GENERATED_BODY()
+  public:
+    ATestCapitalShipProxy();
+  protected:
+    void BeginPlay() override;
+    void OnConstruction(FTransform const& transform) override;
+
+#if WITH_EDITOR
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void save_configuration_to_asset();
+#endif
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<UStaticMeshComponent> mesh{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<UBoxComponent> collision_box{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TArray<TObjectPtr<USceneComponent>> fighter_spawn_slots;
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<ATestCapitalShips> batch_actor{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<ATestCapitalShipProxy> target_ship{nullptr};
+};

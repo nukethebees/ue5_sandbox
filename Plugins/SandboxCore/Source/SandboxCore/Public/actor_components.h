@@ -1,6 +1,6 @@
 #pragma once
 
- 	#include "Containers/Array.h"
+#include "Containers/Array.h"
 
 namespace ml {
 template <typename T>
@@ -16,4 +16,9 @@ void destroy_components_array(TArray<T>& components) {
 
     components.Reset();
 };
+
+template <typename... Components>
+auto register_components(Components*... components) -> void {
+    ((components ? components->RegisterComponent() : void()), ...);
+}
 }

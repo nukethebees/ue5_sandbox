@@ -515,8 +515,6 @@ void ATestTurrets::create_turrets(int32 const n) {
     auto const hp{turret_config->max_health};
     FName name;
 
-    auto register_components{[](auto&... components) { (components->RegisterComponent(), ...); }};
-
     for (int32 i{0}; i < n; ++i) {
         auto const turret_index{cur_num_turrets + i};
         auto const search_index{cur_num_searching_turrets + i};
@@ -542,7 +540,7 @@ void ATestTurrets::create_turrets(int32 const n) {
         pitch_pivot->SetupAttachment(yaw_pivot);
         cannon->SetupAttachment(pitch_pivot);
 
-        register_components(collision, yaw_pivot, pitch_pivot, body, cannon);
+        ml::register_components(collision, yaw_pivot, pitch_pivot, body, cannon);
 
         AddInstanceComponent(collision);
         // We use the first turret for positioning components
