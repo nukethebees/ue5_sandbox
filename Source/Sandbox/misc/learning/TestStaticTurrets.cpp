@@ -1,6 +1,7 @@
 #include "TestStaticTurrets.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestEntityRegistry.h"
 #include "TestLasers.h"
 #include "TestStaticTurretsConfig.h"
 #include "TestStaticTurretsProxy.h"
@@ -69,7 +70,28 @@ auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
 }
 
 // Searching
-void ATestStaticTurrets::perform_search() {}
+void ATestStaticTurrets::perform_search() {
+    auto const n_turrets{get_num_instances()};
+    auto const radius{actor_config->detection_radius};
+
+    FTransform turret_transform;
+    for (int32 i{0}; i < n_turrets; ++i) {
+        instances->GetInstanceTransform(i, turret_transform, true);
+        auto const turret_location{turret_transform.GetLocation()};
+
+        TStaticArray<FGenerationIndex, 128> elems;
+        auto const n_entities{
+            entity_registry->collect_entities_in_range(turret_location, radius, elems)};
+
+        for (int32 j{0}; j < n_entities; ++j) {
+            // Check if enemy
+
+            // Check if LOS
+
+            // Mark for attack
+        }
+    }
+}
 
 // Attacking
 void ATestStaticTurrets::fire_at_enemies() {}
