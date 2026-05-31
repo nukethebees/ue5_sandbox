@@ -1,6 +1,7 @@
 #include "TestStaticTurrets.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestLasers.h"
 #include "TestStaticTurretsConfig.h"
 #include "TestStaticTurretsProxy.h"
 

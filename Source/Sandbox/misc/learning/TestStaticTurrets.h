@@ -11,6 +11,7 @@ class UInstancedStaticMeshComponent;
 
 class ATestStaticTurretsProxy;
 class UTestStaticTurretsConfig;
+class ATestLasers;
 
 UCLASS()
 class ATestStaticTurrets : public AActor {
@@ -36,4 +37,7 @@ class ATestStaticTurrets : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Turrets")
     ETestTeam team{ETestTeam::neutral};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    TObjectPtr<ATestLasers> laser_actor{nullptr};
 };

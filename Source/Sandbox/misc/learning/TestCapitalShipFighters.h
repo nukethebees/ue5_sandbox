@@ -2,6 +2,9 @@
 
 #include "TestTeam.h"
 
+#include "SandboxCore/Public/countdown_timers.h"
+#include "SandboxCore/Public/generation_index.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -10,6 +13,7 @@
 class UInstancedStaticMeshComponent;
 
 class UTestCapitalShipFightersConfig;
+class ATestLasers;
 
 UCLASS()
 class ATestCapitalShipFighters : public AActor {
@@ -32,6 +36,9 @@ class ATestCapitalShipFighters : public AActor {
     // Movement
     void move_ships(float const dt);
 
+    // Combat
+    void handle_firing();
+
     // Misc
     void clear_runtime_state();
 
@@ -41,12 +48,22 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
 
+    // Movement
     UPROPERTY(VisibleAnywhere, Category = "Ships")
     TArray<FTransform> world_transforms;
 
+    // Team
+    UPROPERTY(EditAnywhere, Category = "Ships")
+    ETestTeam team{ETestTeam::neutral};
+
+    // Combat
     UPROPERTY(VisibleAnywhere, Category = "Ships")
     TArray<int32> healths;
 
     UPROPERTY(EditAnywhere, Category = "Ships")
-    ETestTeam team{ETestTeam::neutral};
+    TObjectPtr<ATestLasers> laser_actor{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ships")
+    FCountdownTimers laser_cooldowns;
+    UPROPERTY()
+    TArray<int32> indices_ready_to_fire;
 };

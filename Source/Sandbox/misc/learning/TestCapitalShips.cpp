@@ -115,12 +115,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 
     for (ATestCapitalShipProxy* proxy : proxies) {
-        FGenerationIndex target_index{};
-        if (proxy->target_ship) {
-            target_index.generation = 0;
-            target_index.index = *proxy_to_index.Find(proxy->target_ship);
-        }
-
+        FGenerationIndex const target_index{};
         spawn_ship(proxy->GetActorTransform(), this, target_index);
     }
 

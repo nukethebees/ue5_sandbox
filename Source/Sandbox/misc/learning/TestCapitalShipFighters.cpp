@@ -2,6 +2,9 @@
 
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestCapitalShipFightersConfig.h"
+#include "TestLasers.h"
+
+#include <SandboxCore/Public/array_math.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
@@ -39,9 +42,17 @@ void ATestCapitalShipFighters::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+
     if (!actor_config) {
         UE_LOG(
             LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: actor_config is nullptr"));
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    if (!laser_actor) {
+        UE_LOG(
+            LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: laser_actor is nullptr"));
         SetActorTickEnabled(false);
         return;
     }
@@ -49,7 +60,10 @@ void ATestCapitalShipFighters::BeginPlay() {
 void ATestCapitalShipFighters::Tick(float dt) {
     Super::Tick(dt);
 
+    laser_cooldowns.tick(dt);
+
     move_ships(dt);
+    handle_firing();
 }
 
 // Getters
@@ -87,6 +101,24 @@ void ATestCapitalShipFighters::spawn_instance(FTransform const& transform) {
 
     world_transforms.Add(transform);
     healths.Add(actor_config->health);
+    laser_cooldowns.Add(0.f);
+}
+
+// Combat
+void ATestCapitalShipFighters::handle_firing() {
+    auto const n_ships{get_num_instances()};
+    indices_ready_to_fire.SetNumUninitialized(n_ships, EAllowShrinking::No);
+    auto const cooldown{actor_config->fire_cooldown};
+
+    auto const n_to_fire{ml::collect_indices_less_equal(
+        TConstArrayView<float>{laser_cooldowns.remaining_times}, 0.f, indices_ready_to_fire)};
+
+    for (int32 i{0}; i < n_to_fire; ++i) {
+        auto const ship_index{indices_ready_to_fire[i]};
+
+        laser_actor->spawn_laser(world_transforms[i], *this);
+        laser_cooldowns.remaining_times[ship_index] = cooldown;
+    }
 }
 
 // Misc

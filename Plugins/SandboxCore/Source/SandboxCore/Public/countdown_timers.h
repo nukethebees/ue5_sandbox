@@ -11,6 +11,7 @@ struct SANDBOXCORE_API FCountdownTimers {
     void tick(float const dt) noexcept;
 
     auto Num() const noexcept { return remaining_times.Num(); }
+    auto Add(float t) { remaining_times.Add(t); }
 
     UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;

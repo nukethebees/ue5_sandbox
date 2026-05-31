@@ -2,8 +2,8 @@
 
 #include "TestTeam.h"
 
-#include <SandboxCore/Public/countdown_timers.h>
-#include <SandboxCore/Public/generation_index.h>
+#include "SandboxCore/Public/countdown_timers.h"
+#include "SandboxCore/Public/generation_index.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

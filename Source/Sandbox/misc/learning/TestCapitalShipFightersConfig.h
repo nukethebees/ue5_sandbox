@@ -27,6 +27,9 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 health{50};
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float fire_cooldown{0.33f};
+
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
