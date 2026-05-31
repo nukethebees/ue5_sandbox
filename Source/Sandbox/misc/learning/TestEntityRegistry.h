@@ -21,9 +21,10 @@ class ATestEntityRegistry : public AActor {
     auto collect_entities_in_range(FVector const& origin,
                                    float radius,
                                    TArrayView<FGenerationIndex> out_entities) -> int32;
+    auto get_num_elements() const noexcept -> int32;
   private:
     UPROPERTY()
-    TArray<FVector> positions;
+    TArray<FVector> locations;
     UPROPERTY()
     TArray<FVector> velocities;
     UPROPERTY()
