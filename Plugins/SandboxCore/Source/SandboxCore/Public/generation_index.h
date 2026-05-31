@@ -5,7 +5,7 @@
 #include "generation_index.generated.h"
 
 USTRUCT()
-struct FGenerationIndex {
+struct SANDBOXCORE_API FGenerationIndex {
     GENERATED_BODY()
 
     static constexpr int32 INDEX_NONE{-1};
