@@ -53,7 +53,10 @@ void ATestCapitalShipFighters::Tick(float dt) {
 }
 
 // Getters
-auto ATestCapitalShipFighters::get_num_instances() const -> int32 {
+auto ATestCapitalShipFighters::get_team() const noexcept -> ETestTeam {
+    return team;
+}
+auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return world_transforms.Num();
 }
 

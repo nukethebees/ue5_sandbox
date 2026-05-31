@@ -50,6 +50,6 @@ class ATestCapitalShipProxy : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipProxy> target_ship{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Ship")
     ETestTeam team{ETestTeam::neutral};
 };

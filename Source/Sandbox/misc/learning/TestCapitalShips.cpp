@@ -82,6 +82,9 @@ auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
 
     return true;
 }
+auto ATestCapitalShips::get_team() const noexcept -> ETestTeam {
+    return team;
+}
 
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
@@ -103,6 +106,10 @@ void ATestCapitalShips::register_all_proxies_in_level() {
             continue;
         }
 
+        if (it->team != team) {
+            continue;
+        }
+
         auto const index{proxies.Add(*it)};
         proxy_to_index.Add(*it, index);
     }
@@ -114,7 +121,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
             target_index.index = *proxy_to_index.Find(proxy->target_ship);
         }
 
-        spawn_ship(proxy->GetActorTransform(), proxy->team, this, target_index);
+        spawn_ship(proxy->GetActorTransform(), this, target_index);
     }
 
     for (ATestCapitalShipProxy* proxy : proxies) {
@@ -122,7 +129,6 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 }
 void ATestCapitalShips::spawn_ship(FTransform const& transform,
-                                   ETestTeam const team,
                                    ATestCapitalShips* target_actor,
                                    FGenerationIndex target_index) {
     instances->AddInstance(transform, true);
@@ -144,7 +150,6 @@ void ATestCapitalShips::spawn_ship(FTransform const& transform,
     transforms.Add(transform);
     target_actors.Add(target_actor);
     target_entity_indexes.Add(target_index);
-    teams.Add(team);
     spawn_timers.remaining_times.Add(0.f);
 
     check(array_sizes_consistent());
@@ -199,7 +204,7 @@ bool ATestCapitalShips::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
     return ml::all_num_equal_to(
-        n, collision_boxes, transforms, spawn_timers, teams, target_actors, target_entity_indexes);
+        n, collision_boxes, transforms, spawn_timers, target_actors, target_entity_indexes);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     auto const n{get_num_instances()};

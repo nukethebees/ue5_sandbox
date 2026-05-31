@@ -27,16 +27,17 @@ class ATestCapitalShips : public AActor {
     void PostInitializeComponents() override;
     void Tick(float dt) override;
 
+    // Getters
     auto get_num_instances() const -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
+    auto get_team() const noexcept -> ETestTeam;
   protected:
     void BeginPlay() override;
 
     // Ship spawning
     void register_all_proxies_in_level();
     void spawn_ship(FTransform const& transform,
-                    ETestTeam const team,
                     ATestCapitalShips* target_actor,
                     FGenerationIndex target_index);
 
@@ -75,7 +76,7 @@ class ATestCapitalShips : public AActor {
 
     // Teams
     UPROPERTY(VisibleAnywhere, Category = "Ship")
-    TArray<ETestTeam> teams;
+    ETestTeam team{ETestTeam::neutral};
 
     // Targets
     UPROPERTY(VisibleAnywhere, Category = "Ship")

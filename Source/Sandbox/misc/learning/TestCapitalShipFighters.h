@@ -21,12 +21,13 @@ class ATestCapitalShipFighters : public AActor {
     void Tick(float dt) override;
 
     void spawn_instance(FTransform const& transform);
+
+    // Getters
+    auto get_num_instances() const noexcept -> int32;
+    auto get_team() const noexcept -> ETestTeam;
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
-
-    // Getters
-    auto get_num_instances() const -> int32;
 
     // Movement
     void move_ships(float const dt);
