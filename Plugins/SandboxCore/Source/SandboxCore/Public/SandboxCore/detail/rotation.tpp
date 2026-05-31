@@ -26,6 +26,7 @@ auto normalise_signed_half_open_once(T const angle) noexcept -> T {
 
     return out;
 }
+
 template <template <typename> typename AngleTraits, std::floating_point T>
 auto shortest_signed_angle_delta(T const from, T const to) -> T {
     constexpr auto ht{AngleTraits<T>::half_turn};
@@ -39,6 +40,7 @@ auto shortest_signed_angle_delta(T const from, T const to) -> T {
 
     return delta - ht;
 }
+
 template <template <typename> typename AngleTraits, std::floating_point T>
 auto shortest_signed_angle_delta_normalised(T const current, T const target) noexcept -> T {
     constexpr auto ht{AngleTraits<T>::half_turn};
@@ -150,10 +152,10 @@ void rotate_towards_1d_normalised(T const* RESTRICT current,
 
 template <template <typename> typename AngleTraits, std::floating_point T>
 void rotate_towards_1d_normalised_in_place(T* RESTRICT current,
-                                          T const* RESTRICT target,
-                                          T const speed,
-                                          T const delta_time,
-                                          int32 const count) noexcept {
+                                           T const* RESTRICT target,
+                                           T const speed,
+                                           T const delta_time,
+                                           int32 const count) noexcept {
     constexpr auto ht{AngleTraits<T>::half_turn};
     constexpr auto ft{AngleTraits<T>::full_turn};
 
@@ -222,19 +224,19 @@ void rotate_towards_1d_radians_normalised(T const* RESTRICT current,
 
 template <std::floating_point T>
 void rotate_towards_1d_degrees_normalised_in_place(T* RESTRICT current,
-                                                  T const* RESTRICT target,
-                                                  T const speed,
-                                                  T const delta_time,
-                                                  int32 const count) noexcept {
+                                                   T const* RESTRICT target,
+                                                   T const speed,
+                                                   T const delta_time,
+                                                   int32 const count) noexcept {
     ml::kernel::detail::rotate_towards_1d_normalised_in_place<DegreesAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
 template <std::floating_point T>
 void rotate_towards_1d_radians_normalised_in_place(T* RESTRICT current,
-                                                  T const* RESTRICT target,
-                                                  T const speed,
-                                                  T const delta_time,
-                                                  int32 const count) noexcept {
+                                                   T const* RESTRICT target,
+                                                   T const speed,
+                                                   T const delta_time,
+                                                   int32 const count) noexcept {
     ml::kernel::detail::rotate_towards_1d_normalised_in_place<RadiansAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
@@ -258,9 +260,9 @@ void compute_desired_yaws_radians(T const* RESTRICT const start_xs,
 namespace ml::detail {
 template <template <typename> typename AngleTraits, std::floating_point T>
 void rotate_towards_1d_normalised_in_place(TArrayView<T> current,
-                                          TConstArrayView<T> target,
-                                          T const speed,
-                                          T const delta_time) noexcept {
+                                           TConstArrayView<T> target,
+                                           T const speed,
+                                           T const delta_time) noexcept {
     auto const count{current.Num()};
 
     auto const are_equal{ml::all_num_equal_to(count, target)};
@@ -281,18 +283,18 @@ void rotate_towards_1d_normalised_in_place(TArrayView<T> current,
 namespace ml {
 template <std::floating_point T>
 void rotate_towards_1d_degrees_normalised_in_place(TArrayView<T> current,
-                                                  TConstArrayView<T> target,
-                                                  T const speed,
-                                                  T const delta_time) noexcept {
+                                                   TConstArrayView<T> target,
+                                                   T const speed,
+                                                   T const delta_time) noexcept {
     ml::detail::rotate_towards_1d_normalised_in_place<DegreesAngleTraits, T>(
         current, target, speed, delta_time);
 }
 
 template <std::floating_point T>
 void rotate_towards_1d_radians_normalised_in_place(TArrayView<T> current,
-                                                  TConstArrayView<T> target,
-                                                  T const speed,
-                                                  T const delta_time) noexcept {
+                                                   TConstArrayView<T> target,
+                                                   T const speed,
+                                                   T const delta_time) noexcept {
     ml::detail::rotate_towards_1d_normalised_in_place<RadiansAngleTraits, T>(
         current, target, speed, delta_time);
 }
@@ -305,8 +307,7 @@ void compute_desired_yaws_radians(TConstArrayView<T> const start_xs,
                                   TArrayView<T> const out_yaws_radians) {
     auto const count{start_xs.Num()};
 
-    auto const are_equal{
-        ml::all_num_equal_to(count, start_ys, end_xs, end_ys, out_yaws_radians)};
+    auto const are_equal{ml::all_num_equal_to(count, start_ys, end_xs, end_ys, out_yaws_radians)};
     check(are_equal);
     if (!are_equal) {
         UE_LOG(
