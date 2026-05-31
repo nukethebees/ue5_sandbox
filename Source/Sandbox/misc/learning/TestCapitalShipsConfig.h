@@ -30,7 +30,10 @@ class UTestCapitalShipsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FVector collision_box_extent{FVector::ZeroVector};
 
-    // Fighters
+    // Fighter spawning
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float spawn_delay{5.f};
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 fighter_spawn_slots{6};
 

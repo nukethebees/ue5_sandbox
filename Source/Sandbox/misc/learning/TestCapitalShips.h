@@ -2,6 +2,7 @@
 
 #include "TestTeam.h"
 
+#include <SandboxCore/Public/countdown_timers.h>
 #include <SandboxCore/Public/generation_index.h>
 
 #include "CoreMinimal.h"
@@ -32,11 +33,15 @@ class ATestCapitalShips : public AActor {
   protected:
     void BeginPlay() override;
 
+    // Ship spawning
     void register_all_proxies_in_level();
     void spawn_ship(FTransform const& transform,
                     ETestTeam const team,
                     ATestCapitalShips* target_actor,
                     FGenerationIndex target_index);
+
+    // Fighter spawning
+    void handle_fighter_spawning();
 
     // Visuals
     void configure_ismc();
@@ -51,9 +56,6 @@ class ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
-
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     UPROPERTY(VisibleAnywhere, Category = "Ship")
@@ -61,6 +63,15 @@ class ATestCapitalShips : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<FTransform> transforms;
+
+    // Fighter spawning
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
+    UPROPERTY()
+    TArray<int32> ships_ready_to_spawn_fighters;
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    FCountdownTimers spawn_timers;
 
     // Teams
     UPROPERTY(VisibleAnywhere, Category = "Ship")

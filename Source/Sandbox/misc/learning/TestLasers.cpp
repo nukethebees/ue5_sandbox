@@ -59,7 +59,7 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 void ATestLasers::spawn_laser(FTransform const& transform, AActor const& owner_to_ignore) {
     // Later on this can just add the data to a queue and then batch spawn them laser
     instances->AddInstance(transform, true);
-    velocities.Add(transform.GetRotation().Vector() * laser_config->speed);
+    velocities.Add(transform.GetRotation().Vector().GetSafeNormal() * laser_config->speed);
     transforms.Add(transform);
     lifetimes.Add(0.f);
 

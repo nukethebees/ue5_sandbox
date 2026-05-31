@@ -1,10 +1,12 @@
 #include "TestCapitalShips.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestCapitalShipFighters.h"
 #include "TestCapitalShipProxy.h"
 #include "TestCapitalShipsConfig.h"
 
 #include <SandboxCore/Public/actor_components.h>
+#include <SandboxCore/Public/array_math.h>
 #include <SandboxCore/Public/array_utils.h>
 
 #include <Components/BoxComponent.h>
@@ -37,7 +39,7 @@ void ATestCapitalShips::BeginPlay() {
         return;
     }
 
-    if (!ship_config) {
+    if (!fighters_actor) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShips: fighters_actor is nullptr."));
         SetActorTickEnabled(false);
         return;
@@ -48,6 +50,10 @@ void ATestCapitalShips::BeginPlay() {
 }
 void ATestCapitalShips::Tick(float dt) {
     Super::Tick(dt);
+
+    spawn_timers.tick(dt);
+
+    handle_fighter_spawning();
 
     if (debugging_shapes_enabled) {
         draw_debugging_shapes();
@@ -77,7 +83,7 @@ auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
     return true;
 }
 
-// Spawning
+// Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
     auto* world{GetWorld()};
 
@@ -139,8 +145,35 @@ void ATestCapitalShips::spawn_ship(FTransform const& transform,
     target_actors.Add(target_actor);
     target_entity_indexes.Add(target_index);
     teams.Add(team);
+    spawn_timers.remaining_times.Add(0.f);
 
     check(array_sizes_consistent());
+}
+
+// Fighter spawning
+void ATestCapitalShips::handle_fighter_spawning() {
+    auto const n_ships{get_num_instances()};
+    ships_ready_to_spawn_fighters.SetNumUninitialized(n_ships, EAllowShrinking::No);
+    auto const cooldown{ship_config->spawn_delay};
+
+    auto const n_to_spawn{ml::collect_indices_less_equal(
+        TConstArrayView<float>{spawn_timers.remaining_times}, 0.f, ships_ready_to_spawn_fighters)};
+
+    auto const relative_transforms{ship_config->fighter_spawn_slots_relative_transforms};
+
+    for (int32 i{0}; i < n_to_spawn; ++i) {
+        auto const ship_index{ships_ready_to_spawn_fighters[i]};
+
+        // spawn fighters
+        auto const base_transform{transforms[ship_index]};
+
+        for (auto const& rt : relative_transforms) {
+            auto const transform{rt * base_transform};
+            fighters_actor->spawn_instance(transform);
+        }
+
+        spawn_timers.remaining_times[ship_index] = cooldown;
+    }
 }
 
 // Visuals
@@ -166,7 +199,7 @@ bool ATestCapitalShips::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
     return ml::all_num_equal_to(
-        n, collision_boxes, transforms, teams, target_actors, target_entity_indexes);
+        n, collision_boxes, transforms, spawn_timers, teams, target_actors, target_entity_indexes);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     auto const n{get_num_instances()};
