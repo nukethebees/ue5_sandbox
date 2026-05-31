@@ -2,6 +2,8 @@
 
 #include "TestTeam.h"
 
+#include "SandboxCore/Public/countdown_timers.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -27,17 +29,31 @@ class ATestStaticTurrets : public AActor {
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
 
+    // Visuals
     void configure_ismc();
+
+    // Searchng
+    void perform_search();
+
+    // Attacking
+    void fire_at_enemies();
 
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
+    // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
+    // Team
     UPROPERTY(EditAnywhere, Category = "Turrets")
     ETestTeam team{ETestTeam::neutral};
 
+    // Firing
     UPROPERTY(EditAnywhere, Category = "Turret")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ships")
+    FCountdownTimers laser_cooldowns;
+    UPROPERTY()
+    TArray<int32> indices_ready_to_fire;
 };

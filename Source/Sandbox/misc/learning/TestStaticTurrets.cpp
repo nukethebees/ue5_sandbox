@@ -41,8 +41,14 @@ void ATestStaticTurrets::BeginPlay() {
 }
 void ATestStaticTurrets::Tick(float dt) {
     Super::Tick(dt);
+
+    laser_cooldowns.tick(dt);
+
+    perform_search();
+    fire_at_enemies();
 }
 
+// Visuals
 void ATestStaticTurrets::configure_ismc() {
     RootComponent->SetMobility(EComponentMobility::Static);
 
@@ -51,6 +57,12 @@ void ATestStaticTurrets::configure_ismc() {
 
     instances->SetStaticMesh(actor_config->mesh);
 }
+
+// Searchng
+void ATestStaticTurrets::perform_search() {}
+
+// Attacking
+void ATestStaticTurrets::fire_at_enemies() {}
 
 // Spawning
 void ATestStaticTurrets::spawn_instance(FTransform const& transform) {
