@@ -48,11 +48,6 @@ void ATestCapitalShipProxy::BeginPlay() {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipProxy: batch_actor is nullptr."));
         return;
     }
-
-    batch_actor->spawn_ship(GetActorTransform());
-
-    UE_LOG(LogSandboxLearning, Display, TEXT("ATestCapitalShipProxy: destroying after spawn."));
-    Destroy();
 }
 
 #if WITH_EDITOR
@@ -91,5 +86,9 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     for (auto const slot : fighter_spawn_slots) {
         transforms.Add(slot->GetRelativeTransform());
     }
+
+    auto const collision_extent{collision_box->GetUnscaledBoxExtent()};
+    ship_config->collision_box_extent = collision_extent;
+
 }
 #endif

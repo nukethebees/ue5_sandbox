@@ -26,12 +26,18 @@ class UTestCapitalShipsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
+    // Collision
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FVector collision_box_extent{FVector::ZeroVector};
+
+    // Fighters
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 fighter_spawn_slots{6};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
 
+    // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
   private:

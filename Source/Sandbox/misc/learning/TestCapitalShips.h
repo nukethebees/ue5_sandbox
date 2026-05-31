@@ -24,10 +24,16 @@ class ATestCapitalShips : public AActor {
     void PostInitializeComponents() override;
     void Tick(float dt) override;
 
-    void spawn_ship(FTransform const& transform);
     auto get_num_instances() const -> int32;
+    auto get_location(FGenerationIndex const index) const -> FVector;
+    auto is_valid(FGenerationIndex const index) const -> bool;
   protected:
     void BeginPlay() override;
+
+    void register_all_proxies_in_level();
+    void spawn_ship(FTransform const& transform,
+                    ATestCapitalShips* target_actor,
+                    FGenerationIndex target_index);
 
     // Visuals
     void configure_ismc();
@@ -47,17 +53,17 @@ class ATestCapitalShips : public AActor {
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<TObjectPtr<UBoxComponent>> collision_boxes;
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<FTransform> transforms;
 
-    UPROPERTY()
-    TArray<TWeakObjectPtr<ATestCapitalShips>> targets;
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    TArray<TWeakObjectPtr<ATestCapitalShips>> target_actors;
+    UPROPERTY(VisibleAnywhere, Category = "Ship")
     TArray<FGenerationIndex> target_entity_indexes;
 
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, Category = "Ship")
     bool debugging_shapes_enabled{false};
 };

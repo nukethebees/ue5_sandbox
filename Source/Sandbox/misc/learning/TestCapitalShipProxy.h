@@ -22,7 +22,7 @@ class ATestCapitalShipProxy : public AActor {
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
-
+  public:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Ship")
     void spawn_fighter_spawn_slots();

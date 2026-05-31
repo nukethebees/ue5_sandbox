@@ -1,6 +1,7 @@
 #include "TestCapitalShips.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestCapitalShipProxy.h"
 #include "TestCapitalShipsConfig.h"
 
 #include <SandboxCore/Public/actor_components.h>
@@ -9,6 +10,7 @@
 #include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <EngineUtils.h>
 
 ATestCapitalShips::ATestCapitalShips()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -42,6 +44,7 @@ void ATestCapitalShips::BeginPlay() {
     }
 
     configure_ismc();
+    register_all_proxies_in_level();
 }
 void ATestCapitalShips::Tick(float dt) {
     Super::Tick(dt);
@@ -55,9 +58,66 @@ void ATestCapitalShips::Tick(float dt) {
 auto ATestCapitalShips::get_num_instances() const -> int32 {
     return instances->GetNumInstances();
 }
+auto ATestCapitalShips::get_location(FGenerationIndex const index) const -> FVector {
+    if (!is_valid(index)) {
+        return FVector::ZeroVector;
+    }
+
+    return collision_boxes[index.index]->GetComponentLocation();
+}
+auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
+    if (!index.is_valid()) {
+        return false;
+    }
+
+    if (!transforms.IsValidIndex(index.index)) {
+        return false;
+    }
+
+    return true;
+}
 
 // Spawning
-void ATestCapitalShips::spawn_ship(FTransform const& transform) {
+void ATestCapitalShips::register_all_proxies_in_level() {
+    auto* world{GetWorld()};
+
+    if (!world) {
+        return;
+    }
+
+    TArray<ATestCapitalShipProxy*> proxies{};
+    TMap<ATestCapitalShipProxy const*, int32> proxy_to_index{};
+
+    for (auto it{TActorIterator<ATestCapitalShipProxy>(world)}; it; ++it) {
+        if (!IsValid(*it)) {
+            continue;
+        }
+
+        if (it->batch_actor != this) {
+            continue;
+        }
+
+        auto const index{proxies.Add(*it)};
+        proxy_to_index.Add(*it, index);
+    }
+
+    for (ATestCapitalShipProxy* proxy : proxies) {
+        FGenerationIndex target_index{};
+        if (proxy->target_ship) {
+            target_index.generation = 0;
+            target_index.index = *proxy_to_index.Find(proxy->target_ship);
+        }
+
+        spawn_ship(proxy->GetActorTransform(), this, target_index);
+    }
+
+    for (ATestCapitalShipProxy* proxy : proxies) {
+        proxy->Destroy();
+    }
+}
+void ATestCapitalShips::spawn_ship(FTransform const& transform,
+                                   ATestCapitalShips* target_actor,
+                                   FGenerationIndex target_index) {
     instances->AddInstance(transform, true);
 
     // Collision
@@ -70,10 +130,13 @@ void ATestCapitalShips::spawn_ship(FTransform const& transform) {
     AddInstanceComponent(collision);
     collision_boxes.Add(collision);
 
+    collision->SetWorldTransform(transform);
+    collision->SetBoxExtent(ship_config->collision_box_extent);
+
     // Data
     transforms.Add(transform);
-    targets.Add(nullptr);
-    target_entity_indexes.AddDefaulted();
+    target_actors.Add(target_actor);
+    target_entity_indexes.Add(target_index);
 
     check(array_sizes_consistent());
 }
@@ -92,7 +155,7 @@ void ATestCapitalShips::clear_runtime_state() {
 
     transforms.Reset();
 
-    targets.Reset();
+    target_actors.Reset();
     target_entity_indexes.Reset();
 }
 
@@ -104,9 +167,21 @@ bool ATestCapitalShips::array_sizes_consistent() const {
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     auto const n{get_num_instances()};
-    auto const& drawer{ship_config->debug_drawer};
+    auto drawer{ship_config->debug_drawer};
+    drawer.world = GetWorld();
 
     for (int32 i{0}; i < n; ++i) {
         auto const ship_loc{transforms[i].GetLocation()};
+
+        auto const target_actor{target_actors[i]};
+        auto const target_index{target_entity_indexes[i]};
+
+        if (!target_actor.IsValid()) {
+            continue;
+        }
+
+        auto const target_loc{target_actor->get_location(target_index)};
+
+        drawer.draw_arrow(ship_loc, target_loc);
     }
 }
