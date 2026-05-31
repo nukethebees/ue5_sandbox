@@ -47,4 +47,24 @@ ML_EXTERN_FN(FVector);
                                                          T* RESTRICT out) noexcept
 ML_EXTERN_FN(float);
 #undef ML_EXTERN_FN
+
+#define ML_EXTERN_FN(T)                                                            \
+    template SANDBOXCORE_API void dist_squared_vector<T>(T const reference,        \
+                                                         T const* RESTRICT points, \
+                                                         int32 const count,        \
+                                                         VectorElementT<T>* RESTRICT out) noexcept
+ML_EXTERN_FN(FVector);
+#undef ML_EXTERN_FN
+
+#define ML_EXTERN_FN(T)                                                            \
+    template SANDBOXCORE_API void dist_squared_vector<T>(T const* RESTRICT xs_lhs, \
+                                                         T const* RESTRICT ys_lhs, \
+                                                         T const* RESTRICT zs_lhs, \
+                                                         T const* RESTRICT xs_rhs, \
+                                                         T const* RESTRICT ys_rhs, \
+                                                         T const* RESTRICT zs_rhs, \
+                                                         int32 const count,        \
+                                                         T* RESTRICT out) noexcept
+ML_EXTERN_FN(float);
+#undef ML_EXTERN_FN
 }

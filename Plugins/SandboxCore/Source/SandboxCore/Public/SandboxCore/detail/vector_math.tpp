@@ -61,6 +61,33 @@ void size_squared_vector(T const* RESTRICT xs,
         out[i] = xs[i] * xs[i] + ys[i] * ys[i] + zs[i] * zs[i];
     }
 }
+
+template <ml::HasSizeSquared T>
+void dist_squared_vector(T const reference,
+                         T const* RESTRICT points,
+                         int32 const count,
+                         VectorElementT<T>* RESTRICT out) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        out[i] = (points[i] - reference).SizeSquared();
+    }
+}
+
+template <ml::Numeric T>
+void dist_squared_vector(T const* RESTRICT xs_lhs,
+                         T const* RESTRICT ys_lhs,
+                         T const* RESTRICT zs_lhs,
+                         T const* RESTRICT xs_rhs,
+                         T const* RESTRICT ys_rhs,
+                         T const* RESTRICT zs_rhs,
+                         int32 const count,
+                         T* RESTRICT out) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        auto const x{xs_rhs[i] - xs_lhs[i]};
+        auto const y{ys_rhs[i] - ys_lhs[i]};
+        auto const z{zs_rhs[i] - zs_lhs[i]};
+        out[i] = x * x + y * y + z * z;
+    }
+}
 }
 
 namespace ml {
