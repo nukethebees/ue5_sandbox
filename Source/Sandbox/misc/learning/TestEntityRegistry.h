@@ -1,7 +1,8 @@
 #pragma once
 
-#include "SandboxCore/generation_index.h"
 #include "TestTeam.h"
+
+#include "SandboxCore/generation_index.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -63,8 +64,9 @@ struct FTestEntityRegistryEntityData {
 
 UCLASS()
 class ATestEntityRegistry : public AActor {
-    GENERATED_BODY()
   public:
+    GENERATED_BODY()
+
     struct ConstView {
         auto get_num() const { return indices.Num(); }
 
@@ -91,6 +93,12 @@ class ATestEntityRegistry : public AActor {
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
     auto get_num_elements() const noexcept -> int32;
+    auto get_location(FGenerationIndex const index) const -> FVector;
+    auto get_velocity(FGenerationIndex const index) const -> FVector;
+    auto get_health(FGenerationIndex const index) const -> int32;
+    auto get_team(FGenerationIndex const index) const -> ETestTeam;
+    auto get_alive(FGenerationIndex const index) const -> bool;
+
     auto collect_entities_in_range(FVector const& origin,
                                    float radius,
                                    TArrayView<FGenerationIndex> out_entities) const -> int32;

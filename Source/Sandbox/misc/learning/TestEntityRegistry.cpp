@@ -157,6 +157,21 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
+auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector {
+    return is_valid_index(index) ? entity_data.locations[index.index] : FVector::ZeroVector;
+}
+auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector {
+    return is_valid_index(index) ? entity_data.velocities[index.index] : FVector::ZeroVector;
+}
+auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
+    return is_valid_index(index) ? entity_data.healths[index.index] : -1;
+}
+auto ATestEntityRegistry::get_team(FGenerationIndex const index) const -> ETestTeam {
+    return is_valid_index(index) ? entity_data.teams[index.index] : ETestTeam::neutral;
+}
+auto ATestEntityRegistry::get_alive(FGenerationIndex const index) const -> bool {
+    return is_valid_index(index) ? static_cast<bool>(entity_data.alive[index.index]) : false;
+}
 auto ATestEntityRegistry::collect_entities_in_range(FVector const& origin,
                                                     float radius,
                                                     TArrayView<FGenerationIndex> out_entities) const
