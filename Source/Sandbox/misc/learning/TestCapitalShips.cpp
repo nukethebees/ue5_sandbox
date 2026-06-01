@@ -63,6 +63,7 @@ void ATestCapitalShips::Tick(float dt) {
     spawn_timers.tick(dt);
 
     handle_fighter_spawning();
+    update_entity_registry();
 
     if (debugging_shapes_enabled) {
         draw_debugging_shapes();
@@ -148,17 +149,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 
     spawn_ships(entity_indices, new_transforms, new_teams, new_targets);
-
-    FTestEntityRegistryEntityData update_data;
-    update_data.add_uninitialised(n_to_add);
-    for (int32 i{0}; i < n_to_add; ++i) {
-        update_data.locations[i] = transforms[i].GetLocation();
-        update_data.velocities[i] = FVector::ZeroVector;
-        update_data.healths[i] = healths[i];
-        update_data.teams[i] = teams[i];
-        update_data.alive[i] = true;
-    }
-    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
+    update_entity_registry();
 
     for (ATestCapitalShipProxy* proxy : proxies) {
         proxy->Destroy();
@@ -258,6 +249,23 @@ void ATestCapitalShips::clear_runtime_state() {
     teams.Reset();
 
     target_entity_indices.Reset();
+}
+void ATestCapitalShips::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
+
+    auto const n{get_num_instances()};
+
+    FTestEntityRegistryEntityData update_data;
+    update_data.add_uninitialised(n);
+
+    for (int32 i{0}; i < n; ++i) {
+        update_data.locations[i] = transforms[i].GetLocation();
+        update_data.velocities[i] = FVector::ZeroVector;
+        update_data.healths[i] = healths[i];
+        update_data.teams[i] = teams[i];
+        update_data.alive[i] = true;
+    }
+    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
 }
 
 // Debugging

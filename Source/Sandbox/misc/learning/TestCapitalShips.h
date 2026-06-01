@@ -50,6 +50,7 @@ class ATestCapitalShips : public AActor {
 
     // Misc
     void clear_runtime_state();
+    void update_entity_registry();
 
     // Debugging
     bool array_sizes_consistent() const;
