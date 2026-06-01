@@ -138,6 +138,10 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const target_location{entity_registry->get_location(target_index)};
         FTransform laser_transform{FTransform::Identity};
         instances->GetInstanceTransform(i, laser_transform, true);
+
+        auto const rotation{(target_location - laser_transform.GetLocation()).Rotation()};
+        laser_transform.SetRotation(rotation.Quaternion());
+
         laser_actor->spawn_laser(laser_transform, *this);
     }
 }
