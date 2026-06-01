@@ -14,6 +14,23 @@ UCLASS()
 class ATestEntityRegistry : public AActor {
     GENERATED_BODY()
   public:
+    struct ConstView {
+        TConstArrayView<FGenerationIndex> handles;
+        TConstArrayView<FVector> locations;
+        TConstArrayView<FVector> velocities;
+        TConstArrayView<int32> healths;
+        TConstArrayView<ETestTeam> teams;
+        TConstArrayView<uint8> alive;
+    };
+    struct View {
+        TConstArrayView<FGenerationIndex> handles;
+        TArrayView<FVector> locations;
+        TArrayView<FVector> velocities;
+        TArrayView<int32> healths;
+        TArrayView<ETestTeam> teams;
+        TArrayView<uint8> alive;
+    };
+
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
 
     ATestEntityRegistry();
