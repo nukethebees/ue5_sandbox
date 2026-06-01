@@ -160,12 +160,15 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const n_to_fire{ml::collect_indices_less_equal(
         TConstArrayView<float>{laser_cooldowns.remaining_times}, 0.f, indices_ready_to_fire)};
 
+    TArray<FTransform> laser_transforms;
+
     for (int32 i{0}; i < n_to_fire; ++i) {
         auto const ship_index{indices_ready_to_fire[i]};
-
-        laser_actor->spawn_laser(world_transforms[i], *this);
+        laser_transforms.Add(world_transforms[i]);
         laser_cooldowns.remaining_times[ship_index] = cooldown;
     }
+
+    laser_actor->spawn_lasers(laser_transforms);
 }
 
 // Misc

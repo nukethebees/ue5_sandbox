@@ -70,7 +70,7 @@ class ATestStaticTurrets : public AActor {
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
     // Team
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY()
     TArray<ETestTeam> teams{};
 
     // Firing

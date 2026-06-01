@@ -23,7 +23,7 @@ class ATestLasers : public AActor {
     auto get_num_instances() const noexcept -> int32;
 
     // Spawning / configuration
-    void spawn_laser(FTransform const& transform, AActor const& owner_to_ignore);
+    void spawn_lasers(TConstArrayView<FTransform> const transforms);
   protected:
     void BeginPlay() override;
 

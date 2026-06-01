@@ -130,6 +130,8 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};
 
+    TArray<FTransform> laser_transforms;
+
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_indices[i]};
 
@@ -147,10 +149,11 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const rotation{(target_location - laser_transform.GetLocation()).Rotation()};
         laser_transform.SetRotation(rotation.Quaternion());
 
-        laser_actor->spawn_laser(laser_transform, *this);
-
+        laser_transforms.Add(laser_transform);
         laser_cooldowns[i] = cooldown;
     }
+
+    laser_actor->spawn_lasers(laser_transforms);
 }
 
 // Spawning

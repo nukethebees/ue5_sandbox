@@ -67,12 +67,24 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 }
 
 // Spawning / Configuration
-void ATestLasers::spawn_laser(FTransform const& transform, AActor const& owner_to_ignore) {
-    // Later on this can just add the data to a queue and then batch spawn them laser
-    instances->AddInstance(transform, true);
-    velocities.Add(transform.GetRotation().Vector().GetSafeNormal() * laser_config->speed);
-    transforms.Add(transform);
-    lifetimes.Add(0.f);
+void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
+
+    auto const offset{get_num_instances()};
+    auto const n_to_add{new_transforms.Num()};
+
+    instances->AddInstances(TArray<FTransform>(new_transforms), false, true, false);
+
+    transforms.Append(new_transforms);
+    lifetimes.AddZeroed(n_to_add);
+    velocities.AddUninitialized(n_to_add);
+
+    auto const laser_speed{laser_config->speed};
+    for (int32 i{0}; i < n_to_add; ++i) {
+        auto const index{offset + i};
+
+        velocities[index] = transforms[index].GetRotation().Vector() * laser_speed;
+    }
 
     check(array_sizes_consistent());
 }

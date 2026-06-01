@@ -387,6 +387,7 @@ void ATestTurrets::fire_when_aligned() {
     auto const laser_offset{turret_config->fire_point_offset};
 
     TRY_INIT_PTR(world, GetWorld());
+    TArray<FTransform> laser_transforms;
 
     for (int32 i{0}; i < n; ++i) {
         if (attacking.firing_cooldowns[i] > 0.f) {
@@ -419,10 +420,11 @@ void ATestTurrets::fire_when_aligned() {
             FVector::OneVector,
         };
 
-        laser_actor->spawn_laser(laser_transform, *this);
-
+        laser_transforms.Add(laser_transform);
         attacking.firing_cooldowns[i] = cooldown;
     }
+
+    laser_actor->spawn_lasers(laser_transforms);
 }
 void ATestTurrets::tick_attacking_cooldowns(float const dt) {
     auto const n{attacking.num_turrets()};
