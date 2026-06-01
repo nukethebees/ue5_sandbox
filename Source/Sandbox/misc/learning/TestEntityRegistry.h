@@ -14,20 +14,30 @@ USTRUCT()
 struct FTestEntityRegistryEntityData {
     GENERATED_BODY()
 
-    struct ConstView {
-        TConstArrayView<FVector> locations;
-        TConstArrayView<FVector> velocities;
-        TConstArrayView<int32> healths;
-        TConstArrayView<ETestTeam> teams;
-        TConstArrayView<uint8> alive;
+    template <template <typename> typename TView>
+    struct TTestEntityDataView {
+        using ThisClass = TTestEntityDataView<TView>;
+
+        TView<FVector> locations;
+        TView<FVector> velocities;
+        TView<int32> healths;
+        TView<ETestTeam> teams;
+        TView<uint8> alive;
+
+        auto get_num() const -> int32 { return locations.Num(); }
+        auto get_slice(int32 const offset, int32 const count) const {
+            return ThisClass{
+                locations.Slice(offset, count),
+                velocities.Slice(offset, count),
+                healths.Slice(offset, count),
+                teams.Slice(offset, count),
+                alive.Slice(offset, count),
+            };
+        }
     };
-    struct View {
-        TArrayView<FVector> locations;
-        TArrayView<FVector> velocities;
-        TArrayView<int32> healths;
-        TArrayView<ETestTeam> teams;
-        TArrayView<uint8> alive;
-    };
+
+    using View = TTestEntityDataView<TArrayView>;
+    using ConstView = TTestEntityDataView<TConstArrayView>;
 
     FTestEntityRegistryEntityData() = default;
 
@@ -37,6 +47,7 @@ struct FTestEntityRegistryEntityData {
 
     void add_uninitialised(int32 const count);
     void add_disabled(int32 const count);
+    void add(ConstView const view);
 
     UPROPERTY(VisibleAnywhere)
     TArray<FVector> locations;
@@ -74,6 +85,8 @@ class ATestEntityRegistry : public AActor {
     // Entity updates
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
     void update_entities(ConstView const view);
+    auto add_entities(FTestEntityRegistryEntityData::ConstView const view)
+        -> TArray<FGenerationIndex>;
 
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;

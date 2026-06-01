@@ -45,14 +45,21 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
+    // Config data
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
+
+    // Runtime data
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    TArray<FGenerationIndex> indices;
 
     // Movement
     UPROPERTY(VisibleAnywhere, Category = "Ships")
     TArray<FTransform> world_transforms;
+    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    TArray<FVector> velocities;
 
     // Team
     UPROPERTY(EditAnywhere, Category = "Ships")

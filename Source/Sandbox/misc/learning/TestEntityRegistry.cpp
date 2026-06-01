@@ -44,6 +44,21 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
         alive[index] = false;
     }
 }
+void FTestEntityRegistryEntityData::add(ConstView const view) {
+    auto const n{view.get_num()};
+    auto const base{get_num()};
+
+    add_uninitialised(n);
+    for (int32 i{0}; i < n; ++i) {
+        auto const index{base + i};
+
+        locations[index] = view.locations[i];
+        velocities[index] = view.velocities[i];
+        healths[index] = view.healths[i];
+        teams[index] = view.teams[i];
+        alive[index] = view.alive[i];
+    }
+}
 
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
@@ -56,7 +71,7 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
     auto const n_free_indices{free_indices.Num()};
     auto const free_to_reserve{FMath::Min(n_free_indices, count)};
 
-    for (int32 i{}; i < free_to_reserve; ++i) {
+    for (int32 i{0}; i < free_to_reserve; ++i) {
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
         entity_data.locations[index] = FVector::ZeroVector;
@@ -101,6 +116,41 @@ void ATestEntityRegistry::update_entities(ConstView const view) {
         entity_data.teams[entity_index] = view.data.teams[entity_index];
         entity_data.alive[entity_index] = view.data.alive[entity_index];
     }
+}
+auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
+    -> TArray<FGenerationIndex> {
+    TArray<FGenerationIndex> indices;
+
+    auto const count{view.get_num()};
+    auto const n_free_indices{free_indices.Num()};
+    auto const free_to_reserve{FMath::Min(n_free_indices, count)};
+
+    for (int32 i{0}; i < free_to_reserve; ++i) {
+        auto const index{free_indices.Pop(EAllowShrinking::No)};
+
+        entity_data.locations[index] = view.locations[i];
+        entity_data.velocities[index] = view.velocities[i];
+        entity_data.healths[index] = view.healths[i];
+        entity_data.teams[index] = view.teams[i];
+        entity_data.alive[index] = view.alive[i];
+
+        ++generations[index];
+
+        indices.Emplace(index, generations[index]);
+    }
+
+    auto const indices_left_to_reserve{count - indices.Num()};
+    auto start_index{get_num_elements()};
+
+    generations.AddZeroed(indices_left_to_reserve);
+    entity_data.add(view.get_slice(indices.Num(), indices_left_to_reserve));
+
+    for (int32 i{0}; i < indices_left_to_reserve; ++i) {
+        auto const index{start_index + i};
+        indices.Emplace(index, generations[index]);
+    }
+
+    return indices;
 }
 
 // Entity queries

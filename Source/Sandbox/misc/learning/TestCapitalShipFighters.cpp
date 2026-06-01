@@ -86,9 +86,7 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
     auto const speed{actor_config->speed};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const fwd{world_transforms[i].GetRotation().Vector()};
-        auto const velocity{fwd * speed};
-        auto const delta_move{velocity * dt};
+        auto const delta_move{velocities[i] * dt};
         world_transforms[i].AddToTranslation(delta_move);
     }
 
@@ -109,6 +107,18 @@ void ATestCapitalShipFighters::spawn_instance(FTransform const& transform, ETest
     healths.Add(actor_config->health);
     laser_cooldowns.Add(0.f);
     teams.Add(team);
+    velocities.Add(actor_config->speed * transform.GetRotation().Vector());
+
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.add_uninitialised(1);
+    entity_data.locations[0] = transform.GetLocation();
+    entity_data.velocities[0] = velocities.Last();
+    entity_data.healths[0] = actor_config->health;
+    entity_data.teams[0] = team;
+    entity_data.alive[0] = true;
+
+    auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
+    indices.Insert(new_indices, indices.Num());
 }
 
 // Combat
