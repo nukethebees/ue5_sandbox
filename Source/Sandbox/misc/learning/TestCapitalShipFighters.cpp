@@ -6,6 +6,7 @@
 #include "TestLasers.h"
 
 #include <SandboxCore/array_math.h>
+#include <SandboxCore/array_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
@@ -79,6 +80,12 @@ void ATestCapitalShipFighters::Tick(float dt) {
 auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return world_transforms.Num();
 }
+bool ATestCapitalShipFighters::array_sizes_consistent() const {
+    auto const n{instances->GetNumInstances()};
+
+    return ml::all_num_equal_to(
+        n, indices, world_transforms, velocities, teams, healths, laser_cooldowns);
+}
 
 // Movement
 void ATestCapitalShipFighters::move_ships(float const dt) {
@@ -131,6 +138,8 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
 
     auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
     indices.Append(new_indices);
+
+    check(array_sizes_consistent());
 }
 
 // Combat

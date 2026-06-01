@@ -30,6 +30,7 @@ class ATestCapitalShipFighters : public AActor {
 
     // Getters
     auto get_num_instances() const noexcept -> int32;
+    bool array_sizes_consistent() const;
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
