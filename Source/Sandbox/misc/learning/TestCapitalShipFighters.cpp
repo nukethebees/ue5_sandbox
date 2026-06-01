@@ -39,6 +39,8 @@ void ATestCapitalShipFighters::PostInitializeComponents() {
 void ATestCapitalShipFighters::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTickEnabled(true);
+
     if (!instances->GetStaticMesh()) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: mesh is nullptr"));
         SetActorTickEnabled(false);

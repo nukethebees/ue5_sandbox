@@ -34,6 +34,8 @@ void ATestCapitalShips::PostInitializeComponents() {
 void ATestCapitalShips::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTickEnabled(true);
+
     if (!ship_config) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShips: ship_config is nullptr."));
         SetActorTickEnabled(false);
