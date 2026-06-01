@@ -15,11 +15,12 @@ struct SANDBOXCORE_API FGenerationIndex {
         : index(index)
         , generation(generation) {}
 
+    [[nodiscard]] auto is_valid() const noexcept -> bool;
+    auto to_string() const -> FString;
+
     UPROPERTY(VisibleAnywhere)
     int32 index{INDEX_NONE};
 
     UPROPERTY(VisibleAnywhere)
     int32 generation{INDEX_NONE};
-
-    [[nodiscard]] bool is_valid() const noexcept;
 };
