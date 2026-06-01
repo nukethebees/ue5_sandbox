@@ -92,7 +92,7 @@ bool ATestCapitalShipFighters::array_sizes_consistent() const {
 
 // Movement
 void ATestCapitalShipFighters::move_ships(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ATestCapitalShipFighters::spawn_instances);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     auto const n{get_num_instances()};
     auto const speed{actor_config->speed};
@@ -108,7 +108,7 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
 // Spawning
 void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const new_transforms,
                                                TConstArrayView<ETestTeam> const new_teams) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ATestCapitalShipFighters::spawn_instances);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     if (!actor_config) {
         UE_LOG(
@@ -151,7 +151,7 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
 
 // Combat
 void ATestCapitalShipFighters::handle_firing() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ATestCapitalShipFighters::handle_firing);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
 
     auto const n_ships{get_num_instances()};
     indices_ready_to_fire.SetNumUninitialized(n_ships, EAllowShrinking::No);

@@ -94,7 +94,7 @@ auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
 
 // Searching
 void ATestStaticTurrets::perform_search() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ATestStaticTurrets::perform_search);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::perform_search);
 
     auto const n_turrets{get_num_instances()};
     auto const radius{actor_config->detection_radius};
@@ -125,7 +125,7 @@ void ATestStaticTurrets::perform_search() {
 
 // Attacking
 void ATestStaticTurrets::fire_at_enemies() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ATestStaticTurrets::fire_at_enemies);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::fire_at_enemies);
 
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};

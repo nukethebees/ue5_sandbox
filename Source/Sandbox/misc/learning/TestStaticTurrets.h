@@ -62,7 +62,7 @@ class ATestStaticTurrets : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     // Data
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY()
     TArray<FGenerationIndex> indices{};
 
     // Visuals
@@ -76,13 +76,13 @@ class ATestStaticTurrets : public AActor {
     // Firing
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY()
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
 
     // Enemies
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY()
     TArray<FGenerationIndex> target_indices{};
 
     // Health

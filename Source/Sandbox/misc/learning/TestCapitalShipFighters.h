@@ -48,7 +48,7 @@ class ATestCapitalShipFighters : public AActor {
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;
 
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
     // Config data
@@ -58,26 +58,26 @@ class ATestCapitalShipFighters : public AActor {
     // Runtime data
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    UPROPERTY()
     TArray<FGenerationIndex> indices;
 
     // Movement
-    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    UPROPERTY()
     TArray<FTransform> world_transforms;
-    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    UPROPERTY()
     TArray<FVector> velocities;
 
     // Team
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY()
     TArray<ETestTeam> teams{};
 
     // Combat
-    UPROPERTY(VisibleAnywhere, Category = "Ships")
+    UPROPERTY()
     TArray<int32> healths;
 
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY()
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;

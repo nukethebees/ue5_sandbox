@@ -63,28 +63,28 @@ class ATestCapitalShips : public AActor {
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    UPROPERTY()
     TArray<TObjectPtr<UBoxComponent>> collision_boxes;
 
-    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    UPROPERTY()
     TArray<FTransform> transforms;
 
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY()
     FCountdownTimers spawn_timers;
     UPROPERTY()
     TArray<int32> ships_ready_to_spawn_fighters;
 
     // Teams
-    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    UPROPERTY()
     TArray<ETestTeam> teams{};
 
     // Targets
-    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    UPROPERTY()
     TArray<TWeakObjectPtr<ATestCapitalShips>> target_actors;
-    UPROPERTY(VisibleAnywhere, Category = "Ship")
+    UPROPERTY()
     TArray<FGenerationIndex> target_entity_indexes;
 
     UPROPERTY(EditAnywhere, Category = "Ship")

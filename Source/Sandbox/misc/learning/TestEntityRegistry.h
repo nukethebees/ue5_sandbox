@@ -50,15 +50,15 @@ struct FTestEntityRegistryEntityData {
     void add_disabled(int32 const count);
     void add(ConstView const view);
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<FVector> locations;
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<FVector> velocities;
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<int32> healths;
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<ETestTeam> teams;
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY()
     TArray<uint8> alive;
 };
 
@@ -103,9 +103,9 @@ class ATestEntityRegistry : public AActor {
                                    float const radius,
                                    TArrayView<FGenerationIndex> const out_entities) const -> int32;
   private:
-    UPROPERTY(VisibleAnywhere, Category = "Registry")
+    UPROPERTY()
     FTestEntityRegistryEntityData entity_data;
-    UPROPERTY(VisibleAnywhere, Category = "Registry")
+    UPROPERTY()
     TArray<int32> generations;
 
     UPROPERTY();
