@@ -168,6 +168,9 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     auto const relative_transforms{ship_config->fighter_spawn_slots_relative_transforms};
 
+    TArray<FTransform> new_transforms;
+    TArray<ETestTeam> new_teams;
+
     for (int32 i{0}; i < n_to_spawn; ++i) {
         auto const ship_index{ships_ready_to_spawn_fighters[i]};
 
@@ -176,11 +179,14 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
         for (auto const& rt : relative_transforms) {
             auto const transform{rt * base_transform};
-            fighters_actor->spawn_instance(transform, teams[ship_index]);
+            new_transforms.Add(transform);
+            new_teams.Add(teams[ship_index]);
         }
 
         spawn_timers.remaining_times[ship_index] = cooldown;
     }
+
+    fighters_actor->spawn_instances(new_transforms, new_teams);
 }
 
 // Visuals

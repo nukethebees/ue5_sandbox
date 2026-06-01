@@ -94,31 +94,43 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
 }
 
 // Spawning
-void ATestCapitalShipFighters::spawn_instance(FTransform const& transform, ETestTeam const team) {
+void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const new_transforms,
+                                               TConstArrayView<ETestTeam> const new_teams) {
     if (!actor_config) {
         UE_LOG(
             LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: actor_config is nullptr"));
         return;
     }
 
-    instances->AddInstance(transform, true);
+    auto const n_cur{get_num_instances()};
+    auto const n_new{new_transforms.Num()};
+    check(n_new == new_teams.Num());
 
-    world_transforms.Add(transform);
-    healths.Add(actor_config->health);
-    laser_cooldowns.Add(0.f);
-    teams.Add(team);
-    velocities.Add(actor_config->speed * transform.GetRotation().Vector());
+    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true);
+    world_transforms.Append(new_transforms);
+    teams.Append(new_teams);
+
+    healths.AddUninitialized(n_new);
+    laser_cooldowns.remaining_times.AddZeroed(n_new);
+
+    velocities.AddUninitialized(n_new);
 
     FTestEntityRegistryEntityData entity_data;
-    entity_data.add_uninitialised(1);
-    entity_data.locations[0] = transform.GetLocation();
-    entity_data.velocities[0] = velocities.Last();
-    entity_data.healths[0] = actor_config->health;
-    entity_data.teams[0] = team;
-    entity_data.alive[0] = true;
+    entity_data.add_uninitialised(n_new);
+    for (int32 i{0}; i < n_new; ++i) {
+        auto const index{n_cur + i};
+
+        velocities[index] = actor_config->speed * world_transforms[index].GetRotation().Vector();
+
+        entity_data.locations[i] = world_transforms[i].GetLocation();
+        entity_data.velocities[i] = velocities[index];
+        entity_data.healths[i] = healths[index];
+        entity_data.teams[i] = teams[index];
+        entity_data.alive[i] = true;
+    }
 
     auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
-    indices.Insert(new_indices, indices.Num());
+    indices.Append(new_indices);
 }
 
 // Combat
