@@ -15,10 +15,10 @@ struct SANDBOXCORE_API FGenerationIndex {
         : index(index)
         , generation(generation) {}
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     int32 index{INDEX_NONE};
 
-    UPROPERTY()
+    UPROPERTY(VisibleAnywhere)
     int32 generation{INDEX_NONE};
 
     [[nodiscard]] bool is_valid() const noexcept;
