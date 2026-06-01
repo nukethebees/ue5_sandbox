@@ -29,3 +29,9 @@ auto ATestEntityRegistry::collect_entities_in_range(FVector const& origin,
 auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return locations.Num();
 }
+
+auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
+    TArray<FGenerationIndex> indices;
+
+    return indices;
+}

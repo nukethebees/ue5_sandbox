@@ -22,6 +22,8 @@ class ATestEntityRegistry : public AActor {
                                    float radius,
                                    TArrayView<FGenerationIndex> out_entities) -> int32;
     auto get_num_elements() const noexcept -> int32;
+
+    auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
   private:
     UPROPERTY()
     TArray<FVector> locations;
