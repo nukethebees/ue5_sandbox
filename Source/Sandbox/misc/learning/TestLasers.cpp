@@ -19,8 +19,15 @@ ATestLasers::ATestLasers()
 }
 
 // Actor lifecycle
+void ATestLasers::PostInitializeComponents() {
+    Super::PostInitializeComponents();
+
+    clear_runtime_state();
+}
 void ATestLasers::BeginPlay() {
     Super::BeginPlay();
+
+    SetActorTickEnabled(true);
 
     if (!laser_config) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("laser_config is nullptr"));
@@ -127,4 +134,14 @@ bool ATestLasers::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
     return ml::all_num_equal_to(n, transforms, velocities, lifetimes);
+}
+
+// Misc
+void ATestLasers::clear_runtime_state() {
+    instances->ClearInstances();
+
+    transforms.Reset();
+    velocities.Reset();
+    lifetimes.Reset();
+    to_remove.Reset();
 }

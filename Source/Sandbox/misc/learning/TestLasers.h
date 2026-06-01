@@ -16,6 +16,7 @@ class ATestLasers : public AActor {
   public:
     ATestLasers();
 
+    void PostInitializeComponents() override;
     void Tick(float dt) override;
 
     // Accessors
@@ -42,6 +43,9 @@ class ATestLasers : public AActor {
 
     // Debugging
     bool array_sizes_consistent() const;
+
+    // Misc
+    void clear_runtime_state();
 
     UPROPERTY(EditAnywhere, Category = "Laser")
     TObjectPtr<UTestLasersConfig> laser_config{nullptr};
