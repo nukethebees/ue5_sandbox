@@ -101,7 +101,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 
     TArray<ATestCapitalShipProxy*> proxies{};
-    TMap<ATestCapitalShipProxy const*, int32> proxy_to_index{};
+    TMap<ATestCapitalShipProxy const*, FGenerationIndex> proxy_to_index{};
 
     for (auto it{TActorIterator<ATestCapitalShipProxy>(world)}; it; ++it) {
         if (!IsValid(*it)) {
@@ -113,48 +113,92 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         }
 
         auto const index{proxies.Add(*it)};
-        proxy_to_index.Add(*it, index);
     }
 
-    for (ATestCapitalShipProxy* proxy : proxies) {
+    auto const n_to_add{proxies.Num()};
+    entity_indices = entity_registry->reserve_entities(n_to_add);
+    for (int32 i{0}; i < n_to_add; ++i) {
+        proxy_to_index.Add(proxies[i], entity_indices[i]);
+    }
+
+    TArray<FGenerationIndex> new_targets;
+    new_targets.AddUninitialized(n_to_add);
+
+    TArray<FTransform> new_transforms;
+    new_transforms.AddUninitialized(n_to_add);
+
+    TArray<ETestTeam> new_teams;
+    new_teams.AddUninitialized(n_to_add);
+
+    for (int32 i{0}; i < n_to_add; ++i) {
         FGenerationIndex target_index{};
-        if (auto const found{proxy_to_index.Find(proxy)}) {
-            target_index.index = *found;
-            target_index.generation = 0;
+        auto* proxy{proxies[i]};
+
+        if (auto const found{proxy_to_index.Find(proxy->target_ship)}) {
+            target_index = *found;
+        } else {
+            UE_LOG(LogSandboxLearning,
+                   Error,
+                   TEXT("ATestCapitalShips::register_all_proxies_in_level: Lookup failed"));
         }
 
-        spawn_ship(proxy->GetActorTransform(), proxy->team, this, target_index);
+        new_targets[i] = target_index;
+        new_transforms[i] = proxy->GetActorTransform();
+        new_teams[i] = proxy->team;
     }
+
+    spawn_ships(entity_indices, new_transforms, new_teams, new_targets);
+
+    FTestEntityRegistryEntityData update_data;
+    update_data.add_uninitialised(n_to_add);
+    for (int32 i{0}; i < n_to_add; ++i) {
+        update_data.locations[i] = transforms[i].GetLocation();
+        update_data.velocities[i] = FVector::ZeroVector;
+        update_data.healths[i] = healths[i];
+        update_data.teams[i] = teams[i];
+        update_data.alive[i] = true;
+    }
+    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
 
     for (ATestCapitalShipProxy* proxy : proxies) {
         proxy->Destroy();
     }
 }
-void ATestCapitalShips::spawn_ship(FTransform const& transform,
-                                   ETestTeam const team,
-                                   ATestCapitalShips* target_actor,
-                                   FGenerationIndex target_index) {
-    instances->AddInstance(transform, true);
+void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
+                                    TConstArrayView<FTransform> const new_transforms,
+                                    TConstArrayView<ETestTeam> const new_teams,
+                                    TConstArrayView<FGenerationIndex> const new_target_indices) {
+    auto const n_to_add(new_indices.Num());
 
-    // Collision
-    auto const collision_name{
-        MakeUniqueObjectName(this, UBoxComponent::StaticClass(), TEXT("Box"))};
-    auto* collision{NewObject<UBoxComponent>(this, collision_name)};
+    check(n_to_add == new_transforms.Num());
+    check(n_to_add == new_teams.Num());
+    check(n_to_add == new_target_indices.Num());
 
-    collision->SetupAttachment(RootComponent);
-    collision->RegisterComponent();
-    AddInstanceComponent(collision);
-    collision_boxes.Add(collision);
+    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
 
-    collision->SetWorldTransform(transform);
-    collision->SetBoxExtent(ship_config->collision_box_extent);
+    transforms.Append(new_transforms);
+    target_entity_indices.Append(new_target_indices);
+    spawn_timers.AddZeroed(n_to_add);
+    teams.Append(new_teams);
+    healths.AddUninitialized(n_to_add);
 
-    // Data
-    transforms.Add(transform);
-    target_actors.Add(target_actor);
-    target_entity_indexes.Add(target_index);
-    spawn_timers.remaining_times.Add(0.f);
-    teams.Add(team);
+    auto const hp{ship_config->max_health};
+
+    for (int32 i{0}; i < n_to_add; ++i) {
+        auto const collision_name{
+            MakeUniqueObjectName(this, UBoxComponent::StaticClass(), TEXT("Box"))};
+        auto* collision{NewObject<UBoxComponent>(this, collision_name)};
+
+        collision->SetupAttachment(RootComponent);
+        collision->RegisterComponent();
+        AddInstanceComponent(collision);
+        collision_boxes.Add(collision);
+
+        collision->SetWorldTransform(new_transforms[i]);
+        collision->SetBoxExtent(ship_config->collision_box_extent);
+
+        healths[i] = hp;
+    }
 
     check(array_sizes_consistent());
 }
@@ -201,22 +245,33 @@ void ATestCapitalShips::configure_ismc() {
 
 // Misc
 void ATestCapitalShips::clear_runtime_state() {
+    instances->ClearInstances();
     ml::destroy_components_array(collision_boxes);
 
-    instances->ClearInstances();
+    entity_indices.Reset();
 
     transforms.Reset();
 
-    target_actors.Reset();
-    target_entity_indexes.Reset();
+    spawn_timers.Reset();
+    ships_ready_to_spawn_fighters.Reset();
+
+    teams.Reset();
+
+    target_entity_indices.Reset();
 }
 
 // Debugging
 bool ATestCapitalShips::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
-    return ml::all_num_equal_to(
-        n, collision_boxes, transforms, spawn_timers, teams, target_actors, target_entity_indexes);
+    return ml::all_num_equal_to(n,
+                                collision_boxes,
+                                entity_indices,
+                                transforms,
+                                spawn_timers,
+                                teams,
+                                healths,
+                                target_entity_indices);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
@@ -227,16 +282,13 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 
     for (int32 i{0}; i < n; ++i) {
         auto const ship_loc{transforms[i].GetLocation()};
+        auto const target_index{target_entity_indices[i]};
 
-        auto const target_actor{target_actors[i]};
-        auto const target_index{target_entity_indexes[i]};
-
-        if (!target_actor.IsValid()) {
+        if (!entity_registry->is_valid_index(target_index)) {
             continue;
         }
 
-        auto const target_loc{target_actor->get_location(target_index)};
-
+        auto const target_loc{entity_registry->get_location(target_index)};
         drawer.draw_arrow(ship_loc, target_loc);
     }
 }

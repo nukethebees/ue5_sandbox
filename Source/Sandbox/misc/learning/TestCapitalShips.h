@@ -37,10 +37,10 @@ class ATestCapitalShips : public AActor {
 
     // Ship spawning
     void register_all_proxies_in_level();
-    void spawn_ship(FTransform const& transform,
-                    ETestTeam const team,
-                    ATestCapitalShips* target_actor,
-                    FGenerationIndex target_index);
+    void spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
+                     TConstArrayView<FTransform> const new_transforms,
+                     TConstArrayView<ETestTeam> const new_teams,
+                     TConstArrayView<FGenerationIndex> const new_target_indices);
 
     // Fighter spawning
     void handle_fighter_spawning();
@@ -66,6 +66,10 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     TArray<TObjectPtr<UBoxComponent>> collision_boxes;
 
+    // Entity data
+    UPROPERTY()
+    TArray<FGenerationIndex> entity_indices;
+
     UPROPERTY()
     TArray<FTransform> transforms;
 
@@ -81,11 +85,13 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     TArray<ETestTeam> teams{};
 
+    // Health
+    UPROPERTY()
+    TArray<int32> healths{};
+
     // Targets
     UPROPERTY()
-    TArray<TWeakObjectPtr<ATestCapitalShips>> target_actors;
-    UPROPERTY()
-    TArray<FGenerationIndex> target_entity_indexes;
+    TArray<FGenerationIndex> target_entity_indices;
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     bool debugging_shapes_enabled{false};

@@ -40,6 +40,10 @@ class UTestCapitalShipsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
 
+    // Health
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 max_health{5000};
+
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
