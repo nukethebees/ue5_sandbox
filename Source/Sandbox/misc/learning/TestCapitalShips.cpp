@@ -161,6 +161,8 @@ void ATestCapitalShips::spawn_ship(FTransform const& transform,
 
 // Fighter spawning
 void ATestCapitalShips::handle_fighter_spawning() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestCapitalShips::handle_fighter_spawning);
+
     auto const n_ships{get_num_instances()};
     ships_ready_to_spawn_fighters.SetNumUninitialized(n_ships, EAllowShrinking::No);
     auto const cooldown{ship_config->spawn_delay};
@@ -217,6 +219,8 @@ bool ATestCapitalShips::array_sizes_consistent() const {
         n, collision_boxes, transforms, spawn_timers, teams, target_actors, target_entity_indexes);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestCapitalShips::draw_debugging_shapes);
+
     auto const n{get_num_instances()};
     auto drawer{ship_config->debug_drawer};
     drawer.world = GetWorld();

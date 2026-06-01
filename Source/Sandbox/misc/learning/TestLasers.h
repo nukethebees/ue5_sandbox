@@ -47,7 +47,7 @@ class ATestLasers : public AActor {
     // Misc
     void clear_runtime_state();
 
-    UPROPERTY(EditAnywhere, Category = "Laser")
+    UPROPERTY(EditAnywhere, Category = "Lasers")
     TObjectPtr<UTestLasersConfig> laser_config{nullptr};
 
     UPROPERTY()
@@ -63,4 +63,9 @@ class ATestLasers : public AActor {
 
     UPROPERTY()
     TArray<int32> to_remove;
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleAnywhere, Category = "Lasers")
+    int32 dbg_n_instances{0};
+#endif
 };

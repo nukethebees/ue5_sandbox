@@ -55,6 +55,10 @@ void ATestLasers::Tick(float dt) {
     update_locations(dt);
 
     update_ismc();
+
+#if WITH_EDITOR
+    dbg_n_instances = get_num_instances();
+#endif
 }
 
 // Accessors
@@ -87,21 +91,28 @@ void ATestLasers::configure_ismc() {
 
 // Movement
 void ATestLasers::update_locations(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestLasers::update_locations);
+
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
         transforms[i].AddToTranslation(dt * velocities[i]);
     }
 }
-void ATestLasers::handle_collisions(float const dt) {}
+void ATestLasers::handle_collisions(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestLasers::handle_collisions);
+}
 
 // Visuals
 void ATestLasers::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestLasers::update_ismc);
     instances->BatchUpdateInstancesTransforms(0, transforms, true, true, false);
 }
 
 // Lifetimes
 void ATestLasers::tick_lifetimes(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestLasers::tick_lifetimes);
+
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -109,6 +120,8 @@ void ATestLasers::tick_lifetimes(float const dt) {
     }
 }
 void ATestLasers::prune_old_instances() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ATestLasers::prune_old_instances);
+
     auto const n{get_num_instances()};
     auto const threshold{laser_config->lifetime};
 

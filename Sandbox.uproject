@@ -445,6 +445,22 @@
 		{
 			"Name": "AdvancedRenamer",
 			"Enabled": true
+		},
+		{
+			"Name": "TraceSourceFilters",
+			"Enabled": true
+		},
+		{
+			"Name": "NiagaraInsights",
+			"Enabled": true
+		},
+		{
+			"Name": "TraceUtilities",
+			"Enabled": true
+		},
+		{
+			"Name": "RenderTraceInsights",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
