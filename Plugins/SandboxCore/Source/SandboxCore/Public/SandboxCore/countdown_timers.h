@@ -11,6 +11,7 @@ struct SANDBOXCORE_API FCountdownTimers {
     void tick(float const dt) noexcept;
 
     auto operator[](int32 const i) const -> float { return remaining_times[i]; }
+    auto operator[](int32 const i) -> float& { return remaining_times[i]; }
 
     auto Num() const noexcept { return remaining_times.Num(); }
     auto Add(float t) { remaining_times.Add(t); }

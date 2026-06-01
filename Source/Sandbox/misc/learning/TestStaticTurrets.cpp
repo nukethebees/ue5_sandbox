@@ -124,6 +124,7 @@ void ATestStaticTurrets::perform_search() {
 // Attacking
 void ATestStaticTurrets::fire_at_enemies() {
     auto const n{get_num_instances()};
+    auto const cooldown{actor_config->attack_cooldown};
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_indices[i]};
@@ -143,6 +144,8 @@ void ATestStaticTurrets::fire_at_enemies() {
         laser_transform.SetRotation(rotation.Quaternion());
 
         laser_actor->spawn_laser(laser_transform, *this);
+
+        laser_cooldowns[i] = cooldown;
     }
 }
 
