@@ -33,5 +33,43 @@ auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
 auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
     TArray<FGenerationIndex> indices;
 
+    auto const n_free_indices{free_indices.Num()};
+    auto const free_to_reserve{FMath::Min(n_free_indices, count)};
+
+    for (int32 i{}; i < free_to_reserve; ++i) {
+        auto const index{free_indices.Pop(EAllowShrinking::No)};
+
+        locations[index] = FVector::ZeroVector;
+        velocities[index] = FVector::ZeroVector;
+        healths[index] = 0;
+        ++generations[index];
+        teams[index] = ETestTeam::neutral;
+        alive[index] = false;
+
+        indices.Emplace(index, generations[index]);
+    }
+
+    auto const indices_left_to_reserve{count - indices.Num()};
+    auto start_index{get_num_elements()};
+
+    locations.AddUninitialized(indices_left_to_reserve);
+    velocities.AddUninitialized(indices_left_to_reserve);
+    healths.AddUninitialized(indices_left_to_reserve);
+    generations.AddUninitialized(indices_left_to_reserve);
+    teams.AddUninitialized(indices_left_to_reserve);
+    alive.AddUninitialized(indices_left_to_reserve);
+
+    for (int32 i{0}; i < indices_left_to_reserve; ++i) {
+        auto const index{start_index + i};
+
+        locations[index] = FVector::ZeroVector;
+        velocities[index] = FVector::ZeroVector;
+        healths[index] = 0;
+        generations[index] = 0;
+        teams[index] = ETestTeam::neutral;
+        alive[index] = false;
+        indices.Emplace(index, generations[index]);
+    }
+
     return indices;
 }
