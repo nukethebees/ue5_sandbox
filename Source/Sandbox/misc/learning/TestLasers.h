@@ -21,6 +21,7 @@ class ATestLasers : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
+    auto get_config() const -> UTestLasersConfig const* { return laser_config; }
 
     // Spawning / configuration
     void spawn_lasers(TConstArrayView<FTransform> const transforms);

@@ -3,10 +3,12 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestEntityRegistry.h"
 #include "TestLasers.h"
+#include "TestLasersConfig.h"
 #include "TestStaticTurretsConfig.h"
 #include "TestStaticTurretsProxy.h"
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/projectile_intercept.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
@@ -129,6 +131,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};
+    auto const laser_speed{laser_actor->get_config()->speed};
 
     TArray<FTransform> laser_transforms;
 
@@ -143,11 +146,18 @@ void ATestStaticTurrets::fire_at_enemies() {
         }
 
         auto const target_location{entity_registry->get_location(target_index)};
+        auto const target_velocity{entity_registry->get_velocity(target_index)};
+
         FTransform laser_transform{FTransform::Identity};
         instances->GetInstanceTransform(i, laser_transform, true);
+        auto const laser_location{laser_transform.GetLocation()};
 
-        auto const rotation{(target_location - laser_transform.GetLocation()).Rotation()};
-        laser_transform.SetRotation(rotation.Quaternion());
+        auto const intercept_time{ml::solve_intercept_time(
+            laser_location, target_location, target_velocity, laser_speed)};
+
+        FVector const intercept_pos{target_location + target_velocity * intercept_time};
+        FVector const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
+        laser_transform.SetRotation(fire_dir.ToOrientationQuat());
 
         laser_transforms.Add(laser_transform);
         laser_cooldowns[i] = cooldown;
