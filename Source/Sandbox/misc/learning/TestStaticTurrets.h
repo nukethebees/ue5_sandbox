@@ -2,6 +2,8 @@
 
 #include "TestTeam.h"
 
+#include "Sandbox/logging/ActorLoggingConfig.h"
+
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/generation_index.h"
 
@@ -25,6 +27,7 @@ class ATestStaticTurrets : public AActor {
 
     ATestStaticTurrets();
 
+    void PostInitializeComponents() override;
     void Tick(float dt) override;
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
@@ -49,6 +52,9 @@ class ATestStaticTurrets : public AActor {
     // Debugging
     bool array_sizes_consistent() const;
 
+    // Misc
+    void clear_runtime_state();
+
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
@@ -68,9 +74,9 @@ class ATestStaticTurrets : public AActor {
     TArray<ETestTeam> teams{};
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Turret")
+    UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY(EditAnywhere, Category = "Turrets")
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
@@ -82,4 +88,8 @@ class ATestStaticTurrets : public AActor {
     // Health
     UPROPERTY()
     TArray<int32> healths;
+
+    // Debugging / logging
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    FActorLoggingConfig log_config{1.f};
 };

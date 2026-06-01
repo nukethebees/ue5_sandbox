@@ -20,6 +20,9 @@ ATestStaticTurrets::ATestStaticTurrets()
     instances->SetMobility(EComponentMobility::Static);
 
     instances->SetupAttachment(RootComponent);
+
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
 // Actor life cycle
@@ -32,8 +35,15 @@ void ATestStaticTurrets::OnConstruction(FTransform const& transform) {
 
     configure_ismc();
 }
+void ATestStaticTurrets::PostInitializeComponents() {
+    Super::PostInitializeComponents();
+
+    clear_runtime_state();
+}
 void ATestStaticTurrets::BeginPlay() {
     Super::BeginPlay();
+
+    SetActorTickEnabled(true);
 
     if (actor_config == nullptr) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: actor_config is nullptr."));
@@ -46,6 +56,11 @@ void ATestStaticTurrets::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+    if (laser_actor == nullptr) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: laser_actor is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
 
     configure_ismc();
     register_all_proxies_in_level();
@@ -54,9 +69,12 @@ void ATestStaticTurrets::Tick(float dt) {
     Super::Tick(dt);
 
     laser_cooldowns.tick(dt);
+    log_config.tick(dt);
 
     perform_search();
     fire_at_enemies();
+
+    log_config.on_tick_end();
 }
 
 // Visuals
@@ -91,7 +109,7 @@ void ATestStaticTurrets::perform_search() {
         auto const this_team{teams[i]};
 
         for (int32 j{0}; j < n_entities; ++j) {
-            auto const target_index{elems[i]};
+            auto const target_index{elems[j]};
 
             if (this_team == entity_registry->get_team(target_index)) {
                 continue;
@@ -157,6 +175,13 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     }
 
     auto const n{proxies.Num()};
+    if (n == 0) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestStaticTurrets::register_all_proxies_in_level: 0 proxies detected."));
+        return;
+    }
+
     indices = entity_registry->reserve_entities(n);
 
     FTestEntityRegistryEntityData entity_data;
@@ -171,7 +196,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
-        instances->AddInstance(transform);
+        instances->AddInstance(transform, true);
         healths[i] = hp;
         teams[i] = proxies[i]->get_team();
 
@@ -185,6 +210,10 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     ATestEntityRegistry::ConstView const update_view{indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
 
+    for (auto* proxy : proxies) {
+        proxy->Destroy();
+    }
+
     check(array_sizes_consistent());
 }
 
@@ -193,4 +222,15 @@ bool ATestStaticTurrets::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
     return ml::all_num_equal_to(n, indices, teams, laser_cooldowns, healths, target_indices);
+}
+
+// Misc
+void ATestStaticTurrets::clear_runtime_state() {
+    instances->ClearInstances();
+
+    teams.Reset();
+    laser_cooldowns.remaining_times.Reset();
+    indices_ready_to_fire.Reset();
+    target_indices.Reset();
+    healths.Reset();
 }
