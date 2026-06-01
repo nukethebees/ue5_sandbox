@@ -100,8 +100,8 @@ class ATestEntityRegistry : public AActor {
     auto get_alive(FGenerationIndex const index) const -> bool;
 
     auto collect_entities_in_range(FVector const& origin,
-                                   float radius,
-                                   TArrayView<FGenerationIndex> out_entities) const -> int32;
+                                   float const radius,
+                                   TArrayView<FGenerationIndex> const out_entities) const -> int32;
   private:
     UPROPERTY(VisibleAnywhere, Category = "Registry")
     FTestEntityRegistryEntityData entity_data;

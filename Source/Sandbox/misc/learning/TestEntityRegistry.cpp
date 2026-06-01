@@ -172,10 +172,10 @@ auto ATestEntityRegistry::get_team(FGenerationIndex const index) const -> ETestT
 auto ATestEntityRegistry::get_alive(FGenerationIndex const index) const -> bool {
     return is_valid_index(index) ? static_cast<bool>(entity_data.alive[index.index]) : false;
 }
-auto ATestEntityRegistry::collect_entities_in_range(FVector const& origin,
-                                                    float radius,
-                                                    TArrayView<FGenerationIndex> out_entities) const
-    -> int32 {
+auto ATestEntityRegistry::collect_entities_in_range(
+    FVector const& origin,
+    float const radius,
+    TArrayView<FGenerationIndex> const out_entities) const -> int32 {
     int32 count{0};
 
     auto const radius_squared{radius * radius};
@@ -183,12 +183,13 @@ auto ATestEntityRegistry::collect_entities_in_range(FVector const& origin,
     auto const n_out_limit{out_entities.Num()};
 
     for (int32 i{0}; i < n; ++i) {
-        if (FVector::DistSquared(origin, entity_data.locations[i]) <= radius_squared) {
+        auto const dist_sq{FVector::DistSquared(origin, entity_data.locations[i])};
+        if (dist_sq <= radius_squared) {
             out_entities[count++] = FGenerationIndex{i, generations[i]};
+        }
 
-            if (count >= n_out_limit) {
-                break;
-            }
+        if (count >= n_out_limit) {
+            break;
         }
     }
 
