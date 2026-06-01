@@ -8,8 +8,11 @@
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 
-#include <Components/InstancedStaticMeshComponent.h>
-#include <Components/SceneComponent.h>
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/SceneComponent.h"
+#include "ProfilingDebugging/CountersTrace.h"
+
+TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
 ATestCapitalShipFighters::ATestCapitalShipFighters()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -77,6 +80,8 @@ void ATestCapitalShipFighters::Tick(float dt) {
     move_ships(dt);
     handle_firing();
     update_entity_registry();
+
+    TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 }
 
 // Getters

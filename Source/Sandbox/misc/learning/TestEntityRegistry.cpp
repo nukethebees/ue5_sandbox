@@ -66,6 +66,8 @@ ATestEntityRegistry::ATestEntityRegistry() {
 
 // Entity updates
 auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::reserve_entities);
+
     TArray<FGenerationIndex> indices;
 
     auto const n_free_indices{free_indices.Num()};
@@ -99,6 +101,8 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
     return indices;
 }
 void ATestEntityRegistry::update_entities(ConstView const view) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
+
     auto const n{view.get_num()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -119,6 +123,8 @@ void ATestEntityRegistry::update_entities(ConstView const view) {
 }
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
     -> TArray<FGenerationIndex> {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
+
     TArray<FGenerationIndex> indices;
 
     auto const count{view.get_num()};
@@ -176,6 +182,8 @@ auto ATestEntityRegistry::collect_entities_in_range(
     FVector const& origin,
     float const radius,
     TArrayView<FGenerationIndex> const out_entities) const -> int32 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_entities_in_range);
+
     int32 count{0};
 
     auto const radius_squared{radius * radius};
@@ -187,6 +195,38 @@ auto ATestEntityRegistry::collect_entities_in_range(
         if (dist_sq <= radius_squared) {
             out_entities[count++] = FGenerationIndex{i, generations[i]};
         }
+
+        if (count >= n_out_limit) {
+            break;
+        }
+    }
+
+    return count;
+}
+auto ATestEntityRegistry::collect_non_team_entities_in_range(
+    FVector const& origin,
+    ETestTeam const team,
+    float const radius,
+    TArrayView<FGenerationIndex> const out_entities) const -> int32 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_non_team_entities_in_range);
+
+    int32 count{0};
+
+    auto const radius_squared{radius * radius};
+    auto const n{get_num_elements()};
+    auto const n_out_limit{out_entities.Num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const dist_sq{FVector::DistSquared(origin, entity_data.locations[i])};
+        if (dist_sq > radius_squared) {
+            continue;
+        }
+
+        if (entity_data.teams[i] == team) {
+            continue;
+        }
+
+        out_entities[count++] = FGenerationIndex{i, generations[i]};
 
         if (count >= n_out_limit) {
             break;

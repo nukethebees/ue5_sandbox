@@ -7,6 +7,9 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <ProfilingDebugging/CountersTrace.h>
+
+TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 
 ATestLasers::ATestLasers()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -55,6 +58,8 @@ void ATestLasers::Tick(float dt) {
     update_locations(dt);
 
     update_ismc();
+
+    TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
 
 #if WITH_EDITOR
     dbg_n_instances = get_num_instances();

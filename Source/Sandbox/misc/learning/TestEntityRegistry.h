@@ -102,6 +102,11 @@ class ATestEntityRegistry : public AActor {
     auto collect_entities_in_range(FVector const& origin,
                                    float const radius,
                                    TArrayView<FGenerationIndex> const out_entities) const -> int32;
+    auto collect_non_team_entities_in_range(FVector const& origin,
+                                            ETestTeam const team,
+                                            float const radius,
+                                            TArrayView<FGenerationIndex> const out_entities) const
+        -> int32;
   private:
     UPROPERTY()
     FTestEntityRegistryEntityData entity_data;

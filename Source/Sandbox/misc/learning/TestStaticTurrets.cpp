@@ -13,6 +13,9 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <EngineUtils.h>
+#include <ProfilingDebugging/CountersTrace.h>
+
+TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStaticTurretCount"));
 
 ATestStaticTurrets::ATestStaticTurrets()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -77,6 +80,7 @@ void ATestStaticTurrets::Tick(float dt) {
     fire_at_enemies();
 
     log_config.on_tick_end();
+    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
 }
 
 // Visuals
@@ -91,7 +95,7 @@ void ATestStaticTurrets::configure_ismc() {
 
 // Getters
 auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
-    return instances->GetNumInstances();
+    return teams.Num();
 }
 
 // Searching
@@ -105,12 +109,11 @@ void ATestStaticTurrets::perform_search() {
     for (int32 i{0}; i < n_turrets; ++i) {
         instances->GetInstanceTransform(i, turret_transform, true);
         auto const turret_location{turret_transform.GetLocation()};
+        auto const this_team{teams[i]};
 
         TStaticArray<FGenerationIndex, 128> elems;
-        auto const n_entities{
-            entity_registry->collect_entities_in_range(turret_location, radius, elems)};
-
-        auto const this_team{teams[i]};
+        auto const n_entities{entity_registry->collect_non_team_entities_in_range(
+            turret_location, this_team, radius, elems)};
 
         for (int32 j{0}; j < n_entities; ++j) {
             auto const target_index{elems[j]};
@@ -204,6 +207,11 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
                Warning,
                TEXT("ATestStaticTurrets::register_all_proxies_in_level: 0 proxies detected."));
         return;
+    } else {
+        UE_LOG(LogSandboxLearning,
+               Display,
+               TEXT("ATestStaticTurrets::register_all_proxies_in_level: Spawning %d proxies."),
+               n);
     }
 
     indices = entity_registry->reserve_entities(n);

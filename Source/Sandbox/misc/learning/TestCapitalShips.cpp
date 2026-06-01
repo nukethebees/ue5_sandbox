@@ -14,6 +14,9 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <EngineUtils.h>
+#include <ProfilingDebugging/CountersTrace.h>
+
+TRACE_DECLARE_INT_COUNTER(SandboxTestCapitalShipCount, TEXT("Sandbox/TestLaserCount"));
 
 ATestCapitalShips::ATestCapitalShips()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -68,6 +71,8 @@ void ATestCapitalShips::Tick(float dt) {
     if (debugging_shapes_enabled) {
         draw_debugging_shapes();
     }
+
+    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 }
 
 // Accessors
