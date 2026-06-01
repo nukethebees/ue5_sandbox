@@ -74,6 +74,7 @@ void ATestCapitalShipFighters::Tick(float dt) {
 
     move_ships(dt);
     handle_firing();
+    update_entity_registry();
 }
 
 // Getters
@@ -162,4 +163,26 @@ void ATestCapitalShipFighters::handle_firing() {
 // Misc
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
+}
+void ATestCapitalShipFighters::update_entity_registry() {
+    auto const data{get_entity_data(0, get_num_instances())};
+    ATestEntityRegistry::ConstView view{indices, data.get_const_view()};
+    entity_registry->update_entities(view);
+}
+auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
+    -> FTestEntityRegistryEntityData {
+    FTestEntityRegistryEntityData entity_data;
+
+    entity_data.add_uninitialised(count);
+    for (int32 i{0}; i < count; ++i) {
+        auto const index{offset + i};
+
+        entity_data.locations[i] = world_transforms[i].GetLocation();
+        entity_data.velocities[i] = velocities[index];
+        entity_data.healths[i] = healths[index];
+        entity_data.teams[i] = teams[index];
+        entity_data.alive[i] = true;
+    }
+
+    return entity_data;
 }

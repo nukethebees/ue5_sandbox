@@ -110,11 +110,11 @@ void ATestEntityRegistry::update_entities(ConstView const view) {
 
         auto const entity_index{generation_index.index};
 
-        entity_data.locations[entity_index] = view.data.locations[entity_index];
-        entity_data.velocities[entity_index] = view.data.velocities[entity_index];
-        entity_data.healths[entity_index] = view.data.healths[entity_index];
-        entity_data.teams[entity_index] = view.data.teams[entity_index];
-        entity_data.alive[entity_index] = view.data.alive[entity_index];
+        entity_data.locations[entity_index] = view.data.locations[i];
+        entity_data.velocities[entity_index] = view.data.velocities[i];
+        entity_data.healths[entity_index] = view.data.healths[i];
+        entity_data.teams[entity_index] = view.data.teams[i];
+        entity_data.alive[entity_index] = view.data.alive[i];
     }
 }
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)

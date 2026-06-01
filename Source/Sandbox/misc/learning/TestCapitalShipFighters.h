@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TestEntityRegistry.h"
 #include "TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
@@ -43,6 +44,9 @@ class ATestCapitalShipFighters : public AActor {
 
     // Misc
     void clear_runtime_state();
+    void update_entity_registry();
+    auto get_entity_data(int32 const offset, int32 const count) const
+        -> FTestEntityRegistryEntityData;
 
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UInstancedStaticMeshComponent> instances;
