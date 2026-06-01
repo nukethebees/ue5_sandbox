@@ -46,6 +46,9 @@ class ATestStaticTurrets : public AActor {
     // Attacking
     void fire_at_enemies();
 
+    // Debugging
+    bool array_sizes_consistent() const;
+
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
@@ -71,6 +74,10 @@ class ATestStaticTurrets : public AActor {
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
+
+    // Enemies
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    TArray<FGenerationIndex> target_indices{};
 
     // Health
     UPROPERTY()

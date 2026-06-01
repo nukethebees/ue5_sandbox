@@ -6,6 +6,8 @@
 #include "TestStaticTurretsConfig.h"
 #include "TestStaticTurretsProxy.h"
 
+#include <SandboxCore/array_utils.h>
+
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <EngineUtils.h>
@@ -104,6 +106,9 @@ void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam c
     instances->AddInstance(transform, true);
     teams.Add(team);
     healths.Add(actor_config->max_health);
+    target_indices.AddDefaulted();
+
+    check(array_sizes_consistent());
 }
 void ATestStaticTurrets::register_all_proxies_in_level() {
     auto* world{GetWorld()};
@@ -136,6 +141,8 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     teams.AddUninitialized(n);
     healths.AddUninitialized(n);
+    target_indices.AddDefaulted(n);
+    laser_cooldowns.remaining_times.AddZeroed(n);
 
     auto const hp{actor_config->max_health};
 
@@ -154,4 +161,13 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     ATestEntityRegistry::ConstView const update_view{indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
+
+    check(array_sizes_consistent());
+}
+
+// Debugging
+bool ATestStaticTurrets::array_sizes_consistent() const {
+    auto const n{instances->GetNumInstances()};
+
+    return ml::all_num_equal_to(n, indices, teams, laser_cooldowns, healths, target_indices);
 }
