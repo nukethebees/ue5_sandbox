@@ -97,6 +97,7 @@ void ATestStaticTurrets::perform_search() {
 void ATestStaticTurrets::fire_at_enemies() {}
 
 // Spawning
-void ATestStaticTurrets::spawn_instance(FTransform const& transform) {
+void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam const team) {
     instances->AddInstance(transform, true);
+    teams.Add(team);
 }

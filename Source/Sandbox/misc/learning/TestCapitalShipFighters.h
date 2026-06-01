@@ -14,6 +14,7 @@ class UInstancedStaticMeshComponent;
 
 class UTestCapitalShipFightersConfig;
 class ATestLasers;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestCapitalShipFighters : public AActor {
@@ -24,11 +25,10 @@ class ATestCapitalShipFighters : public AActor {
     void PostInitializeComponents() override;
     void Tick(float dt) override;
 
-    void spawn_instance(FTransform const& transform);
+    void spawn_instance(FTransform const& transform, ETestTeam const team);
 
     // Getters
     auto get_num_instances() const noexcept -> int32;
-    auto get_team() const noexcept -> ETestTeam;
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
@@ -47,6 +47,8 @@ class ATestCapitalShipFighters : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ships")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     // Movement
     UPROPERTY(VisibleAnywhere, Category = "Ships")
@@ -54,7 +56,7 @@ class ATestCapitalShipFighters : public AActor {
 
     // Team
     UPROPERTY(EditAnywhere, Category = "Ships")
-    ETestTeam team{ETestTeam::neutral};
+    TArray<ETestTeam> teams{};
 
     // Combat
     UPROPERTY(VisibleAnywhere, Category = "Ships")

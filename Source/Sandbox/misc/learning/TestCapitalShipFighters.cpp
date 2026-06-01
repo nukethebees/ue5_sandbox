@@ -2,6 +2,7 @@
 
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestCapitalShipFightersConfig.h"
+#include "TestEntityRegistry.h"
 #include "TestLasers.h"
 
 #include <SandboxCore/array_math.h>
@@ -56,6 +57,14 @@ void ATestCapitalShipFighters::BeginPlay() {
         SetActorTickEnabled(false);
         return;
     }
+
+    if (!entity_registry) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipFighters: entity_registry is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
 }
 void ATestCapitalShipFighters::Tick(float dt) {
     Super::Tick(dt);
@@ -67,9 +76,6 @@ void ATestCapitalShipFighters::Tick(float dt) {
 }
 
 // Getters
-auto ATestCapitalShipFighters::get_team() const noexcept -> ETestTeam {
-    return team;
-}
 auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return world_transforms.Num();
 }
@@ -90,7 +96,7 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
 }
 
 // Spawning
-void ATestCapitalShipFighters::spawn_instance(FTransform const& transform) {
+void ATestCapitalShipFighters::spawn_instance(FTransform const& transform, ETestTeam const team) {
     if (!actor_config) {
         UE_LOG(
             LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: actor_config is nullptr"));
@@ -102,6 +108,7 @@ void ATestCapitalShipFighters::spawn_instance(FTransform const& transform) {
     world_transforms.Add(transform);
     healths.Add(actor_config->health);
     laser_cooldowns.Add(0.f);
+    teams.Add(team);
 }
 
 // Combat

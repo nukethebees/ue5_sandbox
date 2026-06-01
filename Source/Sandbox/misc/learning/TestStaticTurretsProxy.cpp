@@ -40,11 +40,12 @@ void ATestStaticTurretsProxy::BeginPlay() {
     Super::BeginPlay();
 
     if (!batch_actor) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurretsProxy: batch_actor is nullptr."));
+        UE_LOG(
+            LogSandboxLearning, Warning, TEXT("ATestStaticTurretsProxy: batch_actor is nullptr."));
         return;
     }
 
-    batch_actor->spawn_instance(GetActorTransform());
+    batch_actor->spawn_instance(GetActorTransform(), team);
     Destroy();
 }
 

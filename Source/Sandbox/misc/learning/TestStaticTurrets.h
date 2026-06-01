@@ -25,7 +25,7 @@ class ATestStaticTurrets : public AActor {
 
     void Tick(float dt) override;
 
-    void spawn_instance(FTransform const& transform);
+    void spawn_instance(FTransform const& transform, ETestTeam const team);
 
     auto get_num_instances() const noexcept -> int32;
   protected:
@@ -53,7 +53,7 @@ class ATestStaticTurrets : public AActor {
 
     // Team
     UPROPERTY(EditAnywhere, Category = "Turrets")
-    ETestTeam team{ETestTeam::neutral};
+    TArray<ETestTeam> teams{};
 
     // Firing
     UPROPERTY(EditAnywhere, Category = "Turret")

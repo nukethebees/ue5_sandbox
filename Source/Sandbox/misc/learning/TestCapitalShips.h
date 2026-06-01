@@ -16,6 +16,7 @@ class UBoxComponent;
 class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
 class ATestCapitalShipFighters;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestCapitalShips : public AActor {
@@ -31,13 +32,13 @@ class ATestCapitalShips : public AActor {
     auto get_num_instances() const -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
-    auto get_team() const noexcept -> ETestTeam;
   protected:
     void BeginPlay() override;
 
     // Ship spawning
     void register_all_proxies_in_level();
     void spawn_ship(FTransform const& transform,
+                    ETestTeam const team,
                     ATestCapitalShips* target_actor,
                     FGenerationIndex target_index);
 
@@ -54,8 +55,11 @@ class ATestCapitalShips : public AActor {
     bool array_sizes_consistent() const;
     void draw_debugging_shapes() const;
 
+    // Config / context
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
@@ -75,7 +79,7 @@ class ATestCapitalShips : public AActor {
 
     // Teams
     UPROPERTY(VisibleAnywhere, Category = "Ship")
-    ETestTeam team{ETestTeam::neutral};
+    TArray<ETestTeam> teams{};
 
     // Targets
     UPROPERTY(VisibleAnywhere, Category = "Ship")

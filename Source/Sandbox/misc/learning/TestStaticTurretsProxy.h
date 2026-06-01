@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TestTeam.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -47,4 +49,7 @@ class ATestStaticTurretsProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     TObjectPtr<ATestStaticTurrets> batch_actor{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Turret")
+    ETestTeam team{ETestTeam::neutral};
 };
