@@ -9,6 +9,11 @@
 #include "ProfilingDebugging/TraceAuxiliary.h"
 #include "TimerManager.h"
 
+/*
+    This will not work if the session browser is open as it will run a trace on top of this one.
+    I need to find out why this happens.
+*/
+
 ABenchmarkOrchestratorActor::ABenchmarkOrchestratorActor() {
     PrimaryActorTick.bCanEverTick = false;
 }
