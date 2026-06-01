@@ -38,15 +38,6 @@ void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
 }
 void ATestStaticTurretsProxy::BeginPlay() {
     Super::BeginPlay();
-
-    if (!batch_actor) {
-        UE_LOG(
-            LogSandboxLearning, Warning, TEXT("ATestStaticTurretsProxy: batch_actor is nullptr."));
-        return;
-    }
-
-    batch_actor->spawn_instance(GetActorTransform(), team);
-    Destroy();
 }
 
 #if WITH_EDITOR

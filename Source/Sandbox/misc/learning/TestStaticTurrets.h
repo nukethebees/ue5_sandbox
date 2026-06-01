@@ -3,6 +3,7 @@
 #include "TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
+#include "SandboxCore/generation_index.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -18,8 +19,9 @@ class ATestEntityRegistry;
 
 UCLASS()
 class ATestStaticTurrets : public AActor {
-  public:
     GENERATED_BODY()
+  public:
+    using Proxy = ATestStaticTurretsProxy;
 
     ATestStaticTurrets();
 
@@ -31,6 +33,9 @@ class ATestStaticTurrets : public AActor {
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;
+
+    // Spawning
+    void register_all_proxies_in_level();
 
     // Visuals
     void configure_ismc();
@@ -47,6 +52,10 @@ class ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
+    // Data
+    UPROPERTY(EditAnywhere, Category = "Turrets")
+    TArray<FGenerationIndex> indices{};
+
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
@@ -62,4 +71,8 @@ class ATestStaticTurrets : public AActor {
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
+
+    // Health
+    UPROPERTY()
+    TArray<int32> healths;
 };

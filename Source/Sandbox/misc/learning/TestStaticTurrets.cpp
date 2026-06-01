@@ -8,6 +8,7 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <EngineUtils.h>
 
 ATestStaticTurrets::ATestStaticTurrets()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -45,6 +46,7 @@ void ATestStaticTurrets::BeginPlay() {
     }
 
     configure_ismc();
+    register_all_proxies_in_level();
 }
 void ATestStaticTurrets::Tick(float dt) {
     Super::Tick(dt);
@@ -65,6 +67,7 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
 }
 
+// Getters
 auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
     return instances->GetNumInstances();
 }
@@ -100,4 +103,55 @@ void ATestStaticTurrets::fire_at_enemies() {}
 void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam const team) {
     instances->AddInstance(transform, true);
     teams.Add(team);
+    healths.Add(actor_config->max_health);
+}
+void ATestStaticTurrets::register_all_proxies_in_level() {
+    auto* world{GetWorld()};
+
+    if (!world) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestStaticTurrets::register_all_proxies_in_level: world is nullptr."));
+        return;
+    }
+
+    TArray<Proxy*> proxies{};
+    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
+        if (!IsValid(*it)) {
+            continue;
+        }
+
+        if (it->get_batch_actor() != this) {
+            continue;
+        }
+
+        auto const index{proxies.Add(*it)};
+    }
+
+    auto const n{proxies.Num()};
+    indices = entity_registry->reserve_entities(n);
+
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.add_uninitialised(n);
+
+    teams.AddUninitialized(n);
+    healths.AddUninitialized(n);
+
+    auto const hp{actor_config->max_health};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const transform{proxies[i]->GetActorTransform()};
+        instances->AddInstance(transform);
+        healths[i] = hp;
+        teams[i] = proxies[i]->get_team();
+
+        entity_data.locations[i] = transform.GetTranslation();
+        entity_data.velocities[i] = FVector::ZeroVector;
+        entity_data.healths[i] = healths[i];
+        entity_data.teams[i] = teams[i];
+        entity_data.alive[i] = true;
+    }
+
+    ATestEntityRegistry::ConstView const update_view{indices, entity_data.get_const_view()};
+    entity_registry->update_entities(update_view);
 }

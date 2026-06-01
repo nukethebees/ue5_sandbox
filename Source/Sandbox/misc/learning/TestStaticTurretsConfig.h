@@ -27,4 +27,14 @@ class UTestStaticTurretsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
+
+    // Combat
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 laser_damage{5};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float attack_cooldown{0.33f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 max_health{20};
 };
