@@ -88,18 +88,41 @@ void ATestStaticTurrets::perform_search() {
         auto const n_entities{
             entity_registry->collect_entities_in_range(turret_location, radius, elems)};
 
+        auto const this_team{teams[i]};
+
         for (int32 j{0}; j < n_entities; ++j) {
-            // Check if enemy
+            auto const target_index{elems[i]};
 
-            // Check if LOS
+            if (this_team == entity_registry->get_team(target_index)) {
+                continue;
+            }
 
-            // Mark for attack
+            target_indices[i] = target_index;
+            break;
         }
     }
 }
 
 // Attacking
-void ATestStaticTurrets::fire_at_enemies() {}
+void ATestStaticTurrets::fire_at_enemies() {
+    auto const n{get_num_instances()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const target_index{target_indices[i]};
+
+        if (!target_index.is_valid()) {
+            continue;
+        }
+        if (!(laser_cooldowns[i] <= 0.f)) {
+            continue;
+        }
+
+        auto const target_location{entity_registry->get_location(target_index)};
+        FTransform laser_transform{FTransform::Identity};
+        instances->GetInstanceTransform(i, laser_transform, true);
+        laser_actor->spawn_laser(laser_transform, *this);
+    }
+}
 
 // Spawning
 void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam const team) {
