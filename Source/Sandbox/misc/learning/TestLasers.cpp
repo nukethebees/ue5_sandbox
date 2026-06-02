@@ -10,6 +10,7 @@
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
+TRACE_DECLARE_INT_COUNTER(SandboxTestLaserRemovedCount, TEXT("Sandbox/TestLaserRemovedCount"));
 
 ATestLasers::ATestLasers()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -29,6 +30,9 @@ void ATestLasers::PostInitializeComponents() {
 }
 void ATestLasers::BeginPlay() {
     Super::BeginPlay();
+
+    TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
+    TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 
     SetActorTickEnabled(true);
 
@@ -118,6 +122,8 @@ void ATestLasers::update_locations(float const dt) {
 }
 void ATestLasers::handle_collisions(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::handle_collisions);
+
+    auto const n{get_num_instances()};
 }
 
 // Visuals
@@ -133,19 +139,19 @@ void ATestLasers::tick_lifetimes(float const dt) {
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
-        lifetimes[i] -= dt;
+        lifetimes[i] += dt;
     }
 }
 void ATestLasers::prune_old_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prune_old_instances);
 
     auto const n{get_num_instances()};
-    auto const threshold{laser_config->lifetime};
+    auto const laser_lifetime{laser_config->lifetime};
 
     to_remove.Reset();
 
     for (int32 i{n - 1}; i >= 0; --i) {
-        if (lifetimes[i] >= threshold) {
+        if (lifetimes[i] >= laser_lifetime) {
             transforms.RemoveAtSwap(i, EAllowShrinking::No);
             velocities.RemoveAtSwap(i, EAllowShrinking::No);
             lifetimes.RemoveAtSwap(i, EAllowShrinking::No);
@@ -153,6 +159,8 @@ void ATestLasers::prune_old_instances() {
             to_remove.Add(i);
         }
     }
+
+    TRACE_COUNTER_ADD(SandboxTestLaserRemovedCount, to_remove.Num());
 
     instances->RemoveInstances(to_remove);
 

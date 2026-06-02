@@ -42,6 +42,8 @@ void ATestCapitalShipFighters::PostInitializeComponents() {
 void ATestCapitalShipFighters::BeginPlay() {
     Super::BeginPlay();
 
+    TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
+
     SetActorTickEnabled(true);
 
     if (!instances->GetStaticMesh()) {

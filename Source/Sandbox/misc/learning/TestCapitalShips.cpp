@@ -37,6 +37,8 @@ void ATestCapitalShips::PostInitializeComponents() {
 void ATestCapitalShips::BeginPlay() {
     Super::BeginPlay();
 
+    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
+
     SetActorTickEnabled(true);
 
     if (!ship_config) {

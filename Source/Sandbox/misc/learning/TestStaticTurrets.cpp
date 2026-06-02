@@ -48,6 +48,8 @@ void ATestStaticTurrets::PostInitializeComponents() {
 void ATestStaticTurrets::BeginPlay() {
     Super::BeginPlay();
 
+    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
+
     SetActorTickEnabled(true);
 
     if (actor_config == nullptr) {
