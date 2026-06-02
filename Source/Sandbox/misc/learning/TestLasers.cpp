@@ -7,6 +7,7 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/World.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
@@ -54,6 +55,11 @@ void ATestLasers::BeginPlay() {
 }
 void ATestLasers::Tick(float dt) {
     Super::Tick(dt);
+
+    auto const n{get_num_instances()};
+    if (n < 1) {
+        return;
+    }
 
     tick_lifetimes(dt);
     prune_old_instances();
@@ -124,6 +130,32 @@ void ATestLasers::handle_collisions(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::handle_collisions);
 
     auto const n{get_num_instances()};
+
+    if (n < 1) {
+        return;
+    }
+
+    auto* world{GetWorld()};
+    to_remove.Reset();
+
+    for (int32 i{n - 1}; i >= 0; --i) {
+        auto const start{transforms[i].GetLocation()};
+        auto const end{start + dt * velocities[i]};
+
+        FHitResult hit{};
+
+        FCollisionQueryParams params{};
+        params.AddIgnoredActor(this);
+
+        auto const did_hit{
+            world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
+
+        if (did_hit) {
+            to_remove.Add(i);
+        }
+    }
+
+    remove_instances(to_remove);
 }
 
 // Visuals
@@ -146,25 +178,21 @@ void ATestLasers::prune_old_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prune_old_instances);
 
     auto const n{get_num_instances()};
+    if (n < 1) {
+        return;
+    }
+
     auto const laser_lifetime{laser_config->lifetime};
 
     to_remove.Reset();
 
     for (int32 i{n - 1}; i >= 0; --i) {
         if (lifetimes[i] >= laser_lifetime) {
-            transforms.RemoveAtSwap(i, EAllowShrinking::No);
-            velocities.RemoveAtSwap(i, EAllowShrinking::No);
-            lifetimes.RemoveAtSwap(i, EAllowShrinking::No);
-
             to_remove.Add(i);
         }
     }
 
-    TRACE_COUNTER_ADD(SandboxTestLaserRemovedCount, to_remove.Num());
-
-    instances->RemoveInstances(to_remove);
-
-    check(array_sizes_consistent());
+    remove_instances(to_remove);
 }
 
 // Debugging
@@ -182,4 +210,22 @@ void ATestLasers::clear_runtime_state() {
     velocities.Reset();
     lifetimes.Reset();
     to_remove.Reset();
+}
+void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
+    auto const n{indices.Num()};
+    if (n < 1) {
+        return;
+    }
+
+    for (int32 i{n - 1}; i >= 0; --i) {
+        transforms.RemoveAtSwap(i, EAllowShrinking::No);
+        velocities.RemoveAtSwap(i, EAllowShrinking::No);
+        lifetimes.RemoveAtSwap(i, EAllowShrinking::No);
+    }
+
+    TRACE_COUNTER_ADD(SandboxTestLaserRemovedCount, n);
+
+    instances->RemoveInstances(to_remove, true);
+
+    check(array_sizes_consistent());
 }

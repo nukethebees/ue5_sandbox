@@ -47,6 +47,7 @@ class ATestLasers : public AActor {
 
     // Misc
     void clear_runtime_state();
+    void remove_instances(TConstArrayView<int32> indices);
 
     UPROPERTY(EditAnywhere, Category = "Lasers")
     TObjectPtr<UTestLasersConfig> laser_config{nullptr};
