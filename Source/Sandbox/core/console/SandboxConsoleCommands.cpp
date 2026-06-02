@@ -85,10 +85,8 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             // Misc
             LogSandboxLearning);
 
-        UE_LOG(LogSandbox,
-               Display,
-               TEXT("Set all sandbox log categories to %s"),
-               *verbosity_string);
+        UE_LOG(
+            LogSandbox, Display, TEXT("Set all sandbox log categories to %s"), *verbosity_string);
     }
 }
 

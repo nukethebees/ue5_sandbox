@@ -12,7 +12,6 @@ class ATestTarget : public AActor {
     GENERATED_BODY()
   public:
     ATestTarget();
-
   protected:
     UPROPERTY(EditAnywhere, Category = "Fly")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

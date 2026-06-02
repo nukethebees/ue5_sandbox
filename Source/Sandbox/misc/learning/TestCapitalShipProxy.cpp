@@ -89,6 +89,5 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
 
     auto const collision_extent{collision_box->GetUnscaledBoxExtent()};
     ship_config->collision_box_extent = collision_extent;
-
 }
 #endif

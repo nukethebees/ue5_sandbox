@@ -21,4 +21,3 @@ struct FScale3D {
 
     auto get() const -> FVector;
 };
-

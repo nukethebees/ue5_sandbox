@@ -7,11 +7,7 @@
 #include "BurstFire.generated.h"
 
 UENUM()
-enum class EBurstFireState {
-    ready,
-    shot_cooldown,
-    burst_cooldown
-};
+enum class EBurstFireState { ready, shot_cooldown, burst_cooldown };
 
 USTRUCT()
 struct FBurstFire {
@@ -34,5 +30,4 @@ struct FBurstFire {
     int32 shots_remaining{3};
     UPROPERTY(VisibleAnywhere)
     EBurstFireState state{EBurstFireState::ready};
-    
 };

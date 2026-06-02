@@ -25,9 +25,7 @@ class ATestStaticTurretsProxy : public AActor {
     void Tick(float dt) override;
 
     auto get_batch_actor() const -> ATestStaticTurrets const* { return batch_actor; }
-    auto get_team() const {
-        return team;
-    }
+    auto get_team() const { return team; }
   protected:
     void OnConstruction(FTransform const& transform) override;
     void BeginPlay() override;

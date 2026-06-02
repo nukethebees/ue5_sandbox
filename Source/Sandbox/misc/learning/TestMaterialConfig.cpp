@@ -56,8 +56,8 @@ void FTestMaterialState::set_mesh_material(UStaticMeshComponent& mesh, int32 slo
     mesh.SetMaterial(slot, material_instance);
 }
 void FTestMaterialState::initialise_mesh_material(UObject* outer,
-                                                   UStaticMeshComponent& mesh,
-                                                   int32 slot) {
+                                                  UStaticMeshComponent& mesh,
+                                                  int32 slot) {
     if (!initialise(outer)) {
         return;
     }

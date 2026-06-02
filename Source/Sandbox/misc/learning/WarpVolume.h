@@ -18,5 +18,4 @@ class AWarpVolume : public AActor {
   protected:
     UPROPERTY(EditAnywhere, Category = "Warp")
     TObjectPtr<UBoxComponent> box{nullptr};
-
 };

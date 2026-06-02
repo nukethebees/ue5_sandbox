@@ -12,8 +12,8 @@
 #include "Sandbox/utilities/world.h"
 
 #include "CoreMinimal.h"
-#include "MassArchetypeTypes.h"
 #include "Mass/EntityHandle.h"
+#include "MassArchetypeTypes.h"
 #include "MassEntityTypes.h"
 #include "MassSubsystemBase.h"
 
