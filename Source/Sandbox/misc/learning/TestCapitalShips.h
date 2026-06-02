@@ -62,7 +62,7 @@ class ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     UPROPERTY()
     TArray<TObjectPtr<UBoxComponent>> collision_boxes;
