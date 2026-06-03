@@ -5,11 +5,13 @@
 #include "TestCapitalShipsConfig.h"
 
 #include <SandboxCore/actor_components.h>
+#include <SandboxCore/collision_settings.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
+#include <EngineUtils.h>
 
 ATestCapitalShipProxy::ATestCapitalShipProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}
@@ -51,9 +53,11 @@ void ATestCapitalShipProxy::BeginPlay() {
 }
 
 #if WITH_EDITOR
-void ATestCapitalShipProxy::spawn_fighter_spawn_slots() {
+void ATestCapitalShipProxy::apply_asset_configuration() {
     if (!ship_config) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipProxy: ship_config is nullptr."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipProxy::apply_asset_configuration: ship_config is nullptr."));
         return;
     }
 
@@ -72,7 +76,29 @@ void ATestCapitalShipProxy::spawn_fighter_spawn_slots() {
 
         spawn_point->SetRelativeTransform(ship_config->fighter_spawn_slots_relative_transforms[i]);
     }
+
+    collision_box->SetBoxExtent(ship_config->collision_box_extent);
+    ml::apply_collision_settings(*collision_box, ship_config->collision_settings);
 }
+void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
+    auto* world{GetWorld()};
+    if (!world) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipProxy::apply_asset_configuration_to_all_instances: world is "
+                    "nullptr."));
+        return;
+    }
+
+    for (auto it{TActorIterator<ATestCapitalShipProxy>(world)}; it; ++it) {
+        if (!IsValid(*it)) {
+            continue;
+        }
+
+        (*it)->apply_asset_configuration();
+    }
+}
+
 void ATestCapitalShipProxy::save_configuration_to_asset() {
     if (!ship_config) {
         UE_LOG(LogSandboxLearning,
@@ -106,7 +132,7 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
         return;
     }
 
-    auto const collision_extent{collision_box->GetUnscaledBoxExtent()};
-    ship_config->collision_box_extent = collision_extent;
+    ship_config->collision_box_extent = collision_box->GetUnscaledBoxExtent();
+    ship_config->collision_settings = ml::copy_collision_settings(*collision_box);
 }
 #endif

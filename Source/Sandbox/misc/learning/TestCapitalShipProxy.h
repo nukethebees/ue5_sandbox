@@ -27,7 +27,9 @@ class ATestCapitalShipProxy : public AActor {
   public:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Ship")
-    void spawn_fighter_spawn_slots();
+    void apply_asset_configuration();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void apply_asset_configuration_to_all_instances();
     UFUNCTION(CallInEditor, Category = "Ship")
     void save_configuration_to_asset();
 #endif

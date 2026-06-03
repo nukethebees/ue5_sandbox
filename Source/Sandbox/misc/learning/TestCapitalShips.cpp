@@ -9,6 +9,7 @@
 #include <SandboxCore/actor_components.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/collision_settings.h>
 
 #include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>
@@ -182,6 +183,8 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
 
     auto const hp{ship_config->max_health};
 
+    auto const collision_settings{ship_config->collision_settings};
+
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const collision_name{
             MakeUniqueObjectName(this, UBoxComponent::StaticClass(), TEXT("Box"))};
@@ -194,6 +197,7 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
 
         collision->SetWorldTransform(new_transforms[i]);
         collision->SetBoxExtent(ship_config->collision_box_extent);
+        ml::apply_collision_settings(*collision, collision_settings);
 
         healths[i] = hp;
     }
@@ -239,6 +243,9 @@ void ATestCapitalShips::handle_fighter_spawning() {
 void ATestCapitalShips::configure_ismc() {
     instances->SetStaticMesh(ship_config->mesh);
     instances->SetMobility(EComponentMobility::Movable);
+
+    // Collision
+    ml::apply_collision_settings(*instances, ship_config->collision_settings);
 }
 
 // Misc

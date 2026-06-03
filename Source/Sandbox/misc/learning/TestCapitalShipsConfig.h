@@ -2,8 +2,11 @@
 
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
+#include "SandboxCore/collision_settings.h"
+
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Engine/EngineTypes.h"
 
 #include "TestCapitalShipsConfig.generated.h"
 
@@ -29,6 +32,9 @@ class UTestCapitalShipsConfig : public UDataAsset {
     // Collision
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FVector collision_box_extent{FVector::ZeroVector};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FCollisionSettings collision_settings;
 
     // Fighter spawning
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
