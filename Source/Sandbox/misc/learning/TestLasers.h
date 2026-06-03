@@ -70,10 +70,10 @@ class ATestLasers : public AActor {
 
 #if WITH_EDITORONLY_DATA
     // Debugging
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category="Lasers")
     FDrawDebugConfig debug_drawer;
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Lasers")
     bool debugging_shapes_enabled{false};
 
     UPROPERTY(VisibleAnywhere, Category = "Lasers")
