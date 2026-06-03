@@ -7,6 +7,7 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/HitResult.h>
 #include <Engine/World.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
@@ -50,6 +51,10 @@ void ATestLasers::BeginPlay() {
     }
 
     configure_ismc();
+
+#if WITH_EDITOR
+    debug_drawer.world = GetWorld();
+#endif
 
     check(array_sizes_consistent());
 }
@@ -152,6 +157,10 @@ void ATestLasers::handle_collisions(float const dt) {
 
         if (did_hit) {
             to_remove.Add(i);
+
+#if WITH_EDITOR
+            debug_drawer.draw_sphere(hit.ImpactPoint);
+#endif
         }
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/utilities/DrawDebugConfig.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -67,6 +69,13 @@ class ATestLasers : public AActor {
     TArray<int32> to_remove;
 
 #if WITH_EDITORONLY_DATA
+    // Debugging
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    bool debugging_shapes_enabled{false};
+
     UPROPERTY(VisibleAnywhere, Category = "Lasers")
     int32 dbg_n_instances{0};
 #endif
