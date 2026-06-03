@@ -11,6 +11,7 @@ class UStaticMeshComponent;
 class UCapsuleComponent;
 class USphereComponent;
 class USceneComponent;
+class UArrowComponent;
 
 class UTestStaticTurretsConfig;
 class ATestStaticTurrets;
@@ -31,8 +32,12 @@ class ATestStaticTurretsProxy : public AActor {
     void BeginPlay() override;
 
 #if WITH_EDITOR
-    UFUNCTION(CallInEditor, Category = "Turret")
+    UFUNCTION(CallInEditor, Category = "Ship")
     void save_configuration_to_asset();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void apply_asset_configuration();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void apply_asset_configuration_to_all_instances();
 #endif
 
     UPROPERTY(EditAnywhere, Category = "Turret")
@@ -48,7 +53,7 @@ class ATestStaticTurretsProxy : public AActor {
     TObjectPtr<USphereComponent> detection{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
-    TObjectPtr<USceneComponent> fire_point{nullptr};
+    TObjectPtr<UArrowComponent> fire_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Turret")
     TObjectPtr<ATestStaticTurrets> batch_actor{nullptr};
