@@ -27,6 +27,9 @@ struct FCollisionSettings {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TEnumAsByte<ECanBeCharacterBase> can_character_step_up_on{ECanBeCharacterBase::ECB_No};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    uint8 notify_rigid_body_collision{0u};
 };
 
 namespace ml {

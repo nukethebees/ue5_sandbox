@@ -11,6 +11,7 @@ auto copy_collision_settings(UPrimitiveComponent const& component) -> FCollision
         .response = component.GetCollisionResponseToChannels(),
         .can_generate_overlap_events = component.GetGenerateOverlapEvents(),
         .can_character_step_up_on = component.CanCharacterStepUpOn,
+        .notify_rigid_body_collision = component.BodyInstance.bNotifyRigidBodyCollision,
     };
 }
 void apply_collision_settings(UPrimitiveComponent& component, FCollisionSettings const& settings) {
@@ -19,5 +20,6 @@ void apply_collision_settings(UPrimitiveComponent& component, FCollisionSettings
     component.SetCollisionResponseToChannels(settings.response);
     component.SetGenerateOverlapEvents(settings.can_generate_overlap_events);
     component.CanCharacterStepUpOn = settings.can_character_step_up_on;
+    component.SetNotifyRigidBodyCollision(static_cast<bool>(settings.notify_rigid_body_collision));
 }
 }
