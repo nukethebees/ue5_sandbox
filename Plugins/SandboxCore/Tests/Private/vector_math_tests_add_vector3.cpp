@@ -1,4 +1,4 @@
-#include "vector_math.h"
+#include "SandboxCore/vector_math.h"
 
 #include "TestHarness.h"
 

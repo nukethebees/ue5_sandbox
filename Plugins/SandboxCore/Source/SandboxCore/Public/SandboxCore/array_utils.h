@@ -2,7 +2,7 @@
 
 #include "container_concepts.h"
 
-#include "CoreMinimal.h"
+#include "Containers/ArrayView.h"
 
 namespace ml {
 template <typename... Arrays>
@@ -16,5 +16,22 @@ template <typename Array, typename Other, typename... Rest>
     requires ml::AllHaveNumReturningInt32<Array, Other, Rest...>
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
     return all_num_equal_to(array.Num(), other, rest...);
+}
+
+auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
+
+template <typename... TArrays>
+void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArrays&... arrays) {
+    check(ml::is_sorted_desc(indices));
+
+    auto const n{indices.Num()};
+    if (n < 1) {
+        return;
+    }
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const index{indices[i]};
+        ((arrays.RemoveAtSwap(index, 1, EAllowShrinking::No)), ...);
+    }
 }
 }
