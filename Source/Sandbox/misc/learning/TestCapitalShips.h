@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sandbox/utilities/DrawDebugConfig.h"
 #include "TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
@@ -94,6 +95,9 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     TArray<FGenerationIndex> target_entity_indices;
 
+    // Debugging
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Ship")
     bool debugging_shapes_enabled{false};
 };

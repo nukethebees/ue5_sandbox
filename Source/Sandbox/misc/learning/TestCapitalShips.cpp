@@ -43,22 +43,39 @@ void ATestCapitalShips::BeginPlay() {
     SetActorTickEnabled(true);
 
     if (!ship_config) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShips: ship_config is nullptr."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShips::BeginPlay: ship_config is nullptr."));
         SetActorTickEnabled(false);
         return;
     }
 
     if (!fighters_actor) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShips: fighters_actor is nullptr."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShips::BeginPlay: fighters_actor is nullptr."));
         SetActorTickEnabled(false);
         return;
     }
 
     if (!entity_registry) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShips: entity_registry is nullptr."));
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShips::BeginPlay: entity_registry is nullptr."));
         SetActorTickEnabled(false);
         return;
     }
+
+    auto* world{GetWorld()};
+    if (!entity_registry) {
+        UE_LOG(
+            LogSandboxLearning, Warning, TEXT("ATestCapitalShips::BeginPlay: world is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    debug_drawer = ship_config->debug_drawer;
+    debug_drawer.world = world;
 
     configure_ismc();
     register_all_proxies_in_level();
@@ -299,18 +316,21 @@ void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
 
     auto const n{get_num_instances()};
-    auto drawer{ship_config->debug_drawer};
-    drawer.world = GetWorld();
+    auto const collision_extent{ship_config->collision_box_extent};
 
+    auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
         auto const ship_loc{transforms[i].GetLocation()};
-        auto const target_index{target_entity_indices[i]};
 
+        // Draw target
+        auto const target_index{target_entity_indices[i]};
         if (!entity_registry->is_valid_index(target_index)) {
             continue;
         }
-
         auto const target_loc{entity_registry->get_location(target_index)};
         drawer.draw_arrow(ship_loc, target_loc);
+
+        // Draw collision
+        drawer.draw_box(ship_loc, collision_extent);
     }
 }
