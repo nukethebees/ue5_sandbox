@@ -212,16 +212,14 @@ void ATestLasers::clear_runtime_state() {
     to_remove.Reset();
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
+
     auto const n{indices.Num()};
     if (n < 1) {
         return;
     }
 
-    for (int32 i{n - 1}; i >= 0; --i) {
-        transforms.RemoveAtSwap(i, EAllowShrinking::No);
-        velocities.RemoveAtSwap(i, EAllowShrinking::No);
-        lifetimes.RemoveAtSwap(i, EAllowShrinking::No);
-    }
+    ml::remove_at_swap_many_sorted_desc(indices, transforms, velocities, lifetimes);
 
     TRACE_COUNTER_ADD(SandboxTestLaserRemovedCount, n);
 
