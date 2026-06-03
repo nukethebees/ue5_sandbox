@@ -84,6 +84,21 @@ void FDrawDebugConfig::draw_arrow(FVector const& start, FVector const& end) cons
                               get_thickness(arrow_thickness));
 }
 
+void FDrawDebugConfig::draw_box(FVector const& start, FVector const& extent) const {
+    if (!check_world_valid()) {
+        return;
+    }
+
+    DrawDebugBox(world.Get(),
+                 start,
+                 extent,
+                 get_colour(box_colour),
+                 persistent,
+                 lifetime,
+                 depth_priority,
+                 get_thickness(box_thickness));
+}
+
 void FDrawDebugConfig::draw_circle(FTransform const& transform, float const radius_) const {
     if (!check_world_valid()) {
         return;

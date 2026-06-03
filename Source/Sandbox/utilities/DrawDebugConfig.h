@@ -25,8 +25,12 @@ struct FDrawDebugConfig {
 
     void draw_line(FVector const& start, FVector const& end) const;
     void draw_line(FVector const& start, FRotator const& fwd) const;
+    
     void draw_point(FVector const& location) const;
+    
     void draw_arrow(FVector const& start, FVector const& end) const;
+
+    void draw_box(FVector const& start, FVector const& extent) const;
 
     void draw_circle(FTransform const& transform, float const circle_r) const;
     void draw_circle(FTransform const& transform) const;
@@ -92,6 +96,8 @@ struct FDrawDebugConfig {
     // Box
     UPROPERTY(EditAnywhere, Category = "Debug|Box")
     TOptional<FColor> box_colour{};
+    UPROPERTY(EditAnywhere, Category = "Debug|Box")
+    TOptional<float> box_thickness{};
 
     // Coordinate system
     UPROPERTY(EditAnywhere, Category = "Debug|Coord")
