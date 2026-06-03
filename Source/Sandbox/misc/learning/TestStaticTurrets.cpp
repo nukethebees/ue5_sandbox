@@ -139,6 +139,7 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const laser_speed{laser_actor->get_config()->speed};
 
     TArray<FTransform> laser_transforms;
+    auto const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_indices[i]};
@@ -155,7 +156,8 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         FTransform laser_transform{FTransform::Identity};
         instances->GetInstanceTransform(i, laser_transform, true);
-        auto const laser_location{laser_transform.GetLocation()};
+        auto const laser_location{laser_transform.GetLocation() + fire_point_offset};
+        laser_transform.SetLocation(laser_location);
 
         auto const intercept_time{ml::solve_intercept_time(
             laser_location, target_location, target_velocity, laser_speed)};

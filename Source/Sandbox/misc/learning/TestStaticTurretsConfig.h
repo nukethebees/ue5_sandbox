@@ -37,4 +37,8 @@ class UTestStaticTurretsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 max_health{20};
+
+    // Proxy settings
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    bool show_collision{false};
 };
