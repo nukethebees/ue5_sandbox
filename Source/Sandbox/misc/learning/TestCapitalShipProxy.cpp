@@ -53,6 +53,47 @@ void ATestCapitalShipProxy::BeginPlay() {
 }
 
 #if WITH_EDITOR
+void ATestCapitalShipProxy::save_configuration_to_asset() {
+    if (!ship_config) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipProxy::save_configuration_to_asset: ship_config is nullptr."));
+        return;
+    }
+
+    ship_config->Modify();
+
+    if (ship_config->fighter_spawn_slots < 1) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipProxy::save_configuration_to_asset: fighter_spawn_slots < 1 "
+                    "(%d)."),
+               ship_config->fighter_spawn_slots);
+        return;
+    }
+
+    auto& transforms{ship_config->fighter_spawn_slots_relative_transforms};
+
+    transforms.Reset();
+    transforms.Reserve(ship_config->fighter_spawn_slots);
+    for (auto const slot : fighter_spawn_slots) {
+        transforms.Add(slot->GetRelativeTransform());
+    }
+
+    if (!collision_box) {
+        UE_LOG(
+            LogSandboxLearning,
+            Warning,
+            TEXT("ATestCapitalShipProxy::save_configuration_to_asset: collision_box is nullptr."));
+        return;
+    }
+
+    ship_config->collision_box_extent = collision_box->GetUnscaledBoxExtent();
+    ship_config->collision_settings = ml::copy_collision_settings(*collision_box);
+
+    ship_config->MarkPackageDirty();
+}
+
 void ATestCapitalShipProxy::apply_asset_configuration() {
     if (!ship_config) {
         UE_LOG(LogSandboxLearning,
@@ -97,42 +138,5 @@ void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
 
         (*it)->apply_asset_configuration();
     }
-}
-
-void ATestCapitalShipProxy::save_configuration_to_asset() {
-    if (!ship_config) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipProxy::save_configuration_to_asset: ship_config is nullptr."));
-        return;
-    }
-
-    if (ship_config->fighter_spawn_slots < 1) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipProxy::save_configuration_to_asset: fighter_spawn_slots < 1 "
-                    "(%d)."),
-               ship_config->fighter_spawn_slots);
-        return;
-    }
-
-    auto& transforms{ship_config->fighter_spawn_slots_relative_transforms};
-
-    transforms.Reset();
-    transforms.Reserve(ship_config->fighter_spawn_slots);
-    for (auto const slot : fighter_spawn_slots) {
-        transforms.Add(slot->GetRelativeTransform());
-    }
-
-    if (!collision_box) {
-        UE_LOG(
-            LogSandboxLearning,
-            Warning,
-            TEXT("ATestCapitalShipProxy::save_configuration_to_asset: collision_box is nullptr."));
-        return;
-    }
-
-    ship_config->collision_box_extent = collision_box->GetUnscaledBoxExtent();
-    ship_config->collision_settings = ml::copy_collision_settings(*collision_box);
 }
 #endif

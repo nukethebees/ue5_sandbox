@@ -24,9 +24,6 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
     fire_point->SetupAttachment(RootComponent);
 }
 
-void ATestStaticTurretsProxy::Tick(float dt) {
-    Super::Tick(dt);
-}
 void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
@@ -38,9 +35,6 @@ void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
         mesh->SetStaticMesh(actor_config->mesh);
     }
 }
-void ATestStaticTurretsProxy::BeginPlay() {
-    Super::BeginPlay();
-}
 
 #if WITH_EDITOR
 void ATestStaticTurretsProxy::save_configuration_to_asset() {
@@ -48,8 +42,12 @@ void ATestStaticTurretsProxy::save_configuration_to_asset() {
         return;
     }
 
+    actor_config->Modify();
+
     actor_config->detection_radius = detection->GetUnscaledSphereRadius();
     actor_config->fire_point_offset = fire_point->GetRelativeTransform();
+
+    actor_config->MarkPackageDirty();
 }
 
 void ATestStaticTurretsProxy::apply_asset_configuration() {
