@@ -174,7 +174,9 @@ void ATestTubeSpinners::fire_lasers() {
     new_laser_transforms.Reserve(n_firing_points * n_ready_to_fire);
 
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
-        auto const& base_transform{transforms[i]};
+        auto const index{indices_ready_to_fire[i]};
+
+        auto const& base_transform{transforms[index]};
         for (auto const& offset : firing_point_offsets) {
             new_laser_transforms.Add(offset * base_transform);
         }
