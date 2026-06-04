@@ -24,6 +24,8 @@ class ATestCapitalShips : public AActor {
   public:
     GENERATED_BODY()
 
+    using Proxy = ATestCapitalShipProxy;
+
     ATestCapitalShips();
 
     void PostInitializeComponents() override;
