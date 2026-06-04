@@ -70,6 +70,8 @@ class ATestTubeSpinners : public AActor {
     UPROPERTY()
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
+    TArray<int32> next_fire_point_indices;
+    UPROPERTY()
     TArray<int32> indices_ready_to_fire;
     UPROPERTY()
     TArray<FTransform> new_laser_transforms;

@@ -105,17 +105,20 @@ void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_tr
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::spawn_instances);
 
     auto const n{new_transforms.Num()};
-    auto const new_total{get_num_instances() + n};
+    auto const existing_total{get_num_instances()};
 
     transforms.AddUninitialized(n);
     yaws.AddUninitialized(n);
+    next_fire_point_indices.AddZeroed(n);
     laser_cooldowns.AddZeroed(n);
 
     instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
     for (int32 i{0}; i < n; ++i) {
+        auto const index{existing_total + i};
+
         auto const& transform{new_transforms[i]};
-        transforms[i] = transform;
-        yaws[i] = transform.GetRotation().Rotator().Yaw;
+        transforms[index] = transform;
+        yaws[index] = transform.GetRotation().Rotator().Yaw;
     }
 
     check(array_sizes_consistent());
@@ -155,6 +158,12 @@ void ATestTubeSpinners::fire_lasers() {
 
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};
+    auto const& firing_point_offsets{actor_config->fire_point_offsets};
+    auto const n_firing_points{firing_point_offsets.Num()};
+
+    if (n_firing_points < 1) {
+        return;
+    }
 
     indices_ready_to_fire.Reset();
     new_laser_transforms.Reset();
@@ -168,18 +177,17 @@ void ATestTubeSpinners::fire_lasers() {
         laser_cooldowns[i] = cooldown;
     }
 
-    auto const firing_point_offsets{actor_config->fire_point_offsets};
-    auto const n_firing_points{firing_point_offsets.Num()};
     auto const n_ready_to_fire{indices_ready_to_fire.Num()};
-    new_laser_transforms.Reserve(n_firing_points * n_ready_to_fire);
+    new_laser_transforms.Reserve(n_ready_to_fire);
 
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
         auto const index{indices_ready_to_fire[i]};
 
         auto const& base_transform{transforms[index]};
-        for (auto const& offset : firing_point_offsets) {
-            new_laser_transforms.Add(offset * base_transform);
-        }
+        auto const fire_point_index{next_fire_point_indices[index]};
+        new_laser_transforms.Add(firing_point_offsets[fire_point_index] * base_transform);
+
+        next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
     laser_actor->spawn_lasers(new_laser_transforms);
@@ -189,5 +197,5 @@ void ATestTubeSpinners::fire_lasers() {
 bool ATestTubeSpinners::array_sizes_consistent() const {
     auto const n{instances->GetNumInstances()};
 
-    return ml::all_num_equal_to(n, yaws, laser_cooldowns);
+    return ml::all_num_equal_to(n, transforms, yaws, laser_cooldowns, next_fire_point_indices);
 }
