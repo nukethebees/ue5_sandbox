@@ -1,6 +1,7 @@
 #include "TestTubeSpinners.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestLasers.h"
 #include "TestTubeSpinnerProxy.h"
 #include "TestTubeSpinnersConfig.h"
 
@@ -30,8 +31,16 @@ void ATestTubeSpinners::BeginPlay() {
 
     SetActorTickEnabled(true);
 
+    check(actor_config);
     if (actor_config == nullptr) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestTubeSpinners: actor_config is nullptr."));
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    check(laser_actor);
+    if (laser_actor == nullptr) {
+        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestTubeSpinners: laser_actor is nullptr."));
         SetActorTickEnabled(false);
         return;
     }
@@ -143,7 +152,35 @@ void ATestTubeSpinners::update_ismc() {
 // Firing
 void ATestTubeSpinners::fire_lasers() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::fire_lasers);
-    return;
+
+    auto const n{get_num_instances()};
+    auto const cooldown{actor_config->attack_cooldown};
+
+    indices_ready_to_fire.Reset();
+    new_laser_transforms.Reset();
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!(laser_cooldowns[i] <= 0.f)) {
+            continue;
+        }
+
+        indices_ready_to_fire.Add(i);
+        laser_cooldowns[i] = cooldown;
+    }
+
+    auto const firing_point_offsets{actor_config->fire_point_offsets};
+    auto const n_firing_points{firing_point_offsets.Num()};
+    auto const n_ready_to_fire{indices_ready_to_fire.Num()};
+    new_laser_transforms.Reserve(n_firing_points * n_ready_to_fire);
+
+    for (int32 i{0}; i < n_ready_to_fire; ++i) {
+        auto const& base_transform{transforms[i]};
+        for (auto const& offset : firing_point_offsets) {
+            new_laser_transforms.Add(offset * base_transform);
+        }
+    }
+
+    laser_actor->spawn_lasers(new_laser_transforms);
 }
 
 // Debugging

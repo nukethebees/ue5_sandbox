@@ -71,6 +71,8 @@ class ATestTubeSpinners : public AActor {
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
+    UPROPERTY()
+    TArray<FTransform> new_laser_transforms;
 
     // Debugging / logging
     UPROPERTY(EditAnywhere, Category = "Turrets")
