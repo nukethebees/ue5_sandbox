@@ -83,6 +83,8 @@ void ATestCapitalShips::BeginPlay() {
 void ATestCapitalShips::Tick(float dt) {
     Super::Tick(dt);
 
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::Tick);
+
     spawn_timers.tick(dt);
 
     handle_fighter_spawning();
@@ -120,16 +122,18 @@ auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
 
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
+
     auto* world{GetWorld()};
 
     if (!world) {
         return;
     }
 
-    TArray<ATestCapitalShipProxy*> proxies{};
-    TMap<ATestCapitalShipProxy const*, FGenerationIndex> proxy_to_index{};
+    TArray<Proxy*> proxies{};
+    TMap<Proxy const*, FGenerationIndex> proxy_to_index{};
 
-    for (auto it{TActorIterator<ATestCapitalShipProxy>(world)}; it; ++it) {
+    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
         if (!IsValid(*it)) {
             continue;
         }
@@ -176,7 +180,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     spawn_ships(entity_indices, new_transforms, new_teams, new_targets);
     update_entity_registry();
 
-    for (ATestCapitalShipProxy* proxy : proxies) {
+    for (auto* proxy : proxies) {
         proxy->Destroy();
     }
 }
@@ -184,6 +188,8 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
                                     TConstArrayView<FTransform> const new_transforms,
                                     TConstArrayView<ETestTeam> const new_teams,
                                     TConstArrayView<FGenerationIndex> const new_target_indices) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::spawn_ships);
+
     auto const n_to_add(new_indices.Num());
 
     check(n_to_add == new_transforms.Num());
@@ -260,6 +266,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
 void ATestCapitalShips::configure_ismc() {
     instances->SetStaticMesh(ship_config->mesh);
     instances->SetMobility(EComponentMobility::Movable);
+    instances->SetCanEverAffectNavigation(false);
 
     // Collision
     ml::apply_collision_settings(*instances, ship_config->collision_settings);
