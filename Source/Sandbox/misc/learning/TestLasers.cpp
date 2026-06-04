@@ -159,7 +159,9 @@ void ATestLasers::handle_collisions(float const dt) {
             to_remove.Add(i);
 
 #if WITH_EDITOR
-            debug_drawer.draw_sphere(hit.ImpactPoint);
+            if (debugging_shapes_enabled) {
+                debug_drawer.draw_sphere(hit.ImpactPoint);
+            }
 #endif
         }
     }
