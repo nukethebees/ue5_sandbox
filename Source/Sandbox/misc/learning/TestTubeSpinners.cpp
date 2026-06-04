@@ -1,14 +1,22 @@
 #include "TestTubeSpinners.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestTubeSpinnerProxy.h"
+#include "TestTubeSpinnersConfig.h"
+
+#include <SandboxCore/array_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
+#include <EngineUtils.h>
 
 ATestTubeSpinners::ATestTubeSpinners()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     instances->SetupAttachment(RootComponent);
+
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
 // Actor life cycle
@@ -19,6 +27,8 @@ void ATestTubeSpinners::clear_runtime_state() {
 }
 void ATestTubeSpinners::BeginPlay() {
     Super::BeginPlay();
+
+    SetActorTickEnabled(true);
 
     if (actor_config == nullptr) {
         UE_LOG(LogSandboxLearning, Warning, TEXT("ATestTubeSpinners: actor_config is nullptr."));
@@ -33,8 +43,11 @@ void ATestTubeSpinners::BeginPlay() {
 void ATestTubeSpinners::Tick(float dt) {
     Super::Tick(dt);
 
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::Tick);
+
     laser_cooldowns.tick(dt);
     rotate_instances(dt);
+    update_ismc();
     fire_lasers();
 }
 
@@ -45,23 +58,97 @@ auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
 
 // Spawning
 void ATestTubeSpinners::register_all_proxies_in_level() {
-    return;
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::register_all_proxies_in_level);
+
+    auto* world{GetWorld()};
+
+    if (!world) {
+        return;
+    }
+
+    TArray<Proxy*> proxies{};
+
+    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
+        if (!IsValid(*it)) {
+            continue;
+        }
+
+        auto const index{proxies.Add(*it)};
+    }
+
+    auto const n_to_add{proxies.Num()};
+
+    TArray<FTransform> new_transforms;
+    new_transforms.AddUninitialized(n_to_add);
+
+    for (int32 i{0}; i < n_to_add; ++i) {
+        auto* proxy{proxies[i]};
+        new_transforms[i] = proxy->GetActorTransform();
+    }
+
+    spawn_instances(new_transforms);
+
+    for (auto* proxy : proxies) {
+        proxy->Destroy();
+    }
+}
+void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_transforms) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::spawn_instances);
+
+    auto const n{new_transforms.Num()};
+    auto const new_total{get_num_instances() + n};
+
+    transforms.AddUninitialized(n);
+    yaws.AddUninitialized(n);
+    laser_cooldowns.AddZeroed(n);
+
+    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
+    for (int32 i{0}; i < n; ++i) {
+        auto const& transform{new_transforms[i]};
+        transforms[i] = transform;
+        yaws[i] = transform.GetRotation().Rotator().Yaw;
+    }
+
+    check(array_sizes_consistent());
 }
 
 // Movement
-void ATestTubeSpinners::rotate_instances(float const dt) {}
+void ATestTubeSpinners::rotate_instances(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::rotate_instances);
+
+    auto const speed{actor_config->yaw_rotation_speed_degrees};
+    auto const delta_yaw_degrees{dt * speed};
+    auto const n{get_num_instances()};
+
+    for (int32 i{0}; i < n; ++i) {
+        yaws[i] += delta_yaw_degrees;
+    }
+
+    for (int32 i{0}; i < n; ++i) {
+        transforms[i].SetRotation(FRotator{0.f, yaws[i], 0.f}.Quaternion());
+    }
+}
 
 // Visuals
 void ATestTubeSpinners::configure_ismc() {
-    return;
+    instances->SetStaticMesh(actor_config->mesh);
+    instances->SetCanEverAffectNavigation(false);
+}
+void ATestTubeSpinners::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc);
+
+    instances->BatchUpdateInstancesTransforms(0, transforms, true, true, false);
 }
 
 // Firing
 void ATestTubeSpinners::fire_lasers() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::fire_lasers);
     return;
 }
 
 // Debugging
 bool ATestTubeSpinners::array_sizes_consistent() const {
-    return false;
+    auto const n{instances->GetNumInstances()};
+
+    return ml::all_num_equal_to(n, yaws, laser_cooldowns);
 }

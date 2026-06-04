@@ -11,15 +11,15 @@
 
 class UInstancedStaticMeshComponent;
 
-class ATestStaticTurretsProxy;
+class ATestTubeSpinnerProxy;
 class UTestTubeSpinnersConfig;
 class ATestLasers;
 
 UCLASS()
-class ATestTubeSpinners: public AActor {
+class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
   public:
-    using Proxy = ATestStaticTurretsProxy;
+    using Proxy = ATestTubeSpinnerProxy;
 
     ATestTubeSpinners();
 
@@ -32,12 +32,14 @@ class ATestTubeSpinners: public AActor {
 
     // Spawning
     void register_all_proxies_in_level();
+    void spawn_instances(TConstArrayView<FTransform> const new_transforms);
 
     // Movement
     void rotate_instances(float const dt);
 
     // Visuals
     void configure_ismc();
+    void update_ismc();
 
     // Firing
     void fire_lasers();
@@ -48,12 +50,19 @@ class ATestTubeSpinners: public AActor {
     // Misc
     void clear_runtime_state();
 
+    // Config
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
 
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+
+    // Movement / position
+    UPROPERTY()
+    TArray<FTransform> transforms{};
+    UPROPERTY()
+    TArray<float> yaws{};
 
     // Firing
     UPROPERTY(EditAnywhere, Category = "Turrets")
