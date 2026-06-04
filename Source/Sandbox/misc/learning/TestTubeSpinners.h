@@ -25,12 +25,16 @@ class ATestTubeSpinners: public AActor {
 
     void Tick(float dt) override;
 
+    // Accessors
     auto get_num_instances() const noexcept -> int32;
   protected:
     void BeginPlay() override;
 
     // Spawning
     void register_all_proxies_in_level();
+
+    // Movement
+    void rotate_instances(float const dt);
 
     // Visuals
     void configure_ismc();

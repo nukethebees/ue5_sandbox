@@ -22,20 +22,28 @@ class ATestTubeSpinnerProxy : public AActor {
     GENERATED_BODY()
 
     ATestTubeSpinnerProxy();
-  protected:
+  private:
 #if WITH_EDITOR
-    UFUNCTION(CallInEditor, Category = "Proxy")
+    UFUNCTION(CallInEditor, Category = "Proxy|Add Points")
     void add_fire_point();
-    UFUNCTION(CallInEditor, Category = "Proxy")
-    void pop_fire_point();
+    UFUNCTION(CallInEditor, Category = "Proxy|Remove Points")
+    void remove_all_fire_points();
+    UFUNCTION(CallInEditor, Category = "Proxy|Remove Points")
+    void remove_fire_point();
 
-    UFUNCTION(CallInEditor, Category = "Proxy")
+    UFUNCTION(CallInEditor, Category = "Proxy|Save Asset")
     void save_configuration_to_asset();
-    UFUNCTION(CallInEditor, Category = "Proxy")
+    UFUNCTION(CallInEditor, Category = "Proxy|Load Asset")
     void apply_asset_configuration();
-    UFUNCTION(CallInEditor, Category = "Proxy")
+    UFUNCTION(CallInEditor, Category = "Proxy|Load Asset")
     void apply_asset_configuration_to_all_instances();
+
+    UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
+    void position_fire_points();
 #endif
+    void add_fire_points(int32 const n);
+    void remove_fire_points(int32 const n);
+    void face_fire_points_away_from_mesh();
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
