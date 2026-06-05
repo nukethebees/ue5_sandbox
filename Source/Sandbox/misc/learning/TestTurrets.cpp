@@ -9,6 +9,7 @@
 #include <SandboxCore/actor_components.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/interpolation.h>
+#include <SandboxCore/invoke.h>
 #include <SandboxCore/rotation.h>
 
 #include "CollisionShape.h"
@@ -75,37 +76,31 @@ auto FTestTurretsSearchData::num_turrets_to_move() const -> int32 {
 }
 
 void FTestTurretsSearchData::add_uninitialised(int32 const n) {
-    body_meshes.AddDefaulted(n);
-    cannon_meshes.AddDefaulted(n);
-    yaw_pivots.AddDefaulted(n);
-    pitch_pivots.AddDefaulted(n);
-    collision_shapes.AddDefaulted(n);
+    ml::invoke_on_all([n](auto& array) { array.AddDefaulted(n); },
+                      body_meshes,
+                      cannon_meshes,
+                      yaw_pivots,
+                      pitch_pivots,
+                      collision_shapes);
 
-    location_xs.AddUninitialized(n);
-    location_ys.AddUninitialized(n);
-    location_zs.AddUninitialized(n);
-
-    yaw_radians.AddUninitialized(n);
-
-    healths.AddUninitialized(n);
+    ml::invoke_on_all([n](auto& array) { array.AddUninitialized(n); },
+                      location_xs,
+                      location_ys,
+                      location_zs,
+                      yaw_radians,
+                      healths);
 }
+
 void FTestTurretsSearchData::reset() {
-    ml::destroy_components_array(body_meshes);
-    ml::destroy_components_array(cannon_meshes);
-    ml::destroy_components_array(yaw_pivots);
-    ml::destroy_components_array(pitch_pivots);
-    ml::destroy_components_array(collision_shapes);
+    ml::invoke_on_all([](auto& x) { ml::destroy_components_array(x); },
+                      body_meshes,
+                      cannon_meshes,
+                      yaw_pivots,
+                      pitch_pivots,
+                      collision_shapes);
 
-    location_xs.Reset();
-    location_ys.Reset();
-    location_zs.Reset();
-
-    yaw_radians.Reset();
-
-    to_attack.Reset();
-    attack_targets.Reset();
-
-    healths.Reset();
+    ml::reset_arrays(
+        location_xs, location_ys, location_zs, yaw_radians, to_attack, attack_targets, healths);
 }
 bool FTestTurretsSearchData::array_sizes_consistent() const {
     return ml::all_num_equal(body_meshes,
@@ -163,11 +158,12 @@ bool FTestTurretsAttackData::array_sizes_consistent() const {
                              firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
-    ml::destroy_components_array(body_meshes);
-    ml::destroy_components_array(cannon_meshes);
-    ml::destroy_components_array(yaw_pivots);
-    ml::destroy_components_array(pitch_pivots);
-    ml::destroy_components_array(collision_shapes);
+    ml::invoke_on_all([](auto& x) { ml::destroy_components_array(x); },
+                      body_meshes,
+                      cannon_meshes,
+                      yaw_pivots,
+                      pitch_pivots,
+                      collision_shapes);
 
     ml::reset_arrays(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
 }
