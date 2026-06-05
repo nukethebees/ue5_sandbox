@@ -169,10 +169,7 @@ void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(pitch_pivots);
     ml::destroy_components_array(collision_shapes);
 
-    yaw_radians.Reset();
-    yaw_radians.Reset();
-    target_pitch_radians.Reset();
-    target_yaw_radians.Reset();
+    ml::reset_arrays(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
 }
 
 ATestTurrets::ATestTurrets()
