@@ -34,4 +34,9 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
         ((arrays.RemoveAtSwap(index, 1, EAllowShrinking::No)), ...);
     }
 }
+
+template <typename... Arrays>
+void reset_arrays(Arrays&... arrays) {
+    (arrays.Reset(), ...);
+}
 }

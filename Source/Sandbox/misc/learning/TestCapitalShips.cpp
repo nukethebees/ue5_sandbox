@@ -277,16 +277,12 @@ void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
     ml::destroy_components_array(collision_boxes);
 
-    entity_indices.Reset();
-
-    transforms.Reset();
-
-    spawn_timers.Reset();
-    ships_ready_to_spawn_fighters_buffer.Reset();
-
-    teams.Reset();
-
-    target_entity_indices.Reset();
+    ml::reset_arrays(entity_indices,
+                     transforms,
+                     spawn_timers,
+                     ships_ready_to_spawn_fighters_buffer,
+                     teams,
+                     target_entity_indices);
 }
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);

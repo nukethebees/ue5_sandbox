@@ -263,10 +263,5 @@ bool ATestStaticTurrets::array_sizes_consistent() const {
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-
-    teams.Reset();
-    laser_cooldowns.remaining_times.Reset();
-    indices_ready_to_fire.Reset();
-    target_indices.Reset();
-    healths.Reset();
+    ml::reset_arrays(teams, laser_cooldowns, indices_ready_to_fire, target_indices, healths);
 }
