@@ -51,8 +51,10 @@ void subtract_in_place(TArrayView<T> data, T const value) noexcept {
 template <ml::Numeric T>
 auto collect_indices_less_equal(TConstArrayView<T> values,
                                 T const threshold,
-                                TArrayView<int32> out_indices) noexcept -> int32 {
-    return ml::detail::collect_indices_less_equal(
-        values.GetData(), values.Num(), threshold, out_indices.GetData());
+                                TArrayView<int32> out_indices) noexcept -> TConstArrayView<int32> {
+    auto const count{ml::detail::collect_indices_less_equal(
+        values.GetData(), values.Num(), threshold, out_indices.GetData())};
+
+    return TConstArrayView<int32>{out_indices.Left(count)};
 }
 }

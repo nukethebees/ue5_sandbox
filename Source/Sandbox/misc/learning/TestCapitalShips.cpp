@@ -233,30 +233,30 @@ void ATestCapitalShips::handle_fighter_spawning() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
     auto const n_ships{get_num_instances()};
-    ships_ready_to_spawn_fighters.SetNumUninitialized(n_ships, EAllowShrinking::No);
+    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_ships, EAllowShrinking::No);
     auto const cooldown{ship_config->spawn_delay};
 
-    auto const n_to_spawn{ml::collect_indices_less_equal(
-        TConstArrayView<float>{spawn_timers.remaining_times}, 0.f, ships_ready_to_spawn_fighters)};
+    auto const ships_ready_to_spawn_fighters_indices{
+        ml::collect_indices_less_equal(TConstArrayView<float>{spawn_timers.remaining_times},
+                                       0.f,
+                                       ships_ready_to_spawn_fighters_buffer)};
 
     auto const relative_transforms{ship_config->fighter_spawn_slots_relative_transforms};
 
     TArray<FTransform> new_transforms;
     TArray<ETestTeam> new_teams;
 
-    for (int32 i{0}; i < n_to_spawn; ++i) {
-        auto const ship_index{ships_ready_to_spawn_fighters[i]};
-
+    for (auto const i : ships_ready_to_spawn_fighters_indices) {
         // spawn fighters
-        auto const base_transform{transforms[ship_index]};
+        auto const base_transform{transforms[i]};
 
         for (auto const& rt : relative_transforms) {
             auto const transform{rt * base_transform};
             new_transforms.Add(transform);
-            new_teams.Add(teams[ship_index]);
+            new_teams.Add(teams[i]);
         }
 
-        spawn_timers.remaining_times[ship_index] = cooldown;
+        spawn_timers.remaining_times[i] = cooldown;
     }
 
     fighters_actor->spawn_instances(new_transforms, new_teams);
@@ -282,7 +282,7 @@ void ATestCapitalShips::clear_runtime_state() {
     transforms.Reset();
 
     spawn_timers.Reset();
-    ships_ready_to_spawn_fighters.Reset();
+    ships_ready_to_spawn_fighters_buffer.Reset();
 
     teams.Reset();
 

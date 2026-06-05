@@ -83,7 +83,7 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     FCountdownTimers spawn_timers;
     UPROPERTY()
-    TArray<int32> ships_ready_to_spawn_fighters;
+    TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
     // Teams
     UPROPERTY()

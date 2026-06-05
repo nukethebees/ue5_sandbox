@@ -161,18 +161,19 @@ void ATestCapitalShipFighters::handle_firing() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
 
     auto const n_ships{get_num_instances()};
-    indices_ready_to_fire.SetNumUninitialized(n_ships, EAllowShrinking::No);
+    indices_ready_to_fire_buffer.SetNumUninitialized(n_ships, EAllowShrinking::No);
     auto const cooldown{actor_config->fire_cooldown};
 
-    auto const n_to_fire{ml::collect_indices_less_equal(
-        TConstArrayView<float>{laser_cooldowns.remaining_times}, 0.f, indices_ready_to_fire)};
+    auto const indices_to_fire{
+        ml::collect_indices_less_equal(TConstArrayView<float>{laser_cooldowns.remaining_times},
+                                       0.f,
+                                       indices_ready_to_fire_buffer)};
 
     TArray<FTransform> laser_transforms;
 
-    for (int32 i{0}; i < n_to_fire; ++i) {
-        auto const ship_index{indices_ready_to_fire[i]};
+    for (auto const i : indices_to_fire) {
         laser_transforms.Add(world_transforms[i]);
-        laser_cooldowns.remaining_times[ship_index] = cooldown;
+        laser_cooldowns.remaining_times[i] = cooldown;
     }
 
     laser_actor->spawn_lasers(laser_transforms);

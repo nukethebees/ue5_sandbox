@@ -80,5 +80,5 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY()
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
-    TArray<int32> indices_ready_to_fire;
+    TArray<int32> indices_ready_to_fire_buffer;
 };
