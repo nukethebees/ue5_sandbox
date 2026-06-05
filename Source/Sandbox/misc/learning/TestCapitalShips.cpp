@@ -304,16 +304,14 @@ void ATestCapitalShips::update_entity_registry() {
 
 // Debugging
 bool ATestCapitalShips::array_sizes_consistent() const {
-    auto const n{instances->GetNumInstances()};
-
-    return ml::all_num_equal_to(n,
-                                collision_boxes,
-                                entity_indices,
-                                transforms,
-                                spawn_timers,
-                                teams,
-                                healths,
-                                target_entity_indices);
+    return ml::all_num_equal(*instances,
+                             collision_boxes,
+                             entity_indices,
+                             transforms,
+                             spawn_timers,
+                             teams,
+                             healths,
+                             target_entity_indices);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);

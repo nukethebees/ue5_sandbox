@@ -255,9 +255,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
 // Debugging
 bool ATestStaticTurrets::array_sizes_consistent() const {
-    auto const n{instances->GetNumInstances()};
-
-    return ml::all_num_equal_to(n, indices, teams, laser_cooldowns, healths, target_indices);
+    return ml::all_num_equal(*instances, indices, teams, laser_cooldowns, healths, target_indices);
 }
 
 // Misc

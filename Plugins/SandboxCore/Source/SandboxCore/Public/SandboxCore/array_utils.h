@@ -1,10 +1,16 @@
 #pragma once
 
 #include "container_concepts.h"
+#include "container_traits.h"
 
 #include "Containers/ArrayView.h"
 
 namespace ml {
+template <HasNumReturningInt32 T>
+auto num(T const& value) -> int32 {
+    return NumTraits<T>::num(value);
+}
+
 template <typename... Arrays>
     requires ml::AllHaveNumReturningInt32<Arrays...>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
@@ -15,7 +21,7 @@ auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
 template <typename Array, typename Other, typename... Rest>
     requires ml::AllHaveNumReturningInt32<Array, Other, Rest...>
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
-    return all_num_equal_to(array.Num(), other, rest...);
+    return all_num_equal_to(ml::num(array), other, rest...);
 }
 
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;

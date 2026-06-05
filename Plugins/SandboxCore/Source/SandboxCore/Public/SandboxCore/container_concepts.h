@@ -1,13 +1,15 @@
 #pragma once
 
-#include "CoreMinimal.h"
+#include "container_traits.h"
+
+#include <HAL/Platform.h>
 
 #include <concepts>
 
 namespace ml {
 template <typename T>
 concept HasNumReturningInt32 = requires(T const& value) {
-    { value.Num() } -> std::convertible_to<int32>;
+    { NumTraits<T>::num(value) } -> std::same_as<int32>;
 };
 
 template <typename... Ts>

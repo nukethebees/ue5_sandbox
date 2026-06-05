@@ -91,10 +91,8 @@ auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return world_transforms.Num();
 }
 bool ATestCapitalShipFighters::array_sizes_consistent() const {
-    auto const n{instances->GetNumInstances()};
-
-    return ml::all_num_equal_to(
-        n, indices, world_transforms, velocities, teams, healths, laser_cooldowns);
+    return ml::all_num_equal(
+        *instances, indices, world_transforms, velocities, teams, healths, laser_cooldowns);
 }
 
 // Movement

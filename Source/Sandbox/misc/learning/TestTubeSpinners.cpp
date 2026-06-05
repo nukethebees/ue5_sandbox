@@ -201,7 +201,6 @@ void ATestTubeSpinners::fire_lasers() {
 
 // Debugging
 bool ATestTubeSpinners::array_sizes_consistent() const {
-    auto const n{instances->GetNumInstances()};
-
-    return ml::all_num_equal_to(n, transforms, yaws, laser_cooldowns, next_fire_point_indices);
+    return ml::all_num_equal(
+        *instances, transforms, yaws, laser_cooldowns, next_fire_point_indices);
 }

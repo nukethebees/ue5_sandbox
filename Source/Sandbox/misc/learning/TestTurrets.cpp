@@ -108,18 +108,16 @@ void FTestTurretsSearchData::reset() {
     healths.Reset();
 }
 bool FTestTurretsSearchData::array_sizes_consistent() const {
-    auto const n{body_meshes.Num()};
-
-    return ml::all_num_equal_to(n,
-                                cannon_meshes,
-                                yaw_pivots,
-                                pitch_pivots,
-                                collision_shapes,
-                                location_xs,
-                                location_ys,
-                                location_zs,
-                                yaw_radians,
-                                healths);
+    return ml::all_num_equal(body_meshes,
+                             cannon_meshes,
+                             yaw_pivots,
+                             pitch_pivots,
+                             collision_shapes,
+                             location_xs,
+                             location_ys,
+                             location_zs,
+                             yaw_radians,
+                             healths);
 }
 void FTestTurretsSearchData::rotate_by(float* yaw_radians,
                                        int32 const n,
@@ -145,26 +143,24 @@ auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
     return to_search.Num();
 }
 bool FTestTurretsAttackData::array_sizes_consistent() const {
-    auto const n{body_meshes.Num()};
-
-    return ml::all_num_equal_to(n,
-                                cannon_meshes,
-                                yaw_pivots,
-                                pitch_pivots,
-                                collision_shapes,
-                                location_xs,
-                                location_ys,
-                                location_zs,
-                                target_location_xs,
-                                target_location_ys,
-                                target_location_zs,
-                                pitch_radians,
-                                yaw_radians,
-                                target_pitch_radians,
-                                target_yaw_radians,
-                                targets,
-                                healths,
-                                firing_cooldowns);
+    return ml::all_num_equal(body_meshes,
+                             cannon_meshes,
+                             yaw_pivots,
+                             pitch_pivots,
+                             collision_shapes,
+                             location_xs,
+                             location_ys,
+                             location_zs,
+                             target_location_xs,
+                             target_location_ys,
+                             target_location_zs,
+                             pitch_radians,
+                             yaw_radians,
+                             target_pitch_radians,
+                             target_yaw_radians,
+                             targets,
+                             healths,
+                             firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
     ml::destroy_components_array(body_meshes);

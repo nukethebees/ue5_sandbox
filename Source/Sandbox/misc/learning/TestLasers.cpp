@@ -205,9 +205,7 @@ void ATestLasers::prune_old_instances() {
 
 // Debugging
 bool ATestLasers::array_sizes_consistent() const {
-    auto const n{instances->GetNumInstances()};
-
-    return ml::all_num_equal_to(n, transforms, velocities, lifetimes);
+    return ml::all_num_equal(*instances, transforms, velocities, lifetimes);
 }
 
 // Misc
