@@ -5,6 +5,7 @@
 #include "TestTubeSpinnerProxy.h"
 #include "TestTubeSpinnersConfig.h"
 
+#include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
@@ -71,15 +72,7 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
     }
 
     TArray<Proxy*> proxies{};
-
-    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        auto const index{proxies.Add(*it)};
-    }
-
+    ml::append_valid_actors(*world, proxies);
     auto const n_to_add{proxies.Num()};
 
     TArray<FTransform> new_transforms;

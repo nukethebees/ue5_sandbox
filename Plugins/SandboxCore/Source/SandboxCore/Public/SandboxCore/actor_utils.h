@@ -22,4 +22,15 @@ void for_each_instance(TActor& actor, F&& fn) {
         fn(*instance);
     }
 }
+
+template <typename T>
+auto append_valid_actors(UWorld const& world, TArray<T*>& out_actors) -> void {
+    for (TActorIterator<T> it{&world}; it; ++it) {
+        T* const actor{*it};
+
+        if (IsValid(actor)) {
+            out_actors.Add(actor);
+        }
+    }
+}
 }
