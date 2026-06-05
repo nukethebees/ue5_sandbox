@@ -62,7 +62,8 @@ void ATestLasers::Tick(float dt) {
     }
 
     tick_lifetimes(dt);
-    prune_old_instances();
+    collect_old_instance_indices();
+    remove_instances(to_remove);
 
     handle_collisions(dt);
     update_locations(dt);
@@ -170,8 +171,8 @@ void ATestLasers::tick_lifetimes(float const dt) {
 
     ml::add_in_place(TArrayView<float>{lifetimes}, dt);
 }
-void ATestLasers::prune_old_instances() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prune_old_instances);
+void ATestLasers::collect_old_instance_indices() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::collect_old_instance_indices);
 
     auto const n{get_num_instances()};
     if (n < 1) {
@@ -187,8 +188,6 @@ void ATestLasers::prune_old_instances() {
             to_remove.Add(i);
         }
     }
-
-    remove_instances(to_remove);
 }
 
 // Debugging
@@ -220,5 +219,5 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     }
 
     check(array_sizes_consistent());
-    TRACE_COUNTER_ADD(SandboxTestLaserRemovedCount, n);
+    TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, n);
 }

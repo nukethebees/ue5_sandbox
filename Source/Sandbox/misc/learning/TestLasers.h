@@ -42,7 +42,7 @@ class ATestLasers : public AActor {
 
     // Lifetimes
     void tick_lifetimes(float const dt);
-    void prune_old_instances();
+    void collect_old_instance_indices();
 
     // Debugging
     bool array_sizes_consistent() const;
