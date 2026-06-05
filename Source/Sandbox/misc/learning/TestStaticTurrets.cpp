@@ -9,9 +9,11 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
@@ -50,24 +52,12 @@ void ATestStaticTurrets::BeginPlay() {
 
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
 
-    SetActorTickEnabled(true);
-
-    if (actor_config == nullptr) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: actor_config is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-    if (entity_registry == nullptr) {
-        UE_LOG(
-            LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: entity_registry is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-    if (laser_actor == nullptr) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestStaticTurrets: laser_actor is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
+    ml::fatal_if_uobject_ptrs_invalid({
+        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+    });
 
     configure_ismc();
     register_all_proxies_in_level();

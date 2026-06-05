@@ -10,6 +10,7 @@
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/collision_settings.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>
@@ -40,39 +41,13 @@ void ATestCapitalShips::BeginPlay() {
 
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
-    SetActorTickEnabled(true);
-
-    if (!ship_config) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShips::BeginPlay: ship_config is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    if (!fighters_actor) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShips::BeginPlay: fighters_actor is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    if (!entity_registry) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShips::BeginPlay: entity_registry is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-
     auto* world{GetWorld()};
-    if (!entity_registry) {
-        UE_LOG(
-            LogSandboxLearning, Warning, TEXT("ATestCapitalShips::BeginPlay: world is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(ship_config),
+        SANDBOX_NAMED_UOBJECT_PTR(fighters_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        SANDBOX_NAMED_UOBJECT_PTR(world),
+    });
 
     debug_drawer = ship_config->debug_drawer;
     debug_drawer.world = world;

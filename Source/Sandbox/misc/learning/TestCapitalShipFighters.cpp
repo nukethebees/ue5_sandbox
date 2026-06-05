@@ -7,9 +7,11 @@
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "Engine/StaticMesh.h"
 #include "ProfilingDebugging/CountersTrace.h"
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
@@ -44,35 +46,12 @@ void ATestCapitalShipFighters::BeginPlay() {
 
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
 
-    SetActorTickEnabled(true);
-
-    if (!instances->GetStaticMesh()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: mesh is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    if (!actor_config) {
-        UE_LOG(
-            LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: actor_config is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    if (!laser_actor) {
-        UE_LOG(
-            LogSandboxLearning, Warning, TEXT("ATestCapitalShipFighters: laser_actor is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    if (!entity_registry) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipFighters: entity_registry is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
+    ml::fatal_if_uobject_ptrs_invalid({
+        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+    });
 }
 void ATestCapitalShipFighters::Tick(float dt) {
     Super::Tick(dt);

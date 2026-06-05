@@ -6,8 +6,10 @@
 #include "TestTubeSpinnersConfig.h"
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
+#include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 
 ATestTubeSpinners::ATestTubeSpinners()
@@ -29,25 +31,18 @@ void ATestTubeSpinners::clear_runtime_state() {
 void ATestTubeSpinners::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTickEnabled(true);
-
-    check(actor_config);
-    if (actor_config == nullptr) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestTubeSpinners: actor_config is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    check(laser_actor);
-    if (laser_actor == nullptr) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestTubeSpinners: laser_actor is nullptr."));
-        SetActorTickEnabled(false);
-        return;
-    }
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+    });
 
     clear_runtime_state();
     configure_ismc();
     register_all_proxies_in_level();
+
+    ml::fatal_if_uobject_ptrs_invalid({
+        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
+    });
 }
 void ATestTubeSpinners::Tick(float dt) {
     Super::Tick(dt);

@@ -11,6 +11,7 @@
 #include <SandboxCore/interpolation.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/rotation.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include "CollisionShape.h"
 #include "Components/ArrowComponent.h"
@@ -19,6 +20,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/OverlapResult.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -196,23 +198,12 @@ void ATestTurrets::OnConstruction(FTransform const& transform) {
 void ATestTurrets::BeginPlay() {
     Super::BeginPlay();
 
-    if (!laser_actor) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("laser_actor is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
-    check(turret_config);
-    if (!turret_config) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("turret_config is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(turret_config),
+    });
     if (!turret_config->is_ready()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("turret_config is not ready."));
-        SetActorTickEnabled(false);
-        return;
+        UE_LOG(LogSandboxLearning, Fatal, TEXT("turret_config is not ready."));
     }
 
 #if WITH_EDITOR
