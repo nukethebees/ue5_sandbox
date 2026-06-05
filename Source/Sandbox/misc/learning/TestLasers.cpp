@@ -5,6 +5,7 @@
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
@@ -37,18 +38,11 @@ void ATestLasers::BeginPlay() {
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 
-    SetActorTickEnabled(true);
-
-    if (!laser_config) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("laser_config is nullptr"));
-        SetActorTickEnabled(false);
-        return;
-    }
-
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(laser_config),
+    });
     if (!laser_config->is_ready()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("laser_config is not ready."));
-        SetActorTickEnabled(false);
-        return;
+        UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
     }
 
     configure_ismc();
@@ -144,26 +138,20 @@ void ATestLasers::handle_collisions(float const dt) {
     auto* world{GetWorld()};
     to_remove.Reset();
 
+    FHitResult hit{};
+
+    FCollisionQueryParams params{};
+    params.AddIgnoredActor(this);
+
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};
         auto const end{start + dt * velocities[i]};
-
-        FHitResult hit{};
-
-        FCollisionQueryParams params{};
-        params.AddIgnoredActor(this);
 
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
 
         if (did_hit) {
             to_remove.Add(i);
-
-#if WITH_EDITOR
-            if (debugging_shapes_enabled) {
-                debug_drawer.draw_sphere(hit.ImpactPoint);
-            }
-#endif
         }
     }
 
