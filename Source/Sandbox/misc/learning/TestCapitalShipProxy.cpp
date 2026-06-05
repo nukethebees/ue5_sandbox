@@ -6,6 +6,7 @@
 
 #include <SandboxCore/actor_components.h>
 #include <SandboxCore/collision_settings.h>
+#include <SandboxCore/actor_utils.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
@@ -122,21 +123,6 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
     ml::apply_collision_settings(*collision_box, ship_config->collision_settings);
 }
 void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
-    auto* world{GetWorld()};
-    if (!world) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipProxy::apply_asset_configuration_to_all_instances: world is "
-                    "nullptr."));
-        return;
-    }
-
-    for (auto it{TActorIterator<ATestCapitalShipProxy>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        (*it)->apply_asset_configuration();
-    }
+    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 #endif

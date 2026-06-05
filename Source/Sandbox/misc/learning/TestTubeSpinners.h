@@ -32,7 +32,8 @@ class ATestTubeSpinners : public AActor {
 
     // Spawning
     void register_all_proxies_in_level();
-    void spawn_instances(TConstArrayView<FTransform> const new_transforms);
+    void spawn_instances(TConstArrayView<FTransform> const new_transforms,
+                         TConstArrayView<int32> const new_fire_point_indices);
 
     // Movement
     void rotate_instances(float const dt);

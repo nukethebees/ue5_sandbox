@@ -4,6 +4,8 @@
 #include "TestStaticTurrets.h"
 #include "TestStaticTurretsConfig.h"
 
+#include <SandboxCore/actor_utils.h>
+
 #include <Components/ArrowComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <Components/SceneComponent.h>
@@ -65,22 +67,7 @@ void ATestStaticTurretsProxy::apply_asset_configuration() {
     detection->SetVisibility(actor_config->show_collision);
 }
 void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
-    auto* world{GetWorld()};
-    if (!world) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances: world is "
-                    "nullptr."));
-        return;
-    }
-
-    for (auto it{TActorIterator<ThisClass>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        it->apply_asset_configuration();
-    }
+    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 
 #endif

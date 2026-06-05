@@ -4,6 +4,7 @@
 #include "TestTubeSpinnersConfig.h"
 
 #include <SandboxCore/actor_components.h>
+#include <SandboxCore/actor_utils.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/CapsuleComponent.h>
@@ -64,6 +65,21 @@ void ATestTubeSpinnerProxy::face_fire_points_away_from_mesh() {
         fire_point->SetWorldRotation({0.f, away_from_mesh.Rotation().Yaw, 0.f});
     }
 }
+void ATestTubeSpinnerProxy::set_random_active_fire_point() {
+    if (!actor_config) {
+        return;
+    }
+
+    auto const n_fire_points{actor_config->fire_point_offsets.Num()};
+    if (n_fire_points < 1) {
+        return;
+    }
+
+    initial_active_fire_point = FMath::RandRange(0, n_fire_points);
+}
+void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
+    ml::for_each_instance(*this, [](ThisClass& x) { x.set_random_active_fire_point(); });
+}
 
 void ATestTubeSpinnerProxy::save_configuration_to_asset() {
     if (!actor_config) {
@@ -99,22 +115,7 @@ void ATestTubeSpinnerProxy::apply_asset_configuration() {
     }
 }
 void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
-    auto* world{GetWorld()};
-    if (!world) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances: world is "
-                    "nullptr."));
-        return;
-    }
-
-    for (auto it{TActorIterator<ThisClass>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        it->apply_asset_configuration();
-    }
+    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 
 #endif

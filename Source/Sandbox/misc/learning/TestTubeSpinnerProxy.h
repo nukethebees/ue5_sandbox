@@ -22,6 +22,8 @@ class ATestTubeSpinnerProxy : public AActor {
     GENERATED_BODY()
 
     ATestTubeSpinnerProxy();
+
+    auto get_initial_active_fire_point() const { return initial_active_fire_point; }
   private:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy|Add Points")
@@ -40,6 +42,10 @@ class ATestTubeSpinnerProxy : public AActor {
 
     UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
     void position_fire_points();
+    UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
+    void set_random_active_fire_point();
+    UFUNCTION(CallInEditor, Category = "Proxy|Position Points")
+    void set_random_active_fire_point_to_all_instances();
 #endif
     void add_fire_points(int32 const n);
     void remove_fire_points(int32 const n);
@@ -53,4 +59,7 @@ class ATestTubeSpinnerProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
+
+    UPROPERTY(EditAnywhere, Category = "Proxy")
+    int32 initial_active_fire_point{0};
 };

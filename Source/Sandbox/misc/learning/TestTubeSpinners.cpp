@@ -89,27 +89,33 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
 
     TArray<FTransform> new_transforms;
     new_transforms.AddUninitialized(n_to_add);
+    TArray<int32> new_fire_point_indices;
+    new_fire_point_indices.AddUninitialized(n_to_add);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto* proxy{proxies[i]};
         new_transforms[i] = proxy->GetActorTransform();
+        new_fire_point_indices[i] = proxy->get_initial_active_fire_point();
     }
 
-    spawn_instances(new_transforms);
+    spawn_instances(new_transforms, new_fire_point_indices);
 
     for (auto* proxy : proxies) {
         proxy->Destroy();
     }
 }
-void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_transforms) {
+void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_transforms,
+                                        TConstArrayView<int32> const new_fire_point_indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::spawn_instances);
 
     auto const n{new_transforms.Num()};
     auto const existing_total{get_num_instances()};
 
+    check(n == new_fire_point_indices.Num());
+
     transforms.AddUninitialized(n);
     yaws.AddUninitialized(n);
-    next_fire_point_indices.AddZeroed(n);
+    next_fire_point_indices.Append(new_fire_point_indices);
     laser_cooldowns.AddZeroed(n);
 
     instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
