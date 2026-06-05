@@ -3,6 +3,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestLasersConfig.h"
 
+#include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -179,12 +180,8 @@ void ATestLasers::update_ismc() {
 void ATestLasers::tick_lifetimes(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick_lifetimes);
 
-    auto const n{get_num_instances()};
-
-    for (int32 i{0}; i < n; ++i) {
-        lifetimes[i] += dt;
+    ml::add_in_place(TArrayView<float>{lifetimes}, dt);
     }
-}
 void ATestLasers::prune_old_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prune_old_instances);
 

@@ -6,6 +6,13 @@
 
 namespace ml::detail {
 template <ml::Numeric T>
+void add_in_place(T* data, T const value, int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        data[i] += value;
+    }
+}
+
+template <ml::Numeric T>
 void subtract_in_place(T* data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         data[i] -= value;
@@ -31,6 +38,11 @@ auto collect_indices_less_equal(T const* RESTRICT values,
 }
 
 namespace ml {
+template <ml::Numeric T>
+void add_in_place(TArrayView<T> data, T const value) noexcept {
+    ml::detail::add_in_place(data.GetData(), value, data.Num());
+}
+
 template <ml::Numeric T>
 void subtract_in_place(TArrayView<T> data, T const value) noexcept {
     ml::detail::subtract_in_place(data.GetData(), value, data.Num());
