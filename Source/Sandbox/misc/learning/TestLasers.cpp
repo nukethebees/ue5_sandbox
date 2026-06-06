@@ -134,6 +134,12 @@ void ATestLasers::configure_ismc() {
     instances->SetCanEverAffectNavigation(false);
 
     instances->SetMobility(EComponentMobility::Movable);
+
+    instances->SetCastShadow(false);
+    instances->SetAffectDistanceFieldLighting(false);
+    instances->SetReceivesDecals(false);
+
+    instances->SetCullDistances(laser_config->min_cull_distance, laser_config->max_cull_distance);
 }
 
 // Movement

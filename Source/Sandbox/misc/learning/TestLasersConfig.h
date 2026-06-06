@@ -23,6 +23,11 @@ class UTestLasersConfig : public UDataAsset {
     TObjectPtr<UMaterialInterface> material;
 
     UPROPERTY(EditAnywhere)
+    float min_cull_distance{0.0f};
+    UPROPERTY(EditAnywhere)
+    float max_cull_distance{50000.0f};
+
+    UPROPERTY(EditAnywhere)
     float speed{5000.0f};
 
     UPROPERTY(EditAnywhere)
