@@ -3,7 +3,17 @@
 #include "container_concepts.h"
 #include "container_traits.h"
 
+#include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+
+namespace ml::kernel {
+template <typename T>
+void fill(T* values, T const value, int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        values[i] = value;
+    }
+}
+}
 
 namespace ml {
 template <HasNumReturningInt32 T>
@@ -44,5 +54,14 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 template <typename... Arrays>
 void reset_arrays(Arrays&... arrays) {
     (arrays.Reset(), ...);
+}
+
+template <typename T>
+void fill(TArrayView<T> values, T const value) {
+    ml::kernel::fill(values.GetData(), value, values.Num());
+}
+template <typename T>
+void fill(TArray<T> values, T const value) {
+    fill(TArrayView<T>{values}, value);
 }
 }

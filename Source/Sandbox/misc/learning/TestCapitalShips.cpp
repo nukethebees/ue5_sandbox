@@ -7,13 +7,11 @@
 #include "Sandbox/misc/learning/TestEntityRegistry.h"
 #include "Sandbox/utilities/actor_utils.h"
 
-#include <SandboxCore/actor_components.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/collision_settings.h>
 #include <SandboxCore/uobject_utils.h>
 
-#include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <EngineUtils.h>
@@ -185,13 +183,7 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
     teams.Append(new_teams);
     healths.AddUninitialized(n_to_add);
 
-    auto const hp{ship_config->max_health};
-
-    auto const collision_settings{ship_config->collision_settings};
-
-    for (int32 i{0}; i < n_to_add; ++i) {
-        healths[i] = hp;
-    }
+    ml::fill(healths, ship_config->max_health);
 
     check(array_sizes_consistent());
 }
