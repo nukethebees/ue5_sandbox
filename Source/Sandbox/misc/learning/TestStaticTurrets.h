@@ -1,8 +1,8 @@
 #pragma once
 
-#include "TestTeam.h"
-
 #include "Sandbox/logging/ActorLoggingConfig.h"
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include "Sandbox/misc/learning/TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/generation_index.h"
@@ -35,7 +35,11 @@ class ATestStaticTurrets : public AActor {
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
 
+    // Accessors
     auto get_num_instances() const noexcept -> int32;
+
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+    auto get_owner_id() const -> TestEntityOwnerId;
   protected:
     // Spawning
     void register_all_proxies_in_level();
@@ -61,6 +65,7 @@ class ATestStaticTurrets : public AActor {
     // Data
     UPROPERTY()
     TArray<FGenerationIndex> indices{};
+    TestEntityOwnerId owner_id{};
     UPROPERTY()
     TArray<FVector> locations{};
 

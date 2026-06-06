@@ -76,9 +76,16 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
 }
 
-// Getters
+// Accessors
 auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
     return teams.Num();
+}
+
+void ATestStaticTurrets::set_owner_id(TestEntityOwnerId const new_owner_id) {
+    owner_id = new_owner_id;
+}
+auto ATestStaticTurrets::get_owner_id() const -> TestEntityOwnerId {
+    return owner_id;
 }
 
 // Searching

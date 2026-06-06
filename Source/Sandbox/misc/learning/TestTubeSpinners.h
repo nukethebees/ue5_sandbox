@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sandbox/logging/ActorLoggingConfig.h"
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
 
 #include "SandboxCore/countdown_timers.h"
 
@@ -31,6 +32,9 @@ class ATestTubeSpinners : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
+
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+    auto get_owner_id() const -> TestEntityOwnerId;
   protected:
     // Spawning
     void register_all_proxies_in_level();
@@ -53,6 +57,9 @@ class ATestTubeSpinners : public AActor {
     // Config
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
+
+    // Entity data
+    TestEntityOwnerId owner_id{};
 
     // Visuals
     UPROPERTY()

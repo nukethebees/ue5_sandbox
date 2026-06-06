@@ -1,8 +1,9 @@
 #pragma once
 
-#include "TestEntityRegistry.h"
-#include "TestEntityRegistryData.h"
-#include "TestTeam.h"
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
+#include "Sandbox/misc/learning/TestEntityRegistryData.h"
+#include "Sandbox/misc/learning/TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/generation_index.h"
@@ -33,16 +34,19 @@ class ATestCapitalShipFighters : public AActor {
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
                          TConstArrayView<ETestTeam> const new_teams);
 
-    // Getters
+    // Accessors
     auto get_num_instances() const noexcept -> int32;
     bool array_sizes_consistent() const;
+
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+    auto get_owner_id() const -> TestEntityOwnerId;
   protected:
     // Movement
     void move_ships(float const dt);
 
     // Combat
     void handle_firing();
-  
+
     void update_entity_registry();
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;
@@ -59,6 +63,7 @@ class ATestCapitalShipFighters : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     UPROPERTY()
     TArray<FGenerationIndex> indices;
+    TestEntityOwnerId owner_id{};
 
     // Movement
     UPROPERTY()

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "TestEntityRegistryData.h"
-#include "TestTeam.h"
+
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include "Sandbox/misc/learning/TestTeam.h"
 
 #include "SandboxCore/generation_index.h"
 
@@ -35,6 +37,9 @@ class ATestEntityRegistry : public AActor {
     ATestEntityRegistry();
 
     void reset();
+
+    // Registration
+    auto register_owner(AActor const& actor) -> TestEntityOwnerId;
 
     // Entity creation
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
@@ -77,6 +82,8 @@ class ATestEntityRegistry : public AActor {
     FTestEntityRegistryEntityData entity_data;
     UPROPERTY()
     TArray<int32> generations;
+    UPROPERTY()
+    TArray<AActor const*> entity_owners;
 
     // Queued updates
     UPROPERTY()
@@ -93,7 +100,6 @@ class ATestEntityRegistry : public AActor {
     // Dead entities
     UPROPERTY()
     TArray<FGenerationIndex> dead_entities_this_frame;
-
     UPROPERTY();
     TArray<int32> free_indices;
 };

@@ -55,13 +55,20 @@ void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 }
 
-// Getters
+// Accessors
 auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return world_transforms.Num();
 }
 bool ATestCapitalShipFighters::array_sizes_consistent() const {
     return ml::all_num_equal(
         *instances, indices, world_transforms, velocities, teams, healths, laser_cooldowns);
+}
+
+void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id) {
+    owner_id = new_owner_id;
+}
+auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
+    return owner_id;
 }
 
 // Movement

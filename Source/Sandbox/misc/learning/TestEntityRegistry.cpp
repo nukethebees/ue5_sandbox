@@ -22,6 +22,12 @@ void ATestEntityRegistry::reset() {
                      free_indices);
 }
 
+auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
+    auto const index{entity_owners.Add(&actor)};
+
+    return {static_cast<uint8>(index)};
+}
+
 // Entity creation
 auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::reserve_entities);

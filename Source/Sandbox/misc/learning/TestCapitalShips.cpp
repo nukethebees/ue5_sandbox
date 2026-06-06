@@ -134,6 +134,13 @@ auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const -> 
     return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot] : FGenerationIndex{};
 }
 
+void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
+    owner_id = new_owner_id;
+}
+auto ATestCapitalShips::get_owner_id() const -> TestEntityOwnerId {
+    return owner_id;
+}
+
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);

@@ -1,7 +1,8 @@
 #pragma once
 
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include "Sandbox/misc/learning/TestTeam.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
-#include "TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/generation_index.h"
@@ -41,6 +42,10 @@ class ATestCapitalShips : public AActor {
     auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
     auto get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex;
+
+    // Setters
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+    auto get_owner_id() const -> TestEntityOwnerId;
   protected:
     // Ship spawning
     void register_all_proxies_in_level();
@@ -76,6 +81,7 @@ class ATestCapitalShips : public AActor {
     TArray<FGenerationIndex> entity_indices;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
+    TestEntityOwnerId owner_id{};
 
     UPROPERTY()
     TArray<FTransform> transforms;

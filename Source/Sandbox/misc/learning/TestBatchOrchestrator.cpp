@@ -58,21 +58,30 @@ void ATestBatchOrchestrator::BeginPlay() {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             Sandbox::ATestBatchOrchestrator::begin_play::clear_runtime_state);
-        lasers->clear_runtime_state();
-        capital_ships->clear_runtime_state();
-        capital_ship_fighters->clear_runtime_state();
-        turrets->clear_runtime_state();
-        spinners->clear_runtime_state();
+        ml::invoke_on_all([this](auto actor) { actor->clear_runtime_state(); },
+                          lasers,
+                          capital_ships,
+                          capital_ship_fighters,
+                          turrets,
+                          spinners);
     }
+
+    ml::invoke_on_all(
+        [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); },
+        capital_ships,
+        capital_ship_fighters,
+        turrets,
+        spinners);
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             Sandbox::ATestBatchOrchestrator::begin_play::batch_actor_begin_play);
-        capital_ships->begin_play();
-        lasers->begin_play();
-        capital_ship_fighters->begin_play();
-        turrets->begin_play();
-        spinners->begin_play();
+        ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
+                          capital_ships,
+                          capital_ship_fighters,
+                          turrets,
+                          spinners,
+                          lasers);
     }
 
     {

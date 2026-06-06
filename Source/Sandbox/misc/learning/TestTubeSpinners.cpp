@@ -65,6 +65,13 @@ auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
     return laser_cooldowns.Num();
 }
 
+void ATestTubeSpinners::set_owner_id(TestEntityOwnerId const new_owner_id) {
+    owner_id = new_owner_id;
+}
+auto ATestTubeSpinners::get_owner_id() const -> TestEntityOwnerId {
+    return owner_id;
+}
+
 // Spawning
 void ATestTubeSpinners::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::register_all_proxies_in_level);
