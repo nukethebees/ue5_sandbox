@@ -15,6 +15,8 @@ struct SANDBOXCORE_API FGenerationIndex {
         : index(index)
         , generation(generation) {}
 
+    bool operator==(FGenerationIndex const&) const noexcept = default;
+
     [[nodiscard]] auto is_valid() const noexcept -> bool;
     auto to_string() const -> FString;
 
