@@ -167,6 +167,14 @@ void ATestCapitalShipFighters::handle_firing() {
 // Misc
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
+
+    ml::reset_arrays(indices,
+                     world_transforms,
+                     velocities,
+                     teams,
+                     healths,
+                     laser_cooldowns,
+                     indices_ready_to_fire_buffer);
 }
 void ATestCapitalShipFighters::update_entity_registry() {
     auto const data{get_entity_data(0, get_num_instances())};
