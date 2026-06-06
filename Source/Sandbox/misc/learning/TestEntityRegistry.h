@@ -34,6 +34,8 @@ class ATestEntityRegistry : public AActor {
 
     ATestEntityRegistry();
 
+    void reset();
+
     // Entity creation
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view)

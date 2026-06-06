@@ -2,10 +2,24 @@
 
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/array_utils.h>
+
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+}
+
+void ATestEntityRegistry::reset() {
+    entity_data.reset();
+    queued_entity_data.reset();
+
+    ml::reset_arrays(generations,
+                     queued_entity_generations,
+                     queued_damage_amounts,
+                     queued_damage_targets,
+                     dead_entities_this_frame,
+                     free_indices);
 }
 
 // Entity creation
@@ -114,9 +128,6 @@ void ATestEntityRegistry::commit_entity_updates() {
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];
     }
-
-    queued_entity_data.reset();
-    queued_entity_generations.Reset();
 }
 void ATestEntityRegistry::commit_damage_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_damage_updates);
@@ -133,9 +144,6 @@ void ATestEntityRegistry::commit_damage_updates() {
         entity_data.healths[entity_index] -= queued_damage_amounts[i];
         entity_data.alive[entity_index] = (entity_data.healths[entity_index] > 0);
     }
-
-    queued_damage_amounts.Reset();
-    queued_damage_targets.Reset();
 }
 void ATestEntityRegistry::commit_death_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
@@ -168,6 +176,13 @@ void ATestEntityRegistry::refresh_free_indices() {
 }
 void ATestEntityRegistry::end_frame() {
     refresh_free_indices();
+
+    queued_entity_data.reset();
+    queued_entity_generations.Reset();
+
+    queued_damage_amounts.Reset();
+    queued_damage_targets.Reset();
+
     dead_entities_this_frame.Reset();
 }
 
