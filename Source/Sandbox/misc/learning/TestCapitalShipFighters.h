@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TestEntityRegistry.h"
+#include "TestEntityRegistryData.h"
 #include "TestTeam.h"
 
 #include "SandboxCore/countdown_timers.h"

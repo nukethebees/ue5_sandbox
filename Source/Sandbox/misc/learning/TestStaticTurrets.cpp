@@ -1,11 +1,12 @@
 #include "TestStaticTurrets.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "TestEntityRegistry.h"
-#include "TestLasers.h"
-#include "TestLasersConfig.h"
-#include "TestStaticTurretsConfig.h"
-#include "TestStaticTurretsProxy.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
+#include "Sandbox/misc/learning/TestEntityRegistryData.h"
+#include "Sandbox/misc/learning/TestLasers.h"
+#include "Sandbox/misc/learning/TestLasersConfig.h"
+#include "Sandbox/misc/learning/TestStaticTurretsConfig.h"
+#include "Sandbox/misc/learning/TestStaticTurretsProxy.h"
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
