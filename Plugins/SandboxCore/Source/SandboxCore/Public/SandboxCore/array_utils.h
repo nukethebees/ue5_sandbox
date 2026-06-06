@@ -61,7 +61,7 @@ void fill(TArrayView<T> values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());
 }
 template <typename T>
-void fill(TArray<T> values, T const value) {
+void fill(TArray<T>& values, T const value) {
     fill(TArrayView<T>{values}, value);
 }
 }
