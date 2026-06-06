@@ -2,6 +2,8 @@
 
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
+#include "SandboxCore/generation_index.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -11,6 +13,7 @@ class USceneComponent;
 class UInstancedStaticMeshComponent;
 
 class UTestLasersConfig;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestLasers : public AActor {
@@ -56,9 +59,12 @@ class ATestLasers : public AActor {
     void clear_runtime_state();
     void remove_instances(TConstArrayView<int32> indices);
 
-    UPROPERTY(EditAnywhere, Category = "Lasers")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestLasersConfig> laser_config{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Lasers")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 n_preallocated_instances{5000};
 
     UPROPERTY()
@@ -76,6 +82,10 @@ class ATestLasers : public AActor {
     TArray<FTransform> transforms_to_add;
     UPROPERTY()
     TArray<int32> to_remove;
+    UPROPERTY()
+    TArray<FGenerationIndex> hit_entity_queue;
+    UPROPERTY()
+    TArray<int32> hit_damage_queue;
 
 #if WITH_EDITORONLY_DATA
     // Debugging

@@ -11,6 +11,8 @@
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
 
+#include <DrawDebugHelpers.h>
+
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
@@ -20,6 +22,8 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
 
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
+
+    tick_counter = 0;
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(lasers),
@@ -46,6 +50,11 @@ void ATestBatchOrchestrator::BeginPlay() {
         capital_ship_fighters,
         turrets,
         spinners);
+
+    capital_ships->begin_play();
+
+    entity_registry->commit_updates();
+    entity_registry->end_frame();
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
@@ -54,6 +63,8 @@ void ATestBatchOrchestrator::Tick(float dt) {
 }
 void ATestBatchOrchestrator::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
+
+    ++tick_counter;
 
     capital_ships->tick(dt);
     capital_ship_fighters->tick(dt);
@@ -64,4 +75,9 @@ void ATestBatchOrchestrator::tick(float const dt) {
     lasers->tick(dt);
 
     entity_registry->commit_updates();
+
+    capital_ships->sync_from_registry();
+    capital_ships->update_visuals();
+
+    entity_registry->end_frame();
 }

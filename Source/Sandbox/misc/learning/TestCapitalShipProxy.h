@@ -14,7 +14,6 @@ class UBoxComponent;
 class UArrowComponent;
 
 class UTestCapitalShipsConfig;
-class ATestCapitalShips;
 
 UCLASS()
 class ATestCapitalShipProxy : public AActor {
@@ -22,7 +21,6 @@ class ATestCapitalShipProxy : public AActor {
   public:
     ATestCapitalShipProxy();
   protected:
-    void BeginPlay() override;
     void OnConstruction(FTransform const& transform) override;
   public:
 #if WITH_EDITOR
@@ -45,9 +43,6 @@ class ATestCapitalShipProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
-
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<ATestCapitalShips> batch_actor{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestCapitalShipProxy> target_ship{nullptr};

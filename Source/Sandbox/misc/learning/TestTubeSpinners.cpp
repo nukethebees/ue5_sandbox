@@ -78,7 +78,7 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
     }
 
     TArray<Proxy*> proxies{};
-    ml::append_valid_actors(*world, proxies);
+    ml::append_actors(*world, proxies);
     auto const n_to_add{proxies.Num()};
 
     TArray<FTransform> new_transforms;

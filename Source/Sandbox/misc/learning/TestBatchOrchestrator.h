@@ -36,4 +36,7 @@ class ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    
+    UPROPERTY(Transient)
+    uint64 tick_counter{0};
 };

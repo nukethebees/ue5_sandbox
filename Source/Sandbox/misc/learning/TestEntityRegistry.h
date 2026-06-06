@@ -34,12 +34,19 @@ class ATestEntityRegistry : public AActor {
 
     ATestEntityRegistry();
 
-    // Entity updates
+    // Entity creation
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
-    void update_entities(ConstView const view);
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view)
         -> TArray<FGenerationIndex>;
+
+    // Entity updates
+    void update_entities(ConstView const view);
+    void apply_damage(TConstArrayView<FGenerationIndex> const indexes,
+                      TConstArrayView<int32> const damages);
+
+    // Frame events
     void commit_updates();
+    void end_frame();
 
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
@@ -49,7 +56,7 @@ class ATestEntityRegistry : public AActor {
     auto get_health(FGenerationIndex const index) const -> int32;
     auto get_team(FGenerationIndex const index) const -> ETestTeam;
     auto get_alive(FGenerationIndex const index) const -> bool;
-
+    auto get_dead_entities_this_frame() const -> TConstArrayView<FGenerationIndex>;
     auto collect_entities_in_range(FVector const& origin,
                                    float const radius,
                                    TArrayView<FGenerationIndex> const out_entities) const -> int32;
@@ -59,17 +66,32 @@ class ATestEntityRegistry : public AActor {
                                             TArrayView<FGenerationIndex> const out_entities) const
         -> int32;
   private:
+    void commit_entity_updates();
+    void commit_damage_updates();
+    void commit_death_updates();
+    void refresh_free_indices();
+
     UPROPERTY()
     FTestEntityRegistryEntityData entity_data;
     UPROPERTY()
     TArray<int32> generations;
 
+    // Queued updates
     UPROPERTY()
-    FTestEntityRegistryEntityData update_entity_data;
+    FTestEntityRegistryEntityData queued_entity_data;
     UPROPERTY()
-    TArray<FGenerationIndex> update_generations;
+    TArray<FGenerationIndex> queued_entity_generations;
+
+    // Queued damage events
+    UPROPERTY()
+    TArray<int32> queued_damage_amounts;
+    UPROPERTY()
+    TArray<FGenerationIndex> queued_damage_targets;
+
+    // Dead entities
+    UPROPERTY()
+    TArray<FGenerationIndex> dead_entities_this_frame;
 
     UPROPERTY();
     TArray<int32> free_indices;
-    std::array<TArray<int32>, TEAM_COUNT> indices_by_team;
 };

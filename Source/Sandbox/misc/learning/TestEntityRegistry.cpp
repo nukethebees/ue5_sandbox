@@ -8,7 +8,7 @@ ATestEntityRegistry::ATestEntityRegistry() {
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
-// Entity updates
+// Entity creation
 auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::reserve_entities);
 
@@ -43,12 +43,6 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
     }
 
     return indices;
-}
-void ATestEntityRegistry::update_entities(ConstView const view) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
-
-    update_entity_data.add(view.data);
-    update_generations.Append(view.indices);
 }
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
     -> TArray<FGenerationIndex> {
@@ -87,29 +81,94 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
     return indices;
 }
-void ATestEntityRegistry::commit_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
 
-    auto const n{update_entity_data.get_num()};
+// Entity updates
+void ATestEntityRegistry::update_entities(ConstView const view) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
+
+    queued_entity_data.add(view.data);
+    queued_entity_generations.Append(view.indices);
+}
+void ATestEntityRegistry::apply_damage(TConstArrayView<FGenerationIndex> const indexes,
+                                       TConstArrayView<int32> const damages) {
+    check(indexes.Num() == damages.Num());
+
+    queued_damage_targets.Append(indexes);
+    queued_damage_amounts.Append(damages);
+}
+void ATestEntityRegistry::commit_entity_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
+
+    auto const n{queued_entity_data.get_num()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const generation_index{update_generations[i]};
-
+        auto const generation_index{queued_entity_generations[i]};
         if (!is_valid_index(generation_index)) {
             continue;
         }
-
         auto const entity_index{generation_index.index};
 
-        entity_data.locations[entity_index] = update_entity_data.locations[i];
-        entity_data.velocities[entity_index] = update_entity_data.velocities[i];
-        entity_data.healths[entity_index] = update_entity_data.healths[i];
-        entity_data.teams[entity_index] = update_entity_data.teams[i];
-        entity_data.alive[entity_index] = update_entity_data.alive[i];
+        entity_data.locations[entity_index] = queued_entity_data.locations[i];
+        entity_data.velocities[entity_index] = queued_entity_data.velocities[i];
+        entity_data.healths[entity_index] = queued_entity_data.healths[i];
+        entity_data.teams[entity_index] = queued_entity_data.teams[i];
+        entity_data.alive[entity_index] = queued_entity_data.alive[i];
     }
 
-    update_generations.Reset();
-    update_entity_data.reset();
+    queued_entity_data.reset();
+    queued_entity_generations.Reset();
+}
+void ATestEntityRegistry::commit_damage_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_damage_updates);
+
+    auto const n{queued_damage_amounts.Num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const generation_index{queued_damage_targets[i]};
+        if (!is_valid_index(generation_index)) {
+            continue;
+        }
+        auto const entity_index{generation_index.index};
+
+        entity_data.healths[entity_index] -= queued_damage_amounts[i];
+        entity_data.alive[i] = (entity_data.healths[entity_index] <= 0);
+    }
+
+    queued_damage_amounts.Reset();
+    queued_damage_targets.Reset();
+}
+void ATestEntityRegistry::commit_death_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
+
+    dead_entities_this_frame.Reset();
+    auto const n{entity_data.get_num()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] == 0u) {
+            dead_entities_this_frame.Emplace(i, generations[i]);
+        }
+    }
+}
+
+// Frame events
+void ATestEntityRegistry::commit_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
+
+    commit_entity_updates();
+    commit_damage_updates();
+    commit_death_updates();
+}
+void ATestEntityRegistry::refresh_free_indices() {
+    free_indices.Reset();
+    auto const n{entity_data.get_num()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] == 0u) {
+            free_indices.Add(i);
+        }
+    }
+}
+void ATestEntityRegistry::end_frame() {
+    refresh_free_indices();
+    dead_entities_this_frame.Reset();
 }
 
 // Entity queries
@@ -130,6 +189,10 @@ auto ATestEntityRegistry::get_team(FGenerationIndex const index) const -> ETestT
 }
 auto ATestEntityRegistry::get_alive(FGenerationIndex const index) const -> bool {
     return is_valid_index(index) ? static_cast<bool>(entity_data.alive[index.index]) : false;
+}
+auto ATestEntityRegistry::get_dead_entities_this_frame() const
+    -> TConstArrayView<FGenerationIndex> {
+    return dead_entities_this_frame;
 }
 auto ATestEntityRegistry::collect_entities_in_range(
     FVector const& origin,

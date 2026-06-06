@@ -31,16 +31,17 @@ class ATestCapitalShips : public AActor {
     ATestCapitalShips();
 
     void PostInitializeComponents() override;
-    void Tick(float dt) override;
+    void begin_play();
     void tick(float const dt);
+    void sync_from_registry();
+    void update_visuals();
 
     // Getters
     auto get_num_instances() const -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
+    auto get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex;
   protected:
-    void BeginPlay() override;
-
     // Ship spawning
     void register_all_proxies_in_level();
     void spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
@@ -74,6 +75,8 @@ class ATestCapitalShips : public AActor {
     // Entity data
     UPROPERTY()
     TArray<FGenerationIndex> entity_indices;
+    UPROPERTY()
+    TArray<int32> local_indices_to_remove;
 
     UPROPERTY()
     TArray<FTransform> transforms;

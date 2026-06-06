@@ -1,11 +1,17 @@
 #include "TestLasers.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
+#include "Sandbox/misc/learning/TestCapitalShips.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
 #include "Sandbox/misc/learning/TestLasersConfig.h"
+#include "Sandbox/misc/learning/TestStaticTurrets.h"
+#include "Sandbox/misc/learning/TestTubeSpinners.h"
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/generation_index.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
 
@@ -45,6 +51,7 @@ void ATestLasers::BeginPlay() {
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
     if (!laser_config->is_ready()) {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
@@ -163,6 +170,11 @@ void ATestLasers::handle_collisions(float const dt) {
     FCollisionQueryParams params{};
     params.AddIgnoredActor(this);
 
+    auto const damage{laser_config->damage};
+
+    hit_entity_queue.Reset();
+    hit_damage_queue.Reset();
+
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};
         auto const end{start + dt * velocities[i]};
@@ -184,7 +196,31 @@ void ATestLasers::handle_collisions(float const dt) {
         if (!IsValid(hit_component)) {
             continue;
         }
+
+        auto* hit_ismc{Cast<UInstancedStaticMeshComponent>(hit_component)};
+        if (!IsValid(hit_ismc)) {
+            continue;
+        }
+
+        auto const ismc_hit_index{hit.Item};
+        FGenerationIndex hit_index;
+
+        if (auto* capital_ships{Cast<ATestCapitalShips>(hit_actor)}) {
+            hit_index = capital_ships->get_entity_from_hit_slot(ismc_hit_index);
+        } else if (auto* capital_ship_fighters{Cast<ATestCapitalShipFighters>(hit_actor)}) {
+        } else if (auto* turrets{Cast<ATestStaticTurrets>(hit_actor)}) {
+        } else if (auto* spinners{Cast<ATestTubeSpinners>(hit_actor)}) {
+        }
+
+        if (!hit_index.is_valid()) {
+            continue;
+        }
+
+        hit_entity_queue.Add(hit_index);
+        hit_damage_queue.Add(damage);
     }
+
+    entity_registry->apply_damage(hit_entity_queue, hit_damage_queue);
 
     remove_instances(to_remove);
 }

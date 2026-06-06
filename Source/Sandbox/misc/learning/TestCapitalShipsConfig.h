@@ -53,6 +53,9 @@ class UTestCapitalShipsConfig : public UDataAsset {
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
+
+    UPROPERTY(EditAnywhere)
+    FVector debug_status_text_offset{0.0, 0.0, 500.0};
   private:
     void synchronise_data();
 };

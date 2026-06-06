@@ -24,13 +24,17 @@ void for_each_instance(TActor& actor, F&& fn) {
 }
 
 template <typename T>
-auto append_valid_actors(UWorld const& world, TArray<T*>& out_actors) -> void {
+auto append_actors(UWorld const& world, TArray<T*>& out_actors) -> void {
+    // TActorIterator skips actors pending kill automatically
     for (TActorIterator<T> it{&world}; it; ++it) {
-        T* const actor{*it};
-
-        if (IsValid(actor)) {
-            out_actors.Add(actor);
-        }
+        out_actors.Add(*it);
     }
+}
+
+template <typename T>
+auto get_actors(UWorld const& world) -> TArray<T*> {
+    TArray<T*> out_actors;
+    append_actors(world, out_actors);
+    return out_actors;
 }
 }

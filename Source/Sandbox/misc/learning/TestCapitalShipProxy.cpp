@@ -5,8 +5,8 @@
 #include "TestCapitalShipsConfig.h"
 
 #include <SandboxCore/actor_components.h>
-#include <SandboxCore/collision_settings.h>
 #include <SandboxCore/actor_utils.h>
+#include <SandboxCore/collision_settings.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
@@ -29,28 +29,11 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    if (!batch_actor) {
-        return;
-    }
-
     if (!ship_config) {
         return;
     }
 
     mesh->SetStaticMesh(ship_config->mesh);
-}
-void ATestCapitalShipProxy::BeginPlay() {
-    Super::BeginPlay();
-
-    if (target_ship == this) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipProxy: target_ship is this."));
-        return;
-    }
-
-    if (!batch_actor) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("ATestCapitalShipProxy: batch_actor is nullptr."));
-        return;
-    }
 }
 
 #if WITH_EDITOR

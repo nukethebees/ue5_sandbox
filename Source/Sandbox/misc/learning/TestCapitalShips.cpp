@@ -7,15 +7,18 @@
 #include "Sandbox/misc/learning/TestEntityRegistry.h"
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/collision_settings.h>
+#include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
+#include <Templates/Greater.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestCapitalShipCount, TEXT("Sandbox/TestLaserCount"));
 
@@ -37,9 +40,7 @@ void ATestCapitalShips::PostInitializeComponents() {
 
     clear_runtime_state();
 }
-void ATestCapitalShips::BeginPlay() {
-    Super::BeginPlay();
-
+void ATestCapitalShips::begin_play() {
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
     auto* world{GetWorld()};
@@ -56,11 +57,6 @@ void ATestCapitalShips::BeginPlay() {
     configure_ismc();
     register_all_proxies_in_level();
 }
-void ATestCapitalShips::Tick(float dt) {
-    Super::Tick(dt);
-
-    tick(dt);
-}
 void ATestCapitalShips::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
 
@@ -68,17 +64,57 @@ void ATestCapitalShips::tick(float const dt) {
 
     handle_fighter_spawning();
     update_entity_registry();
+}
+void ATestCapitalShips::sync_from_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
+    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
+
+    local_indices_to_remove.Reset();
+
+    auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
+    for (auto const& dead_entity : dead_entities) {
+        auto const key{entity_indices.IndexOfByKey(dead_entity)};
+        if (key == INDEX_NONE) {
+            continue;
+        }
+        local_indices_to_remove.Add(key);
+    }
+
+    // Remove from largest index to smallest
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        entity_indices,
+                                        transforms,
+                                        spawn_timers.remaining_times,
+                                        teams,
+                                        healths,
+                                        target_entity_indices);
+
+    {
+        auto const n{get_num_instances()};
+        for (int32 i{0}; i < n; ++i) {
+            healths[i] = entity_registry->get_health(entity_indices[i]);
+        }
+    }
+
+    check(array_sizes_consistent());
+}
+void ATestCapitalShips::update_visuals() {
+    // Clear old instances
+    if (local_indices_to_remove.Num()) {
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    }
 
     if (debugging_shapes_enabled) {
         draw_debugging_shapes();
     }
-
-    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 }
 
 // Accessors
 auto ATestCapitalShips::get_num_instances() const -> int32 {
-    return instances->GetNumInstances();
+    return entity_indices.Num();
 }
 auto ATestCapitalShips::get_location(FGenerationIndex const index) const -> FVector {
     if (!is_valid(index)) {
@@ -98,6 +134,9 @@ auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
 
     return true;
 }
+auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex {
+    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot] : FGenerationIndex{};
+}
 
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
@@ -109,20 +148,8 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         return;
     }
 
-    TArray<Proxy*> proxies{};
     TMap<Proxy const*, FGenerationIndex> proxy_to_index{};
-
-    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        if (it->batch_actor != this) {
-            continue;
-        }
-
-        auto const index{proxies.Add(*it)};
-    }
+    auto const proxies{ml::get_actors<Proxy>(*world)};
 
     auto const n_to_add{proxies.Num()};
     entity_indices = entity_registry->reserve_entities(n_to_add);
@@ -131,13 +158,13 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 
     TArray<FGenerationIndex> new_targets;
-    new_targets.AddUninitialized(n_to_add);
-
     TArray<FTransform> new_transforms;
-    new_transforms.AddUninitialized(n_to_add);
-
     TArray<ETestTeam> new_teams;
-    new_teams.AddUninitialized(n_to_add);
+
+    ml::invoke_on_all([n_to_add](auto& a) { a.AddUninitialized(n_to_add); },
+                      new_targets,
+                      new_transforms,
+                      new_teams);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         FGenerationIndex target_index{};
@@ -147,7 +174,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
             target_index = *found;
         } else {
             UE_LOG(LogSandboxLearning,
-                   Error,
+                   Fatal,
                    TEXT("ATestCapitalShips::register_all_proxies_in_level: Lookup failed"));
         }
 
@@ -181,9 +208,8 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
     target_entity_indices.Append(new_target_indices);
     spawn_timers.AddZeroed(n_to_add);
     teams.Append(new_teams);
-    healths.AddUninitialized(n_to_add);
 
-    ml::fill(healths, ship_config->max_health);
+    ml::append_n(healths, ship_config->max_health, n_to_add);
 
     check(array_sizes_consistent());
 }
@@ -250,25 +276,26 @@ void ATestCapitalShips::update_entity_registry() {
     FTestEntityRegistryEntityData update_data;
     update_data.add_uninitialised(n);
 
+    ml::fill(update_data.velocities, FVector::ZeroVector);
+
+    update_data.healths = healths;
+    update_data.teams = teams;
+
     for (int32 i{0}; i < n; ++i) {
         update_data.locations[i] = transforms[i].GetLocation();
-        update_data.velocities[i] = FVector::ZeroVector;
-        update_data.healths[i] = healths[i];
-        update_data.teams[i] = teams[i];
-        update_data.alive[i] = true;
+        update_data.alive[i] = healths[i] > 0;
     }
+
     entity_registry->update_entities({entity_indices, update_data.get_const_view()});
 }
 
 // Debugging
 bool ATestCapitalShips::array_sizes_consistent() const {
-    return ml::all_num_equal(*instances,
-                             entity_indices,
-                             transforms,
-                             spawn_timers,
-                             teams,
-                             healths,
-                             target_entity_indices);
+    auto const n{get_num_instances()};
+
+    return ml::all_num_equal(
+               entity_indices, transforms, spawn_timers, teams, healths, target_entity_indices) &&
+           (instances->GetNumInstances() >= n);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
@@ -276,19 +303,28 @@ void ATestCapitalShips::draw_debugging_shapes() const {
     auto const n{get_num_instances()};
     auto const collision_extent{ship_config->collision_box_extent};
 
+    auto const text_offset{ship_config->debug_status_text_offset};
+
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
         auto const ship_loc{transforms[i].GetLocation()};
 
         // Draw target
         auto const target_index{target_entity_indices[i]};
-        if (!entity_registry->is_valid_index(target_index)) {
-            continue;
+        if (entity_registry->is_valid_index(target_index)) {
+            auto const target_loc{entity_registry->get_location(target_index)};
+            drawer.draw_arrow(ship_loc, target_loc);
         }
-        auto const target_loc{entity_registry->get_location(target_index)};
-        drawer.draw_arrow(ship_loc, target_loc);
 
         // Draw collision
         drawer.draw_box(ship_loc, collision_extent);
+
+        // Draw HP
+        auto const ship_index{entity_indices[i]};
+
+        auto const msg{FString::Printf(
+            TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, healths[i])};
+        auto const msg_location{ship_loc + text_offset};
+        drawer.draw_string(msg_location, msg);
     }
 }

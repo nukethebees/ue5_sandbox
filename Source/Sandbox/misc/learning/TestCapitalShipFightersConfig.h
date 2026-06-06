@@ -25,7 +25,7 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
 
     // Combat
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    int32 health{50};
+    int32 health{50000};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float fire_cooldown{0.33f};
