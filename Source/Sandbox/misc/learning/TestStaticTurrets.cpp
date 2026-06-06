@@ -52,8 +52,6 @@ void ATestStaticTurrets::PostInitializeComponents() {
 void ATestStaticTurrets::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTransform(FTransform::Identity, false);
-
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
