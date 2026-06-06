@@ -34,6 +34,15 @@ struct FTestEntityRegistryEntityData {
                 alive.Slice(offset, count),
             };
         }
+        auto right(int32 const count) const {
+            return ThisClass{
+                locations.Right(count),
+                velocities.Right(count),
+                healths.Right(count),
+                teams.Right(count),
+                alive.Right(count),
+            };
+        }
     };
 
     using View = TTestEntityDataView<TArrayView>;
@@ -48,6 +57,8 @@ struct FTestEntityRegistryEntityData {
     void add_uninitialised(int32 const count);
     void add_disabled(int32 const count);
     void add(ConstView const view);
+
+    void reset();
 
     UPROPERTY()
     TArray<FVector> locations;

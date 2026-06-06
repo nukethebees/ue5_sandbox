@@ -47,23 +47,8 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
 void ATestEntityRegistry::update_entities(ConstView const view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
 
-    auto const n{view.get_num()};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const generation_index{view.indices[i]};
-
-        if (!is_valid_index(generation_index)) {
-            continue;
-        }
-
-        auto const entity_index{generation_index.index};
-
-        entity_data.locations[entity_index] = view.data.locations[i];
-        entity_data.velocities[entity_index] = view.data.velocities[i];
-        entity_data.healths[entity_index] = view.data.healths[i];
-        entity_data.teams[entity_index] = view.data.teams[i];
-        entity_data.alive[entity_index] = view.data.alive[i];
-    }
+    update_entity_data.add(view.data);
+    update_generations.Append(view.indices);
 }
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
     -> TArray<FGenerationIndex> {
@@ -101,6 +86,30 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     }
 
     return indices;
+}
+void ATestEntityRegistry::commit_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
+
+    auto const n{update_entity_data.get_num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const generation_index{update_generations[i]};
+
+        if (!is_valid_index(generation_index)) {
+            continue;
+        }
+
+        auto const entity_index{generation_index.index};
+
+        entity_data.locations[entity_index] = update_entity_data.locations[i];
+        entity_data.velocities[entity_index] = update_entity_data.velocities[i];
+        entity_data.healths[entity_index] = update_entity_data.healths[i];
+        entity_data.teams[entity_index] = update_entity_data.teams[i];
+        entity_data.alive[entity_index] = update_entity_data.alive[i];
+    }
+
+    update_generations.Reset();
+    update_entity_data.reset();
 }
 
 // Entity queries

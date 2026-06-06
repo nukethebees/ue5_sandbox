@@ -39,6 +39,7 @@ class ATestEntityRegistry : public AActor {
     void update_entities(ConstView const view);
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view)
         -> TArray<FGenerationIndex>;
+    void commit_updates();
 
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
@@ -62,6 +63,11 @@ class ATestEntityRegistry : public AActor {
     FTestEntityRegistryEntityData entity_data;
     UPROPERTY()
     TArray<int32> generations;
+
+    UPROPERTY()
+    FTestEntityRegistryEntityData update_entity_data;
+    UPROPERTY()
+    TArray<FGenerationIndex> update_generations;
 
     UPROPERTY();
     TArray<int32> free_indices;

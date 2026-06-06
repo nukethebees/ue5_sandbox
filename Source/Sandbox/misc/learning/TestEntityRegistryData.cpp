@@ -1,5 +1,8 @@
 #include "TestEntityRegistryData.h"
 
+#include <SandboxCore/array_utils.h>
+#include <SandboxCore/invoke.h>
+
 auto FTestEntityRegistryEntityData::get_num() const -> int32 {
     return locations.Num();
 }
@@ -23,39 +26,34 @@ auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
 }
 
 void FTestEntityRegistryEntityData::add_uninitialised(int32 const count) {
-    locations.AddUninitialized(count);
-    velocities.AddUninitialized(count);
-    healths.AddUninitialized(count);
-    teams.AddUninitialized(count);
-    alive.AddUninitialized(count);
+    ml::invoke_on_all([count](auto& a) { a.AddUninitialized(count); },
+                      locations,
+                      velocities,
+                      healths,
+                      teams,
+                      alive);
 }
 void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
-    auto const base{get_num()};
-
     add_uninitialised(count);
 
-    for (int32 i{0}; i < count; ++i) {
-        auto const index{base + i};
+    auto view{get_view()};
+    auto slice{view.right(count)};
 
-        locations[index] = FVector::ZeroVector;
-        velocities[index] = FVector::ZeroVector;
-        healths[index] = 0;
-        teams[index] = ETestTeam::neutral;
-        alive[index] = false;
-    }
+    ml::fill(slice.locations, FVector::ZeroVector);
+    ml::fill(slice.velocities, FVector::ZeroVector);
+    ml::fill(slice.healths, 0);
+    ml::fill(slice.teams, ETestTeam::neutral);
+    ml::fill(slice.alive, uint8{0u});
 }
 void FTestEntityRegistryEntityData::add(ConstView const view) {
-    auto const n{view.get_num()};
-    auto const base{get_num()};
+    locations.Append(view.locations);
+    velocities.Append(view.velocities);
+    healths.Append(view.healths);
+    teams.Append(view.teams);
+    alive.Append(view.alive);
+}
 
-    add_uninitialised(n);
-    for (int32 i{0}; i < n; ++i) {
-        auto const index{base + i};
-
-        locations[index] = view.locations[i];
-        velocities[index] = view.velocities[i];
-        healths[index] = view.healths[i];
-        teams[index] = view.teams[i];
-        alive[index] = view.alive[i];
-    }
+void FTestEntityRegistryEntityData::reset() {
+    ml::invoke_on_all(
+        [](auto& array) { array.Reset(); }, locations, velocities, healths, teams, alive);
 }

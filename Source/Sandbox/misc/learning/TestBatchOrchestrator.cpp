@@ -62,4 +62,6 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     // Lasers must resolve after everything else
     lasers->tick(dt);
+
+    entity_registry->commit_updates();
 }
