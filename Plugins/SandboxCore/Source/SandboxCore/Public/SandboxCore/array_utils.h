@@ -64,4 +64,13 @@ template <typename T>
 void fill(TArray<T>& values, T const value) {
     fill(TArrayView<T>{values}, value);
 }
+
+template <typename T>
+void append_n(TArray<T>& values, T const value, int32 const count) {
+    auto const old_num{values.Num()};
+
+    values.AddUninitialized(count);
+
+    fill(TArrayView<T>{values}.Right(count), value);
+}
 }
