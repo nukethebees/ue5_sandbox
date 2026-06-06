@@ -5,6 +5,7 @@
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -46,6 +47,7 @@ void ATestLasers::BeginPlay() {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
     }
 
+    preallocate_instances();
     configure_ismc();
 
 #if WITH_EDITOR
@@ -113,6 +115,13 @@ void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms)
     }
 
     check(array_sizes_consistent());
+}
+void ATestLasers::preallocate_instances() {
+    instances->PreAllocateInstancesMemory(n_preallocated_instances);
+    ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { array.Reserve(n); },
+                      transforms,
+                      velocities,
+                      lifetimes);
 }
 
 void ATestLasers::configure_ismc() {

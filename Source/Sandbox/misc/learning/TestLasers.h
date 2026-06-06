@@ -32,6 +32,7 @@ class ATestLasers : public AActor {
 
     // Spawning / Configuration
     void configure_ismc();
+    void preallocate_instances();
 
     // Movement
     void update_locations(float const dt);
@@ -53,6 +54,8 @@ class ATestLasers : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Lasers")
     TObjectPtr<UTestLasersConfig> laser_config{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Lasers")
+    int32 n_preallocated_instances{5000};
 
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
