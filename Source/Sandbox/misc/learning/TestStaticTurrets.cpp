@@ -104,8 +104,7 @@ void ATestStaticTurrets::perform_search() {
 
     FTransform turret_transform;
     for (int32 i{0}; i < n_turrets; ++i) {
-        instances->GetInstanceTransform(i, turret_transform, true);
-        auto const turret_location{turret_transform.GetLocation()};
+        auto const turret_location{locations[i]};
         auto const this_team{teams[i]};
 
         TStaticArray<FGenerationIndex, 128> elems;
@@ -218,6 +217,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
 
+    locations.AddUninitialized(n);
     teams.AddUninitialized(n);
     healths.AddUninitialized(n);
     target_indices.AddDefaulted(n);
@@ -228,15 +228,17 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     for (int32 i{0}; i < n; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
         instances->AddInstance(transform, true);
+        locations[i] = transform.GetLocation();
         healths[i] = hp;
         teams[i] = proxies[i]->get_team();
 
-        entity_data.locations[i] = transform.GetTranslation();
         entity_data.velocities[i] = FVector::ZeroVector;
-        entity_data.healths[i] = healths[i];
-        entity_data.teams[i] = teams[i];
         entity_data.alive[i] = true;
     }
+
+    entity_data.locations = locations;
+    entity_data.healths = healths;
+    entity_data.teams = teams;
 
     ATestEntityRegistry::ConstView const update_view{indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
@@ -250,11 +252,13 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
 // Debugging
 bool ATestStaticTurrets::array_sizes_consistent() const {
-    return ml::all_num_equal(*instances, indices, teams, laser_cooldowns, healths, target_indices);
+    return ml::all_num_equal(
+        *instances, indices, locations, teams, laser_cooldowns, healths, target_indices);
 }
 
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(teams, laser_cooldowns, indices_ready_to_fire, target_indices, healths);
+    ml::reset_arrays(
+        indices, locations, teams, laser_cooldowns, indices_ready_to_fire, target_indices, healths);
 }

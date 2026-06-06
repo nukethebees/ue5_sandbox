@@ -65,6 +65,8 @@ class ATestStaticTurrets : public AActor {
     // Data
     UPROPERTY()
     TArray<FGenerationIndex> indices{};
+    UPROPERTY()
+    TArray<FVector> locations{};
 
     // Visuals
     UPROPERTY()
