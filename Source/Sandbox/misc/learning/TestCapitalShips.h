@@ -70,8 +70,6 @@ class ATestCapitalShips : public AActor {
 
     UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY()
-    TArray<TObjectPtr<UBoxComponent>> collision_boxes;
 
     // Entity data
     UPROPERTY()

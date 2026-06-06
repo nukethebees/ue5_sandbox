@@ -84,7 +84,7 @@ auto ATestCapitalShips::get_location(FGenerationIndex const index) const -> FVec
         return FVector::ZeroVector;
     }
 
-    return collision_boxes[index.index]->GetComponentLocation();
+    return transforms[index.index].GetLocation();
 }
 auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
     if (!index.is_valid()) {
@@ -187,19 +187,6 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
     auto const collision_settings{ship_config->collision_settings};
 
     for (int32 i{0}; i < n_to_add; ++i) {
-        auto const collision_name{
-            MakeUniqueObjectName(this, UBoxComponent::StaticClass(), TEXT("Box"))};
-        auto* collision{NewObject<UBoxComponent>(this, collision_name)};
-
-        collision->SetupAttachment(RootComponent);
-        collision->RegisterComponent();
-        AddInstanceComponent(collision);
-        collision_boxes.Add(collision);
-
-        collision->SetWorldTransform(new_transforms[i]);
-        collision->SetBoxExtent(ship_config->collision_box_extent);
-        ml::apply_collision_settings(*collision, collision_settings);
-
         healths[i] = hp;
     }
 
@@ -253,7 +240,6 @@ void ATestCapitalShips::configure_ismc() {
 // Misc
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
-    ml::destroy_components_array(collision_boxes);
 
     ml::reset_arrays(entity_indices,
                      transforms,
@@ -283,7 +269,6 @@ void ATestCapitalShips::update_entity_registry() {
 // Debugging
 bool ATestCapitalShips::array_sizes_consistent() const {
     return ml::all_num_equal(*instances,
-                             collision_boxes,
                              entity_indices,
                              transforms,
                              spawn_timers,
