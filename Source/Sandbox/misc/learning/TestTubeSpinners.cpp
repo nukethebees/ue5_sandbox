@@ -29,8 +29,12 @@ ATestTubeSpinners::ATestTubeSpinners()
 // Actor life cycle
 void ATestTubeSpinners::clear_runtime_state() {
     instances->ClearInstances();
-    laser_cooldowns.Reset();
-    indices_ready_to_fire.Reset();
+    ml::reset_arrays(transforms,
+                     yaws,
+                     laser_cooldowns,
+                     next_fire_point_indices,
+                     indices_ready_to_fire,
+                     new_laser_transforms);
 }
 void ATestTubeSpinners::BeginPlay() {
     Super::BeginPlay();

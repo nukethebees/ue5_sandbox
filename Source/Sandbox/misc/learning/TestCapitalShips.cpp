@@ -262,10 +262,12 @@ void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
     ml::reset_arrays(entity_indices,
+                     local_indices_to_remove,
                      transforms,
                      spawn_timers,
                      ships_ready_to_spawn_fighters_buffer,
                      teams,
+                     healths,
                      target_entity_indices);
 }
 void ATestCapitalShips::update_entity_registry() {

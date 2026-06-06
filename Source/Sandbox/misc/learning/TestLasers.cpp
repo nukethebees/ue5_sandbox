@@ -298,7 +298,13 @@ bool ATestLasers::array_sizes_consistent() const {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(transforms, velocities, lifetimes, transforms_to_add, to_remove);
+    ml::reset_arrays(transforms,
+                     velocities,
+                     lifetimes,
+                     transforms_to_add,
+                     to_remove,
+                     hit_entity_queue,
+                     hit_damage_queue);
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
