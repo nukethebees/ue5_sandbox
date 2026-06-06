@@ -14,6 +14,7 @@
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
+TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserRemovedCount, TEXT("Sandbox/TestLaserRemovedCount"));
 
 ATestLasers::ATestLasers()
@@ -71,6 +72,7 @@ void ATestLasers::Tick(float dt) {
     update_ismc();
 
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
+    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
 
 #if WITH_EDITOR
     dbg_n_instances = get_num_instances();
@@ -89,7 +91,15 @@ void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms)
     auto const offset{get_num_instances()};
     auto const n_to_add{new_transforms.Num()};
 
-    instances->AddInstances(TArray<FTransform>(new_transforms), false, true, false);
+    auto const cur_total{get_num_instances()};
+    auto const new_total{cur_total + n_to_add};
+
+    auto const n_ismc_instances{instances->GetNumInstances()};
+    auto const n_ismc_instances_to_add{new_total - n_ismc_instances};
+    if (n_ismc_instances_to_add > 0) {
+        instances->AddInstances(
+            TArray<FTransform>(new_transforms.Left(n_ismc_instances_to_add)), false, true, false);
+    }
 
     transforms.Append(new_transforms);
     lifetimes.AddZeroed(n_to_add);
@@ -162,7 +172,24 @@ void ATestLasers::handle_collisions(float const dt) {
 // Visuals
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
-    instances->BatchUpdateInstancesTransforms(0, transforms, true, true, false);
+    instances->BatchUpdateInstancesTransforms(0, transforms, true, false, false);
+
+    auto const n_instances{get_num_instances()};
+    auto const n_ismcs{instances->GetNumInstances()};
+    auto const n_to_hide{n_ismcs - n_instances};
+    if (n_to_hide > 0) {
+        auto hidden_transform{FTransform::Identity};
+        hidden_transform.SetScale3D(FVector{0.0});
+        TArray<FTransform> hidden_transforms;
+        hidden_transforms.Reserve(n_to_hide);
+        for (int32 i{0}; i < n_to_hide; ++i) {
+            hidden_transforms.Add(hidden_transform);
+        }
+        instances->BatchUpdateInstancesTransforms(
+            n_instances, hidden_transforms, false, false, false);
+    }
+
+    instances->MarkRenderStateDirty();
 }
 
 // Lifetimes
@@ -192,7 +219,9 @@ void ATestLasers::collect_old_instance_indices() {
 
 // Debugging
 bool ATestLasers::array_sizes_consistent() const {
-    return ml::all_num_equal(*instances, transforms, velocities, lifetimes);
+    auto const consistent{ml::all_num_equal(transforms, velocities, lifetimes)};
+
+    return consistent && (instances->GetNumInstances() >= get_num_instances());
 }
 
 // Misc
@@ -211,11 +240,6 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);
         ml::remove_at_swap_many_sorted_desc(indices, transforms, velocities, lifetimes);
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_ismc);
-        instances->RemoveInstances(to_remove, true);
     }
 
     check(array_sizes_consistent());

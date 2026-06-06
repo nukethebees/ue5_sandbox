@@ -70,7 +70,7 @@ class ATestLasers : public AActor {
 
 #if WITH_EDITORONLY_DATA
     // Debugging
-    UPROPERTY(EditAnywhere, Category="Lasers")
+    UPROPERTY(EditAnywhere, Category = "Lasers")
     FDrawDebugConfig debug_drawer;
 
     UPROPERTY(EditAnywhere, Category = "Lasers")
