@@ -21,6 +21,10 @@ ABenchmarkOrchestratorActor::ABenchmarkOrchestratorActor() {
 void ABenchmarkOrchestratorActor::BeginPlay() {
     Super::BeginPlay();
 
+    if (!enabled) {
+        return;
+    }
+
     if (benchmark_camera) {
         if (auto* pc{UGameplayStatics::GetPlayerController(this, 0)}) {
             pc->SetViewTarget(benchmark_camera);

@@ -42,6 +42,9 @@ class SANDBOX_API ABenchmarkOrchestratorActor
     ACameraActor* benchmark_camera;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
+    bool enabled{true};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
     bool run_benchmark{true};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
