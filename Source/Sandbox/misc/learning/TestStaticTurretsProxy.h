@@ -23,10 +23,9 @@ class ATestStaticTurretsProxy : public AActor {
 
     ATestStaticTurretsProxy();
 
-    auto get_batch_actor() const -> ATestStaticTurrets const* { return batch_actor; }
     auto get_team() const { return team; }
   protected:
-    void OnConstruction(FTransform const& transform) override;
+    void configure_component(UPrimitiveComponent& component);
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy")
@@ -51,9 +50,6 @@ class ATestStaticTurretsProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UArrowComponent> fire_point{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Proxy")
-    TObjectPtr<ATestStaticTurrets> batch_actor{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     ETestTeam team{ETestTeam::neutral};

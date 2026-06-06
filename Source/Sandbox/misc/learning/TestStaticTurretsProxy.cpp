@@ -24,18 +24,21 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
     collision->SetupAttachment(RootComponent);
     detection->SetupAttachment(RootComponent);
     fire_point->SetupAttachment(RootComponent);
+
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
+
+    configure_component(*mesh);
+    configure_component(*collision);
+    configure_component(*detection);
 }
 
-void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
-
-    if (!actor_config) {
-        return;
-    }
-
-    if (actor_config->mesh != nullptr) {
-        mesh->SetStaticMesh(actor_config->mesh);
-    }
+void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component) {
+    component.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    component.SetGenerateOverlapEvents(false);
+    component.SetCanEverAffectNavigation(false);
+    component.SetCastShadow(false);
+    component.SetAffectDistanceFieldLighting(false);
 }
 
 #if WITH_EDITOR
@@ -61,6 +64,7 @@ void ATestStaticTurretsProxy::apply_asset_configuration() {
         return;
     }
 
+    mesh->SetStaticMesh(actor_config->mesh);
     detection->SetSphereRadius(actor_config->detection_radius);
     fire_point->SetRelativeTransform(actor_config->fire_point_offset);
 
