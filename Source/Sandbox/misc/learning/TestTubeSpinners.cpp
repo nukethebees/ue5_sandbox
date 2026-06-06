@@ -1,9 +1,10 @@
 #include "TestTubeSpinners.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "TestLasers.h"
-#include "TestTubeSpinnerProxy.h"
-#include "TestTubeSpinnersConfig.h"
+#include "Sandbox/misc/learning/TestLasers.h"
+#include "Sandbox/misc/learning/TestTubeSpinnerProxy.h"
+#include "Sandbox/misc/learning/TestTubeSpinnersConfig.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_utils.h>
@@ -21,6 +22,8 @@ ATestTubeSpinners::ATestTubeSpinners()
 
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor life cycle

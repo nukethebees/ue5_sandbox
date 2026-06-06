@@ -34,4 +34,7 @@ void face_actor(AActor& actor, AActor const& other);
 void face_point(AActor& actor, FVector const& point);
 
 void fatal_if_actor_transform_not_identity(AActor const& actor);
+void fatal_if_actor_root_not_static(AActor const& actor);
+
+void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobility);
 } // namespace ml

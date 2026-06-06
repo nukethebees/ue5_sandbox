@@ -67,4 +67,30 @@ void fatal_if_actor_transform_not_identity(AActor const& actor) {
            TEXT("%s must have an identity transform"),
            *get_best_display_name(actor));
 }
+
+void fatal_if_actor_root_not_static(AActor const& actor) {
+    auto const* root{actor.GetRootComponent()};
+
+    if (root == nullptr) {
+        UE_LOG(LogSandbox, Fatal, TEXT("%s has no root component"), *actor.GetName());
+    }
+
+    if (root->Mobility != EComponentMobility::Static) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("%s root component is not static"),
+               *ml::get_best_display_name(actor));
+    }
+}
+
+void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobility) {
+    TInlineComponentArray<USceneComponent*> components;
+    actor.GetComponents(components);
+
+    for (auto* const component : components) {
+        if (component != nullptr) {
+            component->SetMobility(mobility);
+        }
+    }
+}
 }

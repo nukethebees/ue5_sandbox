@@ -7,6 +7,7 @@
 #include "Sandbox/misc/learning/TestLasersConfig.h"
 #include "Sandbox/misc/learning/TestStaticTurretsConfig.h"
 #include "Sandbox/misc/learning/TestStaticTurretsProxy.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
@@ -26,12 +27,13 @@ ATestStaticTurrets::ATestStaticTurrets()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     RootComponent->SetMobility(EComponentMobility::Static);
-    instances->SetMobility(EComponentMobility::Static);
 
     instances->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor life cycle

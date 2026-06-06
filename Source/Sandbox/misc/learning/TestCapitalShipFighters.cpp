@@ -1,9 +1,10 @@
 #include "TestCapitalShipFighters.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "TestCapitalShipFightersConfig.h"
-#include "TestEntityRegistry.h"
-#include "TestLasers.h"
+#include "Sandbox/misc/learning/TestCapitalShipFightersConfig.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
+#include "Sandbox/misc/learning/TestLasers.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
@@ -24,6 +25,8 @@ ATestCapitalShipFighters::ATestCapitalShipFighters()
 
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor life cycle

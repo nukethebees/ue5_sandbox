@@ -14,6 +14,8 @@
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 void ATestBatchOrchestrator::BeginPlay() {
@@ -29,20 +31,15 @@ void ATestBatchOrchestrator::BeginPlay() {
     });
 
     ml::invoke_on_all(
-        [](AActor const* actor) { ml::fatal_if_actor_transform_not_identity(*actor); },
-        lasers,
-        capital_ships,
-        capital_ship_fighters,
-        turrets,
-        spinners);
+        [](AActor* actor) {
+            ml::fatal_if_actor_transform_not_identity(*actor);
+            ml::fatal_if_actor_root_not_static(*actor);
 
-    ml::invoke_on_all(
-        [](AActor* ptr) {
             UE_LOG(LogSandbox,
                    Display,
                    TEXT("ATestBatchOrchestrator::BeginPlay Disabling tick on: %s"),
-                   *ml::get_best_display_name(*ptr));
-            ptr->SetActorTickEnabled(false);
+                   *ml::get_best_display_name(*actor));
+            actor->SetActorTickEnabled(false);
         },
         lasers,
         capital_ships,

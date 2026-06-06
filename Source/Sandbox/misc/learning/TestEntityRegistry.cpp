@@ -1,7 +1,11 @@
 #include "TestEntityRegistry.h"
 
+#include "Sandbox/utilities/actor_utils.h"
+
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Entity updates

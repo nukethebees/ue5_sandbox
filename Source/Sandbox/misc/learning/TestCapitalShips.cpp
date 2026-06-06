@@ -1,10 +1,11 @@
 #include "TestCapitalShips.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "TestCapitalShipFighters.h"
-#include "TestCapitalShipProxy.h"
-#include "TestCapitalShipsConfig.h"
-#include "TestEntityRegistry.h"
+#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
+#include "Sandbox/misc/learning/TestCapitalShipProxy.h"
+#include "Sandbox/misc/learning/TestCapitalShipsConfig.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/actor_components.h>
 #include <SandboxCore/array_math.h>
@@ -28,6 +29,8 @@ ATestCapitalShips::ATestCapitalShips()
 
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor Lifecycle
@@ -230,7 +233,6 @@ void ATestCapitalShips::handle_fighter_spawning() {
 // Visuals
 void ATestCapitalShips::configure_ismc() {
     instances->SetStaticMesh(ship_config->mesh);
-    instances->SetMobility(EComponentMobility::Movable);
     instances->SetCanEverAffectNavigation(false);
 
     // Collision

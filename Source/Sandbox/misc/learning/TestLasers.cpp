@@ -1,7 +1,8 @@
 #include "TestLasers.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "TestLasersConfig.h"
+#include "Sandbox/misc/learning/TestLasersConfig.h"
+#include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
@@ -26,6 +27,8 @@ ATestLasers::ATestLasers()
 
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor lifecycle
@@ -195,8 +198,6 @@ void ATestLasers::configure_ismc() {
     instances->SetGenerateOverlapEvents(false);
 
     instances->SetCanEverAffectNavigation(false);
-
-    instances->SetMobility(EComponentMobility::Movable);
 
     instances->SetCastShadow(false);
     instances->SetAffectDistanceFieldLighting(false);
