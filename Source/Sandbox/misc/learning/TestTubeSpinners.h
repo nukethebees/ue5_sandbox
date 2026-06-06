@@ -24,6 +24,7 @@ class ATestTubeSpinners : public AActor {
     ATestTubeSpinners();
 
     void Tick(float dt) override;
+    void tick(float const dt);
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;

@@ -30,6 +30,7 @@ class ATestCapitalShips : public AActor {
 
     void PostInitializeComponents() override;
     void Tick(float dt) override;
+    void tick(float const dt);
 
     // Getters
     auto get_num_instances() const -> int32;

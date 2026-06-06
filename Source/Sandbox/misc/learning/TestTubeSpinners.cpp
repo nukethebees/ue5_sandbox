@@ -48,7 +48,10 @@ void ATestTubeSpinners::BeginPlay() {
 void ATestTubeSpinners::Tick(float dt) {
     Super::Tick(dt);
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::Tick);
+    tick(dt);
+}
+void ATestTubeSpinners::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::tick);
 
     laser_cooldowns.tick(dt);
     rotate_instances(dt);

@@ -59,6 +59,11 @@ void ATestLasers::BeginPlay() {
 void ATestLasers::Tick(float dt) {
     Super::Tick(dt);
 
+    tick(dt);
+}
+void ATestLasers::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
+
     auto const n{get_num_instances()};
     if (n < 1) {
         return;

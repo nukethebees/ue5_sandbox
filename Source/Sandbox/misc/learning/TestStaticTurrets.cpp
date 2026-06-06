@@ -65,6 +65,11 @@ void ATestStaticTurrets::BeginPlay() {
 void ATestStaticTurrets::Tick(float dt) {
     Super::Tick(dt);
 
+    tick(dt);
+}
+void ATestStaticTurrets::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::tick);
+
     laser_cooldowns.tick(dt);
     log_config.tick(dt);
 

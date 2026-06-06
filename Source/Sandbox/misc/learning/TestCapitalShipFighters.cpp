@@ -56,6 +56,11 @@ void ATestCapitalShipFighters::BeginPlay() {
 void ATestCapitalShipFighters::Tick(float dt) {
     Super::Tick(dt);
 
+    tick(dt);
+}
+void ATestCapitalShipFighters::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
+
     laser_cooldowns.tick(dt);
 
     move_ships(dt);

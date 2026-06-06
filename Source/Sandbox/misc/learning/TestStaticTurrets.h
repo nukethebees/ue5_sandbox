@@ -29,6 +29,7 @@ class ATestStaticTurrets : public AActor {
 
     void PostInitializeComponents() override;
     void Tick(float dt) override;
+    void tick(float const dt);
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
 

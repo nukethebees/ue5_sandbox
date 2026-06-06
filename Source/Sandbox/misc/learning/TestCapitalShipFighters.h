@@ -25,6 +25,7 @@ class ATestCapitalShipFighters : public AActor {
 
     void PostInitializeComponents() override;
     void Tick(float dt) override;
+    void tick(float const dt);
 
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
                          TConstArrayView<ETestTeam> const new_teams);

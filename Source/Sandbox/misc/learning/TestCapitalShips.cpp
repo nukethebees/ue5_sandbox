@@ -58,7 +58,10 @@ void ATestCapitalShips::BeginPlay() {
 void ATestCapitalShips::Tick(float dt) {
     Super::Tick(dt);
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::Tick);
+    tick(dt);
+}
+void ATestCapitalShips::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
 
     spawn_timers.tick(dt);
 
