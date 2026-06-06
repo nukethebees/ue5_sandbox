@@ -9,6 +9,7 @@
 #include "Sandbox/misc/learning/TestStaticTurretsProxy.h"
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/uobject_utils.h>
@@ -30,34 +31,20 @@ ATestStaticTurrets::ATestStaticTurrets()
 
     instances->SetupAttachment(RootComponent);
 
-    PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor life cycle
-void ATestStaticTurrets::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
-
-    if (!actor_config) {
-        return;
-    }
-
-    configure_ismc();
-}
-void ATestStaticTurrets::PostInitializeComponents() {
-    Super::PostInitializeComponents();
-
-    clear_runtime_state();
-}
-void ATestStaticTurrets::BeginPlay() {
-    Super::BeginPlay();
+void ATestStaticTurrets::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play);
 
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
+        {actor_config->mesh, TEXT("ISMC Static Mesh")},
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
@@ -65,11 +52,6 @@ void ATestStaticTurrets::BeginPlay() {
 
     configure_ismc();
     register_all_proxies_in_level();
-}
-void ATestStaticTurrets::Tick(float dt) {
-    Super::Tick(dt);
-
-    tick(dt);
 }
 void ATestStaticTurrets::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::tick);
@@ -192,6 +174,8 @@ void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam c
     check(array_sizes_consistent());
 }
 void ATestStaticTurrets::register_all_proxies_in_level() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
+
     auto* world{GetWorld()};
 
     if (!world) {
@@ -201,18 +185,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         return;
     }
 
-    TArray<Proxy*> proxies{};
-    for (auto it{TActorIterator<Proxy>(world)}; it; ++it) {
-        if (!IsValid(*it)) {
-            continue;
-        }
-
-        if (it->get_batch_actor() != this) {
-            continue;
-        }
-
-        auto const index{proxies.Add(*it)};
-    }
+    auto const proxies{ml::get_actors<Proxy>(*world)};
 
     auto const n{proxies.Num()};
     if (n == 0) {
@@ -240,9 +213,11 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     auto const hp{actor_config->max_health};
 
+    TArray<FTransform> ismc_transforms;
+    ismc_transforms.AddUninitialized(n);
     for (int32 i{0}; i < n; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
-        instances->AddInstance(transform, is_world_space);
+        ismc_transforms[i] = transform;
         locations[i] = transform.GetLocation();
         healths[i] = hp;
         teams[i] = proxies[i]->get_team();
@@ -250,6 +225,8 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         entity_data.velocities[i] = FVector::ZeroVector;
         entity_data.alive[i] = true;
     }
+
+    instances->AddInstances(ismc_transforms, false);
 
     entity_data.locations = locations;
     entity_data.healths = healths;

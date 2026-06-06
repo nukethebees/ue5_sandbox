@@ -23,43 +23,25 @@ ATestCapitalShipFighters::ATestCapitalShipFighters()
 
     instances->SetupAttachment(RootComponent);
 
-    PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor life cycle
-void ATestCapitalShipFighters::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
-
-    if (!actor_config) {
-        return;
-    }
-
-    instances->SetStaticMesh(actor_config->mesh);
-}
-void ATestCapitalShipFighters::PostInitializeComponents() {
-    Super::PostInitializeComponents();
-
-    clear_runtime_state();
-}
-void ATestCapitalShipFighters::BeginPlay() {
-    Super::BeginPlay();
-
+void ATestCapitalShipFighters::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
-}
-void ATestCapitalShipFighters::Tick(float dt) {
-    Super::Tick(dt);
 
-    tick(dt);
+    instances->SetStaticMesh(actor_config->mesh);
 }
 void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);

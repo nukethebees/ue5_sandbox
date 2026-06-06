@@ -23,8 +23,8 @@ class ATestLasers : public AActor {
 
     ATestLasers();
 
-    void PostInitializeComponents() override;
-    void Tick(float dt) override;
+    void clear_runtime_state();
+    void begin_play();
     void tick(float const dt);
 
     // Accessors
@@ -34,8 +34,6 @@ class ATestLasers : public AActor {
     // Spawning / configuration
     void spawn_lasers(TConstArrayView<FTransform> const transforms);
   protected:
-    void BeginPlay() override;
-
     // Spawning / Configuration
     void preallocate_instances();
     void process_pending_spawns();
@@ -56,7 +54,6 @@ class ATestLasers : public AActor {
     bool array_sizes_consistent() const;
 
     // Misc
-    void clear_runtime_state();
     void remove_instances(TConstArrayView<int32> indices);
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")

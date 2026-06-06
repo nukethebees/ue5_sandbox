@@ -29,17 +29,14 @@ class ATestStaticTurrets : public AActor {
 
     ATestStaticTurrets();
 
-    void PostInitializeComponents() override;
-    void Tick(float dt) override;
+    void clear_runtime_state();
+    void begin_play();
     void tick(float const dt);
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
 
     auto get_num_instances() const noexcept -> int32;
   protected:
-    void OnConstruction(FTransform const& transform) override;
-    void BeginPlay() override;
-
     // Spawning
     void register_all_proxies_in_level();
 
@@ -54,9 +51,6 @@ class ATestStaticTurrets : public AActor {
 
     // Debugging
     bool array_sizes_consistent() const;
-
-    // Misc
-    void clear_runtime_state();
 
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};

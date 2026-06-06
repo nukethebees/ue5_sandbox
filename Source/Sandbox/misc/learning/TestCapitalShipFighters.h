@@ -26,8 +26,8 @@ class ATestCapitalShipFighters : public AActor {
 
     ATestCapitalShipFighters();
 
-    void PostInitializeComponents() override;
-    void Tick(float dt) override;
+    void clear_runtime_state();
+    void begin_play();
     void tick(float const dt);
 
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
@@ -37,17 +37,12 @@ class ATestCapitalShipFighters : public AActor {
     auto get_num_instances() const noexcept -> int32;
     bool array_sizes_consistent() const;
   protected:
-    void OnConstruction(FTransform const& transform) override;
-    void BeginPlay() override;
-
     // Movement
     void move_ships(float const dt);
 
     // Combat
     void handle_firing();
-
-    // Misc
-    void clear_runtime_state();
+  
     void update_entity_registry();
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;

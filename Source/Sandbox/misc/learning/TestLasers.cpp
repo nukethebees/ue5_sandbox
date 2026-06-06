@@ -31,21 +31,15 @@ ATestLasers::ATestLasers()
 
     instances->SetupAttachment(RootComponent);
 
-    PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor lifecycle
-void ATestLasers::PostInitializeComponents() {
-    Super::PostInitializeComponents();
-
-    clear_runtime_state();
-}
-void ATestLasers::BeginPlay() {
-    Super::BeginPlay();
-
+void ATestLasers::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_play);
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 
@@ -65,11 +59,6 @@ void ATestLasers::BeginPlay() {
 #endif
 
     check(array_sizes_consistent());
-}
-void ATestLasers::Tick(float dt) {
-    Super::Tick(dt);
-
-    tick(dt);
 }
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);

@@ -25,14 +25,13 @@ class ATestTubeSpinners : public AActor {
 
     ATestTubeSpinners();
 
-    void Tick(float dt) override;
+    void clear_runtime_state();
+    void begin_play();
     void tick(float const dt);
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
   protected:
-    void BeginPlay() override;
-
     // Spawning
     void register_all_proxies_in_level();
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
@@ -50,9 +49,6 @@ class ATestTubeSpinners : public AActor {
 
     // Debugging
     bool array_sizes_consistent() const;
-
-    // Misc
-    void clear_runtime_state();
 
     // Config
     UPROPERTY(EditAnywhere, Category = "Turrets")

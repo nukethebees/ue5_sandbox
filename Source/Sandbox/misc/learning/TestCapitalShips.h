@@ -30,7 +30,7 @@ class ATestCapitalShips : public AActor {
 
     ATestCapitalShips();
 
-    void PostInitializeComponents() override;
+    void clear_runtime_state();
     void begin_play();
     void tick(float const dt);
     void sync_from_registry();
@@ -56,7 +56,6 @@ class ATestCapitalShips : public AActor {
     void configure_ismc();
 
     // Misc
-    void clear_runtime_state();
     void update_entity_registry();
 
     // Debugging

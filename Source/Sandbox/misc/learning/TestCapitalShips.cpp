@@ -28,19 +28,15 @@ ATestCapitalShips::ATestCapitalShips()
 
     instances->SetupAttachment(RootComponent);
 
-    PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.bStartWithTickEnabled = true;
+    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
 // Actor Lifecycle
-void ATestCapitalShips::PostInitializeComponents() {
-    Super::PostInitializeComponents();
-
-    clear_runtime_state();
-}
 void ATestCapitalShips::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_play);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
     auto* world{GetWorld()};

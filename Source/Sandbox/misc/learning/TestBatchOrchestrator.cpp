@@ -23,6 +23,8 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
+
     tick_counter = 0;
 
     ml::fatal_if_uobject_ptrs_invalid({
@@ -33,6 +35,8 @@ void ATestBatchOrchestrator::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
+
+    entity_registry->reset();
 
     ml::invoke_on_all(
         [](AActor* actor) {
@@ -51,10 +55,32 @@ void ATestBatchOrchestrator::BeginPlay() {
         turrets,
         spinners);
 
-    capital_ships->begin_play();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::begin_play::clear_runtime_state);
+        lasers->clear_runtime_state();
+        capital_ships->clear_runtime_state();
+        capital_ship_fighters->clear_runtime_state();
+        turrets->clear_runtime_state();
+        spinners->clear_runtime_state();
+    }
 
-    entity_registry->commit_updates();
-    entity_registry->end_frame();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::begin_play::batch_actor_begin_play);
+        capital_ships->begin_play();
+        lasers->begin_play();
+        capital_ship_fighters->begin_play();
+        turrets->begin_play();
+        spinners->begin_play();
+    }
+
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::begin_play::entity_registry_commit);
+        entity_registry->commit_updates();
+        entity_registry->end_frame();
+    }
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
