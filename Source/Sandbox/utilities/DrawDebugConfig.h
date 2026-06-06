@@ -25,9 +25,9 @@ struct FDrawDebugConfig {
 
     void draw_line(FVector const& start, FVector const& end) const;
     void draw_line(FVector const& start, FRotator const& fwd) const;
-    
+
     void draw_point(FVector const& location) const;
-    
+
     void draw_arrow(FVector const& start, FVector const& end) const;
 
     void draw_box(FVector const& start, FVector const& extent) const;
@@ -43,6 +43,9 @@ struct FDrawDebugConfig {
 
     void draw_sphere(FVector const& start, float const radius) const;
     void draw_sphere(FVector const& start) const;
+
+    void draw_string(FVector const& text_location, FString const& msg) const;
+
     void draw_cone(FVector const& start, FVector const& direction, float const length) const;
     void draw_cone(FVector const& start, FVector const& direction) const;
 
@@ -140,6 +143,14 @@ struct FDrawDebugConfig {
     float sphere_radius{100.f};
     UPROPERTY(EditAnywhere, Category = "Debug|Sphere")
     TOptional<FColor> sphere_colour{};
+
+    // Text
+    UPROPERTY(EditAnywhere, Category = "Debug|String")
+    TOptional<FColor> text_colour{};
+    UPROPERTY(EditAnywhere, Category = "Debug|String")
+    bool text_draw_shadow{false};
+    UPROPERTY(EditAnywhere, Category = "Debug|String")
+    float font_scale{1.f};
 
     // Cone
     UPROPERTY(EditAnywhere, Category = "Debug|Cone")

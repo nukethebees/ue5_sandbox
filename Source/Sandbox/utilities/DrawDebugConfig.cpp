@@ -162,6 +162,21 @@ void FDrawDebugConfig::draw_sphere(FVector const& start) const {
     return draw_sphere(start, sphere_radius);
 }
 
+void FDrawDebugConfig::draw_string(FVector const& text_location, FString const& msg) const {
+    if (!check_world_valid()) {
+        return;
+    }
+
+    DrawDebugString(world.Get(),
+                    text_location,
+                    msg,
+                    nullptr,
+                    get_colour(text_colour),
+                    lifetime,
+                    text_draw_shadow,
+                    font_scale);
+}
+
 void FDrawDebugConfig::draw_cone(FVector const& start,
                                  FVector const& direction,
                                  float const cone_len) const {
