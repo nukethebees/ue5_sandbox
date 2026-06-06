@@ -37,9 +37,6 @@ void ATestLasers::PostInitializeComponents() {
 void ATestLasers::BeginPlay() {
     Super::BeginPlay();
 
-    // An identity transform means instance world and relative transforms are identical
-    SetActorTransform(FTransform::Identity, false);
-
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 

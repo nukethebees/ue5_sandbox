@@ -44,8 +44,6 @@ void ATestCapitalShipFighters::PostInitializeComponents() {
 void ATestCapitalShipFighters::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTransform(FTransform::Identity, false);
-
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({

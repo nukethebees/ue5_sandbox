@@ -7,6 +7,19 @@
 #include "Components/StaticMeshComponent.h"
 
 namespace ml {
+auto get_best_display_name(AActor const& actor) -> FString {
+    // GetActorLabel can return incorrect values for a CDO
+    if (actor.HasAnyFlags(RF_ClassDefaultObject)) {
+        return actor.GetClass()->GetName();
+    }
+
+#if WITH_EDITOR
+    return actor.GetActorLabel();
+#else
+    return actor.GetName();
+#endif
+}
+
 auto get_actor_corners(AActor const& actor) -> FActorCorners {
     FVector origin;
     FVector box_extent;
@@ -42,5 +55,16 @@ void face_actor(AActor& actor, AActor const& other) {
 }
 void face_point(AActor& actor, FVector const& point) {
     actor.SetActorRotation((point - actor.GetActorLocation()).Rotation());
+}
+
+void fatal_if_actor_transform_not_identity(AActor const& actor) {
+    if (actor.GetActorTransform().Equals(FTransform::Identity)) {
+        return;
+    }
+
+    UE_LOG(LogSandboxActor,
+           Fatal,
+           TEXT("%s must have an identity transform"),
+           *get_best_display_name(actor));
 }
 }

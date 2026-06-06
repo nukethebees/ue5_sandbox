@@ -32,8 +32,6 @@ void ATestTubeSpinners::clear_runtime_state() {
 void ATestTubeSpinners::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTransform(FTransform::Identity, false);
-
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),

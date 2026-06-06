@@ -39,8 +39,6 @@ void ATestCapitalShips::PostInitializeComponents() {
 void ATestCapitalShips::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTransform(FTransform::Identity, false);
-
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
     auto* world{GetWorld()};

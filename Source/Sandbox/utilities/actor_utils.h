@@ -22,18 +22,7 @@ namespace ml {
  * @return Human-readable name in editor builds, object name in shipping builds, or "null" if actor
  * is null
  */
-inline FString get_best_display_name(AActor const& actor) {
-    // GetActorLabel can return incorrect values for a CDO
-    if (actor.HasAnyFlags(RF_ClassDefaultObject)) {
-        return actor.GetClass()->GetName();
-    }
-
-#if WITH_EDITOR
-    return actor.GetActorLabel();
-#else
-    return actor.GetName();
-#endif
-}
+auto SANDBOX_API get_best_display_name(AActor const& actor) -> FString;
 
 auto get_actor_corners(AActor const& actor) -> FActorCorners;
 auto get_static_meshes_bounding_box(AActor const& actor) -> FBox;
@@ -44,4 +33,5 @@ auto actor_is_within(AActor const& actor, AActor const& other, bool only_collidi
 void face_actor(AActor& actor, AActor const& other);
 void face_point(AActor& actor, FVector const& point);
 
+void fatal_if_actor_transform_not_identity(AActor const& actor);
 } // namespace ml

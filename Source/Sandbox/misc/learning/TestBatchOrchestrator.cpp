@@ -1,12 +1,12 @@
 #include "TestBatchOrchestrator.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
+#include "Sandbox/misc/learning/TestCapitalShips.h"
+#include "Sandbox/misc/learning/TestLasers.h"
+#include "Sandbox/misc/learning/TestStaticTurrets.h"
+#include "Sandbox/misc/learning/TestTubeSpinners.h"
 #include "Sandbox/utilities/actor_utils.h"
-#include "TestCapitalShipFighters.h"
-#include "TestCapitalShips.h"
-#include "TestLasers.h"
-#include "TestStaticTurrets.h"
-#include "TestTubeSpinners.h"
 
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
@@ -27,6 +27,14 @@ void ATestBatchOrchestrator::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
+
+    ml::invoke_on_all(
+        [](AActor const* actor) { ml::fatal_if_actor_transform_not_identity(*actor); },
+        lasers,
+        capital_ships,
+        capital_ship_fighters,
+        turrets,
+        spinners);
 
     ml::invoke_on_all(
         [](AActor* ptr) {
