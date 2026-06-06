@@ -37,6 +37,9 @@ void ATestLasers::PostInitializeComponents() {
 void ATestLasers::BeginPlay() {
     Super::BeginPlay();
 
+    // An identity transform means instance world and relative transforms are identical
+    SetActorTransform(FTransform::Identity, false);
+
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 
@@ -46,9 +49,6 @@ void ATestLasers::BeginPlay() {
     if (!laser_config->is_ready()) {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
     }
-
-    // An identity transform means instance world and relative transforms are identical
-    SetActorTransform(FTransform::Identity, false);
 
     preallocate_instances();
     configure_ismc();
@@ -117,7 +117,7 @@ void ATestLasers::process_pending_spawns() {
     if (n_ismc_instances_to_add > 0) {
         TArray<FTransform> dummy_transforms;
         dummy_transforms.AddDefaulted(n_ismc_instances_to_add);
-        instances->AddInstances(dummy_transforms, false, false, false);
+        instances->AddInstances(dummy_transforms, false, is_world_space, false);
     }
 
     transforms.Append(transforms_to_add);
@@ -198,7 +198,7 @@ void ATestLasers::configure_ismc() {
 }
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
-    instances->BatchUpdateInstancesTransforms(0, transforms, false, false, false);
+    instances->BatchUpdateInstancesTransforms(0, transforms, is_world_space, false, false);
 
     auto const n_instances{get_num_instances()};
     auto const n_ismcs{instances->GetNumInstances()};
@@ -212,7 +212,7 @@ void ATestLasers::update_ismc() {
             hidden_transforms.Add(hidden_transform);
         }
         instances->BatchUpdateInstancesTransforms(
-            n_instances, hidden_transforms, false, false, false);
+            n_instances, hidden_transforms, is_world_space, false, false);
     }
 
     instances->MarkRenderStateDirty();

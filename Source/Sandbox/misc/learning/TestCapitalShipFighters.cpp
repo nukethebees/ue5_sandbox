@@ -44,6 +44,8 @@ void ATestCapitalShipFighters::PostInitializeComponents() {
 void ATestCapitalShipFighters::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTransform(FTransform::Identity, false);
+
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
@@ -91,7 +93,7 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
         world_transforms[i].AddToTranslation(delta_move);
     }
 
-    instances->BatchUpdateInstancesTransforms(0, world_transforms, true, true);
+    instances->BatchUpdateInstancesTransforms(0, world_transforms, is_world_space, true);
 }
 
 // Spawning
@@ -109,7 +111,7 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     auto const n_new{new_transforms.Num()};
     check(n_new == new_teams.Num());
 
-    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true);
+    instances->AddInstances(TArray<FTransform>{new_transforms}, is_world_space, true);
     world_transforms.Append(new_transforms);
     teams.Append(new_teams);
 

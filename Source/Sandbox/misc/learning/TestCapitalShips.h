@@ -24,6 +24,8 @@ class ATestCapitalShips : public AActor {
   public:
     GENERATED_BODY()
 
+    static constexpr bool is_world_space{false};
+
     using Proxy = ATestCapitalShipProxy;
 
     ATestCapitalShips();

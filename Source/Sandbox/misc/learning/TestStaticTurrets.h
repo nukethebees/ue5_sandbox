@@ -25,6 +25,8 @@ class ATestStaticTurrets : public AActor {
   public:
     using Proxy = ATestStaticTurretsProxy;
 
+    static constexpr bool is_world_space{false};
+
     ATestStaticTurrets();
 
     void PostInitializeComponents() override;
@@ -75,6 +77,10 @@ class ATestStaticTurrets : public AActor {
     // Team
     UPROPERTY()
     TArray<ETestTeam> teams{};
+
+    // Searching
+    UPROPERTY(EditAnywhere, Category = "Performance", meta = (ClampMin = "1", UIMin = "1"))
+    int32 search_slice_size{64};
 
     // Firing
     UPROPERTY(EditAnywhere, Category = "Turrets")

@@ -21,6 +21,8 @@ class ATestTubeSpinners : public AActor {
   public:
     using Proxy = ATestTubeSpinnerProxy;
 
+    static constexpr bool is_world_space{false};
+
     ATestTubeSpinners();
 
     void Tick(float dt) override;

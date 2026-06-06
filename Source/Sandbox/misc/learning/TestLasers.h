@@ -16,6 +16,8 @@ UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
+    static constexpr bool is_world_space{false};
+
     ATestLasers();
 
     void PostInitializeComponents() override;

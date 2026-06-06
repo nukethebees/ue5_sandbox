@@ -21,6 +21,8 @@ UCLASS()
 class ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
+    static constexpr bool is_world_space{false};
+
     ATestCapitalShipFighters();
 
     void PostInitializeComponents() override;

@@ -32,6 +32,8 @@ void ATestTubeSpinners::clear_runtime_state() {
 void ATestTubeSpinners::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTransform(FTransform::Identity, false);
+
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
@@ -109,7 +111,7 @@ void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_tr
     next_fire_point_indices.Append(new_fire_point_indices);
     laser_cooldowns.AddZeroed(n);
 
-    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
+    instances->AddInstances(TArray<FTransform>{new_transforms}, false, is_world_space, false);
     for (int32 i{0}; i < n; ++i) {
         auto const index{existing_total + i};
 
@@ -146,7 +148,7 @@ void ATestTubeSpinners::configure_ismc() {
 void ATestTubeSpinners::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc);
 
-    instances->BatchUpdateInstancesTransforms(0, transforms, true, true, false);
+    instances->BatchUpdateInstancesTransforms(0, transforms, is_world_space, true, false);
 }
 
 // Firing

@@ -39,6 +39,8 @@ void ATestCapitalShips::PostInitializeComponents() {
 void ATestCapitalShips::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTransform(FTransform::Identity, false);
+
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
     auto* world{GetWorld()};
@@ -174,7 +176,7 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
     check(n_to_add == new_teams.Num());
     check(n_to_add == new_target_indices.Num());
 
-    instances->AddInstances(TArray<FTransform>{new_transforms}, false, true, false);
+    instances->AddInstances(TArray<FTransform>{new_transforms}, false, is_world_space, false);
 
     transforms.Append(new_transforms);
     target_entity_indices.Append(new_target_indices);

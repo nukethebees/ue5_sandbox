@@ -11,6 +11,7 @@
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/uobject_utils.h>
 
+#include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
@@ -102,26 +103,37 @@ void ATestStaticTurrets::perform_search() {
     auto const n_turrets{get_num_instances()};
     auto const radius{actor_config->detection_radius};
 
-    FTransform turret_transform;
-    for (int32 i{0}; i < n_turrets; ++i) {
-        auto const turret_location{locations[i]};
-        auto const this_team{teams[i]};
+    auto const min_turrets_per_slice{search_slice_size};
+    auto const n_slices{FMath::DivideAndRoundUp(n_turrets, min_turrets_per_slice)};
 
-        TStaticArray<FGenerationIndex, 128> elems;
-        auto const n_entities{entity_registry->collect_non_team_entities_in_range(
-            turret_location, this_team, radius, elems)};
+    auto const search{[this, n_turrets, radius, min_turrets_per_slice](int32 const slice_index) {
+        auto const begin{slice_index * min_turrets_per_slice};
+        auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
-        for (int32 j{0}; j < n_entities; ++j) {
-            auto const target_index{elems[j]};
+        for (int32 i{begin}; i < end; ++i) {
+            auto const turret_location{locations[i]};
+            auto const this_team{teams[i]};
 
-            if (this_team == entity_registry->get_team(target_index)) {
-                continue;
+            TStaticArray<FGenerationIndex, 128> elems;
+            auto const n_entities{entity_registry->collect_non_team_entities_in_range(
+                turret_location, this_team, radius, elems)};
+
+            target_indices[i] = FGenerationIndex{};
+
+            for (int32 j{0}; j < n_entities; ++j) {
+                auto const target_index{elems[j]};
+
+                if (this_team == entity_registry->get_team(target_index)) {
+                    continue;
+                }
+
+                target_indices[i] = target_index;
+                break;
             }
-
-            target_indices[i] = target_index;
-            break;
         }
-    }
+    }};
+
+    ParallelFor(n_slices, search);
 }
 
 // Attacking
@@ -149,7 +161,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const target_velocity{entity_registry->get_velocity(target_index)};
 
         FTransform laser_transform{FTransform::Identity};
-        instances->GetInstanceTransform(i, laser_transform, true);
+        instances->GetInstanceTransform(i, laser_transform, is_world_space);
         auto const laser_location{laser_transform.GetLocation() + fire_point_offset};
         laser_transform.SetLocation(laser_location);
 
@@ -169,7 +181,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
 // Spawning
 void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam const team) {
-    instances->AddInstance(transform, true);
+    instances->AddInstance(transform, is_world_space);
     teams.Add(team);
     healths.Add(actor_config->max_health);
     target_indices.AddDefaulted();
@@ -227,7 +239,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
-        instances->AddInstance(transform, true);
+        instances->AddInstance(transform, is_world_space);
         locations[i] = transform.GetLocation();
         healths[i] = hp;
         teams[i] = proxies[i]->get_team();
