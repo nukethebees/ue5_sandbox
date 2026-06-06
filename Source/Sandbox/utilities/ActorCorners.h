@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "CoreMinimal.h"
+#include "Containers/StaticArray.h"
 
 #include "ActorCorners.generated.h"
 
@@ -16,15 +17,7 @@ struct FActorCorners {
     FActorCorners(Corners&& corners)
         : data(std::move(corners)) {}
 
-    FString to_string() const {
-        FString out{};
-
-        for (auto const& corner : data) {
-            out += FString::Printf(TEXT("%s\n"), *corner.ToString());
-        }
-
-        return out;
-    }
+    auto to_string() const -> FString;
 
     Corners data;
 };
