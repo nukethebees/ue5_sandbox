@@ -131,7 +131,7 @@ void ATestEntityRegistry::commit_damage_updates() {
         auto const entity_index{generation_index.index};
 
         entity_data.healths[entity_index] -= queued_damage_amounts[i];
-        entity_data.alive[i] = (entity_data.healths[entity_index] <= 0);
+        entity_data.alive[entity_index] = (entity_data.healths[entity_index] > 0);
     }
 
     queued_damage_amounts.Reset();
