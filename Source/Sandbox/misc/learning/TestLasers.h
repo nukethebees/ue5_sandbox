@@ -32,14 +32,15 @@ class ATestLasers : public AActor {
     void BeginPlay() override;
 
     // Spawning / Configuration
-    void configure_ismc();
     void preallocate_instances();
+    void process_pending_spawns();
 
     // Movement
     void update_locations(float const dt);
     void handle_collisions(float const dt);
 
     // Visuals
+    void configure_ismc();
     void update_ismc();
 
     // Lifetimes
@@ -69,6 +70,8 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TArray<float> lifetimes;
 
+    UPROPERTY()
+    TArray<FTransform> transforms_to_add;
     UPROPERTY()
     TArray<int32> to_remove;
 

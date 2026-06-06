@@ -50,9 +50,11 @@ void ATestBatchOrchestrator::Tick(float dt) {
 void ATestBatchOrchestrator::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
 
-    lasers->tick(dt);
     capital_ships->tick(dt);
     capital_ship_fighters->tick(dt);
     turrets->tick(dt);
     spinners->tick(dt);
+
+    // Lasers must resolve after everything else
+    lasers->tick(dt);
 }

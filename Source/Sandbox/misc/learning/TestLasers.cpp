@@ -47,6 +47,9 @@ void ATestLasers::BeginPlay() {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
     }
 
+    // An identity transform means instance world and relative transforms are identical
+    SetActorTransform(FTransform::Identity, false);
+
     preallocate_instances();
     configure_ismc();
 
@@ -64,11 +67,6 @@ void ATestLasers::Tick(float dt) {
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
 
-    auto const n{get_num_instances()};
-    if (n < 1) {
-        return;
-    }
-
     tick_lifetimes(dt);
     collect_old_instance_indices();
     remove_instances(to_remove);
@@ -76,6 +74,7 @@ void ATestLasers::tick(float const dt) {
     handle_collisions(dt);
     update_locations(dt);
 
+    process_pending_spawns();
     update_ismc();
 
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
@@ -95,8 +94,20 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
 
+    transforms_to_add.Append(new_transforms);
+}
+void ATestLasers::preallocate_instances() {
+    instances->PreAllocateInstancesMemory(n_preallocated_instances);
+    ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { array.Reserve(n); },
+                      transforms,
+                      velocities,
+                      lifetimes);
+}
+void ATestLasers::process_pending_spawns() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::process_pending_spawns);
+
     auto const offset{get_num_instances()};
-    auto const n_to_add{new_transforms.Num()};
+    auto const n_to_add{transforms_to_add.Num()};
 
     auto const cur_total{get_num_instances()};
     auto const new_total{cur_total + n_to_add};
@@ -104,11 +115,12 @@ void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms)
     auto const n_ismc_instances{instances->GetNumInstances()};
     auto const n_ismc_instances_to_add{new_total - n_ismc_instances};
     if (n_ismc_instances_to_add > 0) {
-        instances->AddInstances(
-            TArray<FTransform>(new_transforms.Left(n_ismc_instances_to_add)), false, true, false);
+        TArray<FTransform> dummy_transforms;
+        dummy_transforms.AddDefaulted(n_ismc_instances_to_add);
+        instances->AddInstances(dummy_transforms, false, false, false);
     }
 
-    transforms.Append(new_transforms);
+    transforms.Append(transforms_to_add);
     lifetimes.AddZeroed(n_to_add);
     velocities.AddUninitialized(n_to_add);
 
@@ -120,31 +132,8 @@ void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms)
     }
 
     check(array_sizes_consistent());
-}
-void ATestLasers::preallocate_instances() {
-    instances->PreAllocateInstancesMemory(n_preallocated_instances);
-    ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { array.Reserve(n); },
-                      transforms,
-                      velocities,
-                      lifetimes);
-}
 
-void ATestLasers::configure_ismc() {
-    instances->SetStaticMesh(laser_config->mesh);
-    instances->SetMaterial(0, laser_config->material);
-
-    instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    instances->SetGenerateOverlapEvents(false);
-
-    instances->SetCanEverAffectNavigation(false);
-
-    instances->SetMobility(EComponentMobility::Movable);
-
-    instances->SetCastShadow(false);
-    instances->SetAffectDistanceFieldLighting(false);
-    instances->SetReceivesDecals(false);
-
-    instances->SetCullDistances(laser_config->min_cull_distance, laser_config->max_cull_distance);
+    transforms_to_add.Reset();
 }
 
 // Movement
@@ -190,9 +179,26 @@ void ATestLasers::handle_collisions(float const dt) {
 }
 
 // Visuals
+void ATestLasers::configure_ismc() {
+    instances->SetStaticMesh(laser_config->mesh);
+    instances->SetMaterial(0, laser_config->material);
+
+    instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    instances->SetGenerateOverlapEvents(false);
+
+    instances->SetCanEverAffectNavigation(false);
+
+    instances->SetMobility(EComponentMobility::Movable);
+
+    instances->SetCastShadow(false);
+    instances->SetAffectDistanceFieldLighting(false);
+    instances->SetReceivesDecals(false);
+
+    instances->SetCullDistances(laser_config->min_cull_distance, laser_config->max_cull_distance);
+}
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
-    instances->BatchUpdateInstancesTransforms(0, transforms, true, false, false);
+    instances->BatchUpdateInstancesTransforms(0, transforms, false, false, false);
 
     auto const n_instances{get_num_instances()};
     auto const n_ismcs{instances->GetNumInstances()};
@@ -247,7 +253,7 @@ bool ATestLasers::array_sizes_consistent() const {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(transforms, velocities, lifetimes, to_remove);
+    ml::reset_arrays(transforms, velocities, lifetimes, transforms_to_add, to_remove);
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
