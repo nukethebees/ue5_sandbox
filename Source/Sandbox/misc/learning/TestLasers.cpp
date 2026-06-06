@@ -170,6 +170,17 @@ void ATestLasers::handle_collisions(float const dt) {
         if (did_hit) {
             to_remove.Add(i);
         }
+
+        // Identify who we hit
+        auto* hit_actor{hit.GetActor()};
+        if (!IsValid(hit_actor)) {
+            continue;
+        }
+
+        auto* hit_component{hit.GetComponent()};
+        if (!IsValid(hit_component)) {
+            continue;
+        }
     }
 
     remove_instances(to_remove);
