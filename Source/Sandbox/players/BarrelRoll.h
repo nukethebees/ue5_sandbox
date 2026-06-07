@@ -12,7 +12,7 @@ struct FBarrelRoll {
     auto can_roll() const { return time_remaining < (-1.f * roll_cooldown); }
 
     UPROPERTY(EditAnywhere)
-    float roll_speed{90.f};
+    float roll_speed{1080.f};
     UPROPERTY(EditAnywhere)
     float roll_duration{2.5f};
     UPROPERTY(EditAnywhere)
