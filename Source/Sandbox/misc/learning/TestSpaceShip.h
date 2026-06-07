@@ -1,15 +1,18 @@
 #pragma once
 
-#include "Sandbox/combat/weapons/ShipProjectileType.h"
-#include "Sandbox/health/ShipHealthComponent.h"
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
-#include "Sandbox/players/BarrelRoll.h"
-#include "Sandbox/players/DamageableShip.h"
-#include "Sandbox/players/LaserFiringMode.h"
-#include "Sandbox/players/ShipLaserMode.h"
-#include "Sandbox/players/SpaceShipCommon.h"
-#include "Sandbox/players/SpaceShipFlightModel.h"
-#include "Sandbox/players/SpeedResponse.h"
+#include <Sandbox/combat/weapons/ShipProjectileType.h>
+#include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/players/BarrelRoll.h>
+#include <Sandbox/players/DamageableShip.h>
+#include <Sandbox/players/LaserFiringMode.h>
+#include <Sandbox/players/ShipLaserMode.h>
+#include <Sandbox/players/SpaceShipCommon.h>
+#include <Sandbox/players/SpaceShipFlightModel.h>
+#include <Sandbox/players/SpeedResponse.h>
+
+#include <SandboxCore/generation_index.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -30,6 +33,7 @@ class UShipLaserConfig;
 class AShipHomingLaser;
 class AShipBomb;
 class UShipHealthComponent;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestSpaceShip
@@ -116,6 +120,12 @@ class ATestSpaceShip
     FOnSpeedSampled on_speed_sampled;
 #endif
   protected:
+    // Entity data
+    auto get_entity_update_data() const -> FTestEntityRegistryEntityData;
+
+    // Movement
+    auto GetVelocity() const -> FVector override;
+
     void set(EBoostBrakeState s);
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_boost_brake(this ATestSpaceShip& self, float dt);
@@ -142,6 +152,10 @@ class ATestSpaceShip
 
     // Entity data
     TestEntityOwnerId owner_id{};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    FGenerationIndex entity_index{};
 
     // Collision
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

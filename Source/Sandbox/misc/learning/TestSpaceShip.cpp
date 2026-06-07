@@ -1,12 +1,15 @@
 #include "Sandbox/misc/learning/TestSpaceShip.h"
 
-#include "Sandbox/combat/weapons/ShipBomb.h"
-#include "Sandbox/combat/weapons/ShipHomingLaser.h"
-#include "Sandbox/combat/weapons/ShipLaser.h"
-#include "Sandbox/combat/weapons/ShipLaserConfig.h"
-#include "Sandbox/health/ShipHealthComponent.h"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/combat/weapons/ShipBomb.h>
+#include <Sandbox/combat/weapons/ShipHomingLaser.h>
+#include <Sandbox/combat/weapons/ShipLaser.h>
+#include <Sandbox/combat/weapons/ShipLaserConfig.h>
+#include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/misc/learning/TestTeam.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/uobject_utils.h>
 
@@ -54,6 +57,7 @@ void ATestSpaceShip::begin_play() {
     thrust_energy = thrust_energy_max;
 
     ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_class),
         SANDBOX_NAMED_UOBJECT_PTR(laser_config),
@@ -97,6 +101,10 @@ void ATestSpaceShip::begin_play() {
     ship_mesh->SetCanEverAffectNavigation(false);
     ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ship_mesh->SetGenerateOverlapEvents(false);
+
+    auto const new_entities{
+        entity_registry->add_entities(get_entity_update_data().get_const_view())};
+    entity_index = new_entities[0];
 }
 void ATestSpaceShip::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
@@ -114,8 +122,24 @@ void ATestSpaceShip::tick(float const dt) {
     tick_debugs(dt);
 #endif
 }
-void ATestSpaceShip::update_entity_registry() {}
-void ATestSpaceShip::resolve_damage_targets() {}
+void ATestSpaceShip::update_entity_registry() {
+    entity_registry->update_entities(ATestEntityRegistry::ConstView{
+        {&entity_index, 1},
+        get_entity_update_data().get_const_view(),
+    });
+}
+void ATestSpaceShip::resolve_damage_targets() {
+    auto const view{entity_registry->get_damage_queue_view()};
+    auto const n{view.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (view.damaged_actors[i] != this) {
+            continue;
+        }
+        view.targets[i] = entity_index;
+        break;
+    }
+}
 void ATestSpaceShip::sync_from_registry() {}
 void ATestSpaceShip::update_visuals() {}
 void ATestSpaceShip::end_frame() {}
@@ -145,6 +169,22 @@ void ATestSpaceShip::tick_debugs(float dt) {
     seconds_since_last_log += dt;
 }
 #endif
+
+// Entity data
+auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.locations.Add(GetActorLocation());
+    entity_data.velocities.Add(velocity);
+    entity_data.healths.Add(1'000'000);
+    entity_data.teams.Add(ETestTeam::neutral);
+    entity_data.alive.Add(1);
+    return entity_data;
+}
+
+// Movement
+auto ATestSpaceShip::GetVelocity() const -> FVector {
+    return get_velocity();
+}
 
 // Accessors
 void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {
