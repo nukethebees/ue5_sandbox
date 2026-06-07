@@ -147,7 +147,8 @@ class ATestSpaceShip
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_laser_firing(float dt);
     void fire_laser();
-    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform const& fire_point);
+    void fire_lasers_from(UShipLaserConfig const& fire_laser_config,
+                          TConstArrayView<FTransform> const fire_points);
     // Combat - bomb
     void subtract_bomb();
     // Combat - homing laser

@@ -404,27 +404,32 @@ void ATestSpaceShip::stop_fire_laser() {
     set_laser_mode(ELaserFiringMode::idle);
 }
 void ATestSpaceShip::fire_laser() {
-    auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
-    auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
-    auto const middle{get_middle_socket()};
-
     switch (laser_mode) {
         case EShipLaserMode::Single: {
-            fire_laser_from(*laser_config, middle);
+            TStaticArray<FTransform, 1> fire_points{
+                get_middle_socket(),
+            };
+            fire_lasers_from(*laser_config, fire_points);
             break;
         }
         case EShipLaserMode::Double: {
-            fire_laser_from(*laser_config, left);
-            fire_laser_from(*laser_config, right);
+            TStaticArray<FTransform, 2> fire_points{
+                ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
+                ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
+            };
+            fire_lasers_from(*laser_config, fire_points);
             break;
         }
         case EShipLaserMode::Hyper: {
-            fire_laser_from(*hyper_laser_config, left);
-            fire_laser_from(*hyper_laser_config, right);
+            TStaticArray<FTransform, 2> fire_points{
+                ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
+                ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
+            };
+            fire_lasers_from(*hyper_laser_config, fire_points);
             break;
         }
         default: {
-            UE_LOG(LogSandbox, Warning, TEXT("Unhandled fire_laser branch."));
+            UE_LOG(LogSandbox, Fatal, TEXT("Unhandled fire_laser branch."));
             break;
         }
     }
@@ -432,16 +437,9 @@ void ATestSpaceShip::fire_laser() {
     lasers_fired_this_burst++;
     laser_shot_cooldown = laser_firing_period;
 }
-void ATestSpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config,
-                                     FTransform const& fire_point) {
-    auto* world{GetWorld()};
-
-    if (log_config.can_log(EActorLoggingVerbosity::Verbose)) {
-        UE_LOG(
-            LogSandbox, Verbose, TEXT("Spawning laser at %s"), *fire_point.ToHumanReadableString());
-    }
-
-    laser_actor->spawn_lasers({&fire_point, 1});
+void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
+                                      TConstArrayView<FTransform> const fire_points) {
+    laser_actor->spawn_lasers(fire_points);
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {
