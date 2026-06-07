@@ -53,6 +53,11 @@ void ATestCapitalShipFighters::tick(float const dt) {
     move_ships(dt);
     handle_firing();
 }
+void ATestCapitalShipFighters::update_entity_registry() {
+    auto const data{get_entity_data(0, get_num_instances())};
+    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
+    entity_registry->update_entities(view);
+}
 void ATestCapitalShipFighters::resolve_damage_targets() {
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
@@ -225,11 +230,6 @@ void ATestCapitalShipFighters::clear_runtime_state() {
                      healths,
                      laser_cooldowns,
                      indices_ready_to_fire_buffer);
-}
-void ATestCapitalShipFighters::update_entity_registry() {
-    auto const data{get_entity_data(0, get_num_instances())};
-    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
-    entity_registry->update_entities(view);
 }
 auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
     -> FTestEntityRegistryEntityData {
