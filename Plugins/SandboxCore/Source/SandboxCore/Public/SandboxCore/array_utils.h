@@ -73,4 +73,30 @@ void append_n(TArray<T>& values, T const value, int32 const count) {
 
     fill(TArrayView<T>{values}.Right(count), value);
 }
+
+template <typename KeysType, typename SearchKeysType>
+    requires requires(KeysType const& k, SearchKeysType const& s) {
+        s.Num();
+        k.IndexOfByKey(s[0]);
+    }
+void collect_valid_indices_by_key(KeysType const& keys,
+                                  SearchKeysType const& search_keys,
+                                  TArray<int32>& out_indices) {
+    out_indices.SetNumUninitialized(search_keys.Num(), EAllowShrinking::No);
+
+    int32 n{0};
+
+    for (auto const& search_key : search_keys) {
+        auto const index{keys.IndexOfByKey(search_key)};
+
+        if (index == INDEX_NONE) {
+            continue;
+        }
+
+        out_indices[n] = index;
+        ++n;
+    }
+
+    out_indices.SetNum(n, EAllowShrinking::No);
+}
 }
