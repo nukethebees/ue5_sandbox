@@ -66,7 +66,7 @@ void ATestFlyCircularArc::move_to_point(float dt) {
 
     SetActorLocation(circle_centre + circle_pos);
 
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT(R"(

@@ -630,7 +630,7 @@ void ATestTurrets::check_arrays_synced() const {
 #if WITH_EDITOR
 // Debugging
 void ATestTurrets::draw_debug_shapes() {
-    if (log_config.can_tick_log(EActorLoggingVerbosity::Verbose)) {
+    if (log_config.can_tick_log(EActorLogVerbosity::Verbose)) {
         UE_LOG(LogSandboxLearning, Verbose, TEXT("Drawing debug shapes"));
     }
 
@@ -682,7 +682,7 @@ void ATestTurrets::draw_attacking_debug_shapes() {
         if (target.IsValid()) {
             drawer.draw_line(loc, target->GetActorLocation());
         } else {
-            if (log_config.can_tick_log(EActorLoggingVerbosity::Basic)) {
+            if (log_config.can_tick_log(EActorLogVerbosity::Basic)) {
                 UE_LOG(LogSandboxLearning, Warning, TEXT("Target is invalid"));
             }
         }

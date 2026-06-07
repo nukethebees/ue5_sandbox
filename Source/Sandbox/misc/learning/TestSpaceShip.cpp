@@ -202,7 +202,7 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 // Movement - turning
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
-    if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
+    if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {
         UE_LOG(LogSandbox, Verbose, TEXT("Turning: %s"), *direction.ToString());
     }
 #endif
@@ -286,7 +286,7 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
 // Movement - rolling
 void ATestSpaceShip::roll(float direction) {
 #if WITH_EDITOR
-    if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
+    if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {
         UE_LOG(LogSandbox, Verbose, TEXT("Rolling: %.2f"), direction);
     }
 #endif
@@ -363,7 +363,7 @@ void ATestSpaceShip::update_laser_firing(float dt) {
                     break;
                 }
 #if WITH_EDITOR
-                if (log_config.can_log(EActorLoggingVerbosity::Verbose)) {
+                if (log_config.can_log(EActorLogVerbosity::Verbose)) {
                     auto const actor_name{ml::get_best_display_name(*actor_hit)};
                     UE_LOG(LogSandbox, Display, TEXT("Locked on to: %s"), *actor_name);
                 }

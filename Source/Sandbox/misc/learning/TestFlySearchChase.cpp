@@ -82,7 +82,7 @@ void ATestFlySearchChase::handle_search(float dt) {
     }
 
     if (at_destination()) {
-        if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+        if (log_config.can_log(EActorLogVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("(%s) At destination. Finding new destination."),
@@ -103,7 +103,7 @@ void ATestFlySearchChase::set_new_search_destination() {
         search_destination = UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent);
     }
 
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("(%s) New destination: %s"),

@@ -33,7 +33,7 @@ void ATestUniformFieldFly2::BeginPlay() {
 
     log_config.reset();
 
-    if (can_log(EActorLoggingVerbosity::Basic)) {
+    if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly2::BeginPlay"));
     }
 
@@ -144,7 +144,7 @@ void ATestUniformFieldFly2::track(float dt) {
 
 // Navigation
 void ATestUniformFieldFly2::set_new_destination() {
-    if (can_log(EActorLoggingVerbosity::Basic)) {
+    if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly2::set_new_destination"));
     }
 
@@ -159,7 +159,7 @@ void ATestUniformFieldFly2::set_new_destination() {
     }()};
 
     if (sample.IsNearlyZero()) {
-        if (can_log(EActorLoggingVerbosity::Basic)) {
+        if (can_log(EActorLogVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning,
                    Warning,
                    TEXT("%s: Sample is nearly zero"),
@@ -172,7 +172,7 @@ void ATestUniformFieldFly2::set_new_destination() {
 
     auto const dist_to_move{dist_bounds.get_rand()};
 
-    if (can_log(EActorLoggingVerbosity::Basic)) {
+    if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Dist to move: %.2f"), dist_to_move);
     }
 
@@ -182,7 +182,7 @@ void ATestUniformFieldFly2::set_new_destination() {
         pos.Z + (sample_direction.Z * dist_to_move),
     };
 
-    if (can_log(EActorLoggingVerbosity::Basic)) {
+    if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("New destination: %s (dist=%.f)"),
@@ -250,7 +250,7 @@ bool ATestUniformFieldFly2::assert_field_exists() {
 
 // Targets
 bool ATestUniformFieldFly2::try_find_target() {
-    if (can_log(EActorLoggingVerbosity::Verbose)) {
+    if (can_log(EActorLogVerbosity::Verbose)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("%s: Finding a new target"),
@@ -273,7 +273,7 @@ bool ATestUniformFieldFly2::try_find_target() {
         return false;
     }
 
-    if (can_log(EActorLoggingVerbosity::Basic)) {
+    if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ml::get_best_display_name(*target));
     }
 
@@ -281,9 +281,9 @@ bool ATestUniformFieldFly2::try_find_target() {
 }
 
 // Logging
-bool ATestUniformFieldFly2::can_log(EActorLoggingVerbosity msg_verbosity) const {
+bool ATestUniformFieldFly2::can_log(EActorLogVerbosity msg_verbosity) const {
     return log_config.can_log(msg_verbosity);
 }
-bool ATestUniformFieldFly2::can_tick_log(EActorLoggingVerbosity msg_verbosity) const {
+bool ATestUniformFieldFly2::can_tick_log(EActorLogVerbosity msg_verbosity) const {
     return log_config.can_tick_log(msg_verbosity);
 }

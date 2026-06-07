@@ -110,7 +110,7 @@ void ATestFlySeekDestroyEvade::set_state(ETestFlySeekDestroyEvadeState new_state
     transition_to_state(old_state);
 }
 void ATestFlySeekDestroyEvade::transition_to_state(ETestFlySeekDestroyEvadeState const old_state) {
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("Moving from %s to %s"),
@@ -158,7 +158,7 @@ void ATestFlySeekDestroyEvade::transition_to_state(ETestFlySeekDestroyEvadeState
 
 void ATestFlySeekDestroyEvade::handle_search(float dt) {
     if (scan_for_target()) {
-        if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+        if (log_config.can_log(EActorLogVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("Found target: %s"),
@@ -234,7 +234,7 @@ void ATestFlySeekDestroyEvade::handle_attack(float dt) {
     auto const target_pos{target->GetActorLocation()};
 
     if (within_radius(GetActorLocation(), target_pos, config.attack.reposition_radius)) {
-        if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+        if (log_config.can_log(EActorLogVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning, Display, TEXT("Too close to target, repositioning."));
         }
 
@@ -292,7 +292,7 @@ void ATestFlySeekDestroyEvade::fire_laser() {
         return;
     }
 
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Firing laser"));
     }
 
@@ -502,7 +502,7 @@ void ATestFlySeekDestroyEvade::draw_debug_shapes() {
 }
 
 void ATestFlySeekDestroyEvade::log_target_not_valid() {
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Target is no longer valid."));
     }
 }

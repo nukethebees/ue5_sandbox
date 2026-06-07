@@ -57,8 +57,8 @@ class ATestUniformFieldFly2 : public APawn {
     bool try_find_target();
 
     // Logging
-    bool can_log(EActorLoggingVerbosity msg_verbosity) const;
-    bool can_tick_log(EActorLoggingVerbosity msg_verbosity) const;
+    bool can_log(EActorLogVerbosity msg_verbosity) const;
+    bool can_tick_log(EActorLogVerbosity msg_verbosity) const;
 
     // State
     UPROPERTY(VisibleAnywhere, Category = "Ship")

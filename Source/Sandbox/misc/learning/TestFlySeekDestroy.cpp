@@ -109,7 +109,7 @@ void ATestFlySeekDestroy::handle_search(float dt) {
     }
 
     if (within_radius(search_state.destination, search_state.acceptance_radius)) {
-        if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+        if (log_config.can_log(EActorLogVerbosity::Basic)) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("(%s) At destination. Finding new destination."),
@@ -131,7 +131,7 @@ void ATestFlySeekDestroy::set_new_search_destination() {
             UKismetMathLibrary::RandomPointInBoundingBox(box_pos, box_extent);
     }
 
-    if (log_config.can_log(EActorLoggingVerbosity::Basic)) {
+    if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("(%s) New destination: %s"),

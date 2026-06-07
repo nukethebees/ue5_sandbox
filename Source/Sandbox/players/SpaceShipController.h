@@ -3,9 +3,9 @@
 #include "Sandbox/input/EnhancedInputMixin.hpp"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/players/BarrelRollInputData.h"
 #include "Sandbox/players/LaserFiringMode.h"
 #include "Sandbox/players/SpaceShipControllerInputs.h"
-#include "Sandbox/players/BarrelRollInputData.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
