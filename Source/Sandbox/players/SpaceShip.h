@@ -66,7 +66,7 @@ class ASpaceShip
 
     void upgrade_max_health();
     void add_health(int32 added_health);
-    auto get_health_info() const { return health->get_health_info(); }
+    auto get_health_info() const -> FShipHealth { return health->get_health_info(); }
     void add_gold_ring();
     auto get_gold_rings() const { return gold_rings_collected; }
 

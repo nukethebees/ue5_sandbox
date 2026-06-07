@@ -31,8 +31,7 @@ ATestSpaceShip::ATestSpaceShip()
     , camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
-    , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))}
-    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
+    , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(RootComponent);
@@ -173,7 +172,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntity
     FTestEntityRegistryEntityData entity_data;
     entity_data.locations.Add(GetActorLocation());
     entity_data.velocities.Add(velocity);
-    entity_data.healths.Add(1'000'000);
+    entity_data.healths.Add(health.health);
     entity_data.teams.Add(ETestTeam::neutral);
     entity_data.alive.Add(1);
     return entity_data;
@@ -590,38 +589,7 @@ auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
 
 // Health
 void ATestSpaceShip::add_health(int32 added_health) {
-    health->add_health(added_health);
-}
-void ATestSpaceShip::upgrade_max_health() {
-    health->upgrade_max_health();
-}
-void ATestSpaceShip::add_gold_ring() {
-    gold_rings_collected++;
-    if (gold_rings_collected >= 3) {
-        upgrade_max_health();
-        gold_rings_collected = 0;
-    }
-    on_gold_rings_changed.ExecuteIfBound(gold_rings_collected);
-}
-auto ATestSpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
-    auto const original_health{health->get_health()};
-    EDamageResult type{EDamageResult::NoEffect};
-
-    health->apply_damage(context.damage);
-
-    if (health->is_dead()) {
-        type = EDamageResult::ActorKilled;
-    } else if (health->get_health() < original_health) {
-        type = EDamageResult::Damaged;
-    } else {
-        type = EDamageResult::NoEffect;
-    }
-
-    FShipDamageResult result{type};
-    return result;
-}
-auto ATestSpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
-    return health->on_health_changed;
+    health.health = FMath::Min(health.health + added_health, health.max_health);
 }
 
 // Lives

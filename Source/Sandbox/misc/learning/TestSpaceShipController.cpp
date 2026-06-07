@@ -78,7 +78,7 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     RETURN_IF_NULLPTR(hud_widget);
     TRY_INIT_PTR(ship, Cast<Pawn>(in_pawn));
 
-    auto& health_delegate{ship->get_on_health_changed_delegate()};
+    auto& health_delegate{ship->on_health_changed};
     health_delegate.BindUObject(hud_widget, &UShipHudWidget::set_health);
     hud_widget->set_health(ship->get_health_info());
     ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
@@ -88,7 +88,7 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
     hud_widget->set_bombs(ship->get_bombs());
     ship->on_gold_rings_changed.BindUObject(hud_widget, &UShipHudWidget::set_gold_rings);
-    hud_widget->set_gold_rings(ship->get_gold_rings());
+    hud_widget->set_gold_rings(0);
     ship->on_points_changed.BindUObject(hud_widget, &UShipHudWidget::set_points);
     hud_widget->set_points(ship->get_points());
     ship->on_lives_changed.BindUObject(hud_widget, &UShipHudWidget::set_lives);
@@ -106,7 +106,7 @@ void ATestSpaceShipController::OnUnPossess() {
     if (auto* ship{Cast<Pawn>(GetPawn())}) {
         ship->SetActorTickEnabled(false);
 
-        ship->get_on_health_changed_delegate().Unbind();
+        ship->on_health_changed.Unbind();
         ship->on_speed_changed.Unbind();
         ship->on_energy_changed.Unbind();
         ship->on_bombs_changed.Unbind();

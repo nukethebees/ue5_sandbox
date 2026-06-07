@@ -1,12 +1,10 @@
 #pragma once
 
-#include <Sandbox/combat/weapons/ShipProjectileType.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
 #include <Sandbox/players/BarrelRoll.h>
-#include <Sandbox/players/DamageableShip.h>
 #include <Sandbox/players/LaserFiringMode.h>
 #include <Sandbox/players/ShipLaserMode.h>
 #include <Sandbox/players/SpaceShipCommon.h>
@@ -18,8 +16,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "Math/Color.h"
-
-#include <span>
 
 #include "TestSpaceShip.generated.h"
 
@@ -38,9 +34,7 @@ class ATestEntityRegistry;
 class ATestLasers;
 
 UCLASS()
-class ATestSpaceShip
-    : public APawn
-    , public IDamageableShip {
+class ATestSpaceShip : public APawn {
     GENERATED_BODY()
   public:
     struct Sockets {
@@ -90,17 +84,11 @@ class ATestSpaceShip
     auto get_bombs() const { return bombs; }
 
     // Health
-    void upgrade_max_health();
     void add_health(int32 added_health);
-    auto get_health_info() const { return health->get_health_info(); }
-    void add_gold_ring();
-    auto get_gold_rings() const { return gold_rings_collected; }
+    auto get_health_info() const -> FShipHealth { return health; }
     // Lives
     auto get_lives() const { return lives; }
     void add_life();
-    // IDamageableShip
-    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
-    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
 
     // Points
     auto get_points() const { return points; }
@@ -119,7 +107,7 @@ class ATestSpaceShip
 
     // Delegates
     FOnShipSpeedChanged on_speed_changed;
-    auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
+    FOnShipHealthChanged on_health_changed;
     FOnShipEnergyChanged on_energy_changed;
     FOnShipBombsChanged on_bombs_changed;
     FOnShipGoldRingsChanged on_gold_rings_changed;
@@ -309,14 +297,15 @@ class ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     int32 points{0};
 
-    // Health/lives
+    // Health
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     int32 gold_rings_collected{0};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    int32 lives{3};
+    FShipHealth health{1000000};
+
+    // Lives
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    UShipHealthComponent* health{nullptr};
-    FOnKilled on_killed;
+    int32 lives{3};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
