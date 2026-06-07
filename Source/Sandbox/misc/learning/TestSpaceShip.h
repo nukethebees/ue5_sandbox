@@ -35,6 +35,7 @@ class AShipHomingLaser;
 class AShipBomb;
 class UShipHealthComponent;
 class ATestEntityRegistry;
+class ATestLasers;
 
 UCLASS()
 class ATestSpaceShip
@@ -146,7 +147,7 @@ class ATestSpaceShip
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_laser_firing(float dt);
     void fire_laser();
-    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
+    void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform const& fire_point);
     // Combat - bomb
     void subtract_bomb();
     // Combat - homing laser
@@ -264,7 +265,9 @@ class ATestSpaceShip
     FBarrelRoll roll_state{};
 
     // Combat - Laser
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip|Laser")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    TObjectPtr<ATestLasers> laser_actor{nullptr};
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     float laser_speed{1000.f};

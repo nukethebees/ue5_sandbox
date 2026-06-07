@@ -8,6 +8,7 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/misc/learning/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/misc/learning/TestLasers.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -57,6 +58,7 @@ void ATestSpaceShip::begin_play() {
     thrust_energy = thrust_energy_max;
 
     ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_class),
@@ -202,7 +204,7 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+        UE_LOG(LogSandbox, Verbose, TEXT("Turning: %s"), *direction.ToString());
     }
 #endif
 
@@ -230,7 +232,7 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
             break;
         }
         default:
-            UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
+            UE_LOG(LogSandbox, Error, TEXT("Unhandled state."));
             [[fallthrough]];
         case EBoostBrakeState::None: {
             target_speed = cruise_speed;
@@ -286,7 +288,7 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
 void ATestSpaceShip::roll(float direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
+        UE_LOG(LogSandbox, Verbose, TEXT("Rolling: %.2f"), direction);
     }
 #endif
     manual_bank_direction = clamp(direction, 1.f);
@@ -300,7 +302,7 @@ void ATestSpaceShip::barrel_roll(float direction) {
     roll_state.direction = FMath::Sign(direction);
 
 #if WITH_EDITOR
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
+    UE_LOG(LogSandbox, Verbose, TEXT("Barrel rolling: %.2f"), direction);
 #endif
 }
 
@@ -362,8 +364,10 @@ void ATestSpaceShip::update_laser_firing(float dt) {
                     break;
                 }
 #if WITH_EDITOR
-                auto const actor_name{ml::get_best_display_name(*actor_hit)};
-                UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
+                if (log_config.can_log(EActorLoggingVerbosity::Verbose)) {
+                    auto const actor_name{ml::get_best_display_name(*actor_hit)};
+                    UE_LOG(LogSandbox, Display, TEXT("Locked on to: %s"), *actor_name);
+                }
 #endif
                 set_lock_on_target(hit.GetActor());
                 set_laser_mode(ELaserFiringMode::lock_on_acquired);
@@ -420,7 +424,7 @@ void ATestSpaceShip::fire_laser() {
             break;
         }
         default: {
-            UE_LOG(LogSandboxActor, Warning, TEXT("Unhandled fire_laser branch."));
+            UE_LOG(LogSandbox, Warning, TEXT("Unhandled fire_laser branch."));
             break;
         }
     }
@@ -429,19 +433,15 @@ void ATestSpaceShip::fire_laser() {
     laser_shot_cooldown = laser_firing_period;
 }
 void ATestSpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config,
-                                     FTransform fire_point) {
-    TRY_INIT_PTR(world, GetWorld());
+                                     FTransform const& fire_point) {
+    auto* world{GetWorld()};
 
-    UE_LOG(LogSandboxActor,
-           Verbose,
-           TEXT("Spawning laser at %s"),
-           *fire_point.ToHumanReadableString());
+    if (log_config.can_log(EActorLoggingVerbosity::Verbose)) {
+        UE_LOG(
+            LogSandbox, Verbose, TEXT("Spawning laser at %s"), *fire_point.ToHumanReadableString());
+    }
 
-    TRY_INIT_PTR(laser,
-                 world->SpawnActorDeferred<AShipLaser>(laser_class, fire_point, nullptr, this));
-    laser->set_config(fire_laser_config);
-    laser->set_speed(laser_speed);
-    laser->FinishSpawning(fire_point);
+    laser_actor->spawn_lasers({&fire_point, 1});
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {
@@ -460,15 +460,14 @@ void ATestSpaceShip::fire_bomb() {
     }
 
     if (bombs <= 0) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("No bombs left."));
+        UE_LOG(LogSandbox, Verbose, TEXT("No bombs left."));
         return;
     }
 
     TRY_INIT_PTR(world, GetWorld());
     auto const fire_point{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
 
-    UE_LOG(
-        LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
+    UE_LOG(LogSandbox, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
 
     active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
     if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
@@ -490,19 +489,16 @@ void ATestSpaceShip::subtract_bomb() {
 }
 // Combat - homing laser
 void ATestSpaceShip::fire_homing_laser() {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
+    UE_LOG(LogSandbox, Verbose, TEXT("Firing homing laser."));
 
     if (!IsValid(lock_on_target)) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
+        UE_LOG(LogSandbox, Verbose, TEXT("Invalid lock-on target when firing."));
         return;
     }
     TRY_INIT_PTR(world, GetWorld());
     auto const fire_point{get_middle_socket()};
 
-    UE_LOG(LogSandboxActor,
-           Verbose,
-           TEXT("Spawning laser at %s"),
-           *fire_point.ToHumanReadableString());
+    UE_LOG(LogSandbox, Verbose, TEXT("Spawning laser at %s"), *fire_point.ToHumanReadableString());
 
     TRY_INIT_PTR(
         laser,
@@ -559,7 +555,7 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
     double new_roll{current_rotation.Roll};
     if (self.roll_state.is_rolling()) {
         auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
+        UE_LOG(LogSandbox, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
         new_roll = current_rotation.Roll + delta_roll;
     } else {
         auto const roll_speed{
