@@ -35,6 +35,23 @@ auto collect_indices_less_equal(T const* RESTRICT values,
 
     return static_cast<int32>(out_indices - original);
 }
+
+template <typename T>
+auto collect_values_not_equal(T const* RESTRICT values,
+                              int32 const count,
+                              T const reference_value,
+                              T* RESTRICT out_values) noexcept -> int32 {
+    int32 const* const RESTRICT original{out_values};
+
+    for (int32 i{0}; i < count; ++i) {
+        if (values[i] != reference_value) {
+            *out_values = values[i];
+            out_values++;
+        }
+    }
+
+    return static_cast<int32>(out_values - original);
+}
 }
 
 namespace ml {
@@ -56,5 +73,17 @@ auto collect_indices_less_equal(TConstArrayView<T> values,
         values.GetData(), values.Num(), threshold, out_indices.GetData())};
 
     return TConstArrayView<int32>{out_indices.Left(count)};
+}
+
+template <typename T>
+auto collect_values_not_equal(TConstArrayView<T> values,
+                              T const reference_value,
+                              TArrayView<T> out_values) noexcept -> TConstArrayView<int32> {
+    checkf(out_values.Num() >= values.Num(), TEXT("Insufficient size for out_values"));
+
+    auto const count{ml::detail::collect_values_not_equal(
+        values.GetData(), values.Num(), reference_value, out_values.GetData())};
+
+    return TConstArrayView<int32>{out_values.Left(count)};
 }
 }
