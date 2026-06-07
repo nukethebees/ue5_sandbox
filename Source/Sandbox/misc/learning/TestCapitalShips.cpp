@@ -310,23 +310,11 @@ void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
 
     auto const n{get_num_instances()};
-    auto const collision_extent{actor_config->collision_box_extent};
-
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
         auto const ship_loc{transforms[i].GetLocation()};
-
-        // Draw target
-        auto const target_index{target_entity_indices[i]};
-        if (entity_registry->is_valid_index(target_index)) {
-            auto const target_loc{entity_registry->get_location(target_index)};
-            drawer.draw_arrow(ship_loc, target_loc);
-        }
-
-        // Draw collision
-        drawer.draw_box(ship_loc, collision_extent);
 
         // Draw HP
         auto const ship_index{entity_indices[i]};
