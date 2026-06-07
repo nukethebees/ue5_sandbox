@@ -66,9 +66,7 @@ void ATestStaticTurrets::tick(float const dt) {
 }
 void ATestStaticTurrets::update_entity_registry() {}
 void ATestStaticTurrets::resolve_damage_targets() {
-    auto& reg{*entity_registry};
-
-    auto const view{reg.get_damage_queue_view()};
+    auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -82,18 +80,9 @@ void ATestStaticTurrets::resolve_damage_targets() {
 void ATestStaticTurrets::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
 
-    local_indices_to_remove.Reset();
-
     auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
-    for (auto const& dead_entity : dead_entities) {
-        auto const key{entity_indices.IndexOfByKey(dead_entity)};
-        if (key == INDEX_NONE) {
-            continue;
-        }
-        local_indices_to_remove.Add(key);
-    }
 
-    // Remove from largest index to smallest
+    ml::collect_valid_indices_by_key(entity_indices, dead_entities, local_indices_to_remove);
     local_indices_to_remove.Sort(TGreater<int32>{});
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,

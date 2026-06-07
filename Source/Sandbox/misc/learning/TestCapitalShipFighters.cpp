@@ -54,9 +54,7 @@ void ATestCapitalShipFighters::tick(float const dt) {
     handle_firing();
 }
 void ATestCapitalShipFighters::resolve_damage_targets() {
-    auto& reg{*entity_registry};
-
-    auto const view{reg.get_damage_queue_view()};
+    auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -72,18 +70,7 @@ void ATestCapitalShipFighters::sync_from_registry() {
 
     auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
 
-    local_indices_to_remove.Reset();
-    local_indices_to_remove.Reserve(dead_entities.Num());
-
-    for (auto const& dead_entity : dead_entities) {
-        auto const key{entity_indices.IndexOfByKey(dead_entity)};
-        if (key == INDEX_NONE) {
-            continue;
-        }
-        local_indices_to_remove.Add(key);
-    }
-
-    // Remove from largest index to smallest
+    ml::collect_valid_indices_by_key(entity_indices, dead_entities, local_indices_to_remove);
     local_indices_to_remove.Sort(TGreater<int32>{});
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
