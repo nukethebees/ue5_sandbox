@@ -17,6 +17,9 @@ struct SANDBOX_API FShipHealth {
     FShipHealth(int32 health, int32 max_health)
         : health(health)
         , max_health(max_health) {}
+    FShipHealth(int32 max_health)
+        : health(max_health)
+        , max_health(max_health) {}
 
     void upgrade_max_health() { max_health = upgraded_max_health; }
 
