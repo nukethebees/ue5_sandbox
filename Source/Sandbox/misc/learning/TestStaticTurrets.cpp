@@ -261,11 +261,9 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     locations.AddUninitialized(n);
     teams.AddUninitialized(n);
-    healths.AddUninitialized(n);
+    ml::append_n(healths, actor_config->max_health, n);
     target_indices.AddDefaulted(n);
     laser_cooldowns.remaining_times.AddZeroed(n);
-
-    auto const hp{actor_config->max_health};
 
     TArray<FTransform> ismc_transforms;
     ismc_transforms.AddUninitialized(n);
@@ -273,7 +271,6 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         auto const transform{proxies[i]->GetActorTransform()};
         ismc_transforms[i] = transform;
         locations[i] = transform.GetLocation();
-        healths[i] = hp;
         teams[i] = proxies[i]->get_team();
 
         entity_data.velocities[i] = FVector::ZeroVector;
