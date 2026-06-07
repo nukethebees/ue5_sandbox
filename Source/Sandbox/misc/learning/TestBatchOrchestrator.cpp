@@ -42,11 +42,6 @@ void ATestBatchOrchestrator::BeginPlay() {
         [](AActor* actor) {
             ml::fatal_if_actor_transform_not_identity(*actor);
             ml::fatal_if_actor_root_not_static(*actor);
-
-            UE_LOG(LogSandbox,
-                   Display,
-                   TEXT("ATestBatchOrchestrator::BeginPlay Disabling tick on: %s"),
-                   *ml::get_best_display_name(*actor));
             actor->SetActorTickEnabled(false);
         },
         lasers,
@@ -55,16 +50,12 @@ void ATestBatchOrchestrator::BeginPlay() {
         turrets,
         spinners);
 
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::begin_play::clear_runtime_state);
-        ml::invoke_on_all([this](auto actor) { actor->clear_runtime_state(); },
-                          lasers,
-                          capital_ships,
-                          capital_ship_fighters,
-                          turrets,
-                          spinners);
-    }
+    ml::invoke_on_all([this](auto actor) { actor->clear_runtime_state(); },
+                      lasers,
+                      capital_ships,
+                      capital_ship_fighters,
+                      turrets,
+                      spinners);
 
     ml::invoke_on_all(
         [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); },
@@ -73,23 +64,15 @@ void ATestBatchOrchestrator::BeginPlay() {
         turrets,
         spinners);
 
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::begin_play::batch_actor_begin_play);
-        ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
-                          capital_ships,
-                          capital_ship_fighters,
-                          turrets,
-                          spinners,
-                          lasers);
-    }
+    ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
+                      capital_ships,
+                      capital_ship_fighters,
+                      turrets,
+                      spinners,
+                      lasers);
 
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::begin_play::entity_registry_commit);
-        entity_registry->commit_updates();
-        entity_registry->end_frame();
-    }
+    entity_registry->commit_updates();
+    entity_registry->end_frame();
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
@@ -101,17 +84,26 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     ++tick_counter;
 
+    // General actor tick
     capital_ships->tick(dt);
     capital_ship_fighters->tick(dt);
     turrets->tick(dt);
     spinners->tick(dt);
 
-    // Lasers must resolve after everything else
+    // Projectiles must resolve after everything else
     lasers->tick(dt);
 
+    // Before processing damage events
+    // Have the actors read the hit data and generate explicit entity handles
+    capital_ships->resolve_damage_targets();
+
+    // Resolve events such as damage
     entity_registry->commit_updates();
 
+    // Apply changes such as damage from the registry
     capital_ships->sync_from_registry();
+
+    // Update visual state
     capital_ships->update_visuals();
 
     entity_registry->end_frame();

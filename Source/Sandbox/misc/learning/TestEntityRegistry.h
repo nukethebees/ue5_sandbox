@@ -14,6 +14,8 @@
 
 #include "TestEntityRegistry.generated.h"
 
+class UActorComponent;
+
 UCLASS()
 class ATestEntityRegistry : public AActor {
   public:
@@ -32,6 +34,18 @@ class ATestEntityRegistry : public AActor {
         FTestEntityRegistryEntityData::View data;
     };
 
+    struct QueuedDamageResolveView {
+        TArrayView<FGenerationIndex> targets;
+
+        TConstArrayView<int32> damage_amounts;
+        TConstArrayView<AActor*> damaged_actors;
+        TConstArrayView<UActorComponent*> damaged_actor_components;
+        TConstArrayView<int32> damaged_hit_items; // Generally an ISMC index
+
+        auto num() const -> int32;
+        void check_lengths() const;
+    };
+
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
 
     ATestEntityRegistry();
@@ -47,9 +61,12 @@ class ATestEntityRegistry : public AActor {
         -> TArray<FGenerationIndex>;
 
     // Entity updates
+    auto get_damage_queue_view() -> QueuedDamageResolveView;
     void update_entities(ConstView const view);
-    void apply_damage(TConstArrayView<FGenerationIndex> const indexes,
-                      TConstArrayView<int32> const damages);
+    void apply_damage(TConstArrayView<int32> const damages,
+                      TConstArrayView<AActor*> const actors,
+                      TConstArrayView<UActorComponent*> const components,
+                      TConstArrayView<int32> const items);
 
     // Frame events
     void commit_updates();
@@ -94,6 +111,12 @@ class ATestEntityRegistry : public AActor {
     // Queued damage events
     UPROPERTY()
     TArray<int32> queued_damage_amounts;
+    UPROPERTY()
+    TArray<AActor*> queued_damaged_actors;
+    UPROPERTY()
+    TArray<UActorComponent*> queued_damaged_actor_components;
+    UPROPERTY()
+    TArray<int32> queued_damaged_hit_items;
     UPROPERTY()
     TArray<FGenerationIndex> queued_damage_targets;
 

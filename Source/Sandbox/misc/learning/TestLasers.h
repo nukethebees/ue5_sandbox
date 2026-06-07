@@ -11,6 +11,7 @@
 
 class USceneComponent;
 class UInstancedStaticMeshComponent;
+class UActorComponent;
 
 class UTestLasersConfig;
 class ATestEntityRegistry;
@@ -79,10 +80,16 @@ class ATestLasers : public AActor {
     TArray<FTransform> transforms_to_add;
     UPROPERTY()
     TArray<int32> to_remove;
-    UPROPERTY()
-    TArray<FGenerationIndex> hit_entity_queue;
+
+    // Damage transaction
     UPROPERTY()
     TArray<int32> hit_damage_queue;
+    UPROPERTY()
+    TArray<AActor*> hit_actor_queue;
+    UPROPERTY()
+    TArray<UActorComponent*> hit_component_queue;
+    UPROPERTY()
+    TArray<int32> hit_item_queue;
 
 #if WITH_EDITORONLY_DATA
     // Debugging

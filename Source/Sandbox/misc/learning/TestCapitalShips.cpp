@@ -61,6 +61,20 @@ void ATestCapitalShips::tick(float const dt) {
     handle_fighter_spawning();
     update_entity_registry();
 }
+void ATestCapitalShips::resolve_damage_targets() {
+    auto& reg{*entity_registry};
+
+    auto const view{reg.get_damage_queue_view()};
+    auto const n{view.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (view.damaged_actors[i] != this) {
+            continue;
+        }
+
+        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+    }
+}
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());

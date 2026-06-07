@@ -161,8 +161,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const damage{laser_config->damage};
 
-    hit_entity_queue.Reset();
-    hit_damage_queue.Reset();
+    ml::reset_arrays(hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};
@@ -171,9 +170,10 @@ void ATestLasers::handle_collisions(float const dt) {
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
 
-        if (did_hit) {
-            to_remove.Add(i);
+        if (!did_hit) {
+            continue;
         }
+        to_remove.Add(i);
 
         // Identify who we hit
         auto* hit_actor{hit.GetActor()};
@@ -186,30 +186,14 @@ void ATestLasers::handle_collisions(float const dt) {
             continue;
         }
 
-        auto* hit_ismc{Cast<UInstancedStaticMeshComponent>(hit_component)};
-        if (!IsValid(hit_ismc)) {
-            continue;
-        }
-
-        auto const ismc_hit_index{hit.Item};
-        FGenerationIndex hit_index;
-
-        if (auto* capital_ships{Cast<ATestCapitalShips>(hit_actor)}) {
-            hit_index = capital_ships->get_entity_from_hit_slot(ismc_hit_index);
-        } else if (auto* capital_ship_fighters{Cast<ATestCapitalShipFighters>(hit_actor)}) {
-        } else if (auto* turrets{Cast<ATestStaticTurrets>(hit_actor)}) {
-        } else if (auto* spinners{Cast<ATestTubeSpinners>(hit_actor)}) {
-        }
-
-        if (!hit_index.is_valid()) {
-            continue;
-        }
-
-        hit_entity_queue.Add(hit_index);
         hit_damage_queue.Add(damage);
+        hit_actor_queue.Add(hit_actor);
+        hit_component_queue.Add(hit_component);
+        hit_item_queue.Add(hit.Item);
     }
 
-    entity_registry->apply_damage(hit_entity_queue, hit_damage_queue);
+    entity_registry->apply_damage(
+        hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     remove_instances(to_remove);
 }
@@ -292,8 +276,10 @@ void ATestLasers::clear_runtime_state() {
                      lifetimes,
                      transforms_to_add,
                      to_remove,
-                     hit_entity_queue,
-                     hit_damage_queue);
+                     hit_damage_queue,
+                     hit_actor_queue,
+                     hit_component_queue,
+                     hit_item_queue);
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);

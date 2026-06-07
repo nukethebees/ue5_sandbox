@@ -4,6 +4,17 @@
 
 #include <SandboxCore/array_utils.h>
 
+void ATestEntityRegistry::QueuedDamageResolveView::check_lengths() const {
+    auto const n{targets.Num()};
+    check(n == damage_amounts.Num());
+    check(n == damaged_actors.Num());
+    check(n == damaged_actor_components.Num());
+    check(n == damaged_hit_items.Num());
+}
+auto ATestEntityRegistry::QueuedDamageResolveView::num() const -> int32 {
+    return targets.Num();
+}
+
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -17,6 +28,9 @@ void ATestEntityRegistry::reset() {
     ml::reset_arrays(generations,
                      queued_entity_generations,
                      queued_damage_amounts,
+                     queued_damaged_actors,
+                     queued_damaged_actor_components,
+                     queued_damaged_hit_items,
                      queued_damage_targets,
                      dead_entities_this_frame,
                      free_indices);
@@ -103,18 +117,38 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 }
 
 // Entity updates
+auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
+    QueuedDamageResolveView view{
+        queued_damage_targets,
+        queued_damage_amounts,
+        queued_damaged_actors,
+        queued_damaged_actor_components,
+        queued_damaged_hit_items,
+    };
+    view.check_lengths();
+    return view;
+}
 void ATestEntityRegistry::update_entities(ConstView const view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
 
     queued_entity_data.add(view.data);
     queued_entity_generations.Append(view.indices);
 }
-void ATestEntityRegistry::apply_damage(TConstArrayView<FGenerationIndex> const indexes,
-                                       TConstArrayView<int32> const damages) {
-    check(indexes.Num() == damages.Num());
+void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
+                                       TConstArrayView<AActor*> const actors,
+                                       TConstArrayView<UActorComponent*> const components,
+                                       TConstArrayView<int32> const items) {
+    auto const n{damages.Num()};
 
-    queued_damage_targets.Append(indexes);
+    check(actors.Num() == n);
+    check(components.Num() == n);
+    check(items.Num() == n);
+
     queued_damage_amounts.Append(damages);
+    queued_damaged_actors.Append(actors);
+    queued_damaged_actor_components.Append(components);
+    queued_damaged_hit_items.Append(items);
+    ml::append_n(queued_damage_targets, {}, n);
 }
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
@@ -142,9 +176,8 @@ void ATestEntityRegistry::commit_damage_updates() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const generation_index{queued_damage_targets[i]};
-        if (!is_valid_index(generation_index)) {
-            continue;
-        }
+        // At this point in the frame, all current entities should be valid and alive
+        check(is_valid_index(generation_index));
         auto const entity_index{generation_index.index};
 
         entity_data.healths[entity_index] -= queued_damage_amounts[i];
@@ -184,12 +217,15 @@ void ATestEntityRegistry::end_frame() {
     refresh_free_indices();
 
     queued_entity_data.reset();
-    queued_entity_generations.Reset();
 
-    queued_damage_amounts.Reset();
-    queued_damage_targets.Reset();
-
-    dead_entities_this_frame.Reset();
+    ml::reset_arrays(queued_entity_generations,
+                     queued_entity_generations,
+                     queued_damage_amounts,
+                     queued_damaged_actors,
+                     queued_damaged_actor_components,
+                     queued_damaged_hit_items,
+                     queued_damage_targets,
+                     dead_entities_this_frame);
 }
 
 // Entity queries
