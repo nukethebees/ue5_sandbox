@@ -31,9 +31,6 @@ class UTestCapitalShipsConfig : public UDataAsset {
 
     // Collision
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    FVector collision_box_extent{FVector::ZeroVector};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FCollisionSettings collision_settings;
 
     // Fighter spawning
@@ -56,6 +53,10 @@ class UTestCapitalShipsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere)
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
+
+    // Proxy settings
+    UPROPERTY(EditAnywhere)
+    float proxy_arrow_size{5.f};
   private:
     void synchronise_data();
 };

@@ -15,12 +15,10 @@
 #include <EngineUtils.h>
 
 ATestCapitalShipProxy::ATestCapitalShipProxy()
-    : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}
-    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box"))} {
+    : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     mesh->SetupAttachment(RootComponent);
-    collision_box->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -62,18 +60,8 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     transforms.Reserve(ship_config->fighter_spawn_slots);
     for (auto const slot : fighter_spawn_slots) {
         transforms.Add(slot->GetRelativeTransform());
+        ship_config->proxy_arrow_size = slot->ArrowSize;
     }
-
-    if (!collision_box) {
-        UE_LOG(
-            LogSandboxLearning,
-            Warning,
-            TEXT("ATestCapitalShipProxy::save_configuration_to_asset: collision_box is nullptr."));
-        return;
-    }
-
-    ship_config->collision_box_extent = collision_box->GetUnscaledBoxExtent();
-    ship_config->collision_settings = ml::copy_collision_settings(*collision_box);
 
     ship_config->MarkPackageDirty();
 }
@@ -100,10 +88,8 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
         fighter_spawn_slots.Add(spawn_point);
 
         spawn_point->SetRelativeTransform(ship_config->fighter_spawn_slots_relative_transforms[i]);
+        spawn_point->SetArrowSize(ship_config->proxy_arrow_size);
     }
-
-    collision_box->SetBoxExtent(ship_config->collision_box_extent);
-    ml::apply_collision_settings(*collision_box, ship_config->collision_settings);
 }
 void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
     ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });

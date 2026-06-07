@@ -10,7 +10,6 @@
 #include "TestCapitalShipProxy.generated.h"
 
 class UStaticMeshComponent;
-class UBoxComponent;
 class UArrowComponent;
 
 class UTestCapitalShipsConfig;
@@ -37,9 +36,6 @@ class ATestCapitalShipProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<UBoxComponent> collision_box{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
