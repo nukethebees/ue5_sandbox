@@ -75,7 +75,6 @@ void ATestCapitalShips::resolve_damage_targets() {
 }
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
-    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 
     local_indices_to_remove.Reset();
 
@@ -118,6 +117,9 @@ void ATestCapitalShips::update_visuals() {
     if (debugging_shapes_enabled) {
         draw_debugging_shapes();
     }
+}
+void ATestCapitalShips::end_frame() {
+    TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 }
 
 // Accessors

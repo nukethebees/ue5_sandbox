@@ -31,6 +31,7 @@ class ATestTubeSpinners : public AActor {
     void tick(float const dt);
     void update_entity_registry();
     void update_visuals();
+    void end_frame();
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;

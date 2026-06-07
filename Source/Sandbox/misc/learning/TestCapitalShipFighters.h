@@ -34,6 +34,7 @@ class ATestCapitalShipFighters : public AActor {
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
+    void end_frame();
 
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
                          TConstArrayView<ETestTeam> const new_teams);

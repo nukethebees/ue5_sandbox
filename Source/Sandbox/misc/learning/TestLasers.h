@@ -27,6 +27,8 @@ class ATestLasers : public AActor {
     void clear_runtime_state();
     void begin_play();
     void tick(float const dt);
+    void update_visuals();
+    void end_frame();
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;

@@ -36,6 +36,7 @@ class ATestStaticTurrets : public AActor {
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
+    void end_frame();
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
 

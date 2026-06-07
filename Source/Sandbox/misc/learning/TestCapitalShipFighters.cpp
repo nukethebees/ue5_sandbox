@@ -102,7 +102,6 @@ void ATestCapitalShipFighters::sync_from_registry() {
     }
 
     validate_array_sizes();
-    TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 }
 void ATestCapitalShipFighters::update_visuals() {
     // Clear old instances
@@ -112,6 +111,9 @@ void ATestCapitalShipFighters::update_visuals() {
     }
 
     instances->BatchUpdateInstancesTransforms(0, world_transforms, is_world_space, true);
+}
+void ATestCapitalShipFighters::end_frame() {
+    TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 }
 
 // Accessors

@@ -23,7 +23,6 @@
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
-TRACE_DECLARE_INT_COUNTER(SandboxTestLaserRemovedCount, TEXT("Sandbox/TestLaserRemovedCount"));
 
 ATestLasers::ATestLasers()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -41,7 +40,7 @@ ATestLasers::ATestLasers()
 void ATestLasers::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_play);
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
-    TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
+    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
@@ -71,14 +70,17 @@ void ATestLasers::tick(float const dt) {
     update_locations(dt);
 
     process_pending_spawns();
-    update_ismc();
-
-    TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
-    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
 
 #if WITH_EDITOR
     dbg_n_instances = get_num_instances();
 #endif
+}
+void ATestLasers::update_visuals() {
+    update_ismc();
+}
+void ATestLasers::end_frame() {
+    TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
+    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
 }
 
 // Accessors
@@ -295,5 +297,4 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     }
 
     check(array_sizes_consistent());
-    TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, n);
 }

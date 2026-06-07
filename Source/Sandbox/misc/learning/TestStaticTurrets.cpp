@@ -63,7 +63,6 @@ void ATestStaticTurrets::tick(float const dt) {
     fire_at_enemies();
 
     log_config.on_tick_end();
-    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
 }
 void ATestStaticTurrets::update_entity_registry() {}
 void ATestStaticTurrets::resolve_damage_targets() {
@@ -120,6 +119,9 @@ void ATestStaticTurrets::update_visuals() {
         constexpr bool is_reverse_sorted{true};
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
     }
+}
+void ATestStaticTurrets::end_frame() {
+    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
 }
 
 // Visuals

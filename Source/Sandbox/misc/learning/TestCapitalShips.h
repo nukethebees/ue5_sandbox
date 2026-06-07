@@ -38,6 +38,7 @@ class ATestCapitalShips : public AActor {
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
+    void end_frame();
 
     // Getters
     auto get_num_instances() const -> int32;

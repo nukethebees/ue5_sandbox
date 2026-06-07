@@ -62,6 +62,7 @@ void ATestTubeSpinners::update_entity_registry() {}
 void ATestTubeSpinners::update_visuals() {
     update_ismc();
 }
+void ATestTubeSpinners::end_frame() {}
 
 // Accessors
 auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {

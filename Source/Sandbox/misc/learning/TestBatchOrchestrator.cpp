@@ -118,6 +118,12 @@ void ATestBatchOrchestrator::tick(float const dt) {
     capital_ship_fighters->update_visuals();
     turrets->update_visuals();
     spinners->update_visuals();
+    lasers->update_visuals();
 
+    capital_ships->end_frame();
+    capital_ship_fighters->end_frame();
+    turrets->end_frame();
+    spinners->end_frame();
+    lasers->end_frame();
     entity_registry->end_frame();
 }
