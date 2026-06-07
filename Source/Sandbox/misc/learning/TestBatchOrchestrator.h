@@ -5,6 +5,7 @@
 
 #include "TestBatchOrchestrator.generated.h"
 
+class ATestSpaceShip;
 class ATestLasers;
 class ATestCapitalShips;
 class ATestCapitalShipFighters;
@@ -24,6 +25,8 @@ class ATestBatchOrchestrator : public AActor {
     void BeginPlay() override;
   private:
     UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ATestSpaceShip> player_ship{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> lasers{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShips> capital_ships{nullptr};
@@ -36,7 +39,7 @@ class ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    
+
     UPROPERTY(Transient)
     uint64 tick_counter{0};
 };

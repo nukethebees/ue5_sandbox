@@ -101,8 +101,6 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
 #if WITH_EDITOR
     ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
 #endif
-
-    ship->SetActorTickEnabled(true);
 }
 void ATestSpaceShipController::OnUnPossess() {
     if (auto* ship{Cast<Pawn>(GetPawn())}) {

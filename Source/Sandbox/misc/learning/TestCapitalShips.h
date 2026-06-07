@@ -40,13 +40,12 @@ class ATestCapitalShips : public AActor {
     void update_visuals();
     void end_frame();
 
-    // Getters
+    // Accessors
     auto get_num_instances() const -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
     auto get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex;
 
-    // Setters
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
@@ -80,11 +79,11 @@ class ATestCapitalShips : public AActor {
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
     // Entity data
+    TestEntityOwnerId owner_id{};
     UPROPERTY()
     TArray<FGenerationIndex> entity_indices;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
-    TestEntityOwnerId owner_id{};
 
     UPROPERTY()
     TArray<FTransform> transforms;

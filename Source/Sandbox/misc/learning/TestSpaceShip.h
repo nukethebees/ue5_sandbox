@@ -2,6 +2,7 @@
 
 #include "Sandbox/combat/weapons/ShipProjectileType.h"
 #include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/misc/learning/TestEntityOwnerId.h"
 #include "Sandbox/players/BarrelRoll.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/LaserFiringMode.h"
@@ -44,7 +45,18 @@ class ATestSpaceShip
 
     ATestSpaceShip();
 
-    void Tick(float dt) override;
+    // Life cycle
+    void begin_play();
+    void tick(float const dt);
+    void update_entity_registry();
+    void resolve_damage_targets();
+    void sync_from_registry();
+    void update_visuals();
+    void end_frame();
+
+    // Entity data
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+    auto get_owner_id() const -> TestEntityOwnerId;
 
     void turn(FVector2D direction);
     void start_boost();
@@ -104,8 +116,6 @@ class ATestSpaceShip
     FOnSpeedSampled on_speed_sampled;
 #endif
   protected:
-    void BeginPlay() override;
-
     void set(EBoostBrakeState s);
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_boost_brake(this ATestSpaceShip& self, float dt);
@@ -130,22 +140,31 @@ class ATestSpaceShip
     void tick_debugs(float dt);
 #endif
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    UCameraComponent* camera{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    UStaticMeshComponent* ship_mesh{nullptr};
+    // Entity data
+    TestEntityOwnerId owner_id{};
+
+    // Collision
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
+
+    // Camera
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UCameraComponent* camera{nullptr};
+
+    // Visuals
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UStaticMeshComponent* ship_mesh{nullptr};
+    // Visuals - engine
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     UNiagaraComponent* boost_pulse{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     UNiagaraComponent* boost_engine_effect{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     float boost_effect_colour_intensity{75.f};
-
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FLinearColor engine_colour{FLinearColor::Blue};
 
+    // Energy
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy_max{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
@@ -153,6 +172,7 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
+    // Speed
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpaceShipFlightModel flight_model{};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")

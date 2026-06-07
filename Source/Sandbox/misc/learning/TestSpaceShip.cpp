@@ -23,9 +23,9 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestSpaceShip::ATestSpaceShip()
-    : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
+    : collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
+    , camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
-    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
     , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))}
     , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
@@ -43,28 +43,12 @@ ATestSpaceShip::ATestSpaceShip()
     boost_engine_effect->bAutoActivate = false;
     boost_engine_effect->SetAutoDestroy(false);
 
-    // Don't tick until the controller wires up the delegates
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
 }
-void ATestSpaceShip::Tick(float dt) {
-    Super::Tick(dt);
 
-    update_boost_brake(dt);
-    update_actor_rotation(dt);
-    update_visual_orientation(dt);
-    integrate_velocity(dt);
-    update_laser_firing(dt);
-
-    roll_state.time_remaining -= dt;
-    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
-
-#if WITH_EDITOR
-    tick_debugs(dt);
-#endif
-}
-void ATestSpaceShip::BeginPlay() {
-    Super::BeginPlay();
+void ATestSpaceShip::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
 
     velocity = GetActorForwardVector() * cruise_speed;
     thrust_energy = thrust_energy_max;
@@ -110,6 +94,27 @@ void ATestSpaceShip::BeginPlay() {
     boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                            boost_effect_colour_intensity);
 }
+void ATestSpaceShip::tick(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
+
+    update_boost_brake(dt);
+    update_actor_rotation(dt);
+    update_visual_orientation(dt);
+    integrate_velocity(dt);
+    update_laser_firing(dt);
+
+    roll_state.time_remaining -= dt;
+    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
+
+#if WITH_EDITOR
+    tick_debugs(dt);
+#endif
+}
+void ATestSpaceShip::update_entity_registry() {}
+void ATestSpaceShip::resolve_damage_targets() {}
+void ATestSpaceShip::sync_from_registry() {}
+void ATestSpaceShip::update_visuals() {}
+void ATestSpaceShip::end_frame() {}
 
 #if WITH_EDITOR
 void ATestSpaceShip::tick_debugs(float dt) {
@@ -136,6 +141,14 @@ void ATestSpaceShip::tick_debugs(float dt) {
     seconds_since_last_log += dt;
 }
 #endif
+
+// Accessors
+void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {
+    owner_id = new_owner_id;
+}
+auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
+    return owner_id;
+}
 
 void ATestSpaceShip::set(EBoostBrakeState s) {
     auto const cur_speed{get_speed()};

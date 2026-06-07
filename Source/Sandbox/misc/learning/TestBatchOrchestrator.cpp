@@ -4,6 +4,7 @@
 #include "Sandbox/misc/learning/TestCapitalShipFighters.h"
 #include "Sandbox/misc/learning/TestCapitalShips.h"
 #include "Sandbox/misc/learning/TestLasers.h"
+#include "Sandbox/misc/learning/TestSpaceShip.h"
 #include "Sandbox/misc/learning/TestStaticTurrets.h"
 #include "Sandbox/misc/learning/TestTubeSpinners.h"
 #include "Sandbox/utilities/actor_utils.h"
@@ -28,6 +29,7 @@ void ATestBatchOrchestrator::BeginPlay() {
     tick_counter = 0;
 
     ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(player_ship),
         SANDBOX_NAMED_UOBJECT_PTR(lasers),
         SANDBOX_NAMED_UOBJECT_PTR(capital_ships),
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
@@ -59,12 +61,14 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     ml::invoke_on_all(
         [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); },
+        player_ship,
         capital_ships,
         capital_ship_fighters,
         turrets,
         spinners);
 
     ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
+                      player_ship,
                       capital_ships,
                       capital_ship_fighters,
                       turrets,
@@ -85,15 +89,16 @@ void ATestBatchOrchestrator::tick(float const dt) {
     ++tick_counter;
 
     // General actor tick
+    player_ship->tick(dt);
     capital_ships->tick(dt);
     capital_ship_fighters->tick(dt);
     turrets->tick(dt);
     spinners->tick(dt);
-
     // Projectiles must resolve after everything else
     lasers->tick(dt);
 
     // Send updates to the registry
+    player_ship->update_entity_registry();
     capital_ships->update_entity_registry();
     capital_ship_fighters->update_entity_registry();
     turrets->update_entity_registry();
@@ -103,6 +108,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
     // Read damage data and generate explicit entity handles
     entity_registry->filter_damage_candidates();
 
+    player_ship->resolve_damage_targets();
     capital_ships->resolve_damage_targets();
     capital_ship_fighters->resolve_damage_targets();
     turrets->resolve_damage_targets();
@@ -111,17 +117,20 @@ void ATestBatchOrchestrator::tick(float const dt) {
     entity_registry->commit_updates();
 
     // Apply changes such as damage from the registry
+    player_ship->sync_from_registry();
     capital_ships->sync_from_registry();
     capital_ship_fighters->sync_from_registry();
     turrets->sync_from_registry();
 
     // Update visual state
+    player_ship->update_visuals();
     capital_ships->update_visuals();
     capital_ship_fighters->update_visuals();
     turrets->update_visuals();
     spinners->update_visuals();
     lasers->update_visuals();
 
+    player_ship->end_frame();
     capital_ships->end_frame();
     capital_ship_fighters->end_frame();
     turrets->end_frame();
