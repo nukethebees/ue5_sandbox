@@ -101,6 +101,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     // Before processing damage events
     // Read damage data and generate explicit entity handles
+    entity_registry->filter_damage_candidates();
+
     capital_ships->resolve_damage_targets();
     capital_ship_fighters->resolve_damage_targets();
     turrets->resolve_damage_targets();

@@ -120,24 +120,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     return indices;
 }
 
-// Entity updates
-auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
-    QueuedDamageResolveView view{
-        queued_damage_targets,
-        queued_damage_amounts,
-        queued_damaged_actors,
-        queued_damaged_actor_components,
-        queued_damaged_hit_items,
-    };
-    view.check_lengths();
-    return view;
-}
-void ATestEntityRegistry::update_entities(ConstView const view) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
-
-    queued_entity_data.add(view.data);
-    queued_entity_generations.Append(view.indices);
-}
+// Damage updates
 void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
                                        TConstArrayView<AActor*> const actors,
                                        TConstArrayView<UActorComponent*> const components,
@@ -153,6 +136,62 @@ void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
     queued_damaged_actor_components.Append(components);
     queued_damaged_hit_items.Append(items);
     ml::append_n(queued_damage_targets, {}, n);
+}
+auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
+    QueuedDamageResolveView view{
+        queued_damage_targets,
+        queued_damage_amounts,
+        queued_damaged_actors,
+        queued_damaged_actor_components,
+        queued_damaged_hit_items,
+    };
+    view.check_lengths();
+    return view;
+}
+
+void ATestEntityRegistry::filter_damage_candidates() {
+    damage_events_to_filter.Reset();
+
+    auto const n{queued_damage_amounts.Num()};
+    if (n < 1) {
+        return;
+    }
+
+    for (int32 i{n - 1}; i >= 0; --i) {
+        if (!is_owner(queued_damaged_actors[i])) {
+            damage_events_to_filter.Add(i);
+        }
+    }
+
+    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter,
+                                        queued_damage_amounts,
+                                        queued_damaged_actors,
+                                        queued_damaged_actor_components,
+                                        queued_damaged_hit_items,
+                                        queued_damage_targets);
+}
+void ATestEntityRegistry::commit_damage_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_damage_updates);
+
+    auto const n{queued_damage_amounts.Num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const generation_index{queued_damage_targets[i]};
+        // At this point in the frame, all current entities should be valid and alive
+        check(is_valid_index(generation_index));
+        auto const entity_index{generation_index.index};
+
+        entity_data.healths[entity_index] -= queued_damage_amounts[i];
+        entity_data.alive[entity_index] = (entity_data.healths[entity_index] > 0);
+    }
+}
+
+// Entity updates
+void ATestEntityRegistry::update_entities(ConstView const view) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
+
+    queued_entity_data.add(view.data);
+    queued_entity_generations.Append(view.indices);
 }
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
@@ -171,21 +210,6 @@ void ATestEntityRegistry::commit_entity_updates() {
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];
-    }
-}
-void ATestEntityRegistry::commit_damage_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_damage_updates);
-
-    auto const n{queued_damage_amounts.Num()};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const generation_index{queued_damage_targets[i]};
-        // At this point in the frame, all current entities should be valid and alive
-        check(is_valid_index(generation_index));
-        auto const entity_index{generation_index.index};
-
-        entity_data.healths[entity_index] -= queued_damage_amounts[i];
-        entity_data.alive[entity_index] = (entity_data.healths[entity_index] > 0);
     }
 }
 void ATestEntityRegistry::commit_death_updates() {

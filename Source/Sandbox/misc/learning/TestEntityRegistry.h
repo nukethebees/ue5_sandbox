@@ -61,13 +61,16 @@ class ATestEntityRegistry : public AActor {
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view)
         -> TArray<FGenerationIndex>;
 
-    // Entity updates
-    auto get_damage_queue_view() -> QueuedDamageResolveView;
-    void update_entities(ConstView const view);
+    // Damage updates
     void apply_damage(TConstArrayView<int32> const damages,
                       TConstArrayView<AActor*> const actors,
                       TConstArrayView<UActorComponent*> const components,
                       TConstArrayView<int32> const items);
+    auto get_damage_queue_view() -> QueuedDamageResolveView;
+    void filter_damage_candidates();
+
+    // General entity updates
+    void update_entities(ConstView const view);
 
     // Frame events
     void commit_updates();
@@ -120,6 +123,7 @@ class ATestEntityRegistry : public AActor {
     TArray<int32> queued_damaged_hit_items;
     UPROPERTY()
     TArray<FGenerationIndex> queued_damage_targets;
+    TArray<int32> damage_events_to_filter;
 
     // Dead entities
     UPROPERTY()
