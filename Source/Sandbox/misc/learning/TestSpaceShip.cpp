@@ -93,6 +93,10 @@ void ATestSpaceShip::begin_play() {
     boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
     boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                            boost_effect_colour_intensity);
+
+    ship_mesh->SetCanEverAffectNavigation(false);
+    ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ship_mesh->SetGenerateOverlapEvents(false);
 }
 void ATestSpaceShip::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
