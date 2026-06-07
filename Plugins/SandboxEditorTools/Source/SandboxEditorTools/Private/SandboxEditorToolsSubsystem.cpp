@@ -4,10 +4,11 @@
 #include "Cursor.h"
 #include "SandboxEditorToolsLogCategories.h"
 
-#include "Editor.h"
-#include "Engine/World.h"
-#include "EngineUtils.h"
-#include "Selection.h"
+#include <Editor.h>
+#include <Engine/World.h>
+#include <EngineUtils.h>
+#include <ScopedTransaction.h>
+#include <Selection.h>
 
 // Setup
 void USandboxEditorToolsSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
@@ -175,7 +176,13 @@ void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const setting
         return;
     }
 
+    FScopedTransaction const transaction{
+        NSLOCTEXT("SandboxEditorTools", "PositionActors", "Position Actors")};
+
+    cursor->Modify();
+
     auto const origin{cursor->GetActorLocation()};
+    auto const rotation{cursor->GetActorRotation()};
 
     auto const use_x{!FMath::IsNearlyZero(settings.offset.X)};
     auto const use_y{!FMath::IsNearlyZero(settings.offset.Y)};
@@ -187,6 +194,7 @@ void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const setting
     if (dims == 0) {
         for (auto* actor : actors) {
             if (IsValid(actor)) {
+                actor->Modify();
                 actor->SetActorLocation(origin);
             }
         }
@@ -216,11 +224,17 @@ void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const setting
             grid.Z = remaining;
         }
 
-        auto const pos{origin + FVector{grid.X * settings.offset.X,
-                                        grid.Y * settings.offset.Y,
-                                        grid.Z * settings.offset.Z}};
+        // Cursor is the bottom-left/local origin of the layout.
+        auto const local_offset{FVector{
+            grid.X * settings.offset.X,
+            grid.Y * settings.offset.Y,
+            grid.Z * settings.offset.Z,
+        }};
+
+        auto const pos{origin + rotation.RotateVector(local_offset)};
 
         if (IsValid(actors[i])) {
+            actors[i]->Modify();
             actors[i]->SetActorLocation(pos);
         }
     }
