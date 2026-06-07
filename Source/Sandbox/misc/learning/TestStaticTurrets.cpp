@@ -10,6 +10,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/actor_utils.h>
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/uobject_utils.h>
@@ -75,6 +76,7 @@ void ATestStaticTurrets::resolve_damage_targets() {
         }
 
         view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+        check(entity_registry->is_valid_index(view.targets[i]));
     }
 }
 void ATestStaticTurrets::sync_from_registry() {
@@ -100,7 +102,7 @@ void ATestStaticTurrets::sync_from_registry() {
         }
     }
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 void ATestStaticTurrets::update_visuals() {
     // Clear old instances
@@ -225,33 +227,20 @@ void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam c
     healths.Add(actor_config->max_health);
     target_indices.AddDefaulted();
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 void ATestStaticTurrets::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
 
     auto* world{GetWorld()};
-
-    if (!world) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestStaticTurrets::register_all_proxies_in_level: world is nullptr."));
-        return;
-    }
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(world),
+    });
 
     auto const proxies{ml::get_actors<Proxy>(*world)};
-
     auto const n{proxies.Num()};
     if (n == 0) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestStaticTurrets::register_all_proxies_in_level: 0 proxies detected."));
         return;
-    } else {
-        UE_LOG(LogSandboxLearning,
-               Display,
-               TEXT("ATestStaticTurrets::register_all_proxies_in_level: Spawning %d proxies."),
-               n);
     }
 
     entity_indices = entity_registry->reserve_entities(n);
@@ -290,7 +279,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         proxy->Destroy();
     }
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 
 // Debugging
@@ -310,4 +299,26 @@ void ATestStaticTurrets::clear_runtime_state() {
                      indices_ready_to_fire,
                      target_indices,
                      healths);
+}
+
+// Checks
+void ATestStaticTurrets::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_indices),
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(teams),
+        SANDBOX_NAMED_NUM(laser_cooldowns),
+        SANDBOX_NAMED_NUM(healths),
+        SANDBOX_NAMED_NUM(target_indices),
+    });
+
+    auto const n{get_num_instances()};
+    auto const n_ismc{instances->GetNumInstances()};
+    if (n_ismc < n) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestStaticTurrets::validate_array_sizes %d entities, %d ISMC instances"),
+               n,
+               n_ismc);
+    }
 }
