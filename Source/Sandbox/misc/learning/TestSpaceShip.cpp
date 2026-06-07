@@ -195,7 +195,7 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
     auto const delta_pos{self.velocity * dt};
 
     self.SetActorLocation(cur_pos + delta_pos, true);
-    self.on_speed_changed.Execute(new_speed);
+    self.on_speed_changed.ExecuteIfBound(new_speed);
 }
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return get_velocity();
@@ -281,7 +281,7 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
     self.thrust_energy += dt * self.thrust_change_rate;
     self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
     if (starting_thrust_energy != self.thrust_energy) {
-        self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
+        self.on_energy_changed.ExecuteIfBound(self.thrust_energy / self.thrust_energy_max);
     }
 }
 // Movement - rolling
@@ -479,11 +479,11 @@ void ATestSpaceShip::fire_bomb() {
 }
 void ATestSpaceShip::add_bomb() {
     bombs++;
-    on_bombs_changed.Execute(bombs);
+    on_bombs_changed.ExecuteIfBound(bombs);
 }
 void ATestSpaceShip::subtract_bomb() {
     bombs--;
-    on_bombs_changed.Execute(bombs);
+    on_bombs_changed.ExecuteIfBound(bombs);
 }
 // Combat - homing laser
 void ATestSpaceShip::fire_homing_laser() {
@@ -569,7 +569,7 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
 // Points
 void ATestSpaceShip::add_points(int32 x) {
     points += x;
-    on_points_changed.Execute(points);
+    on_points_changed.ExecuteIfBound(points);
 }
 void ATestSpaceShip::record_kills(int32 kills) {
     add_points(kills);
@@ -601,7 +601,7 @@ void ATestSpaceShip::add_gold_ring() {
         upgrade_max_health();
         gold_rings_collected = 0;
     }
-    on_gold_rings_changed.Execute(gold_rings_collected);
+    on_gold_rings_changed.ExecuteIfBound(gold_rings_collected);
 }
 auto ATestSpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     auto const original_health{health->get_health()};
@@ -627,7 +627,7 @@ auto ATestSpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
 // Lives
 void ATestSpaceShip::add_life() {
     lives += 1;
-    on_lives_changed.Execute(lives);
+    on_lives_changed.ExecuteIfBound(lives);
 }
 
 // Debugging
