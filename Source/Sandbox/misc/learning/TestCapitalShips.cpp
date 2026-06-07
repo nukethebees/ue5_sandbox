@@ -40,13 +40,13 @@ void ATestCapitalShips::begin_play() {
 
     auto* world{GetWorld()};
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(ship_config),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(fighters_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(world),
     });
 
-    debug_drawer = ship_config->debug_drawer;
+    debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = world;
 
     configure_ismc();
@@ -224,7 +224,7 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
     spawn_timers.AddZeroed(n_to_add);
     teams.Append(new_teams);
 
-    ml::append_n(healths, ship_config->max_health, n_to_add);
+    ml::append_n(healths, actor_config->max_health, n_to_add);
 
     check(array_sizes_consistent());
 }
@@ -235,14 +235,14 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     auto const n_ships{get_num_instances()};
     ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_ships, EAllowShrinking::No);
-    auto const cooldown{ship_config->spawn_delay};
+    auto const cooldown{actor_config->spawn_delay};
 
     auto const ships_ready_to_spawn_fighters_indices{
         ml::collect_indices_less_equal(TConstArrayView<float>{spawn_timers.remaining_times},
                                        0.f,
                                        ships_ready_to_spawn_fighters_buffer)};
 
-    auto const relative_transforms{ship_config->fighter_spawn_slots_relative_transforms};
+    auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
     TArray<FTransform> new_transforms;
     TArray<ETestTeam> new_teams;
@@ -265,11 +265,11 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
 // Visuals
 void ATestCapitalShips::configure_ismc() {
-    instances->SetStaticMesh(ship_config->mesh);
+    instances->SetStaticMesh(actor_config->mesh);
     instances->SetCanEverAffectNavigation(false);
 
     // Collision
-    ml::apply_collision_settings(*instances, ship_config->collision_settings);
+    ml::apply_collision_settings(*instances, actor_config->collision_settings);
 }
 
 // Misc
@@ -318,9 +318,9 @@ void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
 
     auto const n{get_num_instances()};
-    auto const collision_extent{ship_config->collision_box_extent};
+    auto const collision_extent{actor_config->collision_box_extent};
 
-    auto const text_offset{ship_config->debug_status_text_offset};
+    auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {

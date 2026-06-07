@@ -44,11 +44,11 @@ void ATestLasers::begin_play() {
     TRACE_COUNTER_SET(SandboxTestLaserRemovedCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
-    if (!laser_config->is_ready()) {
-        UE_LOG(LogSandboxLearning, Fatal, TEXT("laser_config is not ready."));
+    if (!actor_config->is_ready()) {
+        UE_LOG(LogSandboxLearning, Fatal, TEXT("actor_config is not ready."));
     }
 
     preallocate_instances();
@@ -120,7 +120,7 @@ void ATestLasers::process_pending_spawns() {
     lifetimes.AddZeroed(n_to_add);
     velocities.AddUninitialized(n_to_add);
 
-    auto const laser_speed{laser_config->speed};
+    auto const laser_speed{actor_config->speed};
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const index{offset + i};
 
@@ -159,7 +159,7 @@ void ATestLasers::handle_collisions(float const dt) {
     FCollisionQueryParams params{};
     params.AddIgnoredActor(this);
 
-    auto const damage{laser_config->damage};
+    auto const damage{actor_config->damage};
 
     ml::reset_arrays(hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
@@ -200,8 +200,8 @@ void ATestLasers::handle_collisions(float const dt) {
 
 // Visuals
 void ATestLasers::configure_ismc() {
-    instances->SetStaticMesh(laser_config->mesh);
-    instances->SetMaterial(0, laser_config->material);
+    instances->SetStaticMesh(actor_config->mesh);
+    instances->SetMaterial(0, actor_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     instances->SetGenerateOverlapEvents(false);
@@ -212,7 +212,7 @@ void ATestLasers::configure_ismc() {
     instances->SetAffectDistanceFieldLighting(false);
     instances->SetReceivesDecals(false);
 
-    instances->SetCullDistances(laser_config->min_cull_distance, laser_config->max_cull_distance);
+    instances->SetCullDistances(actor_config->min_cull_distance, actor_config->max_cull_distance);
 }
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
@@ -250,7 +250,7 @@ void ATestLasers::collect_old_instance_indices() {
         return;
     }
 
-    auto const laser_lifetime{laser_config->lifetime};
+    auto const laser_lifetime{actor_config->lifetime};
 
     to_remove.Reset();
 

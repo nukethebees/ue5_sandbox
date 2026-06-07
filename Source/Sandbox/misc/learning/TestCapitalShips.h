@@ -68,7 +68,7 @@ class ATestCapitalShips : public AActor {
 
     // Config / context
     UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
+    TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 

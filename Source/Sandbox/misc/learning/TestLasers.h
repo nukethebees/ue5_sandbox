@@ -30,7 +30,7 @@ class ATestLasers : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-    auto get_config() const -> UTestLasersConfig const* { return laser_config; }
+    auto get_config() const -> UTestLasersConfig const* { return actor_config; }
 
     // Spawning / configuration
     void spawn_lasers(TConstArrayView<FTransform> const transforms);
@@ -61,7 +61,7 @@ class ATestLasers : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<UTestLasersConfig> laser_config{nullptr};
+    TObjectPtr<UTestLasersConfig> actor_config{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 n_preallocated_instances{5000};
 
