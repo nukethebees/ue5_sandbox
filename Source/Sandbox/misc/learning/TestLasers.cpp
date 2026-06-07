@@ -9,6 +9,7 @@
 #include "Sandbox/misc/learning/TestTubeSpinners.h"
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/generation_index.h>
@@ -57,7 +58,7 @@ void ATestLasers::begin_play() {
     debug_drawer.world = GetWorld();
 #endif
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
@@ -129,8 +130,7 @@ void ATestLasers::process_pending_spawns() {
         velocities[index] = transforms[index].GetRotation().Vector() * laser_speed;
     }
 
-    check(array_sizes_consistent());
-
+    validate_array_sizes();
     transforms_to_add.Reset();
 }
 
@@ -296,5 +296,24 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
         ml::remove_at_swap_many_sorted_desc(indices, transforms, velocities, lifetimes);
     }
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
+}
+
+// Checks
+void ATestLasers::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(transforms),
+        SANDBOX_NAMED_NUM(velocities),
+        SANDBOX_NAMED_NUM(lifetimes),
+    });
+
+    auto const n{get_num_instances()};
+    auto const n_ismc{instances->GetNumInstances()};
+    if (n_ismc < n) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestLasers::validate_array_sizes %d entities, %d ISMC instances"),
+               n,
+               n_ismc);
+    }
 }

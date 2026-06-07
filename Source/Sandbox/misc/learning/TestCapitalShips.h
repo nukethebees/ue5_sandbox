@@ -49,6 +49,9 @@ class ATestCapitalShips : public AActor {
     // Setters
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+
+    // Checks
+    void validate_array_sizes() const;
   protected:
     // Ship spawning
     void register_all_proxies_in_level();

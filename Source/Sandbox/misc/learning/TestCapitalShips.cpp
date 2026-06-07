@@ -8,6 +8,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/actor_utils.h>
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/collision_settings.h>
@@ -94,7 +95,7 @@ void ATestCapitalShips::sync_from_registry() {
         }
     }
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 void ATestCapitalShips::update_visuals() {
     // Clear old instances
@@ -217,7 +218,7 @@ void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_
 
     ml::append_n(healths, actor_config->max_health, n_to_add);
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 
 // Fighter spawning
@@ -334,5 +335,27 @@ void ATestCapitalShips::draw_debugging_shapes() const {
             TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, healths[i])};
         auto const msg_location{ship_loc + text_offset};
         drawer.draw_string(msg_location, msg);
+    }
+}
+
+// Checks
+void ATestCapitalShips::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_indices),
+        SANDBOX_NAMED_NUM(transforms),
+        SANDBOX_NAMED_NUM(spawn_timers),
+        SANDBOX_NAMED_NUM(teams),
+        SANDBOX_NAMED_NUM(healths),
+        SANDBOX_NAMED_NUM(target_entity_indices),
+    });
+
+    auto const n{get_num_instances()};
+    auto const n_ismc{instances->GetNumInstances()};
+    if (n_ismc < n) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestCapitalShips::validate_array_sizes %d entities, %d ISMC instances"),
+               n,
+               n_ismc);
     }
 }

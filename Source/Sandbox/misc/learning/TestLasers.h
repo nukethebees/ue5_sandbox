@@ -36,6 +36,9 @@ class ATestLasers : public AActor {
 
     // Spawning / configuration
     void spawn_lasers(TConstArrayView<FTransform> const transforms);
+
+    // Checks
+    void validate_array_sizes() const;
   protected:
     // Spawning / Configuration
     void preallocate_instances();

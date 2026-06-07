@@ -7,6 +7,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/actor_utils.h>
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
@@ -130,7 +131,7 @@ void ATestTubeSpinners::spawn_instances(TConstArrayView<FTransform> const new_tr
         yaws[index] = transform.GetRotation().Rotator().Yaw;
     }
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 
 // Movement
@@ -206,4 +207,24 @@ void ATestTubeSpinners::fire_lasers() {
 bool ATestTubeSpinners::array_sizes_consistent() const {
     return ml::all_num_equal(
         *instances, transforms, yaws, laser_cooldowns, next_fire_point_indices);
+}
+
+// Checks
+void ATestTubeSpinners::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(transforms),
+        SANDBOX_NAMED_NUM(yaws),
+        SANDBOX_NAMED_NUM(laser_cooldowns),
+        SANDBOX_NAMED_NUM(next_fire_point_indices),
+    });
+
+    auto const n{get_num_instances()};
+    auto const n_ismc{instances->GetNumInstances()};
+    if (n_ismc < n) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestTubeSpinners::validate_array_sizes %d entities, %d ISMC instances"),
+               n,
+               n_ismc);
+    }
 }
