@@ -26,13 +26,6 @@ void ASpaceShipGameMode::InitGame(FString const& MapName,
 void ASpaceShipGameMode::BeginPlay() {
     Super::BeginPlay();
 
-    using PlayerPawn = ASpaceShip;
-
-    TRY_INIT_PTR(pc, UGameplayStatics::GetPlayerController(this, 0));
-    TRY_INIT_PTR(player_actor, UGameplayStatics::GetActorOfClass(this, PlayerPawn::StaticClass()));
-    TRY_INIT_PTR(player_pawn, Cast<PlayerPawn>(player_actor));
-    pc->Possess(player_pawn);
-
     TRY_INIT_PTR(world, GetWorld());
 
     int pps{0};
@@ -43,7 +36,4 @@ void ASpaceShipGameMode::BeginPlay() {
     if (pps != 1) {
         UE_LOG(LogSandboxGameMode, Warning, TEXT("%d post processing volumes found."), pps);
     }
-}
-void ASpaceShipGameMode::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
 }

@@ -10,19 +10,21 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 
-#include "SpaceShipController.generated.h"
+#include "TestSpaceShipController.generated.h"
 
 class UShipHudWidget;
-class ASpaceShip;
+class ATestSpaceShip;
 
 UCLASS()
-class ASpaceShipController
+class ATestSpaceShipController
     : public APlayerController
     , public ml::EnhancedInputMixin
     , public ml::LogMsgMixin<"SpaceShipController", LogSandboxController> {
     GENERATED_BODY()
+  public:
+    using Pawn = ATestSpaceShip;
 
-    ASpaceShipController();
+    ATestSpaceShipController();
 
     void SetupInputComponent() override;
     void Tick(float dt) override;
@@ -32,8 +34,8 @@ class ASpaceShipController
     void OnUnPossess() override;
 
     void initialise_hud();
-    void update_crosshair_positions(ASpaceShip const& ship);
-    void update_lock_on_widget(ASpaceShip const& ship);
+    void update_crosshair_positions(ATestSpaceShip const& ship);
+    void update_lock_on_widget(ATestSpaceShip const& ship);
 
 #if WITH_EDITOR
     auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
@@ -76,27 +78,27 @@ class ASpaceShipController
     void on_lock_on_acquired(AActor* target);
 
     // UI
-    UPROPERTY(EditAnywhere, Category = "UI")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TSubclassOf<UShipHudWidget> hud_widget_class;
-    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     UShipHudWidget* hud_widget{nullptr};
-    UPROPERTY(EditAnywhere, Category = "UI")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     float near_cursor_distance{3000.f};
-    UPROPERTY(EditAnywhere, Category = "UI")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     float far_cursor_distance{6000.f};
 
-    UPROPERTY(EditAnywhere, Category = "Input")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FBarrelRollInputData barrel_roll_input{};
 
-    UPROPERTY(EditAnywhere, Category = "Input")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
     float seconds_since_last_log{0};
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
     float seconds_per_log{0.75f};
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
     bool debug_crosshair{false};
 #endif
 };

@@ -1,0 +1,586 @@
+#include "Sandbox/misc/learning/TestSpaceShip.h"
+
+#include "Sandbox/combat/weapons/ShipBomb.h"
+#include "Sandbox/combat/weapons/ShipHomingLaser.h"
+#include "Sandbox/combat/weapons/ShipLaser.h"
+#include "Sandbox/combat/weapons/ShipLaserConfig.h"
+#include "Sandbox/health/ShipHealthComponent.h"
+#include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/utilities/actor_utils.h"
+
+#include <SandboxCore/uobject_utils.h>
+
+#include <Camera/CameraComponent.h>
+#include <Components/BoxComponent.h>
+#include <Components/SceneComponent.h>
+#include <Components/StaticMeshComponent.h>
+#include <DrawDebugHelpers.h>
+#include <Engine/HitResult.h>
+#include <Engine/World.h>
+#include <NiagaraComponent.h>
+#include <TimerManager.h>
+
+#include "Sandbox/utilities/macros/null_checks.hpp"
+
+ATestSpaceShip::ATestSpaceShip()
+    : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
+    , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
+    , collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
+    , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
+    , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))}
+    , health(CreateDefaultSubobject<UShipHealthComponent>(TEXT("health"))) {
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
+
+    camera->SetupAttachment(RootComponent);
+    ship_mesh->SetupAttachment(RootComponent);
+    collision_box->SetupAttachment(RootComponent);
+
+    boost_pulse->SetupAttachment(RootComponent);
+    boost_pulse->bAutoActivate = false;
+    boost_pulse->SetAutoDestroy(false);
+
+    boost_engine_effect->SetupAttachment(ship_mesh);
+    boost_engine_effect->bAutoActivate = false;
+    boost_engine_effect->SetAutoDestroy(false);
+
+    // Don't tick until the controller wires up the delegates
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
+}
+void ATestSpaceShip::Tick(float dt) {
+    Super::Tick(dt);
+
+    update_boost_brake(dt);
+    update_actor_rotation(dt);
+    update_visual_orientation(dt);
+    integrate_velocity(dt);
+    update_laser_firing(dt);
+
+    roll_state.time_remaining -= dt;
+    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
+
+#if WITH_EDITOR
+    tick_debugs(dt);
+#endif
+}
+void ATestSpaceShip::BeginPlay() {
+    Super::BeginPlay();
+
+    velocity = GetActorForwardVector() * cruise_speed;
+    thrust_energy = thrust_energy_max;
+
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
+        SANDBOX_NAMED_UOBJECT_PTR(laser_class),
+        SANDBOX_NAMED_UOBJECT_PTR(laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(hyper_laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
+    });
+
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
+    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
+
+    set_laser_mode(ELaserFiringMode::idle);
+
+#if WITH_EDITOR
+    static constexpr float sample_rate_hz{60.0f};
+    static constexpr float sample_interval{1.0f / sample_rate_hz};
+    static constexpr float sample_window{5.0f};
+    speed_sample_index = 0;
+    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
+    speed_samples.Reserve(speed_sample_max);
+    for (int32 i{0}; i < speed_sample_max; ++i) {
+        speed_samples.Add(FVector2d::ZeroVector);
+    }
+
+    GetWorldTimerManager().SetTimer(
+        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
+#endif
+
+    thrust_change_rate = thrust_change_rate;
+    velocity = FVector3d::ZeroVector;
+    set(EBoostBrakeState::None);
+
+    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+
+    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                           boost_effect_colour_intensity);
+}
+
+#if WITH_EDITOR
+void ATestSpaceShip::tick_debugs(float dt) {
+    if (debug_forward_socket_direction) {
+        auto const middle{get_middle_socket(*ship_mesh)};
+
+        FVector const start = middle.GetLocation();
+        FVector const forward = middle.GetUnitAxis(EAxis::X);
+        constexpr float len{5000.f};
+        FVector const end = start + forward * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
+    if (debug_forward_direction) {
+        auto const fwd{GetActorForwardVector()};
+        auto const start{GetActorLocation()};
+        constexpr float len{5000.f};
+        FVector const end = start + fwd * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
+
+    if (can_log()) {
+        seconds_since_last_log = 0.f;
+    }
+    seconds_since_last_log += dt;
+}
+#endif
+
+void ATestSpaceShip::set(EBoostBrakeState s) {
+    auto const cur_speed{get_speed()};
+    FSpeedResponse response{speed_responses.accelerating_to_cruise};
+
+    switch (s) {
+        case EBoostBrakeState::Boost: {
+            target_speed = boost_speed;
+            thrust_change_rate = -(1.f / boost_depletion_time);
+            response = speed_responses.boost;
+            boost_pulse->Activate();
+
+            boost_engine_effect->Activate();
+            break;
+        }
+        case EBoostBrakeState::Brake: {
+            target_speed = brake_speed;
+            thrust_change_rate = -(1.f / brake_depletion_time);
+            response = speed_responses.brake;
+            break;
+        }
+        default:
+            UE_LOG(LogSandboxActor, Error, TEXT("Unhandled state."));
+            [[fallthrough]];
+        case EBoostBrakeState::None: {
+            target_speed = cruise_speed;
+            thrust_change_rate = 1.f / thrust_recharge_time;
+            if (target_speed < cur_speed) {
+                response = speed_responses.slowing_to_cruise;
+            }
+
+            boost_engine_effect->Deactivate();
+
+            break;
+        }
+    }
+
+    flight_model.set_new_impulse(response, cur_speed, target_speed);
+    boost_brake_state = s;
+}
+void ATestSpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
+    if (laser_firing_mode != new_laser_mode) {
+        on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
+    }
+    laser_firing_mode = new_laser_mode;
+}
+
+void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
+    auto const starting_thrust_energy{self.thrust_energy};
+
+    if (starting_thrust_energy <= 0.f) {
+        self.set(EBoostBrakeState::None);
+    }
+
+    self.thrust_energy += dt * self.thrust_change_rate;
+    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
+    if (starting_thrust_energy != self.thrust_energy) {
+        self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
+    }
+}
+void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
+    auto const drot{self.rotation_speed * dt};
+    if (self.rotation_input == FVector2D::ZeroVector) {
+
+        auto const rot{self.GetActorRotation()};
+        FRotator const delta_rotation{
+            self.tick_clamp(-rot.Pitch, dt, drot), 0.0f, self.tick_clamp(-rot.Roll, dt, drot)};
+
+        self.AddActorLocalRotation(delta_rotation);
+    } else {
+        auto const drot_pitch{drot};
+
+        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
+        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
+        auto const yaw_speed{self.rotation_speed * abs_yaw_strength};
+        auto const drot_yaw{yaw_speed * dt};
+
+        auto const d_pitch{self.rotation_input.Y * drot_pitch};
+        auto const d_yaw{self.rotation_input.X * drot_yaw};
+        auto const d_roll{0.f};
+
+        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
+        self.AddActorLocalRotation(delta_rotation);
+    }
+}
+void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float dt) {
+    auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
+
+    auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
+    auto const new_pitch{
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
+
+    auto const target_yaw{self.rotation_input.X * self.yaw_angle_max};
+    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
+
+    auto const turn_intensity{self.rotation_input.X};
+    auto const turn_target{turn_intensity * self.turn_bank_angle_max};
+    auto const turn_speed{turn_intensity * self.turn_bank_speed};
+
+    auto const manual_bank_intensity{self.manual_bank_direction};
+    auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
+    auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
+
+    double new_roll{current_rotation.Roll};
+    if (self.roll_state.is_rolling()) {
+        auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
+        new_roll = current_rotation.Roll + delta_roll;
+    } else {
+        auto const roll_speed{
+            FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
+        auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
+        auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
+        new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
+    }
+
+    self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
+}
+void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
+    auto const fwd{self.GetActorForwardVector()};
+    auto const new_speed{self.flight_model.update_y(dt)};
+    self.velocity = fwd * new_speed;
+
+    auto const cur_pos{self.GetActorLocation()};
+    auto const delta_pos{self.velocity * dt};
+
+    self.SetActorLocation(cur_pos + delta_pos, true);
+    self.on_speed_changed.Execute(new_speed);
+}
+void ATestSpaceShip::update_laser_firing(float dt) {
+    auto const cooldown_finished{laser_shot_cooldown <= 0.f};
+
+    switch (laser_firing_mode) {
+        case ELaserFiringMode::idle: {
+            break;
+        }
+        case ELaserFiringMode::burst: {
+            if (cooldown_finished) {
+                fire_laser();
+                laser_shot_cooldown = laser_firing_period + dt;
+
+                if (lasers_fired_this_burst >= lasers_per_burst) {
+                    laser_shot_cooldown = laser_lock_on_transition_delay + dt;
+                    set_laser_mode(ELaserFiringMode::lock_on_transition);
+                }
+            }
+            break;
+        }
+        case ELaserFiringMode::lock_on_transition: {
+            if (cooldown_finished) {
+                set_laser_mode(ELaserFiringMode::lock_on_searching);
+            }
+        }
+        case ELaserFiringMode::lock_on_searching: {
+            TRY_INIT_PTR(world, GetWorld());
+            auto const middle{get_middle_socket()};
+
+            auto const start{middle.GetLocation()};
+            auto const fwd{middle.Rotator().Vector()};
+            auto const distance{laser_lock_on_distance};
+            auto const end{start + fwd * distance};
+
+            FHitResult hit;
+            FCollisionQueryParams query_params;
+            FCollisionObjectQueryParams obj_query_params;
+            obj_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+
+            if (world->LineTraceSingleByObjectType(
+                    hit, start, end, obj_query_params, query_params)) {
+
+                auto const actor_hit{hit.GetActor()};
+                if (!actor_hit) {
+                    break;
+                }
+#if WITH_EDITOR
+                auto const actor_name{ml::get_best_display_name(*actor_hit)};
+                UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
+#endif
+                set_lock_on_target(hit.GetActor());
+                set_laser_mode(ELaserFiringMode::lock_on_acquired);
+            }
+
+#if WITH_EDITOR
+            if (debug_lock_on) {
+                DrawDebugLine(world, start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+                DrawDebugSphere(world, end, debug_lock_on_sphere_radius, 8, FColor::Orange);
+            }
+#endif
+
+            break;
+        }
+        case ELaserFiringMode::lock_on_acquired: {
+            break;
+        }
+    }
+
+    laser_shot_cooldown -= dt;
+}
+
+void ATestSpaceShip::turn(FVector2D direction) {
+#if WITH_EDITOR
+    if (can_log()) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+    }
+#endif
+
+    rotation_input = direction;
+}
+void ATestSpaceShip::start_boost() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        set(EBoostBrakeState::Boost);
+    }
+}
+void ATestSpaceShip::stop_boost() {
+    if (boost_brake_state == EBoostBrakeState::Boost) {
+        set(EBoostBrakeState::None);
+    }
+}
+void ATestSpaceShip::start_brake() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        set(EBoostBrakeState::Brake);
+    }
+}
+void ATestSpaceShip::stop_brake() {
+    if (boost_brake_state == EBoostBrakeState::Brake) {
+        set(EBoostBrakeState::None);
+    }
+}
+void ATestSpaceShip::roll(float direction) {
+#if WITH_EDITOR
+    if (can_log()) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
+    }
+#endif
+    manual_bank_direction = clamp(direction, 1.f);
+}
+void ATestSpaceShip::barrel_roll(float direction) {
+    if (!roll_state.can_roll()) {
+        return;
+    }
+
+    roll_state.time_remaining = roll_state.roll_duration;
+    roll_state.direction = FMath::Sign(direction);
+
+#if WITH_EDITOR
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
+#endif
+}
+
+void ATestSpaceShip::start_fire_laser() {
+    set_laser_mode(ELaserFiringMode::burst);
+    lasers_fired_this_burst = 0;
+    laser_shot_cooldown = 0.f;
+    set_lock_on_target(nullptr);
+}
+void ATestSpaceShip::stop_fire_laser() {
+    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+        fire_homing_laser();
+        set_lock_on_target(nullptr);
+    }
+
+    set_laser_mode(ELaserFiringMode::idle);
+}
+void ATestSpaceShip::fire_laser() {
+    auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
+    auto const right{ship_mesh->GetSocketTransform(Sockets::right, RTS_World)};
+    auto const middle{get_middle_socket()};
+
+    switch (laser_mode) {
+        case EShipLaserMode::Single: {
+            fire_laser_from(*laser_config, middle);
+            break;
+        }
+        case EShipLaserMode::Double: {
+            fire_laser_from(*laser_config, left);
+            fire_laser_from(*laser_config, right);
+            break;
+        }
+        case EShipLaserMode::Hyper: {
+            fire_laser_from(*hyper_laser_config, left);
+            fire_laser_from(*hyper_laser_config, right);
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxActor, Warning, TEXT("Unhandled fire_laser branch."));
+            break;
+        }
+    }
+
+    lasers_fired_this_burst++;
+    laser_shot_cooldown = laser_firing_period;
+}
+void ATestSpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config,
+                                     FTransform fire_point) {
+    TRY_INIT_PTR(world, GetWorld());
+
+    UE_LOG(LogSandboxActor,
+           Verbose,
+           TEXT("Spawning laser at %s"),
+           *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(laser,
+                 world->SpawnActorDeferred<AShipLaser>(laser_class, fire_point, nullptr, this));
+    laser->set_config(fire_laser_config);
+    laser->set_speed(laser_speed);
+    laser->FinishSpawning(fire_point);
+}
+void ATestSpaceShip::fire_homing_laser() {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
+
+    if (!IsValid(lock_on_target)) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
+        return;
+    }
+    TRY_INIT_PTR(world, GetWorld());
+    auto const fire_point{get_middle_socket()};
+
+    UE_LOG(LogSandboxActor,
+           Verbose,
+           TEXT("Spawning laser at %s"),
+           *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(
+        laser,
+        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
+    laser->set_speed(laser_speed);
+    laser->set_target(lock_on_target);
+    laser->FinishSpawning(fire_point);
+}
+void ATestSpaceShip::fire_bomb() {
+    if (auto ab{active_bomb.Pin()}) {
+        if (!ab->has_detonated()) {
+            active_bomb.Get()->detonate();
+            return;
+        }
+    }
+
+    if (bombs <= 0) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("No bombs left."));
+        return;
+    }
+
+    TRY_INIT_PTR(world, GetWorld());
+    auto const fire_point{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
+
+    UE_LOG(
+        LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
+
+    active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
+    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+        active_bomb->set_target(this->lock_on_target);
+        set_lock_on_target(nullptr);
+        set_laser_mode(ELaserFiringMode::idle);
+    }
+    active_bomb->FinishSpawning(fire_point);
+
+    subtract_bomb();
+}
+void ATestSpaceShip::set_lock_on_target(AActor* target) {
+    lock_on_target = target;
+    on_lock_on_acquired.ExecuteIfBound(lock_on_target);
+}
+void ATestSpaceShip::upgrade_laser() {
+    if (laser_mode == EShipLaserMode::Single) {
+        laser_mode = EShipLaserMode::Double;
+    } else if (laser_mode == EShipLaserMode::Double) {
+        laser_mode = EShipLaserMode::Hyper;
+    }
+}
+void ATestSpaceShip::add_bomb() {
+    bombs++;
+    on_bombs_changed.Execute(bombs);
+}
+void ATestSpaceShip::subtract_bomb() {
+    bombs--;
+    on_bombs_changed.Execute(bombs);
+}
+
+void ATestSpaceShip::add_health(int32 added_health) {
+    health->add_health(added_health);
+}
+void ATestSpaceShip::upgrade_max_health() {
+    health->upgrade_max_health();
+}
+void ATestSpaceShip::add_gold_ring() {
+    gold_rings_collected++;
+    if (gold_rings_collected >= 3) {
+        upgrade_max_health();
+        gold_rings_collected = 0;
+    }
+    on_gold_rings_changed.Execute(gold_rings_collected);
+}
+void ATestSpaceShip::add_points(int32 x) {
+    points += x;
+    on_points_changed.Execute(points);
+}
+void ATestSpaceShip::record_kills(int32 kills) {
+    add_points(kills);
+}
+auto ATestSpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
+    return health->on_health_changed;
+}
+
+auto ATestSpaceShip::get_middle_socket() const -> FTransform {
+    check(ship_mesh);
+    return get_middle_socket(*ship_mesh);
+}
+auto ATestSpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
+    check(m.DoesSocketExist(Sockets::middle));
+    return m.GetSocketTransform(Sockets::middle, RTS_World);
+}
+auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
+    return get_middle_socket().GetLocation();
+}
+
+auto ATestSpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
+    auto const original_health{health->get_health()};
+    EDamageResult type{EDamageResult::NoEffect};
+
+    health->apply_damage(context.damage);
+
+    if (health->is_dead()) {
+        type = EDamageResult::ActorKilled;
+    } else if (health->get_health() < original_health) {
+        type = EDamageResult::Damaged;
+    } else {
+        type = EDamageResult::NoEffect;
+    }
+
+    FShipDamageResult result{type};
+    return result;
+}
+void ATestSpaceShip::add_life() {
+    lives += 1;
+    on_lives_changed.Execute(lives);
+}
+
+void ATestSpaceShip::sample_speed() {
+    speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
+                                         FMath::Clamp(velocity.Size(), 0.0, 100e3)};
+    speed_sample_index++;
+    if (speed_sample_index >= speed_sample_max) {
+        speed_sample_index = 0;
+    }
+
+    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
+                                    speed_sample_index);
+}

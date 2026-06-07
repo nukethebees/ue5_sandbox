@@ -41,8 +41,6 @@ void UMassArchetypeSubsystem::OnWorldBeginPlay(UWorld& in_world) {
     build_definitions(entity_manager);
 
     on_mass_archetype_subsystem_ready.Broadcast();
-
-    logger.log_display(TEXT("Ready."));
 }
 void UMassArchetypeSubsystem::Deinitialize() {
     Super::Deinitialize();
@@ -92,10 +90,23 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
 void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manager) {
     constexpr auto logger{NestedLogger<"build_definitions">()};
 
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(ndc_subsystem, world->GetSubsystem<UNiagaraNdcWriterSubsystem>());
-    TRY_INIT_PTR(visualization_actor, ml::get_first_actor<AMassBulletVisualizationActor>(*world));
-    TRY_INIT_PTR(data_actor, ml::get_first_actor<AMassBulletSubsystemData>(*world));
+    auto* world{GetWorld()};
+    if (!world) {
+        return;
+    }
+    auto ndc_subsystem{world->GetSubsystem<UNiagaraNdcWriterSubsystem>()};
+    if (!ndc_subsystem) {
+        return;
+    }
+
+    auto visualization_actor{ml::get_first_actor<AMassBulletVisualizationActor>(*world)};
+    if (!visualization_actor) {
+        return;
+    }
+    auto data_actor{ml::get_first_actor<AMassBulletSubsystemData>(*world)};
+    if (!data_actor) {
+        return;
+    }
 
     RETURN_IF_TRUE(data_actor->bullet_types.IsEmpty());
 

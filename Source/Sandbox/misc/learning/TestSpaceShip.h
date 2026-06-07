@@ -16,7 +16,7 @@
 
 #include <span>
 
-#include "SpaceShip.generated.h"
+#include "TestSpaceShip.generated.h"
 
 class UCameraComponent;
 class UStaticMeshComponent;
@@ -31,7 +31,7 @@ class AShipBomb;
 class UShipHealthComponent;
 
 UCLASS()
-class ASpaceShip
+class ATestSpaceShip
     : public APawn
     , public IDamageableShip {
     GENERATED_BODY()
@@ -42,7 +42,7 @@ class ASpaceShip
         inline static FName const middle{"Middle"};
     };
 
-    ASpaceShip();
+    ATestSpaceShip();
 
     void Tick(float dt) override;
 
@@ -108,10 +108,10 @@ class ASpaceShip
 
     void set(EBoostBrakeState s);
     void set_laser_mode(ELaserFiringMode laser_mode);
-    void update_boost_brake(this ASpaceShip& self, float dt);
-    void update_actor_rotation(this ASpaceShip& self, float dt);
-    void update_visual_orientation(this ASpaceShip& self, float dt);
-    void integrate_velocity(this ASpaceShip& self, float dt);
+    void update_boost_brake(this ATestSpaceShip& self, float dt);
+    void update_actor_rotation(this ATestSpaceShip& self, float dt);
+    void update_visual_orientation(this ATestSpaceShip& self, float dt);
+    void integrate_velocity(this ATestSpaceShip& self, float dt);
     void update_laser_firing(float dt);
 
     void fire_laser();
@@ -182,7 +182,7 @@ class ASpaceShip
     float brake_depletion_time{6.f};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
-    float rotation_speed{0.5f};
+    float rotation_speed{60.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
 
