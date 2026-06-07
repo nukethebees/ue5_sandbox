@@ -2,6 +2,7 @@
 
 #include <Sandbox/combat/weapons/ShipProjectileType.h>
 #include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
 #include <Sandbox/players/BarrelRoll.h>
@@ -62,6 +63,7 @@ class ATestSpaceShip
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
+    // Movement
     void turn(FVector2D direction);
     void start_boost();
     void stop_boost();
@@ -72,25 +74,36 @@ class ATestSpaceShip
     void roll(float direction);
     void barrel_roll(float direction);
 
+    // Energy
+    auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
+
+    // Combat
+    auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
+    // Combat - laser
     void start_fire_laser();
     void stop_fire_laser();
-    void fire_bomb();
     void upgrade_laser();
+    // Combat - bomb
+    void fire_bomb();
     void add_bomb();
     auto get_bombs() const { return bombs; }
-    auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
 
+    // Health
     void upgrade_max_health();
     void add_health(int32 added_health);
     auto get_health_info() const { return health->get_health_info(); }
     void add_gold_ring();
     auto get_gold_rings() const { return gold_rings_collected; }
-
-    auto get_points() const { return points; }
-    void record_kills(int32 kills);
+    // Lives
     auto get_lives() const { return lives; }
     void add_life();
-    auto energy_is_full() const { return thrust_energy == thrust_energy_max; }
+    // IDamageableShip
+    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
+    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
+
+    // Points
+    auto get_points() const { return points; }
+    void record_kills(int32 kills);
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
@@ -99,13 +112,11 @@ class ATestSpaceShip
         return FMath::Clamp(value, -abs_max_value, abs_max_value);
     }
 
+    // Mesh
     auto get_ship_forward_vector() const -> FVector;
     auto get_middle_socket() const -> FTransform;
 
-    // IDamageableShip
-    auto apply_damage(ShipDamageContext context) -> FShipDamageResult override;
-    auto get_on_killed_delegate() -> FOnKilled& override { return on_killed; }
-
+    // Delegates
     FOnShipSpeedChanged on_speed_changed;
     auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
     FOnShipEnergyChanged on_energy_changed;
@@ -125,36 +136,43 @@ class ATestSpaceShip
 
     // Movement
     auto GetVelocity() const -> FVector override;
-
     void set(EBoostBrakeState s);
-    void set_laser_mode(ELaserFiringMode laser_mode);
     void update_boost_brake(this ATestSpaceShip& self, float dt);
-    void update_actor_rotation(this ATestSpaceShip& self, float dt);
-    void update_visual_orientation(this ATestSpaceShip& self, float dt);
     void integrate_velocity(this ATestSpaceShip& self, float dt);
-    void update_laser_firing(float dt);
 
+    // Combat
+    void set_lock_on_target(AActor* target);
+    // Combat - laser
+    void set_laser_mode(ELaserFiringMode laser_mode);
+    void update_laser_firing(float dt);
     void fire_laser();
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
+    // Combat - bomb
     void subtract_bomb();
+    // Combat - homing laser
     void fire_homing_laser();
 
+    // Visuals
+    void update_actor_rotation(this ATestSpaceShip& self, float dt);
+    void update_visual_orientation(this ATestSpaceShip& self, float dt);
+
+    // Scoring
     void add_points(int32 x);
 
+    // Mesh
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
-    void set_lock_on_target(AActor* target);
 
+    // Debugging
+    void draw_debug_shapes();
 #if WITH_EDITOR
-    auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
     void sample_speed();
-    void tick_debugs(float dt);
 #endif
 
     // Entity data
     TestEntityOwnerId owner_id{};
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FGenerationIndex entity_index{};
 
     // Collision
@@ -186,7 +204,7 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
-    // Speed
+    // Movement - Speed
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpaceShipFlightModel flight_model{};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
@@ -197,39 +215,40 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     float target_speed{0.f};
 
-    // Cruising
+    // Movement - Cruising
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float cruise_speed{12000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float thrust_recharge_time{7.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
-    // Boosting
+    // Movement - Boosting
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_speed{30000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_depletion_time{4.f};
-    // Braking
+    // Movement - Braking
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float brake_speed{1000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float brake_depletion_time{6.f};
 
+    // Movement - rotation
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering")
     float rotation_speed{60.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
-
+    // Movement - pitch
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_speed{3.f};
-
+    // Movement - yaw
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_speed{3.f};
-
+    // Movement - bank/roll
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float turn_bank_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
@@ -244,7 +263,7 @@ class ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FBarrelRoll roll_state{};
 
-    // Laser
+    // Combat - Laser
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpaceShip|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
@@ -274,7 +293,7 @@ class ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* hyper_laser_config;
 
-    // Bombs
+    // Combat - Bombs
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
     TSubclassOf<AShipBomb> bomb_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
@@ -295,15 +314,15 @@ class ATestSpaceShip
     UShipHealthComponent* health{nullptr};
     FOnKilled on_killed;
 
+    // Logging
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
+    FActorLoggingConfig log_config{1.f};
+
 #if WITH_EDITORONLY_DATA
     int32 speed_sample_index{0};
     int32 speed_sample_max{0};
     FTimerHandle speed_sample_timer;
     TArray<FVector2d> speed_samples;
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    float seconds_since_last_log{0};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    float seconds_per_log{0.75f};
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool debug_forward_socket_direction{false};
     UPROPERTY(EditAnywhere, Category = "Debug")

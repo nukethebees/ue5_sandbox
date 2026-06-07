@@ -109,6 +109,8 @@ void ATestSpaceShip::begin_play() {
 void ATestSpaceShip::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
 
+    log_config.tick(dt);
+
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);
@@ -117,10 +119,6 @@ void ATestSpaceShip::tick(float const dt) {
 
     roll_state.time_remaining -= dt;
     boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
-
-#if WITH_EDITOR
-    tick_debugs(dt);
-#endif
 }
 void ATestSpaceShip::update_entity_registry() {
     entity_registry->update_entities(ATestEntityRegistry::ConstView{
@@ -141,11 +139,14 @@ void ATestSpaceShip::resolve_damage_targets() {
     }
 }
 void ATestSpaceShip::sync_from_registry() {}
-void ATestSpaceShip::update_visuals() {}
-void ATestSpaceShip::end_frame() {}
+void ATestSpaceShip::update_visuals() {
+    draw_debug_shapes();
+}
+void ATestSpaceShip::end_frame() {
+    log_config.on_tick_end();
+}
 
-#if WITH_EDITOR
-void ATestSpaceShip::tick_debugs(float dt) {
+void ATestSpaceShip::draw_debug_shapes() {
     if (debug_forward_socket_direction) {
         auto const middle{get_middle_socket(*ship_mesh)};
 
@@ -155,6 +156,7 @@ void ATestSpaceShip::tick_debugs(float dt) {
         FVector const end = start + forward * len;
         DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
     }
+
     if (debug_forward_direction) {
         auto const fwd{GetActorForwardVector()};
         auto const start{GetActorLocation()};
@@ -162,13 +164,7 @@ void ATestSpaceShip::tick_debugs(float dt) {
         FVector const end = start + fwd * len;
         DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
     }
-
-    if (can_log()) {
-        seconds_since_last_log = 0.f;
-    }
-    seconds_since_last_log += dt;
 }
-#endif
 
 // Entity data
 auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
@@ -180,13 +176,6 @@ auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntity
     entity_data.alive.Add(1);
     return entity_data;
 }
-
-// Movement
-auto ATestSpaceShip::GetVelocity() const -> FVector {
-    return get_velocity();
-}
-
-// Accessors
 void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {
     owner_id = new_owner_id;
 }
@@ -194,6 +183,32 @@ auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
 }
 
+// Movement
+void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
+    auto const fwd{self.GetActorForwardVector()};
+    auto const new_speed{self.flight_model.update_y(dt)};
+    self.velocity = fwd * new_speed;
+
+    auto const cur_pos{self.GetActorLocation()};
+    auto const delta_pos{self.velocity * dt};
+
+    self.SetActorLocation(cur_pos + delta_pos, true);
+    self.on_speed_changed.Execute(new_speed);
+}
+auto ATestSpaceShip::GetVelocity() const -> FVector {
+    return get_velocity();
+}
+// Movement - turning
+void ATestSpaceShip::turn(FVector2D direction) {
+#if WITH_EDITOR
+    if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
+    }
+#endif
+
+    rotation_input = direction;
+}
+// Movement - boost/brake
 void ATestSpaceShip::set(EBoostBrakeState s) {
     auto const cur_speed{get_speed()};
     FSpeedResponse response{speed_responses.accelerating_to_cruise};
@@ -233,13 +248,27 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
     flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }
-void ATestSpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
-    if (laser_firing_mode != new_laser_mode) {
-        on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
-    }
-    laser_firing_mode = new_laser_mode;
-}
 
+void ATestSpaceShip::start_boost() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        set(EBoostBrakeState::Boost);
+    }
+}
+void ATestSpaceShip::stop_boost() {
+    if (boost_brake_state == EBoostBrakeState::Boost) {
+        set(EBoostBrakeState::None);
+    }
+}
+void ATestSpaceShip::start_brake() {
+    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+        set(EBoostBrakeState::Brake);
+    }
+}
+void ATestSpaceShip::stop_brake() {
+    if (boost_brake_state == EBoostBrakeState::Brake) {
+        set(EBoostBrakeState::None);
+    }
+}
 void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
     auto const starting_thrust_energy{self.thrust_energy};
 
@@ -253,74 +282,39 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
         self.on_energy_changed.Execute(self.thrust_energy / self.thrust_energy_max);
     }
 }
-void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
-    auto const drot{self.rotation_speed * dt};
-    if (self.rotation_input == FVector2D::ZeroVector) {
-
-        auto const rot{self.GetActorRotation()};
-        FRotator const delta_rotation{
-            self.tick_clamp(-rot.Pitch, dt, drot), 0.0f, self.tick_clamp(-rot.Roll, dt, drot)};
-
-        self.AddActorLocalRotation(delta_rotation);
-    } else {
-        auto const drot_pitch{drot};
-
-        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
-        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
-        auto const yaw_speed{self.rotation_speed * abs_yaw_strength};
-        auto const drot_yaw{yaw_speed * dt};
-
-        auto const d_pitch{self.rotation_input.Y * drot_pitch};
-        auto const d_yaw{self.rotation_input.X * drot_yaw};
-        auto const d_roll{0.f};
-
-        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
-        self.AddActorLocalRotation(delta_rotation);
+// Movement - rolling
+void ATestSpaceShip::roll(float direction) {
+#if WITH_EDITOR
+    if (log_config.can_log(EActorLoggingVerbosity::VeryVerbose)) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
     }
+#endif
+    manual_bank_direction = clamp(direction, 1.f);
 }
-void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float dt) {
-    auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
-
-    auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
-    auto const new_pitch{
-        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
-
-    auto const target_yaw{self.rotation_input.X * self.yaw_angle_max};
-    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
-
-    auto const turn_intensity{self.rotation_input.X};
-    auto const turn_target{turn_intensity * self.turn_bank_angle_max};
-    auto const turn_speed{turn_intensity * self.turn_bank_speed};
-
-    auto const manual_bank_intensity{self.manual_bank_direction};
-    auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
-    auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
-
-    double new_roll{current_rotation.Roll};
-    if (self.roll_state.is_rolling()) {
-        auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
-        new_roll = current_rotation.Roll + delta_roll;
-    } else {
-        auto const roll_speed{
-            FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
-        auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
-        auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
-        new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
+void ATestSpaceShip::barrel_roll(float direction) {
+    if (!roll_state.can_roll()) {
+        return;
     }
 
-    self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
+    roll_state.time_remaining = roll_state.roll_duration;
+    roll_state.direction = FMath::Sign(direction);
+
+#if WITH_EDITOR
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
+#endif
 }
-void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
-    auto const fwd{self.GetActorForwardVector()};
-    auto const new_speed{self.flight_model.update_y(dt)};
-    self.velocity = fwd * new_speed;
 
-    auto const cur_pos{self.GetActorLocation()};
-    auto const delta_pos{self.velocity * dt};
-
-    self.SetActorLocation(cur_pos + delta_pos, true);
-    self.on_speed_changed.Execute(new_speed);
+// Combat
+void ATestSpaceShip::set_lock_on_target(AActor* target) {
+    lock_on_target = target;
+    on_lock_on_acquired.ExecuteIfBound(lock_on_target);
+}
+// Combat - laser
+void ATestSpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
+    if (laser_firing_mode != new_laser_mode) {
+        on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
+    }
+    laser_firing_mode = new_laser_mode;
 }
 void ATestSpaceShip::update_laser_firing(float dt) {
     auto const cooldown_finished{laser_shot_cooldown <= 0.f};
@@ -391,57 +385,6 @@ void ATestSpaceShip::update_laser_firing(float dt) {
 
     laser_shot_cooldown -= dt;
 }
-
-void ATestSpaceShip::turn(FVector2D direction) {
-#if WITH_EDITOR
-    if (can_log()) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
-    }
-#endif
-
-    rotation_input = direction;
-}
-void ATestSpaceShip::start_boost() {
-    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
-        set(EBoostBrakeState::Boost);
-    }
-}
-void ATestSpaceShip::stop_boost() {
-    if (boost_brake_state == EBoostBrakeState::Boost) {
-        set(EBoostBrakeState::None);
-    }
-}
-void ATestSpaceShip::start_brake() {
-    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
-        set(EBoostBrakeState::Brake);
-    }
-}
-void ATestSpaceShip::stop_brake() {
-    if (boost_brake_state == EBoostBrakeState::Brake) {
-        set(EBoostBrakeState::None);
-    }
-}
-void ATestSpaceShip::roll(float direction) {
-#if WITH_EDITOR
-    if (can_log()) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
-    }
-#endif
-    manual_bank_direction = clamp(direction, 1.f);
-}
-void ATestSpaceShip::barrel_roll(float direction) {
-    if (!roll_state.can_roll()) {
-        return;
-    }
-
-    roll_state.time_remaining = roll_state.roll_duration;
-    roll_state.direction = FMath::Sign(direction);
-
-#if WITH_EDITOR
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Barrel rolling: %.2f"), direction);
-#endif
-}
-
 void ATestSpaceShip::start_fire_laser() {
     set_laser_mode(ELaserFiringMode::burst);
     lasers_fired_this_burst = 0;
@@ -500,28 +443,14 @@ void ATestSpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config,
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
-void ATestSpaceShip::fire_homing_laser() {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
-
-    if (!IsValid(lock_on_target)) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
-        return;
+void ATestSpaceShip::upgrade_laser() {
+    if (laser_mode == EShipLaserMode::Single) {
+        laser_mode = EShipLaserMode::Double;
+    } else if (laser_mode == EShipLaserMode::Double) {
+        laser_mode = EShipLaserMode::Hyper;
     }
-    TRY_INIT_PTR(world, GetWorld());
-    auto const fire_point{get_middle_socket()};
-
-    UE_LOG(LogSandboxActor,
-           Verbose,
-           TEXT("Spawning laser at %s"),
-           *fire_point.ToHumanReadableString());
-
-    TRY_INIT_PTR(
-        laser,
-        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
-    laser->set_speed(laser_speed);
-    laser->set_target(lock_on_target);
-    laser->FinishSpawning(fire_point);
 }
+// Combat - bomb
 void ATestSpaceShip::fire_bomb() {
     if (auto ab{active_bomb.Pin()}) {
         if (!ab->has_detonated()) {
@@ -551,17 +480,6 @@ void ATestSpaceShip::fire_bomb() {
 
     subtract_bomb();
 }
-void ATestSpaceShip::set_lock_on_target(AActor* target) {
-    lock_on_target = target;
-    on_lock_on_acquired.ExecuteIfBound(lock_on_target);
-}
-void ATestSpaceShip::upgrade_laser() {
-    if (laser_mode == EShipLaserMode::Single) {
-        laser_mode = EShipLaserMode::Double;
-    } else if (laser_mode == EShipLaserMode::Double) {
-        laser_mode = EShipLaserMode::Hyper;
-    }
-}
 void ATestSpaceShip::add_bomb() {
     bombs++;
     on_bombs_changed.Execute(bombs);
@@ -570,7 +488,113 @@ void ATestSpaceShip::subtract_bomb() {
     bombs--;
     on_bombs_changed.Execute(bombs);
 }
+// Combat - homing laser
+void ATestSpaceShip::fire_homing_laser() {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
 
+    if (!IsValid(lock_on_target)) {
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
+        return;
+    }
+    TRY_INIT_PTR(world, GetWorld());
+    auto const fire_point{get_middle_socket()};
+
+    UE_LOG(LogSandboxActor,
+           Verbose,
+           TEXT("Spawning laser at %s"),
+           *fire_point.ToHumanReadableString());
+
+    TRY_INIT_PTR(
+        laser,
+        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
+    laser->set_speed(laser_speed);
+    laser->set_target(lock_on_target);
+    laser->FinishSpawning(fire_point);
+}
+
+// Visuals
+void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
+    auto const drot{self.rotation_speed * dt};
+    if (self.rotation_input == FVector2D::ZeroVector) {
+
+        auto const rot{self.GetActorRotation()};
+        FRotator const delta_rotation{
+            self.tick_clamp(-rot.Pitch, dt, drot), 0.0f, self.tick_clamp(-rot.Roll, dt, drot)};
+
+        self.AddActorLocalRotation(delta_rotation);
+    } else {
+        auto const drot_pitch{drot};
+
+        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
+        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
+        auto const yaw_speed{self.rotation_speed * abs_yaw_strength};
+        auto const drot_yaw{yaw_speed * dt};
+
+        auto const d_pitch{self.rotation_input.Y * drot_pitch};
+        auto const d_yaw{self.rotation_input.X * drot_yaw};
+        auto const d_roll{0.f};
+
+        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
+        self.AddActorLocalRotation(delta_rotation);
+    }
+}
+void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float dt) {
+    auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
+
+    auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
+    auto const new_pitch{
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
+
+    auto const target_yaw{self.rotation_input.X * self.yaw_angle_max};
+    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
+
+    auto const turn_intensity{self.rotation_input.X};
+    auto const turn_target{turn_intensity * self.turn_bank_angle_max};
+    auto const turn_speed{turn_intensity * self.turn_bank_speed};
+
+    auto const manual_bank_intensity{self.manual_bank_direction};
+    auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
+    auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
+
+    double new_roll{current_rotation.Roll};
+    if (self.roll_state.is_rolling()) {
+        auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
+        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
+        new_roll = current_rotation.Roll + delta_roll;
+    } else {
+        auto const roll_speed{
+            FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
+        auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
+        auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
+        new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
+    }
+
+    self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
+}
+
+// Points
+void ATestSpaceShip::add_points(int32 x) {
+    points += x;
+    on_points_changed.Execute(points);
+}
+void ATestSpaceShip::record_kills(int32 kills) {
+    add_points(kills);
+}
+
+// Mesh
+auto ATestSpaceShip::get_middle_socket() const -> FTransform {
+    check(ship_mesh);
+    return get_middle_socket(*ship_mesh);
+}
+auto ATestSpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
+    check(m.DoesSocketExist(Sockets::middle));
+    return m.GetSocketTransform(Sockets::middle, RTS_World);
+}
+auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
+    return get_middle_socket().GetLocation();
+}
+
+// Health
 void ATestSpaceShip::add_health(int32 added_health) {
     health->add_health(added_health);
 }
@@ -585,29 +609,6 @@ void ATestSpaceShip::add_gold_ring() {
     }
     on_gold_rings_changed.Execute(gold_rings_collected);
 }
-void ATestSpaceShip::add_points(int32 x) {
-    points += x;
-    on_points_changed.Execute(points);
-}
-void ATestSpaceShip::record_kills(int32 kills) {
-    add_points(kills);
-}
-auto ATestSpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
-    return health->on_health_changed;
-}
-
-auto ATestSpaceShip::get_middle_socket() const -> FTransform {
-    check(ship_mesh);
-    return get_middle_socket(*ship_mesh);
-}
-auto ATestSpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTransform {
-    check(m.DoesSocketExist(Sockets::middle));
-    return m.GetSocketTransform(Sockets::middle, RTS_World);
-}
-auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
-    return get_middle_socket().GetLocation();
-}
-
 auto ATestSpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     auto const original_health{health->get_health()};
     EDamageResult type{EDamageResult::NoEffect};
@@ -625,11 +626,18 @@ auto ATestSpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResul
     FShipDamageResult result{type};
     return result;
 }
+auto ATestSpaceShip::get_on_health_changed_delegate() -> FOnShipHealthChanged& {
+    return health->on_health_changed;
+}
+
+// Lives
 void ATestSpaceShip::add_life() {
     lives += 1;
     on_lives_changed.Execute(lives);
 }
 
+// Debugging
+#if WITH_EDITOR
 void ATestSpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
                                          FMath::Clamp(velocity.Size(), 0.0, 100e3)};
@@ -641,3 +649,4 @@ void ATestSpaceShip::sample_speed() {
     on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
                                     speed_sample_index);
 }
+#endif
