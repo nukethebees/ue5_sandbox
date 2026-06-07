@@ -1,7 +1,7 @@
 #include "Cursor.h"
 
-#include "Components/SceneComponent.h"
+#include "Components/ArrowComponent.h"
 
 ACursor::ACursor() {
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    RootComponent = CreateDefaultSubobject<UArrowComponent>(TEXT("Root"));
 }
