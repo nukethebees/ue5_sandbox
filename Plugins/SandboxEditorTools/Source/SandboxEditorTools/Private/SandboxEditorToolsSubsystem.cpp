@@ -169,23 +169,56 @@ void USandboxEditorToolsSubsystem::position_actors(FLayoutSettings const setting
     }
 
     auto actors{get_selected_actors()};
-
     auto const n{actors.Num()};
-    if (!n) {
+
+    if (n == 0) {
         return;
     }
 
-    auto const side{FMath::CeilToInt(FMath::Pow(static_cast<double>(n), 1.0 / 3.0))};
-
     auto const origin{cursor->GetActorLocation()};
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const x{i % side};
-        auto const y{(i / side) % side};
-        auto const z{i / (side * side)};
+    auto const use_x{!FMath::IsNearlyZero(settings.offset.X)};
+    auto const use_y{!FMath::IsNearlyZero(settings.offset.Y)};
+    auto const use_z{!FMath::IsNearlyZero(settings.offset.Z)};
 
-        auto const pos{
-            origin + FVector{x * settings.offset.X, y * settings.offset.Y, z * settings.offset.Z}};
+    auto const dims{static_cast<int32>(use_x) + static_cast<int32>(use_y) +
+                    static_cast<int32>(use_z)};
+
+    if (dims == 0) {
+        for (auto* actor : actors) {
+            if (IsValid(actor)) {
+                actor->SetActorLocation(origin);
+            }
+        }
+
+        return;
+    }
+
+    auto const side{dims == 1   ? n
+                    : dims == 2 ? FMath::CeilToInt(FMath::Sqrt(static_cast<double>(n)))
+                                : FMath::CeilToInt(FMath::Pow(static_cast<double>(n), 1.0 / 3.0))};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto remaining{i};
+        FVector grid{0.0};
+
+        if (use_x) {
+            grid.X = remaining % side;
+            remaining /= side;
+        }
+
+        if (use_y) {
+            grid.Y = remaining % side;
+            remaining /= side;
+        }
+
+        if (use_z) {
+            grid.Z = remaining;
+        }
+
+        auto const pos{origin + FVector{grid.X * settings.offset.X,
+                                        grid.Y * settings.offset.Y,
+                                        grid.Z * settings.offset.Z}};
 
         if (IsValid(actors[i])) {
             actors[i]->SetActorLocation(pos);
