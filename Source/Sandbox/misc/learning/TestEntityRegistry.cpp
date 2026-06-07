@@ -36,10 +36,14 @@ void ATestEntityRegistry::reset() {
                      free_indices);
 }
 
+// Owners
 auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Add(&actor)};
 
     return {static_cast<uint8>(index)};
+}
+auto ATestEntityRegistry::is_owner(AActor const* const actor) const -> bool {
+    return entity_owners.Contains(actor);
 }
 
 // Entity creation

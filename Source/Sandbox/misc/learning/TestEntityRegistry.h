@@ -54,6 +54,7 @@ class ATestEntityRegistry : public AActor {
 
     // Registration
     auto register_owner(AActor const& actor) -> TestEntityOwnerId;
+    auto is_owner(AActor const* const actor) const -> bool;
 
     // Entity creation
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
