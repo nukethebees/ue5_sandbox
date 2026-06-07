@@ -56,8 +56,11 @@ void ATestTubeSpinners::tick(float const dt) {
 
     laser_cooldowns.tick(dt);
     rotate_instances(dt);
-    update_ismc();
     fire_lasers();
+}
+void ATestTubeSpinners::update_entity_registry() {}
+void ATestTubeSpinners::update_visuals() {
+    update_ismc();
 }
 
 // Accessors

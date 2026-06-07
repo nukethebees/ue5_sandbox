@@ -16,7 +16,6 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
-#include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
@@ -59,7 +58,6 @@ void ATestCapitalShips::tick(float const dt) {
     spawn_timers.tick(dt);
 
     handle_fighter_spawning();
-    update_entity_registry();
 }
 void ATestCapitalShips::resolve_damage_targets() {
     auto& reg{*entity_registry};

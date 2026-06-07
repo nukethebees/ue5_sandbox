@@ -6,14 +6,16 @@
 #include "Sandbox/misc/learning/TestLasers.h"
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
-#include "Components/InstancedStaticMeshComponent.h"
-#include "Components/SceneComponent.h"
-#include "Engine/StaticMesh.h"
-#include "ProfilingDebugging/CountersTrace.h"
+#include <Components/InstancedStaticMeshComponent.h>
+#include <Components/SceneComponent.h>
+#include <Engine/StaticMesh.h>
+#include <ProfilingDebugging/CountersTrace.h>
+#include <Templates/Greater.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
@@ -41,7 +43,7 @@ void ATestCapitalShipFighters::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
-    instances->SetStaticMesh(actor_config->mesh);
+    configure_ismc();
 }
 void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
@@ -50,9 +52,66 @@ void ATestCapitalShipFighters::tick(float const dt) {
 
     move_ships(dt);
     handle_firing();
-    update_entity_registry();
+}
+void ATestCapitalShipFighters::resolve_damage_targets() {
+    auto& reg{*entity_registry};
 
+    auto const view{reg.get_damage_queue_view()};
+    auto const n{view.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (view.damaged_actors[i] != this) {
+            continue;
+        }
+
+        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+    }
+}
+void ATestCapitalShipFighters::sync_from_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
+
+    auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
+
+    local_indices_to_remove.Reset();
+    local_indices_to_remove.Reserve(dead_entities.Num());
+
+    for (auto const& dead_entity : dead_entities) {
+        auto const key{entity_indices.IndexOfByKey(dead_entity)};
+        if (key == INDEX_NONE) {
+            continue;
+        }
+        local_indices_to_remove.Add(key);
+    }
+
+    // Remove from largest index to smallest
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        entity_indices,
+                                        world_transforms,
+                                        velocities,
+                                        teams,
+                                        healths,
+                                        laser_cooldowns.remaining_times);
+
+    {
+        auto const n{get_num_instances()};
+        for (int32 i{0}; i < n; ++i) {
+            healths[i] = entity_registry->get_health(entity_indices[i]);
+        }
+    }
+
+    validate_array_sizes();
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
+}
+void ATestCapitalShipFighters::update_visuals() {
+    // Clear old instances
+    if (local_indices_to_remove.Num()) {
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    }
+
+    instances->BatchUpdateInstancesTransforms(0, world_transforms, is_world_space, true);
 }
 
 // Accessors
@@ -61,7 +120,7 @@ auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
 }
 bool ATestCapitalShipFighters::array_sizes_consistent() const {
     return ml::all_num_equal(
-        *instances, indices, world_transforms, velocities, teams, healths, laser_cooldowns);
+        *instances, entity_indices, world_transforms, velocities, teams, healths, laser_cooldowns);
 }
 
 void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -82,8 +141,15 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
         auto const delta_move{velocities[i] * dt};
         world_transforms[i].AddToTranslation(delta_move);
     }
+}
 
-    instances->BatchUpdateInstancesTransforms(0, world_transforms, is_world_space, true);
+// Visuals
+void ATestCapitalShipFighters::configure_ismc() {
+    instances->SetStaticMesh(actor_config->mesh);
+
+    instances->SetCanEverAffectNavigation(false);
+
+    instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Spawning
@@ -105,7 +171,7 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     world_transforms.Append(new_transforms);
     teams.Append(new_teams);
 
-    healths.AddUninitialized(n_new);
+    ml::append_n(healths, actor_config->health, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     velocities.AddUninitialized(n_new);
@@ -125,9 +191,9 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     }
 
     auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
-    indices.Append(new_indices);
+    entity_indices.Append(new_indices);
 
-    check(array_sizes_consistent());
+    validate_array_sizes();
 }
 
 // Combat
@@ -144,9 +210,14 @@ void ATestCapitalShipFighters::handle_firing() {
                                        indices_ready_to_fire_buffer)};
 
     TArray<FTransform> laser_transforms;
+    auto const fire_point_offset{actor_config->fire_point_offset};
 
     for (auto const i : indices_to_fire) {
-        laser_transforms.Add(world_transforms[i]);
+        auto transform{world_transforms[i]};
+        auto const forward{transform.GetUnitAxis(EAxis::X)};
+        transform.AddToTranslation(forward * fire_point_offset);
+        laser_transforms.Add(transform);
+
         laser_cooldowns.remaining_times[i] = cooldown;
     }
 
@@ -157,7 +228,8 @@ void ATestCapitalShipFighters::handle_firing() {
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset_arrays(indices,
+    ml::reset_arrays(entity_indices,
+                     local_indices_to_remove,
                      world_transforms,
                      velocities,
                      teams,
@@ -167,7 +239,7 @@ void ATestCapitalShipFighters::clear_runtime_state() {
 }
 void ATestCapitalShipFighters::update_entity_registry() {
     auto const data{get_entity_data(0, get_num_instances())};
-    ATestEntityRegistry::ConstView view{indices, data.get_const_view()};
+    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
     entity_registry->update_entities(view);
 }
 auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
@@ -186,4 +258,27 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
     }
 
     return entity_data;
+}
+
+// Checks
+void ATestCapitalShipFighters::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_indices),
+        SANDBOX_NAMED_NUM(world_transforms),
+        SANDBOX_NAMED_NUM(velocities),
+        SANDBOX_NAMED_NUM(teams),
+        SANDBOX_NAMED_NUM(healths),
+        SANDBOX_NAMED_NUM(laser_cooldowns),
+    });
+
+    auto const n{get_num_instances()};
+    auto const n_ismc{instances->GetNumInstances()};
+    if (n_ismc < n) {
+        UE_LOG(
+            LogSandbox,
+            Fatal,
+            TEXT("ATestCapitalShipFighters::validate_array_sizes %d entities, %d ISMC instances"),
+            n,
+            n_ismc);
+    }
 }

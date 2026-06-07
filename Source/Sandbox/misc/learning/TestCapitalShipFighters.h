@@ -30,6 +30,10 @@ class ATestCapitalShipFighters : public AActor {
     void clear_runtime_state();
     void begin_play();
     void tick(float const dt);
+    void update_entity_registry();
+    void resolve_damage_targets();
+    void sync_from_registry();
+    void update_visuals();
 
     void spawn_instances(TConstArrayView<FTransform> const new_transforms,
                          TConstArrayView<ETestTeam> const new_teams);
@@ -40,6 +44,9 @@ class ATestCapitalShipFighters : public AActor {
 
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+
+    // Checks
+    void validate_array_sizes() const;
   protected:
     // Movement
     void move_ships(float const dt);
@@ -47,7 +54,10 @@ class ATestCapitalShipFighters : public AActor {
     // Combat
     void handle_firing();
 
-    void update_entity_registry();
+    // Visuals
+    void configure_ismc();
+
+    // Entity data
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;
 
@@ -58,12 +68,15 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
 
-    // Runtime data
+    // Entity data
+    TestEntityOwnerId owner_id{};
+
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     UPROPERTY()
-    TArray<FGenerationIndex> indices;
-    TestEntityOwnerId owner_id{};
+    TArray<FGenerationIndex> entity_indices;
+    UPROPERTY()
+    TArray<int32> local_indices_to_remove;
 
     // Movement
     UPROPERTY()

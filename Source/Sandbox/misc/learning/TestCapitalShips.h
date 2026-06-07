@@ -34,6 +34,7 @@ class ATestCapitalShips : public AActor {
     void clear_runtime_state();
     void begin_play();
     void tick(float const dt);
+    void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
@@ -60,9 +61,6 @@ class ATestCapitalShips : public AActor {
 
     // Visuals
     void configure_ismc();
-
-    // Misc
-    void update_entity_registry();
 
     // Debugging
     bool array_sizes_consistent() const;

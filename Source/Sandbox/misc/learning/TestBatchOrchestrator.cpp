@@ -93,18 +93,31 @@ void ATestBatchOrchestrator::tick(float const dt) {
     // Projectiles must resolve after everything else
     lasers->tick(dt);
 
+    // Send updates to the registry
+    capital_ships->update_entity_registry();
+    capital_ship_fighters->update_entity_registry();
+    turrets->update_entity_registry();
+    spinners->update_entity_registry();
+
     // Before processing damage events
-    // Have the actors read the hit data and generate explicit entity handles
+    // Read damage data and generate explicit entity handles
     capital_ships->resolve_damage_targets();
+    capital_ship_fighters->resolve_damage_targets();
+    turrets->resolve_damage_targets();
 
     // Resolve events such as damage
     entity_registry->commit_updates();
 
     // Apply changes such as damage from the registry
     capital_ships->sync_from_registry();
+    capital_ship_fighters->sync_from_registry();
+    turrets->sync_from_registry();
 
     // Update visual state
     capital_ships->update_visuals();
+    capital_ship_fighters->update_visuals();
+    turrets->update_visuals();
+    spinners->update_visuals();
 
     entity_registry->end_frame();
 }

@@ -18,8 +18,8 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
-#include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
+#include <Templates/Greater.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStaticTurretCount"));
 
@@ -44,7 +44,7 @@ void ATestStaticTurrets::begin_play() {
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        {actor_config->mesh, TEXT("ISMC Static Mesh")},
+        {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
@@ -64,6 +64,62 @@ void ATestStaticTurrets::tick(float const dt) {
 
     log_config.on_tick_end();
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
+}
+void ATestStaticTurrets::update_entity_registry() {}
+void ATestStaticTurrets::resolve_damage_targets() {
+    auto& reg{*entity_registry};
+
+    auto const view{reg.get_damage_queue_view()};
+    auto const n{view.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (view.damaged_actors[i] != this) {
+            continue;
+        }
+
+        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+    }
+}
+void ATestStaticTurrets::sync_from_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
+
+    local_indices_to_remove.Reset();
+
+    auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
+    for (auto const& dead_entity : dead_entities) {
+        auto const key{entity_indices.IndexOfByKey(dead_entity)};
+        if (key == INDEX_NONE) {
+            continue;
+        }
+        local_indices_to_remove.Add(key);
+    }
+
+    // Remove from largest index to smallest
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        entity_indices,
+                                        locations,
+                                        teams,
+                                        laser_cooldowns.remaining_times,
+                                        healths,
+                                        target_indices);
+
+    {
+        auto const n{get_num_instances()};
+        for (int32 i{0}; i < n; ++i) {
+            healths[i] = entity_registry->get_health(entity_indices[i]);
+        }
+    }
+
+    check(array_sizes_consistent());
+}
+void ATestStaticTurrets::update_visuals() {
+    // Clear old instances
+    if (local_indices_to_remove.Num()) {
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    }
 }
 
 // Visuals
@@ -207,7 +263,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
                n);
     }
 
-    indices = entity_registry->reserve_entities(n);
+    entity_indices = entity_registry->reserve_entities(n);
 
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
@@ -239,7 +295,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     entity_data.healths = healths;
     entity_data.teams = teams;
 
-    ATestEntityRegistry::ConstView const update_view{indices, entity_data.get_const_view()};
+    ATestEntityRegistry::ConstView const update_view{entity_indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
 
     for (auto* proxy : proxies) {
@@ -252,12 +308,18 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 // Debugging
 bool ATestStaticTurrets::array_sizes_consistent() const {
     return ml::all_num_equal(
-        *instances, indices, locations, teams, laser_cooldowns, healths, target_indices);
+        *instances, entity_indices, locations, teams, laser_cooldowns, healths, target_indices);
 }
 
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(
-        indices, locations, teams, laser_cooldowns, indices_ready_to_fire, target_indices, healths);
+    ml::reset_arrays(entity_indices,
+                     local_indices_to_remove,
+                     locations,
+                     teams,
+                     laser_cooldowns,
+                     indices_ready_to_fire,
+                     target_indices,
+                     healths);
 }

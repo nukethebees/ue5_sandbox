@@ -32,6 +32,10 @@ class ATestStaticTurrets : public AActor {
     void clear_runtime_state();
     void begin_play();
     void tick(float const dt);
+    void update_entity_registry();
+    void resolve_damage_targets();
+    void sync_from_registry();
+    void update_visuals();
 
     void spawn_instance(FTransform const& transform, ETestTeam const team);
 
@@ -59,13 +63,17 @@ class ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
+    // Entity Data
+    TestEntityOwnerId owner_id{};
+
+    UPROPERTY()
+    TArray<FGenerationIndex> entity_indices{};
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-
-    // Data
     UPROPERTY()
-    TArray<FGenerationIndex> indices{};
-    TestEntityOwnerId owner_id{};
+    TArray<int32> local_indices_to_remove;
+
+    // Location
     UPROPERTY()
     TArray<FVector> locations{};
 
