@@ -61,6 +61,12 @@ template <SupportsReserveTraits Array>
 auto reserve(Array& array, int32 count) -> void {
     ReserveTraits<Array>::reserve(array, count);
 }
+
+template <SupportsAddUninitialisedTraits Array>
+auto add_uninitialised(Array& array, int32 count) -> void {
+    AddUninitialisedTraits<Array>::add_uninitialised(array, count);
+}
+
 template <typename T>
 void fill(TArrayView<T> values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());

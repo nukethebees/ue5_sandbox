@@ -76,4 +76,24 @@ template <typename T>
 struct ReserveTraits<T> {
     static auto reserve(T& value, int32 count) -> void { value.reserve(count); }
 };
+
+// AddUninitialized
+template <typename T>
+struct AddUninitialisedTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { t.AddUninitialized(0) } -> std::convertible_to<int32>;
+    }
+struct AddUninitialisedTraits<T> {
+    static auto add_uninitialised(T& value, int32 count) -> void { value.AddUninitialized(count); }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        { t.add_uninitialized(0) } -> std::convertible_to<void>;
+    }
+struct AddUninitialisedTraits<T> {
+    static auto add_uninitialised(T& value, int32 count) -> void { value.add_uninitialized(count); }
+};
 }

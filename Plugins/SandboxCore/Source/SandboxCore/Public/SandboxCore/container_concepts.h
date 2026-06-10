@@ -30,4 +30,13 @@ template <typename T>
 concept SupportsReserveTraits = requires(T& value, int32 count) {
     { ReserveTraits<T>::reserve(value, count) } -> std::same_as<void>;
 };
+
+template <typename... Ts>
+concept AllSupportReserveTraits = (SupportsReserveTraits<Ts> && ...);
+
+// add_uninitialized
+template <typename T>
+concept SupportsAddUninitialisedTraits = requires(T& value, int32 count) {
+    { AddUninitialisedTraits<T>::add_uninitialised(value, count) } -> std::same_as<void>;
+};
 }
