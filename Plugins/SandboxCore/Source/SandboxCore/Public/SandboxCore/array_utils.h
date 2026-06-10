@@ -24,7 +24,7 @@ auto num(T const& value) -> int32 {
 template <typename... Arrays>
     requires ml::AllSupportNumTraits<Arrays...>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
-    return ((arrays.Num() == count) && ...);
+    return ((num(arrays) == count) && ...);
 }
 
 // Use other to guarantee two arrays
