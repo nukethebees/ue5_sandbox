@@ -56,4 +56,24 @@ template <typename T>
 struct ResetTraits<T> {
     static auto reset(T& value) -> void { return value.reset(); }
 };
+
+// Reserve
+template <typename T>
+struct ReserveTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { t.Reserve(0) } -> std::convertible_to<void>;
+    }
+struct ReserveTraits<T> {
+    static auto reserve(T& value, int32 count) -> void { value.Reserve(count); }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        { t.reserve(0) } -> std::convertible_to<void>;
+    }
+struct ReserveTraits<T> {
+    static auto reserve(T& value, int32 count) -> void { value.reserve(count); }
+};
 }

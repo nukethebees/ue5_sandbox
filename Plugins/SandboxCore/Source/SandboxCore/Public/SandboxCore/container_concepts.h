@@ -24,4 +24,10 @@ concept SupportsResetTraits = requires(T& value) {
 
 template <typename... Ts>
 concept AllSupportResetTraits = (SupportsResetTraits<Ts> && ...);
+
+// reserve
+template <typename T>
+concept SupportsReserveTraits = requires(T& value, int32 count) {
+    { ReserveTraits<T>::reserve(value, count) } -> std::same_as<void>;
+};
 }

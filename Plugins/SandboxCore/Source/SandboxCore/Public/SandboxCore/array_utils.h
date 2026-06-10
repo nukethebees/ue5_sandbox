@@ -57,6 +57,10 @@ auto reset_arrays(Arrays&... arrays) -> void {
     return (ResetTraits<Arrays>::reset(arrays), ...);
 }
 
+template <SupportsReserveTraits Array>
+auto reserve(Array& array, int32 count) -> void {
+    ReserveTraits<Array>::reserve(array, count);
+}
 template <typename T>
 void fill(TArrayView<T> values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());
