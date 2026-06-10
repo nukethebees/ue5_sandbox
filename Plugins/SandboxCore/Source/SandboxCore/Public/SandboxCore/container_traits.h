@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Containers/AllowShrinking.h"
 #include "HAL/Platform.h"
 
 #include <concepts>
