@@ -39,4 +39,11 @@ template <typename T>
 concept SupportsAddUninitialisedTraits = requires(T& value, int32 count) {
     { AddUninitialisedTraits<T>::add_uninitialised(value, count) } -> std::same_as<void>;
 };
+
+// remove_at_swap
+template <typename T>
+concept SupportsRemoveAtSwapTraits =
+    requires(T& value, int32 index, int32 count, EAllowShrinking as) {
+        { RemoveAtSwapTraits<T>::remove_at_swap(value, index, count, as) } -> std::same_as<void>;
+    };
 }

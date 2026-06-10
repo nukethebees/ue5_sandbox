@@ -96,4 +96,31 @@ template <typename T>
 struct AddUninitialisedTraits<T> {
     static auto add_uninitialised(T& value, int32 count) -> void { value.add_uninitialized(count); }
 };
+
+// RemoveAtSwap
+template <typename T>
+struct RemoveAtSwapTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { t.RemoveAtSwap(0, 0, EAllowShrinking::No) } -> std::convertible_to<void>;
+    }
+struct RemoveAtSwapTraits<T> {
+    static auto remove_at_swap(T& value, int32 index, int32 count, EAllowShrinking as) -> void {
+        value.RemoveAtSwap(index, count, as);
+    }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        {
+            t.apply_arrays([](auto & ... foo) {})
+        } -> std::convertible_to<void>;
+    }
+struct RemoveAtSwapTraits<T> {
+    static auto remove_at_swap(T& value, int32 index, int32 count, EAllowShrinking as) -> void {
+        value.apply_arrays(
+            [=](auto&... arrays) -> void { (arrays.RemoveAtSwap(index, count, as), ...); });
+    }
+};
 }

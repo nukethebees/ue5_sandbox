@@ -47,7 +47,7 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 
     for (int32 i{0}; i < n; ++i) {
         auto const index{indices[i]};
-        ((arrays.RemoveAtSwap(index, 1, EAllowShrinking::No)), ...);
+        ((RemoveAtSwapTraits<TArrays>::remove_at_swap(arrays, index, 1, EAllowShrinking::No)), ...);
     }
 }
 
