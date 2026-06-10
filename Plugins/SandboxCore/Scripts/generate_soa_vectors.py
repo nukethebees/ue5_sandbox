@@ -66,6 +66,16 @@ def default_functions() -> list[FnSpec]:
             args=["size_type const count"],
             pass_args=["count"],
         ),
+        FnSpec(
+            name="remove_at_swap",
+            array_fn="RemoveAtSwap",
+            args=[
+                "size_type const index",
+                "size_type const count",
+                "EAllowShrinking const allow_shrinking",
+            ],
+            pass_args=["index", "count", "allow_shrinking"],
+        ),
     ]
 
 
@@ -110,10 +120,41 @@ def generate_view(layout: LayoutSpec) -> str:
             "    {",
             f"        return {layout.components[0]}.Num();",
             "    }",
+            "",
+            *generate_view_slice_functions(layout),
         ]
     )
     lines.append("};")
     return "\n".join(lines)
+
+
+def generate_view_slice_functions(layout: LayoutSpec) -> list[str]:
+    return [
+        "    auto slice(size_type const offset, size_type const count) const -> "
+        f"{view_name(layout)}",
+        "    {",
+        "        return "
+        f"{view_name(layout)}{{"
+        f"{join_args([f'{component}.Slice(offset, count)' for component in layout.components])}"
+        "};",
+        "    }",
+        "",
+        f"    auto left(size_type const count) const -> {view_name(layout)}",
+        "    {",
+        "        return "
+        f"{view_name(layout)}{{"
+        f"{join_args([f'{component}.Left(count)' for component in layout.components])}"
+        "};",
+        "    }",
+        "",
+        f"    auto right(size_type const count) const -> {view_name(layout)}",
+        "    {",
+        "        return "
+        f"{view_name(layout)}{{"
+        f"{join_args([f'{component}.Right(count)' for component in layout.components])}"
+        "};",
+        "    }",
+    ]
 
 
 def generate_apply_arrays(layout: LayoutSpec) -> list[str]:

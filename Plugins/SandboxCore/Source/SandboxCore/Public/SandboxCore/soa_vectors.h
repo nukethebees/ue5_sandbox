@@ -33,6 +33,21 @@ struct TVectors2View
     {
         return xs.Num();
     }
+
+    auto slice(size_type const offset, size_type const count) const -> TVectors2View
+    {
+        return TVectors2View{xs.Slice(offset, count), ys.Slice(offset, count)};
+    }
+
+    auto left(size_type const count) const -> TVectors2View
+    {
+        return TVectors2View{xs.Left(count), ys.Left(count)};
+    }
+
+    auto right(size_type const count) const -> TVectors2View
+    {
+        return TVectors2View{xs.Right(count), ys.Right(count)};
+    }
 };
 template <typename T>
 struct TVectors3View
@@ -58,6 +73,21 @@ struct TVectors3View
     auto num() const -> size_type
     {
         return xs.Num();
+    }
+
+    auto slice(size_type const offset, size_type const count) const -> TVectors3View
+    {
+        return TVectors3View{xs.Slice(offset, count), ys.Slice(offset, count), zs.Slice(offset, count)};
+    }
+
+    auto left(size_type const count) const -> TVectors3View
+    {
+        return TVectors3View{xs.Left(count), ys.Left(count), zs.Left(count)};
+    }
+
+    auto right(size_type const count) const -> TVectors3View
+    {
+        return TVectors3View{xs.Right(count), ys.Right(count), zs.Right(count)};
     }
 };
 
@@ -142,6 +172,12 @@ struct FVectors2f
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
     }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+    }
 };
 
 USTRUCT()
@@ -224,6 +260,12 @@ struct FVectors2d
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
+    }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
     }
 };
 
@@ -308,6 +350,12 @@ struct FVectors2i32
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
     }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+    }
 };
 
 USTRUCT()
@@ -390,6 +438,12 @@ struct FVectors2u32
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
+    }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
     }
 };
 
@@ -481,6 +535,13 @@ struct FVectors3f
         ys.AddUninitialized(count);
         zs.AddUninitialized(count);
     }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
+    }
 };
 
 USTRUCT()
@@ -570,6 +631,13 @@ struct FVectors3d
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
         zs.AddUninitialized(count);
+    }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
     }
 };
 
@@ -661,6 +729,13 @@ struct FVectors3i32
         ys.AddUninitialized(count);
         zs.AddUninitialized(count);
     }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
+    }
 };
 
 USTRUCT()
@@ -750,6 +825,13 @@ struct FVectors3u32
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
         zs.AddUninitialized(count);
+    }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
     }
 };
 

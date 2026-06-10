@@ -34,6 +34,21 @@ struct TRotatorsView
     {
         return pitches.Num();
     }
+
+    auto slice(size_type const offset, size_type const count) const -> TRotatorsView
+    {
+        return TRotatorsView{pitches.Slice(offset, count), yaws.Slice(offset, count), rolls.Slice(offset, count)};
+    }
+
+    auto left(size_type const count) const -> TRotatorsView
+    {
+        return TRotatorsView{pitches.Left(count), yaws.Left(count), rolls.Left(count)};
+    }
+
+    auto right(size_type const count) const -> TRotatorsView
+    {
+        return TRotatorsView{pitches.Right(count), yaws.Right(count), rolls.Right(count)};
+    }
 };
 
 USTRUCT()
@@ -124,6 +139,13 @@ struct FRotatorsf
         yaws.AddUninitialized(count);
         rolls.AddUninitialized(count);
     }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        pitches.RemoveAtSwap(index, count, allow_shrinking);
+        yaws.RemoveAtSwap(index, count, allow_shrinking);
+        rolls.RemoveAtSwap(index, count, allow_shrinking);
+    }
 };
 
 USTRUCT()
@@ -213,6 +235,13 @@ struct FRotatorsd
         pitches.AddUninitialized(count);
         yaws.AddUninitialized(count);
         rolls.AddUninitialized(count);
+    }
+
+    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        pitches.RemoveAtSwap(index, count, allow_shrinking);
+        yaws.RemoveAtSwap(index, count, allow_shrinking);
+        rolls.RemoveAtSwap(index, count, allow_shrinking);
     }
 };
 
