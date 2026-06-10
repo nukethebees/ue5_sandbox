@@ -113,14 +113,11 @@ struct RemoveAtSwapTraits<T> {
 
 template <typename T>
     requires requires(T& t) {
-        {
-            t.apply_arrays([](auto & ... foo) {})
-        } -> std::convertible_to<void>;
+        { t.remove_at_swap(0, 0, EAllowShrinking::No) } -> std::convertible_to<void>;
     }
 struct RemoveAtSwapTraits<T> {
     static auto remove_at_swap(T& value, int32 index, int32 count, EAllowShrinking as) -> void {
-        value.apply_arrays(
-            [=](auto&... arrays) -> void { (arrays.RemoveAtSwap(index, count, as), ...); });
+        value.remove_at_swap(index, count, as);
     }
 };
 }
