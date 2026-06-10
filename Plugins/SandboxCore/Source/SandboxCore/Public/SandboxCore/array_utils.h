@@ -16,20 +16,20 @@ void fill(T* values, T const value, int32 const count) {
 }
 
 namespace ml {
-template <SupportsNumTraits T>
+template <SupportsNum T>
 auto num(T const& value) -> int32 {
     return NumTraits<T>::num(value);
 }
 
 template <typename... Arrays>
-    requires ml::AllSupportNumTraits<Arrays...>
+    requires ml::AllSupportNum<Arrays...>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((num(arrays) == count) && ...);
 }
 
 // Use other to guarantee two arrays
 template <typename Array, typename Other, typename... Rest>
-    requires ml::AllSupportNumTraits<Array, Other, Rest...>
+    requires ml::AllSupportNum<Array, Other, Rest...>
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
     return all_num_equal_to(ml::num(array), other, rest...);
 }
@@ -52,17 +52,17 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 }
 
 template <typename... Arrays>
-    requires ml::AllSupportResetTraits<Arrays...>
+    requires ml::AllSupportReset<Arrays...>
 auto reset(Arrays&... arrays) -> void {
     return (ResetTraits<Arrays>::reset(arrays), ...);
 }
 
-template <SupportsReserveTraits Array>
+template <SupportsReserve Array>
 auto reserve(Array& array, int32 count) -> void {
     ReserveTraits<Array>::reserve(array, count);
 }
 
-template <SupportsAddUninitialisedTraits Array>
+template <SupportsAddUninitialised Array>
 auto add_uninitialised(Array& array, int32 count) -> void {
     AddUninitialisedTraits<Array>::add_uninitialised(array, count);
 }
