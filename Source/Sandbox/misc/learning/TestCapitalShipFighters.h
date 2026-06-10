@@ -83,7 +83,7 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY()
     TArray<FTransform> world_transforms;
     UPROPERTY()
-    TArray<FVector> velocities;
+    FVectors3f velocities;
 
     // Team
     UPROPERTY()

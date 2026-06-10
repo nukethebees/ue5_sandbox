@@ -132,8 +132,11 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
     auto const speed{actor_config->speed};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const delta_move{velocities[i] * dt};
-        world_transforms[i].AddToTranslation(delta_move);
+        auto const dx{velocities.xs[i] * dt};
+        auto const dy{velocities.ys[i] * dt};
+        auto const dz{velocities.zs[i] * dt};
+
+        world_transforms[i].AddToTranslation(FVector{dx, dy, dz});
     }
 }
 
@@ -168,17 +171,25 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     ml::append_n(healths, actor_config->health, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
-    velocities.AddUninitialized(n_new);
+    ml::add_uninitialised(velocities, n_new);
 
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n_new);
+
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
 
-        velocities[index] = actor_config->speed * world_transforms[index].GetRotation().Vector();
+        auto const vec{actor_config->speed * world_transforms[index].GetRotation().Vector()};
+        velocities.xs[index] = vec.X;
+        velocities.ys[index] = vec.Y;
+        velocities.zs[index] = vec.Z;
 
         entity_data.locations[i] = world_transforms[i].GetLocation();
-        entity_data.velocities[i] = velocities[index];
+
+        entity_data.velocities.xs[i] = velocities.xs[i];
+        entity_data.velocities.ys[i] = velocities.ys[i];
+        entity_data.velocities.zs[i] = velocities.zs[i];
+
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;
@@ -240,7 +251,11 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
         auto const index{offset + i};
 
         entity_data.locations[i] = world_transforms[i].GetLocation();
-        entity_data.velocities[i] = velocities[index];
+
+        entity_data.velocities.xs[i] = velocities.xs[i];
+        entity_data.velocities.ys[i] = velocities.ys[i];
+        entity_data.velocities.zs[i] = velocities.zs[i];
+
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;

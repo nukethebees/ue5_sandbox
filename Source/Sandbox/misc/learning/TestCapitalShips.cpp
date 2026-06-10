@@ -285,7 +285,9 @@ void ATestCapitalShips::update_entity_registry() {
     FTestEntityRegistryEntityData update_data;
     update_data.add_uninitialised(n);
 
-    ml::fill(update_data.velocities, FVector::ZeroVector);
+    ml::fill(update_data.velocities.xs, 0.f);
+    ml::fill(update_data.velocities.ys, 0.f);
+    ml::fill(update_data.velocities.zs, 0.f);
 
     update_data.healths = healths;
     update_data.teams = teams;

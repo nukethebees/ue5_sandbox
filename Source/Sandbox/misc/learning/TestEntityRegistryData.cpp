@@ -9,7 +9,7 @@ auto FTestEntityRegistryEntityData::get_num() const -> int32 {
 auto FTestEntityRegistryEntityData::get_view() -> View {
     return {
         locations,
-        velocities,
+        velocities.get_view(),
         healths,
         teams,
         alive,
@@ -18,7 +18,7 @@ auto FTestEntityRegistryEntityData::get_view() -> View {
 auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
     return {
         locations,
-        velocities,
+        velocities.get_view(),
         healths,
         teams,
         alive,
@@ -26,7 +26,7 @@ auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
 }
 
 void FTestEntityRegistryEntityData::add_uninitialised(int32 const count) {
-    ml::invoke_on_all([count](auto& a) { a.AddUninitialized(count); },
+    ml::invoke_on_all([count](auto& a) { ml::add_uninitialised(a, count); },
                       locations,
                       velocities,
                       healths,
@@ -40,20 +40,25 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     auto slice{view.right(count)};
 
     ml::fill(slice.locations, FVector::ZeroVector);
-    ml::fill(slice.velocities, FVector::ZeroVector);
+    ml::fill(slice.velocities.xs, 0.f);
+    ml::fill(slice.velocities.ys, 0.f);
+    ml::fill(slice.velocities.zs, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::neutral);
     ml::fill(slice.alive, uint8{0u});
 }
 void FTestEntityRegistryEntityData::add(ConstView const view) {
     locations.Append(view.locations);
-    velocities.Append(view.velocities);
+
+    velocities.xs.Append(view.velocities.xs);
+    velocities.ys.Append(view.velocities.ys);
+    velocities.zs.Append(view.velocities.zs);
+
     healths.Append(view.healths);
     teams.Append(view.teams);
     alive.Append(view.alive);
 }
 
 void FTestEntityRegistryEntityData::reset() {
-    ml::invoke_on_all(
-        [](auto& array) { array.Reset(); }, locations, velocities, healths, teams, alive);
+    ml::reset_arrays(locations, velocities, healths, teams, alive);
 }

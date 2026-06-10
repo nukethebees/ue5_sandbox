@@ -59,7 +59,9 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
         entity_data.locations[index] = FVector::ZeroVector;
-        entity_data.velocities[index] = FVector::ZeroVector;
+        entity_data.velocities.xs[index] = 0.f;
+        entity_data.velocities.ys[index] = 0.f;
+        entity_data.velocities.zs[index] = 0.f;
         entity_data.healths[index] = 0;
         entity_data.teams[index] = ETestTeam::neutral;
         entity_data.alive[index] = false;
@@ -96,7 +98,11 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
         entity_data.locations[index] = view.locations[i];
-        entity_data.velocities[index] = view.velocities[i];
+
+        entity_data.velocities.xs[index] = view.velocities.xs[i];
+        entity_data.velocities.ys[index] = view.velocities.ys[i];
+        entity_data.velocities.zs[index] = view.velocities.zs[i];
+
         entity_data.healths[index] = view.healths[i];
         entity_data.teams[index] = view.teams[i];
         entity_data.alive[index] = view.alive[i];
@@ -206,7 +212,11 @@ void ATestEntityRegistry::commit_entity_updates() {
         auto const entity_index{generation_index.index};
 
         entity_data.locations[entity_index] = queued_entity_data.locations[i];
-        entity_data.velocities[entity_index] = queued_entity_data.velocities[i];
+
+        entity_data.velocities.xs[entity_index] = queued_entity_data.velocities.xs[i];
+        entity_data.velocities.ys[entity_index] = queued_entity_data.velocities.ys[i];
+        entity_data.velocities.zs[entity_index] = queued_entity_data.velocities.zs[i];
+
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];
@@ -267,7 +277,16 @@ auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FV
 auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector {
     auto const is_valid{is_valid_index(index)};
     check(is_valid);
-    return is_valid ? entity_data.velocities[index.index] : FVector::ZeroVector;
+
+    if (!is_valid) {
+        return FVector::ZeroVector;
+    }
+
+    return {
+        entity_data.velocities.xs[index.index],
+        entity_data.velocities.ys[index.index],
+        entity_data.velocities.zs[index.index],
+    };
 }
 auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
     auto const is_valid{is_valid_index(index)};

@@ -2,7 +2,8 @@
 
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
-#include "SandboxCore/generation_index.h"
+#include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -76,7 +77,7 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TArray<FTransform> transforms;
     UPROPERTY()
-    TArray<FVector> velocities;
+    FVectors3f velocities;
 
     UPROPERTY()
     TArray<float> lifetimes;

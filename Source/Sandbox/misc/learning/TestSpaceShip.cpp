@@ -171,10 +171,15 @@ void ATestSpaceShip::draw_debug_shapes() {
 auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
     FTestEntityRegistryEntityData entity_data;
     entity_data.locations.Add(GetActorLocation());
-    entity_data.velocities.Add(velocity);
+
+    entity_data.velocities.xs.Add(velocity.X);
+    entity_data.velocities.ys.Add(velocity.Y);
+    entity_data.velocities.zs.Add(velocity.Z);
+
     entity_data.healths.Add(health.health);
     entity_data.teams.Add(ETestTeam::neutral);
     entity_data.alive.Add(1);
+
     return entity_data;
 }
 void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {

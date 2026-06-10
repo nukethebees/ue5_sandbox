@@ -2,11 +2,15 @@
 
 #include "TestTeam.h"
 
+#include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/soa_view_utils.h>
+
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
 #include <HAL/Platform.h>
 
 #include <array>
+#include <type_traits>
 
 #include "TestEntityRegistryData.generated.h"
 
@@ -14,12 +18,17 @@ USTRUCT()
 struct FTestEntityRegistryEntityData {
     GENERATED_BODY()
 
-    template <template <typename> typename TView>
+    template <bool is_const>
     struct TTestEntityDataView {
-        using ThisClass = TTestEntityDataView<TView>;
+        template <typename T>
+        using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
+        template <typename T>
+        using TSoaView = std::conditional_t<is_const, TVectors3View<T const>, TVectors3View<T>>;
+
+        using ThisClass = TTestEntityDataView<is_const>;
 
         TView<FVector> locations;
-        TView<FVector> velocities;
+        TSoaView<float> velocities;
         TView<int32> healths;
         TView<ETestTeam> teams;
         TView<uint8> alive;
@@ -28,7 +37,7 @@ struct FTestEntityRegistryEntityData {
         auto get_slice(int32 const offset, int32 const count) const {
             return ThisClass{
                 locations.Slice(offset, count),
-                velocities.Slice(offset, count),
+                ml::view::slice(velocities, offset, count),
                 healths.Slice(offset, count),
                 teams.Slice(offset, count),
                 alive.Slice(offset, count),
@@ -37,7 +46,7 @@ struct FTestEntityRegistryEntityData {
         auto right(int32 const count) const {
             return ThisClass{
                 locations.Right(count),
-                velocities.Right(count),
+                ml::view::right(velocities, count),
                 healths.Right(count),
                 teams.Right(count),
                 alive.Right(count),
@@ -45,8 +54,8 @@ struct FTestEntityRegistryEntityData {
         }
     };
 
-    using View = TTestEntityDataView<TArrayView>;
-    using ConstView = TTestEntityDataView<TConstArrayView>;
+    using View = TTestEntityDataView<false>;
+    using ConstView = TTestEntityDataView<true>;
 
     FTestEntityRegistryEntityData() = default;
 
@@ -63,7 +72,7 @@ struct FTestEntityRegistryEntityData {
     UPROPERTY()
     TArray<FVector> locations;
     UPROPERTY()
-    TArray<FVector> velocities;
+    FVectors3f velocities;
     UPROPERTY()
     TArray<int32> healths;
     UPROPERTY()

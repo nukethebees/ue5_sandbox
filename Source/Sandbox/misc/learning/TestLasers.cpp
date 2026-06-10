@@ -97,7 +97,7 @@ void ATestLasers::spawn_lasers(TConstArrayView<FTransform> const new_transforms)
 }
 void ATestLasers::preallocate_instances() {
     instances->PreAllocateInstancesMemory(n_preallocated_instances);
-    ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { array.Reserve(n); },
+    ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { ml::reserve(array, n); },
                       transforms,
                       velocities,
                       lifetimes);
@@ -121,13 +121,17 @@ void ATestLasers::process_pending_spawns() {
 
     transforms.Append(transforms_to_add);
     lifetimes.AddZeroed(n_to_add);
-    velocities.AddUninitialized(n_to_add);
+    ml::add_uninitialised(velocities, n_to_add);
 
     auto const laser_speed{actor_config->speed};
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const index{offset + i};
 
-        velocities[index] = transforms[index].GetRotation().Vector() * laser_speed;
+        auto const velocity{transforms[index].GetRotation().Vector() * laser_speed};
+
+        velocities.xs[index] = velocity.X;
+        velocities.ys[index] = velocity.Y;
+        velocities.zs[index] = velocity.Z;
     }
 
     validate_array_sizes();
@@ -141,7 +145,11 @@ void ATestLasers::update_locations(float const dt) {
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
-        transforms[i].AddToTranslation(dt * velocities[i]);
+        auto const dx{dt * velocities.xs[i]};
+        auto const dy{dt * velocities.ys[i]};
+        auto const dz{dt * velocities.zs[i]};
+
+        transforms[i].AddToTranslation(FVector{dx, dy, dz});
     }
 }
 void ATestLasers::handle_collisions(float const dt) {
@@ -167,7 +175,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};
-        auto const end{start + dt * velocities[i]};
+        auto const end{start + dt * FVector{velocities.xs[i], velocities.ys[i], velocities.zs[i]}};
 
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};

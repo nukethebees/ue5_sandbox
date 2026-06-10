@@ -262,7 +262,10 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         locations[i] = transform.GetLocation();
         teams[i] = proxies[i]->get_team();
 
-        entity_data.velocities[i] = FVector::ZeroVector;
+        entity_data.velocities.xs[i] = 0.f;
+        entity_data.velocities.ys[i] = 0.f;
+        entity_data.velocities.zs[i] = 0.f;
+
         entity_data.alive[i] = true;
     }
 
