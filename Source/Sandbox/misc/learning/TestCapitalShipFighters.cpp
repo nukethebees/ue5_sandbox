@@ -233,7 +233,7 @@ void ATestCapitalShipFighters::handle_firing() {
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset_arrays(entity_indices,
+    ml::reset(entity_indices,
                      local_indices_to_remove,
                      world_transforms,
                      velocities,

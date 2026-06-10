@@ -60,5 +60,5 @@ void FTestEntityRegistryEntityData::add(ConstView const view) {
 }
 
 void FTestEntityRegistryEntityData::reset() {
-    ml::reset_arrays(locations, velocities, healths, teams, alive);
+    ml::reset(locations, velocities, healths, teams, alive);
 }

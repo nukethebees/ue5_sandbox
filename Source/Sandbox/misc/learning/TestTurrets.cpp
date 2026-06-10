@@ -101,7 +101,7 @@ void FTestTurretsSearchData::reset() {
                       pitch_pivots,
                       collision_shapes);
 
-    ml::reset_arrays(
+    ml::reset(
         location_xs, location_ys, location_zs, yaw_radians, to_attack, attack_targets, healths);
 }
 bool FTestTurretsSearchData::array_sizes_consistent() const {
@@ -167,7 +167,7 @@ void FTestTurretsAttackData::reset() {
                       pitch_pivots,
                       collision_shapes);
 
-    ml::reset_arrays(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
+    ml::reset(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
 }
 
 ATestTurrets::ATestTurrets()

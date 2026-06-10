@@ -294,7 +294,7 @@ bool ATestStaticTurrets::array_sizes_consistent() const {
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(entity_indices,
+    ml::reset(entity_indices,
                      local_indices_to_remove,
                      locations,
                      teams,

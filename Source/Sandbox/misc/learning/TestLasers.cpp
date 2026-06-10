@@ -170,7 +170,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const damage{actor_config->damage};
 
-    ml::reset_arrays(
+    ml::reset(
         to_remove, hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     for (int32 i{n - 1}; i >= 0; --i) {
@@ -281,7 +281,7 @@ bool ATestLasers::array_sizes_consistent() const {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(transforms,
+    ml::reset(transforms,
                      velocities,
                      lifetimes,
                      transforms_to_add,

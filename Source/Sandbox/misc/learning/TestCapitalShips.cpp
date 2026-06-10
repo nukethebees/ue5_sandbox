@@ -268,7 +268,7 @@ void ATestCapitalShips::configure_ismc() {
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset_arrays(entity_indices,
+    ml::reset(entity_indices,
                      local_indices_to_remove,
                      transforms,
                      spawn_timers,

@@ -53,7 +53,7 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 
 template <typename... Arrays>
     requires ml::AllSupportResetTraits<Arrays...>
-auto reset_arrays(Arrays&... arrays) -> void {
+auto reset(Arrays&... arrays) -> void {
     return (ResetTraits<Arrays>::reset(arrays), ...);
 }
 

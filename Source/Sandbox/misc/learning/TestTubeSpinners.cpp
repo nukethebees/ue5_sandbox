@@ -30,7 +30,7 @@ ATestTubeSpinners::ATestTubeSpinners()
 // Actor life cycle
 void ATestTubeSpinners::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset_arrays(transforms,
+    ml::reset(transforms,
                      yaws,
                      laser_cooldowns,
                      next_fire_point_indices,
