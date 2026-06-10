@@ -7,11 +7,21 @@
 #include <concepts>
 
 namespace ml {
+// num
 template <typename T>
-concept HasNumReturningInt32 = requires(T const& value) {
+concept SupportsNumTraits = requires(T const& value) {
     { NumTraits<T>::num(value) } -> std::same_as<int32>;
 };
 
 template <typename... Ts>
-concept AllHaveNumReturningInt32 = (HasNumReturningInt32<Ts> && ...);
+concept AllSupportNumTraits = (SupportsNumTraits<Ts> && ...);
+
+// reset
+template <typename T>
+concept SupportsResetTraits = requires(T& value) {
+    { ResetTraits<T>::reset(value) } -> std::same_as<void>;
+};
+
+template <typename... Ts>
+concept AllSupportResetTraits = (SupportsResetTraits<Ts> && ...);
 }

@@ -16,20 +16,20 @@ void fill(T* values, T const value, int32 const count) {
 }
 
 namespace ml {
-template <HasNumReturningInt32 T>
+template <SupportsNumTraits T>
 auto num(T const& value) -> int32 {
     return NumTraits<T>::num(value);
 }
 
 template <typename... Arrays>
-    requires ml::AllHaveNumReturningInt32<Arrays...>
+    requires ml::AllSupportNumTraits<Arrays...>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((arrays.Num() == count) && ...);
 }
 
 // Use other to guarantee two arrays
 template <typename Array, typename Other, typename... Rest>
-    requires ml::AllHaveNumReturningInt32<Array, Other, Rest...>
+    requires ml::AllSupportNumTraits<Array, Other, Rest...>
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
     return all_num_equal_to(ml::num(array), other, rest...);
 }
@@ -52,8 +52,9 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 }
 
 template <typename... Arrays>
-void reset_arrays(Arrays&... arrays) {
-    (arrays.Reset(), ...);
+    requires ml::AllSupportResetTraits<Arrays...>
+auto reset_arrays(Arrays&... arrays) -> void {
+    return (ResetTraits<Arrays>::reset(arrays), ...);
 }
 
 template <typename T>

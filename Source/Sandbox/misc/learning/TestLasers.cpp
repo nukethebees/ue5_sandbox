@@ -154,7 +154,6 @@ void ATestLasers::handle_collisions(float const dt) {
     }
 
     auto* world{GetWorld()};
-    to_remove.Reset();
 
     FHitResult hit{};
 
@@ -163,7 +162,8 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const damage{actor_config->damage};
 
-    ml::reset_arrays(hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
+    ml::reset_arrays(
+        to_remove, hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};

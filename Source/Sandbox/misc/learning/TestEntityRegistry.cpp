@@ -244,9 +244,8 @@ void ATestEntityRegistry::refresh_free_indices() {
 void ATestEntityRegistry::end_frame() {
     refresh_free_indices();
 
-    queued_entity_data.reset();
-
-    ml::reset_arrays(queued_entity_generations,
+    ml::reset_arrays(queued_entity_data,
+                     queued_entity_generations,
                      queued_entity_generations,
                      queued_damage_amounts,
                      queued_damaged_actors,
