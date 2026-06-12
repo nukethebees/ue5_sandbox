@@ -79,8 +79,8 @@ class ATestEntityRegistry : public AActor {
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
     auto get_num_elements() const noexcept -> int32;
-    auto get_location(FGenerationIndex const index) const -> FVector;
-    auto get_velocity(FGenerationIndex const index) const -> FVector;
+    auto get_location(FGenerationIndex const index) const -> FVector3f;
+    auto get_velocity(FGenerationIndex const index) const -> FVector3f;
     auto get_health(FGenerationIndex const index) const -> int32;
     auto get_team(FGenerationIndex const index) const -> ETestTeam;
     auto get_alive(FGenerationIndex const index) const -> bool;

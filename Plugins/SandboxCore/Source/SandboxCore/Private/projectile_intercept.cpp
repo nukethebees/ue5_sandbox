@@ -1,20 +1,21 @@
 #include <SandboxCore/projectile_intercept.h>
 
 namespace ml {
-auto solve_intercept_time(FVector const& shooter_pos,
-                          FVector const& target_pos,
-                          FVector const& target_vel,
+auto solve_intercept_time(FVector3f const& shooter_pos,
+                          FVector3f const& target_pos,
+                          FVector3f const& target_vel,
                           float const projectile_speed) -> float {
+    using Vec3 = FVector3f;
     using value_type = float;
 
     value_type constexpr no_intercept{-1.f};
     value_type constexpr eps{1e-8f};
 
-    FVector const r{target_pos - shooter_pos};
+    Vec3 const r{target_pos - shooter_pos};
 
     value_type const a{static_cast<value_type>(target_vel.SizeSquared()) -
                        projectile_speed * projectile_speed};
-    value_type const b{2.0f * static_cast<value_type>(FVector::DotProduct(r, target_vel))};
+    value_type const b{2.0f * static_cast<value_type>(Vec3::DotProduct(r, target_vel))};
     value_type const c{static_cast<value_type>(r.SizeSquared())};
 
     if (FMath::Abs(a) < eps) {

@@ -262,13 +262,13 @@ void ATestEntityRegistry::end_tick() {
 auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
-auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector {
+auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector3f {
     check(is_valid_index(index));
-    return ml::get_vector3d(entity_data.locations, index.index);
+    return ml::get_vector3f(entity_data.locations, index.index);
 }
-auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector {
+auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector3f {
     check(is_valid_index(index));
-    return ml::get_vector3d(entity_data.velocities, index.index);
+    return ml::get_vector3f(entity_data.velocities, index.index);
 }
 auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
     check(is_valid_index(index));

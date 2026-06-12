@@ -52,6 +52,9 @@ inline void append(FRotatorsf& rotators, FRotator const& to_append) {
 inline void append(FRotatorsf& rotators, FVector const& direction_vector) {
     append(rotators, direction_vector.Rotation());
 }
+inline void append(FRotatorsf& rotators, FVector3f const& direction_vector) {
+    append(rotators, direction_vector.Rotation());
+}
 
 // Extension
 template <is_rot3f Rot3f>

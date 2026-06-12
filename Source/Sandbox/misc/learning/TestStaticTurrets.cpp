@@ -216,7 +216,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const loc_x{locations.xs[i] + fire_point_offset.X};
         auto const loc_y{locations.ys[i] + fire_point_offset.Y};
         auto const loc_z{locations.zs[i] + fire_point_offset.Z};
-        FVector const laser_location{
+        FVector3f const laser_location{
             loc_x,
             loc_y,
             loc_z,
@@ -225,8 +225,8 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const intercept_time{ml::solve_intercept_time(
             laser_location, target_location, target_velocity, laser_speed)};
 
-        FVector const intercept_pos{target_location + target_velocity * intercept_time};
-        FVector const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
+        FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
+        FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
 
         ml::append(new_laser_locations, loc_x, loc_y, loc_z);
         ml::append(new_laser_rotations, fire_dir);
