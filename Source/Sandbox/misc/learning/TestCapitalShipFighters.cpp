@@ -95,7 +95,8 @@ void ATestCapitalShipFighters::sync_from_registry() {
                                         velocities,
                                         teams,
                                         healths,
-                                        laser_cooldowns.remaining_times);
+                                        laser_cooldowns.remaining_times,
+                                        target_indices);
 
     {
         auto const n{get_num_instances()};
