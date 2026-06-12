@@ -23,6 +23,11 @@ inline void
     r.yaws[i] = yaw;
     r.rolls[i] = roll;
 }
+inline void assign(FRotatorsf& r, int32 const i, FRotator3f const& rot) {
+    r.pitches[i] = rot.Pitch;
+    r.yaws[i] = rot.Yaw;
+    r.rolls[i] = rot.Roll;
+}
 
 inline void append(FRotatorsf& rotators, float const pitch, float const yaw, float const roll) {
     rotators.pitches.Add(pitch);
