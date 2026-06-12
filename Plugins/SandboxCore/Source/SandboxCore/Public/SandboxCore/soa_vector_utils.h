@@ -111,18 +111,18 @@ inline auto
 }
 
 // Conversion
-inline auto get_fvector(FVectors3f const& src, int32 i) -> FVector {
+inline auto get_vector3d(FVectors3f const& src, int32 i) -> FVector {
     return {
         static_cast<double>(src.xs[i]),
         static_cast<double>(src.ys[i]),
         static_cast<double>(src.zs[i]),
     };
 }
-inline auto get_fvector3f(FVectors3f const& src, int32 i) -> FVector3f {
+inline auto get_vector3f(FVectors3f const& src, int32 i) -> FVector3f {
     return {src.xs[i], src.ys[i], src.zs[i]};
 }
 
-inline auto scaled_fvector(FVectors3f const& vectors, int32 const i, float const scale) -> FVector {
+inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float const scale) -> FVector {
     return FVector{
         vectors.xs[i] * scale,
         vectors.ys[i] * scale,
