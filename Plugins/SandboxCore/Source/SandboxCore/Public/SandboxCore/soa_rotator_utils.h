@@ -16,6 +16,13 @@ concept is_rot3f = requires(T const& vecs) {
     { vecs.num() } -> std::convertible_to<int32>;
 };
 
+inline void
+    assign(FRotatorsf& r, int32 const i, float const pitch, float const yaw, float const roll) {
+    r.pitches[i] = pitch;
+    r.yaws[i] = yaw;
+    r.rolls[i] = roll;
+}
+
 template <is_rot3f Rot3f>
 inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
     auto const n_base{rotators.num()};

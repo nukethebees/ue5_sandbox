@@ -32,6 +32,11 @@ inline void assign(FVectors3f& vector, int32 const i, float const value) {
     vector.ys[i] = value;
     vector.zs[i] = value;
 }
+inline void assign(FVectors3f& vector, int32 const i, float const x, float const y, float const z) {
+    vector.xs[i] = x;
+    vector.ys[i] = y;
+    vector.zs[i] = z;
+}
 inline void assign(FVectors3f& vector, int32 const i, FVector const& value) {
     vector.xs[i] = static_cast<float>(value.X);
     vector.ys[i] = static_cast<float>(value.Y);
