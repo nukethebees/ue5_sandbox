@@ -6,6 +6,10 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 
+#include <HAL/Platform.h>
+
+#include <concepts>
+
 namespace ml::kernel {
 template <typename T>
 void fill(T* values, T const value, int32 const count) {
@@ -67,13 +71,13 @@ auto add_uninitialised(Array& array, int32 count) -> void {
     AddUninitialisedTraits<Array>::add_uninitialised(array, count);
 }
 
-template <typename T>
-void fill(TArrayView<T> values, T const value) {
+template <typename Container, typename T>
+    requires requires(Container& container) {
+        { container.GetData() } -> std::same_as<T*>;
+        { container.Num() } -> std::same_as<int32>;
+    }
+void fill(Container&& values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());
-}
-template <typename T>
-void fill(TArray<T>& values, T const value) {
-    fill(TArrayView<T>{values}, value);
 }
 
 template <typename T>
