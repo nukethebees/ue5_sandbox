@@ -72,6 +72,9 @@ class ATestCapitalShips : public AActor {
     // Debugging
     void draw_debugging_shapes() const;
 
+    // Misc
+    void clear_tick_buffers();
+
     // Config / context
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};

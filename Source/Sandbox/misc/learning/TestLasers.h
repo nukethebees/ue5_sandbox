@@ -63,6 +63,7 @@ class ATestLasers : public AActor {
 
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
+    void clear_tick_buffers();
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};

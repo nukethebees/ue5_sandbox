@@ -58,6 +58,7 @@ void ATestStaticTurrets::begin_play() {
 }
 void ATestStaticTurrets::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
+    clear_tick_buffers();
 }
 void ATestStaticTurrets::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::tick);
@@ -125,9 +126,6 @@ void ATestStaticTurrets::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
     validate_array_sizes();
-
-    ml::reset(
-        local_indices_to_remove, indices_ready_to_fire, new_laser_locations, new_laser_rotations);
 }
 
 // Visuals
@@ -302,6 +300,10 @@ void ATestStaticTurrets::clear_runtime_state() {
               indices_ready_to_fire,
               target_indices,
               healths);
+}
+void ATestStaticTurrets::clear_tick_buffers() {
+    ml::reset(
+        local_indices_to_remove, indices_ready_to_fire, new_laser_locations, new_laser_rotations);
 }
 
 // Checks

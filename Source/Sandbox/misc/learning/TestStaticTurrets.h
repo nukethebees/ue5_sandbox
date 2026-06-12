@@ -63,6 +63,9 @@ class ATestStaticTurrets : public AActor {
     // Attacking
     void fire_at_enemies();
 
+    // Misc
+    void clear_tick_buffers();
+
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 

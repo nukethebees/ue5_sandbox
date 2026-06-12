@@ -65,6 +65,7 @@ void ATestLasers::begin_play() {
 }
 void ATestLasers::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_tick);
+    clear_tick_buffers();
 }
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
@@ -87,14 +88,6 @@ void ATestLasers::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
-
-    ml::reset(locations_to_add,
-              rotations_to_add,
-              to_remove,
-              hit_damage_queue,
-              hit_actor_queue,
-              hit_component_queue,
-              hit_item_queue);
 
 #if WITH_EDITOR
     dbg_n_instances = get_num_instances();
@@ -327,6 +320,15 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     }
 
     validate_array_sizes();
+}
+void ATestLasers::clear_tick_buffers() {
+    ml::reset(locations_to_add,
+              rotations_to_add,
+              to_remove,
+              hit_damage_queue,
+              hit_actor_queue,
+              hit_component_queue,
+              hit_item_queue);
 }
 
 // Checks

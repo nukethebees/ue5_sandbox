@@ -68,6 +68,9 @@ class ATestCapitalShipFighters : public AActor {
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;
 
+    // Misc
+    void clear_tick_buffers();
+
     // Visuals
     UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;

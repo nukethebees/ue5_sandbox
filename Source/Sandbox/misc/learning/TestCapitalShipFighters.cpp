@@ -50,6 +50,7 @@ void ATestCapitalShipFighters::begin_play() {
 }
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
+    clear_tick_buffers();
 }
 void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
@@ -122,11 +123,6 @@ void ATestCapitalShipFighters::update_visuals() {
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
-
-    ml::reset(local_indices_to_remove,
-              indices_ready_to_fire_buffer,
-              new_laser_locations,
-              new_laser_rotations);
 }
 
 // Accessors
@@ -297,6 +293,12 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
     }
 
     return entity_data;
+}
+void ATestCapitalShipFighters::clear_tick_buffers() {
+    ml::reset(local_indices_to_remove,
+              indices_ready_to_fire_buffer,
+              new_laser_locations,
+              new_laser_rotations);
 }
 
 // Checks

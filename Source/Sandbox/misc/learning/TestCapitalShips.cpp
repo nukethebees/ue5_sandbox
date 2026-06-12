@@ -58,6 +58,7 @@ void ATestCapitalShips::begin_play() {
 }
 void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
+    clear_tick_buffers();
 }
 void ATestCapitalShips::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
@@ -121,11 +122,6 @@ void ATestCapitalShips::update_visuals() {
 void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
-
-    ml::reset(ships_ready_to_spawn_fighters_buffer,
-              new_fighter_locations,
-              new_fighter_rotations,
-              new_fighter_targets);
 }
 
 // Accessors
@@ -331,6 +327,12 @@ void ATestCapitalShips::update_entity_registry() {
     }
 
     entity_registry->update_entities({entity_indices, update_data.get_const_view()});
+}
+void ATestCapitalShips::clear_tick_buffers() {
+    ml::reset(ships_ready_to_spawn_fighters_buffer,
+              new_fighter_locations,
+              new_fighter_rotations,
+              new_fighter_targets);
 }
 
 // Debugging
