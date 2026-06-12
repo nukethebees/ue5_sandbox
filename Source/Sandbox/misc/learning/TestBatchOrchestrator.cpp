@@ -94,13 +94,15 @@ void ATestBatchOrchestrator::tick(float const dt) {
     spinners->begin_tick();
     lasers->begin_tick();
 
+    // Process spawns from last tick
+    lasers->commit_spawns();
+
     // General actor tick
     player_ship->tick(dt);
     capital_ships->tick(dt);
     capital_ship_fighters->tick(dt);
     turrets->tick(dt);
     spinners->tick(dt);
-    // Projectiles must resolve after everything else
     lasers->tick(dt);
 
     // Send updates to the registry

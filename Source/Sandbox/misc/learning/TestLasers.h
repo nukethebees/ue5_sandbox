@@ -26,9 +26,11 @@ class ATestLasers : public AActor {
 
     ATestLasers();
 
-    void begin_tick();
     void clear_runtime_state();
     void begin_play();
+
+    void begin_tick();
+    void commit_spawns();
     void tick(float const dt);
     void update_visuals();
     void end_tick();
@@ -63,7 +65,8 @@ class ATestLasers : public AActor {
 
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
-    void clear_tick_buffers();
+    void clear_spawn_buffers();
+    void clear_hit_buffers();
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};

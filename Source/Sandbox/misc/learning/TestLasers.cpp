@@ -63,9 +63,15 @@ void ATestLasers::begin_play() {
 
     validate_array_sizes();
 }
+
 void ATestLasers::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_tick);
-    clear_tick_buffers();
+    clear_hit_buffers();
+}
+void ATestLasers::commit_spawns() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::commit_spawns);
+    process_pending_spawns();
+    clear_spawn_buffers();
 }
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
@@ -76,8 +82,6 @@ void ATestLasers::tick(float const dt) {
 
     handle_collisions(dt);
     update_locations(dt);
-
-    process_pending_spawns();
 }
 void ATestLasers::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visuals);
@@ -321,14 +325,11 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
 
     validate_array_sizes();
 }
-void ATestLasers::clear_tick_buffers() {
-    ml::reset(locations_to_add,
-              rotations_to_add,
-              to_remove,
-              hit_damage_queue,
-              hit_actor_queue,
-              hit_component_queue,
-              hit_item_queue);
+void ATestLasers::clear_spawn_buffers() {
+    ml::reset(locations_to_add, rotations_to_add, to_remove);
+}
+void ATestLasers::clear_hit_buffers() {
+    ml::reset(hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 }
 
 // Checks
