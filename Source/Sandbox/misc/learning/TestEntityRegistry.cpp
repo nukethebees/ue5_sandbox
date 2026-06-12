@@ -3,6 +3,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
 
 void ATestEntityRegistry::QueuedDamageResolveView::check_lengths() const {
     auto const n{targets.Num()};
@@ -26,14 +27,14 @@ void ATestEntityRegistry::reset() {
     queued_entity_data.reset();
 
     ml::reset(generations,
-                     queued_entity_generations,
-                     queued_damage_amounts,
-                     queued_damaged_actors,
-                     queued_damaged_actor_components,
-                     queued_damaged_hit_items,
-                     queued_damage_targets,
-                     dead_entities_this_frame,
-                     free_indices);
+              queued_entity_generations,
+              queued_damage_amounts,
+              queued_damaged_actors,
+              queued_damaged_actor_components,
+              queued_damaged_hit_items,
+              queued_damage_targets,
+              dead_entities_this_frame,
+              free_indices);
 }
 
 // Owners
@@ -59,9 +60,7 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
         entity_data.locations[index] = FVector::ZeroVector;
-        entity_data.velocities.xs[index] = 0.f;
-        entity_data.velocities.ys[index] = 0.f;
-        entity_data.velocities.zs[index] = 0.f;
+        ml::assign(entity_data.velocities, index, 0.f);
         entity_data.healths[index] = 0;
         entity_data.teams[index] = ETestTeam::neutral;
         entity_data.alive[index] = false;
@@ -213,9 +212,7 @@ void ATestEntityRegistry::commit_entity_updates() {
 
         entity_data.locations[entity_index] = queued_entity_data.locations[i];
 
-        entity_data.velocities.xs[entity_index] = queued_entity_data.velocities.xs[i];
-        entity_data.velocities.ys[entity_index] = queued_entity_data.velocities.ys[i];
-        entity_data.velocities.zs[entity_index] = queued_entity_data.velocities.zs[i];
+        ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
 
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
@@ -255,14 +252,14 @@ void ATestEntityRegistry::end_frame() {
     refresh_free_indices();
 
     ml::reset(queued_entity_data,
-                     queued_entity_generations,
-                     queued_entity_generations,
-                     queued_damage_amounts,
-                     queued_damaged_actors,
-                     queued_damaged_actor_components,
-                     queued_damaged_hit_items,
-                     queued_damage_targets,
-                     dead_entities_this_frame);
+              queued_entity_generations,
+              queued_entity_generations,
+              queued_damage_amounts,
+              queued_damaged_actors,
+              queued_damaged_actor_components,
+              queued_damaged_hit_items,
+              queued_damage_targets,
+              dead_entities_this_frame);
 }
 
 // Entity queries

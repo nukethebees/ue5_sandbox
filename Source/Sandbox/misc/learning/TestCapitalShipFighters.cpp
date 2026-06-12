@@ -175,16 +175,10 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
         auto const index{n_cur + i};
 
         auto const vec{actor_config->speed * world_transforms[index].GetRotation().Vector()};
-        velocities.xs[index] = vec.X;
-        velocities.ys[index] = vec.Y;
-        velocities.zs[index] = vec.Z;
+        ml::assign(velocities, index, vec);
 
         entity_data.locations[i] = world_transforms[i].GetLocation();
-
-        entity_data.velocities.xs[i] = velocities.xs[i];
-        entity_data.velocities.ys[i] = velocities.ys[i];
-        entity_data.velocities.zs[i] = velocities.zs[i];
-
+        ml::assign_from(entity_data.velocities, i, velocities, index);
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;
