@@ -241,9 +241,7 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
 
         entity_data.locations[i] = world_transforms[i].GetLocation();
 
-        entity_data.velocities.xs[i] = velocities.xs[i];
-        entity_data.velocities.ys[i] = velocities.ys[i];
-        entity_data.velocities.zs[i] = velocities.zs[i];
+        ml::assign_from(entity_data.velocities, i, velocities, i);
 
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];

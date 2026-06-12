@@ -59,7 +59,7 @@ inline void fill(TVectors3View<float> vector, float const value) {
 
 // Extension
 template <is_vec3f Vec3f>
-inline void append(FVectors3f& vector, Vec3f const& to_append) {
+inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
 

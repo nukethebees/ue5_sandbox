@@ -2,6 +2,7 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/invoke.h>
+#include <SandboxCore/soa_vector_utils.h>
 
 auto FTestEntityRegistryEntityData::get_num() const -> int32 {
     return locations.Num();
@@ -40,9 +41,7 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     auto slice{view.right(count)};
 
     ml::fill(slice.locations, FVector::ZeroVector);
-    ml::fill(slice.velocities.xs, 0.f);
-    ml::fill(slice.velocities.ys, 0.f);
-    ml::fill(slice.velocities.zs, 0.f);
+    ml::fill(slice.velocities, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::neutral);
     ml::fill(slice.alive, uint8{0u});
@@ -50,9 +49,7 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
 void FTestEntityRegistryEntityData::add(ConstView const view) {
     locations.Append(view.locations);
 
-    velocities.xs.Append(view.velocities.xs);
-    velocities.ys.Append(view.velocities.ys);
-    velocities.zs.Append(view.velocities.zs);
+    ml::append_from(velocities, view.velocities);
 
     healths.Append(view.healths);
     teams.Append(view.teams);

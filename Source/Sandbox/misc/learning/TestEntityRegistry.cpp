@@ -98,9 +98,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
         entity_data.locations[index] = view.locations[i];
 
-        entity_data.velocities.xs[index] = view.velocities.xs[i];
-        entity_data.velocities.ys[index] = view.velocities.ys[i];
-        entity_data.velocities.zs[index] = view.velocities.zs[i];
+        ml::assign_from(entity_data.velocities, index, view.velocities, i);
 
         entity_data.healths[index] = view.healths[i];
         entity_data.teams[index] = view.teams[i];
@@ -267,38 +265,25 @@ auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> 
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
 auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector {
-    auto const is_valid{is_valid_index(index)};
-    check(is_valid);
-    return is_valid ? entity_data.locations[index.index] : FVector::ZeroVector;
+    check(is_valid_index(index));
+    return entity_data.locations[index.index];
 }
 auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector {
-    auto const is_valid{is_valid_index(index)};
-    check(is_valid);
+    check(is_valid_index(index));
 
-    if (!is_valid) {
-        return FVector::ZeroVector;
-    }
-
-    return {
-        entity_data.velocities.xs[index.index],
-        entity_data.velocities.ys[index.index],
-        entity_data.velocities.zs[index.index],
-    };
+    return ml::get_fvector(entity_data.velocities, index.index);
 }
 auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
-    auto const is_valid{is_valid_index(index)};
-    check(is_valid);
-    return is_valid ? entity_data.healths[index.index] : -1;
+    check(is_valid_index(index));
+    return entity_data.healths[index.index];
 }
 auto ATestEntityRegistry::get_team(FGenerationIndex const index) const -> ETestTeam {
-    auto const is_valid{is_valid_index(index)};
-    check(is_valid);
-    return is_valid ? entity_data.teams[index.index] : ETestTeam::neutral;
+    check(is_valid_index(index));
+    return entity_data.teams[index.index];
 }
 auto ATestEntityRegistry::get_alive(FGenerationIndex const index) const -> bool {
-    auto const is_valid{is_valid_index(index)};
-    check(is_valid);
-    return is_valid ? static_cast<bool>(entity_data.alive[index.index]) : false;
+    check(is_valid_index(index));
+    return static_cast<bool>(entity_data.alive[index.index]);
 }
 auto ATestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FGenerationIndex> {
