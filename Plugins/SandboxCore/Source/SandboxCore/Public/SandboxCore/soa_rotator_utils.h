@@ -22,12 +22,12 @@ inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
     auto const n_to_append{to_append.num()};
 
     rotators.add_uninitialized(n_to_append);
-    ml::assign_from(rotators.xs.GetData() + n_base,
-                    rotators.ys.GetData() + n_base,
-                    rotators.zs.GetData() + n_base,
-                    to_append.xs.GetData(),
-                    to_append.ys.GetData(),
-                    to_append.zs.GetData(),
+    ml::kernel::assign_from(rotators.pitches.GetData() + n_base,
+                            rotators.yaws.GetData() + n_base,
+                            rotators.rolls.GetData() + n_base,
+                            to_append.pitches.GetData(),
+                            to_append.yaws.GetData(),
+                            to_append.rolls.GetData(),
                     n_to_append);
 }
 
