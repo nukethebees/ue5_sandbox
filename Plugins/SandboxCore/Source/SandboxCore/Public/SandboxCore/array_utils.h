@@ -12,17 +12,17 @@
 
 namespace ml::kernel {
 template <typename T>
-void assign_from(T* const RESTRICT src_x,
-                 T* const RESTRICT src_y,
-                 T* const RESTRICT src_z,
-                 T const* const RESTRICT dst_x,
-                 T const* const RESTRICT dst_y,
-                 T const* const RESTRICT dst_z,
+void assign_from(T* const RESTRICT dst_x,
+                 T* const RESTRICT dst_y,
+                 T* const RESTRICT dst_z,
+                 T const* const RESTRICT src_x,
+                 T const* const RESTRICT src_y,
+                 T const* const RESTRICT src_z,
                  int32 const count) {
     for (int32 i{0}; i < count; ++i) {
-        src_x[i] = dst_x[i];
-        src_y[i] = dst_y[i];
-        src_z[i] = dst_z[i];
+        dst_x[i] = src_x[i];
+        dst_y[i] = src_y[i];
+        dst_z[i] = src_z[i];
     }
 }
 
