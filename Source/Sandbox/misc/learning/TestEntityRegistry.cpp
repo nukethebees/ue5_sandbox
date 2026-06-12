@@ -258,10 +258,15 @@ void ATestEntityRegistry::end_tick() {
               dead_entities_this_frame);
 }
 
-// Entity queries
+// Index queries
 auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
+auto ATestEntityRegistry::is_stale(FGenerationIndex const index) const -> bool {
+    return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
+}
+
+// Entity queries
 auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector3f {
     check(is_valid_index(index));
     return ml::get_vector3f(entity_data.locations, index.index);

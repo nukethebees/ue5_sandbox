@@ -67,8 +67,7 @@ class ATestCapitalShipFighters : public AActor {
     void draw_debug_shapes();
 
     // Entity data
-    auto get_entity_data(int32 const offset, int32 const count) const
-        -> FTestEntityRegistryEntityData;
+    auto get_entity_data() const -> FTestEntityRegistryEntityData;
 
     // Misc
     void clear_tick_buffers();

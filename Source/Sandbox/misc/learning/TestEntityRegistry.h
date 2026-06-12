@@ -76,8 +76,11 @@ class ATestEntityRegistry : public AActor {
     void commit_updates();
     void end_tick();
 
-    // Entity queries
+    // Index queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
+    auto is_stale(FGenerationIndex const index) const -> bool;
+
+    // Entity queries
     auto get_num_elements() const noexcept -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector3f;
     auto get_velocity(FGenerationIndex const index) const -> FVector3f;

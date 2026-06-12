@@ -67,7 +67,7 @@ void ATestCapitalShipFighters::tick(float const dt) {
 void ATestCapitalShipFighters::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
 
-    auto const data{get_entity_data(0, get_num_instances())};
+    auto const data{get_entity_data()};
     ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
     entity_registry->update_entities(view);
 }
@@ -113,11 +113,11 @@ void ATestCapitalShipFighters::sync_from_registry() {
             healths[i] = entity_registry->get_health(entity_index);
 
             if (target_entity_index.is_valid()) {
-                if (entity_registry->is_valid_index(target_entity_index)) {
+                if (entity_registry->is_stale(target_entity_index)) {
+                    target_indices[i] = FGenerationIndex{};
+                } else {
                     ml::assign(
                         target_locations, i, entity_registry->get_location(target_entity_index));
-                } else {
-                    target_indices[i] = FGenerationIndex{};
                 }
             }
         }
@@ -160,7 +160,7 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
 
 // Movement
 void ATestCapitalShipFighters::move_ships(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
 #if 0
     ml::add_scaled_in_place(locations, velocities, dt);
@@ -204,11 +204,13 @@ void ATestCapitalShipFighters::update_ismc_transforms() {
 void ATestCapitalShipFighters::draw_debug_shapes() {
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
+        FVector const ship_location{ml::get_vector3d(locations, i)};
+        debug_drawer.draw_sphere(ship_location);
+
         if (!target_indices[i].is_valid()) {
             continue;
         }
 
-        auto const ship_location{ml::get_vector3d(locations, i)};
         auto const target_location{ml::get_vector3d(target_locations, i)};
         debug_drawer.draw_line(ship_location, target_location);
     }
@@ -238,15 +240,17 @@ void
         SANDBOX_NAMED_NUM(new_targets),
     });
 
+    if (n_new < 1) {
+        return;
+    }
+
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
     teams.Append(new_teams);
     ml::append_n(healths, actor_config->health, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
     target_indices.Append(new_targets);
-
-    ml::add_uninitialised(target_locations, n_new);
-    ml::fill(target_locations, 0.f);
+    ml::add_zeroed(target_locations, n_new);
 
     ml::add_uninitialised(velocities, n_new);
 
@@ -332,19 +336,20 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               new_laser_locations,
               new_laser_rotations);
 }
-auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
-    -> FTestEntityRegistryEntityData {
+auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEntityData {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::get_entity_data);
+
     FTestEntityRegistryEntityData entity_data;
+    entity_data.locations = locations;
+    entity_data.velocities = velocities;
+    entity_data.healths = healths;
+    entity_data.teams = teams;
 
-    entity_data.add_uninitialised(count);
-    for (int32 i{0}; i < count; ++i) {
-        auto const index{offset + i};
+    auto const n{get_num_instances()};
 
-        ml::assign_from(entity_data.locations, i, locations, index);
-        ml::assign_from(entity_data.velocities, i, velocities, index);
-        entity_data.healths[i] = healths[index];
-        entity_data.teams[i] = teams[index];
-        entity_data.alive[i] = healths[index] > 0u;
+    ml::add_uninitialised(entity_data.alive, n);
+    for (int32 i{0}; i < n; ++i) {
+        entity_data.alive[i] = static_cast<uint8>(healths[i]);
     }
 
     return entity_data;
