@@ -99,11 +99,11 @@ class ATestCapitalShips : public AActor {
     FCountdownTimers spawn_timers;
     UPROPERTY()
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
-    UPROPERTY()
+
     FVectors3f new_fighter_locations;
-    UPROPERTY()
     FRotatorsf new_fighter_rotations;
     TArray<ETestTeam> new_fighter_teams;
+    TArray<FGenerationIndex> new_fighter_targets;
 
     // Teams
     UPROPERTY()

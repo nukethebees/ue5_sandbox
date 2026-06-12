@@ -165,9 +165,11 @@ void ATestCapitalShipFighters::update_ismc_transforms() {
 }
 
 // Spawning
-void ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_locations,
-                                               FRotatorsf::ConstView const new_rotations,
-                                               TConstArrayView<ETestTeam> const new_teams) {
+void
+    ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_locations,
+                                              FRotatorsf::ConstView const new_rotations,
+                                              TConstArrayView<ETestTeam> const new_teams,
+                                              TConstArrayView<FGenerationIndex> const new_targets) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     if (!actor_config) {
@@ -178,13 +180,20 @@ void ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_l
 
     auto const n_cur{get_num_instances()};
     auto const n_new{ml::num(new_locations)};
-    check(n_new == new_teams.Num());
+
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(new_locations),
+        SANDBOX_NAMED_NUM(new_rotations),
+        SANDBOX_NAMED_NUM(new_teams),
+        SANDBOX_NAMED_NUM(new_targets),
+    });
 
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
     teams.Append(new_teams);
     ml::append_n(healths, actor_config->health, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
+    target_indices.Append(new_targets);
 
     ml::add_uninitialised(velocities, n_new);
 
@@ -296,6 +305,7 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),
+        SANDBOX_NAMED_NUM(target_indices),
     });
 
     auto const n{get_num_instances()};

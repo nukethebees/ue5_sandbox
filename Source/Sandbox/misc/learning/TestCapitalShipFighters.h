@@ -40,7 +40,8 @@ class ATestCapitalShipFighters : public AActor {
 
     void spawn_instances(FVectors3f::ConstView const new_locations,
                          FRotatorsf::ConstView const new_rotations,
-                         TConstArrayView<ETestTeam> const new_teams);
+                         TConstArrayView<ETestTeam> const new_teams,
+                         TConstArrayView<FGenerationIndex> const new_targets);
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
@@ -100,6 +101,8 @@ class ATestCapitalShipFighters : public AActor {
     // Combat
     UPROPERTY()
     TArray<int32> healths;
+    UPROPERTY()
+    TArray<FGenerationIndex> target_indices{};
 
     // Laser
     UPROPERTY(EditAnywhere, Category = "Ships")

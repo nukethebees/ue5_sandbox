@@ -120,7 +120,10 @@ void ATestCapitalShips::end_frame() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_frame);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 
-    ml::reset(ships_ready_to_spawn_fighters_buffer, new_fighter_locations, new_fighter_rotations);
+    ml::reset(ships_ready_to_spawn_fighters_buffer,
+              new_fighter_locations,
+              new_fighter_rotations,
+              new_fighter_targets);
 }
 
 // Accessors
@@ -252,10 +255,10 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
-    ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams);
+    ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams, new_fighter_targets);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
-        // spawn fighters
+        auto const target_index{target_entity_indices[i]};
         auto const base_location{ml::get_vector3f(locations, i)};
         auto const base_rotation{ml::get_rotator3f(rotations, i)};
 
@@ -271,6 +274,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
             ml::append(new_fighter_locations, new_transform.GetLocation());
             ml::append(new_fighter_rotations, new_transform.Rotator());
             new_fighter_teams.Add(teams[i]);
+            new_fighter_targets.Add(target_index);
         }
 
         spawn_timers.remaining_times[i] = cooldown;
@@ -278,7 +282,8 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     fighters_actor->spawn_instances(new_fighter_locations.get_const_view(),
                                     new_fighter_rotations.get_const_view(),
-                                    TConstArrayView<ETestTeam>(new_fighter_teams));
+                                    TConstArrayView<ETestTeam>(new_fighter_teams),
+                                    TConstArrayView<FGenerationIndex>(new_fighter_targets));
 }
 
 // Visuals
