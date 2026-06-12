@@ -2,7 +2,7 @@
 
 #include "array_math.tpp"
 
-namespace ml::detail {
+namespace ml::kernel {
 #define ML_EXTERN_FN(T)                                        \
     extern template SANDBOXCORE_API void subtract_in_place<T>( \
         T * data, T const value, int32 const count) noexcept

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml::detail {
+namespace ml::kernel {
 template <ml::Numeric T>
 void add_in_place(T* data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
@@ -57,19 +57,19 @@ auto collect_values_not_equal(T const* RESTRICT values,
 namespace ml {
 template <ml::Numeric T>
 void add_in_place(TArrayView<T> data, T const value) noexcept {
-    ml::detail::add_in_place(data.GetData(), value, data.Num());
+    ml::kernel::add_in_place(data.GetData(), value, data.Num());
 }
 
 template <ml::Numeric T>
 void subtract_in_place(TArrayView<T> data, T const value) noexcept {
-    ml::detail::subtract_in_place(data.GetData(), value, data.Num());
+    ml::kernel::subtract_in_place(data.GetData(), value, data.Num());
 }
 
 template <ml::Numeric T>
 auto collect_indices_less_equal(TConstArrayView<T> values,
                                 T const threshold,
                                 TArrayView<int32> out_indices) noexcept -> TConstArrayView<int32> {
-    auto const count{ml::detail::collect_indices_less_equal(
+    auto const count{ml::kernel::collect_indices_less_equal(
         values.GetData(), values.Num(), threshold, out_indices.GetData())};
 
     return TConstArrayView<int32>{out_indices.Left(count)};
@@ -81,7 +81,7 @@ auto collect_values_not_equal(TConstArrayView<T> values,
                               TArrayView<T> out_values) noexcept -> TConstArrayView<int32> {
     checkf(out_values.Num() >= values.Num(), TEXT("Insufficient size for out_values"));
 
-    auto const count{ml::detail::collect_values_not_equal(
+    auto const count{ml::kernel::collect_values_not_equal(
         values.GetData(), values.Num(), reference_value, out_values.GetData())};
 
     return TConstArrayView<int32>{out_values.Left(count)};
