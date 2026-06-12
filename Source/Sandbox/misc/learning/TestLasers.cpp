@@ -257,10 +257,16 @@ void ATestLasers::update_ismc_transforms() {
 
     auto const n{get_num_instances()};
     ismc_transforms.Reset();
-    ismc_transforms.AddUninitialized(n);
+
+    auto const n_transforms{ismc_transforms.Num()};
+    auto const n_to_add(n - n_transforms);
+    if (n_to_add > 0) {
+        ismc_transforms.AddDefaulted(n_to_add);
+    }
 
     for (int32 i{0}; i < n; ++i) {
-        ismc_transforms[i] = ml::make_transform(locations, rotations, i);
+        ismc_transforms[i].SetTranslation(ml::get_vector3d(locations, i));
+        ismc_transforms[i].SetRotation(ml::get_rotator3d(rotations, i).Quaternion());
     }
 }
 
