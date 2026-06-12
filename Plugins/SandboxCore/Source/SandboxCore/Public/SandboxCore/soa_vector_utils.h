@@ -77,6 +77,10 @@ inline void append(FVectors3f& vector, FVector const& other) {
 
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
+    if constexpr (std::is_same_v<Vec3f, FVectors3f>) {
+        check(&vector != &to_append);
+    }
+
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
 
