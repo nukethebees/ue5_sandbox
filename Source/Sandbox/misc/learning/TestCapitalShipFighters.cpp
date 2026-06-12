@@ -17,6 +17,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
+#include <Engine/World.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
@@ -47,6 +48,9 @@ void ATestCapitalShipFighters::begin_play() {
     });
 
     configure_ismc();
+
+    debug_drawer = actor_config->debug_drawer;
+    debug_drawer.world = GetWorld();
 }
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
@@ -103,7 +107,19 @@ void ATestCapitalShipFighters::sync_from_registry() {
     {
         auto const n{get_num_instances()};
         for (int32 i{0}; i < n; ++i) {
-            healths[i] = entity_registry->get_health(entity_indices[i]);
+            auto const entity_index{entity_indices[i]};
+            auto const target_entity_index{target_indices[i]};
+
+            healths[i] = entity_registry->get_health(entity_index);
+
+            if (target_entity_index.is_valid()) {
+                if (entity_registry->is_valid_index(target_entity_index)) {
+                    ml::assign(
+                        target_locations, i, entity_registry->get_location(target_entity_index));
+                } else {
+                    target_indices[i] = FGenerationIndex{};
+                }
+            }
         }
     }
 
@@ -120,6 +136,10 @@ void ATestCapitalShipFighters::update_visuals() {
 
     update_ismc_transforms();
     instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
+
+    if (enable_target_debug_drawing) {
+        draw_debug_shapes();
+    }
 }
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
@@ -142,7 +162,24 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
 void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
+#if 0
     ml::add_scaled_in_place(locations, velocities, dt);
+#else
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const current_location{ml::get_vector3f(locations, i)};
+        auto const target_location{ml::get_vector3f(target_locations, i)};
+        auto const direction{(target_location - current_location).GetSafeNormal()};
+
+        auto const velocity{ml::get_vector3f(velocities, i)};
+        auto const speed{velocity.Size()};
+
+        auto const delta_distance{speed * dt};
+        auto const delta_location{direction * delta_distance};
+
+        ml::assign(locations, i, current_location + delta_location);
+    }
+#endif
 }
 
 // Visuals
@@ -162,6 +199,18 @@ void ATestCapitalShipFighters::update_ismc_transforms() {
 
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = ml::make_transform(locations, rotations, i);
+    }
+}
+void ATestCapitalShipFighters::draw_debug_shapes() {
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        if (!target_indices[i].is_valid()) {
+            continue;
+        }
+
+        auto const ship_location{ml::get_vector3d(locations, i)};
+        auto const target_location{ml::get_vector3d(target_locations, i)};
+        debug_drawer.draw_line(ship_location, target_location);
     }
 }
 

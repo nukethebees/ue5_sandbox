@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
-#include "Sandbox/misc/learning/TestEntityRegistry.h"
-#include "Sandbox/misc/learning/TestEntityRegistryData.h"
-#include "Sandbox/misc/learning/TestTeam.h"
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/misc/learning/TestTeam.h>
+#include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
@@ -63,6 +64,7 @@ class ATestCapitalShipFighters : public AActor {
     // Visuals
     void configure_ismc();
     void update_ismc_transforms();
+    void draw_debug_shapes();
 
     // Entity data
     auto get_entity_data(int32 const offset, int32 const count) const
@@ -111,4 +113,10 @@ class ATestCapitalShipFighters : public AActor {
     TArray<int32> indices_ready_to_fire_buffer;
     FVectors3f new_laser_locations;
     FRotatorsf new_laser_rotations;
+
+    // Debugging
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool enable_target_debug_drawing{false};
 };
