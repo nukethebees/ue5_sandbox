@@ -63,11 +63,16 @@ void ATestTubeSpinners::tick(float const dt) {
     rotate_instances(dt);
     fire_lasers();
 }
-void ATestTubeSpinners::update_entity_registry() {}
+void ATestTubeSpinners::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_entity_registry);
+}
 void ATestTubeSpinners::update_visuals() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_visuals);
     update_ismc();
 }
-void ATestTubeSpinners::end_frame() {}
+void ATestTubeSpinners::end_frame() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_frame);
+}
 
 // Accessors
 auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {

@@ -67,8 +67,12 @@ void ATestStaticTurrets::tick(float const dt) {
 
     log_config.on_tick_end();
 }
-void ATestStaticTurrets::update_entity_registry() {}
+void ATestStaticTurrets::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
+}
 void ATestStaticTurrets::resolve_damage_targets() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_damage_targets);
+
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
@@ -107,6 +111,7 @@ void ATestStaticTurrets::sync_from_registry() {
     validate_array_sizes();
 }
 void ATestStaticTurrets::update_visuals() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_visuals);
     // Clear old instances
     if (local_indices_to_remove.Num()) {
         constexpr bool is_reverse_sorted{true};
@@ -114,6 +119,7 @@ void ATestStaticTurrets::update_visuals() {
     }
 }
 void ATestStaticTurrets::end_frame() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_frame);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
     validate_array_sizes();
 
