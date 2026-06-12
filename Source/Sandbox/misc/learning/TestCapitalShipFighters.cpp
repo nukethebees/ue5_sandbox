@@ -126,16 +126,6 @@ void ATestCapitalShipFighters::end_frame() {
 auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return ml::num(locations);
 }
-bool ATestCapitalShipFighters::array_sizes_consistent() const {
-    return ml::all_num_equal(*instances,
-                             entity_indices,
-                             locations,
-                             rotations,
-                             velocities,
-                             teams,
-                             healths,
-                             laser_cooldowns);
-}
 
 void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id) {
     owner_id = new_owner_id;

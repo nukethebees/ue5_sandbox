@@ -282,12 +282,6 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     validate_array_sizes();
 }
 
-// Debugging
-bool ATestStaticTurrets::array_sizes_consistent() const {
-    return ml::all_num_equal(
-        *instances, entity_indices, locations, teams, laser_cooldowns, healths, target_indices);
-}
-
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();

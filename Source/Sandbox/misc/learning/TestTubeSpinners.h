@@ -61,9 +61,6 @@ class ATestTubeSpinners : public AActor {
     // Firing
     void fire_lasers();
 
-    // Debugging
-    bool array_sizes_consistent() const;
-
     // Config
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};

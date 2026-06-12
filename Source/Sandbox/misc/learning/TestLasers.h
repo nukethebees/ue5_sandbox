@@ -60,9 +60,6 @@ class ATestLasers : public AActor {
     void tick_lifetimes(float const dt);
     void collect_old_instance_indices();
 
-    // Debugging
-    bool array_sizes_consistent() const;
-
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
 

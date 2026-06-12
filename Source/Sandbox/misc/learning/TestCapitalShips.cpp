@@ -325,18 +325,6 @@ void ATestCapitalShips::update_entity_registry() {
 }
 
 // Debugging
-bool ATestCapitalShips::array_sizes_consistent() const {
-    auto const n{get_num_instances()};
-
-    return ml::all_num_equal(entity_indices,
-                             locations,
-                             rotations,
-                             spawn_timers,
-                             teams,
-                             healths,
-                             target_entity_indices) &&
-           (instances->GetNumInstances() >= n);
-}
 void ATestCapitalShips::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
 

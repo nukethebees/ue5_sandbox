@@ -237,11 +237,6 @@ void ATestTubeSpinners::fire_lasers() {
                               new_laser_rotations.get_const_view());
 }
 
-// Debugging
-bool ATestTubeSpinners::array_sizes_consistent() const {
-    return ml::all_num_equal(*instances, locations, yaws, laser_cooldowns, next_fire_point_indices);
-}
-
 // Checks
 void ATestTubeSpinners::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({

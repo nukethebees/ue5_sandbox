@@ -61,9 +61,6 @@ class ATestStaticTurrets : public AActor {
     // Attacking
     void fire_at_enemies();
 
-    // Debugging
-    bool array_sizes_consistent() const;
-
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 

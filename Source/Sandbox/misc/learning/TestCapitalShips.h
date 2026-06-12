@@ -68,7 +68,6 @@ class ATestCapitalShips : public AActor {
     void configure_ismc();
 
     // Debugging
-    bool array_sizes_consistent() const;
     void draw_debugging_shapes() const;
 
     // Config / context

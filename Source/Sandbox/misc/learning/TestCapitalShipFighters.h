@@ -44,7 +44,6 @@ class ATestCapitalShipFighters : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-    bool array_sizes_consistent() const;
 
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;

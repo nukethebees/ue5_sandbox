@@ -295,14 +295,6 @@ void ATestLasers::collect_old_instance_indices() {
     }
 }
 
-// Debugging
-bool ATestLasers::array_sizes_consistent() const {
-    auto const consistent{
-        ml::all_num_equal(ismc_transforms, locations, rotations, velocities, lifetimes)};
-
-    return consistent && (instances->GetNumInstances() >= get_num_instances());
-}
-
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
