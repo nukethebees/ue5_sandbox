@@ -37,7 +37,7 @@ struct FTestEntityRegistryEntityData {
         auto get_slice(int32 const offset, int32 const count) const {
             return ThisClass{
                 locations.Slice(offset, count),
-                ml::view::slice(velocities, offset, count),
+                velocities.slice(offset, count),
                 healths.Slice(offset, count),
                 teams.Slice(offset, count),
                 alive.Slice(offset, count),
@@ -46,7 +46,7 @@ struct FTestEntityRegistryEntityData {
         auto right(int32 const count) const {
             return ThisClass{
                 locations.Right(count),
-                ml::view::right(velocities, count),
+                velocities.right(count),
                 healths.Right(count),
                 teams.Right(count),
                 alive.Right(count),
