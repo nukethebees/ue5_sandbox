@@ -60,7 +60,7 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
 
 namespace ml {
 template <SupportsNum T>
-auto num(T const& value) -> int32 {
+auto num(T const& value) noexcept -> int32 {
     return NumTraits<T>::num(value);
 }
 

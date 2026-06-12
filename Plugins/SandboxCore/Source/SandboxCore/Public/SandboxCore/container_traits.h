@@ -17,7 +17,7 @@ template <typename T>
         { t.Num() } -> std::convertible_to<int32>;
     }
 struct NumTraits<T> {
-    static auto num(T const& value) -> int32 { return value.Num(); }
+    static auto num(T const& value) noexcept -> int32 { return value.Num(); }
 };
 
 template <typename T>
@@ -25,7 +25,7 @@ template <typename T>
         { t.num() } -> std::convertible_to<int32>;
     }
 struct NumTraits<T> {
-    static auto num(T const& value) -> int32 { return value.num(); }
+    static auto num(T const& value) noexcept -> int32 { return value.num(); }
 };
 
 template <>
