@@ -16,6 +16,7 @@ concept is_rot3f = requires(T const& vecs) {
     { vecs.num() } -> std::convertible_to<int32>;
 };
 
+// Assignment
 inline void
     assign(FRotatorsf& r, int32 const i, float const pitch, float const yaw, float const roll) {
     r.pitches[i] = pitch;
@@ -23,6 +24,21 @@ inline void
     r.rolls[i] = roll;
 }
 
+inline void append(FRotatorsf& rotators, float const pitch, float const yaw, float const roll) {
+    rotators.pitches.Add(pitch);
+    rotators.yaws.Add(yaw);
+    rotators.rolls.Add(roll);
+}
+inline void append(FRotatorsf& rotators, FRotator const& to_append) {
+    rotators.pitches.Add(static_cast<float>(to_append.Pitch));
+    rotators.yaws.Add(static_cast<float>(to_append.Yaw));
+    rotators.rolls.Add(static_cast<float>(to_append.Roll));
+}
+inline void append(FRotatorsf& rotators, FVector const& direction_vector) {
+    append(rotators, direction_vector.Rotation());
+}
+
+// Extension
 template <is_rot3f Rot3f>
 inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
     auto const n_base{rotators.num()};
@@ -38,12 +54,7 @@ inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
                             n_to_append);
 }
 
-inline void append(FRotatorsf& rotators, float const pitch, float const yaw, float const roll) {
-    rotators.pitches.Add(pitch);
-    rotators.yaws.Add(yaw);
-    rotators.rolls.Add(roll);
-}
-
+// Filling
 inline void fill(FRotatorsf& vector, float const value) {
     ml::kernel::fill(vector.pitches.GetData(),
                      vector.yaws.GetData(),
