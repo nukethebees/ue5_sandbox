@@ -128,6 +128,13 @@ inline auto get_vector3d(FVectors3f const& src, int32 i) -> FVector {
         static_cast<double>(src.zs[i]),
     };
 }
+inline auto get_vector3d(FVectors3f::ConstView const& src, int32 i) -> FVector {
+    return {
+        static_cast<double>(src.xs[i]),
+        static_cast<double>(src.ys[i]),
+        static_cast<double>(src.zs[i]),
+    };
+}
 inline auto get_vector3f(FVectors3f const& src, int32 i) -> FVector3f {
     return {src.xs[i], src.ys[i], src.zs[i]};
 }
