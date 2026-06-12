@@ -14,6 +14,7 @@
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/generation_index.h>
 #include <SandboxCore/invoke.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -129,9 +130,7 @@ void ATestLasers::process_pending_spawns() {
 
         auto const velocity{transforms[index].GetRotation().Vector() * laser_speed};
 
-        velocities.xs[index] = velocity.X;
-        velocities.ys[index] = velocity.Y;
-        velocities.zs[index] = velocity.Z;
+        ml::assign(velocities, index, velocity);
     }
 
     validate_array_sizes();
@@ -145,11 +144,7 @@ void ATestLasers::update_locations(float const dt) {
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const dx{dt * velocities.xs[i]};
-        auto const dy{dt * velocities.ys[i]};
-        auto const dz{dt * velocities.zs[i]};
-
-        transforms[i].AddToTranslation(FVector{dx, dy, dz});
+        transforms[i].AddToTranslation(ml::scaled_fvector(velocities, i, dt));
     }
 }
 void ATestLasers::handle_collisions(float const dt) {
@@ -170,8 +165,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const damage{actor_config->damage};
 
-    ml::reset(
-        to_remove, hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
+    ml::reset(to_remove, hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{transforms[i].GetLocation()};
@@ -282,14 +276,14 @@ bool ATestLasers::array_sizes_consistent() const {
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(transforms,
-                     velocities,
-                     lifetimes,
-                     transforms_to_add,
-                     to_remove,
-                     hit_damage_queue,
-                     hit_actor_queue,
-                     hit_component_queue,
-                     hit_item_queue);
+              velocities,
+              lifetimes,
+              transforms_to_add,
+              to_remove,
+              hit_damage_queue,
+              hit_actor_queue,
+              hit_component_queue,
+              hit_item_queue);
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
