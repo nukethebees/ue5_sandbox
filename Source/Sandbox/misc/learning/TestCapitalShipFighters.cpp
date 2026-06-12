@@ -48,6 +48,9 @@ void ATestCapitalShipFighters::begin_play() {
 
     configure_ismc();
 }
+void ATestCapitalShipFighters::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
+}
 void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
 
@@ -115,8 +118,8 @@ void ATestCapitalShipFighters::update_visuals() {
     update_ismc_transforms();
     instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
 }
-void ATestCapitalShipFighters::end_frame() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_frame);
+void ATestCapitalShipFighters::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 
     ml::reset(local_indices_to_remove,

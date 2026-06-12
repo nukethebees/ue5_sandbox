@@ -244,7 +244,7 @@ void ATestEntityRegistry::refresh_free_indices() {
         }
     }
 }
-void ATestEntityRegistry::end_frame() {
+void ATestEntityRegistry::end_tick() {
     refresh_free_indices();
 
     ml::reset(queued_entity_data,

@@ -109,6 +109,9 @@ void ATestSpaceShip::begin_play() {
         entity_registry->add_entities(get_entity_update_data().get_const_view())};
     entity_index = new_entities[0];
 }
+void ATestSpaceShip::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);
+}
 void ATestSpaceShip::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
 
@@ -124,12 +127,16 @@ void ATestSpaceShip::tick(float const dt) {
     boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
 }
 void ATestSpaceShip::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
+
     entity_registry->update_entities(ATestEntityRegistry::ConstView{
         {&entity_index, 1},
         get_entity_update_data().get_const_view(),
     });
 }
 void ATestSpaceShip::resolve_damage_targets() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_targets);
+
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
@@ -141,11 +148,15 @@ void ATestSpaceShip::resolve_damage_targets() {
         break;
     }
 }
-void ATestSpaceShip::sync_from_registry() {}
+void ATestSpaceShip::sync_from_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::sync_from_registry);
+}
 void ATestSpaceShip::update_visuals() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visuals);
     draw_debug_shapes();
 }
-void ATestSpaceShip::end_frame() {
+void ATestSpaceShip::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::end_tick);
     log_config.on_tick_end();
 }
 

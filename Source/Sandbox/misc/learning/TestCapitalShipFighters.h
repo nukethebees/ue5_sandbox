@@ -31,12 +31,14 @@ class ATestCapitalShipFighters : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+
+    void begin_tick();
     void tick(float const dt);
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
-    void end_frame();
+    void end_tick();
 
     void spawn_instances(FVectors3f::ConstView const new_locations,
                          FRotatorsf::ConstView const new_rotations,
@@ -73,46 +75,36 @@ class ATestCapitalShipFighters : public AActor {
     TArray<FTransform> ismc_transforms;
 
     // Config data
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
 
     // Entity data
     TestEntityOwnerId owner_id{};
 
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY()
     TArray<FGenerationIndex> entity_indices;
-    UPROPERTY()
     TArray<int32> local_indices_to_remove;
 
     // Transform
-    UPROPERTY()
     FVectors3f locations;
-    UPROPERTY()
     FRotatorsf rotations;
-    UPROPERTY()
     FVectors3f velocities;
 
     // Team
-    UPROPERTY()
     TArray<ETestTeam> teams{};
 
     // Combat
-    UPROPERTY()
     TArray<int32> healths;
-    UPROPERTY()
+
+    // Targets
     TArray<FGenerationIndex> target_indices{};
 
     // Laser
-    UPROPERTY(EditAnywhere, Category = "Ships")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY()
     FCountdownTimers laser_cooldowns;
-    UPROPERTY()
     TArray<int32> indices_ready_to_fire_buffer;
-    UPROPERTY()
     FVectors3f new_laser_locations;
-    UPROPERTY()
     FRotatorsf new_laser_rotations;
 };

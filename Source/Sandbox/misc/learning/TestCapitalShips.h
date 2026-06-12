@@ -35,12 +35,14 @@ class ATestCapitalShips : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    
+    void begin_tick();
     void tick(float const dt);
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
-    void end_frame();
+    void end_tick();
 
     // Accessors
     auto get_num_instances() const -> int32;
@@ -71,9 +73,9 @@ class ATestCapitalShips : public AActor {
     void draw_debugging_shapes() const;
 
     // Config / context
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     UPROPERTY(EditDefaultsOnly)
@@ -93,7 +95,7 @@ class ATestCapitalShips : public AActor {
     FRotatorsf rotations;
 
     // Fighter spawning
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
     UPROPERTY()
     FCountdownTimers spawn_timers;
@@ -120,6 +122,6 @@ class ATestCapitalShips : public AActor {
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Ship")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};
 };

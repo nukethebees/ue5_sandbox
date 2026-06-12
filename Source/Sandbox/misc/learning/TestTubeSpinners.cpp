@@ -56,6 +56,9 @@ void ATestTubeSpinners::begin_play() {
         {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
     });
 }
+void ATestTubeSpinners::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_tick);
+}
 void ATestTubeSpinners::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::tick);
 
@@ -70,8 +73,8 @@ void ATestTubeSpinners::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_visuals);
     update_ismc();
 }
-void ATestTubeSpinners::end_frame() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_frame);
+void ATestTubeSpinners::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick);
 
     ml::reset(indices_ready_to_fire, new_laser_locations, new_laser_rotations);
 }

@@ -76,7 +76,7 @@ void ATestBatchOrchestrator::BeginPlay() {
                       lasers);
 
     entity_registry->commit_updates();
-    entity_registry->end_frame();
+    entity_registry->end_tick();
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
@@ -87,6 +87,12 @@ void ATestBatchOrchestrator::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
 
     ++tick_counter;
+
+    capital_ships->begin_tick();
+    capital_ship_fighters->begin_tick();
+    turrets->begin_tick();
+    spinners->begin_tick();
+    lasers->begin_tick();
 
     // General actor tick
     player_ship->tick(dt);
@@ -130,11 +136,11 @@ void ATestBatchOrchestrator::tick(float const dt) {
     spinners->update_visuals();
     lasers->update_visuals();
 
-    player_ship->end_frame();
-    capital_ships->end_frame();
-    capital_ship_fighters->end_frame();
-    turrets->end_frame();
-    spinners->end_frame();
-    lasers->end_frame();
-    entity_registry->end_frame();
+    player_ship->end_tick();
+    capital_ships->end_tick();
+    capital_ship_fighters->end_tick();
+    turrets->end_tick();
+    spinners->end_tick();
+    lasers->end_tick();
+    entity_registry->end_tick();
 }

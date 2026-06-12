@@ -63,6 +63,9 @@ void ATestLasers::begin_play() {
 
     validate_array_sizes();
 }
+void ATestLasers::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_tick);
+}
 void ATestLasers::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
 
@@ -84,8 +87,8 @@ void ATestLasers::update_visuals() {
 
     update_ismc();
 }
-void ATestLasers::end_frame() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_frame);
+void ATestLasers::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
 
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());

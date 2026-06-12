@@ -56,11 +56,13 @@ void ATestCapitalShips::begin_play() {
     configure_ismc();
     register_all_proxies_in_level();
 }
+void ATestCapitalShips::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
+}
 void ATestCapitalShips::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
 
     spawn_timers.tick(dt);
-
     handle_fighter_spawning();
 }
 void ATestCapitalShips::resolve_damage_targets() {
@@ -116,8 +118,8 @@ void ATestCapitalShips::update_visuals() {
         draw_debugging_shapes();
     }
 }
-void ATestCapitalShips::end_frame() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_frame);
+void ATestCapitalShips::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 
     ml::reset(ships_ready_to_spawn_fighters_buffer,

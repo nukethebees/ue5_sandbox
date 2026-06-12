@@ -33,12 +33,14 @@ class ATestStaticTurrets : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+
+    void begin_tick();
     void tick(float const dt);
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
-    void end_frame();
+    void end_tick();
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;

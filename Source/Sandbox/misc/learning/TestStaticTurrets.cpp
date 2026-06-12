@@ -56,6 +56,9 @@ void ATestStaticTurrets::begin_play() {
     configure_ismc();
     register_all_proxies_in_level();
 }
+void ATestStaticTurrets::begin_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
+}
 void ATestStaticTurrets::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::tick);
 
@@ -118,8 +121,8 @@ void ATestStaticTurrets::update_visuals() {
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
     }
 }
-void ATestStaticTurrets::end_frame() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_frame);
+void ATestStaticTurrets::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
     validate_array_sizes();
 

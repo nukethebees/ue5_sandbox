@@ -74,7 +74,7 @@ class ATestEntityRegistry : public AActor {
 
     // Frame events
     void commit_updates();
-    void end_frame();
+    void end_tick();
 
     // Entity queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;

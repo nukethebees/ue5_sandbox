@@ -47,12 +47,13 @@ class ATestSpaceShip : public APawn {
 
     // Life cycle
     void begin_play();
+    void begin_tick();
     void tick(float const dt);
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
-    void end_frame();
+    void end_tick();
 
     // Entity data
     void set_owner_id(TestEntityOwnerId const new_owner_id);
