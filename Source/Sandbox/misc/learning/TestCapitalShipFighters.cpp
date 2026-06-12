@@ -97,7 +97,8 @@ void ATestCapitalShipFighters::sync_from_registry() {
                                         teams,
                                         healths,
                                         laser_cooldowns.remaining_times,
-                                        target_indices);
+                                        target_indices,
+                                        target_locations);
 
     {
         auto const n{get_num_instances()};
@@ -195,6 +196,9 @@ void
     laser_cooldowns.remaining_times.AddZeroed(n_new);
     target_indices.Append(new_targets);
 
+    ml::add_uninitialised(target_locations, n_new);
+    ml::fill(target_locations, 0.f);
+
     ml::add_uninitialised(velocities, n_new);
 
     FTestEntityRegistryEntityData entity_data;
@@ -272,6 +276,8 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               velocities,
               teams,
               healths,
+              target_indices,
+              target_locations,
               laser_cooldowns,
               indices_ready_to_fire_buffer,
               new_laser_locations,
@@ -312,6 +318,7 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),
         SANDBOX_NAMED_NUM(target_indices),
+        SANDBOX_NAMED_NUM(target_locations),
     });
 
     auto const n{get_num_instances()};

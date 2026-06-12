@@ -101,7 +101,8 @@ class ATestCapitalShipFighters : public AActor {
     TArray<int32> healths;
 
     // Targets
-    TArray<FGenerationIndex> target_indices{};
+    TArray<FGenerationIndex> target_indices;
+    FVectors3f target_locations;
 
     // Laser
     UPROPERTY(EditAnywhere, Category = "Sandbox")
