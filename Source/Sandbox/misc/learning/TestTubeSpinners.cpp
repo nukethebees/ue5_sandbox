@@ -72,6 +72,8 @@ void ATestTubeSpinners::update_visuals() {
 }
 void ATestTubeSpinners::end_frame() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_frame);
+
+    ml::reset(indices_ready_to_fire, new_laser_locations, new_laser_rotations);
 }
 
 // Accessors

@@ -119,6 +119,8 @@ void ATestCapitalShips::update_visuals() {
 void ATestCapitalShips::end_frame() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_frame);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
+
+    ml::reset(ships_ready_to_spawn_fighters_buffer, new_fighter_locations, new_fighter_rotations);
 }
 
 // Accessors

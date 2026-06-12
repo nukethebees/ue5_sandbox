@@ -119,7 +119,10 @@ void ATestCapitalShipFighters::end_frame() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_frame);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
 
-    ml::reset(local_indices_to_remove);
+    ml::reset(local_indices_to_remove,
+              indices_ready_to_fire_buffer,
+              new_laser_locations,
+              new_laser_rotations);
 }
 
 // Accessors
