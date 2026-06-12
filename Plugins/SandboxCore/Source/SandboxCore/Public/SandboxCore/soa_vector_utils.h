@@ -64,6 +64,11 @@ inline void append(FVectors3f& vector, float const x, float const y, float const
     vector.ys.Add(y);
     vector.zs.Add(z);
 }
+inline void append(FVectors3f& vector, FVector3f const& other) {
+    vector.xs.Add(other.X);
+    vector.ys.Add(other.Y);
+    vector.zs.Add(other.Z);
+}
 
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
@@ -122,7 +127,8 @@ inline auto get_vector3f(FVectors3f const& src, int32 i) -> FVector3f {
     return {src.xs[i], src.ys[i], src.zs[i]};
 }
 
-inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float const scale) -> FVector {
+inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float const scale)
+    -> FVector {
     return FVector{
         vectors.xs[i] * scale,
         vectors.ys[i] * scale,

@@ -34,6 +34,11 @@ inline void append(FRotatorsf& rotators, float const pitch, float const yaw, flo
     rotators.yaws.Add(yaw);
     rotators.rolls.Add(roll);
 }
+inline void append(FRotatorsf& rotators, FRotator3f const& to_append) {
+    rotators.pitches.Add(to_append.Pitch);
+    rotators.yaws.Add(to_append.Yaw);
+    rotators.rolls.Add(to_append.Roll);
+}
 inline void append(FRotatorsf& rotators, FRotator const& to_append) {
     rotators.pitches.Add(static_cast<float>(to_append.Pitch));
     rotators.yaws.Add(static_cast<float>(to_append.Yaw));
