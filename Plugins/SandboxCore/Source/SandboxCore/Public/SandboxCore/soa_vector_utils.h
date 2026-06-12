@@ -43,6 +43,11 @@ inline void assign(FVectors3f& vector, int32 const i, FVector const& value) {
     vector.ys[i] = static_cast<float>(value.Y);
     vector.zs[i] = static_cast<float>(value.Z);
 }
+inline void assign(FVectors3f& vector, int32 const i, FVector3f const& value) {
+    vector.xs[i] = value.X;
+    vector.ys[i] = value.Y;
+    vector.zs[i] = value.Z;
+}
 
 inline void fill(FVectors3f& vector, float const value) {
     ml::kernel::fill(
