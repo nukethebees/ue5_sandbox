@@ -13,6 +13,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Async/ParallelFor.h>
@@ -253,19 +254,15 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         ismc_transforms[i] = transform;
         locations[i] = transform.GetLocation();
         teams[i] = proxies[i]->get_team();
-
-        entity_data.velocities.xs[i] = 0.f;
-        entity_data.velocities.ys[i] = 0.f;
-        entity_data.velocities.zs[i] = 0.f;
-
-        entity_data.alive[i] = true;
     }
 
     instances->AddInstances(ismc_transforms, false);
 
+    ml::fill(entity_data.velocities, 0.f);
     entity_data.locations = locations;
     entity_data.healths = healths;
     entity_data.teams = teams;
+    ml::fill(entity_data.alive, uint8{1});
 
     ATestEntityRegistry::ConstView const update_view{entity_indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
@@ -287,13 +284,13 @@ bool ATestStaticTurrets::array_sizes_consistent() const {
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(entity_indices,
-                     local_indices_to_remove,
-                     locations,
-                     teams,
-                     laser_cooldowns,
-                     indices_ready_to_fire,
-                     target_indices,
-                     healths);
+              local_indices_to_remove,
+              locations,
+              teams,
+              laser_cooldowns,
+              indices_ready_to_fire,
+              target_indices,
+              healths);
 }
 
 // Checks
