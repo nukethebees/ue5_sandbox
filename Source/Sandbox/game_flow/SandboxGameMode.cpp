@@ -6,6 +6,12 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
+#if WITH_EDITOR
+#include "Editor.h"
+#include "Editor/UnrealEdEngine.h"
+#include "UnrealEdGlobals.h"
+#endif
+
 ASandboxGameMode::ASandboxGameMode() {
     PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -36,6 +42,14 @@ void ASandboxGameMode::BeginPlay() {
 #if WITH_EDITOR
     if (settings->show_collision) {
         pc->ConsoleCommand(TEXT("show collision"));
+    }
+#endif
+
+#if WITH_EDITOR
+    if (settings->pause_pie_on_start) {
+        if (GUnrealEd->SetPIEWorldsPaused(true)) {
+            GUnrealEd->PlaySessionPaused();
+        }
     }
 #endif
 }

@@ -19,5 +19,8 @@ class USandboxDeveloperSettings : public UDeveloperSettings {
     bool show_collision{true};
 #endif
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool pause_pie_on_start{false};
+
     USandboxDeveloperSettings();
 };
