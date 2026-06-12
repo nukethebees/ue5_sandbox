@@ -99,6 +99,11 @@ template <SupportsAddUninitialised Array>
 auto add_uninitialised(Array& array, int32 count) -> void {
     AddUninitialisedTraits<Array>::add_uninitialised(array, count);
 }
+template <typename... Containers>
+    requires (SupportsAddUninitialised<Containers> && ...)
+auto add_uninitialised(int32 count, Containers&... containers) -> void {
+    (AddUninitialisedTraits<Containers>::add_uninitialised(containers, count), ...);
+}
 
 template <typename Container, typename T>
     requires requires(Container& container) {
