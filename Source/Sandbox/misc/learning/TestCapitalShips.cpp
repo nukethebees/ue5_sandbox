@@ -347,14 +347,21 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
-        auto const ship_loc{ml::get_vector3d(locations, i)};
+        auto const ship_location{ml::get_vector3d(locations, i)};
+
+        // Draw target
+        auto const target_index{target_entity_indices[i]};
+        if (entity_registry->is_valid_index(target_index)) {
+            FVector3d const target_location{entity_registry->get_location(target_index)};
+            drawer.draw_line(ship_location, target_location);
+        }
 
         // Draw HP
         auto const ship_index{entity_indices[i]};
 
         auto const msg{FString::Printf(
             TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, healths[i])};
-        auto const msg_location{ship_loc + text_offset};
+        auto const msg_location{ship_location + text_offset};
         drawer.draw_string(msg_location, msg);
     }
 }
