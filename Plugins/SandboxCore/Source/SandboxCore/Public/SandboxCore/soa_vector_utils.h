@@ -69,6 +69,11 @@ inline void append(FVectors3f& vector, FVector3f const& other) {
     vector.ys.Add(other.Y);
     vector.zs.Add(other.Z);
 }
+inline void append(FVectors3f& vector, FVector const& other) {
+    vector.xs.Add(static_cast<float>(other.X));
+    vector.ys.Add(static_cast<float>(other.Y));
+    vector.zs.Add(static_cast<float>(other.Z));
+}
 
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
