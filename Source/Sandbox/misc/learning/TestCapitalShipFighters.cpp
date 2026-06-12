@@ -9,7 +9,9 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
+#include <SandboxCore/transforms.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -55,11 +57,15 @@ void ATestCapitalShipFighters::tick(float const dt) {
     handle_firing();
 }
 void ATestCapitalShipFighters::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
+
     auto const data{get_entity_data(0, get_num_instances())};
     ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
     entity_registry->update_entities(view);
 }
 void ATestCapitalShipFighters::resolve_damage_targets() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_damage_targets);
+
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
@@ -81,7 +87,8 @@ void ATestCapitalShipFighters::sync_from_registry() {
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
                                         entity_indices,
-                                        world_transforms,
+                                        locations,
+                                        rotations,
                                         velocities,
                                         teams,
                                         healths,
@@ -97,25 +104,37 @@ void ATestCapitalShipFighters::sync_from_registry() {
     validate_array_sizes();
 }
 void ATestCapitalShipFighters::update_visuals() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
+
     // Clear old instances
     if (local_indices_to_remove.Num()) {
         constexpr bool is_reverse_sorted{true};
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
     }
 
-    instances->BatchUpdateInstancesTransforms(0, world_transforms, is_world_space, true);
+    update_ismc_transforms();
+    instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
 }
 void ATestCapitalShipFighters::end_frame() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_frame);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
+
+    ml::reset(local_indices_to_remove);
 }
 
 // Accessors
 auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
-    return world_transforms.Num();
+    return ml::num(locations);
 }
 bool ATestCapitalShipFighters::array_sizes_consistent() const {
-    return ml::all_num_equal(
-        *instances, entity_indices, world_transforms, velocities, teams, healths, laser_cooldowns);
+    return ml::all_num_equal(*instances,
+                             entity_indices,
+                             locations,
+                             rotations,
+                             velocities,
+                             teams,
+                             healths,
+                             laser_cooldowns);
 }
 
 void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -129,10 +148,7 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
 void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
-    auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        world_transforms[i].AddToTranslation(ml::scaled_fvector(velocities, i, dt));
-    }
+    ml::add_scaled_in_place(locations, velocities, dt);
 }
 
 // Visuals
@@ -143,9 +159,21 @@ void ATestCapitalShipFighters::configure_ismc() {
 
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
+void ATestCapitalShipFighters::update_ismc_transforms() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc_transforms);
+
+    auto const n{get_num_instances()};
+    ismc_transforms.Reset();
+    ismc_transforms.AddUninitialized(n);
+
+    for (int32 i{0}; i < n; ++i) {
+        ismc_transforms[i] = ml::make_transform(locations, rotations, i);
+    }
+}
 
 // Spawning
-void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const new_transforms,
+void ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_locations,
+                                               FRotatorsf::ConstView const new_rotations,
                                                TConstArrayView<ETestTeam> const new_teams) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
@@ -156,13 +184,12 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     }
 
     auto const n_cur{get_num_instances()};
-    auto const n_new{new_transforms.Num()};
+    auto const n_new{ml::num(new_locations)};
     check(n_new == new_teams.Num());
 
-    instances->AddInstances(TArray<FTransform>{new_transforms}, is_world_space, true);
-    world_transforms.Append(new_transforms);
+    ml::append_from(locations, new_locations);
+    ml::append_from(rotations, new_rotations);
     teams.Append(new_teams);
-
     ml::append_n(healths, actor_config->health, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
@@ -171,13 +198,14 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n_new);
 
+    auto const speed{actor_config->speed};
+
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
 
-        auto const vec{actor_config->speed * world_transforms[index].GetRotation().Vector()};
-        ml::assign(velocities, index, vec);
+        ml::assign(velocities, index, ml::get_vector3f(rotations, index) * speed);
 
-        entity_data.locations[i] = world_transforms[i].GetLocation();
+        ml::assign_from(entity_data.locations, i, locations, index);
         ml::assign_from(entity_data.velocities, i, velocities, index);
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
@@ -186,6 +214,10 @@ void ATestCapitalShipFighters::spawn_instances(TConstArrayView<FTransform> const
 
     auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
     entity_indices.Append(new_indices);
+
+    update_ismc_transforms();
+    instances->AddInstances(
+        TArray<FTransform>{ismc_transforms.GetData() + n_cur, n_new}, is_world_space, false);
 
     validate_array_sizes();
 }
@@ -206,16 +238,25 @@ void ATestCapitalShipFighters::handle_firing() {
     TArray<FTransform> laser_transforms;
     auto const fire_point_offset{actor_config->fire_point_offset};
 
-    for (auto const i : indices_to_fire) {
-        auto transform{world_transforms[i]};
-        auto const forward{transform.GetUnitAxis(EAxis::X)};
-        transform.AddToTranslation(forward * fire_point_offset);
-        laser_transforms.Add(transform);
+    auto const n_to_fire{ml::num(indices_to_fire)};
 
-        laser_cooldowns.remaining_times[i] = cooldown;
+    ml::reset(new_laser_locations, new_laser_rotations);
+    ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
+
+    for (int32 i{0}; i < n_to_fire; ++i) {
+        auto const index_to_fire{indices_to_fire[i]};
+
+        auto const direction{ml::get_vector3f(velocities, index_to_fire).GetSafeNormal()};
+        ml::assign(new_laser_locations,
+                   i,
+                   ml::get_vector3f(locations, index_to_fire) + fire_point_offset * direction);
+        ml::assign(new_laser_rotations, i, direction.Rotation());
+
+        laser_cooldowns.remaining_times[index_to_fire] = cooldown;
     }
 
-    laser_actor->spawn_lasers(laser_transforms);
+    laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
+                              new_laser_rotations.get_const_view());
 }
 
 // Misc
@@ -224,12 +265,15 @@ void ATestCapitalShipFighters::clear_runtime_state() {
 
     ml::reset(entity_indices,
               local_indices_to_remove,
-              world_transforms,
+              locations,
+              rotations,
               velocities,
               teams,
               healths,
               laser_cooldowns,
-              indices_ready_to_fire_buffer);
+              indices_ready_to_fire_buffer,
+              new_laser_locations,
+              new_laser_rotations);
 }
 auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
     -> FTestEntityRegistryEntityData {
@@ -239,13 +283,11 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
     for (int32 i{0}; i < count; ++i) {
         auto const index{offset + i};
 
-        entity_data.locations[i] = world_transforms[i].GetLocation();
-
-        ml::assign_from(entity_data.velocities, i, velocities, i);
-
+        ml::assign_from(entity_data.locations, i, locations, index);
+        ml::assign_from(entity_data.velocities, i, velocities, index);
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
-        entity_data.alive[i] = true;
+        entity_data.alive[i] = healths[index] > 0u;
     }
 
     return entity_data;
@@ -255,7 +297,8 @@ auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const c
 void ATestCapitalShipFighters::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_indices),
-        SANDBOX_NAMED_NUM(world_transforms),
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(velocities),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),

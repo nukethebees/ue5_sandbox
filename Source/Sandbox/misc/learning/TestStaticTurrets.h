@@ -4,8 +4,10 @@
 #include "Sandbox/misc/learning/TestEntityOwnerId.h"
 #include "Sandbox/misc/learning/TestTeam.h"
 
-#include "SandboxCore/countdown_timers.h"
-#include "SandboxCore/generation_index.h"
+#include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_rotators.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -77,7 +79,7 @@ class ATestStaticTurrets : public AActor {
 
     // Location
     UPROPERTY()
-    TArray<FVector> locations{};
+    FVectors3f locations;
 
     // Visuals
     UPROPERTY()
@@ -98,6 +100,11 @@ class ATestStaticTurrets : public AActor {
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
+
+    UPROPERTY()
+    FVectors3f new_laser_locations;
+    UPROPERTY()
+    FRotatorsf new_laser_rotations;
 
     // Enemies
     UPROPERTY()

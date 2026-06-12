@@ -404,7 +404,8 @@ void ATestTurrets::fire_when_aligned() {
         attacking.firing_cooldowns[i] = cooldown;
     }
 
-    laser_actor->spawn_lasers(laser_transforms);
+    // laser_actor->spawn_lasers(laser_transforms);
+    check(false);
 }
 void ATestTurrets::tick_attacking_cooldowns(float const dt) {
     auto const n{attacking.num_turrets()};

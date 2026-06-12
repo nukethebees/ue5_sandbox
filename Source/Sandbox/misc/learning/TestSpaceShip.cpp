@@ -12,6 +12,8 @@
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/actor_utils.h>
 
+#include <SandboxCore/soa_rotator_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Camera/CameraComponent.h>
@@ -170,7 +172,7 @@ void ATestSpaceShip::draw_debug_shapes() {
 // Entity data
 auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
     FTestEntityRegistryEntityData entity_data;
-    entity_data.locations.Add(GetActorLocation());
+    ml::append(entity_data.locations, GetActorLocation());
 
     entity_data.velocities.xs.Add(velocity.X);
     entity_data.velocities.ys.Add(velocity.Y);
@@ -443,7 +445,17 @@ void ATestSpaceShip::fire_laser() {
 }
 void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
                                       TConstArrayView<FTransform> const fire_points) {
-    laser_actor->spawn_lasers(fire_points);
+    FVectors3f locations;
+    FRotatorsf rotations;
+    auto const n{fire_points.Num()};
+    ml::add_uninitialised(n, locations, rotations);
+
+    for (int32 i{0}; i < n; ++i) {
+        ml::assign(locations, i, fire_points[i].GetLocation());
+        ml::assign(rotations, i, fire_points[i].Rotator());
+    }
+
+    laser_actor->spawn_lasers(locations.get_const_view(), rotations.get_const_view());
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {

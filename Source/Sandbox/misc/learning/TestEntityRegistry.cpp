@@ -3,6 +3,7 @@
 #include "Sandbox/utilities/actor_utils.h"
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
 void ATestEntityRegistry::QueuedDamageResolveView::check_lengths() const {
@@ -59,7 +60,7 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
     for (int32 i{0}; i < free_to_reserve; ++i) {
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
-        entity_data.locations[index] = FVector::ZeroVector;
+        ml::assign(entity_data.locations, index, 0.f);
         ml::assign(entity_data.velocities, index, 0.f);
         entity_data.healths[index] = 0;
         entity_data.teams[index] = ETestTeam::neutral;
@@ -96,8 +97,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     for (int32 i{0}; i < free_to_reserve; ++i) {
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
-        entity_data.locations[index] = view.locations[i];
-
+        ml::assign_from(entity_data.locations, index, view.locations, i);
         ml::assign_from(entity_data.velocities, index, view.velocities, i);
 
         entity_data.healths[index] = view.healths[i];
@@ -208,10 +208,8 @@ void ATestEntityRegistry::commit_entity_updates() {
         }
         auto const entity_index{generation_index.index};
 
-        entity_data.locations[entity_index] = queued_entity_data.locations[i];
-
+        ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
-
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];
@@ -266,12 +264,11 @@ auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> 
 }
 auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector {
     check(is_valid_index(index));
-    return entity_data.locations[index.index];
+    return ml::get_vector3d(entity_data.locations, index.index);
 }
 auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector {
     check(is_valid_index(index));
-
-    return ml::get_fvector(entity_data.velocities, index.index);
+    return ml::get_vector3d(entity_data.velocities, index.index);
 }
 auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
     check(is_valid_index(index));
@@ -290,7 +287,7 @@ auto ATestEntityRegistry::get_dead_entities_this_frame() const
     return dead_entities_this_frame;
 }
 auto ATestEntityRegistry::collect_entities_in_range(
-    FVector const& origin,
+    FVector3f const& origin,
     float const radius,
     TArrayView<FGenerationIndex> const out_entities) const -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_entities_in_range);
@@ -301,8 +298,13 @@ auto ATestEntityRegistry::collect_entities_in_range(
     auto const n{get_num_elements()};
     auto const n_out_limit{out_entities.Num()};
 
+    auto const ox{origin.X};
+    auto const oy{origin.Y};
+    auto const oz{origin.Z};
+
     for (int32 i{0}; i < n; ++i) {
-        auto const dist_sq{FVector::DistSquared(origin, entity_data.locations[i])};
+        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
+
         if (dist_sq <= radius_squared) {
             out_entities[count++] = FGenerationIndex{i, generations[i]};
         }
@@ -315,7 +317,7 @@ auto ATestEntityRegistry::collect_entities_in_range(
     return count;
 }
 auto ATestEntityRegistry::collect_non_team_entities_in_range(
-    FVector const& origin,
+    FVector3f const& origin,
     ETestTeam const team,
     float const radius,
     TArrayView<FGenerationIndex> const out_entities) const -> int32 {
@@ -327,8 +329,13 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
     auto const n{get_num_elements()};
     auto const n_out_limit{out_entities.Num()};
 
+    auto const ox{origin.X};
+    auto const oy{origin.Y};
+    auto const oz{origin.Z};
+
     for (int32 i{0}; i < n; ++i) {
-        auto const dist_sq{FVector::DistSquared(origin, entity_data.locations[i])};
+        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
+
         if (dist_sq > radius_squared) {
             continue;
         }

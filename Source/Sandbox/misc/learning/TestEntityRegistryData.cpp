@@ -5,11 +5,11 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 auto FTestEntityRegistryEntityData::get_num() const -> int32 {
-    return locations.Num();
+    return ml::num(locations);
 }
 auto FTestEntityRegistryEntityData::get_view() -> View {
     return {
-        locations,
+        locations.get_view(),
         velocities.get_view(),
         healths,
         teams,
@@ -18,7 +18,7 @@ auto FTestEntityRegistryEntityData::get_view() -> View {
 }
 auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
     return {
-        locations,
+        locations.get_view(),
         velocities.get_view(),
         healths,
         teams,
@@ -40,15 +40,14 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     auto view{get_view()};
     auto slice{view.right(count)};
 
-    ml::fill(slice.locations, FVector::ZeroVector);
+    ml::fill(slice.locations, 0.f);
     ml::fill(slice.velocities, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::neutral);
     ml::fill(slice.alive, uint8{0u});
 }
 void FTestEntityRegistryEntityData::add(ConstView const view) {
-    locations.Append(view.locations);
-
+    ml::append_from(locations, view.locations);
     ml::append_from(velocities, view.velocities);
 
     healths.Append(view.healths);

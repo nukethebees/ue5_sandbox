@@ -5,8 +5,10 @@
 #include "Sandbox/misc/learning/TestEntityRegistryData.h"
 #include "Sandbox/misc/learning/TestTeam.h"
 
-#include "SandboxCore/countdown_timers.h"
-#include "SandboxCore/generation_index.h"
+#include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_rotators.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -36,7 +38,8 @@ class ATestCapitalShipFighters : public AActor {
     void update_visuals();
     void end_frame();
 
-    void spawn_instances(TConstArrayView<FTransform> const new_transforms,
+    void spawn_instances(FVectors3f::ConstView const new_locations,
+                         FRotatorsf::ConstView const new_rotations,
                          TConstArrayView<ETestTeam> const new_teams);
 
     // Accessors
@@ -57,13 +60,17 @@ class ATestCapitalShipFighters : public AActor {
 
     // Visuals
     void configure_ismc();
+    void update_ismc_transforms();
 
     // Entity data
     auto get_entity_data(int32 const offset, int32 const count) const
         -> FTestEntityRegistryEntityData;
 
+    // Visuals
     UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UPROPERTY()
+    TArray<FTransform> ismc_transforms;
 
     // Config data
     UPROPERTY(EditAnywhere, Category = "Ships")
@@ -79,9 +86,11 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
 
-    // Movement
+    // Transform
     UPROPERTY()
-    TArray<FTransform> world_transforms;
+    FVectors3f locations;
+    UPROPERTY()
+    FRotatorsf rotations;
     UPROPERTY()
     FVectors3f velocities;
 
@@ -93,10 +102,15 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY()
     TArray<int32> healths;
 
+    // Laser
     UPROPERTY(EditAnywhere, Category = "Ships")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     UPROPERTY()
     FCountdownTimers laser_cooldowns;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire_buffer;
+    UPROPERTY()
+    FVectors3f new_laser_locations;
+    UPROPERTY()
+    FRotatorsf new_laser_rotations;
 };

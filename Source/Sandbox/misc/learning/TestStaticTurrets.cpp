@@ -13,6 +13,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/projectile_intercept.h>
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
@@ -114,6 +115,10 @@ void ATestStaticTurrets::update_visuals() {
 }
 void ATestStaticTurrets::end_frame() {
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
+    validate_array_sizes();
+
+    ml::reset(
+        local_indices_to_remove, indices_ready_to_fire, new_laser_locations, new_laser_rotations);
 }
 
 // Visuals
@@ -153,7 +158,7 @@ void ATestStaticTurrets::perform_search() {
         auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
         for (int32 i{begin}; i < end; ++i) {
-            auto const turret_location{locations[i]};
+            auto const turret_location{ml::get_vector3f(locations, i)};
             auto const this_team{teams[i]};
 
             TStaticArray<FGenerationIndex, 128> elems;
@@ -186,8 +191,7 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const cooldown{actor_config->attack_cooldown};
     auto const laser_speed{laser_actor->get_config()->speed};
 
-    TArray<FTransform> laser_transforms;
-    auto const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
+    FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_indices[i]};
@@ -202,23 +206,28 @@ void ATestStaticTurrets::fire_at_enemies() {
         auto const target_location{entity_registry->get_location(target_index)};
         auto const target_velocity{entity_registry->get_velocity(target_index)};
 
-        FTransform laser_transform{FTransform::Identity};
-        instances->GetInstanceTransform(i, laser_transform, is_world_space);
-        auto const laser_location{laser_transform.GetLocation() + fire_point_offset};
-        laser_transform.SetLocation(laser_location);
+        auto const loc_x{locations.xs[i] + fire_point_offset.X};
+        auto const loc_y{locations.ys[i] + fire_point_offset.Y};
+        auto const loc_z{locations.zs[i] + fire_point_offset.Z};
+        FVector const laser_location{
+            loc_x,
+            loc_y,
+            loc_z,
+        };
 
         auto const intercept_time{ml::solve_intercept_time(
             laser_location, target_location, target_velocity, laser_speed)};
 
         FVector const intercept_pos{target_location + target_velocity * intercept_time};
         FVector const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
-        laser_transform.SetRotation(fire_dir.ToOrientationQuat());
 
-        laser_transforms.Add(laser_transform);
+        ml::append(new_laser_locations, loc_x, loc_y, loc_z);
+        ml::append(new_laser_rotations, fire_dir);
         laser_cooldowns[i] = cooldown;
     }
 
-    laser_actor->spawn_lasers(laser_transforms);
+    laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
+                              new_laser_rotations.get_const_view());
 }
 
 // Spawning
@@ -241,18 +250,17 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
 
-    locations.AddUninitialized(n);
-    teams.AddUninitialized(n);
+    TArray<FTransform> ismc_transforms;
+
+    ml::add_uninitialised(n, locations, teams, ismc_transforms);
     ml::append_n(healths, actor_config->max_health, n);
     target_indices.AddDefaulted(n);
     laser_cooldowns.remaining_times.AddZeroed(n);
 
-    TArray<FTransform> ismc_transforms;
-    ismc_transforms.AddUninitialized(n);
     for (int32 i{0}; i < n; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
         ismc_transforms[i] = transform;
-        locations[i] = transform.GetLocation();
+        ml::assign(locations, i, transform.GetLocation());
         teams[i] = proxies[i]->get_team();
     }
 
@@ -300,8 +308,8 @@ void ATestStaticTurrets::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(target_indices),
+        SANDBOX_NAMED_NUM(healths),
     });
 
     auto const n{get_num_instances()};

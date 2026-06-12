@@ -1,11 +1,13 @@
 #pragma once
 
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
-#include "Sandbox/misc/learning/TestTeam.h"
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestTeam.h>
+#include <Sandbox/utilities/DrawDebugConfig.h>
 
-#include "SandboxCore/countdown_timers.h"
-#include "SandboxCore/generation_index.h"
+#include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_rotators.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -42,7 +44,6 @@ class ATestCapitalShips : public AActor {
 
     // Accessors
     auto get_num_instances() const -> int32;
-    auto get_location(FGenerationIndex const index) const -> FVector;
     auto is_valid(FGenerationIndex const index) const -> bool;
     auto get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex;
 
@@ -55,7 +56,8 @@ class ATestCapitalShips : public AActor {
     // Ship spawning
     void register_all_proxies_in_level();
     void spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
-                     TConstArrayView<FTransform> const new_transforms,
+                     FVectors3f::ConstView const new_locations,
+                     FRotatorsf::ConstView const new_rotations,
                      TConstArrayView<ETestTeam> const new_teams,
                      TConstArrayView<FGenerationIndex> const new_target_indices);
 
@@ -85,8 +87,11 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
 
+    // Transform
     UPROPERTY()
-    TArray<FTransform> transforms;
+    FVectors3f locations;
+    UPROPERTY()
+    FRotatorsf rotations;
 
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Ship")
@@ -95,6 +100,11 @@ class ATestCapitalShips : public AActor {
     FCountdownTimers spawn_timers;
     UPROPERTY()
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
+    UPROPERTY()
+    FVectors3f new_fighter_locations;
+    UPROPERTY()
+    FRotatorsf new_fighter_rotations;
+    TArray<ETestTeam> new_fighter_teams;
 
     // Teams
     UPROPERTY()

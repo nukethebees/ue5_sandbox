@@ -2,8 +2,8 @@
 
 #include "TestTeam.h"
 
+#include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vectors.h>
-#include <SandboxCore/soa_view_utils.h>
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
@@ -27,16 +27,16 @@ struct FTestEntityRegistryEntityData {
 
         using ThisClass = TTestEntityDataView<is_const>;
 
-        TView<FVector> locations;
+        TSoaView<float> locations;
         TSoaView<float> velocities;
         TView<int32> healths;
         TView<ETestTeam> teams;
         TView<uint8> alive;
 
-        auto get_num() const -> int32 { return locations.Num(); }
+        auto get_num() const -> int32 { return ml::num(locations); }
         auto get_slice(int32 const offset, int32 const count) const {
             return ThisClass{
-                locations.Slice(offset, count),
+                locations.slice(offset, count),
                 velocities.slice(offset, count),
                 healths.Slice(offset, count),
                 teams.Slice(offset, count),
@@ -45,7 +45,7 @@ struct FTestEntityRegistryEntityData {
         }
         auto right(int32 const count) const {
             return ThisClass{
-                locations.Right(count),
+                locations.right(count),
                 velocities.right(count),
                 healths.Right(count),
                 teams.Right(count),
@@ -70,7 +70,7 @@ struct FTestEntityRegistryEntityData {
     void reset();
 
     UPROPERTY()
-    TArray<FVector> locations;
+    FVectors3f locations;
     UPROPERTY()
     FVectors3f velocities;
     UPROPERTY()

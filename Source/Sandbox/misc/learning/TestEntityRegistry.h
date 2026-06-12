@@ -85,10 +85,12 @@ class ATestEntityRegistry : public AActor {
     auto get_team(FGenerationIndex const index) const -> ETestTeam;
     auto get_alive(FGenerationIndex const index) const -> bool;
     auto get_dead_entities_this_frame() const -> TConstArrayView<FGenerationIndex>;
-    auto collect_entities_in_range(FVector const& origin,
+
+    // Area queries
+    auto collect_entities_in_range(FVector3f const& origin,
                                    float const radius,
                                    TArrayView<FGenerationIndex> const out_entities) const -> int32;
-    auto collect_non_team_entities_in_range(FVector const& origin,
+    auto collect_non_team_entities_in_range(FVector3f const& origin,
                                             ETestTeam const team,
                                             float const radius,
                                             TArrayView<FGenerationIndex> const out_entities) const

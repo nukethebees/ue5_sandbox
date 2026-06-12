@@ -13,6 +13,9 @@
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/collision_settings.h>
 #include <SandboxCore/invoke.h>
+#include <SandboxCore/soa_rotator_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
+#include <SandboxCore/transforms.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -61,6 +64,8 @@ void ATestCapitalShips::tick(float const dt) {
     handle_fighter_spawning();
 }
 void ATestCapitalShips::resolve_damage_targets() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_damage_targets);
+
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
 
@@ -82,7 +87,8 @@ void ATestCapitalShips::sync_from_registry() {
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
                                         entity_indices,
-                                        transforms,
+                                        locations,
+                                        rotations,
                                         spawn_timers.remaining_times,
                                         teams,
                                         healths,
@@ -98,6 +104,8 @@ void ATestCapitalShips::sync_from_registry() {
     validate_array_sizes();
 }
 void ATestCapitalShips::update_visuals() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_visuals);
+
     // Clear old instances
     if (local_indices_to_remove.Num()) {
         constexpr bool is_reverse_sorted{true};
@@ -109,6 +117,7 @@ void ATestCapitalShips::update_visuals() {
     }
 }
 void ATestCapitalShips::end_frame() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_frame);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 }
 
@@ -116,19 +125,12 @@ void ATestCapitalShips::end_frame() {
 auto ATestCapitalShips::get_num_instances() const -> int32 {
     return entity_indices.Num();
 }
-auto ATestCapitalShips::get_location(FGenerationIndex const index) const -> FVector {
-    if (!is_valid(index)) {
-        return FVector::ZeroVector;
-    }
-
-    return transforms[index.index].GetLocation();
-}
 auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
     if (!index.is_valid()) {
         return false;
     }
 
-    if (!transforms.IsValidIndex(index.index)) {
+    if (!locations.xs.IsValidIndex(index.index)) {
         return false;
     }
 
@@ -165,13 +167,11 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 
     TArray<FGenerationIndex> new_targets;
-    TArray<FTransform> new_transforms;
+    FVectors3f new_locations;
+    FRotatorsf new_rotations;
     TArray<ETestTeam> new_teams;
 
-    ml::invoke_on_all([n_to_add](auto& a) { a.AddUninitialized(n_to_add); },
-                      new_targets,
-                      new_transforms,
-                      new_teams);
+    ml::add_uninitialised(n_to_add, new_targets, new_locations, new_rotations, new_teams);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         FGenerationIndex target_index{};
@@ -186,11 +186,18 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         }
 
         new_targets[i] = target_index;
-        new_transforms[i] = proxy->GetActorTransform();
+        auto const& proxy_transform{proxy->GetActorTransform()};
+
+        ml::assign(new_locations, i, proxy_transform.GetLocation());
+        ml::assign(new_rotations, i, proxy_transform.Rotator());
         new_teams[i] = proxy->team;
     }
 
-    spawn_ships(entity_indices, new_transforms, new_teams, new_targets);
+    spawn_ships(entity_indices,
+                new_locations.get_const_view(),
+                new_rotations.get_const_view(),
+                new_teams,
+                new_targets);
     update_entity_registry();
 
     for (auto* proxy : proxies) {
@@ -198,25 +205,32 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     }
 }
 void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
-                                    TConstArrayView<FTransform> const new_transforms,
+                                    FVectors3f::ConstView const new_locations,
+                                    FRotatorsf::ConstView const new_rotations,
                                     TConstArrayView<ETestTeam> const new_teams,
                                     TConstArrayView<FGenerationIndex> const new_target_indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::spawn_ships);
 
     auto const n_to_add(new_indices.Num());
 
-    check(n_to_add == new_transforms.Num());
-    check(n_to_add == new_teams.Num());
-    check(n_to_add == new_target_indices.Num());
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(new_indices),
+        SANDBOX_NAMED_NUM(new_locations),
+        SANDBOX_NAMED_NUM(new_rotations),
+        SANDBOX_NAMED_NUM(new_teams),
+        SANDBOX_NAMED_NUM(new_target_indices),
+    });
 
-    instances->AddInstances(TArray<FTransform>{new_transforms}, false, is_world_space, false);
-
-    transforms.Append(new_transforms);
+    ml::append_from(locations, new_locations);
+    ml::append_from(rotations, new_rotations);
     target_entity_indices.Append(new_target_indices);
     spawn_timers.AddZeroed(n_to_add);
     teams.Append(new_teams);
 
     ml::append_n(healths, actor_config->max_health, n_to_add);
+
+    auto const new_transforms{ml::make_transforms(new_locations, new_rotations)};
+    instances->AddInstances(new_transforms, false, is_world_space, false);
 
     validate_array_sizes();
 }
@@ -236,23 +250,33 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
-    TArray<FTransform> new_transforms;
-    TArray<ETestTeam> new_teams;
+    ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
         // spawn fighters
-        auto const base_transform{transforms[i]};
+        auto const base_location{ml::get_vector3f(locations, i)};
+        auto const base_rotation{ml::get_rotator3f(rotations, i)};
+
+        FTransform const base_transform{
+            FRotator{base_rotation},
+            FVector{base_location},
+            FVector::OneVector,
+        };
 
         for (auto const& rt : relative_transforms) {
-            auto const transform{rt * base_transform};
-            new_transforms.Add(transform);
-            new_teams.Add(teams[i]);
+            auto const new_transform{rt * base_transform};
+
+            ml::append(new_fighter_locations, new_transform.GetLocation());
+            ml::append(new_fighter_rotations, new_transform.Rotator());
+            new_fighter_teams.Add(teams[i]);
         }
 
         spawn_timers.remaining_times[i] = cooldown;
     }
 
-    fighters_actor->spawn_instances(new_transforms, new_teams);
+    fighters_actor->spawn_instances(new_fighter_locations.get_const_view(),
+                                    new_fighter_rotations.get_const_view(),
+                                    TConstArrayView<ETestTeam>(new_fighter_teams));
 }
 
 // Visuals
@@ -269,13 +293,16 @@ void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
     ml::reset(entity_indices,
-                     local_indices_to_remove,
-                     transforms,
-                     spawn_timers,
-                     ships_ready_to_spawn_fighters_buffer,
-                     teams,
-                     healths,
-                     target_entity_indices);
+              local_indices_to_remove,
+              locations,
+              rotations,
+              spawn_timers,
+              ships_ready_to_spawn_fighters_buffer,
+              new_fighter_locations,
+              new_fighter_rotations,
+              teams,
+              healths,
+              target_entity_indices);
 }
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
@@ -285,15 +312,12 @@ void ATestCapitalShips::update_entity_registry() {
     FTestEntityRegistryEntityData update_data;
     update_data.add_uninitialised(n);
 
-    ml::fill(update_data.velocities.xs, 0.f);
-    ml::fill(update_data.velocities.ys, 0.f);
-    ml::fill(update_data.velocities.zs, 0.f);
-
+    update_data.locations = locations;
+    ml::fill(update_data.velocities, 0.f);
     update_data.healths = healths;
     update_data.teams = teams;
 
     for (int32 i{0}; i < n; ++i) {
-        update_data.locations[i] = transforms[i].GetLocation();
         update_data.alive[i] = healths[i] > 0;
     }
 
@@ -304,8 +328,13 @@ void ATestCapitalShips::update_entity_registry() {
 bool ATestCapitalShips::array_sizes_consistent() const {
     auto const n{get_num_instances()};
 
-    return ml::all_num_equal(
-               entity_indices, transforms, spawn_timers, teams, healths, target_entity_indices) &&
+    return ml::all_num_equal(entity_indices,
+                             locations,
+                             rotations,
+                             spawn_timers,
+                             teams,
+                             healths,
+                             target_entity_indices) &&
            (instances->GetNumInstances() >= n);
 }
 void ATestCapitalShips::draw_debugging_shapes() const {
@@ -316,7 +345,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
-        auto const ship_loc{transforms[i].GetLocation()};
+        auto const ship_loc{ml::get_vector3d(locations, i)};
 
         // Draw HP
         auto const ship_index{entity_indices[i]};
@@ -332,7 +361,8 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 void ATestCapitalShips::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_indices),
-        SANDBOX_NAMED_NUM(transforms),
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(spawn_timers),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),

@@ -3,6 +3,7 @@
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
 #include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
@@ -36,7 +37,8 @@ class ATestLasers : public AActor {
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
 
     // Spawning / configuration
-    void spawn_lasers(TConstArrayView<FTransform> const transforms);
+    void spawn_lasers(TVectors3View<float const> const locations,
+                      TRotatorsView<float const> const rotations);
 
     // Checks
     void validate_array_sizes() const;
@@ -51,6 +53,7 @@ class ATestLasers : public AActor {
 
     // Visuals
     void configure_ismc();
+    void update_ismc_transforms();
     void update_ismc();
 
     // Lifetimes
@@ -71,11 +74,18 @@ class ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 n_preallocated_instances{5000};
 
+
+    // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-
     UPROPERTY()
-    TArray<FTransform> transforms;
+    TArray<FTransform> ismc_transforms;
+
+    // Transform
+    UPROPERTY()
+    FVectors3f locations;
+    UPROPERTY()
+    FRotatorsf rotations;
     UPROPERTY()
     FVectors3f velocities;
 
@@ -83,7 +93,9 @@ class ATestLasers : public AActor {
     TArray<float> lifetimes;
 
     UPROPERTY()
-    TArray<FTransform> transforms_to_add;
+    FVectors3f locations_to_add;
+    UPROPERTY()
+    FRotatorsf rotations_to_add;
     UPROPERTY()
     TArray<int32> to_remove;
 

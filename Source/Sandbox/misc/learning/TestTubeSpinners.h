@@ -3,7 +3,9 @@
 #include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestEntityOwnerId.h"
 
-#include "SandboxCore/countdown_timers.h"
+#include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/soa_rotators.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -44,7 +46,8 @@ class ATestTubeSpinners : public AActor {
   protected:
     // Spawning
     void register_all_proxies_in_level();
-    void spawn_instances(TConstArrayView<FTransform> const new_transforms,
+    void spawn_instances(FVectors3f::ConstView const new_locations,
+                         TConstArrayView<float> const new_yaws,
                          TConstArrayView<int32> const new_fire_point_indices);
 
     // Movement
@@ -52,6 +55,7 @@ class ATestTubeSpinners : public AActor {
 
     // Visuals
     void configure_ismc();
+    void update_ismc_transforms();
     void update_ismc();
 
     // Firing
@@ -70,10 +74,12 @@ class ATestTubeSpinners : public AActor {
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UPROPERTY()
+    TArray<FTransform> ismc_transforms;
 
     // Movement / position
     UPROPERTY()
-    TArray<FTransform> transforms{};
+    FVectors3f locations;
     UPROPERTY()
     TArray<float> yaws{};
 
@@ -87,7 +93,9 @@ class ATestTubeSpinners : public AActor {
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
     UPROPERTY()
-    TArray<FTransform> new_laser_transforms;
+    FVectors3f new_laser_locations;
+    UPROPERTY()
+    FRotatorsf new_laser_rotations;
 
     // Debugging / logging
     UPROPERTY(EditAnywhere, Category = "Turrets")
