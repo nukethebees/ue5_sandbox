@@ -75,6 +75,40 @@ inline void append(FVectors3f& vector, FVector const& other) {
     vector.zs.Add(static_cast<float>(other.Z));
 }
 
+inline void
+    append_n(FVectors3f& vector, int32 const count, float const x, float const y, float const z) {
+    auto const offset{ml::num(vector)};
+
+    vector.xs.AddUninitialized(count);
+    vector.ys.AddUninitialized(count);
+    vector.zs.AddUninitialized(count);
+
+    for (int32 i{0}; i < count; ++i) {
+        vector.xs[offset + i] = x;
+        vector.ys[offset + i] = y;
+        vector.zs[offset + i] = z;
+    }
+}
+inline void append_n(FVectors3f& vector, int32 const count, float const value) {
+    auto const offset{ml::num(vector)};
+
+    vector.xs.AddUninitialized(count);
+    vector.ys.AddUninitialized(count);
+    vector.zs.AddUninitialized(count);
+
+    for (int32 i{0}; i < count; ++i) {
+        vector.xs[offset + i] = value;
+        vector.ys[offset + i] = value;
+        vector.zs[offset + i] = value;
+    }
+}
+
+inline void add_zeroed(FVectors3f& vector, int32 const count) {
+    vector.xs.AddZeroed(count);
+    vector.ys.AddZeroed(count);
+    vector.zs.AddZeroed(count);
+}
+
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     if constexpr (std::is_same_v<Vec3f, FVectors3f>) {
