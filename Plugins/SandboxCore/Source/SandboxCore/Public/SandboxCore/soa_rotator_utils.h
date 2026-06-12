@@ -74,4 +74,15 @@ inline void fill(FRotatorsf::View vector, float const value) {
                      value,
                      vector.num());
 }
+
+// Conversion
+inline auto get_rotator3f(FRotatorsf const& rotator, int32 const i) -> FRotator3f {
+    return {rotator.pitches[i], rotator.yaws[i], rotator.rolls[i]};
+}
+inline auto get_rotator3d(FRotatorsf const& rotator, int32 const i) -> FRotator3d {
+    return {rotator.pitches[i], rotator.yaws[i], rotator.rolls[i]};
+}
+inline auto get_vector3f(FRotatorsf const& rotator, int32 const i) -> FVector3f {
+    return get_rotator3f(rotator, i).Vector();
+}
 }
