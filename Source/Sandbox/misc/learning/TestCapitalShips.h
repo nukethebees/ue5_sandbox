@@ -35,8 +35,9 @@ class ATestCapitalShips : public AActor {
 
     void clear_runtime_state();
     void begin_play();
-    
+
     void begin_tick();
+    void commit_spawns();
     void tick(float const dt);
     void update_entity_registry();
     void resolve_damage_targets();

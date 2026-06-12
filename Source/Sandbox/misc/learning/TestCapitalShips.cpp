@@ -60,11 +60,14 @@ void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
     clear_tick_buffers();
 }
+void ATestCapitalShips::commit_spawns() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
+    handle_fighter_spawning();
+}
 void ATestCapitalShips::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
 
     spawn_timers.tick(dt);
-    handle_fighter_spawning();
 }
 void ATestCapitalShips::resolve_damage_targets() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_damage_targets);

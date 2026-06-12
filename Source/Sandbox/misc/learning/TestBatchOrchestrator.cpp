@@ -96,6 +96,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     // Process spawns from last tick
     lasers->commit_spawns();
+    capital_ships->commit_spawns();
 
     // General actor tick
     player_ship->tick(dt);
