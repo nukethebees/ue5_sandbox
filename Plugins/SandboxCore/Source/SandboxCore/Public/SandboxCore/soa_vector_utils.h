@@ -1,22 +1,12 @@
 #pragma once
 
+#include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include <HAL/Platform.h>
 #include <Math/MathFwd.h>
 
 #include <concepts>
-
-namespace ml::kernel {
-template <typename T>
-void fill(T* RESTRICT xs, T* RESTRICT ys, T* RESTRICT zs, T const value, int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        xs[i] = value;
-        ys[i] = value;
-        zs[i] = value;
-    }
-}
-}
 
 namespace ml {
 template <typename T>
@@ -52,7 +42,7 @@ inline void fill(FVectors3f& vector, float const value) {
     ml::kernel::fill(
         vector.xs.GetData(), vector.ys.GetData(), vector.zs.GetData(), value, vector.num());
 }
-inline void fill(TVectors3View<float> vector, float const value) {
+inline void fill(FVectors3f::View vector, float const value) {
     ml::kernel::fill(
         vector.xs.GetData(), vector.ys.GetData(), vector.zs.GetData(), value, vector.num());
 }
@@ -64,13 +54,19 @@ inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     auto const n_to_append{to_append.num()};
 
     vector.add_uninitialized(n_to_append);
-    for (int32 i{0}; i < n_to_append; ++i) {
-        auto const index{n_base + i};
-
-        vector.xs[index] = to_append.xs[i];
-        vector.ys[index] = to_append.ys[i];
-        vector.zs[index] = to_append.zs[i];
-    }
+    ml::assign_from(vector.xs.GetData() + n_base,
+                    vector.ys.GetData() + n_base,
+                    vector.zs.GetData() + n_base,
+                    to_append.xs.GetData(),
+                    to_append.ys.GetData(),
+                    to_append.zs.GetData(),
+                    n_to_append);
+}
+template <is_vec3f Vec3f>
+inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int32 const i) {
+    vector.xs.Add(to_append.xs[i]);
+    vector.ys.Add(to_append.ys[i]);
+    vector.zs.Add(to_append.zs[i]);
 }
 
 // Maths

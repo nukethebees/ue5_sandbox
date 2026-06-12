@@ -12,9 +12,32 @@
 
 namespace ml::kernel {
 template <typename T>
+void assign_from(T* const RESTRICT src_x,
+                 T* const RESTRICT src_y,
+                 T* const RESTRICT src_z,
+                 T const* const RESTRICT dst_x,
+                 T const* const RESTRICT dst_y,
+                 T const* const RESTRICT dst_z,
+                 int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        src_x[i] = dst_x[i];
+        src_y[i] = dst_y[i];
+        src_z[i] = dst_z[i];
+    }
+}
+
+template <typename T>
 void fill(T* values, T const value, int32 const count) {
     for (int32 i{0}; i < count; ++i) {
         values[i] = value;
+    }
+}
+template <typename T>
+void fill(T* RESTRICT xs, T* RESTRICT ys, T* RESTRICT zs, T const value, int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        xs[i] = value;
+        ys[i] = value;
+        zs[i] = value;
     }
 }
 }
@@ -26,14 +49,14 @@ auto num(T const& value) -> int32 {
 }
 
 template <typename... Arrays>
-    requires ml::AllSupportNum<Arrays...>
+    requires (ml::SupportsNum<Arrays> && ...)
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((num(arrays) == count) && ...);
 }
 
 // Use other to guarantee two arrays
 template <typename Array, typename Other, typename... Rest>
-    requires ml::AllSupportNum<Array, Other, Rest...>
+    requires (SupportsNum<Array> && SupportsNum<Other> && (SupportsNum<Rest> && ...))
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
     return all_num_equal_to(ml::num(array), other, rest...);
 }
@@ -56,7 +79,7 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
 }
 
 template <typename... Arrays>
-    requires ml::AllSupportReset<Arrays...>
+    requires (ml::SupportsReset<Arrays> && ...)
 auto reset(Arrays&... arrays) -> void {
     return (ResetTraits<Arrays>::reset(arrays), ...);
 }
@@ -64,6 +87,12 @@ auto reset(Arrays&... arrays) -> void {
 template <SupportsReserve Array>
 auto reserve(Array& array, int32 count) -> void {
     ReserveTraits<Array>::reserve(array, count);
+}
+
+template <typename... Containers>
+    requires (SupportsReserve<Containers> && ...)
+auto reserve(int32 count, Containers&... containers) -> void {
+    (ReserveTraits<Containers>::reserve(containers, count), ...);
 }
 
 template <SupportsAddUninitialised Array>
