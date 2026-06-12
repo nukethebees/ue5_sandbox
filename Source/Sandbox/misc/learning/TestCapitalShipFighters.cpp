@@ -9,6 +9,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -129,14 +130,8 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     auto const n{get_num_instances()};
-    auto const speed{actor_config->speed};
-
     for (int32 i{0}; i < n; ++i) {
-        auto const dx{velocities.xs[i] * dt};
-        auto const dy{velocities.ys[i] * dt};
-        auto const dz{velocities.zs[i] * dt};
-
-        world_transforms[i].AddToTranslation(FVector{dx, dy, dz});
+        world_transforms[i].AddToTranslation(ml::scaled_fvector(velocities, i, dt));
     }
 }
 
@@ -234,13 +229,13 @@ void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
 
     ml::reset(entity_indices,
-                     local_indices_to_remove,
-                     world_transforms,
-                     velocities,
-                     teams,
-                     healths,
-                     laser_cooldowns,
-                     indices_ready_to_fire_buffer);
+              local_indices_to_remove,
+              world_transforms,
+              velocities,
+              teams,
+              healths,
+              laser_cooldowns,
+              indices_ready_to_fire_buffer);
 }
 auto ATestCapitalShipFighters::get_entity_data(int32 const offset, int32 const count) const
     -> FTestEntityRegistryEntityData {
