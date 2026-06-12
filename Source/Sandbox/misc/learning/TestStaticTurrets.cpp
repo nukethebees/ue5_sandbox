@@ -221,14 +221,6 @@ void ATestStaticTurrets::fire_at_enemies() {
 }
 
 // Spawning
-void ATestStaticTurrets::spawn_instance(FTransform const& transform, ETestTeam const team) {
-    instances->AddInstance(transform, is_world_space);
-    teams.Add(team);
-    healths.Add(actor_config->max_health);
-    target_indices.AddDefaulted();
-
-    validate_array_sizes();
-}
 void ATestStaticTurrets::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
 

@@ -38,8 +38,6 @@ class ATestStaticTurrets : public AActor {
     void update_visuals();
     void end_frame();
 
-    void spawn_instance(FTransform const& transform, ETestTeam const team);
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
