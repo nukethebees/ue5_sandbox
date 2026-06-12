@@ -8,6 +8,13 @@
 
 #include "CoreMinimal.h"
 
+namespace ml {
+template <ml::Numeric T>
+auto size_squared(T const x, T const y, T const z) noexcept -> T {
+    return x * x + y * y + z * z;
+}
+}
+
 namespace ml::kernel {
 template <ml::Numeric T>
 void add_vector3(T const* RESTRICT lhs_x,
