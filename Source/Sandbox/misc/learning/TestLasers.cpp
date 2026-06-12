@@ -77,10 +77,6 @@ void ATestLasers::tick(float const dt) {
     update_locations(dt);
 
     process_pending_spawns();
-
-#if WITH_EDITOR
-    dbg_n_instances = get_num_instances();
-#endif
 }
 void ATestLasers::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visuals);
@@ -89,7 +85,6 @@ void ATestLasers::update_visuals() {
 }
 void ATestLasers::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
-
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
 
@@ -100,6 +95,10 @@ void ATestLasers::end_tick() {
               hit_actor_queue,
               hit_component_queue,
               hit_item_queue);
+
+#if WITH_EDITOR
+    dbg_n_instances = get_num_instances();
+#endif
 }
 
 // Accessors
