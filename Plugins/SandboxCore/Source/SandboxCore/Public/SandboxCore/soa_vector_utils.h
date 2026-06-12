@@ -59,13 +59,13 @@ inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     auto const n_to_append{to_append.num()};
 
     vector.add_uninitialized(n_to_append);
-    ml::assign_from(vector.xs.GetData() + n_base,
-                    vector.ys.GetData() + n_base,
-                    vector.zs.GetData() + n_base,
-                    to_append.xs.GetData(),
-                    to_append.ys.GetData(),
-                    to_append.zs.GetData(),
-                    n_to_append);
+    ml::kernel::assign_from(vector.xs.GetData() + n_base,
+                            vector.ys.GetData() + n_base,
+                            vector.zs.GetData() + n_base,
+                            to_append.xs.GetData(),
+                            to_append.ys.GetData(),
+                            to_append.zs.GetData(),
+                            n_to_append);
 }
 template <is_vec3f Vec3f>
 inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int32 const i) {

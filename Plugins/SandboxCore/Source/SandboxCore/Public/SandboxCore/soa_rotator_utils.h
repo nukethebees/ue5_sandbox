@@ -35,7 +35,7 @@ inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
                             to_append.pitches.GetData(),
                             to_append.yaws.GetData(),
                             to_append.rolls.GetData(),
-                    n_to_append);
+                            n_to_append);
 }
 
 inline void append(FRotatorsf& rotators, float const pitch, float const yaw, float const roll) {
