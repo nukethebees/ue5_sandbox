@@ -19,6 +19,7 @@ void multiply_in_place(FVectors3f& dst, float const value) {
 
 void add_scaled_in_place(FVectors3f& dst, FVectors3f const& src, float const scale_factor) {
     auto const n{ml::num(dst)};
+    check(ml::num(src) == n);
 
     return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
                                                   dst.ys.GetData(),
