@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Array.add_in_place.Add zero") {
+TEST_CASE("SandboxCore.Array.add_in_place.Zero") {
     TArray<int32> array{0, 1, 2};
     TArray<int32> expected{0, 1, 2};
 
@@ -12,7 +12,7 @@ TEST_CASE("SandboxCore.Array.add_in_place.Add zero") {
     REQUIRE(array == expected);
 }
 
-TEST_CASE("SandboxCore.Array.add_in_place.Add one") {
+TEST_CASE("SandboxCore.Array.add_in_place.One") {
     TArray<int32> array{0, 1, 2};
     TArray<int32> expected{1, 2, 3};
 
