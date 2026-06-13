@@ -18,7 +18,9 @@ concept is_vec3f = requires(T const& vecs) {
     { vecs.num() } -> std::convertible_to<int32>;
 };
 
+// -------------------------------------------------------------------------------------------------
 // Assignment
+// -------------------------------------------------------------------------------------------------
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
 void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
                                         FVectors3f const& src,
@@ -64,7 +66,9 @@ inline void fill(FVectors3f::View vector, float const value) {
         vector.xs.GetData(), vector.ys.GetData(), vector.zs.GetData(), value, vector.num());
 }
 
-// Extension
+// -------------------------------------------------------------------------------------------------
+// Appending
+// -------------------------------------------------------------------------------------------------
 inline void append(FVectors3f& vector, float const x, float const y, float const z) {
     vector.xs.Add(x);
     vector.ys.Add(y);
@@ -140,8 +144,9 @@ inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int3
     vector.zs.Add(to_append.zs[i]);
 }
 
+// -------------------------------------------------------------------------------------------------
 // Maths
-
+// -------------------------------------------------------------------------------------------------
 void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
@@ -165,7 +170,9 @@ inline auto
     return ml::size_squared(dx, dy, dz);
 }
 
+// -------------------------------------------------------------------------------------------------
 // Conversion
+// -------------------------------------------------------------------------------------------------
 inline auto get_vector3d(FVectors3f const& src, int32 i) -> FVector {
     return {
         static_cast<double>(src.xs[i]),
@@ -194,6 +201,9 @@ inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float cons
 }
 }
 
+// -------------------------------------------------------------------------------------------------
+// Operators
+// -------------------------------------------------------------------------------------------------
 inline auto operator*=(FVectors3f& vectors, float const scale) -> FVectors3f& {
     ml::multiply_in_place(vectors, scale);
     return vectors;
