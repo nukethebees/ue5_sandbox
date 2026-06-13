@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Math.Lerp1D View returns true and writes interpolated values when array "
+TEST_CASE("SandboxCore.Math.Lerp1D.View returns true and writes interpolated values when array "
           "sizes match",
           "[SandboxCore][Math][Lerp1D]") {
     TArray<float> const From{0.0f, 10.0f, -10.0f, 100.0f};
@@ -21,7 +21,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D View returns true and writes interpolated val
     CHECK(Out[3] == 125.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchanged when To has the "
+TEST_CASE("SandboxCore.Math.Lerp1D.View returns false and leaves output unchanged when To has the "
           "wrong size",
           "[SandboxCore][Math][Lerp1D]") {
     TArray<float> const From{0.0f, 10.0f};
@@ -37,7 +37,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchange
     CHECK(Out[1] == -1.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchanged when Alpha has "
+TEST_CASE("SandboxCore.Math.Lerp1D.View returns false and leaves output unchanged when Alpha has "
           "the wrong size",
           "[SandboxCore][Math][Lerp1D]") {
     TArray<float> const From{0.0f, 10.0f};
@@ -53,7 +53,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchange
     CHECK(Out[1] == -1.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchanged when Out has the "
+TEST_CASE("SandboxCore.Math.Lerp1D.View returns false and leaves output unchanged when Out has the "
           "wrong size",
           "[SandboxCore][Math][Lerp1D]") {
     TArray<float> const From{0.0f, 10.0f};
@@ -68,7 +68,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D View returns false and leaves output unchange
     CHECK(Out[0] == -1.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns true and writes interpolated values when array "
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar returns true and writes interpolated values when array "
           "sizes match",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from{0.0f, 10.0f, -10.0f, 100.0f};
@@ -87,7 +87,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns true and writes interpolated v
     CHECK(out[3] == 150.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar supports alpha zero",
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar supports alpha zero",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from{1.0f, 2.0f, 3.0f};
     TArray<float> const to{10.0f, 20.0f, 30.0f};
@@ -104,7 +104,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar supports alpha zero",
     CHECK(out[2] == 3.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar supports alpha one",
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar supports alpha one",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from{1.0f, 2.0f, 3.0f};
     TArray<float> const to{10.0f, 20.0f, 30.0f};
@@ -121,7 +121,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar supports alpha one",
     CHECK(out[2] == 30.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns false and leaves output unchanged when To has "
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar returns false and leaves output unchanged when To has "
           "the wrong size",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from{0.0f, 10.0f};
@@ -138,7 +138,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns false and leaves output unchan
     CHECK(out[1] == -1.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns false and leaves output unchanged when Out has "
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar returns false and leaves output unchanged when Out has "
           "the wrong size",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from{0.0f, 10.0f};
@@ -154,7 +154,7 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns false and leaves output unchan
     CHECK(out[0] == -1.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns true for empty arrays",
+TEST_CASE("SandboxCore.Math.Lerp1D.Scalar returns true for empty arrays",
           "[SandboxCore][Math][Lerp1D][Scalar]") {
     TArray<float> const from;
     TArray<float> const to;
@@ -166,3 +166,4 @@ TEST_CASE("SandboxCore.Math.Lerp1D Scalar returns true for empty arrays",
     CHECK(b_result);
     CHECK(out.Num() == 0);
 }
+

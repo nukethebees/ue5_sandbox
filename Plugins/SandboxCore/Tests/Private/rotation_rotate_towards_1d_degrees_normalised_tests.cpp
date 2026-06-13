@@ -15,7 +15,7 @@ void check_single_rotation(float const current, float const target, float const 
 }
 } // namespace
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does nothing when count is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does nothing when count is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised]") {
     float const current[]{0.0f};
     float const target[]{90.0f};
@@ -26,157 +26,157 @@ TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does nothing when c
     CHECK(out[0] == 123.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised returns zero when already at zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.returns zero when already at zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][AlreadyAtTarget]") {
     check_single_rotation(0.0f, 0.0f, 90.0f, 1.0f, 0.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised returns positive angle when already at positive target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.returns positive angle when already at positive target",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][AlreadyAtTarget]") {
     check_single_rotation(90.0f, 90.0f, 90.0f, 1.0f, 90.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised returns negative angle when already at negative target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.returns negative angle when already at negative target",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][AlreadyAtTarget]") {
     check_single_rotation(-90.0f, -90.0f, 90.0f, 1.0f, -90.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised returns negative half turn when already there",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.returns negative half turn when already there",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][AlreadyAtTarget]") {
     check_single_rotation(-180.0f, -180.0f, 90.0f, 1.0f, -180.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves clockwise from zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves clockwise from zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Clockwise]") {
     check_single_rotation(0.0f, 90.0f, 30.0f, 1.0f, 30.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves clockwise using speed times delta time",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves clockwise using speed times delta time",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Clockwise]") {
     check_single_rotation(10.0f, 100.0f, 20.0f, 2.0f, 50.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves clockwise from negative angle",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves clockwise from negative angle",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Clockwise]") {
     check_single_rotation(-90.0f, 0.0f, 45.0f, 1.0f, -45.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves anticlockwise from positive angle",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves anticlockwise from positive angle",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Anticlockwise]") {
     check_single_rotation(90.0f, 0.0f, 30.0f, 1.0f, 60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves anticlockwise using speed times delta time",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves anticlockwise using speed times delta time",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Anticlockwise]") {
     check_single_rotation(100.0f, 10.0f, 20.0f, 2.0f, 60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves anticlockwise from zero to negative angle",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves anticlockwise from zero to negative angle",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Anticlockwise]") {
     check_single_rotation(0.0f, -90.0f, 45.0f, 1.0f, -45.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps clockwise to target when step would overshoot",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps clockwise to target when step would overshoot",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Snap]") {
     check_single_rotation(0.0f, 10.0f, 90.0f, 1.0f, 10.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps anticlockwise to target when step would overshoot",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps anticlockwise to target when step would overshoot",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Snap]") {
     check_single_rotation(0.0f, -10.0f, 90.0f, 1.0f, -10.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps to nearby clockwise target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps to nearby clockwise target",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Snap]") {
     check_single_rotation(45.0f, 50.0f, 10.0f, 1.0f, 50.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps to nearby anticlockwise target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps to nearby anticlockwise target",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][Snap]") {
     check_single_rotation(45.0f, 40.0f, 10.0f, 1.0f, 40.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves towards positive boundary before wrapping",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves towards positive boundary before wrapping",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][PositiveBoundary]") {
     check_single_rotation(170.0f, -170.0f, 5.0f, 1.0f, 175.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised wraps from positive boundary to negative side",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.wraps from positive boundary to negative side",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][PositiveBoundary]") {
     check_single_rotation(175.0f, -170.0f, 10.0f, 1.0f, -175.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised stays at negative half turn",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.stays at negative half turn",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][PositiveBoundary]") {
     check_single_rotation(179.0f, -179.0f, 1.0f, 1.0f, -180.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised moves towards negative boundary before wrapping",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.moves towards negative boundary before wrapping",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][NegativeBoundary]") {
     check_single_rotation(-170.0f, 170.0f, 5.0f, 1.0f, -175.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised wraps from negative boundary to positive side",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.wraps from negative boundary to positive side",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][NegativeBoundary]") {
     check_single_rotation(-175.0f, 170.0f, 10.0f, 1.0f, 175.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised reaches negative half turn at boundary",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.reaches negative half turn at boundary",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][NegativeBoundary]") {
     check_single_rotation(-179.0f, 179.0f, 1.0f, 1.0f, -180.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps across wrap boundary from positive to negative",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps across wrap boundary from positive to negative",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ShortestPath]") {
     check_single_rotation(170.0f, -170.0f, 90.0f, 1.0f, -170.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised snaps across wrap boundary from negative to positive",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.snaps across wrap boundary from negative to positive",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ShortestPath]") {
     check_single_rotation(-170.0f, 170.0f, 90.0f, 1.0f, 170.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised takes shortest path from 179 to -179",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.takes shortest path from 179 to -179",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ShortestPath]") {
     check_single_rotation(179.0f, -179.0f, 90.0f, 1.0f, -179.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised takes shortest path from -179 to 179",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.takes shortest path from -179 to 179",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ShortestPath]") {
     check_single_rotation(-179.0f, 179.0f, 90.0f, 1.0f, 179.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move from zero when speed is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move from zero when speed is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroSpeed]") {
     check_single_rotation(0.0f, 90.0f, 0.0f, 1.0f, 0.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move from positive angle when speed is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move from positive angle when speed is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroSpeed]") {
     check_single_rotation(90.0f, 0.0f, 0.0f, 1.0f, 90.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move across boundary when speed is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move across boundary when speed is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroSpeed]") {
     check_single_rotation(170.0f, -170.0f, 0.0f, 1.0f, 170.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move from zero when delta time is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move from zero when delta time is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroDeltaTime]") {
     check_single_rotation(0.0f, 90.0f, 90.0f, 0.0f, 0.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move from positive angle when delta time is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move from positive angle when delta time is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroDeltaTime]") {
     check_single_rotation(90.0f, 0.0f, 90.0f, 0.0f, 90.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised does not move across boundary when delta time is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.does not move across boundary when delta time is zero",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][ZeroDeltaTime]") {
     check_single_rotation(-170.0f, 170.0f, 90.0f, 0.0f, -170.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple clockwise elements",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.processes multiple clockwise elements",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][MultipleElements]") {
     TArray<float> const current{0.0f, 10.0f, -90.0f};
     TArray<float> const target{90.0f, 100.0f, 0.0f};
@@ -191,7 +191,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple 
     CHECK(out[2] == -60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple anticlockwise elements",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.processes multiple anticlockwise elements",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][MultipleElements]") {
     TArray<float> const current{90.0f, 100.0f, 0.0f};
     TArray<float> const target{0.0f, 10.0f, -90.0f};
@@ -206,7 +206,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple 
     CHECK(out[2] == -30.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple snapping elements",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.processes multiple snapping elements",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][MultipleElements]") {
     TArray<float> const current{10.0f, -10.0f, 45.0f, 45.0f};
     TArray<float> const target{20.0f, -20.0f, 50.0f, 40.0f};
@@ -222,7 +222,7 @@ TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple 
     CHECK(out[3] == 40.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised processes multiple wrap-boundary elements",
+TEST_CASE("SandboxCore.Math.RotateTowards1DDegreesNormalised.processes multiple wrap-boundary elements",
           "[SandboxCore][Math][RotateTowards1DDegreesNormalised][MultipleElements]") {
     TArray<float> const current{170.0f, -170.0f, 175.0f, -175.0f};
     TArray<float> const target{-170.0f, 170.0f, -170.0f, 170.0f};
@@ -265,43 +265,43 @@ void
 }
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace does nothing when already at target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.does nothing when already at target",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place({0.0f, 90.0f, -90.0f}, {0.0f, 90.0f, -90.0f}, 90.0f, 1.0f, {0.0f, 90.0f, -90.0f});
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates towards target without overshoot",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.rotates towards target without overshoot",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(0.0f, 90.0f, 30.0f, 1.0f, 30.0f);
     check_rotate_towards_in_place(90.0f, 0.0f, 30.0f, 1.0f, 60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace snaps to target when step reaches target",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.snaps to target when step reaches target",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(0.0f, 30.0f, 90.0f, 1.0f, 30.0f);
     check_rotate_towards_in_place(30.0f, 0.0f, 90.0f, 1.0f, 0.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace uses delta time", "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.uses delta time", "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(0.0f, 90.0f, 60.0f, 0.5f, 30.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace does nothing when speed is zero",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.does nothing when speed is zero",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place({0.0f, 45.0f, -45.0f}, {90.0f, 90.0f, -90.0f}, 0.0f, 1.0f, {0.0f, 45.0f, -45.0f});
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates across positive wrap boundary",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.rotates across positive wrap boundary",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(170.0f, -170.0f, 10.0f, 1.0f, -180.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace rotates across negative wrap boundary",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.rotates across negative wrap boundary",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(-170.0f, 170.0f, 10.0f, 1.0f, -180.0f);
 }
 
-TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace handles mixed batch",
+TEST_CASE("SandboxCore.Math.RotateTowards1DNormalisedInplace.handles mixed batch",
           "[SandboxCore][Math][RotateTowards1DNormalisedInplace]") {
     check_rotate_towards_in_place(
         {0.0f, 90.0f, 170.0f, -170.0f}, {90.0f, 0.0f, -170.0f, 170.0f}, 10.0f, 1.0f, {10.0f, 80.0f, -180.0f, -180.0f});

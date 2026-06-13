@@ -2,7 +2,7 @@
 
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc removes from one int32 array",
+TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc.Removes from one int32 array",
           "[SandboxCore][Array]") {
     TArray<int32> values{10, 20, 30, 40, 50, 60};
     TArray<int32> const indices{4, 2, 0};
@@ -15,7 +15,7 @@ TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc removes from one in
     CHECK(values[2] == 60);
 }
 
-TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc removes from paired int32 and float arrays",
+TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc.Removes from paired int32 and float arrays",
           "[SandboxCore][Array]") {
     TArray<int32> ids{10, 20, 30, 40, 50, 60};
     TArray<float> weights{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};

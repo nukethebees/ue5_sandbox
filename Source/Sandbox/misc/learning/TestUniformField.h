@@ -193,7 +193,7 @@ class ATestUniformField : public AActor {
     UPROPERTY(EditAnywhere, Category = "Grid")
     bool display_vectors{true};
     UPROPERTY(EditAnywhere, Category = "Grid")
-    float min_length_scale{0.2};
+    float min_length_scale{0.2f};
     UPROPERTY(EditAnywhere, Category = "Grid")
     FVector vector_base_scale{FVector::OneVector};
 

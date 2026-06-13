@@ -2,7 +2,7 @@
 
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Math.add_vector3 adds two split vector3 arrays", "[SandboxCore][Math]") {
+TEST_CASE("SandboxCore.Math.add_vector3.adds two split vector3 arrays", "[SandboxCore][Math]") {
     TArray<float> const lhs_x{1.0f, 2.0f, 3.0f};
     TArray<float> const lhs_y{4.0f, 5.0f, 6.0f};
     TArray<float> const lhs_z{7.0f, 8.0f, 9.0f};
@@ -37,7 +37,7 @@ TEST_CASE("SandboxCore.Math.add_vector3 adds two split vector3 arrays", "[Sandbo
     CHECK(out_z[2] == 99.0f);
 }
 
-TEST_CASE("SandboxCore.Math.add_vector3 returns false when array sizes do not match",
+TEST_CASE("SandboxCore.Math.add_vector3.returns false when array sizes do not match",
           "[SandboxCore][Math]") {
     TArray<float> const lhs_x{1.0f, 2.0f, 3.0f};
     TArray<float> const lhs_y{4.0f, 5.0f};
