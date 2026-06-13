@@ -163,7 +163,8 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
     auto const n{get_num_instances()};
-    auto const max_turn_radians{turn_speed_radians * dt};
+
+    auto const max_turn_unitless{turn_speed_unitless * dt};
 
     for (int32 i{0}; i < n; ++i) {
         auto const speed{speeds[i]};
@@ -171,11 +172,17 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
 
         auto const current_location{ml::get_vector3f(locations, i)};
         auto const target_location{ml::get_vector3f(target_locations, i)};
-        auto const direction{(target_location - current_location).GetSafeNormal()};
 
-        auto const delta_location{direction * delta_distance};
+        auto const current_direction{ml::get_vector3f(directions, i)};
+        auto const target_direction{(target_location - current_location).GetSafeNormal()};
+
+        auto const new_direction(
+            FMath::Lerp(current_direction, target_direction, max_turn_unitless));
+
+        auto const delta_location{new_direction * delta_distance};
 
         ml::assign(locations, i, current_location + delta_location);
+        ml::assign(directions, i, new_direction);
     }
 }
 
@@ -193,6 +200,11 @@ void ATestCapitalShipFighters::update_ismc_transforms() {
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
+
+        auto const dir{ml::get_vector3d(directions, i)};
+        auto const quat{FQuat::FindBetweenNormals(FVector::ForwardVector, dir)};
+
+        ismc_transforms[i].SetRotation(quat);
     }
 }
 void ATestCapitalShipFighters::draw_debug_shapes() {
