@@ -161,6 +161,12 @@ struct FVectors2f
         ys.Reserve(count);
     }
 
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+    }
+
     auto set_num_uninitialized(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
@@ -248,6 +254,12 @@ struct FVectors2d
     {
         xs.Reserve(count);
         ys.Reserve(count);
+    }
+
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
     }
 
     auto set_num_uninitialized(size_type const count) -> void
@@ -339,6 +351,12 @@ struct FVectors2i32
         ys.Reserve(count);
     }
 
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+    }
+
     auto set_num_uninitialized(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
@@ -426,6 +444,12 @@ struct FVectors2u32
     {
         xs.Reserve(count);
         ys.Reserve(count);
+    }
+
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
     }
 
     auto set_num_uninitialized(size_type const count) -> void
@@ -520,6 +544,13 @@ struct FVectors3f
         xs.Reserve(count);
         ys.Reserve(count);
         zs.Reserve(count);
+    }
+
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+        zs.SetNum(count, allow_shrinking);
     }
 
     auto set_num_uninitialized(size_type const count) -> void
@@ -619,6 +650,13 @@ struct FVectors3d
         zs.Reserve(count);
     }
 
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+        zs.SetNum(count, allow_shrinking);
+    }
+
     auto set_num_uninitialized(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
@@ -716,6 +754,13 @@ struct FVectors3i32
         zs.Reserve(count);
     }
 
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+        zs.SetNum(count, allow_shrinking);
+    }
+
     auto set_num_uninitialized(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
@@ -811,6 +856,13 @@ struct FVectors3u32
         xs.Reserve(count);
         ys.Reserve(count);
         zs.Reserve(count);
+    }
+
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        xs.SetNum(count, allow_shrinking);
+        ys.SetNum(count, allow_shrinking);
+        zs.SetNum(count, allow_shrinking);
     }
 
     auto set_num_uninitialized(size_type const count) -> void

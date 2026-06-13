@@ -55,6 +55,15 @@ def default_functions() -> list[FnSpec]:
             pass_args=["count"],
         ),
         FnSpec(
+            name="set_num",
+            array_fn="SetNum",
+            args=[
+                "size_type const count",
+                "EAllowShrinking const allow_shrinking",
+            ],
+            pass_args=["count", "allow_shrinking"],
+        ),
+        FnSpec(
             name="set_num_uninitialized",
             array_fn="SetNumUninitialized",
             args=["size_type const count"],

@@ -126,6 +126,13 @@ struct FRotatorsf
         rolls.Reserve(count);
     }
 
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        pitches.SetNum(count, allow_shrinking);
+        yaws.SetNum(count, allow_shrinking);
+        rolls.SetNum(count, allow_shrinking);
+    }
+
     auto set_num_uninitialized(size_type const count) -> void
     {
         pitches.SetNumUninitialized(count);
@@ -221,6 +228,13 @@ struct FRotatorsd
         pitches.Reserve(count);
         yaws.Reserve(count);
         rolls.Reserve(count);
+    }
+
+    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void
+    {
+        pitches.SetNum(count, allow_shrinking);
+        yaws.SetNum(count, allow_shrinking);
+        rolls.SetNum(count, allow_shrinking);
     }
 
     auto set_num_uninitialized(size_type const count) -> void
