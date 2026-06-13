@@ -101,4 +101,7 @@ inline auto get_rotator3d(FRotatorsf::ConstView const& rotator, int32 const i) -
 inline auto get_vector3f(FRotatorsf const& rotator, int32 const i) -> FVector3f {
     return get_rotator3f(rotator, i).Vector();
 }
+inline auto get_vector3f(FRotatorsf::ConstView const rotators, int32 const i) -> FVector3f {
+    return FRotator3f{rotators.pitches[i], rotators.yaws[i], rotators.rolls[i]}.Vector();
+}
 }
