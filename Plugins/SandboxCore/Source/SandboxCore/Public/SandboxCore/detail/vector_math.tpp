@@ -16,18 +16,26 @@ template <ml::Numeric T>
 auto size_squared(T const x, T const y, T const z) noexcept -> T {
     return x * x + y * y + z * z;
 }
+template <ml::Numeric T>
+auto size(T const x, T const y, T const z) noexcept -> T {
+    return FMath::Sqrt(size_squared(x, y, z));
+}
 
 // -------------------------------------------------------------------------------------------------
 // Distance
 // -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
-auto dist_squared(T const x0, T const y0, T const z0, T const x1, T const y1, T const z1) noexcept
+auto dist_squared(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept
     -> T {
-    auto const dx{x1 - x0};
-    auto const dy{y1 - y0};
-    auto const dz{z1 - z0};
+    auto const dx{bx - ax};
+    auto const dy{by - ay};
+    auto const dz{bz - az};
 
     return size_squared(dx, dy, dz);
+}
+template <ml::Numeric T>
+auto dist(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept -> T {
+    return FMath::Sqrt(dist_squared(ax, ay, az, bx, by, bz));
 }
 
 // -------------------------------------------------------------------------------------------------
