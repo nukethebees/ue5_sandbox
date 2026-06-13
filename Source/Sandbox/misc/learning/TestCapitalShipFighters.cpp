@@ -97,28 +97,26 @@ void ATestCapitalShipFighters::sync_from_registry() {
                                         entity_indices,
                                         locations,
                                         rotations,
-                                        velocities,
+                                        directions,
+                                        speeds,
                                         teams,
                                         healths,
                                         laser_cooldowns.remaining_times,
                                         target_indices,
                                         target_locations);
 
-    {
-        auto const n{get_num_instances()};
-        for (int32 i{0}; i < n; ++i) {
-            auto const entity_index{entity_indices[i]};
-            auto const target_entity_index{target_indices[i]};
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_index{entity_indices[i]};
+        auto const target_entity_index{target_indices[i]};
 
-            healths[i] = entity_registry->get_health(entity_index);
+        healths[i] = entity_registry->get_health(entity_index);
 
-            if (target_entity_index.is_valid()) {
-                if (entity_registry->is_stale(target_entity_index)) {
-                    target_indices[i] = FGenerationIndex{};
-                } else {
-                    ml::assign(
-                        target_locations, i, entity_registry->get_location(target_entity_index));
-                }
+        if (target_entity_index.is_valid()) {
+            if (entity_registry->is_stale(target_entity_index)) {
+                target_indices[i] = FGenerationIndex{};
+            } else {
+                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
             }
         }
     }
@@ -137,7 +135,7 @@ void ATestCapitalShipFighters::update_visuals() {
     update_ismc_transforms();
     instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
 
-    if (enable_target_debug_drawing) {
+    if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
         draw_debug_shapes();
     }
 }
@@ -162,24 +160,19 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
 void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
-#if 0
-    ml::add_scaled_in_place(locations, velocities, dt);
-#else
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
+        auto const speed{speeds[i]};
+        auto const delta_distance{speed * dt};
+
         auto const current_location{ml::get_vector3f(locations, i)};
         auto const target_location{ml::get_vector3f(target_locations, i)};
         auto const direction{(target_location - current_location).GetSafeNormal()};
 
-        auto const velocity{ml::get_vector3f(velocities, i)};
-        auto const speed{velocity.Size()};
-
-        auto const delta_distance{speed * dt};
         auto const delta_location{direction * delta_distance};
 
         ml::assign(locations, i, current_location + delta_location);
     }
-#endif
 }
 
 // Visuals
@@ -202,17 +195,24 @@ void ATestCapitalShipFighters::update_ismc_transforms() {
     }
 }
 void ATestCapitalShipFighters::draw_debug_shapes() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::draw_debug_shapes);
+
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{ml::get_vector3d(locations, i)};
-        debug_drawer.draw_sphere(ship_location);
 
-        if (!target_indices[i].is_valid()) {
-            continue;
+        if (enable_ship_location_debug_drawing) {
+            debug_drawer.draw_sphere(ship_location);
         }
 
-        auto const target_location{ml::get_vector3d(target_locations, i)};
-        debug_drawer.draw_line(ship_location, target_location);
+        if (enable_target_debug_drawing) {
+            if (!target_indices[i].is_valid()) {
+                continue;
+            }
+
+            auto const target_location{ml::get_vector3d(target_locations, i)};
+            debug_drawer.draw_line(ship_location, target_location);
+        }
     }
 }
 
@@ -244,28 +244,37 @@ void
         return;
     }
 
+    auto const speed{actor_config->speed};
+
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
+    ml::add_uninitialised(directions, n_new);
+    ml::append_n(speeds, speed, n_new);
+
     teams.Append(new_teams);
+
     ml::append_n(healths, actor_config->health, n_new);
-    laser_cooldowns.remaining_times.AddZeroed(n_new);
+
     target_indices.Append(new_targets);
     ml::add_zeroed(target_locations, n_new);
 
-    ml::add_uninitialised(velocities, n_new);
+    laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n_new);
 
-    auto const speed{actor_config->speed};
+    TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};
 
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
 
-        ml::assign(velocities, index, ml::get_vector3f(rotations, index) * speed);
+        auto const direction{ml::get_vector3f(rotations, index)};
+
+        ml::assign(directions, index, direction);
 
         ml::assign_from(entity_data.locations, i, locations, index);
-        ml::assign_from(entity_data.velocities, i, velocities, index);
+        ml::assign_from(entity_data.velocities, i, directions, index);
+        ml::multiply_in_place(entity_data.velocities, new_speeds);
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;
@@ -305,7 +314,7 @@ void ATestCapitalShipFighters::handle_firing() {
     for (int32 i{0}; i < n_to_fire; ++i) {
         auto const index_to_fire{indices_to_fire[i]};
 
-        auto const direction{ml::get_vector3f(velocities, index_to_fire).GetSafeNormal()};
+        auto const direction{ml::get_vector3f(directions, index_to_fire)};
         ml::assign(new_laser_locations,
                    i,
                    ml::get_vector3f(locations, index_to_fire) + fire_point_offset * direction);
@@ -326,7 +335,8 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               local_indices_to_remove,
               locations,
               rotations,
-              velocities,
+              directions,
+              speeds,
               teams,
               healths,
               target_indices,
@@ -339,13 +349,17 @@ void ATestCapitalShipFighters::clear_runtime_state() {
 auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEntityData {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::get_entity_data);
 
+    auto const n{get_num_instances()};
+
     FTestEntityRegistryEntityData entity_data;
     entity_data.locations = locations;
-    entity_data.velocities = velocities;
+
+    entity_data.velocities.add_uninitialized(n);
+    entity_data.velocities = directions;
+    ml::multiply_in_place(entity_data.velocities, speeds);
+
     entity_data.healths = healths;
     entity_data.teams = teams;
-
-    auto const n{get_num_instances()};
 
     ml::add_uninitialised(entity_data.alive, n);
     for (int32 i{0}; i < n; ++i) {
@@ -367,7 +381,8 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(entity_indices),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
-        SANDBOX_NAMED_NUM(velocities),
+        SANDBOX_NAMED_NUM(directions),
+        SANDBOX_NAMED_NUM(speeds),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),

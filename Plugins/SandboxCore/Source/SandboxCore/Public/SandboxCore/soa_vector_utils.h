@@ -140,6 +140,7 @@ void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, float const value);
+void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values);
 
 inline auto dist_sq(FVectors3f const& vecs, int32 const i, FVector3f const& other) -> float {
     auto const dx{vecs.xs[i] - other.X};

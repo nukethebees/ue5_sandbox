@@ -93,7 +93,8 @@ class ATestCapitalShipFighters : public AActor {
     // Transform
     FVectors3f locations;
     FRotatorsf rotations;
-    FVectors3f velocities;
+    FVectors3f directions;
+    TArray<float> speeds;
 
     // Team
     TArray<ETestTeam> teams{};
@@ -116,6 +117,8 @@ class ATestCapitalShipFighters : public AActor {
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
     bool enable_target_debug_drawing{false};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
+    bool enable_ship_location_debug_drawing{false};
 };

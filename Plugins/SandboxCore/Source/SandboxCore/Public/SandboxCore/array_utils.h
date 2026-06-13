@@ -40,22 +40,6 @@ void fill(T* RESTRICT xs, T* RESTRICT ys, T* RESTRICT zs, T const value, int32 c
         zs[i] = value;
     }
 }
-
-template <typename T>
-void add_scaled_in_place(T* const RESTRICT dst_x,
-                         T* const RESTRICT dst_y,
-                         T* const RESTRICT dst_z,
-                         T const* const RESTRICT src_x,
-                         T const* const RESTRICT src_y,
-                         T const* const RESTRICT src_z,
-                         T const scale_factor,
-                         int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += src_x[i] * scale_factor;
-        dst_y[i] += src_y[i] * scale_factor;
-        dst_z[i] += src_z[i] * scale_factor;
-    }
-}
 }
 
 namespace ml {
