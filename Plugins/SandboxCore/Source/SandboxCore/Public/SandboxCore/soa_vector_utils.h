@@ -9,6 +9,7 @@
 #include <Math/UnrealMathUtility.h>
 
 #include <concepts>
+#include <initializer_list>
 
 namespace ml {
 template <typename T>
@@ -38,6 +39,37 @@ inline auto SANDBOXCORE_API almost_equal(FVectors3f const& a,
     return ml::kernel::almost_equal(a.xs.GetData(), b.xs.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.ys.GetData(), b.ys.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.zs.GetData(), b.zs.GetData(), n, tolerance);
+}
+
+// -------------------------------------------------------------------------------------------------
+// Construction
+// -------------------------------------------------------------------------------------------------
+[[nodiscard]]
+inline auto SANDBOXCORE_API make_vectors3f(std::initializer_list<float> const xs,
+                                           std::initializer_list<float> const ys,
+                                           std::initializer_list<float> const zs) -> FVectors3f {
+    auto const n{xs.size()};
+    check(n == ys.size());
+    check(n == zs.size());
+
+    return {
+        .xs = xs,
+        .ys = ys,
+        .zs = zs,
+    };
+}
+[[nodiscard]]
+inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, TArray<float> zs)
+    -> FVectors3f {
+    auto const n{xs.Num()};
+    check(n == ys.Num());
+    check(n == zs.Num());
+
+    return {
+        .xs = MoveTemp(xs),
+        .ys = MoveTemp(ys),
+        .zs = MoveTemp(zs),
+    };
 }
 
 // -------------------------------------------------------------------------------------------------
