@@ -92,7 +92,6 @@ class ATestCapitalShipFighters : public AActor {
 
     // Transform
     FVectors3f locations;
-    FRotatorsf rotations;
     FVectors3f directions;
     TArray<float> speeds;
     float turn_speed_radians{0.f};
