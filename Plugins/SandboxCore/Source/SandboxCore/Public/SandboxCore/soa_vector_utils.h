@@ -6,6 +6,7 @@
 
 #include <HAL/Platform.h>
 #include <Math/MathFwd.h>
+#include <Math/UnrealMathUtility.h>
 
 #include <concepts>
 
@@ -17,6 +18,27 @@ concept is_vec3f = requires(T const& vecs) {
     { vecs.zs[0] } -> std::convertible_to<float>;
     { vecs.num() } -> std::convertible_to<int32>;
 };
+
+// -------------------------------------------------------------------------------------------------
+// Comparison
+// -------------------------------------------------------------------------------------------------
+[[nodiscard]]
+inline auto SANDBOXCORE_API almost_equal(FVectors3f const& a,
+                                         FVectors3f const& b,
+                                         float const tolerance = KINDA_SMALL_NUMBER) -> bool {
+    auto const n{ml::num(a)};
+    if (n != ml::num(b)) {
+        return false;
+    }
+
+    if (n == 0) {
+        return true;
+    }
+
+    return ml::kernel::almost_equal(a.xs.GetData(), b.xs.GetData(), n, tolerance) &&
+           ml::kernel::almost_equal(a.ys.GetData(), b.ys.GetData(), n, tolerance) &&
+           ml::kernel::almost_equal(a.zs.GetData(), b.zs.GetData(), n, tolerance);
+}
 
 // -------------------------------------------------------------------------------------------------
 // Assignment

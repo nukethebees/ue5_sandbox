@@ -7,10 +7,14 @@
 #include "Containers/ArrayView.h"
 
 #include <HAL/Platform.h>
+#include <Math/UnrealMathUtility.h>
 
 #include <concepts>
 
 namespace ml::kernel {
+// -------------------------------------------------------------------------------------------------
+// Assignment
+// -------------------------------------------------------------------------------------------------
 template <typename T>
 void assign_from(T* const RESTRICT dst_x,
                  T* const RESTRICT dst_y,
@@ -39,6 +43,27 @@ void fill(T* RESTRICT xs, T* RESTRICT ys, T* RESTRICT zs, T const value, int32 c
         ys[i] = value;
         zs[i] = value;
     }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Comparison
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+auto almost_equal(T const* const lhs,
+                  T const* const rhs,
+                  int32 const count,
+                  T const tolerance = static_cast<T>(KINDA_SMALL_NUMBER)) -> bool {
+    check(lhs != nullptr);
+    check(rhs != nullptr);
+    check(count >= 0);
+
+    for (int32 i{0}; i < count; ++i) {
+        if (!FMath::IsNearlyEqual(lhs[i], rhs[i], tolerance)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 }
 
