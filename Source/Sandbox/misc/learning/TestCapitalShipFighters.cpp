@@ -312,7 +312,6 @@ void ATestCapitalShipFighters::handle_firing() {
                                        0.f,
                                        indices_ready_to_fire_buffer)};
 
-    TArray<FTransform> laser_transforms;
     auto const fire_point_offset{actor_config->fire_point_offset};
 
     auto const n_to_fire{ml::num(indices_to_fire)};
@@ -324,9 +323,12 @@ void ATestCapitalShipFighters::handle_firing() {
         auto const index_to_fire{indices_to_fire[i]};
 
         auto const direction{ml::get_vector3f(directions, index_to_fire)};
-        ml::assign(new_laser_locations,
-                   i,
-                   ml::get_vector3f(locations, index_to_fire) + fire_point_offset * direction);
+        auto const laser_offset{fire_point_offset * direction};
+
+        auto const laser_base_location{ml::get_vector3f(locations, index_to_fire)};
+        auto const laser_location{laser_base_location + laser_offset};
+
+        ml::assign(new_laser_locations, i, laser_location);
         ml::assign(new_laser_rotations, i, direction.ToOrientationRotator());
 
         laser_cooldowns.remaining_times[index_to_fire] = cooldown;
