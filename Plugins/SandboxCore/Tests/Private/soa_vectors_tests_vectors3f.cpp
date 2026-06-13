@@ -1,9 +1,7 @@
-#include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/soa_vector_utils.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
-
-using Values = TArray<float>;
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
     FVectors3f vectors;
@@ -16,31 +14,21 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetView") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f, 3.0f};
-    vectors.ys = Values{4.0f, 5.0f, 6.0f};
-    vectors.zs = Values{7.0f, 8.0f, 9.0f};
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
 
     auto view{vectors.get_view()};
     view.xs[1] = 20.0f;
     view.ys[1] = 50.0f;
     view.zs[1] = 80.0f;
 
-    Values const expected_xs{1.0f, 20.0f, 3.0f};
-    Values const expected_ys{4.0f, 50.0f, 6.0f};
-    Values const expected_zs{7.0f, 80.0f, 9.0f};
+    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f}, {4.0f, 50.0f, 6.0f}, {7.0f, 80.0f, 9.0f})};
 
     CHECK(view.num() == 3);
-    CHECK(vectors.xs == expected_xs);
-    CHECK(vectors.ys == expected_ys);
-    CHECK(vectors.zs == expected_zs);
+    CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f};
-    vectors.ys = Values{3.0f, 4.0f};
-    vectors.zs = Values{5.0f, 6.0f};
+    auto const vectors{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
 
     auto const& const_vectors{vectors};
     auto view{const_vectors.get_const_view()};
@@ -52,31 +40,25 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Slice") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f, 3.0f, 4.0f};
-    vectors.ys = Values{5.0f, 6.0f, 7.0f, 8.0f};
-    vectors.zs = Values{9.0f, 10.0f, 11.0f, 12.0f};
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
+                                    {5.0f, 6.0f, 7.0f, 8.0f},
+                                    {9.0f, 10.0f, 11.0f, 12.0f})};
 
     auto slice{vectors.get_view().slice(1, 2)};
     slice.xs[0] = 20.0f;
     slice.ys[1] = 70.0f;
     slice.zs[0] = 100.0f;
 
-    Values const expected_xs{1.0f, 20.0f, 3.0f, 4.0f};
-    Values const expected_ys{5.0f, 6.0f, 70.0f, 8.0f};
-    Values const expected_zs{9.0f, 100.0f, 11.0f, 12.0f};
+    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f},
+                                           {5.0f, 6.0f, 70.0f, 8.0f},
+                                           {9.0f, 100.0f, 11.0f, 12.0f})};
 
     CHECK(slice.num() == 2);
-    CHECK(vectors.xs == expected_xs);
-    CHECK(vectors.ys == expected_ys);
-    CHECK(vectors.zs == expected_zs);
+    CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.LeftAndRight") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f, 3.0f};
-    vectors.ys = Values{4.0f, 5.0f, 6.0f};
-    vectors.zs = Values{7.0f, 8.0f, 9.0f};
+    auto const vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
 
     auto view{vectors.get_const_view()};
     auto left{view.left(2)};
@@ -128,10 +110,7 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddUninitialized") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reset") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f};
-    vectors.ys = Values{3.0f, 4.0f};
-    vectors.zs = Values{5.0f, 6.0f};
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
 
     vectors.reset();
 
@@ -143,19 +122,12 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reset") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.RemoveAtSwap") {
-    FVectors3f vectors;
-    vectors.xs = Values{1.0f, 2.0f, 3.0f};
-    vectors.ys = Values{4.0f, 5.0f, 6.0f};
-    vectors.zs = Values{7.0f, 8.0f, 9.0f};
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
 
     vectors.remove_at_swap(1, 1, EAllowShrinking::No);
 
-    Values const expected_xs{1.0f, 3.0f};
-    Values const expected_ys{4.0f, 6.0f};
-    Values const expected_zs{7.0f, 9.0f};
+    auto const expected{ml::make_vectors3f({1.0f, 3.0f}, {4.0f, 6.0f}, {7.0f, 9.0f})};
 
     CHECK(vectors.num() == 2);
-    CHECK(vectors.xs == expected_xs);
-    CHECK(vectors.ys == expected_ys);
-    CHECK(vectors.zs == expected_zs);
+    CHECK(ml::almost_equal(vectors, expected));
 }
