@@ -172,10 +172,29 @@ void dist_squared_vector(T const* RESTRICT xs_lhs,
         out[i] = x * x + y * y + z * z;
     }
 }
+
+// -------------------------------------------------------------------------------------------------
+// Dot product
+// -------------------------------------------------------------------------------------------------
+template <ml::Numeric T>
+void dot_product(T* RESTRICT out,
+                 T const* RESTRICT a_xs,
+                 T const* RESTRICT a_ys,
+                 T const* RESTRICT a_zs,
+                 T const* RESTRICT b_xs,
+                 T const* RESTRICT b_ys,
+                 T const* RESTRICT b_zs,
+                 int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        out[i] = (a_xs[i] * b_xs[i]) + (a_ys[i] * b_ys[i]) + (a_zs[i] * b_zs[i]);
+    }
+}
 }
 
 namespace ml {
-
+// -------------------------------------------------------------------------------------------------
+// Addition
+// -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
 bool add_vector3(TConstArrayView<T> lhs_x,
                  TConstArrayView<T> lhs_y,
@@ -206,6 +225,9 @@ bool add_vector3(TConstArrayView<T> lhs_x,
     return true;
 }
 
+// -------------------------------------------------------------------------------------------------
+// Size
+// -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
 void size_squared_vector(TConstArrayView<T> vecs, TArrayView<T> out) noexcept {
     check(vecs.Num() == out.Num());
@@ -228,5 +250,36 @@ void size_squared_vector(TConstArrayView<T> xs,
     }
 
     size_squared_vector(xs.GetData(), ys.GetData(), zs.GetData(), count, out.GetData());
+}
+
+// -------------------------------------------------------------------------------------------------
+// Dot product
+// -------------------------------------------------------------------------------------------------
+template <ml::Numeric T>
+void dot_product(TArrayView<T> const out,
+                 TConstArrayView<T> const a_xs,
+                 TConstArrayView<T> const a_ys,
+                 TConstArrayView<T> const a_zs,
+                 TConstArrayView<T> const b_xs,
+                 TConstArrayView<T> const b_ys,
+                 TConstArrayView<T> const b_zs) noexcept {
+    auto const n{a_xs.Num()};
+
+    check(n == a_xs.Num());
+    check(n == a_ys.Num());
+    check(n == a_zs.Num());
+    check(n == b_xs.Num());
+    check(n == b_ys.Num());
+    check(n == b_zs.Num());
+    check(n == out.Num());
+
+    ml::kernel::dot_product(out.GetData(),
+                            a_xs.GetData(),
+                            a_ys.GetData(),
+                            a_zs.GetData(),
+                            b_xs.GetData(),
+                            b_ys.GetData(),
+                            b_zs.GetData(),
+                            n);
 }
 }
