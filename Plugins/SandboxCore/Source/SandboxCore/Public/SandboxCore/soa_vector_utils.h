@@ -219,7 +219,7 @@ inline auto dist_sq(FVectors3f const& vecs, int32 const i, FVector3f const& othe
     auto const dy{vecs.ys[i] - other.Y};
     auto const dz{vecs.zs[i] - other.Z};
 
-    return ml::size_squared(dx, dy, dz);
+    return ml::size_sq(dx, dy, dz);
 }
 inline auto
     dist_sq(FVectors3f const& vecs, int32 const i, float const ox, float const oy, float const oz)
@@ -228,13 +228,68 @@ inline auto
     auto const dy{vecs.ys[i] - oy};
     auto const dz{vecs.zs[i] - oz};
 
-    return ml::size_squared(dx, dy, dz);
+    return ml::size_sq(dx, dy, dz);
 }
 // -------------------------------------------------------------------------------------------------
 // Size
 // -------------------------------------------------------------------------------------------------
 inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
-    return ml::size_squared(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
+    return ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
+}
+
+// -------------------------------------------------------------------------------------------------
+// Normalisation
+// -------------------------------------------------------------------------------------------------
+inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
+    auto const n{vecs.num()};
+    check(vecs.ys.Num() == n);
+    check(vecs.zs.Num() == n);
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const size_sq{ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i])};
+        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Direction
+// -------------------------------------------------------------------------------------------------
+template <is_vec3f T>
+inline void direction(T& out, T const& a, T const& b) {
+    auto const n{ml::num(a)};
+    check(ml::num(b) == n);
+    check(ml::num(out) >= n);
+
+    if (n < 1) {
+        return;
+    }
+
+    check(out.xs.GetData() != a.xs.GetData());
+    check(out.ys.GetData() != a.ys.GetData());
+    check(out.zs.GetData() != a.zs.GetData());
+
+    check(out.xs.GetData() != b.xs.GetData());
+    check(out.ys.GetData() != b.ys.GetData());
+    check(out.zs.GetData() != b.zs.GetData());
+
+    check(a.xs.GetData() != b.xs.GetData());
+    check(a.ys.GetData() != b.ys.GetData());
+    check(a.zs.GetData() != b.zs.GetData());
+
+    ml::kernel::direction(out.xs.GetData(),
+                          out.ys.GetData(),
+                          out.zs.GetData(),
+                          a.xs.GetData(),
+                          a.ys.GetData(),
+                          a.zs.GetData(),
+                          b.xs.GetData(),
+                          b.ys.GetData(),
+                          b.zs.GetData(),
+                          n);
 }
 
 // -------------------------------------------------------------------------------------------------

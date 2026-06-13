@@ -13,29 +13,29 @@ namespace ml {
 // Size
 // -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
-auto size_squared(T const x, T const y, T const z) noexcept -> T {
+FORCEINLINE auto size_sq(T const x, T const y, T const z) noexcept -> T {
     return x * x + y * y + z * z;
 }
 template <ml::Numeric T>
 auto size(T const x, T const y, T const z) noexcept -> T {
-    return FMath::Sqrt(size_squared(x, y, z));
+    return FMath::Sqrt(size_sq(x, y, z));
 }
 
 // -------------------------------------------------------------------------------------------------
 // Distance
 // -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
-auto dist_squared(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept
-    -> T {
+FORCEINLINE auto
+    dist_sq(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept -> T {
     auto const dx{bx - ax};
     auto const dy{by - ay};
     auto const dz{bz - az};
 
-    return size_squared(dx, dy, dz);
+    return size_sq(dx, dy, dz);
 }
 template <ml::Numeric T>
 auto dist(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept -> T {
-    return FMath::Sqrt(dist_squared(ax, ay, az, bx, by, bz));
+    return FMath::Sqrt(dist_sq(ax, ay, az, bx, by, bz));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -53,15 +53,15 @@ namespace ml::kernel {
 // Addition
 // -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
-void add_vector3(T const* RESTRICT lhs_x,
+void add_vector3(T* RESTRICT out_x,
+                 T* RESTRICT out_y,
+                 T* RESTRICT out_z,
+                 T const* RESTRICT lhs_x,
                  T const* RESTRICT lhs_y,
                  T const* RESTRICT lhs_z,
                  T const* RESTRICT rhs_x,
                  T const* RESTRICT rhs_y,
                  T const* RESTRICT rhs_z,
-                 T* RESTRICT out_x,
-                 T* RESTRICT out_y,
-                 T* RESTRICT out_z,
                  int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out_x[i] = lhs_x[i] + rhs_x[i];
@@ -124,20 +124,20 @@ void scale_vector3(T* RESTRICT dst_x,
 // Size
 // -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
-void size_squared_vector(VectorElementT<T>* RESTRICT out,
-                         T const* RESTRICT vecs,
-                         int32 const count) noexcept {
+void size_sq_vector(VectorElementT<T>* RESTRICT out,
+                    T const* RESTRICT vecs,
+                    int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = vecs[i].SizeSquared();
     }
 }
 
 template <ml::Numeric T>
-void size_squared_vector(T* RESTRICT out,
-                         T const* RESTRICT xs,
-                         T const* RESTRICT ys,
-                         T const* RESTRICT zs,
-                         int32 const count) noexcept {
+void size_sq_vector(T* RESTRICT out,
+                    T const* RESTRICT xs,
+                    T const* RESTRICT ys,
+                    T const* RESTRICT zs,
+                    int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = xs[i] * xs[i] + ys[i] * ys[i] + zs[i] * zs[i];
     }
@@ -147,24 +147,24 @@ void size_squared_vector(T* RESTRICT out,
 // Distance
 // -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
-void dist_squared_vector(VectorElementT<T>* RESTRICT out,
-                         T const reference,
-                         T const* RESTRICT points,
-                         int32 const count) noexcept {
+void dist_sq_vector(VectorElementT<T>* RESTRICT out,
+                    T const reference,
+                    T const* RESTRICT points,
+                    int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = (points[i] - reference).SizeSquared();
     }
 }
 
 template <ml::Numeric T>
-void dist_squared_vector(T* RESTRICT out,
-                         T const* RESTRICT xs_lhs,
-                         T const* RESTRICT ys_lhs,
-                         T const* RESTRICT zs_lhs,
-                         T const* RESTRICT xs_rhs,
-                         T const* RESTRICT ys_rhs,
-                         T const* RESTRICT zs_rhs,
-                         int32 const count) noexcept {
+void dist_sq_vector(T* RESTRICT out,
+                    T const* RESTRICT xs_lhs,
+                    T const* RESTRICT ys_lhs,
+                    T const* RESTRICT zs_lhs,
+                    T const* RESTRICT xs_rhs,
+                    T const* RESTRICT ys_rhs,
+                    T const* RESTRICT zs_rhs,
+                    int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         auto const x{xs_rhs[i] - xs_lhs[i]};
         auto const y{ys_rhs[i] - ys_lhs[i]};
@@ -187,6 +187,42 @@ void dot_product(T* RESTRICT out,
                  int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = (a_xs[i] * b_xs[i]) + (a_ys[i] * b_ys[i]) + (a_zs[i] * b_zs[i]);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Direction
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+void direction(T* const RESTRICT out_xs,
+               T* const RESTRICT out_ys,
+               T* const RESTRICT out_zs,
+               T const* const RESTRICT a_xs,
+               T const* const RESTRICT a_ys,
+               T const* const RESTRICT a_zs,
+               T const* const RESTRICT b_xs,
+               T const* const RESTRICT b_ys,
+               T const* const RESTRICT b_zs,
+               int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        auto const dx{b_xs[i] - a_xs[i]};
+        auto const dy{b_ys[i] - a_ys[i]};
+        auto const dz{b_zs[i] - a_zs[i]};
+
+        auto const size_sq{ml::size_sq(dx, dy, dz)};
+
+        if (size_sq <= static_cast<T>(UE_SMALL_NUMBER)) {
+            out_xs[i] = T{0};
+            out_ys[i] = T{0};
+            out_zs[i] = T{0};
+            continue;
+        }
+
+        auto const inv_size{static_cast<T>(1) / FMath::Sqrt(size_sq)};
+
+        out_xs[i] = dx * inv_size;
+        out_ys[i] = dy * inv_size;
+        out_zs[i] = dz * inv_size;
     }
 }
 }
@@ -224,27 +260,27 @@ void add_vector3(TArrayView<T> out_x,
 // Size
 // -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
-void size_squared_vector(TConstArrayView<T> vecs, TArrayView<T> out) noexcept {
+void size_sq_vector(TConstArrayView<T> vecs, TArrayView<T> out) noexcept {
     check(vecs.Num() == out.Num());
-    size_squared_vector(out.GetData(), vecs.GetData(), vecs.Num());
+    size_sq_vector(out.GetData(), vecs.GetData(), vecs.Num());
 }
 
 template <ml::Numeric T>
-void size_squared_vector(TArrayView<T> out,
-                         TConstArrayView<T> xs,
-                         TConstArrayView<T> ys,
-                         TConstArrayView<T> zs) noexcept {
+void size_sq_vector(TArrayView<T> out,
+                    TConstArrayView<T> xs,
+                    TConstArrayView<T> ys,
+                    TConstArrayView<T> zs) noexcept {
     auto const count{xs.Num()};
 
     auto const are_equal{ml::all_num_equal_to(count, ys, zs, out)};
     check(are_equal);
     if (!are_equal) {
-        UE_LOG(LogSandboxCore, Error, TEXT("size_squared_vector: Mismatched array sizes."));
+        UE_LOG(LogSandboxCore, Error, TEXT("size_sq_vector: Mismatched array sizes."));
         checkNoEntry();
         return;
     }
 
-    size_squared_vector(out.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), count);
+    size_sq_vector(out.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), count);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -276,5 +312,42 @@ void dot_product(TArrayView<T> const out,
                             b_ys.GetData(),
                             b_zs.GetData(),
                             n);
+}
+
+// -------------------------------------------------------------------------------------------------
+// Direction
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+void direction(TArrayView<T> const out_xs,
+               TArrayView<T> const out_ys,
+               TArrayView<T> const out_zs,
+               TConstArrayView<T> const a_xs,
+               TConstArrayView<T> const a_ys,
+               TConstArrayView<T> const a_zs,
+               TConstArrayView<T> const b_xs,
+               TConstArrayView<T> const b_ys,
+               TConstArrayView<T> const b_zs) noexcept {
+    auto const count{out_xs.Num()};
+
+    check(count == a_xs.Num());
+    check(count == a_ys.Num());
+    check(count == a_zs.Num());
+    check(count == b_xs.Num());
+    check(count == b_ys.Num());
+    check(count == b_zs.Num());
+    check(count == out_xs.Num());
+    check(count == out_ys.Num());
+    check(count == out_zs.Num());
+
+    ml::kernel::direction(out_xs.GetData(),
+                          out_ys.GetData(),
+                          out_zs.GetData(),
+                          a_xs.GetData(),
+                          a_ys.GetData(),
+                          a_zs.GetData(),
+                          b_xs.GetData(),
+                          b_ys.GetData(),
+                          b_zs.GetData(),
+                          count);
 }
 }
