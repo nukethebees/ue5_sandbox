@@ -13,22 +13,6 @@ void add_in_place(T* const data, T const value, int32 const count) noexcept {
     }
 }
 
-template <typename T>
-void add_scaled_in_place(T* const RESTRICT dst_x,
-                         T* const RESTRICT dst_y,
-                         T* const RESTRICT dst_z,
-                         T const* const RESTRICT src_x,
-                         T const* const RESTRICT src_y,
-                         T const* const RESTRICT src_z,
-                         T const scale_factor,
-                         int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += src_x[i] * scale_factor;
-        dst_y[i] += src_y[i] * scale_factor;
-        dst_z[i] += src_z[i] * scale_factor;
-    }
-}
-
 // Subtraction
 template <ml::Numeric T>
 void subtract_in_place(T* const data, T const value, int32 const count) noexcept {

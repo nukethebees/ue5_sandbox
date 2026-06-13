@@ -2,6 +2,7 @@
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/vector_math.h>
 
 namespace ml {
 void assign_from(FVectors3f& dst, FVectors3f const& src) {
@@ -9,6 +10,32 @@ void assign_from(FVectors3f& dst, FVectors3f const& src) {
     dst.ys = src.ys;
     dst.zs = src.zs;
 }
+void assign_from_scaled(FVectors3f& dst,
+                        FVectors3f const& src,
+                        TConstArrayView<float> const scale_factors) {
+    assign_from_scaled(dst, src.get_const_view(), scale_factors);
+}
+void assign_from_scaled(FVectors3f& dst,
+                        FVectors3f::ConstView src,
+                        TConstArrayView<float> const scale_factors) {
+    auto const n{ml::num(dst)};
+    check(n == ml::num(src));
+    check(n == ml::num(scale_factors));
+
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::scale_vector3<float>(dst.xs.GetData(),
+                                     dst.ys.GetData(),
+                                     dst.zs.GetData(),
+                                     src.xs.GetData(),
+                                     src.ys.GetData(),
+                                     src.zs.GetData(),
+                                     scale_factors.GetData(),
+                                     n);
+}
+
 void multiply_in_place(FVectors3f& dst, float const value) {
     auto const n{dst.num()};
 

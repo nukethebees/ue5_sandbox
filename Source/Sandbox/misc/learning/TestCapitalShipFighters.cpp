@@ -263,22 +263,21 @@ void
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n_new);
 
-    TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};
-
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
 
         auto const direction{ml::get_vector3f(rotations, index)};
 
         ml::assign(directions, index, direction);
-
         ml::assign_from(entity_data.locations, i, locations, index);
-        ml::assign_from(entity_data.velocities, i, directions, index);
-        ml::multiply_in_place(entity_data.velocities, new_speeds);
         entity_data.healths[i] = healths[index];
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;
     }
+
+    TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};
+    ml::assign_from_scaled(
+        entity_data.velocities, directions.get_const_view().right(n_new), new_speeds);
 
     auto const new_indices{entity_registry->add_entities(entity_data.get_const_view())};
     entity_indices.Append(new_indices);

@@ -25,6 +25,9 @@ auto dist_squared(T const x0, T const y0, T const z0, T const x1, T const y1, T 
 }
 
 namespace ml::kernel {
+// -------------------------------------------------------------------------------------------------
+// Addition
+// -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
 void add_vector3(T const* RESTRICT lhs_x,
                  T const* RESTRICT lhs_y,
@@ -58,6 +61,44 @@ void add_vector3_in_place(T* dst_x,
     }
 }
 
+template <ml::Numeric T>
+void add_scaled_in_place(T* const RESTRICT dst_x,
+                         T* const RESTRICT dst_y,
+                         T* const RESTRICT dst_z,
+                         T const* const RESTRICT src_x,
+                         T const* const RESTRICT src_y,
+                         T const* const RESTRICT src_z,
+                         T const scale_factor,
+                         int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        dst_x[i] += src_x[i] * scale_factor;
+        dst_y[i] += src_y[i] * scale_factor;
+        dst_z[i] += src_z[i] * scale_factor;
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Multiplication
+// -------------------------------------------------------------------------------------------------
+template <ml::Numeric T>
+void scale_vector3(T* RESTRICT dst_x,
+                   T* RESTRICT dst_y,
+                   T* RESTRICT dst_z,
+                   T const* RESTRICT lhs_x,
+                   T const* RESTRICT lhs_y,
+                   T const* RESTRICT lhs_z,
+                   T const* RESTRICT scale_factor,
+                   int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        dst_x[i] = lhs_x[i] * scale_factor[i];
+        dst_y[i] = lhs_y[i] * scale_factor[i];
+        dst_z[i] = lhs_z[i] * scale_factor[i];
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Size
+// -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
 void size_squared_vector(T const* RESTRICT vecs,
                          int32 const count,
@@ -78,6 +119,9 @@ void size_squared_vector(T const* RESTRICT xs,
     }
 }
 
+// -------------------------------------------------------------------------------------------------
+// Distance
+// -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
 void dist_squared_vector(T const reference,
                          T const* RESTRICT points,

@@ -20,6 +20,12 @@ concept is_vec3f = requires(T const& vecs) {
 
 // Assignment
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
+void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
+                                        FVectors3f const& src,
+                                        TConstArrayView<float> const scale_factors);
+void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
+                                        FVectors3f::ConstView const src,
+                                        TConstArrayView<float> const scale_factors);
 
 template <is_vec3f Vec3f>
 inline void assign_from(FVectors3f& dst, int32 const dst_i, Vec3f const& src, int32 const src_i) {
