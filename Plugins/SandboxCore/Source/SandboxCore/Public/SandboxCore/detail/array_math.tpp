@@ -111,6 +111,10 @@ template <ml::Numeric T>
 void divide_in_place(TArrayView<T> data, T const value) noexcept {
     ml::kernel::divide_in_place(data.GetData(), value, data.Num());
 }
+template <ml::Numeric T>
+void divide_in_place(TArray<T>& data, T const value) noexcept {
+    ml::kernel::divide_in_place(data.GetData(), value, data.Num());
+}
 
 template <ml::Numeric T>
 auto collect_indices_less_equal(TConstArrayView<T> values,
