@@ -51,6 +51,8 @@ void ATestCapitalShipFighters::begin_play() {
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
+
+    turn_speed_radians = FMath::DegreesToRadians(actor_config->turn_speed_degrees);
 }
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
@@ -161,6 +163,8 @@ void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
     auto const n{get_num_instances()};
+    auto const max_turn_radians{turn_speed_radians * dt};
+
     for (int32 i{0}; i < n; ++i) {
         auto const speed{speeds[i]};
         auto const delta_distance{speed * dt};

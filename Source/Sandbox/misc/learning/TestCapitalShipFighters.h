@@ -95,6 +95,7 @@ class ATestCapitalShipFighters : public AActor {
     FRotatorsf rotations;
     FVectors3f directions;
     TArray<float> speeds;
+    float turn_speed_radians{0.f};
 
     // Team
     TArray<ETestTeam> teams{};
