@@ -313,15 +313,13 @@ void ATestCapitalShipFighters::handle_firing() {
                                        indices_ready_to_fire_buffer)};
 
     auto const fire_point_offset{actor_config->fire_point_offset};
-
+    auto const aim_threshold{fire_dot_product_threshold};
     auto const n_to_fire{ml::num(indices_to_fire)};
 
     ml::reset(new_laser_locations, new_laser_rotations);
     ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
 
-    auto const aim_threshold{fire_dot_product_threshold};
     int32 added{0};
-
     for (int32 i{0}; i < n_to_fire; ++i) {
         auto const index_to_fire{indices_to_fire[i]};
 
@@ -329,9 +327,9 @@ void ATestCapitalShipFighters::handle_firing() {
             continue;
         }
 
-        auto const location{ml::get_vector3f(locations, index_to_fire)};
+        auto const ship_location{ml::get_vector3f(locations, index_to_fire)};
         auto const target_location{ml::get_vector3f(target_locations, index_to_fire)};
-        auto const target_direction{(target_location - location).GetSafeNormal()};
+        auto const target_direction{(target_location - ship_location).GetSafeNormal()};
 
         auto const direction{ml::get_vector3f(directions, index_to_fire)};
 
@@ -341,9 +339,7 @@ void ATestCapitalShipFighters::handle_firing() {
         }
 
         auto const laser_offset{fire_point_offset * direction};
-
-        auto const laser_base_location{ml::get_vector3f(locations, index_to_fire)};
-        auto const laser_location{laser_base_location + laser_offset};
+        auto const laser_location{ship_location + laser_offset};
 
         ml::assign(new_laser_locations, i, laser_location);
         ml::assign(new_laser_rotations, i, direction.ToOrientationRotator());
