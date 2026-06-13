@@ -327,7 +327,7 @@ void ATestCapitalShipFighters::handle_firing() {
         ml::assign(new_laser_locations,
                    i,
                    ml::get_vector3f(locations, index_to_fire) + fire_point_offset * direction);
-        ml::assign(new_laser_rotations, i, direction.Rotation());
+        ml::assign(new_laser_rotations, i, direction.ToOrientationRotator());
 
         laser_cooldowns.remaining_times[index_to_fire] = cooldown;
     }
