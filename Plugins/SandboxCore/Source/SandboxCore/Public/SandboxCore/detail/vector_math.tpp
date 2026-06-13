@@ -9,10 +9,17 @@
 #include "CoreMinimal.h"
 
 namespace ml {
+// -------------------------------------------------------------------------------------------------
+// Size
+// -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
 auto size_squared(T const x, T const y, T const z) noexcept -> T {
     return x * x + y * y + z * z;
 }
+
+// -------------------------------------------------------------------------------------------------
+// Distance
+// -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
 auto dist_squared(T const x0, T const y0, T const z0, T const x1, T const y1, T const z1) noexcept
     -> T {
@@ -21,6 +28,15 @@ auto dist_squared(T const x0, T const y0, T const z0, T const x1, T const y1, T 
     auto const dz{z1 - z0};
 
     return size_squared(dx, dy, dz);
+}
+
+// -------------------------------------------------------------------------------------------------
+// Dot product
+// -------------------------------------------------------------------------------------------------
+template <ml::Numeric T>
+auto dot_product(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept
+    -> T {
+    return (ax * bx) + (ay * by) + (az * bz);
 }
 }
 
