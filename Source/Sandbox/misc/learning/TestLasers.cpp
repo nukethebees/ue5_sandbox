@@ -264,8 +264,10 @@ void ATestLasers::update_ismc_transforms() {
     }
 
     for (int32 i{0}; i < n; ++i) {
-        ismc_transforms[i].SetTranslation(ml::get_vector3d(locations, i));
-        ismc_transforms[i].SetRotation(ml::get_rotator3d(rotations, i).Quaternion());
+        ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
+
+        auto const rotation{ml::get_rotator3d(rotations, i)};
+        ismc_transforms[i].SetRotation(rotation.Quaternion());
     }
 }
 

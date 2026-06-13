@@ -76,7 +76,6 @@ class ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 n_preallocated_instances{5000};
 
-
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
@@ -91,9 +90,11 @@ class ATestLasers : public AActor {
     UPROPERTY()
     FVectors3f velocities;
 
+    // Lifetime
     UPROPERTY()
     TArray<float> lifetimes;
 
+    // Spawning
     UPROPERTY()
     FVectors3f locations_to_add;
     UPROPERTY()
