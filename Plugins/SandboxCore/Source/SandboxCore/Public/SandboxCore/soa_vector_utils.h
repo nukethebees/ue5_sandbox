@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/detail/interpolation.tpp>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 #include <SandboxCore/vector_math.h>
@@ -205,6 +206,31 @@ inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int3
 void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
+
+// -------------------------------------------------------------------------------------------------
+// Interpolation
+// -------------------------------------------------------------------------------------------------
+inline void lerp_in_place(FVectors3f& current,
+                          FVectors3f const& target,
+                          TArrayView<float> const alpha) {
+    ml::lerp_3d_in_place(TArrayView<float>{current.xs},
+                         TArrayView<float>{current.ys},
+                         TArrayView<float>{current.zs},
+                         TConstArrayView<float>{target.xs},
+                         TConstArrayView<float>{target.ys},
+                         TConstArrayView<float>{target.zs},
+                         TConstArrayView<float>{alpha.GetData(), alpha.Num()});
+}
+
+inline void lerp_in_place(FVectors3f& current, FVectors3f const& target, float const alpha) {
+    ml::lerp_3d_in_place(TArrayView<float>{current.xs},
+                         TArrayView<float>{current.ys},
+                         TArrayView<float>{current.zs},
+                         TConstArrayView<float>{target.xs},
+                         TConstArrayView<float>{target.ys},
+                         TConstArrayView<float>{target.zs},
+                         alpha);
+}
 
 // -------------------------------------------------------------------------------------------------
 // Multiplication
