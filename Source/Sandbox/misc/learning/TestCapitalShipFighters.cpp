@@ -319,10 +319,27 @@ void ATestCapitalShipFighters::handle_firing() {
     ml::reset(new_laser_locations, new_laser_rotations);
     ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
 
+    auto const aim_threshold{fire_dot_product_threshold};
+    int32 added{0};
+
     for (int32 i{0}; i < n_to_fire; ++i) {
         auto const index_to_fire{indices_to_fire[i]};
 
+        if (!target_indices[index_to_fire].is_valid()) {
+            continue;
+        }
+
+        auto const location{ml::get_vector3f(locations, index_to_fire)};
+        auto const target_location{ml::get_vector3f(target_locations, index_to_fire)};
+        auto const target_direction{(target_location - location).GetSafeNormal()};
+
         auto const direction{ml::get_vector3f(directions, index_to_fire)};
+
+        auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
+        if (dot_product < aim_threshold) {
+            continue;
+        }
+
         auto const laser_offset{fire_point_offset * direction};
 
         auto const laser_base_location{ml::get_vector3f(locations, index_to_fire)};
@@ -332,7 +349,11 @@ void ATestCapitalShipFighters::handle_firing() {
         ml::assign(new_laser_rotations, i, direction.ToOrientationRotator());
 
         laser_cooldowns.remaining_times[index_to_fire] = cooldown;
+        ++added;
     }
+
+    new_laser_locations.set_num(added, EAllowShrinking::No);
+    new_laser_rotations.set_num(added, EAllowShrinking::No);
 
     laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
                               new_laser_rotations.get_const_view());

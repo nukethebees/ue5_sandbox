@@ -106,6 +106,8 @@ class ATestCapitalShipFighters : public AActor {
     // Targets
     TArray<FGenerationIndex> target_indices;
     FVectors3f target_locations;
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    float fire_dot_product_threshold{0.95f};
 
     // Laser
     UPROPERTY(EditAnywhere, Category = "Sandbox")
