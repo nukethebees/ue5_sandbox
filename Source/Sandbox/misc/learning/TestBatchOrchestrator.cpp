@@ -88,62 +88,89 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     ++tick_counter;
 
-    capital_ships->begin_tick();
-    capital_ship_fighters->begin_tick();
-    turrets->begin_tick();
-    spinners->begin_tick();
-    lasers->begin_tick();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
+        capital_ships->begin_tick();
+        capital_ship_fighters->begin_tick();
+        turrets->begin_tick();
+        spinners->begin_tick();
+        lasers->begin_tick();
+    }
 
-    // Process spawns from last tick
-    lasers->commit_spawns();
-    capital_ships->commit_spawns();
+    { // Process spawns from last tick
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
+        lasers->commit_spawns();
+        capital_ships->commit_spawns();
+    }
 
-    // General actor tick
-    player_ship->tick(dt);
-    capital_ships->tick(dt);
-    capital_ship_fighters->tick(dt);
-    turrets->tick(dt);
-    spinners->tick(dt);
-    lasers->tick(dt);
+    { // General actor tick
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::tick);
+        player_ship->tick(dt);
+        capital_ships->tick(dt);
+        capital_ship_fighters->tick(dt);
+        turrets->tick(dt);
+        spinners->tick(dt);
+        lasers->tick(dt);
+    }
 
-    // Send updates to the registry
-    player_ship->update_entity_registry();
-    capital_ships->update_entity_registry();
-    capital_ship_fighters->update_entity_registry();
-    turrets->update_entity_registry();
-    spinners->update_entity_registry();
+    { // Send updates to the registry
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
+        player_ship->update_entity_registry();
+        capital_ships->update_entity_registry();
+        capital_ship_fighters->update_entity_registry();
+        turrets->update_entity_registry();
+        spinners->update_entity_registry();
+    }
 
-    // Before processing damage events
-    // Read damage data and generate explicit entity handles
-    entity_registry->filter_damage_candidates();
+    {
+        // Before processing damage events
+        // Read damage data and generate explicit entity handles
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::tick::filter_damage_candidates);
+        entity_registry->filter_damage_candidates();
+    }
 
-    player_ship->resolve_damage_targets();
-    capital_ships->resolve_damage_targets();
-    capital_ship_fighters->resolve_damage_targets();
-    turrets->resolve_damage_targets();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::tick::resolve_damage_targets);
+        player_ship->resolve_damage_targets();
+        capital_ships->resolve_damage_targets();
+        capital_ship_fighters->resolve_damage_targets();
+        turrets->resolve_damage_targets();
+    }
 
-    // Resolve events such as damage
-    entity_registry->commit_updates();
+    { // Resolve events such as damage
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
+        entity_registry->commit_updates();
+    }
 
-    // Apply changes such as damage from the registry
-    player_ship->sync_from_registry();
-    capital_ships->sync_from_registry();
-    capital_ship_fighters->sync_from_registry();
-    turrets->sync_from_registry();
+    { // Apply changes such as damage from the registry
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
+        player_ship->sync_from_registry();
+        capital_ships->sync_from_registry();
+        capital_ship_fighters->sync_from_registry();
+        turrets->sync_from_registry();
+    }
 
-    // Update visual state
-    player_ship->update_visuals();
-    capital_ships->update_visuals();
-    capital_ship_fighters->update_visuals();
-    turrets->update_visuals();
-    spinners->update_visuals();
-    lasers->update_visuals();
+    { // Update visual state
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_visuals);
+        player_ship->update_visuals();
+        capital_ships->update_visuals();
+        capital_ship_fighters->update_visuals();
+        turrets->update_visuals();
+        spinners->update_visuals();
+        lasers->update_visuals();
+    }
 
-    player_ship->end_tick();
-    capital_ships->end_tick();
-    capital_ship_fighters->end_tick();
-    turrets->end_tick();
-    spinners->end_tick();
-    lasers->end_tick();
-    entity_registry->end_tick();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
+        player_ship->end_tick();
+        capital_ships->end_tick();
+        capital_ship_fighters->end_tick();
+        turrets->end_tick();
+        spinners->end_tick();
+        lasers->end_tick();
+        entity_registry->end_tick();
+    }
 }
