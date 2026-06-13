@@ -87,6 +87,10 @@ template <ml::Numeric T>
 void add_in_place(TArrayView<T> data, T const value) noexcept {
     ml::kernel::add_in_place(data.GetData(), value, data.Num());
 }
+template <ml::Numeric T>
+void add_in_place(TArray<T>& data, T const value) noexcept {
+    ml::kernel::add_in_place(data.GetData(), value, data.Num());
+}
 
 template <ml::Numeric T>
 void subtract_in_place(TArrayView<T> data, T const value) noexcept {
