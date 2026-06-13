@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 #include <SandboxCore/vector_math.h>
 
@@ -320,6 +321,27 @@ inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float cons
         vectors.ys[i] * scale,
         vectors.zs[i] * scale,
     };
+}
+
+template <is_vec3f Vec3f>
+inline void to_rotatorsf(FRotatorsf& rotators, Vec3f const& vectors) {
+    auto const n{vectors.num()};
+    rotators.set_num_uninitialized(n);
+
+    ml::to_rotations(TArrayView<float>{rotators.pitches},
+                     TArrayView<float>{rotators.yaws},
+                     TArrayView<float>{rotators.rolls},
+                     TConstArrayView<float>{vectors.xs},
+                     TConstArrayView<float>{vectors.ys},
+                     TConstArrayView<float>{vectors.zs});
+}
+
+template <is_vec3f Vec3f>
+inline auto to_rotatorsf(Vec3f const& vectors) -> FRotatorsf {
+    FRotatorsf rotators;
+    ml::to_rotatorsf(rotators, vectors);
+
+    return rotators;
 }
 }
 

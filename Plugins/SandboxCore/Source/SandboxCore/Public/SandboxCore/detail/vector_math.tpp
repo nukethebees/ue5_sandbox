@@ -46,6 +46,17 @@ auto dot_product(T const ax, T const ay, T const az, T const bx, T const by, T c
     -> T {
     return (ax * bx) + (ay * by) + (az * bz);
 }
+
+// -------------------------------------------------------------------------------------------------
+// Rotation
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+auto to_rotation(T const x, T const y, T const z) noexcept -> UE::Math::TRotator<T> {
+    auto const yaw{FMath::RadiansToDegrees(FMath::Atan2(y, x))};
+    auto const pitch{FMath::RadiansToDegrees(FMath::Atan2(z, FMath::Sqrt((x * x) + (y * y))))};
+
+    return {pitch, yaw, static_cast<T>(0.0)};
+}
 }
 
 namespace ml::kernel {
@@ -225,6 +236,25 @@ void direction(T* const RESTRICT out_xs,
         out_zs[i] = dz * inv_size;
     }
 }
+
+// -------------------------------------------------------------------------------------------------
+// Rotation
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+void to_rotations(T* const RESTRICT pitches,
+                  T* const RESTRICT yaws,
+                  T* const RESTRICT rolls,
+                  T const* const RESTRICT xs,
+                  T const* const RESTRICT ys,
+                  T const* const RESTRICT zs,
+                  int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        auto const rotation{ml::to_rotation(xs[i], ys[i], zs[i])};
+        pitches[i] = rotation.Pitch;
+        yaws[i] = rotation.Yaw;
+        rolls[i] = rotation.Roll;
+    }
+}
 }
 
 namespace ml {
@@ -349,5 +379,32 @@ void direction(TArrayView<T> const out_xs,
                           b_ys.GetData(),
                           b_zs.GetData(),
                           count);
+}
+
+// -------------------------------------------------------------------------------------------------
+// Rotation
+// -------------------------------------------------------------------------------------------------
+template <std::floating_point T>
+void to_rotations(TArrayView<T> const pitches,
+                  TArrayView<T> const yaws,
+                  TArrayView<T> const rolls,
+                  TConstArrayView<T> const xs,
+                  TConstArrayView<T> const ys,
+                  TConstArrayView<T> const zs) noexcept {
+    auto const count{xs.Num()};
+
+    check(count == ys.Num());
+    check(count == zs.Num());
+    check(count == pitches.Num());
+    check(count == yaws.Num());
+    check(count == rolls.Num());
+
+    ml::kernel::to_rotations(pitches.GetData(),
+                             yaws.GetData(),
+                             rolls.GetData(),
+                             xs.GetData(),
+                             ys.GetData(),
+                             zs.GetData(),
+                             count);
 }
 }

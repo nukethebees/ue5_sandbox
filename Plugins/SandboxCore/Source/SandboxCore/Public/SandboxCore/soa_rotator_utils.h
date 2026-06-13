@@ -4,8 +4,10 @@
 #include <SandboxCore/soa_rotators.h>
 
 #include <HAL/Platform.h>
+#include <Math/UnrealMathUtility.h>
 
 #include <concepts>
+#include <initializer_list>
 
 namespace ml {
 template <typename T>
@@ -15,6 +17,55 @@ concept is_rot3f = requires(T const& vecs) {
     { vecs.rolls[0] } -> std::convertible_to<float>;
     { vecs.num() } -> std::convertible_to<int32>;
 };
+
+// Comparison
+[[nodiscard]]
+inline auto SANDBOXCORE_API almost_equal(FRotatorsf const& a,
+                                         FRotatorsf const& b,
+                                         float const tolerance = KINDA_SMALL_NUMBER) -> bool {
+    auto const n{a.num()};
+    if (n != b.num()) {
+        return false;
+    }
+
+    if (n == 0) {
+        return true;
+    }
+
+    return ml::kernel::almost_equal(a.pitches.GetData(), b.pitches.GetData(), n, tolerance) &&
+           ml::kernel::almost_equal(a.yaws.GetData(), b.yaws.GetData(), n, tolerance) &&
+           ml::kernel::almost_equal(a.rolls.GetData(), b.rolls.GetData(), n, tolerance);
+}
+
+// Construction
+[[nodiscard]]
+inline auto SANDBOXCORE_API make_rotatorsf(std::initializer_list<float> const pitches,
+                                           std::initializer_list<float> const yaws,
+                                           std::initializer_list<float> const rolls) -> FRotatorsf {
+    auto const n{pitches.size()};
+    check(n == yaws.size());
+    check(n == rolls.size());
+
+    return {
+        .pitches = pitches,
+        .yaws = yaws,
+        .rolls = rolls,
+    };
+}
+[[nodiscard]]
+inline auto SANDBOXCORE_API make_rotatorsf(TArray<float> pitches,
+                                           TArray<float> yaws,
+                                           TArray<float> rolls) -> FRotatorsf {
+    auto const n{pitches.Num()};
+    check(n == yaws.Num());
+    check(n == rolls.Num());
+
+    return {
+        .pitches = MoveTemp(pitches),
+        .yaws = MoveTemp(yaws),
+        .rolls = MoveTemp(rolls),
+    };
+}
 
 // Assignment
 inline void
