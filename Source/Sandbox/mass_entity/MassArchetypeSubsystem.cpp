@@ -67,19 +67,18 @@ void UMassArchetypeSubsystem::build_archetypes(FMassEntityManager& entity_manage
         auto& bitset{descriptor.GetElementsBitSet()};
 
         using Ptr = TNotNull<UScriptStruct const*>;
-        descriptor.GetFragments().Add(Ptr{FMassBulletTransformFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletVelocityFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletLastPositionFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletHitInfoFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletStateFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletDamageFragment::StaticStruct()});
-        descriptor.GetFragments().Add(Ptr{FMassBulletSourceFragment::StaticStruct()});
 
-        descriptor.GetConstSharedFragments().Add(
-            Ptr{FMassBulletImpactEffectFragment::StaticStruct()});
-        descriptor.GetConstSharedFragments().Add(
-            Ptr{FMassBulletVisualizationActorFragment::StaticStruct()});
-        descriptor.GetConstSharedFragments().Add(Ptr{FMassBulletDataFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletTransformFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletVelocityFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletLastPositionFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletHitInfoFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletStateFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletDamageFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletSourceFragment::StaticStruct()});
+
+        bitset.Add(Ptr{FMassBulletImpactEffectFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletVisualizationActorFragment::StaticStruct()});
+        bitset.Add(Ptr{FMassBulletDataFragment::StaticStruct()});
 
         auto creation_params{FMassArchetypeCreationParams{}};
         creation_params.DebugName = FName(TEXT("bullet_archetype"));
