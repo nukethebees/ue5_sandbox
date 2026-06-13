@@ -199,14 +199,21 @@ inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int3
 }
 
 // -------------------------------------------------------------------------------------------------
-// Maths
+// Addition
 // -------------------------------------------------------------------------------------------------
 void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
+
+// -------------------------------------------------------------------------------------------------
+// Multiplication
+// -------------------------------------------------------------------------------------------------
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, float const value);
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values);
 
+// -------------------------------------------------------------------------------------------------
+// Distance
+// -------------------------------------------------------------------------------------------------
 inline auto dist_sq(FVectors3f const& vecs, int32 const i, FVector3f const& other) -> float {
     auto const dx{vecs.xs[i] - other.X};
     auto const dy{vecs.ys[i] - other.Y};
@@ -222,6 +229,12 @@ inline auto
     auto const dz{vecs.zs[i] - oz};
 
     return ml::size_squared(dx, dy, dz);
+}
+// -------------------------------------------------------------------------------------------------
+// Size
+// -------------------------------------------------------------------------------------------------
+inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
+    return ml::size_squared(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
 }
 
 // -------------------------------------------------------------------------------------------------

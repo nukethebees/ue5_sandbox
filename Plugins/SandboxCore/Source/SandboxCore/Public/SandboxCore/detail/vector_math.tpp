@@ -124,20 +124,20 @@ void scale_vector3(T* RESTRICT dst_x,
 // Size
 // -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
-void size_squared_vector(T const* RESTRICT vecs,
-                         int32 const count,
-                         VectorElementT<T>* RESTRICT out) noexcept {
+void size_squared_vector(VectorElementT<T>* RESTRICT out,
+                         T const* RESTRICT vecs,
+                         int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = vecs[i].SizeSquared();
     }
 }
 
 template <ml::Numeric T>
-void size_squared_vector(T const* RESTRICT xs,
+void size_squared_vector(T* RESTRICT out,
+                         T const* RESTRICT xs,
                          T const* RESTRICT ys,
                          T const* RESTRICT zs,
-                         int32 const count,
-                         T* RESTRICT out) noexcept {
+                         int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = xs[i] * xs[i] + ys[i] * ys[i] + zs[i] * zs[i];
     }
@@ -147,24 +147,24 @@ void size_squared_vector(T const* RESTRICT xs,
 // Distance
 // -------------------------------------------------------------------------------------------------
 template <ml::HasSizeSquared T>
-void dist_squared_vector(T const reference,
+void dist_squared_vector(VectorElementT<T>* RESTRICT out,
+                         T const reference,
                          T const* RESTRICT points,
-                         int32 const count,
-                         VectorElementT<T>* RESTRICT out) noexcept {
+                         int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         out[i] = (points[i] - reference).SizeSquared();
     }
 }
 
 template <ml::Numeric T>
-void dist_squared_vector(T const* RESTRICT xs_lhs,
+void dist_squared_vector(T* RESTRICT out,
+                         T const* RESTRICT xs_lhs,
                          T const* RESTRICT ys_lhs,
                          T const* RESTRICT zs_lhs,
                          T const* RESTRICT xs_rhs,
                          T const* RESTRICT ys_rhs,
                          T const* RESTRICT zs_rhs,
-                         int32 const count,
-                         T* RESTRICT out) noexcept {
+                         int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         auto const x{xs_rhs[i] - xs_lhs[i]};
         auto const y{ys_rhs[i] - ys_lhs[i]};
@@ -196,33 +196,28 @@ namespace ml {
 // Addition
 // -------------------------------------------------------------------------------------------------
 template <ml::Numeric T>
-bool add_vector3(TConstArrayView<T> lhs_x,
+void add_vector3(TArrayView<T> out_x,
+                 TArrayView<T> out_y,
+                 TArrayView<T> out_z,
+                 TConstArrayView<T> lhs_x,
                  TConstArrayView<T> lhs_y,
                  TConstArrayView<T> lhs_z,
                  TConstArrayView<T> rhs_x,
                  TConstArrayView<T> rhs_y,
-                 TConstArrayView<T> rhs_z,
-                 TArrayView<T> out_x,
-                 TArrayView<T> out_y,
-                 TArrayView<T> out_z) noexcept {
+                 TConstArrayView<T> rhs_z) noexcept {
     auto const count{lhs_x.Num()};
+    check(ml::all_num_equal_to(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z));
 
-    if (!ml::all_num_equal_to(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z)) {
-        return false;
-    }
-
-    ml::kernel::add_vector3(lhs_x.GetData(),
+    ml::kernel::add_vector3(out_x.GetData(),
+                            out_y.GetData(),
+                            out_z.GetData(),
+                            lhs_x.GetData(),
                             lhs_y.GetData(),
                             lhs_z.GetData(),
                             rhs_x.GetData(),
                             rhs_y.GetData(),
                             rhs_z.GetData(),
-                            out_x.GetData(),
-                            out_y.GetData(),
-                            out_z.GetData(),
                             count);
-
-    return true;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -231,14 +226,14 @@ bool add_vector3(TConstArrayView<T> lhs_x,
 template <ml::HasSizeSquared T>
 void size_squared_vector(TConstArrayView<T> vecs, TArrayView<T> out) noexcept {
     check(vecs.Num() == out.Num());
-    size_squared_vector(vecs.GetData(), vecs.Num(), out.GetData());
+    size_squared_vector(out.GetData(), vecs.GetData(), vecs.Num());
 }
 
 template <ml::Numeric T>
-void size_squared_vector(TConstArrayView<T> xs,
+void size_squared_vector(TArrayView<T> out,
+                         TConstArrayView<T> xs,
                          TConstArrayView<T> ys,
-                         TConstArrayView<T> zs,
-                         TArrayView<T> out) noexcept {
+                         TConstArrayView<T> zs) noexcept {
     auto const count{xs.Num()};
 
     auto const are_equal{ml::all_num_equal_to(count, ys, zs, out)};
@@ -249,7 +244,7 @@ void size_squared_vector(TConstArrayView<T> xs,
         return;
     }
 
-    size_squared_vector(xs.GetData(), ys.GetData(), zs.GetData(), count, out.GetData());
+    size_squared_vector(out.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), count);
 }
 
 // -------------------------------------------------------------------------------------------------
