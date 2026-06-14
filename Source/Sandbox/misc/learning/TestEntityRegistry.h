@@ -29,7 +29,8 @@ struct TraceHits {
 };
 struct DamageEvents {
     TArray<int32> damage_amounts;
-    TraceHits hit_events;
+    TArray<UActorComponent*> actor_components;
+    TArray<int32> hit_items;
 
     auto num() const -> int32;
     void reset();
@@ -65,6 +66,8 @@ class ATestEntityRegistry : public AActor {
     // Registration
     auto register_owner(AActor const& actor) -> TestEntityOwnerId;
     auto is_owner(AActor const* const actor) const -> bool;
+    auto is_valid_owner(TestEntityOwnerId const id) const -> bool;
+    auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
 
     // Entity creation
     auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
@@ -72,11 +75,11 @@ class ATestEntityRegistry : public AActor {
         -> TArray<FGenerationIndex>;
 
     // Damage updates
-    void apply_damage(TConstArrayView<int32> const damages,
-                      TConstArrayView<AActor*> const actors,
-                      TConstArrayView<UActorComponent*> const components,
-                      TConstArrayView<int32> const items);
-    auto get_damage_queue_view() const -> DamageEvents const&;
+    void queue_damage_events(TConstArrayView<int32> const damages,
+                             TConstArrayView<AActor*> const actors,
+                             TConstArrayView<UActorComponent*> const components,
+                             TConstArrayView<int32> const items);
+    auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
     void filter_damage_candidates();
 
     // General entity updates
@@ -108,6 +111,9 @@ class ATestEntityRegistry : public AActor {
                                             float const radius,
                                             TArrayView<FGenerationIndex> const out_entities) const
         -> int32;
+
+    // Checks
+    void validate_array_sizes() const;
   private:
     void commit_entity_updates();
     void commit_death_updates();
@@ -122,7 +128,7 @@ class ATestEntityRegistry : public AActor {
     TArray<FGenerationIndex> queued_entity_generations;
 
     // Queued damage events
-    DamageEvents queued_damage_events;
+    TArray<DamageEvents> queued_damage_events;
     TArray<int32> damage_events_to_filter_buffer;
 
     // Dead entities

@@ -34,6 +34,7 @@ struct FTestEntityRegistryEntityData {
         TView<uint8> alive;
 
         auto get_num() const -> int32 { return ml::num(locations); }
+        auto num() const -> int32 { return get_num(); }
         auto get_slice(int32 const offset, int32 const count) const {
             return ThisClass{
                 locations.slice(offset, count),
@@ -60,6 +61,7 @@ struct FTestEntityRegistryEntityData {
     FTestEntityRegistryEntityData() = default;
 
     auto get_num() const -> int32;
+    auto num() const -> int32 { return get_num(); }
     auto get_view() -> View;
     auto get_const_view() const -> ConstView;
 

@@ -206,7 +206,7 @@ void ATestLasers::handle_collisions(float const dt) {
         hit_item_queue.Add(hit.Item);
     }
 
-    entity_registry->apply_damage(
+    entity_registry->queue_damage_events(
         hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
 
     remove_instances(to_remove);

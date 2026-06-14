@@ -32,19 +32,21 @@ auto DamageEvents::num() const -> int32 {
     return damage_amounts.Num();
 }
 void DamageEvents::reset() {
-    ml::reset(damage_amounts, hit_events);
+    ml::reset(damage_amounts, actor_components, hit_items);
 }
 void DamageEvents::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(damage_amounts),
-        SANDBOX_NAMED_NUM(hit_events),
+        SANDBOX_NAMED_NUM(actor_components),
+        SANDBOX_NAMED_NUM(hit_items),
     });
 }
 void DamageEvents::remove_at_swap(int32 const index,
                                   int32 const count,
                                   EAllowShrinking const allow_shrinking) {
     damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
-    hit_events.remove_at_swap(index, count, allow_shrinking);
+    actor_components.RemoveAtSwap(index, count, allow_shrinking);
+    hit_items.RemoveAtSwap(index, count, allow_shrinking);
 }
 
 ATestEntityRegistry::ATestEntityRegistry() {
@@ -68,10 +70,19 @@ void ATestEntityRegistry::reset() {
 auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Add(&actor)};
 
+    queued_damage_events.AddDefaulted();
+
     return {static_cast<uint8>(index)};
 }
 auto ATestEntityRegistry::is_owner(AActor const* const actor) const -> bool {
     return entity_owners.Contains(actor);
+}
+auto ATestEntityRegistry::is_valid_owner(TestEntityOwnerId const id) const -> bool {
+    return entity_owners.IsValidIndex(id.id);
+}
+auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwnerId {
+    auto const index{entity_owners.Find(actor)};
+    return index != INDEX_NONE ? TestEntityOwnerId{static_cast<uint8>(index)} : TestEntityOwnerId{};
 }
 
 // Entity creation
@@ -107,6 +118,8 @@ auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerat
         auto const index{start_index + i};
         indices.Emplace(index, generations[index]);
     }
+
+    validate_array_sizes();
 
     return indices;
 }
@@ -146,14 +159,16 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
         indices.Emplace(index, generations[index]);
     }
 
+    validate_array_sizes();
+
     return indices;
 }
 
 // Damage updates
-void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
-                                       TConstArrayView<AActor*> const actors,
-                                       TConstArrayView<UActorComponent*> const components,
-                                       TConstArrayView<int32> const items) {
+void ATestEntityRegistry::queue_damage_events(TConstArrayView<int32> const damages,
+                                              TConstArrayView<AActor*> const actors,
+                                              TConstArrayView<UActorComponent*> const components,
+                                              TConstArrayView<int32> const items) {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(damages),
         SANDBOX_NAMED_NUM(actors),
@@ -161,31 +176,42 @@ void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
         SANDBOX_NAMED_NUM(items),
     });
 
-    queued_damage_events.damage_amounts.Append(damages);
-    queued_damage_events.hit_events.actors.Append(actors);
-    queued_damage_events.hit_events.actor_components.Append(components);
-    queued_damage_events.hit_events.hit_items.Append(items);
+    auto const n{ml::num(damages)};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const id{get_owner(actors[i])};
+        if (!id.is_valid()) {
+            continue;
+        }
+
+        auto& actor_damage_events{queued_damage_events[id.id]};
+        actor_damage_events.damage_amounts.Add(damages[i]);
+        actor_damage_events.actor_components.Add(components[i]);
+        actor_damage_events.hit_items.Add(items[i]);
+    }
 }
-auto ATestEntityRegistry::get_damage_queue_view() const -> DamageEvents const& {
-    return queued_damage_events;
+auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) const
+    -> DamageEvents const& {
+    check(is_valid_owner(id));
+    return queued_damage_events[id.id];
 }
 
 // Damage
 void ATestEntityRegistry::filter_damage_candidates() {
-    damage_events_to_filter_buffer.Reset();
-
-    auto const n{ml::num(queued_damage_events)};
-    if (n < 1) {
-        return;
-    }
-
-    for (int32 i{n - 1}; i >= 0; --i) {
-        if (!is_owner(queued_damage_events.hit_events.actors[i])) {
-            damage_events_to_filter_buffer.Add(i);
-        }
-    }
-
-    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer, queued_damage_events);
+    // damage_events_to_filter_buffer.Reset();
+    //
+    // auto const n{ml::num(queued_damage_events)};
+    // if (n < 1) {
+    //     return;
+    // }
+    //
+    // for (int32 i{n - 1}; i >= 0; --i) {
+    //     if (!is_owner(queued_damage_events.hit_events.actors[i])) {
+    //         damage_events_to_filter_buffer.Add(i);
+    //     }
+    // }
+    //
+    // ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer, queued_damage_events);
 }
 
 // Entity updates
@@ -232,6 +258,8 @@ void ATestEntityRegistry::commit_updates() {
 
     commit_entity_updates();
     commit_death_updates();
+
+    validate_array_sizes();
 }
 void ATestEntityRegistry::refresh_free_indices() {
     free_indices.Reset();
@@ -248,8 +276,14 @@ void ATestEntityRegistry::end_tick() {
     ml::reset(queued_entity_data,
               queued_entity_generations,
               queued_entity_generations,
-              queued_damage_events,
               dead_entities_this_frame);
+
+    auto const n_owners{entity_owners.Num()};
+    for (int32 i{0}; i < n_owners; ++i) {
+        ml::reset(queued_damage_events[i]);
+    }
+
+    validate_array_sizes();
 }
 
 // Index queries
@@ -354,4 +388,17 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
 }
 auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.get_num();
+}
+
+// Checks
+void ATestEntityRegistry::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_data),
+        SANDBOX_NAMED_NUM(generations),
+    });
+
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_owners),
+        SANDBOX_NAMED_NUM(queued_damage_events),
+    });
 }
