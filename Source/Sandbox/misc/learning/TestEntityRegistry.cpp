@@ -7,14 +7,13 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 void ATestEntityRegistry::QueuedDamageResolveView::check_lengths() const {
-    auto const n{targets.Num()};
-    check(n == damage_amounts.Num());
+    auto const n{damage_amounts.Num()};
     check(n == damaged_actors.Num());
     check(n == damaged_actor_components.Num());
     check(n == damaged_hit_items.Num());
 }
 auto ATestEntityRegistry::QueuedDamageResolveView::num() const -> int32 {
-    return targets.Num();
+    return damage_amounts.Num();
 }
 
 ATestEntityRegistry::ATestEntityRegistry() {
@@ -33,7 +32,6 @@ void ATestEntityRegistry::reset() {
               queued_damaged_actors,
               queued_damaged_actor_components,
               queued_damaged_hit_items,
-              queued_damage_targets,
               dead_entities_this_frame,
               free_indices);
 }
@@ -138,11 +136,9 @@ void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
     queued_damaged_actors.Append(actors);
     queued_damaged_actor_components.Append(components);
     queued_damaged_hit_items.Append(items);
-    ml::append_n(queued_damage_targets, {}, n);
 }
 auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
     QueuedDamageResolveView view{
-        queued_damage_targets,
         queued_damage_amounts,
         queued_damaged_actors,
         queued_damaged_actor_components,
@@ -154,7 +150,7 @@ auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
 
 // Damage
 void ATestEntityRegistry::filter_damage_candidates() {
-    damage_events_to_filter.Reset();
+    damage_events_to_filter_buffer.Reset();
 
     auto const n{queued_damage_amounts.Num()};
     if (n < 1) {
@@ -163,16 +159,15 @@ void ATestEntityRegistry::filter_damage_candidates() {
 
     for (int32 i{n - 1}; i >= 0; --i) {
         if (!is_owner(queued_damaged_actors[i])) {
-            damage_events_to_filter.Add(i);
+            damage_events_to_filter_buffer.Add(i);
         }
     }
 
-    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter,
+    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer,
                                         queued_damage_amounts,
                                         queued_damaged_actors,
                                         queued_damaged_actor_components,
-                                        queued_damaged_hit_items,
-                                        queued_damage_targets);
+                                        queued_damaged_hit_items);
 }
 
 // Entity updates
@@ -239,7 +234,6 @@ void ATestEntityRegistry::end_tick() {
               queued_damaged_actors,
               queued_damaged_actor_components,
               queued_damaged_hit_items,
-              queued_damage_targets,
               dead_entities_this_frame);
 }
 

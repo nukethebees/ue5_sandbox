@@ -35,8 +35,6 @@ class ATestEntityRegistry : public AActor {
     };
 
     struct QueuedDamageResolveView {
-        TArrayView<FGenerationIndex> targets;
-
         TConstArrayView<int32> damage_amounts;
         TConstArrayView<AActor*> damaged_actors;
         TConstArrayView<UActorComponent*> damaged_actor_components;
@@ -103,35 +101,22 @@ class ATestEntityRegistry : public AActor {
     void commit_death_updates();
     void refresh_free_indices();
 
-    UPROPERTY()
     FTestEntityRegistryEntityData entity_data;
-    UPROPERTY()
     TArray<int32> generations;
-    UPROPERTY()
     TArray<AActor const*> entity_owners;
 
     // Queued updates
-    UPROPERTY()
     FTestEntityRegistryEntityData queued_entity_data;
-    UPROPERTY()
     TArray<FGenerationIndex> queued_entity_generations;
 
     // Queued damage events
-    UPROPERTY()
     TArray<int32> queued_damage_amounts;
-    UPROPERTY()
     TArray<AActor*> queued_damaged_actors;
-    UPROPERTY()
     TArray<UActorComponent*> queued_damaged_actor_components;
-    UPROPERTY()
     TArray<int32> queued_damaged_hit_items;
-    UPROPERTY()
-    TArray<FGenerationIndex> queued_damage_targets;
-    TArray<int32> damage_events_to_filter;
+    TArray<int32> damage_events_to_filter_buffer;
 
     // Dead entities
-    UPROPERTY()
     TArray<FGenerationIndex> dead_entities_this_frame;
-    UPROPERTY();
     TArray<int32> free_indices;
 };
