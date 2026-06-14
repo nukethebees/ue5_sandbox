@@ -67,9 +67,11 @@ void ATestStaticTurrets::tick(float const dt) {
     log_config.tick(dt);
 
     perform_search();
-    fire_at_enemies();
+}
+void ATestStaticTurrets::queue_commands() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::queue_commands);
 
-    log_config.on_tick_end();
+    fire_at_enemies();
 }
 void ATestStaticTurrets::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_hit_events);
@@ -130,7 +132,9 @@ void ATestStaticTurrets::update_visuals() {
 void ATestStaticTurrets::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
+
     validate_array_sizes();
+    log_config.on_tick_end();
 }
 
 // Visuals

@@ -136,7 +136,19 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Movement
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
+        player_ship->move(dt);
+
         capital_ship_fighters->move(dt);
+    }
+
+    {
+        // Queue commands
+        // e.g. spawning lasers for the next frame
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
+        player_ship->queue_commands();
+        
+        capital_ship_fighters->queue_commands();
+        turrets->queue_commands();
     }
 
     {

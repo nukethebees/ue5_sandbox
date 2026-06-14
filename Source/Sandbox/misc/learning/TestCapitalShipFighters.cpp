@@ -62,7 +62,6 @@ void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
 
     laser_cooldowns.tick(dt);
-    handle_firing();
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
@@ -70,6 +69,10 @@ void ATestCapitalShipFighters::move(float const dt) {
     update_target_directions();
     ml::lerp_in_place(directions, target_directions, turn_speed_unitless * dt);
     ml::add_scaled_in_place(locations, directions, speeds, dt);
+}
+void ATestCapitalShipFighters::queue_commands() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
+    handle_firing();
 }
 void ATestCapitalShipFighters::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
@@ -325,8 +328,6 @@ void ATestCapitalShipFighters::handle_firing() {
 
     ml::reset(new_laser_locations, new_laser_rotations);
     ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
-
-    update_target_directions();
 
     int32 write_index{0};
     for (int32 i{0}; i < n_to_fire; ++i) {

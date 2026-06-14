@@ -117,13 +117,17 @@ void ATestSpaceShip::tick(float const dt) {
 
     log_config.tick(dt);
 
+    laser_shot_cooldown -= dt;
+    roll_state.time_remaining -= dt;
+}
+void ATestSpaceShip::move(float const dt) {
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);
     integrate_velocity(dt);
-    update_laser_firing(dt);
-
-    roll_state.time_remaining -= dt;
+}
+void ATestSpaceShip::queue_commands() {
+    update_laser_firing();
 }
 void ATestSpaceShip::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_hit_events);
@@ -327,7 +331,7 @@ void ATestSpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
     }
     laser_firing_mode = new_laser_mode;
 }
-void ATestSpaceShip::update_laser_firing(float dt) {
+void ATestSpaceShip::update_laser_firing() {
     auto const cooldown_finished{laser_shot_cooldown <= 0.f};
 
     switch (laser_firing_mode) {
@@ -337,10 +341,10 @@ void ATestSpaceShip::update_laser_firing(float dt) {
         case ELaserFiringMode::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = laser_firing_period + dt;
+                laser_shot_cooldown = laser_firing_period;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_shot_cooldown = laser_lock_on_transition_delay + dt;
+                    laser_shot_cooldown = laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringMode::lock_on_transition);
                 }
             }
@@ -372,12 +376,7 @@ void ATestSpaceShip::update_laser_firing(float dt) {
                 if (!actor_hit) {
                     break;
                 }
-#if WITH_EDITOR
-                if (log_config.can_log(EActorLogVerbosity::Verbose)) {
-                    auto const actor_name{ml::get_best_display_name(*actor_hit)};
-                    UE_LOG(LogSandbox, Display, TEXT("Locked on to: %s"), *actor_name);
-                }
-#endif
+
                 set_lock_on_target(hit.GetActor());
                 set_laser_mode(ELaserFiringMode::lock_on_acquired);
             }
@@ -395,8 +394,6 @@ void ATestSpaceShip::update_laser_firing(float dt) {
             break;
         }
     }
-
-    laser_shot_cooldown -= dt;
 }
 void ATestSpaceShip::start_fire_laser() {
     set_laser_mode(ELaserFiringMode::burst);

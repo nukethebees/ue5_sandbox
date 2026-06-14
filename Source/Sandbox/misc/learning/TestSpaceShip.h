@@ -49,6 +49,8 @@ class ATestSpaceShip : public APawn {
     void begin_play();
     void begin_tick();
     void tick(float const dt);
+    void move(float const dt);
+    void queue_commands();
     void resolve_hit_events();
     void update_entity_registry();
     void resolve_damage_targets();
@@ -135,7 +137,7 @@ class ATestSpaceShip : public APawn {
     void set_lock_on_target(AActor* target);
     // Combat - laser
     void set_laser_mode(ELaserFiringMode laser_mode);
-    void update_laser_firing(float dt);
+    void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(UShipLaserConfig const& fire_laser_config,
                           TConstArrayView<FTransform> const fire_points);
