@@ -461,6 +461,10 @@
 		{
 			"Name": "RenderTraceInsights",
 			"Enabled": true
+		},
+		{
+			"Name": "Fab",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
