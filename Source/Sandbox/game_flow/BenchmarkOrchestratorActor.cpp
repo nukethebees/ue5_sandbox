@@ -2,6 +2,8 @@
 
 #include "BenchmarkOrchestratorActor.h"
 
+#include <Sandbox/logging/SandboxLogCategories.h>
+
 #include "Camera/CameraActor.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -29,10 +31,10 @@ void ABenchmarkOrchestratorActor::BeginPlay() {
         if (auto* pc{UGameplayStatics::GetPlayerController(this, 0)}) {
             pc->SetViewTarget(benchmark_camera);
         } else {
-            UE_LOG(LogTemp, Warning, TEXT("pc is nullptr"));
+            UE_LOG(LogSandbox, Fatal, TEXT("pc is nullptr"));
         }
     } else {
-        UE_LOG(LogTemp, Warning, TEXT("benchmark_camera is nullptr"));
+        UE_LOG(LogSandbox, Fatal, TEXT("benchmark_camera is nullptr"));
     }
 
     if (!run_benchmark) {
@@ -100,7 +102,7 @@ void ABenchmarkOrchestratorActor::start_trace() {
             channels += TEXT(',');
         }
 
-        channels += ch;
+        channels += ch.ToLower();
         first = false;
     }
 
@@ -111,7 +113,11 @@ void ABenchmarkOrchestratorActor::start_trace() {
     FTraceAuxiliary::Start(
         FTraceAuxiliary::EConnectionType::File, *trace_filename, *channels, &tracing_options);
 
-    UE_LOG(LogTemp, Display, TEXT("Benchmark trace started: %s.utrace"), *trace_filename);
+    UE_LOG(LogSandbox,
+           Display,
+           TEXT("Benchmark trace started: %s.utrace (channels: %s)"),
+           *trace_filename,
+           *channels);
 #endif
 }
 
@@ -123,7 +129,7 @@ void ABenchmarkOrchestratorActor::stop_trace() {
 
 #if UE_TRACE_ENABLED
     FTraceAuxiliary::Stop();
-    UE_LOG(LogTemp, Display, TEXT("Benchmark trace stopped. File saved to Saved/Profiling/"));
+    UE_LOG(LogSandbox, Display, TEXT("Benchmark trace stopped. File saved to Saved/Profiling/"));
 #endif
 
 #if WITH_EDITOR
