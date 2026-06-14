@@ -152,6 +152,7 @@ auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
     return view;
 }
 
+// Damage
 void ATestEntityRegistry::filter_damage_candidates() {
     damage_events_to_filter.Reset();
 
@@ -172,21 +173,6 @@ void ATestEntityRegistry::filter_damage_candidates() {
                                         queued_damaged_actor_components,
                                         queued_damaged_hit_items,
                                         queued_damage_targets);
-}
-void ATestEntityRegistry::commit_damage_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_damage_updates);
-
-    auto const n{queued_damage_amounts.Num()};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const generation_index{queued_damage_targets[i]};
-        // At this point in the frame, all current entities should be valid and alive
-        check(is_valid_index(generation_index));
-        auto const entity_index{generation_index.index};
-
-        entity_data.healths[entity_index] -= queued_damage_amounts[i];
-        entity_data.alive[entity_index] = (entity_data.healths[entity_index] > 0);
-    }
 }
 
 // Entity updates
@@ -232,7 +218,6 @@ void ATestEntityRegistry::commit_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
 
     commit_entity_updates();
-    commit_damage_updates();
     commit_death_updates();
 }
 void ATestEntityRegistry::refresh_free_indices() {

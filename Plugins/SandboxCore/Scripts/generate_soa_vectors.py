@@ -64,13 +64,13 @@ def default_functions() -> list[FnSpec]:
             pass_args=["count", "allow_shrinking"],
         ),
         FnSpec(
-            name="set_num_uninitialized",
+            name="set_num_uninitialised",
             array_fn="SetNumUninitialized",
             args=["size_type const count"],
             pass_args=["count"],
         ),
         FnSpec(
-            name="add_uninitialized",
+            name="add_uninitialised",
             array_fn="AddUninitialized",
             args=["size_type const count"],
             pass_args=["count"],

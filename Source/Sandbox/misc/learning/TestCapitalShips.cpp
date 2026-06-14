@@ -69,8 +69,8 @@ void ATestCapitalShips::tick(float const dt) {
 
     spawn_timers.tick(dt);
 }
-void ATestCapitalShips::resolve_damage_targets() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_damage_targets);
+void ATestCapitalShips::resolve_hit_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);
 
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
@@ -80,8 +80,31 @@ void ATestCapitalShips::resolve_damage_targets() {
             continue;
         }
 
-        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+        auto const ismc_index_hit{view.damaged_hit_items[i]};
+        auto const entity_hit{entity_indices[ismc_index_hit]};
+
+        auto const damage_done{view.damage_amounts[i]};
+        healths[ismc_index_hit] -= damage_done;
     }
+}
+void ATestCapitalShips::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
+
+    auto const n{get_num_instances()};
+
+    FTestEntityRegistryEntityData update_data;
+    update_data.add_uninitialised(n);
+
+    update_data.locations = locations;
+    ml::fill(update_data.velocities, 0.f);
+    update_data.healths = healths;
+    update_data.teams = teams;
+
+    for (int32 i{0}; i < n; ++i) {
+        update_data.alive[i] = healths[i] > 0;
+    }
+
+    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
 }
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
@@ -311,25 +334,6 @@ void ATestCapitalShips::clear_runtime_state() {
               teams,
               healths,
               target_entity_indices);
-}
-void ATestCapitalShips::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
-
-    auto const n{get_num_instances()};
-
-    FTestEntityRegistryEntityData update_data;
-    update_data.add_uninitialised(n);
-
-    update_data.locations = locations;
-    ml::fill(update_data.velocities, 0.f);
-    update_data.healths = healths;
-    update_data.teams = teams;
-
-    for (int32 i{0}; i < n; ++i) {
-        update_data.alive[i] = healths[i] > 0;
-    }
-
-    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(ships_ready_to_spawn_fighters_buffer,

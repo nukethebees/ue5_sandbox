@@ -133,14 +133,14 @@ struct FRotatorsf
         rolls.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         pitches.SetNumUninitialized(count);
         yaws.SetNumUninitialized(count);
         rolls.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         pitches.AddUninitialized(count);
         yaws.AddUninitialized(count);
@@ -237,14 +237,14 @@ struct FRotatorsd
         rolls.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         pitches.SetNumUninitialized(count);
         yaws.SetNumUninitialized(count);
         rolls.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         pitches.AddUninitialized(count);
         yaws.AddUninitialized(count);

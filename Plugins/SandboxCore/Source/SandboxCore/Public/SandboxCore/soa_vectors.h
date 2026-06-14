@@ -167,13 +167,13 @@ struct FVectors2f
         ys.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -262,13 +262,13 @@ struct FVectors2d
         ys.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -357,13 +357,13 @@ struct FVectors2i32
         ys.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -452,13 +452,13 @@ struct FVectors2u32
         ys.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -553,14 +553,14 @@ struct FVectors3f
         zs.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
         zs.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -657,14 +657,14 @@ struct FVectors3d
         zs.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
         zs.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -761,14 +761,14 @@ struct FVectors3i32
         zs.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
         zs.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);
@@ -865,14 +865,14 @@ struct FVectors3u32
         zs.SetNum(count, allow_shrinking);
     }
 
-    auto set_num_uninitialized(size_type const count) -> void
+    auto set_num_uninitialised(size_type const count) -> void
     {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
         zs.SetNumUninitialized(count);
     }
 
-    auto add_uninitialized(size_type const count) -> void
+    auto add_uninitialised(size_type const count) -> void
     {
         xs.AddUninitialized(count);
         ys.AddUninitialized(count);

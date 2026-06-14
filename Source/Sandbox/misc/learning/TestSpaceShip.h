@@ -49,6 +49,7 @@ class ATestSpaceShip : public APawn {
     void begin_play();
     void begin_tick();
     void tick(float const dt);
+    void resolve_hit_events();
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();

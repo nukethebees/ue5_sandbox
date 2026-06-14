@@ -29,7 +29,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.assign_from.Element") {
 
 TEST_CASE("SandboxCore.SoaVectorUtils.assign_from_scaled.Vectors") {
     FVectors3f dst;
-    dst.set_num_uninitialized(2);
+    dst.set_num_uninitialised(2);
 
     auto const src{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
     Values const scale_factors{2.0f, 3.0f};
@@ -43,7 +43,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.assign_from_scaled.Vectors") {
 
 TEST_CASE("SandboxCore.SoaVectorUtils.assign_from_scaled.View") {
     FVectors3f dst;
-    dst.set_num_uninitialized(1);
+    dst.set_num_uninitialised(1);
 
     auto const src{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
     Values const scale_factors{3.0f};

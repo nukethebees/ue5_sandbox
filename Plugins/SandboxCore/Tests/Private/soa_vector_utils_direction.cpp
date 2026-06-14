@@ -5,7 +5,7 @@
 
 TEST_CASE("SandboxCore.SoaVectorUtils.direction.Vectors3f") {
     FVectors3f out;
-    out.set_num_uninitialized(3);
+    out.set_num_uninitialised(3);
 
     auto const a{
         ml::make_vectors3f({0.0f, 1.0f, 2.0f}, {0.0f, 2.0f, 3.0f}, {0.0f, 3.0f, 4.0f})};

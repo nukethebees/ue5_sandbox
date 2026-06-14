@@ -88,8 +88,16 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     ++tick_counter;
 
+    // ---------------------------------------------------------------------------------------------
+    // Setup phase
+    // ---------------------------------------------------------------------------------------------
     {
+        // Clear transient data
+        // Assume registry data is stable here
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
+
+        player_ship->begin_tick();
+
         capital_ships->begin_tick();
         capital_ship_fighters->begin_tick();
         turrets->begin_tick();
@@ -97,26 +105,81 @@ void ATestBatchOrchestrator::tick(float const dt) {
         lasers->begin_tick();
     }
 
-    { // Process spawns from last tick
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
+    {
+        // Process spawns from last tick
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_spawns);
+
         lasers->commit_spawns();
         capital_ships->commit_spawns();
     }
 
-    { // General actor tick
+    // ---------------------------------------------------------------------------------------------
+    // Actor decision phase
+    // ---------------------------------------------------------------------------------------------
+    {
+        // Query target data from registry
+        // Queue projectile spawns
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::tick);
+
         player_ship->tick(dt);
+
         capital_ships->tick(dt);
         capital_ship_fighters->tick(dt);
         turrets->tick(dt);
         spinners->tick(dt);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Simulation phase
+    // ---------------------------------------------------------------------------------------------
+    {
+        // Movement
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
+
+        capital_ship_fighters->move(dt);
+    }
+
+    {
+        // Entity collision
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::entity_collision);
+    }
+
+    {
+        // Projectile simulation
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
+
         lasers->tick(dt);
     }
 
-    { // Send updates to the registry
+    // ---------------------------------------------------------------------------------------------
+    // Resolution phase
+    // ---------------------------------------------------------------------------------------------
+    {
+        // Filter out hits from non-batched actors
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestBatchOrchestrator::tick::filter_damage_candidates);
+
+        entity_registry->filter_damage_candidates();
+    }
+
+    {
+        // Resolve hit events
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_hit_events);
+
+        player_ship->resolve_hit_events();
+
+        capital_ships->resolve_hit_events();
+        capital_ship_fighters->resolve_hit_events();
+        turrets->resolve_hit_events();
+    }
+
+    {
+        // Send updates to the registry
         TRACE_CPUPROFILER_EVENT_SCOPE(
             Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
+
         player_ship->update_entity_registry();
+
         capital_ships->update_entity_registry();
         capital_ship_fighters->update_entity_registry();
         turrets->update_entity_registry();
@@ -124,38 +187,31 @@ void ATestBatchOrchestrator::tick(float const dt) {
     }
 
     {
-        // Before processing damage events
-        // Read damage data and generate explicit entity handles
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::tick::filter_damage_candidates);
-        entity_registry->filter_damage_candidates();
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::tick::resolve_damage_targets);
-        player_ship->resolve_damage_targets();
-        capital_ships->resolve_damage_targets();
-        capital_ship_fighters->resolve_damage_targets();
-        turrets->resolve_damage_targets();
-    }
-
-    { // Resolve events such as damage
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
+
         entity_registry->commit_updates();
     }
 
-    { // Apply changes such as damage from the registry
+    {
+        // Apply changes from the registry e.g. destroyed targets
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
+
         player_ship->sync_from_registry();
+
         capital_ships->sync_from_registry();
         capital_ship_fighters->sync_from_registry();
         turrets->sync_from_registry();
     }
 
-    { // Update visual state
+    // ---------------------------------------------------------------------------------------------
+    // End phase
+    // ---------------------------------------------------------------------------------------------
+    {
+        // Update visual state
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_visuals);
+
         player_ship->update_visuals();
+
         capital_ships->update_visuals();
         capital_ship_fighters->update_visuals();
         turrets->update_visuals();
@@ -165,7 +221,9 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
+
         player_ship->end_tick();
+
         capital_ships->end_tick();
         capital_ship_fighters->end_tick();
         turrets->end_tick();

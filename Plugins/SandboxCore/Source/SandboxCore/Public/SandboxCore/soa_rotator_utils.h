@@ -113,7 +113,7 @@ inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
     auto const n_base{rotators.num()};
     auto const n_to_append{to_append.num()};
 
-    rotators.add_uninitialized(n_to_append);
+    ml::add_uninitialised(rotators, n_to_append);
     ml::kernel::assign_from(rotators.pitches.GetData() + n_base,
                             rotators.yaws.GetData() + n_base,
                             rotators.rolls.GetData() + n_base,

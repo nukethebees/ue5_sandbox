@@ -2,6 +2,7 @@
 
 #include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include "Sandbox/misc/learning/TestEntityRegistry.h"
 #include "Sandbox/misc/learning/TestTeam.h"
 
 #include <SandboxCore/countdown_timers.h>
@@ -36,8 +37,8 @@ class ATestStaticTurrets : public AActor {
 
     void begin_tick();
     void tick(float const dt);
+    void resolve_hit_events();
     void update_entity_registry();
-    void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
     void end_tick();
@@ -56,6 +57,9 @@ class ATestStaticTurrets : public AActor {
 
     // Visuals
     void configure_ismc();
+
+    // Entity data
+    auto get_entity_data() const -> FTestEntityRegistryEntityData;
 
     // Searchng
     void perform_search();

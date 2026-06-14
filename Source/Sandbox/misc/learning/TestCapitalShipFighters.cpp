@@ -62,19 +62,17 @@ void ATestCapitalShipFighters::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
 
     laser_cooldowns.tick(dt);
-
-    move_ships(dt);
     handle_firing();
 }
-void ATestCapitalShipFighters::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
+void ATestCapitalShipFighters::move(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
-    auto const data{get_entity_data()};
-    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
-    entity_registry->update_entities(view);
+    update_target_directions();
+    ml::lerp_in_place(directions, target_directions, turn_speed_unitless * dt);
+    ml::add_scaled_in_place(locations, directions, speeds, dt);
 }
-void ATestCapitalShipFighters::resolve_damage_targets() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_damage_targets);
+void ATestCapitalShipFighters::resolve_hit_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
 
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
@@ -84,8 +82,19 @@ void ATestCapitalShipFighters::resolve_damage_targets() {
             continue;
         }
 
-        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
+        auto const ismc_index_hit{view.damaged_hit_items[i]};
+        auto const entity_hit{entity_indices[ismc_index_hit]};
+
+        auto const damage_done{view.damage_amounts[i]};
+        healths[ismc_index_hit] -= damage_done;
     }
+}
+void ATestCapitalShipFighters::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
+
+    auto const data{get_entity_data()};
+    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
+    entity_registry->update_entities(view);
 }
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
@@ -159,15 +168,6 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
 }
 
-// Movement
-void ATestCapitalShipFighters::move_ships(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
-
-    update_target_directions();
-    ml::lerp_in_place(directions, target_directions, turn_speed_unitless * dt);
-    ml::add_scaled_in_place(locations, directions, speeds, dt);
-}
-
 // Visuals
 void ATestCapitalShipFighters::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
@@ -209,6 +209,30 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
             debug_drawer.draw_line(ship_location, target_location);
         }
     }
+}
+
+// Entity data
+auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEntityData {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::get_entity_data);
+
+    auto const n{get_num_instances()};
+
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.locations = locations;
+
+    ml::add_uninitialised(entity_data.velocities, n);
+    entity_data.velocities = directions;
+    ml::multiply_in_place(entity_data.velocities, speeds);
+
+    entity_data.healths = healths;
+    entity_data.teams = teams;
+
+    ml::add_uninitialised(entity_data.alive, n);
+    for (int32 i{0}; i < n; ++i) {
+        entity_data.alive[i] = static_cast<uint8>(healths[i]);
+    }
+
+    return entity_data;
 }
 
 // Spawning
@@ -362,28 +386,6 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               indices_ready_to_fire_buffer,
               new_laser_locations,
               new_laser_rotations);
-}
-auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEntityData {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::get_entity_data);
-
-    auto const n{get_num_instances()};
-
-    FTestEntityRegistryEntityData entity_data;
-    entity_data.locations = locations;
-
-    entity_data.velocities.add_uninitialized(n);
-    entity_data.velocities = directions;
-    ml::multiply_in_place(entity_data.velocities, speeds);
-
-    entity_data.healths = healths;
-    entity_data.teams = teams;
-
-    ml::add_uninitialised(entity_data.alive, n);
-    for (int32 i{0}; i < n; ++i) {
-        entity_data.alive[i] = static_cast<uint8>(healths[i]);
-    }
-
-    return entity_data;
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,

@@ -35,8 +35,9 @@ class ATestCapitalShipFighters : public AActor {
 
     void begin_tick();
     void tick(float const dt);
+    void move(float const dt);
+    void resolve_hit_events();
     void update_entity_registry();
-    void resolve_damage_targets();
     void sync_from_registry();
     void update_visuals();
     void end_tick();
@@ -55,9 +56,6 @@ class ATestCapitalShipFighters : public AActor {
     // Checks
     void validate_array_sizes() const;
   protected:
-    // Movement
-    void move_ships(float const dt);
-
     // Combat
     void handle_firing();
 

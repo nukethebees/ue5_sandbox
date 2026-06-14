@@ -71,11 +71,8 @@ void ATestStaticTurrets::tick(float const dt) {
 
     log_config.on_tick_end();
 }
-void ATestStaticTurrets::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
-}
-void ATestStaticTurrets::resolve_damage_targets() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_damage_targets);
+void ATestStaticTurrets::resolve_hit_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_hit_events);
 
     auto const view{entity_registry->get_damage_queue_view()};
     auto const n{view.num()};
@@ -85,9 +82,19 @@ void ATestStaticTurrets::resolve_damage_targets() {
             continue;
         }
 
-        view.targets[i] = entity_indices[view.damaged_hit_items[i]];
-        check(entity_registry->is_valid_index(view.targets[i]));
+        auto const ismc_index_hit{view.damaged_hit_items[i]};
+        auto const entity_hit{entity_indices[ismc_index_hit]};
+
+        auto const damage_done{view.damage_amounts[i]};
+        healths[ismc_index_hit] -= damage_done;
     }
+}
+void ATestStaticTurrets::update_entity_registry() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_entity_registry);
+
+    auto const data{get_entity_data()};
+    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
+    entity_registry->update_entities(view);
 }
 void ATestStaticTurrets::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
@@ -105,11 +112,9 @@ void ATestStaticTurrets::sync_from_registry() {
                                         healths,
                                         target_indices);
 
-    {
-        auto const n{get_num_instances()};
-        for (int32 i{0}; i < n; ++i) {
-            healths[i] = entity_registry->get_health(entity_indices[i]);
-        }
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        healths[i] = entity_registry->get_health(entity_indices[i]);
     }
 
     validate_array_sizes();
@@ -136,6 +141,28 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     instances->SetStaticMesh(actor_config->mesh);
+}
+
+// Entity data
+auto ATestStaticTurrets::get_entity_data() const -> FTestEntityRegistryEntityData {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::get_entity_data);
+
+    auto const n{get_num_instances()};
+
+    FTestEntityRegistryEntityData entity_data;
+    ml::add_uninitialised(entity_data, n);
+
+    entity_data.locations = locations;
+    ml::fill(entity_data.velocities, 0.f);
+    entity_data.healths = healths;
+    entity_data.teams = teams;
+
+    ml::add_uninitialised(entity_data.alive, n);
+    for (int32 i{0}; i < n; ++i) {
+        entity_data.alive[i] = static_cast<uint8>(healths[i]);
+    }
+
+    return entity_data;
 }
 
 // Accessors

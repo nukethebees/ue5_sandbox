@@ -92,10 +92,10 @@ struct AddUninitialisedTraits<T> {
 
 template <typename T>
     requires requires(T& t) {
-        { t.add_uninitialized(0) } -> std::convertible_to<void>;
+        { t.add_uninitialised(0) } -> std::convertible_to<void>;
     }
 struct AddUninitialisedTraits<T> {
-    static auto add_uninitialised(T& value, int32 count) -> void { value.add_uninitialized(count); }
+    static auto add_uninitialised(T& value, int32 count) -> void { value.add_uninitialised(count); }
 };
 
 // RemoveAtSwap

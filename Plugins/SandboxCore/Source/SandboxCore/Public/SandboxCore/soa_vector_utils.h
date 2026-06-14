@@ -159,9 +159,7 @@ inline void
 inline void append_n(FVectors3f& vector, int32 const count, float const value) {
     auto const offset{ml::num(vector)};
 
-    vector.xs.AddUninitialized(count);
-    vector.ys.AddUninitialized(count);
-    vector.zs.AddUninitialized(count);
+    ml::add_uninitialised(vector, count);
 
     for (int32 i{0}; i < count; ++i) {
         vector.xs[offset + i] = value;
@@ -185,7 +183,8 @@ inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
 
-    vector.add_uninitialized(n_to_append);
+    ml::add_uninitialised(vector, n_to_append);
+
     ml::kernel::assign_from(vector.xs.GetData() + n_base,
                             vector.ys.GetData() + n_base,
                             vector.zs.GetData() + n_base,
@@ -361,7 +360,7 @@ inline auto scaled_vector3d(FVectors3f const& vectors, int32 const i, float cons
 template <is_vec3f Vec3f>
 inline void to_rotatorsf(FRotatorsf& rotators, Vec3f const& vectors) {
     auto const n{vectors.num()};
-    rotators.set_num_uninitialized(n);
+    rotators.set_num_uninitialised(n);
 
     ml::to_rotations(TArrayView<float>{rotators.pitches},
                      TArrayView<float>{rotators.yaws},

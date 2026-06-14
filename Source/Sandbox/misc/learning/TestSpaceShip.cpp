@@ -126,6 +126,9 @@ void ATestSpaceShip::tick(float const dt) {
     roll_state.time_remaining -= dt;
     boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
 }
+void ATestSpaceShip::resolve_hit_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_hit_events);
+}
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
 
@@ -136,17 +139,6 @@ void ATestSpaceShip::update_entity_registry() {
 }
 void ATestSpaceShip::resolve_damage_targets() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_targets);
-
-    auto const view{entity_registry->get_damage_queue_view()};
-    auto const n{view.num()};
-
-    for (int32 i{0}; i < n; ++i) {
-        if (view.damaged_actors[i] != this) {
-            continue;
-        }
-        view.targets[i] = entity_index;
-        break;
-    }
 }
 void ATestSpaceShip::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::sync_from_registry);

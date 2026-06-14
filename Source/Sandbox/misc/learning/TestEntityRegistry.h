@@ -100,7 +100,6 @@ class ATestEntityRegistry : public AActor {
         -> int32;
   private:
     void commit_entity_updates();
-    void commit_damage_updates();
     void commit_death_updates();
     void refresh_free_indices();
 
