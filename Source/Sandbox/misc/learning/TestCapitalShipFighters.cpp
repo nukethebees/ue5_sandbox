@@ -105,7 +105,8 @@ void ATestCapitalShipFighters::sync_from_registry() {
                                         healths,
                                         laser_cooldowns.remaining_times,
                                         target_indices,
-                                        target_locations);
+                                        target_locations,
+                                        target_directions);
 
     // Update health and the target entity index
     auto const n{get_num_instances()};
@@ -162,28 +163,9 @@ auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
 void ATestCapitalShipFighters::move_ships(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
-    auto const n{get_num_instances()};
-
-    auto const max_turn_unitless{turn_speed_unitless * dt};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const speed{speeds[i]};
-        auto const delta_distance{speed * dt};
-
-        auto const current_location{ml::get_vector3f(locations, i)};
-        auto const target_location{ml::get_vector3f(target_locations, i)};
-
-        auto const current_direction{ml::get_vector3f(directions, i)};
-        auto const target_direction{(target_location - current_location).GetSafeNormal()};
-
-        auto const new_direction(
-            FMath::Lerp(current_direction, target_direction, max_turn_unitless));
-
-        auto const delta_location{new_direction * delta_distance};
-
-        ml::assign(locations, i, current_location + delta_location);
-        ml::assign(directions, i, new_direction);
-    }
+    update_target_directions();
+    ml::lerp_in_place(directions, target_directions, turn_speed_unitless * dt);
+    ml::add_scaled_in_place(locations, directions, speeds, dt);
 }
 
 // Visuals
@@ -260,6 +242,7 @@ void
     ml::append_n(healths, actor_config->health, n_new);
     target_indices.Append(new_targets);
     ml::add_zeroed(target_locations, n_new);
+    ml::add_zeroed(target_directions, n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
@@ -319,6 +302,8 @@ void ATestCapitalShipFighters::handle_firing() {
     ml::reset(new_laser_locations, new_laser_rotations);
     ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
 
+    update_target_directions();
+
     int32 write_index{0};
     for (int32 i{0}; i < n_to_fire; ++i) {
         auto const index_to_fire{indices_to_fire[i]};
@@ -328,9 +313,7 @@ void ATestCapitalShipFighters::handle_firing() {
         }
 
         auto const ship_location{ml::get_vector3f(locations, index_to_fire)};
-        auto const target_location{ml::get_vector3f(target_locations, index_to_fire)};
-        auto const target_direction{(target_location - ship_location).GetSafeNormal()};
-
+        auto const target_direction{ml::get_vector3f(target_directions, index_to_fire)};
         auto const direction{ml::get_vector3f(directions, index_to_fire)};
 
         auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
@@ -355,6 +338,12 @@ void ATestCapitalShipFighters::handle_firing() {
                               new_laser_rotations.get_const_view());
 }
 
+// Targets
+void ATestCapitalShipFighters::update_target_directions() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_target_directions);
+    ml::direction(target_directions, locations, target_locations);
+}
+
 // Misc
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
@@ -368,6 +357,7 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               healths,
               target_indices,
               target_locations,
+              target_directions,
               laser_cooldowns,
               indices_ready_to_fire_buffer,
               new_laser_locations,
@@ -414,6 +404,7 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(laser_cooldowns),
         SANDBOX_NAMED_NUM(target_indices),
         SANDBOX_NAMED_NUM(target_locations),
+        SANDBOX_NAMED_NUM(target_directions),
     });
 
     auto const n{get_num_instances()};

@@ -69,6 +69,9 @@ class ATestCapitalShipFighters : public AActor {
     // Entity data
     auto get_entity_data() const -> FTestEntityRegistryEntityData;
 
+    // Targets
+    void update_target_directions();
+
     // Misc
     void clear_tick_buffers();
 
@@ -106,6 +109,7 @@ class ATestCapitalShipFighters : public AActor {
     // Targets
     TArray<FGenerationIndex> target_indices;
     FVectors3f target_locations;
+    FVectors3f target_directions;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     float fire_dot_product_threshold{0.95f};
 
