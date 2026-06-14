@@ -2,18 +2,49 @@
 
 #include "Sandbox/utilities/actor_utils.h"
 
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
-void ATestEntityRegistry::QueuedDamageResolveView::check_lengths() const {
-    auto const n{damage_amounts.Num()};
-    check(n == damaged_actors.Num());
-    check(n == damaged_actor_components.Num());
-    check(n == damaged_hit_items.Num());
+void TraceHits::reset() {
+    ml::reset(actors, actor_components, hit_items);
 }
-auto ATestEntityRegistry::QueuedDamageResolveView::num() const -> int32 {
+void TraceHits::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(actors),
+        SANDBOX_NAMED_NUM(actor_components),
+        SANDBOX_NAMED_NUM(hit_items),
+    });
+}
+auto TraceHits::num() const -> int32 {
+    return actors.Num();
+}
+void TraceHits::remove_at_swap(int32 const index,
+                               int32 const count,
+                               EAllowShrinking const allow_shrinking) {
+    actors.RemoveAtSwap(index, count, allow_shrinking);
+    actor_components.RemoveAtSwap(index, count, allow_shrinking);
+    hit_items.RemoveAtSwap(index, count, allow_shrinking);
+}
+
+auto DamageEvents::num() const -> int32 {
     return damage_amounts.Num();
+}
+void DamageEvents::reset() {
+    ml::reset(damage_amounts, hit_events);
+}
+void DamageEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(damage_amounts),
+        SANDBOX_NAMED_NUM(hit_events),
+    });
+}
+void DamageEvents::remove_at_swap(int32 const index,
+                                  int32 const count,
+                                  EAllowShrinking const allow_shrinking) {
+    damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
+    hit_events.remove_at_swap(index, count, allow_shrinking);
 }
 
 ATestEntityRegistry::ATestEntityRegistry() {
@@ -28,10 +59,7 @@ void ATestEntityRegistry::reset() {
 
     ml::reset(generations,
               queued_entity_generations,
-              queued_damage_amounts,
-              queued_damaged_actors,
-              queued_damaged_actor_components,
-              queued_damaged_hit_items,
+              queued_damage_events,
               dead_entities_this_frame,
               free_indices);
 }
@@ -126,48 +154,38 @@ void ATestEntityRegistry::apply_damage(TConstArrayView<int32> const damages,
                                        TConstArrayView<AActor*> const actors,
                                        TConstArrayView<UActorComponent*> const components,
                                        TConstArrayView<int32> const items) {
-    auto const n{damages.Num()};
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(damages),
+        SANDBOX_NAMED_NUM(actors),
+        SANDBOX_NAMED_NUM(components),
+        SANDBOX_NAMED_NUM(items),
+    });
 
-    check(actors.Num() == n);
-    check(components.Num() == n);
-    check(items.Num() == n);
-
-    queued_damage_amounts.Append(damages);
-    queued_damaged_actors.Append(actors);
-    queued_damaged_actor_components.Append(components);
-    queued_damaged_hit_items.Append(items);
+    queued_damage_events.damage_amounts.Append(damages);
+    queued_damage_events.hit_events.actors.Append(actors);
+    queued_damage_events.hit_events.actor_components.Append(components);
+    queued_damage_events.hit_events.hit_items.Append(items);
 }
-auto ATestEntityRegistry::get_damage_queue_view() -> QueuedDamageResolveView {
-    QueuedDamageResolveView view{
-        queued_damage_amounts,
-        queued_damaged_actors,
-        queued_damaged_actor_components,
-        queued_damaged_hit_items,
-    };
-    view.check_lengths();
-    return view;
+auto ATestEntityRegistry::get_damage_queue_view() const -> DamageEvents const& {
+    return queued_damage_events;
 }
 
 // Damage
 void ATestEntityRegistry::filter_damage_candidates() {
     damage_events_to_filter_buffer.Reset();
 
-    auto const n{queued_damage_amounts.Num()};
+    auto const n{ml::num(queued_damage_events)};
     if (n < 1) {
         return;
     }
 
     for (int32 i{n - 1}; i >= 0; --i) {
-        if (!is_owner(queued_damaged_actors[i])) {
+        if (!is_owner(queued_damage_events.hit_events.actors[i])) {
             damage_events_to_filter_buffer.Add(i);
         }
     }
 
-    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer,
-                                        queued_damage_amounts,
-                                        queued_damaged_actors,
-                                        queued_damaged_actor_components,
-                                        queued_damaged_hit_items);
+    ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer, queued_damage_events);
 }
 
 // Entity updates
@@ -230,10 +248,7 @@ void ATestEntityRegistry::end_tick() {
     ml::reset(queued_entity_data,
               queued_entity_generations,
               queued_entity_generations,
-              queued_damage_amounts,
-              queued_damaged_actors,
-              queued_damaged_actor_components,
-              queued_damaged_hit_items,
+              queued_damage_events,
               dead_entities_this_frame);
 }
 

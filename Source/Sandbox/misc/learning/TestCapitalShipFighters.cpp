@@ -81,11 +81,11 @@ void ATestCapitalShipFighters::resolve_hit_events() {
     auto const n{view.num()};
 
     for (int32 i{0}; i < n; ++i) {
-        if (view.damaged_actors[i] != this) {
+        if (view.hit_events.actors[i] != this) {
             continue;
         }
 
-        auto const ismc_index_hit{view.damaged_hit_items[i]};
+        auto const ismc_index_hit{view.hit_events.hit_items[i]};
         auto const entity_hit{entity_indices[ismc_index_hit]};
 
         auto const damage_done{view.damage_amounts[i]};

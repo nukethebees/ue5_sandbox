@@ -16,6 +16,28 @@
 
 class UActorComponent;
 
+struct TraceHits {
+    TArray<AActor*> actors;
+    TArray<UActorComponent*> actor_components;
+    TArray<int32> hit_items;
+
+    void reset();
+    void validate_array_sizes() const;
+    auto num() const -> int32;
+    void
+        remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
+};
+struct DamageEvents {
+    TArray<int32> damage_amounts;
+    TraceHits hit_events;
+
+    auto num() const -> int32;
+    void reset();
+    void validate_array_sizes() const;
+    void
+        remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
+};
+
 UCLASS()
 class ATestEntityRegistry : public AActor {
   public:
@@ -32,16 +54,6 @@ class ATestEntityRegistry : public AActor {
 
         TConstArrayView<FGenerationIndex> indices;
         FTestEntityRegistryEntityData::View data;
-    };
-
-    struct QueuedDamageResolveView {
-        TConstArrayView<int32> damage_amounts;
-        TConstArrayView<AActor*> damaged_actors;
-        TConstArrayView<UActorComponent*> damaged_actor_components;
-        TConstArrayView<int32> damaged_hit_items; // Generally an ISMC index
-
-        auto num() const -> int32;
-        void check_lengths() const;
     };
 
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
@@ -64,7 +76,7 @@ class ATestEntityRegistry : public AActor {
                       TConstArrayView<AActor*> const actors,
                       TConstArrayView<UActorComponent*> const components,
                       TConstArrayView<int32> const items);
-    auto get_damage_queue_view() -> QueuedDamageResolveView;
+    auto get_damage_queue_view() const -> DamageEvents const&;
     void filter_damage_candidates();
 
     // General entity updates
@@ -110,10 +122,7 @@ class ATestEntityRegistry : public AActor {
     TArray<FGenerationIndex> queued_entity_generations;
 
     // Queued damage events
-    TArray<int32> queued_damage_amounts;
-    TArray<AActor*> queued_damaged_actors;
-    TArray<UActorComponent*> queued_damaged_actor_components;
-    TArray<int32> queued_damaged_hit_items;
+    DamageEvents queued_damage_events;
     TArray<int32> damage_events_to_filter_buffer;
 
     // Dead entities
