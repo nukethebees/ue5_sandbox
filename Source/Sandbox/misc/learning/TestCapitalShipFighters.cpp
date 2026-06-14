@@ -178,6 +178,9 @@ void ATestCapitalShipFighters::configure_ismc() {
     instances->SetCanEverAffectNavigation(false);
 
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+    instances->SetGenerateOverlapEvents(false);
+    instances->SetReceivesDecals(false);
 }
 void ATestCapitalShipFighters::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc_transforms);
