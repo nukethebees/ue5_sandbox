@@ -17,6 +17,7 @@ namespace ml {
 template <typename T>
 concept is_vec3f = requires(T const& vecs) {
     { vecs.xs[0] } -> std::convertible_to<float>;
+    { vecs.xs[0] } -> std::convertible_to<float>;
     { vecs.ys[0] } -> std::convertible_to<float>;
     { vecs.zs[0] } -> std::convertible_to<float>;
     { vecs.num() } -> std::convertible_to<int32>;
@@ -207,12 +208,20 @@ void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
 
+void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
+                                         FVectors3f const& a,
+                                         FVectors3f const& b,
+                                         float const c);
+void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
+                                         FVectors3f const& a,
+                                         TConstArrayView<float> const b,
+                                         float const c);
+
 // -------------------------------------------------------------------------------------------------
 // Interpolation
 // -------------------------------------------------------------------------------------------------
-inline void lerp_in_place(FVectors3f& current,
-                          FVectors3f const& target,
-                          TArrayView<float> const alpha) {
+inline void
+    lerp_in_place(FVectors3f& current, FVectors3f const& target, TArrayView<float> const alpha) {
     ml::lerp_3d_in_place(TArrayView<float>{current.xs},
                          TArrayView<float>{current.ys},
                          TArrayView<float>{current.zs},
@@ -286,36 +295,36 @@ inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
 // Direction
 // -------------------------------------------------------------------------------------------------
 template <is_vec3f T>
-inline void direction(T& out, T const& a, T const& b) {
-    auto const n{ml::num(a)};
-    check(ml::num(b) == n);
+inline void direction(T& out, T const& from, T const& to) {
+    auto const n{ml::num(from)};
+    check(ml::num(to) == n);
     check(ml::num(out) >= n);
 
     if (n < 1) {
         return;
     }
 
-    check(out.xs.GetData() != a.xs.GetData());
-    check(out.ys.GetData() != a.ys.GetData());
-    check(out.zs.GetData() != a.zs.GetData());
+    check(out.xs.GetData() != from.xs.GetData());
+    check(out.ys.GetData() != from.ys.GetData());
+    check(out.zs.GetData() != from.zs.GetData());
 
-    check(out.xs.GetData() != b.xs.GetData());
-    check(out.ys.GetData() != b.ys.GetData());
-    check(out.zs.GetData() != b.zs.GetData());
+    check(out.xs.GetData() != to.xs.GetData());
+    check(out.ys.GetData() != to.ys.GetData());
+    check(out.zs.GetData() != to.zs.GetData());
 
-    check(a.xs.GetData() != b.xs.GetData());
-    check(a.ys.GetData() != b.ys.GetData());
-    check(a.zs.GetData() != b.zs.GetData());
+    check(from.xs.GetData() != to.xs.GetData());
+    check(from.ys.GetData() != to.ys.GetData());
+    check(from.zs.GetData() != to.zs.GetData());
 
     ml::kernel::direction(out.xs.GetData(),
                           out.ys.GetData(),
                           out.zs.GetData(),
-                          a.xs.GetData(),
-                          a.ys.GetData(),
-                          a.zs.GetData(),
-                          b.xs.GetData(),
-                          b.ys.GetData(),
-                          b.zs.GetData(),
+                          from.xs.GetData(),
+                          from.ys.GetData(),
+                          from.zs.GetData(),
+                          to.xs.GetData(),
+                          to.ys.GetData(),
+                          to.zs.GetData(),
                           n);
 }
 

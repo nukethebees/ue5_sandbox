@@ -112,6 +112,42 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
     }
 }
 
+template <ml::Numeric T>
+void add_scaled_in_place(T* const RESTRICT dst_x,
+                         T* const RESTRICT dst_y,
+                         T* const RESTRICT dst_z,
+                         T const* const RESTRICT a_x,
+                         T const* const RESTRICT a_y,
+                         T const* const RESTRICT a_z,
+                         T const* const RESTRICT b_x,
+                         T const* const RESTRICT b_y,
+                         T const* const RESTRICT b_z,
+                         T const c,
+                         int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        dst_x[i] += (a_x[i] * b_x[i] * c);
+        dst_y[i] += (a_y[i] * b_y[i] * c);
+        dst_z[i] += (a_z[i] * b_z[i] * c);
+    }
+}
+
+template <ml::Numeric T>
+void add_scaled_in_place(T* const RESTRICT dst_x,
+                         T* const RESTRICT dst_y,
+                         T* const RESTRICT dst_z,
+                         T const* const RESTRICT a_x,
+                         T const* const RESTRICT a_y,
+                         T const* const RESTRICT a_z,
+                         T const* const RESTRICT b,
+                         T const c,
+                         int32 const count) {
+    for (int32 i{0}; i < count; ++i) {
+        dst_x[i] += (a_x[i] * b[i] * c);
+        dst_y[i] += (a_y[i] * b[i] * c);
+        dst_z[i] += (a_z[i] * b[i] * c);
+    }
+}
+
 // -------------------------------------------------------------------------------------------------
 // Multiplication
 // -------------------------------------------------------------------------------------------------
@@ -208,17 +244,17 @@ template <std::floating_point T>
 void direction(T* const RESTRICT out_xs,
                T* const RESTRICT out_ys,
                T* const RESTRICT out_zs,
-               T const* const RESTRICT a_xs,
-               T const* const RESTRICT a_ys,
-               T const* const RESTRICT a_zs,
-               T const* const RESTRICT b_xs,
-               T const* const RESTRICT b_ys,
-               T const* const RESTRICT b_zs,
+               T const* const RESTRICT from_xs,
+               T const* const RESTRICT from_ys,
+               T const* const RESTRICT from_zs,
+               T const* const RESTRICT to_xs,
+               T const* const RESTRICT to_ys,
+               T const* const RESTRICT to_zs,
                int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
-        auto const dx{b_xs[i] - a_xs[i]};
-        auto const dy{b_ys[i] - a_ys[i]};
-        auto const dz{b_zs[i] - a_zs[i]};
+        auto const dx{to_xs[i] - from_xs[i]};
+        auto const dy{to_ys[i] - from_ys[i]};
+        auto const dz{to_zs[i] - from_zs[i]};
 
         auto const size_sq{ml::size_sq(dx, dy, dz)};
 

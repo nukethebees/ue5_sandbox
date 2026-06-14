@@ -57,6 +57,8 @@ void add_scaled_in_place(FVectors3f& dst, FVectors3f const& src, float const sca
     auto const n{ml::num(dst)};
     check(ml::num(src) == n);
 
+    check(&dst != &src);
+
     return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
                                                   dst.ys.GetData(),
                                                   dst.zs.GetData(),
@@ -64,6 +66,47 @@ void add_scaled_in_place(FVectors3f& dst, FVectors3f const& src, float const sca
                                                   src.ys.GetData(),
                                                   src.zs.GetData(),
                                                   scale_factor,
+                                                  n);
+}
+void add_scaled_in_place(FVectors3f& dst, FVectors3f const& a, FVectors3f const& b, float const c) {
+    auto const n{ml::num(dst)};
+    check(ml::num(a) == n);
+    check(ml::num(b) == n);
+
+    check(&dst != &a);
+    check(&dst != &b);
+    check(&a != &b);
+
+    return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
+                                                  dst.ys.GetData(),
+                                                  dst.zs.GetData(),
+                                                  a.xs.GetData(),
+                                                  a.ys.GetData(),
+                                                  a.zs.GetData(),
+                                                  b.xs.GetData(),
+                                                  b.ys.GetData(),
+                                                  b.zs.GetData(),
+                                                  c,
+                                                  n);
+}
+void add_scaled_in_place(FVectors3f& dst,
+                         FVectors3f const& a,
+                         TConstArrayView<float> const b,
+                         float const c) {
+    auto const n{ml::num(dst)};
+    check(ml::num(a) == n);
+    check(ml::num(b) == n);
+
+    check(&dst != &a);
+
+    return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
+                                                  dst.ys.GetData(),
+                                                  dst.zs.GetData(),
+                                                  a.xs.GetData(),
+                                                  a.ys.GetData(),
+                                                  a.zs.GetData(),
+                                                  b.GetData(),
+                                                  c,
                                                   n);
 }
 
