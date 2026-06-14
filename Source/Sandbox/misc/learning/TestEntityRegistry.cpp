@@ -196,24 +196,6 @@ auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) cons
     return queued_damage_events[id.id];
 }
 
-// Damage
-void ATestEntityRegistry::filter_damage_candidates() {
-    // damage_events_to_filter_buffer.Reset();
-    //
-    // auto const n{ml::num(queued_damage_events)};
-    // if (n < 1) {
-    //     return;
-    // }
-    //
-    // for (int32 i{n - 1}; i >= 0; --i) {
-    //     if (!is_owner(queued_damage_events.hit_events.actors[i])) {
-    //         damage_events_to_filter_buffer.Add(i);
-    //     }
-    // }
-    //
-    // ml::remove_at_swap_many_sorted_desc(damage_events_to_filter_buffer, queued_damage_events);
-}
-
 // Entity updates
 void ATestEntityRegistry::update_entities(ConstView const view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);

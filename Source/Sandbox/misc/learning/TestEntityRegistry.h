@@ -80,7 +80,6 @@ class ATestEntityRegistry : public AActor {
                              TConstArrayView<UActorComponent*> const components,
                              TConstArrayView<int32> const items);
     auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
-    void filter_damage_candidates();
 
     // General entity updates
     void update_entities(ConstView const view);

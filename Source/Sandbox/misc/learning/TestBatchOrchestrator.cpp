@@ -167,14 +167,6 @@ void ATestBatchOrchestrator::tick(float const dt) {
     // Resolution phase
     // ---------------------------------------------------------------------------------------------
     {
-        // Filter out hits from non-batched actors
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::tick::filter_damage_candidates);
-
-        entity_registry->filter_damage_candidates();
-    }
-
-    {
         // Resolve hit events
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_hit_events);
 
