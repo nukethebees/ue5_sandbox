@@ -313,32 +313,26 @@ void ATestCapitalShipFighters::handle_firing() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
 
     auto const n_ships{get_num_instances()};
-    indices_ready_to_fire_buffer.SetNumUninitialized(n_ships, EAllowShrinking::No);
     auto const cooldown{actor_config->fire_cooldown};
-
-    auto const indices_to_fire{
-        ml::collect_indices_less_equal(TConstArrayView<float>{laser_cooldowns.remaining_times},
-                                       0.f,
-                                       indices_ready_to_fire_buffer)};
-
     auto const fire_point_offset{actor_config->fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
-    auto const n_to_fire{ml::num(indices_to_fire)};
 
     ml::reset(new_laser_locations, new_laser_rotations);
-    ml::add_uninitialised(n_to_fire, new_laser_locations, new_laser_rotations);
+    ml::add_uninitialised(n_ships, new_laser_locations, new_laser_rotations);
 
     int32 write_index{0};
-    for (int32 i{0}; i < n_to_fire; ++i) {
-        auto const index_to_fire{indices_to_fire[i]};
-
-        if (!target_indices[index_to_fire].is_valid()) {
+    for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
+        if (laser_cooldowns.remaining_times[ship_index] > 0.f) {
             continue;
         }
 
-        auto const ship_location{ml::get_vector3f(locations, index_to_fire)};
-        auto const target_direction{ml::get_vector3f(target_directions, index_to_fire)};
-        auto const direction{ml::get_vector3f(directions, index_to_fire)};
+        if (!target_indices[ship_index].is_valid()) {
+            continue;
+        }
+
+        auto const ship_location{ml::get_vector3f(locations, ship_index)};
+        auto const target_direction{ml::get_vector3f(target_directions, ship_index)};
+        auto const direction{ml::get_vector3f(directions, ship_index)};
 
         auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
         if (dot_product < aim_threshold) {
@@ -351,7 +345,7 @@ void ATestCapitalShipFighters::handle_firing() {
         ml::assign(new_laser_locations, write_index, laser_location);
         ml::assign(new_laser_rotations, write_index, direction.ToOrientationRotator());
 
-        laser_cooldowns.remaining_times[index_to_fire] = cooldown;
+        laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
     }
 
