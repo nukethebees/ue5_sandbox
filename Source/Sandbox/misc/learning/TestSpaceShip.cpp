@@ -124,7 +124,6 @@ void ATestSpaceShip::tick(float const dt) {
     update_laser_firing(dt);
 
     roll_state.time_remaining -= dt;
-    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
 }
 void ATestSpaceShip::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_hit_events);
@@ -145,6 +144,7 @@ void ATestSpaceShip::sync_from_registry() {
 }
 void ATestSpaceShip::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visuals);
+    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
     draw_debug_shapes();
 }
 void ATestSpaceShip::end_tick() {
