@@ -68,9 +68,6 @@ class ATestCapitalShipFighters : public AActor {
     // Entity data
     auto get_entity_data() const -> FTestEntityRegistryEntityData;
 
-    // Targets
-    void update_target_directions();
-
     // Misc
     void clear_tick_buffers();
 
