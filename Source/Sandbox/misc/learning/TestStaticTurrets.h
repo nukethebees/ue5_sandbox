@@ -5,6 +5,7 @@
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/TestTeam.h>
+#include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
@@ -72,29 +73,28 @@ class ATestStaticTurrets : public AActor {
     // Misc
     void clear_tick_buffers();
 
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    // Debugging
+    void draw_debugging_shapes() const;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
 
     // Entity Data
-    TestEntityOwnerId owner_id{};
-
-    UPROPERTY()
-    TArray<FRegistryEntityHandle> entity_indices{};
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY()
-    TArray<int32> local_indices_to_remove;
+
+    TestEntityOwnerId owner_id{};
+    TArray<FRegistryEntityHandle> entity_registry_handles{};
 
     // Location
-    UPROPERTY()
     FVectors3f locations;
 
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+    TArray<FTransform> ismc_transforms;
 
     // Team
-    UPROPERTY()
     TArray<ETestTeam> teams{};
 
     // Searching
@@ -102,26 +102,36 @@ class ATestStaticTurrets : public AActor {
     int32 search_slice_size{64};
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY()
+
     FCountdownTimers laser_cooldowns;
-    UPROPERTY()
     TArray<int32> indices_ready_to_fire;
 
+    // Laser spawning
     FVectors3f new_laser_locations;
     FRotatorsf new_laser_rotations;
     TArray<FRegistryEntityHandle> new_laser_instigator_handles;
 
     // Enemies
     UPROPERTY()
-    TArray<FRegistryEntityHandle> target_indices{};
+    TArray<FRegistryEntityHandle> target_registry_handles{};
 
     // Health
     UPROPERTY()
     TArray<int32> healths;
 
+    // Despawning
+    UPROPERTY()
+    TArray<int32> local_indices_to_remove;
+
     // Debugging / logging
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FActorLoggingConfig log_config{1.f};
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool draw_target_arrows_enabled{false};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool draw_debug_entity_info_enabled{false};
 };
