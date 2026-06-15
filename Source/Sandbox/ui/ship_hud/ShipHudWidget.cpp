@@ -38,34 +38,63 @@ void UShipHudWidget::set_speed(float value) {
     RETURN_IF_NULLPTR(speed_widget);
     speed_widget->set_speed(value);
 }
+void UShipHudWidget::set_speed_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(speed_widget, new_visibility);
+}
+
 void UShipHudWidget::set_health(FShipHealth value) {
     RETURN_IF_NULLPTR(health_widget);
     health_widget->set_health(value);
 }
+void UShipHudWidget::set_health_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(health_widget, new_visibility);
+}
+
 void UShipHudWidget::set_energy(float value) {
     RETURN_IF_NULLPTR(energy_widget);
     energy_widget->set_energy(value);
 }
+void UShipHudWidget::set_energy_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(energy_widget, new_visibility);
+}
+
 void UShipHudWidget::set_points(int32 value) {
     RETURN_IF_NULLPTR(points_widget);
     points_widget->set_points(value);
 }
+void UShipHudWidget::set_points_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(points_widget, new_visibility);
+}
+
 void UShipHudWidget::set_bombs(int32 value) {
     RETURN_IF_NULLPTR(bombs_widget);
     bombs_widget->set_count(value);
 }
+void UShipHudWidget::set_bombs_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(bombs_widget, new_visibility);
+}
+
 void UShipHudWidget::set_gold_rings(int32 value) {
     RETURN_IF_NULLPTR(gold_rings_widget);
     gold_rings_widget->set_count(value);
 }
+void UShipHudWidget::set_gold_rings_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(gold_rings_widget, new_visibility);
+}
+
 void UShipHudWidget::set_lives(int32 value) {
     RETURN_IF_NULLPTR(lives_widget);
     lives_widget->set_value(value);
 }
+void UShipHudWidget::set_lives_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(lives_widget, new_visibility);
+}
+
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
 }
+
 void UShipHudWidget::set_crosshair_positions(FVector2d near, FVector2d far) {
     RETURN_IF_NULLPTR(far_crosshair_widget);
     RETURN_IF_NULLPTR(near_crosshair_widget);
@@ -87,15 +116,28 @@ void UShipHudWidget::set_crosshair_colours(FLinearColor near, FLinearColor far) 
     near_crosshair_material_instance->SetVectorParameterValue(name, near);
     far_crosshair_material_instance->SetVectorParameterValue(name, far);
 }
+void UShipHudWidget::set_crosshair_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(far_crosshair_widget, new_visibility);
+    set_widget_visibility_checked(near_crosshair_widget, new_visibility);
+}
 
-void UShipHudWidget::set_lock_on_widget_visibility(bool visible) {
+void UShipHudWidget::set_lock_on_widget_visibility(bool const visible) {
     RETURN_IF_NULLPTR(lock_on_widget);
 
     lock_on_widget->SetVisibility(visible ? ESlateVisibility::Visible
                                           : ESlateVisibility::Collapsed);
 }
+void UShipHudWidget::set_lock_on_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(lock_on_widget, new_visibility);
+}
 void UShipHudWidget::set_lock_on_widget_position(FVector2d pos) {
     RETURN_IF_NULLPTR(lock_on_widget);
     TRY_INIT_PTR(slot, Cast<UCanvasPanelSlot>(lock_on_widget->Slot));
     slot->SetPosition(pos);
+}
+
+void UShipHudWidget::set_widget_visibility_checked(UWidget* const widget,
+                                                   ESlateVisibility const new_visibility) {
+    check(IsValid(widget));
+    widget->SetVisibility(new_visibility);
 }

@@ -132,6 +132,10 @@ void ATestSpaceShipController::initialise_hud() {
     hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
     RETURN_IF_NULLPTR(hud_widget);
     hud_widget->AddToViewport();
+
+    hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
+    hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
+    hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
 }
 void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& ship) {
     RETURN_IF_NULLPTR(hud_widget);

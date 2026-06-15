@@ -29,23 +29,42 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_speed(float value);
+    void set_speed_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_health(FShipHealth value);
+    void set_health_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_energy(float value);
+    void set_energy_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_points(int32 value);
+    void set_points_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_bombs(int32 value);
+    void set_bombs_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_gold_rings(int32 value);
+    void set_gold_rings_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_lives(int32 value);
+    void set_lives_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_colours(FLinearColor near, FLinearColor far);
+    void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
 
-    void set_lock_on_widget_visibility(bool visible);
     void set_lock_on_widget_position(FVector2d pos);
+    void set_lock_on_widget_visibility(bool const new_visibility);
+    void set_lock_on_widget_visibility(ESlateVisibility const new_visibility);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
     void NativeConstruct() override;
+
+    void set_widget_visibility_checked(UWidget* const widget,
+                                       ESlateVisibility const new_visibility);
 
     UPROPERTY(meta = (BindWidget))
     UShipSpeedWidget* speed_widget{nullptr};
