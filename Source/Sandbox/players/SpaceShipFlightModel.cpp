@@ -32,7 +32,7 @@ void FSpaceShipFlightModel::set_new_impulse(FSpeedResponse sr, float old_s, floa
 
     // Fix issue where damping ratio is 1
     if (FMath::Abs(1.f - response.damping_ratio) < 1e-6) {
-        response.damping_ratio = 0.9999;
+        response.damping_ratio = 0.9999f;
     }
 
 #if WITH_EDITOR
