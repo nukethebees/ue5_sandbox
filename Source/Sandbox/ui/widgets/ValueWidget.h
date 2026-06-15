@@ -2,11 +2,13 @@
 
 #pragma once
 
-#include <concepts>
+#include <SandboxCore/numeric.h>
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+
+#include <concepts>
 
 #include "ValueWidget.generated.h"
 
@@ -15,14 +17,18 @@ class SANDBOX_API UValueWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void NativeConstruct() override;
-    template <typename T>
-        requires (std::integral<T> || std::floating_point<T>)
-    void update(T value) {
-        if (value_text) {
-            auto const display{FText::Format(format_spec_text, FText::AsNumber(value))};
-            value_text->SetText(display);
+
+    template <ml::Numeric... Ts>
+    void update(Ts const... values) {
+        if (!value_text) {
+            return;
         }
+
+        auto const display{FText::Format(format_spec_text, FText::AsNumber(values)...)};
+
+        value_text->SetText(display);
     }
+
     void update(FStringView value) {
         if (value_text) {
             auto const display{FText::Format(format_spec_text, FText::FromStringView(value))};
