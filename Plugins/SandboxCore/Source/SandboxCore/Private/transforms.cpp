@@ -33,4 +33,14 @@ auto make_transforms(TVectors3View<float const> const locations,
     return out;
 }
 
+void set_transform_locations(TArrayView<FTransform> const transforms, FVectors3f const& locations) {
+    auto const n{ml::num(transforms)};
+
+    check(n == locations.num());
+
+    for (int32 i{0}; i < n; ++i) {
+        transforms[i].SetLocation(ml::get_vector3d(locations, i));
+    }
+}
+
 }

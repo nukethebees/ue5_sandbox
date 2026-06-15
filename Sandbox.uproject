@@ -465,6 +465,10 @@
 		{
 			"Name": "Fab",
 			"Enabled": true
+		},
+		{
+			"Name": "HDRIBackdrop",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

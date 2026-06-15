@@ -21,4 +21,7 @@ auto SANDBOXCORE_API make_transforms(FVectors3f const& locations, FRotatorsf con
 auto SANDBOXCORE_API make_transforms(TVectors3View<float const> const locations,
                                      TRotatorsView<float const> const rotations)
     -> TArray<FTransform>;
+
+void SANDBOXCORE_API set_transform_locations(TArrayView<FTransform> const transforms,
+                                             FVectors3f const& locations);
 }
