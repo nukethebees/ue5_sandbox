@@ -22,6 +22,7 @@ enum class ETestMissionMode : uint8 {
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
 
 UCLASS()
 class ATestMissionManager : public AActor {
@@ -30,12 +31,19 @@ class ATestMissionManager : public AActor {
     void begin_play();
     void mission_tick(float const dt);
 
-    void set_mission_mode(ETestMissionMode const new_mode);
+    auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
+    auto get_mission_state() const noexcept -> ETestMissionState { return mission_state; }
 
-    auto get_mission_stopwatch() const -> float { return mission_elapsed_seconds; }
+    auto get_survive_seconds() const noexcept -> float { return survive_seconds; }
+    auto get_kill_target() const noexcept -> int32 { return kill_target; }
+
+    auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
+    auto is_ready() const noexcept -> bool;
 
     FTestMissionEndedDelegate on_mission_ended;
+    FOnMissionManagerReady on_ready;
   private:
+    void set_mission_mode(ETestMissionMode const new_mode);
     void set_mission_state(ETestMissionState const new_state);
 
     void mission_tick_survive_seconds(float const dt);
@@ -52,6 +60,12 @@ class ATestMissionManager : public AActor {
 
     UPROPERTY(EditAnywhere)
     float survive_seconds{60.0f};
+
+    UPROPERTY(EditAnywhere)
+    int32 kill_target{5};
+
+    UPROPERTY(EditAnywhere)
+    int32 player_kills{0};
 
     UPROPERTY(VisibleAnywhere)
     float mission_elapsed_seconds{0.0f};

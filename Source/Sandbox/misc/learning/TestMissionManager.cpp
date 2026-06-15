@@ -23,6 +23,7 @@ void ATestMissionManager::begin_play() {
     mission_elapsed_seconds = 0.f;
 
     mission_start_time = GetWorld()->GetTimeSeconds();
+    on_ready.Broadcast(*this);
 }
 void ATestMissionManager::mission_tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestMissionManager::mission_tick);
@@ -69,6 +70,10 @@ void ATestMissionManager::mission_tick(float const dt) {
             break;
         }
     }
+}
+
+auto ATestMissionManager::is_ready() const noexcept -> bool {
+    return mission_state != ETestMissionState::NotStarted;
 }
 
 void ATestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
