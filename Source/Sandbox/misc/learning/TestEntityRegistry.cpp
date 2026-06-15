@@ -303,8 +303,16 @@ auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> 
 auto ATestEntityRegistry::is_stale(FGenerationIndex const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }
+
+// Unique id queries
 auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());
+}
+
+auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
+    -> TestEntityUniqueEntityData::kills_type {
+    check(is_valid_unique_id(id));
+    return unique_entities.kills[id.id];
 }
 
 // Entity queries

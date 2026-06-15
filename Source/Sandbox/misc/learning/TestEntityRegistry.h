@@ -43,8 +43,10 @@ struct DamageEvents {
 };
 
 struct TestEntityUniqueEntityData {
+    using kills_type = uint32;
+
     TArray<FGenerationIndex> generation_indexes;
-    TArray<uint32> kills;
+    TArray<kills_type> kills;
     TArray<uint8> alive;
     TArray<FGenerationIndex> killed_by;
 
@@ -117,10 +119,6 @@ class ATestEntityRegistry : public AActor {
     auto is_valid_index(FGenerationIndex const index) const -> bool;
     auto is_stale(FGenerationIndex const index) const -> bool;
 
-    // Unique id queries
-    auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
-    auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
-
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
     auto get_location(FGenerationIndex const index) const -> FVector3f;
@@ -129,6 +127,12 @@ class ATestEntityRegistry : public AActor {
     auto get_team(FGenerationIndex const index) const -> ETestTeam;
     auto get_alive(FGenerationIndex const index) const -> bool;
     auto get_dead_entities_this_frame() const -> TConstArrayView<FGenerationIndex>;
+
+    // Unique id queries
+    auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
+    auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
+
+    auto get_kills(TestEntityUniqueId const id) const -> TestEntityUniqueEntityData::kills_type;
 
     // Area queries
     auto collect_entities_in_range(FVector3f const& origin,
