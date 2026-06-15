@@ -28,8 +28,18 @@ class SANDBOX_API UValueWidget : public UUserWidget {
 
         value_text->SetText(display);
     }
+    template <ml::Numeric... Ts>
+    void update(FNumberFormattingOptions const& options, Ts const... values) {
+        if (!value_text) {
+            return;
+        }
 
-    void update(FStringView value) {
+        auto const display{FText::Format(format_spec_text, FText::AsNumber(values, &options)...)};
+
+        value_text->SetText(display);
+    }
+
+    void update(FStringView const value) {
         if (value_text) {
             auto const display{FText::Format(format_spec_text, FText::FromStringView(value))};
             value_text->SetText(display);
