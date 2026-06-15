@@ -62,6 +62,8 @@ class ATestSpaceShip : public APawn {
     // Entity data
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+    auto get_unique_id() const -> TestEntityUniqueId;
+    auto get_entity_registry_index() const -> FGenerationIndex;
 
     // Movement
     void turn(FVector2D direction);

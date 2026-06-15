@@ -9,13 +9,8 @@
 #include <Engine/World.h>
 
 void ATestMissionManager::begin_play() {
-    if (!IsValid(player_ship)) {
-        UE_LOG(LogSandbox, Warning, TEXT("player_ship is not valid."));
-        set_mission_state(ETestMissionState::Disabled);
-        return;
-    }
-
     ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(player_ship),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
@@ -89,6 +84,11 @@ void ATestMissionManager::mission_tick(float const dt) {
     }
 }
 
+void ATestMissionManager::update_player_handles() {
+    player_registry_index = player_ship->get_entity_registry_index();
+    player_id = player_ship->get_unique_id();
+}
+
 auto ATestMissionManager::is_ready() const noexcept -> bool {
     return mission_state != ETestMissionState::NotStarted;
 }
@@ -130,7 +130,16 @@ void ATestMissionManager::mission_tick_survive_seconds(float const dt) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
-void ATestMissionManager::mission_tick_kill_enemies(float const dt) {}
+void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
+    auto const old_kills{player_kills};
+    auto const new_kills{entity_registry->get_kills(player_id)};
+
+    player_kills = new_kills;
+
+    if (new_kills != old_kills) {
+        on_mission_update.Broadcast(*this);
+    }
+}
 
 void ATestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));

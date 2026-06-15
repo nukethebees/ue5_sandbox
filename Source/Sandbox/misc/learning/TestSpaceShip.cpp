@@ -159,27 +159,9 @@ void ATestSpaceShip::end_tick() {
     log_config.on_tick_end();
 }
 
-void ATestSpaceShip::draw_debug_shapes() {
-    if (debug_forward_socket_direction) {
-        auto const middle{get_middle_socket(*ship_mesh)};
-
-        FVector const start = middle.GetLocation();
-        FVector const forward = middle.GetUnitAxis(EAxis::X);
-        constexpr float len{5000.f};
-        FVector const end = start + forward * len;
-        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
-    }
-
-    if (debug_forward_direction) {
-        auto const fwd{GetActorForwardVector()};
-        auto const start{GetActorLocation()};
-        constexpr float len{5000.f};
-        FVector const end = start + fwd * len;
-        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
-    }
-}
-
+// -------------------------------------------------------------------------------------------------
 // Entity data
+// -------------------------------------------------------------------------------------------------
 auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
     FTestEntityRegistryEntityData entity_data;
     ml::append(entity_data.locations, GetActorLocation());
@@ -200,8 +182,16 @@ void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {
 auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
 }
+auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
+    return unique_entity_id;
+}
+auto ATestSpaceShip::get_entity_registry_index() const -> FGenerationIndex {
+    return entity_index;
+}
 
+// -------------------------------------------------------------------------------------------------
 // Movement
+// -------------------------------------------------------------------------------------------------
 void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
     auto const fwd{self.GetActorForwardVector()};
     auto const new_speed{self.flight_model.update_y(dt)};
@@ -216,6 +206,7 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return get_velocity();
 }
+
 // Movement - turning
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
@@ -226,6 +217,7 @@ void ATestSpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
+
 // Movement - boost/brake
 void ATestSpaceShip::set(EBoostBrakeState s) {
     auto const cur_speed{get_speed()};
@@ -300,6 +292,7 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
         self.on_energy_changed.ExecuteIfBound(self.thrust_energy / self.thrust_energy_max);
     }
 }
+
 // Movement - rolling
 void ATestSpaceShip::roll(float direction) {
 #if WITH_EDITOR
@@ -322,11 +315,14 @@ void ATestSpaceShip::barrel_roll(float direction) {
 #endif
 }
 
+// -------------------------------------------------------------------------------------------------
 // Combat
+// -------------------------------------------------------------------------------------------------
 void ATestSpaceShip::set_lock_on_target(AActor* target) {
     lock_on_target = target;
     on_lock_on_acquired.ExecuteIfBound(lock_on_target);
 }
+
 // Combat - laser
 void ATestSpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
     if (laser_firing_mode != new_laser_mode) {
@@ -467,6 +463,7 @@ void ATestSpaceShip::upgrade_laser() {
         laser_mode = EShipLaserMode::Hyper;
     }
 }
+
 // Combat - bomb
 void ATestSpaceShip::fire_bomb() {
     if (auto ab{active_bomb.Pin()}) {
@@ -504,6 +501,7 @@ void ATestSpaceShip::subtract_bomb() {
     bombs--;
     on_bombs_changed.ExecuteIfBound(bombs);
 }
+
 // Combat - homing laser
 void ATestSpaceShip::fire_homing_laser() {
     UE_LOG(LogSandbox, Verbose, TEXT("Firing homing laser."));
@@ -525,7 +523,9 @@ void ATestSpaceShip::fire_homing_laser() {
     laser->FinishSpawning(fire_point);
 }
 
+// -------------------------------------------------------------------------------------------------
 // Visuals
+// -------------------------------------------------------------------------------------------------
 void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
     auto const drot{self.rotation_speed * dt};
     if (self.rotation_input == FVector2D::ZeroVector) {
@@ -585,15 +585,6 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
 
-// Points
-void ATestSpaceShip::add_points(int32 x) {
-    points += x;
-    on_points_changed.ExecuteIfBound(points);
-}
-void ATestSpaceShip::record_kills(int32 kills) {
-    add_points(kills);
-}
-
 // Mesh
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
     check(ship_mesh);
@@ -607,7 +598,20 @@ auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
     return get_middle_socket().GetLocation();
 }
 
+// -------------------------------------------------------------------------------------------------
+// Points
+// -------------------------------------------------------------------------------------------------
+void ATestSpaceShip::add_points(int32 x) {
+    points += x;
+    on_points_changed.ExecuteIfBound(points);
+}
+void ATestSpaceShip::record_kills(int32 kills) {
+    add_points(kills);
+}
+
+// -------------------------------------------------------------------------------------------------
 // Health
+// -------------------------------------------------------------------------------------------------
 void ATestSpaceShip::add_health(int32 added_health) {
     health.health = FMath::Min(health.health + added_health, health.max_health);
 }
@@ -618,7 +622,9 @@ void ATestSpaceShip::add_life() {
     on_lives_changed.ExecuteIfBound(lives);
 }
 
+// -------------------------------------------------------------------------------------------------
 // Debugging
+// -------------------------------------------------------------------------------------------------
 #if WITH_EDITOR
 void ATestSpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
@@ -632,3 +638,22 @@ void ATestSpaceShip::sample_speed() {
                                     speed_sample_index);
 }
 #endif
+void ATestSpaceShip::draw_debug_shapes() {
+    if (debug_forward_socket_direction) {
+        auto const middle{get_middle_socket(*ship_mesh)};
+
+        FVector const start = middle.GetLocation();
+        FVector const forward = middle.GetUnitAxis(EAxis::X);
+        constexpr float len{5000.f};
+        FVector const end = start + forward * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
+
+    if (debug_forward_direction) {
+        auto const fwd{GetActorForwardVector()};
+        auto const start{GetActorLocation()};
+        constexpr float len{5000.f};
+        FVector const end = start + fwd * len;
+        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
+    }
+}

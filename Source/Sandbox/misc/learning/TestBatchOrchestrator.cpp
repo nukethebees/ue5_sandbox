@@ -78,6 +78,8 @@ void ATestBatchOrchestrator::BeginPlay() {
                       lasers,
                       mission_manager);
 
+    mission_manager->update_player_handles();
+
     entity_registry->commit_updates();
     entity_registry->end_tick();
 }

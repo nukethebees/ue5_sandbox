@@ -1,5 +1,9 @@
 #pragma once
 
+#include "TestEntityUniqueId.h"
+
+#include <SandboxCore/generation_index.h>
+
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
@@ -35,6 +39,8 @@ class ATestMissionManager : public AActor {
     void begin_play();
     void mission_tick(float const dt);
 
+    void update_player_handles();
+
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
     auto get_mission_state() const noexcept -> ETestMissionState { return mission_state; }
 
@@ -63,6 +69,9 @@ class ATestMissionManager : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
+
+    FGenerationIndex player_registry_index{};
+    TestEntityUniqueId player_id{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};
