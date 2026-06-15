@@ -238,11 +238,11 @@ auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEnt
 }
 
 // Spawning
-void
-    ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_locations,
-                                              FRotatorsf::ConstView const new_rotations,
-                                              TConstArrayView<ETestTeam> const new_teams,
-                                              TConstArrayView<FRegistryEntityHandle> const new_targets) {
+void ATestCapitalShipFighters::spawn_instances(
+    FVectors3f::ConstView const new_locations,
+    FRotatorsf::ConstView const new_rotations,
+    TConstArrayView<ETestTeam> const new_teams,
+    TConstArrayView<FRegistryEntityHandle> const new_targets) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     auto const n_cur{get_num_instances()};
@@ -318,7 +318,8 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const aim_threshold{fire_dot_product_threshold};
 
     ml::reset(new_laser_locations, new_laser_rotations);
-    ml::add_uninitialised(n_ships, new_laser_locations, new_laser_rotations);
+    ml::add_uninitialised(
+        n_ships, new_laser_locations, new_laser_rotations, new_laser_instigator_handles);
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
@@ -344,6 +345,7 @@ void ATestCapitalShipFighters::handle_firing() {
 
         ml::assign(new_laser_locations, write_index, laser_location);
         ml::assign(new_laser_rotations, write_index, direction.ToOrientationRotator());
+        new_laser_instigator_handles[write_index] = entity_indices[ship_index];
 
         laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
@@ -351,9 +353,13 @@ void ATestCapitalShipFighters::handle_firing() {
 
     new_laser_locations.set_num(write_index, EAllowShrinking::No);
     new_laser_rotations.set_num(write_index, EAllowShrinking::No);
+    new_laser_instigator_handles.SetNum(write_index, EAllowShrinking::No);
 
-    laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
-                              new_laser_rotations.get_const_view());
+    laser_actor->spawn_lasers({
+        .locations = new_laser_locations.get_const_view(),
+        .rotations = new_laser_rotations.get_const_view(),
+        .instigator_handles = new_laser_instigator_handles,
+    });
 }
 
 // Misc
@@ -373,13 +379,15 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               laser_cooldowns,
               indices_ready_to_fire_buffer,
               new_laser_locations,
-              new_laser_rotations);
+              new_laser_rotations,
+              new_laser_instigator_handles);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
               indices_ready_to_fire_buffer,
               new_laser_locations,
-              new_laser_rotations);
+              new_laser_rotations,
+              new_laser_instigator_handles);
 }
 
 // Checks

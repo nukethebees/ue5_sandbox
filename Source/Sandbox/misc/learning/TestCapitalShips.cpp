@@ -161,8 +161,10 @@ auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> boo
 
     return true;
 }
-auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const -> FRegistryEntityHandle {
-    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot] : FRegistryEntityHandle{};
+auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const
+    -> FRegistryEntityHandle {
+    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot]
+                                                 : FRegistryEntityHandle{};
 }
 
 void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -227,16 +229,14 @@ void ATestCapitalShips::register_all_proxies_in_level() {
                 new_teams,
                 new_targets);
     update_entity_registry();
-
-    for (auto* proxy : proxies) {
-        proxy->Destroy();
-    }
+    ml::destroy_all_actors(proxies);
 }
-void ATestCapitalShips::spawn_ships(TConstArrayView<FRegistryEntityHandle> const new_indices,
-                                    FVectors3f::ConstView const new_locations,
-                                    FRotatorsf::ConstView const new_rotations,
-                                    TConstArrayView<ETestTeam> const new_teams,
-                                    TConstArrayView<FRegistryEntityHandle> const new_target_indices) {
+void ATestCapitalShips::spawn_ships(
+    TConstArrayView<FRegistryEntityHandle> const new_indices,
+    FVectors3f::ConstView const new_locations,
+    FRotatorsf::ConstView const new_rotations,
+    TConstArrayView<ETestTeam> const new_teams,
+    TConstArrayView<FRegistryEntityHandle> const new_target_indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::spawn_ships);
 
     auto const n_to_add(new_indices.Num());

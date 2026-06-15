@@ -1,10 +1,11 @@
 #include "TestTubeSpinners.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/misc/learning/TestLasers.h"
-#include "Sandbox/misc/learning/TestTubeSpinnerProxy.h"
-#include "Sandbox/misc/learning/TestTubeSpinnersConfig.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestLasers.h>
+#include <Sandbox/misc/learning/TestTubeSpinnerProxy.h>
+#include <Sandbox/misc/learning/TestTubeSpinnersConfig.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>
@@ -47,6 +48,7 @@ void ATestTubeSpinners::begin_play() {
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
     configure_ismc();
@@ -121,10 +123,7 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
     }
 
     spawn_instances(new_locations.get_const_view(), new_yaws, new_fire_point_indices);
-
-    for (auto* proxy : proxies) {
-        proxy->Destroy();
-    }
+    ml::destroy_all_actors(proxies);
 }
 void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_locations,
                                         TConstArrayView<float> const new_yaws,
@@ -133,6 +132,9 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
 
     auto const n{new_locations.num()};
     auto const existing_total{get_num_instances()};
+
+    auto new_entities{entity_registry->reserve_entities(n)};
+    registry_entity_handles.Append(MoveTemp(new_entities.registry_indices));
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(new_locations),
@@ -150,6 +152,16 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
                             false,
                             is_world_space,
                             false);
+
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.add_uninitialised(n);
+    entity_data.locations = locations;
+    ml::fill(entity_data.velocities, 0.f);
+    ml::fill(entity_data.healths, 1000000);
+    ml::fill(entity_data.teams, ETestTeam::neutral);
+    entity_data.set_all_alive();
+
+    entity_registry->update_entities({registry_entity_handles, entity_data.get_const_view()});
 
     validate_array_sizes();
 }
@@ -204,7 +216,10 @@ void ATestTubeSpinners::fire_lasers() {
         return;
     }
 
-    ml::reset(indices_ready_to_fire, new_laser_locations, new_laser_rotations);
+    ml::reset(indices_ready_to_fire,
+              new_laser_locations,
+              new_laser_rotations,
+              new_laser_instigator_handles);
 
     for (int32 i{0}; i < n; ++i) {
         if (!(laser_cooldowns[i] <= 0.f)) {
@@ -217,8 +232,8 @@ void ATestTubeSpinners::fire_lasers() {
 
     auto const n_ready_to_fire{indices_ready_to_fire.Num()};
     ml::reserve(n_ready_to_fire, new_laser_locations, new_laser_rotations);
-    ml::add_uninitialised(new_laser_locations, n_ready_to_fire);
-    ml::add_uninitialised(new_laser_rotations, n_ready_to_fire);
+    ml::add_uninitialised(
+        n_ready_to_fire, new_laser_locations, new_laser_rotations, new_laser_instigator_handles);
 
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
         auto const index{indices_ready_to_fire[i]};
@@ -240,11 +255,15 @@ void ATestTubeSpinners::fire_lasers() {
                    fire_point_rotation.Yaw + yaws[index],
                    fire_point_rotation.Roll);
 
+        new_laser_instigator_handles[i] = registry_entity_handles[index];
         next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
-                              new_laser_rotations.get_const_view());
+    laser_actor->spawn_lasers({
+        .locations = new_laser_locations.get_const_view(),
+        .rotations = new_laser_rotations.get_const_view(),
+        .instigator_handles = new_laser_instigator_handles,
+    });
 }
 
 // Checks

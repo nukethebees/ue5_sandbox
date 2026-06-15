@@ -109,10 +109,9 @@ class ATestStaticTurrets : public AActor {
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
 
-    UPROPERTY()
     FVectors3f new_laser_locations;
-    UPROPERTY()
     FRotatorsf new_laser_rotations;
+    TArray<FRegistryEntityHandle> new_laser_instigator_handles;
 
     // Enemies
     UPROPERTY()

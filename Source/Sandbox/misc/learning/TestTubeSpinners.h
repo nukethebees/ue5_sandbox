@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Sandbox/logging/ActorLoggingConfig.h"
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
+#include <Sandbox/logging/ActorLoggingConfig.h>
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/soa_rotators.h>
@@ -17,6 +18,7 @@ class UInstancedStaticMeshComponent;
 class ATestTubeSpinnerProxy;
 class UTestTubeSpinnersConfig;
 class ATestLasers;
+class ATestEntityRegistry;
 
 UCLASS()
 class ATestTubeSpinners : public AActor {
@@ -68,7 +70,11 @@ class ATestTubeSpinners : public AActor {
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
 
     // Entity data
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+
     TestEntityOwnerId owner_id{};
+    TArray<FRegistryEntityHandle> registry_entity_handles;
 
     // Visuals
     UPROPERTY()
@@ -91,10 +97,11 @@ class ATestTubeSpinners : public AActor {
     TArray<int32> next_fire_point_indices;
     UPROPERTY()
     TArray<int32> indices_ready_to_fire;
-    UPROPERTY()
+
+    // Laser spawning
     FVectors3f new_laser_locations;
-    UPROPERTY()
     FRotatorsf new_laser_rotations;
+    TArray<FRegistryEntityHandle> new_laser_instigator_handles;
 
     // Debugging / logging
     UPROPERTY(EditAnywhere, Category = "Turrets")

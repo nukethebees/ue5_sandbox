@@ -100,12 +100,18 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 }
 
 // Spawning / Configuration
-void ATestLasers::spawn_lasers(TVectors3View<float const> const new_locations,
-                               TRotatorsView<float const> const new_rotations) {
+void ATestLasers::spawn_lasers(FTestLasersSpawnRequest const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
 
-    ml::append_from(locations_to_add, new_locations);
-    ml::append_from(rotations_to_add, new_rotations);
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(spawn_data.locations),
+        SANDBOX_NAMED_NUM(spawn_data.rotations),
+        SANDBOX_NAMED_NUM(spawn_data.instigator_handles),
+    });
+
+    ml::append_from(locations_to_add, spawn_data.locations);
+    ml::append_from(rotations_to_add, spawn_data.rotations);
+    instigator_handles_to_add.Append(spawn_data.instigator_handles);
 }
 void ATestLasers::preallocate_instances() {
     instances->PreAllocateInstancesMemory(n_preallocated_instances);
@@ -117,6 +123,12 @@ void ATestLasers::preallocate_instances() {
 }
 void ATestLasers::process_pending_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::process_pending_spawns);
+
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(locations_to_add),
+        SANDBOX_NAMED_NUM(rotations_to_add),
+        SANDBOX_NAMED_NUM(instigator_handles_to_add),
+    });
 
     auto const offset{get_num_instances()};
     auto const n_to_add{ml::num(locations_to_add)};
@@ -134,6 +146,8 @@ void ATestLasers::process_pending_spawns() {
 
     ml::append_from(locations, locations_to_add);
     ml::append_from(rotations, rotations_to_add);
+    instigator_handles.Append(instigator_handles_to_add);
+
     lifetimes.AddZeroed(n_to_add);
     ml::add_uninitialised(velocities, n_to_add);
 
@@ -145,7 +159,7 @@ void ATestLasers::process_pending_spawns() {
     }
 
     validate_array_sizes();
-    ml::reset(locations_to_add, rotations_to_add);
+    ml::reset(locations_to_add, rotations_to_add, instigator_handles_to_add);
 }
 
 // Movement
@@ -303,6 +317,7 @@ void ATestLasers::clear_runtime_state() {
               locations_to_add,
               rotations_to_add,
               to_remove,
+              instigator_handles,
               hit_damage_queue,
               hit_actor_queue,
               hit_component_queue,
@@ -318,7 +333,8 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);
-        ml::remove_at_swap_many_sorted_desc(indices, locations, rotations, velocities, lifetimes);
+        ml::remove_at_swap_many_sorted_desc(
+            indices, locations, rotations, velocities, lifetimes, instigator_handles);
     }
 
     validate_array_sizes();
@@ -337,6 +353,7 @@ void ATestLasers::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(velocities),
         SANDBOX_NAMED_NUM(lifetimes),
+        SANDBOX_NAMED_NUM(instigator_handles),
     });
 
     auto const n{get_num_instances()};

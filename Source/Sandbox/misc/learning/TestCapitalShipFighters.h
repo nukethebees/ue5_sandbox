@@ -115,8 +115,10 @@ class ATestCapitalShipFighters : public AActor {
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     FCountdownTimers laser_cooldowns;
     TArray<int32> indices_ready_to_fire_buffer;
+
     FVectors3f new_laser_locations;
     FRotatorsf new_laser_rotations;
+    TArray<FRegistryEntityHandle> new_laser_instigator_handles;
 
     // Debugging
     UPROPERTY(EditAnywhere)

@@ -257,11 +257,16 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         ml::append(new_laser_locations, loc_x, loc_y, loc_z);
         ml::append(new_laser_rotations, fire_dir);
+        new_laser_instigator_handles.Add(entity_indices[i]);
+
         laser_cooldowns[i] = cooldown;
     }
 
-    laser_actor->spawn_lasers(new_laser_locations.get_const_view(),
-                              new_laser_rotations.get_const_view());
+    laser_actor->spawn_lasers({
+        .locations = new_laser_locations.get_const_view(),
+        .rotations = new_laser_rotations.get_const_view(),
+        .instigator_handles = new_laser_instigator_handles,
+    });
 }
 
 // Spawning
@@ -282,9 +287,6 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     auto new_entities{entity_registry->reserve_entities(n)};
     entity_indices = MoveTemp(new_entities.registry_indices);
 
-    FTestEntityRegistryEntityData entity_data;
-    entity_data.add_uninitialised(n);
-
     TArray<FTransform> ismc_transforms;
 
     ml::add_uninitialised(n, locations, teams, ismc_transforms);
@@ -301,18 +303,19 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     instances->AddInstances(ismc_transforms, false);
 
-    ml::fill(entity_data.velocities, 0.f);
+    FTestEntityRegistryEntityData entity_data;
+    entity_data.add_uninitialised(n);
+
+    entity_data.set_all_velocities(0.f);
     entity_data.locations = locations;
     entity_data.healths = healths;
     entity_data.teams = teams;
-    ml::fill(entity_data.alive, uint8{1});
+    entity_data.set_all_alive();
 
     ATestEntityRegistry::ConstView const update_view{entity_indices, entity_data.get_const_view()};
     entity_registry->update_entities(update_view);
 
-    for (auto* proxy : proxies) {
-        proxy->Destroy();
-    }
+    ml::destroy_all_actors(proxies);
 
     validate_array_sizes();
 }
@@ -326,12 +329,18 @@ void ATestStaticTurrets::clear_runtime_state() {
               teams,
               laser_cooldowns,
               indices_ready_to_fire,
+              new_laser_locations,
+              new_laser_rotations,
+              new_laser_instigator_handles,
               target_indices,
               healths);
 }
 void ATestStaticTurrets::clear_tick_buffers() {
-    ml::reset(
-        local_indices_to_remove, indices_ready_to_fire, new_laser_locations, new_laser_rotations);
+    ml::reset(local_indices_to_remove,
+              indices_ready_to_fire,
+              new_laser_locations,
+              new_laser_rotations,
+              new_laser_instigator_handles);
 }
 
 // Checks

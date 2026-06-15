@@ -446,15 +446,22 @@ void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
                                       TConstArrayView<FTransform> const fire_points) {
     FVectors3f locations;
     FRotatorsf rotations;
+    TArray<FRegistryEntityHandle> instigator_handles;
+
     auto const n{fire_points.Num()};
-    ml::add_uninitialised(n, locations, rotations);
+    ml::add_uninitialised(n, locations, rotations, instigator_handles);
 
     for (int32 i{0}; i < n; ++i) {
         ml::assign(locations, i, fire_points[i].GetLocation());
         ml::assign(rotations, i, fire_points[i].Rotator());
     }
+    ml::fill(instigator_handles, entity_index);
 
-    laser_actor->spawn_lasers(locations.get_const_view(), rotations.get_const_view());
+    laser_actor->spawn_lasers({
+        .locations = locations.get_const_view(),
+        .rotations = rotations.get_const_view(),
+        .instigator_handles = instigator_handles,
+    });
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {

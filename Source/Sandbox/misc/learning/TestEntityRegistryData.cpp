@@ -58,3 +58,11 @@ void FTestEntityRegistryEntityData::add(ConstView const view) {
 void FTestEntityRegistryEntityData::reset() {
     ml::reset(locations, velocities, healths, teams, alive);
 }
+
+void FTestEntityRegistryEntityData::set_all_alive() {
+    ml::fill(alive, uint8{1});
+}
+void FTestEntityRegistryEntityData::set_all_velocities(float const v) {
+    ml::fill(velocities, v);
+}
+

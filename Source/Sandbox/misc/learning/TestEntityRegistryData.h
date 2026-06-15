@@ -58,8 +58,6 @@ struct FTestEntityRegistryEntityData {
     using View = TTestEntityDataView<false>;
     using ConstView = TTestEntityDataView<true>;
 
-    FTestEntityRegistryEntityData() = default;
-
     auto get_num() const -> int32;
     auto num() const -> int32 { return get_num(); }
     auto get_view() -> View;
@@ -68,6 +66,10 @@ struct FTestEntityRegistryEntityData {
     void add_uninitialised(int32 const count);
     void add_disabled(int32 const count);
     void add(ConstView const view);
+
+    void set_all_alive();
+    void set_all_velocities(float const v);
+    auto take_right(int32 const count);
 
     void reset();
 

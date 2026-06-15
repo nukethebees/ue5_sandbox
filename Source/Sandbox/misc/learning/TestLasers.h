@@ -19,6 +19,12 @@ class UActorComponent;
 class UTestLasersConfig;
 class ATestEntityRegistry;
 
+struct FTestLasersSpawnRequest {
+    TVectors3View<float const> locations;
+    TRotatorsView<float const> rotations;
+    TConstArrayView<FRegistryEntityHandle> instigator_handles;
+};
+
 UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
@@ -41,8 +47,7 @@ class ATestLasers : public AActor {
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
 
     // Spawning / configuration
-    void spawn_lasers(TVectors3View<float const> const locations,
-                      TRotatorsView<float const> const rotations);
+    void spawn_lasers(FTestLasersSpawnRequest const& spawn_data);
 
     // Checks
     void validate_array_sizes() const;
@@ -95,11 +100,18 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TArray<float> lifetimes;
 
+    UPROPERTY()
+    TArray<FRegistryEntityHandle> instigator_handles;
+
     // Spawning
     UPROPERTY()
     FVectors3f locations_to_add;
     UPROPERTY()
     FRotatorsf rotations_to_add;
+    UPROPERTY()
+    TArray<FRegistryEntityHandle> instigator_handles_to_add;
+
+    // Removal
     UPROPERTY()
     TArray<int32> to_remove;
 
