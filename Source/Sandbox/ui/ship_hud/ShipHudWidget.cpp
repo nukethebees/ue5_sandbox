@@ -90,10 +90,21 @@ void UShipHudWidget::set_stopwatch_time(float const time_s) {
     auto const minutes{total_seconds / 60};
     auto const remaining_seconds{total_seconds % 60};
 
-    stopwatch_widget->update(minutes, remaining_seconds);
+    FNumberFormattingOptions options;
+    options.MinimumIntegralDigits = 2;
+
+    stopwatch_widget->update(options, minutes, remaining_seconds);
 }
 void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(stopwatch_widget, new_visibility);
+}
+
+void UShipHudWidget::set_mission_status(FStringView const mission_status) {
+    check(IsValid(stopwatch_widget));
+    mission_status_widget->update(mission_status);
+}
+void UShipHudWidget::set_mission_status_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(mission_status_widget, new_visibility);
 }
 
 void UShipHudWidget::set_lives(int32 value) {

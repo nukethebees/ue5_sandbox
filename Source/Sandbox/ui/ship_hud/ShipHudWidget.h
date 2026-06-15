@@ -53,6 +53,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_stopwatch_time(float const time_s);
     void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
 
+    void set_mission_status(FStringView const mission_status);
+    void set_mission_status_widget_visibility(ESlateVisibility const new_visibility);
+
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_colours(FLinearColor near, FLinearColor far);
     void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
@@ -86,6 +89,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UPlayerLivesWidget* lives_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* stopwatch_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* mission_status_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

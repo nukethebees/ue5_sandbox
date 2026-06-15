@@ -5,6 +5,7 @@
 #include <Sandbox/misc/learning/TestMissionManager.h>
 #include <Sandbox/misc/learning/TestSpaceShip.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
+#include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/world.h>
 
 #include <SandboxCore/uobject_utils.h>
@@ -24,6 +25,7 @@ ATestSpaceShipController::ATestSpaceShipController() {
     PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
+// Input
 void ATestSpaceShipController::SetupInputComponent() {
     Super::SetupInputComponent();
 
@@ -48,20 +50,8 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(input.fire_laser, Completed, &ThisClass::stop_fire_laser);
     bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
 }
-void ATestSpaceShipController::Tick(float dt) {
-    Super::Tick(dt);
 
-    log_config.tick(dt);
-
-    TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
-    update_crosshair_positions(*ss);
-    update_lock_on_widget(*ss);
-
-    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
-
-    log_config.on_tick_end();
-}
-
+// Life cycle
 void ATestSpaceShipController::BeginPlay() {
     Super::BeginPlay();
     initialise_hud();
@@ -79,13 +69,39 @@ void ATestSpaceShipController::BeginPlay() {
 
     on_mission_ended_handle =
         mission_manager->on_mission_ended.AddUObject(this, &ThisClass::on_mission_ended);
+
+    if (mission_manager->is_ready()) {
+        on_mission_manager_ready(*mission_manager);
+    } else {
+        on_mission_manager_ready_handle =
+            mission_manager->on_ready.AddUObject(this, &ThisClass::on_mission_manager_ready);
+    }
 }
+void ATestSpaceShipController::Tick(float dt) {
+    Super::Tick(dt);
+
+    log_config.tick(dt);
+
+    TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
+    update_crosshair_positions(*ss);
+    update_lock_on_widget(*ss);
+
+    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+
+    log_config.on_tick_end();
+}
+
 void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
     mission_manager->on_mission_ended.Remove(on_mission_ended_handle);
+
+    if (on_mission_manager_ready_handle.IsValid()) {
+        mission_manager->on_ready.Remove(on_mission_manager_ready_handle);
+    }
 
     Super::EndPlay(reason);
 }
 
+// Pawn possession
 void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     Super::OnPossess(in_pawn);
 
@@ -144,6 +160,8 @@ void ATestSpaceShipController::OnUnPossess() {
 
     Super::OnUnPossess();
 }
+
+// UI
 void ATestSpaceShipController::initialise_hud() {
     if (hud_widget) {
         return;
@@ -227,6 +245,7 @@ void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship)
     hud_widget->set_lock_on_widget_position(screen_pos);
 }
 
+// Movement
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
     ship->turn(value.Get<FVector2D>());
@@ -284,6 +303,8 @@ void ATestSpaceShipController::barrel_roll(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
     ship->barrel_roll(value.Get<float>());
 }
+
+// Boost / brake
 void ATestSpaceShipController::start_boost(FInputActionValue const& value) {
     TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
     ship->start_boost();
@@ -301,6 +322,7 @@ void ATestSpaceShipController::stop_brake(FInputActionValue const& value) {
     ship->stop_brake();
 }
 
+// Laser
 void ATestSpaceShipController::start_fire_laser() {
     TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
     ship->start_fire_laser();
@@ -308,10 +330,6 @@ void ATestSpaceShipController::start_fire_laser() {
 void ATestSpaceShipController::stop_fire_laser() {
     TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
     ship->stop_fire_laser();
-}
-void ATestSpaceShipController::fire_bomb(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->fire_bomb();
 }
 
 void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
@@ -344,6 +362,54 @@ void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
     hud_widget->set_lock_on_widget_visibility(target != nullptr);
 }
 
+// Bomb
+void ATestSpaceShipController::fire_bomb(FInputActionValue const& value) {
+    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
+    ship->fire_bomb();
+}
+
+// Mission
+void ATestSpaceShipController::on_mission_manager_ready(ATestMissionManager const& manager) {
+    initialise_from_mission_manager(manager);
+}
+void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManager const& manager) {
+    FString const mission_status{make_mission_status_message(manager)};
+    hud_widget->set_mission_status(mission_status);
+}
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
+
+    FString const mission_status{make_mission_status_message(manager)};
+    hud_widget->set_mission_status(mission_status);
+}
+auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager const& manager) const
+    -> FString {
+    auto const mission_mode{manager.get_mission_mode()};
+    auto const mission_state{manager.get_mission_state()};
+
+    FString status_msg;
+
+    switch (mission_mode) {
+        case ETestMissionMode::None: {
+            status_msg = TEXT("No mission running");
+            break;
+        }
+        case ETestMissionMode::SurviveTime: {
+            status_msg = FString::Printf(TEXT("Survive for %d seconds"),
+                                         static_cast<int32>(manager.get_survive_seconds()));
+            break;
+        }
+        case ETestMissionMode::KillEnemies: {
+            status_msg = FString::Printf(TEXT("Kill %d enemies"), manager.get_kill_target());
+            break;
+        }
+        default: {
+            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
+            break;
+        }
+    }
+
+    status_msg += FString::Printf(TEXT(" (%s)"), *ml::to_string_without_type_prefix(mission_state));
+
+    return status_msg;
 }
