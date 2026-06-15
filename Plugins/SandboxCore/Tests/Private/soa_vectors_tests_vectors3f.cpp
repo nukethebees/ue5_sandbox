@@ -40,18 +40,14 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Slice") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
-                                    {5.0f, 6.0f, 7.0f, 8.0f},
-                                    {9.0f, 10.0f, 11.0f, 12.0f})};
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f}, {9.0f, 10.0f, 11.0f, 12.0f})};
 
     auto slice{vectors.get_view().slice(1, 2)};
     slice.xs[0] = 20.0f;
     slice.ys[1] = 70.0f;
     slice.zs[0] = 100.0f;
 
-    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f},
-                                           {5.0f, 6.0f, 70.0f, 8.0f},
-                                           {9.0f, 100.0f, 11.0f, 12.0f})};
+    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 70.0f, 8.0f}, {9.0f, 100.0f, 11.0f, 12.0f})};
 
     CHECK(slice.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));
@@ -101,7 +97,7 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reserve") {
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddUninitialized") {
     FVectors3f vectors;
 
-    vectors.add_uninitialized(3);
+    ml::add_uninitialised(vectors, 3);
 
     CHECK(vectors.num() == 3);
     CHECK(vectors.xs.Num() == 3);
