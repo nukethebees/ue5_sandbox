@@ -73,14 +73,9 @@ struct FTestEntityRegistryEntityData {
 
     void reset();
 
-    UPROPERTY()
     FVectors3f locations;
-    UPROPERTY()
     FVectors3f velocities;
-    UPROPERTY()
     TArray<int32> healths;
-    UPROPERTY()
     TArray<ETestTeam> teams;
-    UPROPERTY()
     TArray<uint8> alive;
 };
