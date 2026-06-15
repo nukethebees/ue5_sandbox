@@ -1,7 +1,5 @@
 #pragma once
 
-#include <array>
-
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Box.h"
@@ -37,4 +35,13 @@ void fatal_if_actor_transform_not_identity(AActor const& actor);
 void fatal_if_actor_root_not_static(AActor const& actor);
 
 void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobility);
+
+template <typename T>
+void destroy_all_actors(T& actors) {
+    for (auto* a : actors) {
+        if (IsValid(a)) {
+            a->Destroy();
+        }
+    }
+}
 } // namespace ml
