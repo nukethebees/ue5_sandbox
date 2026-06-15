@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
@@ -46,7 +47,7 @@ class ATestCapitalShipFighters : public AActor {
     void spawn_instances(FVectors3f::ConstView const new_locations,
                          FRotatorsf::ConstView const new_rotations,
                          TConstArrayView<ETestTeam> const new_teams,
-                         TConstArrayView<FGenerationIndex> const new_targets);
+                         TConstArrayView<FRegistryEntityHandle> const new_targets);
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
@@ -86,7 +87,7 @@ class ATestCapitalShipFighters : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    TArray<FGenerationIndex> entity_indices;
+    TArray<FRegistryEntityHandle> entity_indices;
     TArray<int32> local_indices_to_remove;
 
     // Transform
@@ -103,7 +104,7 @@ class ATestCapitalShipFighters : public AActor {
     TArray<int32> healths;
 
     // Targets
-    TArray<FGenerationIndex> target_indices;
+    TArray<FRegistryEntityHandle> target_indices;
     FVectors3f target_locations;
     FVectors3f target_directions;
     UPROPERTY(EditAnywhere, Category = "Sandbox")

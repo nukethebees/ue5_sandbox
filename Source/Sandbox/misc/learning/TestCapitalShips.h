@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -47,8 +48,8 @@ class ATestCapitalShips : public AActor {
 
     // Accessors
     auto get_num_instances() const -> int32;
-    auto is_valid(FGenerationIndex const index) const -> bool;
-    auto get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex;
+    auto is_valid(FRegistryEntityHandle const index) const -> bool;
+    auto get_entity_from_hit_slot(int32 const hit_slot) const -> FRegistryEntityHandle;
 
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
@@ -58,11 +59,11 @@ class ATestCapitalShips : public AActor {
   protected:
     // Ship spawning
     void register_all_proxies_in_level();
-    void spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
+    void spawn_ships(TConstArrayView<FRegistryEntityHandle> const new_indices,
                      FVectors3f::ConstView const new_locations,
                      FRotatorsf::ConstView const new_rotations,
                      TConstArrayView<ETestTeam> const new_teams,
-                     TConstArrayView<FGenerationIndex> const new_target_indices);
+                     TConstArrayView<FRegistryEntityHandle> const new_target_indices);
 
     // Fighter spawning
     void handle_fighter_spawning();
@@ -88,7 +89,7 @@ class ATestCapitalShips : public AActor {
     // Entity data
     TestEntityOwnerId owner_id{};
     UPROPERTY()
-    TArray<FGenerationIndex> entity_indices;
+    TArray<FRegistryEntityHandle> entity_indices;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
 
@@ -109,7 +110,7 @@ class ATestCapitalShips : public AActor {
     FVectors3f new_fighter_locations;
     FRotatorsf new_fighter_rotations;
     TArray<ETestTeam> new_fighter_teams;
-    TArray<FGenerationIndex> new_fighter_targets;
+    TArray<FRegistryEntityHandle> new_fighter_targets;
 
     // Teams
     UPROPERTY()
@@ -121,7 +122,7 @@ class ATestCapitalShips : public AActor {
 
     // Targets
     UPROPERTY()
-    TArray<FGenerationIndex> target_entity_indices;
+    TArray<FRegistryEntityHandle> target_entity_indices;
 
     // Debugging
     UPROPERTY(EditAnywhere)

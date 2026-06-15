@@ -297,10 +297,10 @@ void ATestEntityRegistry::end_tick() {
 }
 
 // Index queries
-auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> bool {
+auto ATestEntityRegistry::is_valid_index(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
-auto ATestEntityRegistry::is_stale(FGenerationIndex const index) const -> bool {
+auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }
 
@@ -316,34 +316,34 @@ auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
 }
 
 // Entity queries
-auto ATestEntityRegistry::get_location(FGenerationIndex const index) const -> FVector3f {
+auto ATestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
     check(is_valid_index(index));
     return ml::get_vector3f(entity_data.locations, index.index);
 }
-auto ATestEntityRegistry::get_velocity(FGenerationIndex const index) const -> FVector3f {
+auto ATestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
     check(is_valid_index(index));
     return ml::get_vector3f(entity_data.velocities, index.index);
 }
-auto ATestEntityRegistry::get_health(FGenerationIndex const index) const -> int32 {
+auto ATestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
     check(is_valid_index(index));
     return entity_data.healths[index.index];
 }
-auto ATestEntityRegistry::get_team(FGenerationIndex const index) const -> ETestTeam {
+auto ATestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
     check(is_valid_index(index));
     return entity_data.teams[index.index];
 }
-auto ATestEntityRegistry::get_alive(FGenerationIndex const index) const -> bool {
+auto ATestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
     check(is_valid_index(index));
     return static_cast<bool>(entity_data.alive[index.index]);
 }
 auto ATestEntityRegistry::get_dead_entities_this_frame() const
-    -> TConstArrayView<FGenerationIndex> {
+    -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
 }
 auto ATestEntityRegistry::collect_entities_in_range(
     FVector3f const& origin,
     float const radius,
-    TArrayView<FGenerationIndex> const out_entities) const -> int32 {
+    TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_entities_in_range);
 
     int32 count{0};
@@ -360,7 +360,7 @@ auto ATestEntityRegistry::collect_entities_in_range(
         auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
 
         if (dist_sq <= radius_squared) {
-            out_entities[count++] = FGenerationIndex{i, generations[i]};
+            out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
         }
 
         if (count >= n_out_limit) {
@@ -374,7 +374,7 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
     FVector3f const& origin,
     ETestTeam const team,
     float const radius,
-    TArrayView<FGenerationIndex> const out_entities) const -> int32 {
+    TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_non_team_entities_in_range);
 
     int32 count{0};
@@ -398,7 +398,7 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
             continue;
         }
 
-        out_entities[count++] = FGenerationIndex{i, generations[i]};
+        out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
 
         if (count >= n_out_limit) {
             break;

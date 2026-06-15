@@ -195,11 +195,11 @@ void ATestStaticTurrets::perform_search() {
             auto const turret_location{ml::get_vector3f(locations, i)};
             auto const this_team{teams[i]};
 
-            TStaticArray<FGenerationIndex, 128> elems;
+            TStaticArray<FRegistryEntityHandle, 128> elems;
             auto const n_entities{entity_registry->collect_non_team_entities_in_range(
                 turret_location, this_team, radius, elems)};
 
-            target_indices[i] = FGenerationIndex{};
+            target_indices[i] = FRegistryEntityHandle{};
 
             for (int32 j{0}; j < n_entities; ++j) {
                 auto const target_index{elems[j]};

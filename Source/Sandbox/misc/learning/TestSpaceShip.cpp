@@ -185,7 +185,7 @@ auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
 auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
     return unique_entity_id;
 }
-auto ATestSpaceShip::get_entity_registry_index() const -> FGenerationIndex {
+auto ATestSpaceShip::get_entity_registry_index() const -> FRegistryEntityHandle {
     return entity_index;
 }
 

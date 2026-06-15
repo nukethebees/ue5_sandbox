@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Sandbox/logging/ActorLoggingConfig.h"
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
-#include "Sandbox/misc/learning/TestEntityRegistry.h"
-#include "Sandbox/misc/learning/TestTeam.h"
+#include <Sandbox/logging/ActorLoggingConfig.h>
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestTeam.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
@@ -78,7 +79,7 @@ class ATestStaticTurrets : public AActor {
     TestEntityOwnerId owner_id{};
 
     UPROPERTY()
-    TArray<FGenerationIndex> entity_indices{};
+    TArray<FRegistryEntityHandle> entity_indices{};
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     UPROPERTY()
@@ -115,7 +116,7 @@ class ATestStaticTurrets : public AActor {
 
     // Enemies
     UPROPERTY()
-    TArray<FGenerationIndex> target_indices{};
+    TArray<FRegistryEntityHandle> target_indices{};
 
     // Health
     UPROPERTY()

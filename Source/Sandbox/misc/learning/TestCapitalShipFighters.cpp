@@ -125,7 +125,7 @@ void ATestCapitalShipFighters::sync_from_registry() {
         auto const target_entity_index{target_indices[i]};
         if (target_entity_index.is_valid()) {
             if (entity_registry->is_stale(target_entity_index)) {
-                target_indices[i] = FGenerationIndex{};
+                target_indices[i] = FRegistryEntityHandle{};
             } else {
                 ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
             }
@@ -242,7 +242,7 @@ void
     ATestCapitalShipFighters::spawn_instances(FVectors3f::ConstView const new_locations,
                                               FRotatorsf::ConstView const new_rotations,
                                               TConstArrayView<ETestTeam> const new_teams,
-                                              TConstArrayView<FGenerationIndex> const new_targets) {
+                                              TConstArrayView<FRegistryEntityHandle> const new_targets) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
 
     auto const n_cur{get_num_instances()};

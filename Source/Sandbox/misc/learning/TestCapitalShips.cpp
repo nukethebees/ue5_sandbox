@@ -150,7 +150,7 @@ void ATestCapitalShips::end_tick() {
 auto ATestCapitalShips::get_num_instances() const -> int32 {
     return entity_indices.Num();
 }
-auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
+auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> bool {
     if (!index.is_valid()) {
         return false;
     }
@@ -161,8 +161,8 @@ auto ATestCapitalShips::is_valid(FGenerationIndex const index) const -> bool {
 
     return true;
 }
-auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const -> FGenerationIndex {
-    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot] : FGenerationIndex{};
+auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const -> FRegistryEntityHandle {
+    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot] : FRegistryEntityHandle{};
 }
 
 void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -182,7 +182,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         return;
     }
 
-    TMap<Proxy const*, FGenerationIndex> proxy_to_index{};
+    TMap<Proxy const*, FRegistryEntityHandle> proxy_to_index{};
     auto const proxies{ml::get_actors<Proxy>(*world)};
 
     auto const n_to_add{proxies.Num()};
@@ -194,7 +194,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         proxy_to_index.Add(proxies[i], entity_indices[i]);
     }
 
-    TArray<FGenerationIndex> new_targets;
+    TArray<FRegistryEntityHandle> new_targets;
     FVectors3f new_locations;
     FRotatorsf new_rotations;
     TArray<ETestTeam> new_teams;
@@ -202,7 +202,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     ml::add_uninitialised(n_to_add, new_targets, new_locations, new_rotations, new_teams);
 
     for (int32 i{0}; i < n_to_add; ++i) {
-        FGenerationIndex target_index{};
+        FRegistryEntityHandle target_index{};
         auto* proxy{proxies[i]};
 
         if (auto const found{proxy_to_index.Find(proxy->target_ship)}) {
@@ -232,11 +232,11 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         proxy->Destroy();
     }
 }
-void ATestCapitalShips::spawn_ships(TConstArrayView<FGenerationIndex> const new_indices,
+void ATestCapitalShips::spawn_ships(TConstArrayView<FRegistryEntityHandle> const new_indices,
                                     FVectors3f::ConstView const new_locations,
                                     FRotatorsf::ConstView const new_rotations,
                                     TConstArrayView<ETestTeam> const new_teams,
-                                    TConstArrayView<FGenerationIndex> const new_target_indices) {
+                                    TConstArrayView<FRegistryEntityHandle> const new_target_indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::spawn_ships);
 
     auto const n_to_add(new_indices.Num());
@@ -306,7 +306,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
     fighters_actor->spawn_instances(new_fighter_locations.get_const_view(),
                                     new_fighter_rotations.get_const_view(),
                                     TConstArrayView<ETestTeam>(new_fighter_teams),
-                                    TConstArrayView<FGenerationIndex>(new_fighter_targets));
+                                    TConstArrayView<FRegistryEntityHandle>(new_fighter_targets));
 }
 
 // Visuals

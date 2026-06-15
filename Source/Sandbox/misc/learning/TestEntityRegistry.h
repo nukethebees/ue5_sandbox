@@ -2,11 +2,10 @@
 
 #include "TestEntityRegistryData.h"
 
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityUniqueId.h>
 #include <Sandbox/misc/learning/TestTeam.h>
-
-#include "SandboxCore/generation_index.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -45,10 +44,10 @@ struct DamageEvents {
 struct TestEntityUniqueEntityData {
     using kills_type = uint32;
 
-    TArray<FGenerationIndex> generation_indexes;
+    TArray<FRegistryEntityHandle> generation_indexes;
     TArray<kills_type> kills;
     TArray<uint8> alive;
-    TArray<FGenerationIndex> killed_by;
+    TArray<FRegistryEntityHandle> killed_by;
 
     auto num() const -> int32;
     void reset();
@@ -58,7 +57,7 @@ struct TestEntityUniqueEntityData {
 };
 
 struct NewEntities {
-    TArray<FGenerationIndex> registry_indices;
+    TArray<FRegistryEntityHandle> registry_indices;
     TestEntityUniqueId first_id;
 
     auto num() const -> int32;
@@ -75,13 +74,13 @@ class ATestEntityRegistry : public AActor {
     struct ConstView {
         auto get_num() const { return indices.Num(); }
 
-        TConstArrayView<FGenerationIndex> indices;
+        TConstArrayView<FRegistryEntityHandle> indices;
         FTestEntityRegistryEntityData::ConstView data;
     };
     struct View {
         auto get_num() const { return indices.Num(); }
 
-        TConstArrayView<FGenerationIndex> indices;
+        TConstArrayView<FRegistryEntityHandle> indices;
         FTestEntityRegistryEntityData::View data;
     };
 
@@ -116,17 +115,17 @@ class ATestEntityRegistry : public AActor {
     void end_tick();
 
     // Index queries
-    auto is_valid_index(FGenerationIndex const index) const -> bool;
-    auto is_stale(FGenerationIndex const index) const -> bool;
+    auto is_valid_index(FRegistryEntityHandle const index) const -> bool;
+    auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
-    auto get_location(FGenerationIndex const index) const -> FVector3f;
-    auto get_velocity(FGenerationIndex const index) const -> FVector3f;
-    auto get_health(FGenerationIndex const index) const -> int32;
-    auto get_team(FGenerationIndex const index) const -> ETestTeam;
-    auto get_alive(FGenerationIndex const index) const -> bool;
-    auto get_dead_entities_this_frame() const -> TConstArrayView<FGenerationIndex>;
+    auto get_location(FRegistryEntityHandle const index) const -> FVector3f;
+    auto get_velocity(FRegistryEntityHandle const index) const -> FVector3f;
+    auto get_health(FRegistryEntityHandle const index) const -> int32;
+    auto get_team(FRegistryEntityHandle const index) const -> ETestTeam;
+    auto get_alive(FRegistryEntityHandle const index) const -> bool;
+    auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
 
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
@@ -137,12 +136,13 @@ class ATestEntityRegistry : public AActor {
     // Area queries
     auto collect_entities_in_range(FVector3f const& origin,
                                    float const radius,
-                                   TArrayView<FGenerationIndex> const out_entities) const -> int32;
-    auto collect_non_team_entities_in_range(FVector3f const& origin,
-                                            ETestTeam const team,
-                                            float const radius,
-                                            TArrayView<FGenerationIndex> const out_entities) const
+                                   TArrayView<FRegistryEntityHandle> const out_entities) const
         -> int32;
+    auto collect_non_team_entities_in_range(
+        FVector3f const& origin,
+        ETestTeam const team,
+        float const radius,
+        TArrayView<FRegistryEntityHandle> const out_entities) const -> int32;
 
     // Checks
     void validate_array_sizes() const;
@@ -162,13 +162,13 @@ class ATestEntityRegistry : public AActor {
 
     // Queued updates
     FTestEntityRegistryEntityData queued_entity_data;
-    TArray<FGenerationIndex> queued_entity_generations;
+    TArray<FRegistryEntityHandle> queued_entity_generations;
 
     // Queued damage events
     TArray<DamageEvents> queued_damage_events;
     TArray<int32> damage_events_to_filter_buffer;
 
     // Dead entities
-    TArray<FGenerationIndex> dead_entities_this_frame;
+    TArray<FRegistryEntityHandle> dead_entities_this_frame;
     TArray<int32> free_indices;
 };

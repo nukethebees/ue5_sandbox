@@ -2,6 +2,7 @@
 
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
 #include <Sandbox/misc/learning/TestEntityUniqueId.h>
@@ -63,7 +64,7 @@ class ATestSpaceShip : public APawn {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
     auto get_unique_id() const -> TestEntityUniqueId;
-    auto get_entity_registry_index() const -> FGenerationIndex;
+    auto get_entity_registry_index() const -> FRegistryEntityHandle;
 
     // Movement
     void turn(FVector2D direction);
@@ -173,9 +174,8 @@ class ATestSpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    FGenerationIndex entity_index{};
+    FRegistryEntityHandle entity_index{};
 
     // ------------------------------------------------------------------------
     // Collision

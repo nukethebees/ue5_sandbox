@@ -2,7 +2,7 @@
 
 #include "TestEntityUniqueId.h"
 
-#include <SandboxCore/generation_index.h>
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -70,7 +70,7 @@ class ATestMissionManager : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
 
-    FGenerationIndex player_registry_index{};
+    FRegistryEntityHandle player_registry_index{};
     TestEntityUniqueId player_id{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

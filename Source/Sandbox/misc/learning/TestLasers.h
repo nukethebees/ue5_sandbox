@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>
 #include <SandboxCore/soa_rotators.h>
