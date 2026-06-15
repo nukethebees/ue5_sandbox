@@ -5,6 +5,9 @@
 
 #include "TestMissionManager.generated.h"
 
+class ATestEntityRegistry;
+class ATestSpaceShip;
+
 UENUM()
 enum class ETestMissionState : uint8 {
     NotStarted,
@@ -51,6 +54,12 @@ class ATestMissionManager : public AActor {
 
     void handle_mission_success();
     void handle_mission_failure();
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
+    TObjectPtr<ATestSpaceShip> player_ship{nullptr};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};

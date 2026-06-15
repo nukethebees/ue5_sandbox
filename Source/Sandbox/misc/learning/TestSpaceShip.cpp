@@ -1,4 +1,4 @@
-#include "Sandbox/misc/learning/TestSpaceShip.h"
+#include "TestSpaceShip.h"
 
 #include <Sandbox/combat/weapons/ShipBomb.h>
 #include <Sandbox/combat/weapons/ShipHomingLaser.h>

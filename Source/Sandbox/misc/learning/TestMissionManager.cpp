@@ -1,10 +1,24 @@
 #include "TestMissionManager.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestSpaceShip.h>
+
+#include <SandboxCore/uobject_utils.h>
 
 #include <Engine/World.h>
 
 void ATestMissionManager::begin_play() {
+    if (!IsValid(player_ship)) {
+        UE_LOG(LogSandbox, Warning, TEXT("player_ship is not valid."));
+        set_mission_state(ETestMissionState::Disabled);
+        return;
+    }
+
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+    });
+
     switch (mission_mode) {
         case ETestMissionMode::None: {
             set_mission_state(ETestMissionState::Disabled);
