@@ -165,7 +165,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Projectile simulation
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
-        lasers->tick(dt);
+        lasers->simulate(dt);
     }
 
     // ---------------------------------------------------------------------------------------------

@@ -73,7 +73,7 @@ void ATestLasers::commit_spawns() {
     process_pending_spawns();
     clear_spawn_buffers();
 }
-void ATestLasers::tick(float const dt) {
+void ATestLasers::simulate(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick);
 
     tick_lifetimes(dt);
