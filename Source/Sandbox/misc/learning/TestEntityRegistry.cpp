@@ -51,13 +51,13 @@ void DamageEvents::validate_array_sizes() const {
 }
 
 auto TestEntityUniqueEntityData::num() const -> int32 {
-    return generation_indexes.Num();
+    return registry_handles.Num();
 }
 void TestEntityUniqueEntityData::reset() {
-    ml::reset(generation_indexes, kills, alive, killed_by);
+    ml::reset(registry_handles, kills, alive, killed_by);
 }
 void TestEntityUniqueEntityData::add_defaulted(int32 const count) {
-    generation_indexes.AddDefaulted(count);
+    registry_handles.AddDefaulted(count);
     kills.AddDefaulted(count);
     alive.AddDefaulted(count);
     killed_by.AddDefaulted(count);
@@ -65,7 +65,7 @@ void TestEntityUniqueEntityData::add_defaulted(int32 const count) {
 
 void TestEntityUniqueEntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(generation_indexes),
+        SANDBOX_NAMED_NUM(registry_handles),
         SANDBOX_NAMED_NUM(kills),
         SANDBOX_NAMED_NUM(alive),
         SANDBOX_NAMED_NUM(killed_by),

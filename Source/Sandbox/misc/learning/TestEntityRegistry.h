@@ -44,7 +44,7 @@ struct DamageEvents {
 struct TestEntityUniqueEntityData {
     using kills_type = uint32;
 
-    TArray<FRegistryEntityHandle> generation_indexes;
+    TArray<FRegistryEntityHandle> registry_handles;
     TArray<kills_type> kills;
     TArray<uint8> alive;
     TArray<FRegistryEntityHandle> killed_by;
