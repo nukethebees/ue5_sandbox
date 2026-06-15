@@ -9,6 +9,7 @@
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
+#include "Sandbox/ui/widgets/ValueWidget.h"
 
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
@@ -80,6 +81,19 @@ void UShipHudWidget::set_gold_rings(int32 value) {
 }
 void UShipHudWidget::set_gold_rings_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(gold_rings_widget, new_visibility);
+}
+
+void UShipHudWidget::set_stopwatch_time(float const time_s) {
+    check(IsValid(stopwatch_widget));
+
+    auto const total_seconds{static_cast<int32>(time_s)};
+    auto const minutes{total_seconds / 60};
+    auto const remaining_seconds{total_seconds % 60};
+
+    stopwatch_widget->update(minutes, remaining_seconds);
+}
+void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(stopwatch_widget, new_visibility);
 }
 
 void UShipHudWidget::set_lives(int32 value) {

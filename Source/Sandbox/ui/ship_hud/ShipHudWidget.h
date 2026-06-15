@@ -21,6 +21,7 @@ class UShipBombCountWidget;
 class UShipGoldRingCountWidget;
 class UPlayerLivesWidget;
 
+class UValueWidget;
 class UDebugGraphWidget;
 
 UCLASS()
@@ -48,6 +49,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     void set_lives(int32 value);
     void set_lives_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_stopwatch_time(float const time_s);
+    void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_colours(FLinearColor near, FLinearColor far);
@@ -80,6 +84,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipGoldRingCountWidget* gold_rings_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UPlayerLivesWidget* lives_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* stopwatch_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

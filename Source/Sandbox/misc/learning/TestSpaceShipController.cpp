@@ -5,6 +5,8 @@
 #include "Sandbox/misc/learning/TestSpaceShip.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
+#include <SandboxCore/uobject_utils.h>
+
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/LocalPlayer.h"
@@ -128,14 +130,17 @@ void ATestSpaceShipController::initialise_hud() {
         return;
     }
 
-    RETURN_IF_NULLPTR(hud_widget_class);
+    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
+
     hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
-    RETURN_IF_NULLPTR(hud_widget);
+    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget)});
     hud_widget->AddToViewport();
 
     hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
     hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
     hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
+
+    hud_widget->set_stopwatch_time(0.f);
 }
 void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& ship) {
     RETURN_IF_NULLPTR(hud_widget);
