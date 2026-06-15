@@ -2,8 +2,9 @@
 
 #include "TestEntityRegistryData.h"
 
-#include "Sandbox/misc/learning/TestEntityOwnerId.h"
-#include "Sandbox/misc/learning/TestTeam.h"
+#include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestEntityUniqueId.h>
+#include <Sandbox/misc/learning/TestTeam.h>
 
 #include "SandboxCore/generation_index.h"
 
@@ -22,10 +23,11 @@ struct TraceHits {
     TArray<int32> hit_items;
 
     void reset();
-    void validate_array_sizes() const;
     auto num() const -> int32;
     void
         remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
+
+    void validate_array_sizes() const;
 };
 struct DamageEvents {
     TArray<int32> damage_amounts;
@@ -34,9 +36,33 @@ struct DamageEvents {
 
     auto num() const -> int32;
     void reset();
-    void validate_array_sizes() const;
     void
         remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
+
+    void validate_array_sizes() const;
+};
+
+struct TestEntityUniqueEntityData {
+    TArray<FGenerationIndex> generation_indexes;
+    TArray<uint32> kills;
+    TArray<uint8> alive;
+    TArray<FGenerationIndex> killed_by;
+
+    auto num() const -> int32;
+    void reset();
+    void add_defaulted(int32 const count);
+
+    void validate_array_sizes() const;
+};
+
+struct NewEntities {
+    TArray<FGenerationIndex> registry_indices;
+    TestEntityUniqueId first_id;
+
+    auto num() const -> int32;
+    void reset();
+    void add_defaulted(int32 const count);
+    void add_uninitialised(int32 const count);
 };
 
 UCLASS()
@@ -70,9 +96,8 @@ class ATestEntityRegistry : public AActor {
     auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
 
     // Entity creation
-    auto reserve_entities(int32 const count) -> TArray<FGenerationIndex>;
-    auto add_entities(FTestEntityRegistryEntityData::ConstView const view)
-        -> TArray<FGenerationIndex>;
+    auto reserve_entities(int32 const count) -> NewEntities;
+    auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> NewEntities;
 
     // Damage updates
     void queue_damage_events(TConstArrayView<int32> const damages,
@@ -91,6 +116,10 @@ class ATestEntityRegistry : public AActor {
     // Index queries
     auto is_valid_index(FGenerationIndex const index) const -> bool;
     auto is_stale(FGenerationIndex const index) const -> bool;
+
+    // Unique id queries
+    auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
+    auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
 
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
@@ -118,9 +147,14 @@ class ATestEntityRegistry : public AActor {
     void commit_death_updates();
     void refresh_free_indices();
 
+    void validate_unique_ids() const;
+
     FTestEntityRegistryEntityData entity_data;
     TArray<int32> generations;
+    TArray<TestEntityUniqueId> unique_ids;
     TArray<AActor const*> entity_owners;
+
+    TestEntityUniqueEntityData unique_entities;
 
     // Queued updates
     FTestEntityRegistryEntityData queued_entity_data;

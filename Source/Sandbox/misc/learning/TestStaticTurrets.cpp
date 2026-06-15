@@ -279,7 +279,8 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         return;
     }
 
-    entity_indices = entity_registry->reserve_entities(n);
+    auto new_entities{entity_registry->reserve_entities(n)};
+    entity_indices = MoveTemp(new_entities.registry_indices);
 
     FTestEntityRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);

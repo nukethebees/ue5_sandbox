@@ -1,6 +1,7 @@
 #include "TestEntityRegistry.h"
 
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -9,13 +10,6 @@
 
 void TraceHits::reset() {
     ml::reset(actors, actor_components, hit_items);
-}
-void TraceHits::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(actors),
-        SANDBOX_NAMED_NUM(actor_components),
-        SANDBOX_NAMED_NUM(hit_items),
-    });
 }
 auto TraceHits::num() const -> int32 {
     return actors.Num();
@@ -27,12 +21,26 @@ void TraceHits::remove_at_swap(int32 const index,
     actor_components.RemoveAtSwap(index, count, allow_shrinking);
     hit_items.RemoveAtSwap(index, count, allow_shrinking);
 }
+void TraceHits::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(actors),
+        SANDBOX_NAMED_NUM(actor_components),
+        SANDBOX_NAMED_NUM(hit_items),
+    });
+}
 
 auto DamageEvents::num() const -> int32 {
     return damage_amounts.Num();
 }
 void DamageEvents::reset() {
     ml::reset(damage_amounts, actor_components, hit_items);
+}
+void DamageEvents::remove_at_swap(int32 const index,
+                                  int32 const count,
+                                  EAllowShrinking const allow_shrinking) {
+    damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
+    actor_components.RemoveAtSwap(index, count, allow_shrinking);
+    hit_items.RemoveAtSwap(index, count, allow_shrinking);
 }
 void DamageEvents::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
@@ -41,12 +49,40 @@ void DamageEvents::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(hit_items),
     });
 }
-void DamageEvents::remove_at_swap(int32 const index,
-                                  int32 const count,
-                                  EAllowShrinking const allow_shrinking) {
-    damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
-    actor_components.RemoveAtSwap(index, count, allow_shrinking);
-    hit_items.RemoveAtSwap(index, count, allow_shrinking);
+
+auto TestEntityUniqueEntityData::num() const -> int32 {
+    return generation_indexes.Num();
+}
+void TestEntityUniqueEntityData::reset() {
+    ml::reset(generation_indexes, kills, alive, killed_by);
+}
+void TestEntityUniqueEntityData::add_defaulted(int32 const count) {
+    generation_indexes.AddDefaulted(count);
+    kills.AddDefaulted(count);
+    alive.AddDefaulted(count);
+    killed_by.AddDefaulted(count);
+}
+
+void TestEntityUniqueEntityData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(generation_indexes),
+        SANDBOX_NAMED_NUM(kills),
+        SANDBOX_NAMED_NUM(alive),
+        SANDBOX_NAMED_NUM(killed_by),
+    });
+}
+
+auto NewEntities::num() const -> int32 {
+    return registry_indices.Num();
+}
+void NewEntities::reset() {
+    ml::reset(registry_indices);
+}
+void NewEntities::add_defaulted(int32 const count) {
+    registry_indices.AddDefaulted(count);
+}
+void NewEntities::add_uninitialised(int32 const count) {
+    registry_indices.AddUninitialized(count);
 }
 
 ATestEntityRegistry::ATestEntityRegistry() {
@@ -86,53 +122,31 @@ auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwne
 }
 
 // Entity creation
-auto ATestEntityRegistry::reserve_entities(int32 const count) -> TArray<FGenerationIndex> {
+auto ATestEntityRegistry::reserve_entities(int32 const count) -> NewEntities {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::reserve_entities);
 
-    TArray<FGenerationIndex> indices;
+    FTestEntityRegistryEntityData empty_data;
+    empty_data.add_disabled(count);
 
-    auto const n_free_indices{free_indices.Num()};
-    auto const free_to_reserve{FMath::Min(n_free_indices, count)};
-
-    for (int32 i{0}; i < free_to_reserve; ++i) {
-        auto const index{free_indices.Pop(EAllowShrinking::No)};
-
-        ml::assign(entity_data.locations, index, 0.f);
-        ml::assign(entity_data.velocities, index, 0.f);
-        entity_data.healths[index] = 0;
-        entity_data.teams[index] = ETestTeam::neutral;
-        entity_data.alive[index] = false;
-
-        ++generations[index];
-
-        indices.Emplace(index, generations[index]);
-    }
-
-    auto const indices_left_to_reserve{count - indices.Num()};
-    auto start_index{get_num_elements()};
-
-    entity_data.add_disabled(indices_left_to_reserve);
-    generations.AddZeroed(indices_left_to_reserve);
-
-    for (int32 i{0}; i < indices_left_to_reserve; ++i) {
-        auto const index{start_index + i};
-        indices.Emplace(index, generations[index]);
-    }
-
-    validate_array_sizes();
-
-    return indices;
+    return add_entities(empty_data.get_const_view());
 }
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
-    -> TArray<FGenerationIndex> {
+    -> NewEntities {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
 
-    TArray<FGenerationIndex> indices;
-
     auto const count{view.get_num()};
+
+    NewEntities new_entities;
+    new_entities.first_id = {
+        .id = unique_entities.num(),
+    };
+    unique_entities.add_defaulted(count);
+    auto const first_id{new_entities.first_id};
+
     auto const n_free_indices{free_indices.Num()};
     auto const free_to_reserve{FMath::Min(n_free_indices, count)};
 
+    int32 new_entity_index{0};
     for (int32 i{0}; i < free_to_reserve; ++i) {
         auto const index{free_indices.Pop(EAllowShrinking::No)};
 
@@ -144,24 +158,33 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
         entity_data.alive[index] = view.alive[i];
 
         ++generations[index];
+        unique_ids[index] = first_id + new_entity_index;
 
-        indices.Emplace(index, generations[index]);
+        new_entities.registry_indices.Emplace(index, generations[index]);
+        new_entity_index++;
     }
 
-    auto const indices_left_to_reserve{count - indices.Num()};
+    auto const indices_left_to_reserve{count - new_entities.registry_indices.Num()};
     auto start_index{get_num_elements()};
 
     generations.AddZeroed(indices_left_to_reserve);
-    entity_data.add(view.get_slice(indices.Num(), indices_left_to_reserve));
+    unique_ids.AddDefaulted(indices_left_to_reserve);
+
+    entity_data.add(view.get_slice(ml::num(new_entities), indices_left_to_reserve));
 
     for (int32 i{0}; i < indices_left_to_reserve; ++i) {
         auto const index{start_index + i};
-        indices.Emplace(index, generations[index]);
+
+        new_entities.registry_indices.Emplace(index, generations[index]);
+        unique_ids[index] = first_id + new_entity_index;
+
+        new_entity_index++;
     }
 
     validate_array_sizes();
+    validate_unique_ids();
 
-    return indices;
+    return new_entities;
 }
 
 // Damage updates
@@ -244,6 +267,8 @@ void ATestEntityRegistry::commit_updates() {
     validate_array_sizes();
 }
 void ATestEntityRegistry::refresh_free_indices() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::refresh_free_indices);
+
     free_indices.Reset();
     auto const n{entity_data.get_num()};
     for (int32 i{0}; i < n; ++i) {
@@ -253,6 +278,8 @@ void ATestEntityRegistry::refresh_free_indices() {
     }
 }
 void ATestEntityRegistry::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::end_tick);
+
     refresh_free_indices();
 
     ml::reset(queued_entity_data,
@@ -266,6 +293,7 @@ void ATestEntityRegistry::end_tick() {
     }
 
     validate_array_sizes();
+    validate_unique_ids();
 }
 
 // Index queries
@@ -274,6 +302,9 @@ auto ATestEntityRegistry::is_valid_index(FGenerationIndex const index) const -> 
 }
 auto ATestEntityRegistry::is_stale(FGenerationIndex const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
+}
+auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
+    return id.is_valid() && (id.id < get_num_unique_ids_issued());
 }
 
 // Entity queries
@@ -377,10 +408,36 @@ void ATestEntityRegistry::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_data),
         SANDBOX_NAMED_NUM(generations),
+        SANDBOX_NAMED_NUM(unique_ids),
     });
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_owners),
         SANDBOX_NAMED_NUM(queued_damage_events),
     });
+
+    auto const num_ids_issued{static_cast<int32>(get_num_unique_ids_issued())};
+    if (unique_entities.num() != num_ids_issued) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("%d unique ids != %d ids issued"),
+               unique_entities.num(),
+               num_ids_issued);
+    }
+}
+void ATestEntityRegistry::validate_unique_ids() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::validate_unique_ids);
+
+    // Development-time validation for the unique id system
+    auto const n{unique_ids.Num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!is_valid_unique_id(unique_ids[i])) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("Invalid unique id detected: (id[%d] = %u)"),
+                   i,
+                   unique_ids[i].id);
+        }
+    }
 }

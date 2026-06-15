@@ -4,6 +4,7 @@
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/misc/learning/TestEntityUniqueId.h>
 #include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/players/LaserFiringMode.h>
 #include <Sandbox/players/ShipLaserMode.h>
@@ -162,24 +163,35 @@ class ATestSpaceShip : public APawn {
     void sample_speed();
 #endif
 
+    // ------------------------------------------------------------------------
     // Entity data
+    // ------------------------------------------------------------------------
     TestEntityOwnerId owner_id{};
+    TestEntityUniqueId unique_entity_id;
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FGenerationIndex entity_index{};
 
+    // ------------------------------------------------------------------------
     // Collision
+    // ------------------------------------------------------------------------
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UBoxComponent* collision_box{nullptr};
 
+    // ------------------------------------------------------------------------
+    // Visuals
+    // ------------------------------------------------------------------------
     // Camera
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UCameraComponent* camera{nullptr};
 
-    // Visuals
+    // Ship
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     UStaticMeshComponent* ship_mesh{nullptr};
+
     // Visuals - engine
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
     UNiagaraComponent* boost_pulse{nullptr};
@@ -190,13 +202,19 @@ class ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FLinearColor engine_colour{FLinearColor::Blue};
 
+    // ------------------------------------------------------------------------
     // Energy
+    // ------------------------------------------------------------------------
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy_max{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_energy{1.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
+
+    // ------------------------------------------------------------------------
+    // Movement
+    // ------------------------------------------------------------------------
 
     // Movement - Speed
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
@@ -216,11 +234,13 @@ class ATestSpaceShip : public APawn {
     float thrust_recharge_time{7.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
+
     // Movement - Boosting
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_speed{30000.0f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float boost_depletion_time{4.f};
+
     // Movement - Braking
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     float brake_speed{1000.0f};
@@ -232,16 +252,19 @@ class ATestSpaceShip : public APawn {
     float rotation_speed{60.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
+
     // Movement - pitch
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Pitch")
     float pitch_speed{3.f};
+
     // Movement - yaw
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_angle_max{30.f};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Yaw")
     float yaw_speed{3.f};
+
     // Movement - bank/roll
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float turn_bank_angle_max{30.f};
@@ -256,6 +279,10 @@ class ATestSpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FBarrelRoll roll_state{};
+
+    // ------------------------------------------------------------------------
+    // Combat
+    // ------------------------------------------------------------------------
 
     // Combat - Laser
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
@@ -296,6 +323,10 @@ class ATestSpaceShip : public APawn {
     int32 bombs{3};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Bomb")
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
+
+    // ------------------------------------------------------------------------
+    // Misc
+    // ------------------------------------------------------------------------
 
     // Points
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

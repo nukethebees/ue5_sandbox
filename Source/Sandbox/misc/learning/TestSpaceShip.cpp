@@ -107,7 +107,10 @@ void ATestSpaceShip::begin_play() {
 
     auto const new_entities{
         entity_registry->add_entities(get_entity_update_data().get_const_view())};
-    entity_index = new_entities[0];
+    entity_index = new_entities.registry_indices[0];
+    unique_entity_id = new_entities.first_id;
+
+    check(entity_registry->is_valid_unique_id(unique_entity_id));
 }
 void ATestSpaceShip::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);

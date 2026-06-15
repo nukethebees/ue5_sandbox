@@ -186,7 +186,10 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     auto const proxies{ml::get_actors<Proxy>(*world)};
 
     auto const n_to_add{proxies.Num()};
-    entity_indices = entity_registry->reserve_entities(n_to_add);
+
+    auto new_entities{entity_registry->reserve_entities(n_to_add)};
+
+    entity_indices = MoveTemp(new_entities.registry_indices);
     for (int32 i{0}; i < n_to_add; ++i) {
         proxy_to_index.Add(proxies[i], entity_indices[i]);
     }
