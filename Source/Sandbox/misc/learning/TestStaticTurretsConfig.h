@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
@@ -25,9 +25,6 @@ class UTestStaticTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform fire_point_offset{FTransform::Identity};
 
-    UPROPERTY(EditAnywhere)
-    FDrawDebugConfig debug_drawer;
-
     // Combat
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 laser_damage{5};
@@ -41,4 +38,11 @@ class UTestStaticTurretsConfig : public UDataAsset {
     // Proxy settings
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     bool show_collision{false};
+
+    // Debugging
+    UPROPERTY(EditAnywhere)
+    FDrawDebugConfig debug_drawer;
+
+    UPROPERTY(EditAnywhere)
+    FVector debug_status_text_offset{0.0, 0.0, 500.0};
 };
