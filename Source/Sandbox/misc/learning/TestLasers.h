@@ -120,8 +120,5 @@ class ATestLasers : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Lasers")
     bool debugging_shapes_enabled{false};
-
-    UPROPERTY(VisibleAnywhere, Category = "Lasers")
-    int32 dbg_n_instances{0};
 #endif
 };

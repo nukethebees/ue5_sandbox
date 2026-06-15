@@ -92,10 +92,6 @@ void ATestLasers::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
-
-#if WITH_EDITOR
-    dbg_n_instances = get_num_instances();
-#endif
 }
 
 // Accessors
