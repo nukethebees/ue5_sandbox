@@ -1,21 +1,23 @@
-#include "Sandbox/misc/learning/TestSpaceShipController.h"
+#include "TestSpaceShipController.h"
 
-#include "Sandbox/health/ShipHealthComponent.h"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/misc/learning/TestSpaceShip.h"
-#include "Sandbox/ui/ship_hud/ShipHudWidget.h"
+#include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/TestMissionManager.h>
+#include <Sandbox/misc/learning/TestSpaceShip.h>
+#include <Sandbox/ui/ship_hud/ShipHudWidget.h>
+#include <Sandbox/utilities/world.h>
 
 #include <SandboxCore/uobject_utils.h>
 
-#include "Blueprint/WidgetLayoutLibrary.h"
-#include "DrawDebugHelpers.h"
-#include "Engine/LocalPlayer.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
-#include "InputActionValue.h"
-#include "InputMappingContext.h"
+#include <Blueprint/WidgetLayoutLibrary.h>
+#include <DrawDebugHelpers.h>
+#include <Engine/LocalPlayer.h>
+#include <EnhancedInputComponent.h>
+#include <EnhancedInputSubsystems.h>
+#include <InputActionValue.h>
+#include <InputMappingContext.h>
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include <Sandbox/utilities/macros/null_checks.hpp>
 
 ATestSpaceShipController::ATestSpaceShipController() {
     PrimaryActorTick.bCanEverTick = true;
@@ -49,22 +51,39 @@ void ATestSpaceShipController::SetupInputComponent() {
 void ATestSpaceShipController::Tick(float dt) {
     Super::Tick(dt);
 
+    log_config.tick(dt);
+
     TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
     update_crosshair_positions(*ss);
     update_lock_on_widget(*ss);
 
-#if WITH_EDITOR
-    if (can_log()) {
-        seconds_since_last_log = 0.f;
-    }
+    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
 
-    seconds_since_last_log += dt;
-#endif
+    log_config.on_tick_end();
 }
 
 void ATestSpaceShipController::BeginPlay() {
     Super::BeginPlay();
     initialise_hud();
+
+    auto* world{GetWorld()};
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(world),
+    });
+
+    mission_manager = ml::get_first_actor<ATestMissionManager>(*world);
+
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
+    });
+
+    on_mission_ended_handle =
+        mission_manager->on_mission_ended.AddUObject(this, &ThisClass::on_mission_ended);
+}
+void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
+    mission_manager->on_mission_ended.Remove(on_mission_ended_handle);
+
+    Super::EndPlay(reason);
 }
 
 void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
@@ -173,7 +192,7 @@ void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& 
         DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
         DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
 
-        if (can_log()) {
+        if (log_config.can_tick_log(EActorLogVerbosity::Verbose)) {
             UE_LOG(LogSandboxController,
                    Verbose,
                    TEXT("Near (W): %s"),
@@ -323,4 +342,8 @@ void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mod
 void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
     RETURN_IF_NULLPTR(hud_widget);
     hud_widget->set_lock_on_widget_visibility(target != nullptr);
+}
+
+void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
+    check(&manager == mission_manager.Get());
 }

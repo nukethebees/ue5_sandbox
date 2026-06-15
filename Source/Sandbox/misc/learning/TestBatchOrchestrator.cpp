@@ -1,13 +1,14 @@
 #include "TestBatchOrchestrator.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
-#include "Sandbox/misc/learning/TestCapitalShips.h"
-#include "Sandbox/misc/learning/TestLasers.h"
-#include "Sandbox/misc/learning/TestSpaceShip.h"
-#include "Sandbox/misc/learning/TestStaticTurrets.h"
-#include "Sandbox/misc/learning/TestTubeSpinners.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/TestCapitalShipFighters.h>
+#include <Sandbox/misc/learning/TestCapitalShips.h>
+#include <Sandbox/misc/learning/TestLasers.h>
+#include <Sandbox/misc/learning/TestMissionManager.h>
+#include <Sandbox/misc/learning/TestSpaceShip.h>
+#include <Sandbox/misc/learning/TestStaticTurrets.h>
+#include <Sandbox/misc/learning/TestTubeSpinners.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/uobject_utils.h>
@@ -36,6 +37,7 @@ void ATestBatchOrchestrator::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(turrets),
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
     });
 
     entity_registry->reset();
@@ -73,7 +75,8 @@ void ATestBatchOrchestrator::BeginPlay() {
                       capital_ship_fighters,
                       turrets,
                       spinners,
-                      lasers);
+                      lasers,
+                      mission_manager);
 
     entity_registry->commit_updates();
     entity_registry->end_tick();
@@ -146,7 +149,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // e.g. spawning lasers for the next frame
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
         player_ship->queue_commands();
-        
+
         capital_ship_fighters->queue_commands();
         turrets->queue_commands();
     }
@@ -206,6 +209,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
         capital_ship_fighters->sync_from_registry();
         turrets->sync_from_registry();
     }
+
+    mission_manager->mission_tick(dt); 
 
     // ---------------------------------------------------------------------------------------------
     // End phase

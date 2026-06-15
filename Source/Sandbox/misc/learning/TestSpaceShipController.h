@@ -1,19 +1,21 @@
 #pragma once
 
-#include "Sandbox/input/EnhancedInputMixin.hpp"
-#include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/BarrelRollInputData.h"
-#include "Sandbox/players/LaserFiringMode.h"
-#include "Sandbox/players/SpaceShipControllerInputs.h"
+#include <Sandbox/input/EnhancedInputMixin.hpp>
+#include <Sandbox/logging/ActorLoggingConfig.h>
+#include <Sandbox/logging/LogMsgMixin.hpp>
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/players/BarrelRollInputData.h>
+#include <Sandbox/players/LaserFiringMode.h>
+#include <Sandbox/players/SpaceShipControllerInputs.h>
 
-#include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
+#include <CoreMinimal.h>
+#include <GameFramework/PlayerController.h>
 
 #include "TestSpaceShipController.generated.h"
 
 class UShipHudWidget;
 class ATestSpaceShip;
+class ATestMissionManager;
 
 UCLASS()
 class ATestSpaceShipController
@@ -32,14 +34,11 @@ class ATestSpaceShipController
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
     void OnUnPossess() override;
+    void EndPlay(EEndPlayReason::Type const reason);
 
     void initialise_hud();
     void update_crosshair_positions(ATestSpaceShip const& ship);
     void update_lock_on_widget(ATestSpaceShip const& ship);
-
-#if WITH_EDITOR
-    auto can_log() const -> bool { return seconds_since_last_log >= seconds_per_log; }
-#endif
 
     // Movement
     UFUNCTION()
@@ -77,6 +76,9 @@ class ATestSpaceShipController
     UFUNCTION()
     void on_lock_on_acquired(AActor* target);
 
+    // Mission
+    void on_mission_ended(ATestMissionManager const& manager);
+
     // UI
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TSubclassOf<UShipHudWidget> hud_widget_class;
@@ -93,11 +95,15 @@ class ATestSpaceShipController
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
 
+    // Mission state
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Mission")
+    TObjectPtr<ATestMissionManager> mission_manager{nullptr};
+    FDelegateHandle on_mission_ended_handle;
+
+    UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
+    FActorLoggingConfig log_config{1.f};
+
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
-    float seconds_since_last_log{0};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
-    float seconds_per_log{0.75f};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
     bool debug_crosshair{false};
 #endif

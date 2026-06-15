@@ -11,7 +11,9 @@ class ATestCapitalShips;
 class ATestCapitalShipFighters;
 class ATestStaticTurrets;
 class ATestTubeSpinners;
+
 class ATestEntityRegistry;
+class ATestMissionManager;
 
 UCLASS()
 class ATestBatchOrchestrator : public AActor {
@@ -39,6 +41,8 @@ class ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ATestMissionManager> mission_manager{nullptr};    
 
     UPROPERTY(Transient)
     uint64 tick_counter{0};
