@@ -98,6 +98,10 @@ void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
         mission_manager->on_ready.Remove(on_mission_manager_ready_handle);
     }
 
+    if (on_mission_manager_ready_handle.IsValid()) {
+        mission_manager->on_mission_update.Remove(on_mission_update_handle);
+    }
+
     Super::EndPlay(reason);
 }
 
@@ -370,12 +374,18 @@ void ATestSpaceShipController::fire_bomb(FInputActionValue const& value) {
 
 // Mission
 void ATestSpaceShipController::on_mission_manager_ready(ATestMissionManager const& manager) {
+    check(&manager == mission_manager.Get());
+
     initialise_from_mission_manager(manager);
 }
 void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManager const& manager) {
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
+
+    on_mission_update_handle =
+        mission_manager->on_mission_update.AddUObject(this, &ThisClass::on_mission_update);
 }
+void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {}
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
 
@@ -400,7 +410,9 @@ auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager c
             break;
         }
         case ETestMissionMode::KillEnemies: {
-            status_msg = FString::Printf(TEXT("Kill %d enemies"), manager.get_kill_target());
+            status_msg = FString::Printf(TEXT("Kill enemies (%d / %d)"),
+                                         manager.get_player_kills(),
+                                         manager.get_kill_target());
             break;
         }
         default: {

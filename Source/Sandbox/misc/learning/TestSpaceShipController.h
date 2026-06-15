@@ -79,6 +79,7 @@ class ATestSpaceShipController
     // Mission
     void on_mission_manager_ready(ATestMissionManager const& manager);
     void initialise_from_mission_manager(ATestMissionManager const& manager);
+    void on_mission_update(ATestMissionManager const& manager);
     void on_mission_ended(ATestMissionManager const& manager);
     auto make_mission_status_message(ATestMissionManager const& manager) const -> FString;
 
@@ -102,6 +103,7 @@ class ATestSpaceShipController
     UPROPERTY(EditAnywhere, Category = "Sandbox|Mission")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
     FDelegateHandle on_mission_ended_handle;
+    FDelegateHandle on_mission_update_handle;
     FDelegateHandle on_mission_manager_ready_handle;
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")

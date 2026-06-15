@@ -24,10 +24,13 @@ void ATestMissionManager::begin_play() {
             set_mission_state(ETestMissionState::Disabled);
             break;
         }
-        case ETestMissionMode::SurviveTime: {
+        case ETestMissionMode::SurviveTime:
+            [[fallthrough]];
+        case ETestMissionMode::KillEnemies: {
             set_mission_state(ETestMissionState::Running);
             break;
         }
+
         default: {
             UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
             break;

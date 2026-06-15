@@ -26,6 +26,7 @@ enum class ETestMissionMode : uint8 {
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerUpdate, ATestMissionManager const&);
 
 UCLASS()
 class ATestMissionManager : public AActor {
@@ -39,12 +40,14 @@ class ATestMissionManager : public AActor {
 
     auto get_survive_seconds() const noexcept -> float { return survive_seconds; }
     auto get_kill_target() const noexcept -> int32 { return kill_target; }
+    auto get_player_kills() const noexcept -> int32 { return player_kills; }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
     auto is_ready() const noexcept -> bool;
 
     FTestMissionEndedDelegate on_mission_ended;
     FOnMissionManagerReady on_ready;
+    FOnMissionManagerUpdate on_mission_update;
   private:
     void set_mission_mode(ETestMissionMode const new_mode);
     void set_mission_state(ETestMissionState const new_state);
