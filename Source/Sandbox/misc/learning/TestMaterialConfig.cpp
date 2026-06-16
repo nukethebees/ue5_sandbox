@@ -17,9 +17,7 @@ auto FTestMaterialState::initialise(UObject* outer) -> bool {
 
     material_instance = create_dynamic_instance(*material_interface, outer);
 
-    if (!material_instance) {
-        return false;
-    }
+    if (!material_instance) { return false; }
 
     return true;
 }
@@ -49,18 +47,14 @@ void FTestMaterialState::configure_instance(UMaterialInstanceDynamic& inst) {
     inst.SetScalarParameterValue(TEXT("opacity"), config.opacity);
 }
 void FTestMaterialState::set_mesh_material(UStaticMeshComponent& mesh, int32 slot) {
-    if (!material_instance) {
-        return;
-    }
+    if (!material_instance) { return; }
 
     mesh.SetMaterial(slot, material_instance);
 }
 void FTestMaterialState::initialise_mesh_material(UObject* outer,
                                                   UStaticMeshComponent& mesh,
                                                   int32 slot) {
-    if (!initialise(outer)) {
-        return;
-    }
+    if (!initialise(outer)) { return; }
 
     mesh.SetMaterial(slot, material_instance);
 }

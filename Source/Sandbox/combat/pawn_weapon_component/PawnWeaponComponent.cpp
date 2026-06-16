@@ -30,15 +30,11 @@ void UPawnWeaponComponent::start_firing() {
     return active_weapon->start_firing();
 }
 void UPawnWeaponComponent::sustain_firing(float delta_time) {
-    if (!active_weapon) {
-        return;
-    }
+    if (!active_weapon) { return; }
     return active_weapon->sustain_firing(delta_time);
 }
 void UPawnWeaponComponent::stop_firing() {
-    if (!active_weapon) {
-        return;
-    }
+    if (!active_weapon) { return; }
     return active_weapon->stop_firing();
 }
 
@@ -46,9 +42,7 @@ void UPawnWeaponComponent::reload() {
     RETURN_IF_NULLPTR(active_weapon);
     RETURN_IF_NULLPTR(inventory);
 
-    if (!active_weapon->can_reload()) {
-        return;
-    }
+    if (!active_weapon->can_reload()) { return; }
 
     auto const ammo_needed{active_weapon->get_ammo_needed_for_reload()};
     auto const ammo_got{inventory->request_ammo(ammo_needed)};
@@ -60,9 +54,7 @@ void UPawnWeaponComponent::reload() {
 }
 
 void UPawnWeaponComponent::unequip_weapon() {
-    if (!active_weapon) {
-        return;
-    }
+    if (!active_weapon) { return; }
 
     active_weapon->on_ammo_changed.RemoveAll(this);
     active_weapon->hide_weapon();
@@ -75,9 +67,7 @@ void UPawnWeaponComponent::cycle_next_weapon() {
 
     RETURN_IF_NULLPTR(inventory);
     if (!active_weapon) {
-        if (auto* weapon{inventory->get_first_weapon()}) {
-            equip_weapon(*weapon);
-        }
+        if (auto* weapon{inventory->get_first_weapon()}) { equip_weapon(*weapon); }
     } else if (auto* weapon{inventory->get_weapon_after(*active_weapon)}) {
         equip_weapon(*weapon);
     }
@@ -87,9 +77,7 @@ void UPawnWeaponComponent::cycle_prev_weapon() {
 
     RETURN_IF_NULLPTR(inventory);
     if (!active_weapon) {
-        if (auto* weapon{inventory->get_last_weapon()}) {
-            equip_weapon(*weapon);
-        }
+        if (auto* weapon{inventory->get_last_weapon()}) { equip_weapon(*weapon); }
     } else if (auto* weapon{inventory->get_weapon_before(*active_weapon)}) {
         equip_weapon(*weapon);
     }
@@ -130,9 +118,7 @@ void UPawnWeaponComponent::on_weapon_added(AWeaponBase& weapon) {
             break;
         }
         case EquipIfNothingEquipped: {
-            if (!active_weapon) {
-                equip_weapon(weapon);
-            }
+            if (!active_weapon) { equip_weapon(weapon); }
             break;
         }
         case Equip: {

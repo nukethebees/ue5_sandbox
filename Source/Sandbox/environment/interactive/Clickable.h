@@ -17,14 +17,10 @@ class SANDBOX_API IClickable {
 
     template <typename T>
     static void try_click(T* ptr) {
-        if (!ptr) {
-            return;
-        }
+        if (!ptr) { return; }
 
         if (ptr->GetClass()->ImplementsInterface(UClickable::StaticClass())) {
-            if (auto* clickable{Cast<IClickable>(ptr)}) {
-                clickable->OnClicked();
-            }
+            if (auto* clickable{Cast<IClickable>(ptr)}) { clickable->OnClicked(); }
         }
     }
 };

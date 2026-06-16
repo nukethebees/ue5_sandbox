@@ -31,9 +31,7 @@ void
                                              IDetailChildrenBuilder& child_builder,
                                              IPropertyTypeCustomizationUtils& customisation_utils) {
 
-    if (!prop_handle->IsValidHandle()) {
-        return;
-    }
+    if (!prop_handle->IsValidHandle()) { return; }
 
     property_handle = prop_handle;
     box_size_handle = property_handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FBoxSize, box_size));

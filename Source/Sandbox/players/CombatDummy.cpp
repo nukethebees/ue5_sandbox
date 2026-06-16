@@ -26,9 +26,7 @@ void ACombatDummy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
     RETURN_IF_NULLPTR(controller_class);
-    if (controller_class) {
-        AIControllerClass = controller_class;
-    }
+    if (controller_class) { AIControllerClass = controller_class; }
 }
 void ACombatDummy::BeginPlay() {
     Super::BeginPlay();

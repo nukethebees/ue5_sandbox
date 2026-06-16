@@ -35,9 +35,7 @@ class SANDBOX_API AMassBulletVisualizationActor
         (void)transform_queues[i].enqueue(transform);
     }
     void enqueue_transform(FPrimaryAssetId id, FTransform const& transform) {
-        if (auto* i{lookup.Find(id)}) {
-            enqueue_transform(FBulletTypeIndex{*i}, transform);
-        }
+        if (auto* i{lookup.Find(id)}) { enqueue_transform(FBulletTypeIndex{*i}, transform); }
     }
     void increment_killed_count(FBulletTypeIndex index) {
         auto const i{index.get_value()};
@@ -45,9 +43,7 @@ class SANDBOX_API AMassBulletVisualizationActor
         to_be_hidden[i].fetch_add(1, std::memory_order_relaxed);
     }
     void increment_killed_count(FPrimaryAssetId id) {
-        if (auto* i{lookup.Find(id)}) {
-            increment_killed_count(FBulletTypeIndex{*i});
-        }
+        if (auto* i{lookup.Find(id)}) { increment_killed_count(FBulletTypeIndex{*i}); }
     }
     FTransform const& get_hidden_transform() const {
         static auto const transform{[]() -> FTransform {

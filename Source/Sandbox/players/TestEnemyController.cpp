@@ -50,9 +50,7 @@ void ATestEnemyController::Tick(float delta_time) {
     Super::Tick(delta_time);
 
     auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    if (settings->visualise_ai_vision_cones) {
-        visualise_vision_cone();
-    }
+    if (settings->visualise_ai_vision_cones) { visualise_vision_cone(); }
 }
 
 void ATestEnemyController::BeginPlay() {
@@ -126,9 +124,7 @@ void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
     LOG(VeryVerbose, "Forgot: %s", *display_name);
 
     auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
-    if (!tgt_actor_obj) {
-        return;
-    }
+    if (!tgt_actor_obj) { return; }
 
     if (actor == tgt_actor_obj) {
         set_ai_state(EAIState::Investigate);

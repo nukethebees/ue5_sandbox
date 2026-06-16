@@ -57,9 +57,7 @@ void UInventorySlotWidget::set_image_visibility(bool vis) {
 void UInventorySlotWidget::NativeConstruct() {
     Super::NativeConstruct();
 
-    if (!inventory_slot) {
-        return;
-    }
+    if (!inventory_slot) { return; }
 
     RETURN_IF_NULLPTR(stack_size_text);
     RETURN_IF_NULLPTR(icon_image);
@@ -88,9 +86,7 @@ void UInventorySlotWidget::NativeOnDragDetected(FGeometry const& InGeometry,
     Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
     log_verbose(TEXT("NativeOnDragDetected"));
 
-    if (!inventory_slot) {
-        return;
-    }
+    if (!inventory_slot) { return; }
 
     TRY_INIT_PTR(world, GetWorld());
 

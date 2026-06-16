@@ -39,9 +39,7 @@ void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobili
 template <typename T>
 void destroy_all_actors(T& actors) {
     for (auto* a : actors) {
-        if (IsValid(a)) {
-            a->Destroy();
-        }
+        if (IsValid(a)) { a->Destroy(); }
     }
 }
 } // namespace ml

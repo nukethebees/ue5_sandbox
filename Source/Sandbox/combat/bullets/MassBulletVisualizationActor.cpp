@@ -117,9 +117,7 @@ void AMassBulletVisualizationActor::grow_instances(int32 mesh_index, int32 min_r
     auto const current_count{current_instance_counts[mesh_index]};
 
     auto target{current_count};
-    if (target < small_num) {
-        target = small_num;
-    }
+    if (target < small_num) { target = small_num; }
 
     while (target < min_required) {
         target = static_cast<int32>(static_cast<float>(target) * growth_factor);
@@ -168,13 +166,9 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         auto const n_to_transform{static_cast<int32>(transform_result.view.size())};
         auto const n_changes{n_to_hide + n_to_transform};
 
-        if (n_changes == 0) {
-            continue;
-        }
+        if (n_changes == 0) { continue; }
 
-        if (n_to_transform > current_instance_count) {
-            grow_instances(i, n_to_transform);
-        }
+        if (n_to_transform > current_instance_count) { grow_instances(i, n_to_transform); }
 
 #if 0
         if (!logger.log_category.IsSuppressed(ELogVerbosity::VeryVerbose)) {
@@ -208,8 +202,6 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
                                                 teleport);
         }
 
-        if (mark_dirty_at_end) {
-            ismc->MarkRenderInstancesDirty();
-        }
+        if (mark_dirty_at_end) { ismc->MarkRenderInstancesDirty(); }
     }
 }

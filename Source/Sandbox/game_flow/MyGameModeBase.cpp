@@ -34,8 +34,6 @@ void AMyGameModeBase::BeginPlay() {
 
 #if WITH_EDITOR
     auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    if (settings->show_collision) {
-        pc->ConsoleCommand(TEXT("show collision"));
-    }
+    if (settings->show_collision) { pc->ConsoleCommand(TEXT("show collision")); }
 #endif
 }

@@ -22,16 +22,12 @@ void get_first_actor(UWorld& world, T*& ptr) {
 
 template <typename T>
 T* get_or_create_actor_singleton(UWorld& world) {
-    if (auto* actor{ml::get_first_actor<T>(world)}) {
-        return actor;
-    }
+    if (auto* actor{ml::get_first_actor<T>(world)}) { return actor; }
 
     FActorSpawnParameters spawn_params{};
     auto* actor{world.SpawnActor<T>(FVector::ZeroVector, FRotator::ZeroRotator, spawn_params)};
 
-    if (actor) {
-        actor->SetActorLabel(T::StaticClass()->GetName());
-    }
+    if (actor) { actor->SetActorLabel(T::StaticClass()->GetName()); }
 
     return actor;
 }

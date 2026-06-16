@@ -99,9 +99,7 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
 
     auto* world{GetWorld()};
 
-    if (!world) {
-        return;
-    }
+    if (!world) { return; }
 
     TArray<Proxy*> proxies{};
     ml::append_actors(*world, proxies);
@@ -212,9 +210,7 @@ void ATestTubeSpinners::fire_lasers() {
     auto const& firing_point_offsets{actor_config->fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
 
-    if (n_firing_points < 1) {
-        return;
-    }
+    if (n_firing_points < 1) { return; }
 
     ml::reset(indices_ready_to_fire,
               new_laser_locations,
@@ -222,9 +218,7 @@ void ATestTubeSpinners::fire_lasers() {
               new_laser_instigator_handles);
 
     for (int32 i{0}; i < n; ++i) {
-        if (!(laser_cooldowns[i] <= 0.f)) {
-            continue;
-        }
+        if (!(laser_cooldowns[i] <= 0.f)) { continue; }
 
         indices_ready_to_fire.Add(i);
         laser_cooldowns[i] = cooldown;

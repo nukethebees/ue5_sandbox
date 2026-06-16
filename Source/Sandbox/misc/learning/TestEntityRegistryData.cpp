@@ -65,4 +65,3 @@ void FTestEntityRegistryEntityData::set_all_alive() {
 void FTestEntityRegistryEntityData::set_all_velocities(float const v) {
     ml::fill(velocities, v);
 }
-

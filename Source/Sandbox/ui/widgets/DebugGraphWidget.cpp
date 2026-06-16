@@ -12,9 +12,7 @@ void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 new_o
         max_value = FMath::Max(max_value, FMath::Abs(elem.Y));
     }
 
-    if (max_value < 1e-9) {
-        max_value = 1.0;
-    }
+    if (max_value < 1e-9) { max_value = 1.0; }
 
     Invalidate(EInvalidateWidget::Paint);
 }
@@ -28,9 +26,7 @@ int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
                                      bool parent_enabled) const {
     auto const size{geometry.GetLocalSize()};
 
-    if (size.X <= 1.0f || size.Y <= 1.0f) {
-        return layer_id;
-    }
+    if (size.X <= 1.0f || size.Y <= 1.0f) { return layer_id; }
 
     constexpr float padding{6.0f};
     FVector2d const origin{padding, padding};

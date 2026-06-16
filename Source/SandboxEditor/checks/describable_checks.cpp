@@ -35,9 +35,7 @@ void check_describable_actors_are_visible_to_hitscan() {
     asset_registry.GetSubPaths(*game_dir, asset_dirs, false);
     asset_dirs = asset_dirs.FilterByPredicate([&](FString const& fs) -> bool {
         for (auto const& x : to_exclude) {
-            if ((fs == game_dir + x) || fs.StartsWith(game_dir + "/__")) {
-                return false;
-            }
+            if ((fs == game_dir + x) || fs.StartsWith(game_dir + "/__")) { return false; }
         }
 
         return true;
@@ -64,28 +62,18 @@ void check_describable_actors_are_visible_to_hitscan() {
         LOG(VeryVerbose, "Checking blueprint: %s", *asset.GetFullName());
 
         auto* bp{Cast<UBlueprint>(asset.GetAsset())};
-        if (!bp) {
-            continue;
-        }
+        if (!bp) { continue; }
 
-        if (!bp->GeneratedClass) {
-            continue;
-        }
+        if (!bp->GeneratedClass) { continue; }
         LOG(VeryVerbose, "    Generated class: %s", *bp->GeneratedClass->GetName());
 
         auto* cdo{bp->GeneratedClass->GetDefaultObject()};
-        if (!cdo) {
-            continue;
-        }
+        if (!cdo) { continue; }
         LOG(VeryVerbose, "    CDO: %s", *cdo->GetName());
 
         auto* actor{Cast<AActor>(cdo)};
-        if (!actor) {
-            continue;
-        }
-        if (!Cast<IDescribable>(actor)) {
-            continue;
-        }
+        if (!actor) { continue; }
+        if (!Cast<IDescribable>(actor)) { continue; }
 
         auto const actor_name{ml::get_best_display_name(*actor)};
 
@@ -105,14 +93,10 @@ bool describable_actor_can_be_hitcan(AActor& actor) {
     auto const components{actor.GetComponents().Array()};
     for (auto const* component : components) {
         auto const* prim_comp{Cast<UPrimitiveComponent>(component)};
-        if (!prim_comp) {
-            continue;
-        }
+        if (!prim_comp) { continue; }
 
         auto const response{prim_comp->GetCollisionResponseToChannel(ml::collision::description)};
-        if (response == ECollisionResponse::ECR_Block) {
-            return true;
-        }
+        if (response == ECollisionResponse::ECR_Block) { return true; }
     }
 
     return false;

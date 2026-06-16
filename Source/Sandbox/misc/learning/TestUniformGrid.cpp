@@ -52,9 +52,7 @@ void ATestUniformGrid::OnConstruction(FTransform const& transform) {
 void ATestUniformGrid::Tick(float dt) {
     Super::Tick(dt);
 
-    if (point_visuals.visible) {
-        draw_grid_debug_points();
-    }
+    if (point_visuals.visible) { draw_grid_debug_points(); }
 }
 // Grid
 void ATestUniformGrid::update_grid() {
@@ -71,9 +69,7 @@ void ATestUniformGrid::update_grid() {
     configure_preview_mesh();
     configure_cell_ism();
 
-    if (point_visuals.visible) {
-        draw_grid_debug_points();
-    }
+    if (point_visuals.visible) { draw_grid_debug_points(); }
 
     draw_cell_meshes();
 }

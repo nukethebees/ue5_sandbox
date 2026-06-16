@@ -87,9 +87,7 @@ void ATextPopupTriggerActor::remove_popup_widget() {
     RETURN_IF_NULLPTR(GEngine);
     RETURN_IF_NULLPTR(GEngine->GameViewport);
 
-    if (!popup_widget.IsValid()) {
-        return;
-    }
+    if (!popup_widget.IsValid()) { return; }
 
     GEngine->GameViewport->RemoveViewportWidgetContent(popup_widget.ToSharedRef());
     popup_widget.Reset();

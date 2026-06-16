@@ -27,9 +27,7 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    if (!ship_config) {
-        return;
-    }
+    if (!ship_config) { return; }
 
     mesh->SetStaticMesh(ship_config->mesh);
 }

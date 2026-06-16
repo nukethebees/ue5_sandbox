@@ -43,9 +43,7 @@ void set_input(UMaterialExpressionUSFLoader* loader,
 
 #if WITH_EDITOR
 int32 UMaterialExpressionUSFLoader::Compile(FMaterialCompiler* compiler, int32 output_index) {
-    if (!compiler) {
-        return INDEX_NONE;
-    }
+    if (!compiler) { return INDEX_NONE; }
 
     // Generate the USF loader pattern:
     // 1. End the current function with a return so we can inject our custom code

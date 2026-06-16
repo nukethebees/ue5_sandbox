@@ -20,9 +20,7 @@ void UOptionsWidget::NativeConstruct() {
     }
 
     // Bind back button click
-    if (back_button) {
-        back_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_back);
-    }
+    if (back_button) { back_button->on_clicked.AddUObject(this, &UOptionsWidget::handle_back); }
 
     // Set initial tab
     set_active_tab(EOptionsTab::Gameplay);

@@ -85,9 +85,7 @@ void ATestFlySeekDestroyEvade::Tick(float dt) {
         }
     }
 
-    if (show_debug_shapes) {
-        draw_debug_shapes();
-    }
+    if (show_debug_shapes) { draw_debug_shapes(); }
 
     if (target.IsValid()) {
         target_previous_position_0 = target_previous_position_1;
@@ -253,9 +251,7 @@ void ATestFlySeekDestroyEvade::handle_attack(float dt) {
     auto const forward{GetActorForwardVector()};
     auto const can_fire{FVector::DotProduct(forward, to_attack_pos) >= cos_threshold};
 
-    if (can_fire) {
-        fire_laser();
-    }
+    if (can_fire) { fire_laser(); }
 }
 auto ATestFlySeekDestroyEvade::get_attack_position(float dt) const -> FVector {
     auto const target_pos{target->GetActorLocation()};
@@ -288,9 +284,7 @@ auto ATestFlySeekDestroyEvade::get_attack_position(float dt) const -> FVector {
     return new_target_pos_2;
 }
 void ATestFlySeekDestroyEvade::fire_laser() {
-    if (!burst.can_fire()) {
-        return;
-    }
+    if (!burst.can_fire()) { return; }
 
     if (log_config.can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Firing laser"));

@@ -56,9 +56,7 @@ void ASlidingDoor::on_trigger_begin_overlap(UPrimitiveComponent* overlapped_comp
                                             int32 other_body_index,
                                             bool from_sweep,
                                             FHitResult const& sweep_result) {
-    if (!other_actor || other_actor == this) {
-        return;
-    }
+    if (!other_actor || other_actor == this) { return; }
 
     actor_count++;
     update_door_state();
@@ -68,9 +66,7 @@ void ASlidingDoor::on_trigger_end_overlap(UPrimitiveComponent* overlapped_compon
                                           AActor* other_actor,
                                           UPrimitiveComponent* other_component,
                                           int32 other_body_index) {
-    if (!other_actor || other_actor == this) {
-        return;
-    }
+    if (!other_actor || other_actor == this) { return; }
 
     actor_count = FMath::Max(0, actor_count - 1);
     update_door_state();

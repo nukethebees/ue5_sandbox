@@ -71,9 +71,7 @@ void ARocket::BeginPlay() {
     SetLifeSpan(120.0f);
 
 #if WITH_EDITOR
-    if (fire_on_launch) {
-        fire(config);
-    }
+    if (fire_on_launch) { fire(config); }
 #endif
 }
 
@@ -97,9 +95,7 @@ void ARocket::on_hit(UPrimitiveComponent* HitComponent,
 
     for (auto& overlap : overlaps) {
         auto* actor{overlap.GetActor()};
-        if (!actor) {
-            continue;
-        }
+        if (!actor) { continue; }
 
         if (auto* hp{actor->GetComponentByClass<UHealthComponent>()}) {
             hp->modify_health(config.damage);

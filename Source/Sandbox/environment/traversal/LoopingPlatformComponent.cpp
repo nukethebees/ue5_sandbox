@@ -27,9 +27,7 @@ void ULoopingPlatformComponent::TickComponent(float DeltaTime,
                                               FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (!target_component || current_direction.IsZero()) {
-        return;
-    }
+    if (!target_component || current_direction.IsZero()) { return; }
 
     if (pause_timer <= pause_after_completion) {
         pause_timer += DeltaTime;

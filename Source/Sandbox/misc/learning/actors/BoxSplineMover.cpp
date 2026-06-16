@@ -23,17 +23,13 @@ void ABoxSplineMover::BeginPlay() {
     current_distance = 0.0f;
     moving_forward = true;
 
-    if (spline_length > 0.0f) {
-        update_position_along_spline(current_distance);
-    }
+    if (spline_length > 0.0f) { update_position_along_spline(current_distance); }
 }
 
 void ABoxSplineMover::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
-    if (spline_length <= 0.0f) {
-        return;
-    }
+    if (spline_length <= 0.0f) { return; }
 
     auto const distance_delta{movement_speed * DeltaTime};
 

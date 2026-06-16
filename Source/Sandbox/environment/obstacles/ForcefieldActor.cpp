@@ -166,9 +166,7 @@ void AForcefieldActor::start_activation() {
     update_visual_effects();
 
     // Start timeline from beginning
-    if (transition_pulse_timeline) {
-        transition_pulse_timeline->PlayFromStart();
-    }
+    if (transition_pulse_timeline) { transition_pulse_timeline->PlayFromStart(); }
 
     log_verbose(TEXT("Activation started - timeline will handle completion"));
 }
@@ -181,9 +179,7 @@ void AForcefieldActor::start_deactivation() {
 
     update_collision_blocking();
 
-    if (transition_pulse_timeline) {
-        transition_pulse_timeline->Reverse();
-    }
+    if (transition_pulse_timeline) { transition_pulse_timeline->Reverse(); }
 
     log_verbose(TEXT("Deactivation started - timeline will handle completion"));
 }
@@ -271,9 +267,7 @@ void AForcefieldActor::on_pulse_end() {
     }
 }
 void AForcefieldActor::initialise_barrier_material() {
-    if (!barrier_mesh) {
-        return;
-    }
+    if (!barrier_mesh) { return; }
 
     // Create dynamic material instance for the barrier
     if (auto* current_material{barrier_mesh->GetMaterial(0)}) {
@@ -325,9 +319,7 @@ float AForcefieldActor::get_curve_end_value() const {
 }
 
 void AForcefieldActor::draw_debug_info() const {
-    if (!GetWorld()) {
-        return;
-    }
+    if (!GetWorld()) { return; }
 
     FVector const center{GetActorLocation()};
     FVector const extent{collision_volume->GetScaledBoxExtent()};

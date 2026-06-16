@@ -20,32 +20,22 @@ enum class ETeamID : uint8 {
 
 inline auto get_team_attitude(ETeamID team_a, ETeamID team_b) -> ETeamAttitude::Type {
     // Same team is friendly
-    if (team_a == team_b) {
-        return ETeamAttitude::Friendly;
-    }
+    if (team_a == team_b) { return ETeamAttitude::Friendly; }
 
     // Neutral is neutral to everyone
-    if (team_a == ETeamID::Neutral || team_b == ETeamID::Neutral) {
-        return ETeamAttitude::Neutral;
-    }
+    if (team_a == ETeamID::Neutral || team_b == ETeamID::Neutral) { return ETeamAttitude::Neutral; }
 
     auto const non_hostile_a{team_a == ETeamID::Player || team_a == ETeamID::Friendly};
     auto const non_hostile_b{team_b == ETeamID::Player || team_b == ETeamID::Friendly};
 
     // Player and Friendly are allies
-    if (non_hostile_a && non_hostile_b) {
-        return ETeamAttitude::Friendly;
-    }
+    if (non_hostile_a && non_hostile_b) { return ETeamAttitude::Friendly; }
 
     // Player/Friendly vs Enemy is hostile
-    if (non_hostile_a && team_b == ETeamID::Enemy) {
-        return ETeamAttitude::Hostile;
-    }
+    if (non_hostile_a && team_b == ETeamID::Enemy) { return ETeamAttitude::Hostile; }
 
     // Enemy vs Player/Friendly is hostile
-    if (team_a == ETeamID::Enemy && non_hostile_b) {
-        return ETeamAttitude::Hostile;
-    }
+    if (team_a == ETeamID::Enemy && non_hostile_b) { return ETeamAttitude::Hostile; }
 
     // Default to hostile
     return ETeamAttitude::Hostile;

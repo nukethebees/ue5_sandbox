@@ -32,9 +32,7 @@ AShipBomb::AShipBomb()
 void AShipBomb::Tick(float dt) {
     Super::Tick(dt);
 
-    if (explosion_complete()) {
-        Destroy();
-    }
+    if (explosion_complete()) { Destroy(); }
 
     TRY_INIT_PTR(world, GetWorld());
 
@@ -96,15 +94,11 @@ void AShipBomb::Tick(float dt) {
 
         for (auto& hit : hits) {
             auto* actor_hit{hit.GetActor()};
-            if (actors_hit.Contains(actor_hit)) {
-                continue;
-            }
+            if (actors_hit.Contains(actor_hit)) { continue; }
             actors_hit.Add(actor_hit);
 
             auto* ship{Cast<IDamageableShip>(actor_hit)};
-            if (!ship) {
-                continue;
-            }
+            if (!ship) { continue; }
 
             auto const damage_result{ship->apply_damage({damage, *instigator, *hit.Component})};
             if (damage_result.was_killed()) {
@@ -130,9 +124,7 @@ void AShipBomb::detonate() {
     detonated = true;
 
 #if WITH_EDITOR
-    if (debug_explosion) {
-        draw_debug_sphere();
-    }
+    if (debug_explosion) { draw_debug_sphere(); }
 #endif
 
     if (explosion_effect) {

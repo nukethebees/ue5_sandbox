@@ -10,16 +10,12 @@ void UTextButtonWidget::NativeConstruct() {
         button_widget->OnClicked.AddDynamic(this, &UTextButtonWidget::handle_click);
     }
 
-    if (text_block) {
-        text_block->SetVisibility(ESlateVisibility::HitTestInvisible);
-    }
+    if (text_block) { text_block->SetVisibility(ESlateVisibility::HitTestInvisible); }
 
     set_label();
 }
 void UTextButtonWidget::NativeDestruct() {
-    if (button_widget) {
-        button_widget->OnClicked.RemoveAll(this);
-    }
+    if (button_widget) { button_widget->OnClicked.RemoveAll(this); }
 
     Super::NativeDestruct();
 }
@@ -35,7 +31,5 @@ void UTextButtonWidget::set_label(FText const& txt) {
     set_label();
 }
 void UTextButtonWidget::set_label() {
-    if (text_block) {
-        text_block->SetText(label);
-    }
+    if (text_block) { text_block->SetText(label); }
 }

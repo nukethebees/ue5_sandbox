@@ -37,9 +37,7 @@ void UDamageAuraComponent::on_overlap_begin(UPrimitiveComponent* overlapped_comp
                                             bool b_from_sweep,
                                             FHitResult const& sweep_result) {
     RETURN_IF_NULLPTR(other_actor);
-    if (other_actor == GetOwner()) {
-        return;
-    }
+    if (other_actor == GetOwner()) { return; }
 
     TRY_INIT_PTR(health_component, other_actor->FindComponentByClass<UHealthComponent>());
     actors_in_aura.Add(other_actor);
@@ -75,9 +73,7 @@ void UDamageAuraComponent::apply_damage() {
         // Check team attitude if only_damage_enemies is enabled
         if (only_damage_enemies) {
             auto const owner_attitude{FGenericTeamId::GetAttitude(owner, actor)};
-            if (owner_attitude != ETeamAttitude::Hostile) {
-                continue;
-            }
+            if (owner_attitude != ETeamAttitude::Hostile) { continue; }
         }
 
         auto const damage_amount{damage_per_second * tick_interval};
@@ -88,9 +84,7 @@ void UDamageAuraComponent::apply_damage() {
         actors_in_aura.Remove(actor_to_remove);
     }
 
-    if (actors_in_aura.Num() == 0) {
-        update_timer();
-    }
+    if (actors_in_aura.Num() == 0) { update_timer(); }
 }
 
 void UDamageAuraComponent::update_timer() {

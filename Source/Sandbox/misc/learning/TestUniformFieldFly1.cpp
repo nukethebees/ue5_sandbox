@@ -35,9 +35,7 @@ void ATestUniformFieldFly1::BeginPlay() {
     // Force a new destination on the first tick
     destination = GetActorLocation();
 
-    if (!assert_field_exists()) {
-        return;
-    }
+    if (!assert_field_exists()) { return; }
 
     if (!ml::actor_is_within(*this, *field, false)) {
         UE_LOG(LogSandboxLearning,
@@ -54,32 +52,22 @@ void ATestUniformFieldFly1::Tick(float dt) {
     log_cooldown -= dt;
     arrival_cooldown -= dt;
 
-    if (can_log()) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::Tick"));
-    }
+    if (can_log()) { UE_LOG(LogSandboxLearning, Display, TEXT("ATestUniformFieldFly1::Tick")); }
 
-    if (!assert_field_exists()) {
-        return;
-    }
+    if (!assert_field_exists()) { return; }
 
-    if (show_destination) {
-        display_destination();
-    }
+    if (show_destination) { display_destination(); }
 
     if (arrival_cooldown.is_finished()) {
         if (at_target()) {
-            if (enable_log_prints) {
-                UE_LOG(LogSandboxLearning, Display, TEXT("At the target."));
-            }
+            if (enable_log_prints) { UE_LOG(LogSandboxLearning, Display, TEXT("At the target.")); }
             set_new_destination();
         } else {
             move_to_destination(dt);
         }
     }
 
-    if (log_cooldown.is_finished()) {
-        log_cooldown.reset();
-    }
+    if (log_cooldown.is_finished()) { log_cooldown.reset(); }
 }
 void ATestUniformFieldFly1::EndPlay(EEndPlayReason::Type const reason) {
     Super::EndPlay(reason);

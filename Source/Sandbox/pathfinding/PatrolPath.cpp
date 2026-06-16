@@ -49,17 +49,13 @@ void APatrolPath::Tick(float dt) {
 }
 bool APatrolPath::any_points_null() const {
     for (auto const* ptr : waypoints) {
-        if (!ptr) {
-            return true;
-        }
+        if (!ptr) { return true; }
     }
 
     return false;
 }
 void APatrolPath::add_point(APatrolWaypoint& wp) {
-    if (waypoints.Contains(&wp)) {
-        return;
-    }
+    if (waypoints.Contains(&wp)) { return; }
 
     waypoints.Add(&wp);
 }

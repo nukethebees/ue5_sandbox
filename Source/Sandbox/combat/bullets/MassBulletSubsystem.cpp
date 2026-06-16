@@ -107,12 +107,8 @@ void UMassBulletSubsystem::configure_active_bullet(FMassEntityManager& entity_ma
 void UMassBulletSubsystem::on_end_frame() {
     TRY_INIT_PTR(world, GetWorld());
 
-    if (!world->IsGameWorld()) {
-        return;
-    }
-    if (world->IsPaused()) {
-        return;
-    }
+    if (!world->IsGameWorld()) { return; }
+    if (world->IsPaused()) { return; }
 
     auto spawns{spawn_queue.swap_and_consume()};
     spawns.log_results(TEXT("UMassBulletSubsystem::spawns"));
@@ -132,9 +128,7 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
     auto const n_spawn_requests{static_cast<int32>(spawn_requests.transforms.size())};
     auto const n_requests{n_spawn_requests + n_destroy_requests};
 
-    if (n_requests == 0) {
-        return;
-    }
+    if (n_requests == 0) { return; }
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(mass_subsystem, world->GetSubsystem<UMassEntitySubsystem>());
@@ -170,9 +164,7 @@ void UMassBulletSubsystem::consume_lifecycle_requests(
     // Process each bullet type
     for (auto const& [bullet_type, type_requests] : requests_by_type) {
         FEntityDefinition const* bullet_definition{bullet_definitions.Find(bullet_type)};
-        if (!bullet_definition) {
-            continue;
-        }
+        if (!bullet_definition) { continue; }
 
         auto const& spawn_indices{type_requests.spawn_indices};
         auto const& destroy_indices{type_requests.destroy_indices};

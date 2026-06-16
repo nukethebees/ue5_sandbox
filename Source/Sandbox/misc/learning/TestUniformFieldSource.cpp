@@ -66,9 +66,7 @@ void ATestUniformFieldPointSource::broadcast_to_field() {
     }
 }
 void ATestUniformFieldPointSource::broadcast_update_to_field() {
-    if (!is_dynamic) {
-        return;
-    }
+    if (!is_dynamic) { return; }
 
     RETURN_IF_NULLPTR(field);
     field->update_dynamic_sources(sources, source_id);

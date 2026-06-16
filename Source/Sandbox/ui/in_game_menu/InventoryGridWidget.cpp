@@ -141,9 +141,7 @@ void UInventoryGridWidget::refresh_grid() {
     for (int32 row{0}; row < n_rows; ++row) {
         for (int32 col{0}; col < n_cols; ++col) {
             auto const coord_id{row * n_cols + col};
-            if (slot_filled[coord_id]) {
-                continue;
-            }
+            if (slot_filled[coord_id]) { continue; }
 
             auto* slot{CreateWidget<UInventorySlotWidget>(world, slot_class, make_name(col, row))};
             check(slot);

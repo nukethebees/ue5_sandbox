@@ -137,9 +137,7 @@ void ATestCapitalShips::update_visuals() {
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
     }
 
-    if (debugging_shapes_enabled) {
-        draw_debugging_shapes();
-    }
+    if (debugging_shapes_enabled) { draw_debugging_shapes(); }
 }
 void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
@@ -151,13 +149,9 @@ auto ATestCapitalShips::get_num_instances() const -> int32 {
     return entity_indices.Num();
 }
 auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> bool {
-    if (!index.is_valid()) {
-        return false;
-    }
+    if (!index.is_valid()) { return false; }
 
-    if (!locations.xs.IsValidIndex(index.index)) {
-        return false;
-    }
+    if (!locations.xs.IsValidIndex(index.index)) { return false; }
 
     return true;
 }
@@ -180,9 +174,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     auto* world{GetWorld()};
 
-    if (!world) {
-        return;
-    }
+    if (!world) { return; }
 
     TMap<Proxy const*, FRegistryEntityHandle> proxy_to_index{};
     auto const proxies{ml::get_actors<Proxy>(*world)};

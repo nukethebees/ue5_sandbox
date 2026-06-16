@@ -31,9 +31,7 @@ void AWarpingTarget::BeginPlay() {
     SetActorTickEnabled(warp_periodically);
     initialise_material();
 
-    if (!assert_valid_volume()) {
-        SetActorTickEnabled(false);
-    }
+    if (!assert_valid_volume()) { SetActorTickEnabled(false); }
 
     if (warp_on_first_tick) {
         warp_cooldown.finish();
@@ -46,19 +44,13 @@ void AWarpingTarget::Tick(float dt) {
 
     warp_cooldown.tick(dt);
 
-    if (warp_cooldown.reset_if_done()) {
-        warp();
-    }
+    if (warp_cooldown.reset_if_done()) { warp(); }
 
-    if ((destroy_after >= 0.f) && (GetGameTimeSinceCreation() > destroy_after)) {
-        Destroy();
-    }
+    if ((destroy_after >= 0.f) && (GetGameTimeSinceCreation() > destroy_after)) { Destroy(); }
 }
 
 auto AWarpingTarget::warp() -> bool {
-    if (!assert_valid_volume()) {
-        return false;
-    }
+    if (!assert_valid_volume()) { return false; }
 
     auto* box{warp_volume->get_box()};
     auto const point{UKismetMathLibrary::RandomPointInBoundingBox(box->GetComponentLocation(),
@@ -69,9 +61,7 @@ auto AWarpingTarget::warp() -> bool {
     return true;
 }
 void AWarpingTarget::warp_now() {
-    if (!warp()) {
-        UE_LOG(LogSandboxLearning, Warning, TEXT("warp failed."));
-    }
+    if (!warp()) { UE_LOG(LogSandboxLearning, Warning, TEXT("warp failed.")); }
 }
 auto AWarpingTarget::assert_valid_volume() const -> bool {
     if (!warp_volume) {

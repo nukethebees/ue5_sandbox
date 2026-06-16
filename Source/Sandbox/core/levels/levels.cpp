@@ -28,9 +28,7 @@ auto get_all_level_names(FName level_directory) -> TArray<FName> {
 }
 
 auto format_level_display_name(FName level_name) -> FString {
-    if (level_name.IsNone()) {
-        return FString("");
-    }
+    if (level_name.IsNone()) { return FString(""); }
 
     static constexpr auto SPACE{TCHAR(' ')};
     static constexpr auto UNDERSCORE{TCHAR('_')};
@@ -67,13 +65,9 @@ auto format_level_display_name(FName level_name) -> FString {
             auto const prev{get_prev()};
 
             // Don't add leading spaces
-            if (prev == NULL_CHAR) {
-                continue;
-            }
+            if (prev == NULL_CHAR) { continue; }
 
-            if (prev != SPACE) {
-                out.AppendChar(SPACE);
-            }
+            if (prev != SPACE) { out.AppendChar(SPACE); }
 
             ready_for_word = true;
             continue;

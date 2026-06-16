@@ -28,9 +28,7 @@ void ASandboxActorSpawner::Tick(float dt) {
     Super::Tick(dt);
 
     auto const n_actors{clear_destroyed_actors()};
-    if (n_actors < spawn_limit) {
-        spawn();
-    }
+    if (n_actors < spawn_limit) { spawn(); }
 }
 void ASandboxActorSpawner::BeginPlay() {
     Super::BeginPlay();
@@ -84,9 +82,7 @@ void ASandboxActorSpawner::configure_instance(AActor& instance) {}
 
 void ASandboxActorSpawner::destroy_all_actors() {
     for (auto* actor : spawned_actors) {
-        if (IsValid(actor)) {
-            actor->Destroy();
-        }
+        if (IsValid(actor)) { actor->Destroy(); }
     }
 
     spawned_actors.Empty();

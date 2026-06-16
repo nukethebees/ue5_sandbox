@@ -58,9 +58,7 @@ void ATestFlySeekDestroy::Tick(float dt) {
         }
     }
 
-    if (show_debug_shapes) {
-        draw_debug_shapes();
-    }
+    if (show_debug_shapes) { draw_debug_shapes(); }
 }
 
 // Movement
@@ -149,9 +147,7 @@ auto ATestFlySeekDestroy::scan_for_target() -> bool {
         *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), ThisClass::StaticClass())};
 
     target_state.target = ml::get_centre_actor_in_fov(*this, hits);
-    if (!target_state.target.IsValid()) {
-        return false;
-    }
+    if (!target_state.target.IsValid()) { return false; }
 
     return true;
 }
@@ -206,14 +202,10 @@ void ATestFlySeekDestroy::handle_attack(float dt) {
     auto const forward{GetActorForwardVector()};
     auto const can_fire{FVector::DotProduct(forward, to_enemy) >= cos_threshold};
 
-    if (can_fire) {
-        fire_laser();
-    }
+    if (can_fire) { fire_laser(); }
 }
 void ATestFlySeekDestroy::fire_laser() {
-    if (!attack_state.burst.can_fire()) {
-        return;
-    }
+    if (!attack_state.burst.can_fire()) { return; }
 
     TRY_INIT_PTR(world, GetWorld());
 

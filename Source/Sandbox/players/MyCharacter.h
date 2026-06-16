@@ -60,9 +60,7 @@ inline static constexpr FCameraConfig camera_configs[camera_count] = {
 consteval int32 count_required_spring_arms() {
     int32 count{0};
     for (auto const& config : camera_configs) {
-        if (config.needs_spring_arm) {
-            ++count;
-        }
+        if (config.needs_spring_arm) { ++count; }
     }
     return count;
 }

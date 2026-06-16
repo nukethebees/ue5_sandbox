@@ -87,9 +87,7 @@ void ATestStaticTurrets::resolve_hit_events() {
         auto const ismc_index_hit{view.hit_items[i]};
 
         healths[ismc_index_hit] -= view.damage_amounts[i];
-        if (healths[ismc_index_hit] <= 0) {
-            local_indices_to_remove.Add(ismc_index_hit);
-        }
+        if (healths[ismc_index_hit] <= 0) { local_indices_to_remove.Add(ismc_index_hit); }
     }
 
     validate_array_sizes();
@@ -126,9 +124,7 @@ void ATestStaticTurrets::update_visuals() {
         instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true, true);
     }
 
-    if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) {
-        draw_debugging_shapes();
-    }
+    if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) { draw_debugging_shapes(); }
 }
 void ATestStaticTurrets::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
@@ -208,9 +204,7 @@ void ATestStaticTurrets::perform_search() {
             for (int32 j{0}; j < n_entities; ++j) {
                 auto const target_index{elems[j]};
 
-                if (this_team == entity_registry->get_team(target_index)) {
-                    continue;
-                }
+                if (this_team == entity_registry->get_team(target_index)) { continue; }
 
                 target_registry_handles[i] = target_index;
                 break;
@@ -234,12 +228,8 @@ void ATestStaticTurrets::fire_at_enemies() {
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_registry_handles[i]};
 
-        if (!entity_registry->is_valid_index(target_index)) {
-            continue;
-        }
-        if (!(laser_cooldowns[i] <= 0.f)) {
-            continue;
-        }
+        if (!entity_registry->is_valid_index(target_index)) { continue; }
+        if (!(laser_cooldowns[i] <= 0.f)) { continue; }
 
         auto const target_location{entity_registry->get_location(target_index)};
         auto const target_velocity{entity_registry->get_velocity(target_index)};
@@ -284,9 +274,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     auto const proxies{ml::get_actors<Proxy>(*world)};
     auto const n{proxies.Num()};
-    if (n == 0) {
-        return;
-    }
+    if (n == 0) { return; }
 
     // Set entity data
     ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);

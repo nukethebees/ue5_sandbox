@@ -114,9 +114,7 @@ UMaterialExpressionUSFLoader* SGraphNodeMaterialUSFLoader::GetUSFLoaderExpressio
 }
 
 void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBox> MainBox) {
-    if (!GetUSFLoaderExpression()) {
-        return;
-    }
+    if (!GetUSFLoaderExpression()) { return; }
 
     constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL};
     // clang-format off
@@ -170,9 +168,7 @@ FSlateBrush const* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
     static auto const CHEVRON_UP{TEXT("Icons.ChevronUp")};
     static auto const CHEVRON_DOWN{TEXT("Icons.ChevronDown")};
 
-    if (!GetUSFLoaderExpression()) {
-        return FAppStyle::GetBrush(CHEVRON_DOWN);
-    }
+    if (!GetUSFLoaderExpression()) { return FAppStyle::GetBrush(CHEVRON_DOWN); }
 
     auto const state{IsAdvancedViewChecked()};
     return FAppStyle::GetBrush((state == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);

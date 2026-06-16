@@ -207,9 +207,7 @@ void UVisualsOptionsWidget::create_rows_for_type() {
         setting_row_widgets.Add(row_widget);
         // Add immediately to vertical box to trigger NativeConstruct()
         auto* vertical_slot{settings_container->AddChildToVerticalBox(row_widget)};
-        if (vertical_slot) {
-            vertical_slot->SetPadding(FMargin{0.0f, 2.0f, 0.0f, 2.0f});
-        }
+        if (vertical_slot) { vertical_slot->SetPadding(FMargin{0.0f, 2.0f, 0.0f, 2.0f}); }
 
         // Get current value from settings and create row data
         auto* game_settings{get_game_user_settings()};
@@ -231,15 +229,11 @@ void UVisualsOptionsWidget::create_rows_for_type() {
 
 void UVisualsOptionsWidget::handle_apply_clicked() {
     auto* game_settings{get_game_user_settings()};
-    if (!game_settings) {
-        return;
-    }
+    if (!game_settings) { return; }
 
     // Apply all pending changes
     for (auto* row_widget : setting_row_widgets) {
-        if (row_widget) {
-            row_widget->apply_pending_changes();
-        }
+        if (row_widget) { row_widget->apply_pending_changes(); }
     }
 
     game_settings->ApplySettings(false);
@@ -278,25 +272,19 @@ void UVisualsOptionsWidget::handle_reset_all_clicked() {
 
 void UVisualsOptionsWidget::reset_all_settings_to_original() {
     for (auto* row_widget : setting_row_widgets) {
-        if (row_widget) {
-            row_widget->reset_to_original_value();
-        }
+        if (row_widget) { row_widget->reset_to_original_value(); }
     }
 }
 
 void UVisualsOptionsWidget::refresh_all_rows_from_settings() {
     for (auto* row_widget : setting_row_widgets) {
-        if (row_widget) {
-            row_widget->refresh_current_value();
-        }
+        if (row_widget) { row_widget->refresh_current_value(); }
     }
 }
 
 bool UVisualsOptionsWidget::has_pending_changes() const {
     for (auto const* row_widget : setting_row_widgets) {
-        if (row_widget && row_widget->has_pending_changes()) {
-            return true;
-        }
+        if (row_widget && row_widget->has_pending_changes()) { return true; }
     }
     return false;
 }
@@ -304,13 +292,9 @@ bool UVisualsOptionsWidget::has_pending_changes() const {
 void UVisualsOptionsWidget::update_button_states() {
     bool const has_changes{pending_changes_count > 0};
 
-    if (apply_button) {
-        apply_button->SetIsEnabled(has_changes);
-    }
+    if (apply_button) { apply_button->SetIsEnabled(has_changes); }
 
-    if (reset_all_button) {
-        reset_all_button->SetIsEnabled(has_changes);
-    }
+    if (reset_all_button) { reset_all_button->SetIsEnabled(has_changes); }
 
     log_verbose(TEXT("Button states updated: %d pending changes"), pending_changes_count);
 }

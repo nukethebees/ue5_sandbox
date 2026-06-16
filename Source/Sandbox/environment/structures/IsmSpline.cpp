@@ -31,9 +31,7 @@ void AIsmSpline::update_isms(bool warn_on_no_mesh) {
     RETURN_IF_NULLPTR(ismc);
     RETURN_IF_NULLPTR(spline);
     if (!mesh) {
-        if (warn_on_no_mesh) {
-            WARN_IS_FALSE(LogSandboxActor, mesh);
-        }
+        if (warn_on_no_mesh) { WARN_IS_FALSE(LogSandboxActor, mesh); }
         return;
     }
     RETURN_IF_NULLPTR(mesh);

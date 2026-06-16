@@ -107,9 +107,7 @@ void AMyPlayerController::Tick(float DeltaSeconds) {
         cache.camera_location = current_camera_location;
         cache.camera_rotation = current_camera_rotation;
 
-        if (tracking_target_outline) {
-            update_target_screen_bounds(cache.outline_corners);
-        }
+        if (tracking_target_outline) { update_target_screen_bounds(cache.outline_corners); }
     }
 }
 
@@ -196,9 +194,7 @@ void AMyPlayerController::stop_sprint() {
 void AMyPlayerController::warp_to_cursor(FInputActionValue const& value) {
     RETURN_IF_NULLPTR(controlled_character);
 
-    if (!bShowMouseCursor) {
-        return;
-    }
+    if (!bShowMouseCursor) { return; }
 
     FVector world_location;
     FVector world_direction;
@@ -282,9 +278,7 @@ void AMyPlayerController::toggle_mouse() {
     }
 }
 void AMyPlayerController::mouse_click(FInputActionValue const& value) {
-    if (!bShowMouseCursor) {
-        return;
-    }
+    if (!bShowMouseCursor) { return; }
     log_verbose(TEXT("Shooting a ray."));
 
     FVector world_location;

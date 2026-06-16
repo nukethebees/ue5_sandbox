@@ -11,9 +11,7 @@ void UVideoSettingRowWidget::NativeConstruct() {
 
     // Widget hierarchy is now created in Blueprint
     // Just verify that required widgets are bound
-    if (!setting_name_text) {
-        log_error(TEXT("setting_name_text not bound to Blueprint widget"));
-    }
+    if (!setting_name_text) { log_error(TEXT("setting_name_text not bound to Blueprint widget")); }
     if (!current_value_text) {
         log_error(TEXT("current_value_text not bound to Blueprint widget"));
     }
@@ -89,9 +87,7 @@ void UVideoSettingRowWidget::setup_boolean_widgets() {
         log_verbose(TEXT("Toggle button configured and shown"));
     }
 
-    if (numeric_slider) {
-        numeric_slider->SetVisibility(ESlateVisibility::Hidden);
-    }
+    if (numeric_slider) { numeric_slider->SetVisibility(ESlateVisibility::Hidden); }
 
     if (pending_value_input) {
         pending_value_input->SetIsReadOnly(true);
@@ -110,9 +106,7 @@ void UVideoSettingRowWidget::setup_reset_button() {
 }
 
 void UVideoSettingRowWidget::update_display_values() {
-    if (!current_value_text || !pending_value_input) {
-        return;
-    }
+    if (!current_value_text || !pending_value_input) { return; }
 
     visit_row_data([this](auto const& data) {
         using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
@@ -121,17 +115,13 @@ void UVideoSettingRowWidget::update_display_values() {
         pending_value_input->SetText(data.get_pending_display_text());
 
         if constexpr (ml::is_numeric<UnrealT>) {
-            if (numeric_slider) {
-                numeric_slider->SetValue(data.slider_pending());
-            }
+            if (numeric_slider) { numeric_slider->SetValue(data.slider_pending()); }
         }
     });
 }
 
 void UVideoSettingRowWidget::update_reset_button_state() {
-    if (!reset_button) {
-        return;
-    }
+    if (!reset_button) { return; }
     reset_button->SetIsEnabled(has_pending_changes());
 }
 
@@ -182,9 +172,7 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
             }
 
             data.set_pending_value(value);
-            if (numeric_slider) {
-                numeric_slider->SetValue(data.slider_pending());
-            }
+            if (numeric_slider) { numeric_slider->SetValue(data.slider_pending()); }
             if (pending_value_input) {
                 pending_value_input->SetText(data.get_pending_display_text());
             }

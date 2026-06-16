@@ -85,9 +85,7 @@ class SANDBOX_API UHealthComponent
         logger.log_verbose(TEXT("Changing health by %.2f"), new_health);
 
         auto const clamped_health{FMath::Clamp(new_health, 0.0f, max_health)};
-        if (FMath::IsNearlyEqual(clamped_health, health_)) {
-            return;
-        }
+        if (FMath::IsNearlyEqual(clamped_health, health_)) { return; }
 
         health_ = clamped_health;
         on_health_percent_changed.Broadcast({health_, max_health, health_percent()});
@@ -95,9 +93,7 @@ class SANDBOX_API UHealthComponent
             on_death.Broadcast();
 
             auto* owner{GetOwner()};
-            if (!owner) {
-                return;
-            }
+            if (!owner) { return; }
 
             // Trigger death handlers on components first then the actor itself
             TArray<UActorComponent*> components;

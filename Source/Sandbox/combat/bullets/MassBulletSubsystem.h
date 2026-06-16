@@ -102,9 +102,7 @@ class SANDBOX_API UMassBulletSubsystem
     }
 
     auto get_bullet_type_index(FPrimaryAssetId const& bullet_type) const -> FBulletTypeIndex {
-        if (auto const* index{bullet_type_indices.Find(bullet_type)}) {
-            return *index;
-        }
+        if (auto const* index{bullet_type_indices.Find(bullet_type)}) { return *index; }
         return FBulletTypeIndex{-1};
     }
   protected:

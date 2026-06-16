@@ -37,9 +37,7 @@ class SANDBOX_API UDestructionManagerSubsystem
     bool tick_enabled{false};
 
     void queue_destruction(auto* item, auto& queue) {
-        if (!item) {
-            return;
-        }
+        if (!item) { return; }
 
         queue.Add(item);
         tick_enabled = true;

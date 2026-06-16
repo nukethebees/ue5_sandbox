@@ -125,16 +125,10 @@ class SANDBOX_API ATiledWallActor
   private:
     auto get_scale_for_dimension(EWorldDimension dim) const -> float {
         auto const* mesh_config{mesh_configs.Find(mesh_type)};
-        if (!mesh_config) {
-            return 1.0f;
-        }
+        if (!mesh_config) { return 1.0f; }
 
-        if (dim == mesh_config->u_maps_to) {
-            return scale_u;
-        }
-        if (dim == mesh_config->v_maps_to) {
-            return scale_v;
-        }
+        if (dim == mesh_config->u_maps_to) { return scale_u; }
+        if (dim == mesh_config->v_maps_to) { return scale_v; }
         return 1.0f;
     }
 

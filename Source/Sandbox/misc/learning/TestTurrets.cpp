@@ -124,9 +124,7 @@ void FTestTurretsSearchData::rotate_by(float* yaw_radians,
 
     for (int32 i{0}; i < n; ++i) {
         yaw_radians[i] += delta;
-        if (yaw_radians[i] >= 360.f) {
-            yaw_radians[i] -= 360.f;
-        }
+        if (yaw_radians[i] >= 360.f) { yaw_radians[i] -= 360.f; }
     }
 }
 void FTestTurretsSearchData::rotate_by(float const dt, float const r) {
@@ -236,9 +234,7 @@ void ATestTurrets::Tick(float dt) {
     log_config.tick(dt);
 
 #if WITH_EDITOR
-    if (debug_shapes_enabled) {
-        draw_debug_shapes();
-    }
+    if (debug_shapes_enabled) { draw_debug_shapes(); }
 #endif
 }
 
@@ -261,9 +257,7 @@ void ATestTurrets::update_locations_from_components() {
 // Searching
 bool ATestTurrets::is_enemy(AActor const& actor) const {
     for (auto const& target_class : valid_target_classes) {
-        if (actor.IsA(target_class)) {
-            return true;
-        }
+        if (actor.IsA(target_class)) { return true; }
     }
 
     return false;
@@ -302,13 +296,9 @@ void ATestTurrets::perform_search() {
         for (auto& overlap : overlaps) {
             auto* actor{overlap.GetActor()};
 
-            if ((!IsValid(actor)) || (actor == this)) {
-                continue;
-            }
+            if ((!IsValid(actor)) || (actor == this)) { continue; }
 
-            if (!is_enemy(*actor)) {
-                continue;
-            }
+            if (!is_enemy(*actor)) { continue; }
 
             auto const end{actor->GetActorLocation()};
             los_hit.Reset();
@@ -370,13 +360,9 @@ void ATestTurrets::fire_when_aligned() {
     TArray<FTransform> laser_transforms;
 
     for (int32 i{0}; i < n; ++i) {
-        if (attacking.firing_cooldowns[i] > 0.f) {
-            continue;
-        }
+        if (attacking.firing_cooldowns[i] > 0.f) { continue; }
 
-        if (attacking.yaw_radians[i] <= fire_threshold) {
-            continue;
-        }
+        if (attacking.yaw_radians[i] <= fire_threshold) { continue; }
 
         FVector const base_location{
             attacking.location_xs[i],
@@ -420,9 +406,7 @@ void ATestTurrets::handle_transitions_to_searching() {
     auto const n_attacking{attacking.num_turrets()};
 
     for (int32 i{0}; i < n_attacking; ++i) {
-        if (!attacking.targets[i].IsValid()) {
-            attacking.to_search.Add(i);
-        }
+        if (!attacking.targets[i].IsValid()) { attacking.to_search.Add(i); }
     }
 
     auto const n_to_search{attacking.num_turrets_to_move()};

@@ -7,9 +7,7 @@ void FBurstFire::tick(float dt) {
         }
         case EBurstFireState::shot_cooldown: {
             shot_cooldown.tick(dt);
-            if (shot_cooldown.is_finished()) {
-                state = EBurstFireState::ready;
-            }
+            if (shot_cooldown.is_finished()) { state = EBurstFireState::ready; }
 
             break;
         }
@@ -28,9 +26,7 @@ auto FBurstFire::can_fire() const -> bool {
     return (state == EBurstFireState::ready) && (shots_remaining > 0);
 }
 auto FBurstFire::fire() -> bool {
-    if (!can_fire()) {
-        return false;
-    }
+    if (!can_fire()) { return false; }
 
     shots_remaining--;
 

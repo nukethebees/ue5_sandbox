@@ -212,7 +212,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         turrets->sync_from_registry();
     }
 
-    mission_manager->mission_tick(dt); 
+    mission_manager->mission_tick(dt);
 
     // ---------------------------------------------------------------------------------------------
     // End phase

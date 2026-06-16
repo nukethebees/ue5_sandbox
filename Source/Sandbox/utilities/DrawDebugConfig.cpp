@@ -35,9 +35,7 @@ auto FDrawDebugConfig::get_segments(TOptional<int32> t) const -> int32 {
 }
 
 void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugLine(world.Get(),
                   start,
@@ -55,9 +53,7 @@ void FDrawDebugConfig::draw_line(FVector const& start, FRotator const& fwd) cons
 }
 
 void FDrawDebugConfig::draw_point(FVector const& location) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugPoint(world.Get(),
                    location,
@@ -69,9 +65,7 @@ void FDrawDebugConfig::draw_point(FVector const& location) const {
 }
 
 void FDrawDebugConfig::draw_arrow(FVector const& start, FVector const& end) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugDirectionalArrow(world.Get(),
                               start,
@@ -85,9 +79,7 @@ void FDrawDebugConfig::draw_arrow(FVector const& start, FVector const& end) cons
 }
 
 void FDrawDebugConfig::draw_box(FVector const& start, FVector const& extent) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugBox(world.Get(),
                  start,
@@ -100,9 +92,7 @@ void FDrawDebugConfig::draw_box(FVector const& start, FVector const& extent) con
 }
 
 void FDrawDebugConfig::draw_circle(FTransform const& transform, float const radius_) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugCircle(world.Get(),
                     transform.ToMatrixWithScale(),
@@ -126,9 +116,7 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
                                        float const arc_radius,
                                        float const half_angle_rad,
                                        FQuat const& rotation) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugCircleArc(world.Get(),
                        start,
@@ -144,9 +132,7 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
 }
 
 void FDrawDebugConfig::draw_sphere(FVector const& start, float const radius_) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugSphere(world.Get(),
                     start,
@@ -163,9 +149,7 @@ void FDrawDebugConfig::draw_sphere(FVector const& start) const {
 }
 
 void FDrawDebugConfig::draw_string(FVector const& text_location, FString const& msg) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugString(world.Get(),
                     text_location,
@@ -180,9 +164,7 @@ void FDrawDebugConfig::draw_string(FVector const& text_location, FString const& 
 void FDrawDebugConfig::draw_cone(FVector const& start,
                                  FVector const& direction,
                                  float const cone_len) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugCone(world.Get(),
                   start,
@@ -198,9 +180,7 @@ void FDrawDebugConfig::draw_cone(FVector const& start,
                   get_thickness(cone_thickness));
 }
 void FDrawDebugConfig::draw_cone(FVector const& start, FVector const& direction) const {
-    if (!check_world_valid()) {
-        return;
-    }
+    if (!check_world_valid()) { return; }
 
     DrawDebugCone(world.Get(),
                   start,
@@ -217,9 +197,7 @@ void FDrawDebugConfig::draw_cone(FVector const& start, FVector const& direction)
 }
 
 auto FDrawDebugConfig::check_world_valid() const -> bool {
-    if (world.IsValid()) {
-        return true;
-    }
+    if (world.IsValid()) { return true; }
 
     UE_LOG(LogSandbox, Warning, TEXT("world is invalid"));
 

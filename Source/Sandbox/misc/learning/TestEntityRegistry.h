@@ -29,6 +29,7 @@ struct TraceHits {
 
     void validate_array_sizes() const;
 };
+
 struct DamageEvents {
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;

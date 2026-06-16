@@ -28,9 +28,7 @@ auto find_actors_within_cone(AActor const& actor,
     TArray<AActor*> actors;
 
     auto* world{actor.GetWorld()};
-    if (!world) {
-        return actors;
-    }
+    if (!world) { return actors; }
 
     query_params.AddIgnoredActor(&actor);
 
@@ -50,14 +48,10 @@ auto find_actors_within_cone(AActor const& actor,
     // Filter by angle
     for (auto& overlap : overlaps) {
         auto* overlapped_actor{overlap.GetActor()};
-        if ((overlapped_actor == nullptr) || (overlapped_actor == &actor)) {
-            continue;
-        }
+        if ((overlapped_actor == nullptr) || (overlapped_actor == &actor)) { continue; }
 
         auto const angle{get_abs_angle_from_fwd_vector(pos, fwd, *overlapped_actor)};
-        if (angle <= vision_half_angle_rads) {
-            tmp_actors.Add(overlapped_actor);
-        }
+        if (angle <= vision_half_angle_rads) { tmp_actors.Add(overlapped_actor); }
     }
 
     // Filter by type
@@ -88,9 +82,7 @@ auto find_actors_within_cone(AActor const& actor,
                                                            ECollisionChannel::ECC_Visibility,
                                                            query_params)};
 
-        if (!blocked || hit.GetActor() == other_actor) {
-            actors.Add(other_actor);
-        }
+        if (!blocked || hit.GetActor() == other_actor) { actors.Add(other_actor); }
     }
 
     return actors;
@@ -113,9 +105,7 @@ auto find_actors_within_cone(AActor const& actor,
 
 auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -> AActor* {
     auto const num_hits{options.Num()};
-    if (num_hits == 0) {
-        return nullptr;
-    }
+    if (num_hits == 0) { return nullptr; }
 
     AActor* result{options[0]};
 

@@ -66,14 +66,10 @@ void ATestTubeSpinnerProxy::face_fire_points_away_from_mesh() {
     }
 }
 void ATestTubeSpinnerProxy::set_random_active_fire_point() {
-    if (!actor_config) {
-        return;
-    }
+    if (!actor_config) { return; }
 
     auto const n_fire_points{actor_config->fire_point_offsets.Num()};
-    if (n_fire_points < 1) {
-        return;
-    }
+    if (n_fire_points < 1) { return; }
 
     initial_active_fire_point = FMath::RandRange(0, n_fire_points);
 }
@@ -82,9 +78,7 @@ void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
 }
 
 void ATestTubeSpinnerProxy::save_configuration_to_asset() {
-    if (!actor_config) {
-        return;
-    }
+    if (!actor_config) { return; }
 
     actor_config->Modify();
 

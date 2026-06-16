@@ -43,9 +43,7 @@ auto ATestFlyBase::check_if_hit(FVector start, FVector end) -> FHitResult {
     params.AddIgnoredActor(this);
 
     auto* world{GetWorld()};
-    if (world) {
-        world->LineTraceSingleByObjectType(hit, start, end, obj_params, params);
-    }
+    if (world) { world->LineTraceSingleByObjectType(hit, start, end, obj_params, params); }
 
     return hit;
 }

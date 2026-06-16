@@ -15,9 +15,7 @@ AShipPostProcessing::AShipPostProcessing()
 void AShipPostProcessing::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    if (post_process_volume) {
-        set_up_post_processing(*post_process_volume);
-    }
+    if (post_process_volume) { set_up_post_processing(*post_process_volume); }
 }
 void AShipPostProcessing::set_up_post_processing(UPostProcessComponent& pp) {
     pp.bUnbound = true;

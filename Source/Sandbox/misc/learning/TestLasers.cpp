@@ -172,9 +172,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const n{get_num_instances()};
 
-    if (n < 1) {
-        return;
-    }
+    if (n < 1) { return; }
 
     auto* world{GetWorld()};
 
@@ -194,21 +192,15 @@ void ATestLasers::handle_collisions(float const dt) {
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
 
-        if (!did_hit) {
-            continue;
-        }
+        if (!did_hit) { continue; }
         to_remove.Add(i);
 
         // Identify who we hit
         auto* hit_actor{hit.GetActor()};
-        if (!IsValid(hit_actor)) {
-            continue;
-        }
+        if (!IsValid(hit_actor)) { continue; }
 
         auto* hit_component{hit.GetComponent()};
-        if (!IsValid(hit_component)) {
-            continue;
-        }
+        if (!IsValid(hit_component)) { continue; }
 
         hit_damage_queue.Add(damage);
         hit_actor_queue.Add(hit_actor);
@@ -269,9 +261,7 @@ void ATestLasers::update_ismc_transforms() {
 
     auto const n_transforms{ismc_transforms.Num()};
     auto const n_to_add(n - n_transforms);
-    if (n_to_add > 0) {
-        ismc_transforms.AddDefaulted(n_to_add);
-    }
+    if (n_to_add > 0) { ismc_transforms.AddDefaulted(n_to_add); }
 
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
@@ -291,18 +281,14 @@ void ATestLasers::collect_old_instance_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::collect_old_instance_indices);
 
     auto const n{get_num_instances()};
-    if (n < 1) {
-        return;
-    }
+    if (n < 1) { return; }
 
     auto const laser_lifetime{actor_config->lifetime};
 
     to_remove.Reset();
 
     for (int32 i{n - 1}; i >= 0; --i) {
-        if (lifetimes[i] >= laser_lifetime) {
-            to_remove.Add(i);
-        }
+        if (lifetimes[i] >= laser_lifetime) { to_remove.Add(i); }
     }
 }
 
@@ -327,9 +313,7 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
 
     auto const n{indices.Num()};
-    if (n < 1) {
-        return;
-    }
+    if (n < 1) { return; }
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);

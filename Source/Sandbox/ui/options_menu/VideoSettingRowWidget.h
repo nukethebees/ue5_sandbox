@@ -102,9 +102,7 @@ void UVideoSettingRowWidget::setup_numeric_widgets(DataType const& data) {
         log_verbose(TEXT("Numeric slider configured and shown"));
     }
 
-    if (toggle_button) {
-        toggle_button->SetVisibility(ESlateVisibility::Hidden);
-    }
+    if (toggle_button) { toggle_button->SetVisibility(ESlateVisibility::Hidden); }
 
     if (pending_value_input) {
         pending_value_input->SetIsReadOnly(false);

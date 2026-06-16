@@ -43,9 +43,7 @@ void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component
 
 #if WITH_EDITOR
 void ATestStaticTurretsProxy::save_configuration_to_asset() {
-    if (!actor_config) {
-        return;
-    }
+    if (!actor_config) { return; }
 
     actor_config->Modify();
 

@@ -115,9 +115,7 @@ void APushZoneActor::Tick(float DeltaTime) {
     // This should only be called by our custom timer, but just in case
     apply_push_forces();
 
-    if (show_debug_visualization) {
-        draw_debug_info();
-    }
+    if (show_debug_visualization) { draw_debug_info(); }
 }
 
 void APushZoneActor::on_overlap_begin(UPrimitiveComponent* overlapped_component,
@@ -144,18 +142,14 @@ void APushZoneActor::on_overlap_begin(UPrimitiveComponent* overlapped_component,
     overlapping_actors.AddUnique(TWeakObjectPtr<AActor>(other_actor));
 
     // Start ticking if this is the first actor
-    if (!is_zone_occupied) {
-        start_custom_ticking();
-    }
+    if (!is_zone_occupied) { start_custom_ticking(); }
 }
 
 void APushZoneActor::on_overlap_end(UPrimitiveComponent* overlapped_component,
                                     AActor* other_actor,
                                     UPrimitiveComponent* other_component,
                                     int32 other_body_index) {
-    if (!other_actor || other_actor == this) {
-        return;
-    }
+    if (!other_actor || other_actor == this) { return; }
 
     // Remove from tracking list
     overlapping_actors.RemoveAll([other_actor](TWeakObjectPtr<AActor> const& WeakActor) {
@@ -164,9 +158,7 @@ void APushZoneActor::on_overlap_end(UPrimitiveComponent* overlapped_component,
 
     // Stop ticking if no actors remain
     cleanup_invalid_actors();
-    if (overlapping_actors.IsEmpty()) {
-        stop_custom_ticking();
-    }
+    if (overlapping_actors.IsEmpty()) { stop_custom_ticking(); }
 }
 
 void APushZoneActor::start_custom_ticking() {
@@ -178,9 +170,7 @@ void APushZoneActor::start_custom_ticking() {
             tick_timer_handle,
             [this]() {
                 apply_push_forces();
-                if (show_debug_visualization) {
-                    draw_debug_info();
-                }
+                if (show_debug_visualization) { draw_debug_info(); }
             },
             custom_tick_interval,
             loop_timer);
@@ -229,9 +219,7 @@ void APushZoneActor::apply_push_forces() {
 }
 
 FVector APushZoneActor::calculate_push_force(AActor* target_actor) const {
-    if (!target_actor) {
-        return FVector::ZeroVector;
-    }
+    if (!target_actor) { return FVector::ZeroVector; }
 
     auto const zone_center{collision_box->GetComponentLocation()};
     auto const actor_location{target_actor->GetActorLocation()};
@@ -316,9 +304,7 @@ void APushZoneActor::apply_force_to_actor(AActor* target_actor, FVector const& f
 
 void APushZoneActor::draw_debug_info() const {
     auto* world{GetWorld()};
-    if (!world) {
-        return;
-    }
+    if (!world) { return; }
 
     auto const zone_center{collision_box->GetComponentLocation()};
     auto const box_extent{collision_box->GetScaledBoxExtent()};

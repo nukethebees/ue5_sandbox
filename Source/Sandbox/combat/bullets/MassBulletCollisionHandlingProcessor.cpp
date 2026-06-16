@@ -29,9 +29,7 @@ void FMassBulletCollisionHandlingExecutor::Execute(FMassExecutionContext& contex
         auto const& damage_fragments{context.GetFragmentView<FMassBulletDamageFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
-            if (!state_fragments[i].hit_occurred) {
-                continue;
-            }
+            if (!state_fragments[i].hit_occurred) { continue; }
             ndc_subsystem.add_payload(impact_effect_fragment.effect_index,
                                       hit_infos[i].hit_location,
                                       hit_infos[i].hit_normal);
@@ -60,7 +58,5 @@ UMassBulletCollisionHandlingProcessor::UMassBulletCollisionHandlingProcessor()
     ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionDetection);
     ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionHandling;
 
-    if (HasAnyFlags(RF_ClassDefaultObject)) {
-        set_execution_flags(EProcessorExecutionFlags::All);
-    }
+    if (HasAnyFlags(RF_ClassDefaultObject)) { set_execution_flags(EProcessorExecutionFlags::All); }
 }

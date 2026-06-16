@@ -87,7 +87,5 @@ void URotationManagerSubsystem::Tick(float DeltaTime) {
         has_valid_actors = true;
     }
 
-    if (!has_valid_actors) {
-        tick_enabled = false;
-    }
+    if (!has_valid_actors) { tick_enabled = false; }
 }

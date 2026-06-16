@@ -18,9 +18,7 @@ class SANDBOX_API APatrolPath : public AActor {
     virtual void Tick(float dt) override;
 
     auto get_first_point() -> APatrolWaypoint* {
-        if (waypoints.IsEmpty()) {
-            return nullptr;
-        }
+        if (waypoints.IsEmpty()) { return nullptr; }
         return waypoints[0];
     }
     auto operator[](int32 i) -> APatrolWaypoint* {

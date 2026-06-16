@@ -62,13 +62,9 @@ class LockFreeMPSCQueue {
     [[nodiscard]] auto is_initialised() const noexcept { return capacity_per_buffer_ > 0; }
 
     [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
-        if (n == 0) {
-            return ELockFreeMPSCQueueInitResult::Success;
-        }
+        if (n == 0) { return ELockFreeMPSCQueueInitResult::Success; }
 
-        if (is_initialised()) {
-            return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
-        }
+        if (is_initialised()) { return ELockFreeMPSCQueueInitResult::AlreadyInitialised; }
 
 #if 0
         try {
@@ -93,16 +89,12 @@ class LockFreeMPSCQueue {
             -> ELockFreeMPSCQueueEnqueueResult {
         if constexpr (std::is_nothrow_constructible_v<value_type, Args&&...>) {
             auto address{get_next_write_address()};
-            if (!address) {
-                return address.error();
-            }
+            if (!address) { return address.error(); }
             new (*address) value_type{std::forward<Args>(args)...};
         } else {
             value_type local_value{std::forward<Args>(args)...};
             auto address{get_next_write_address()};
-            if (!address) {
-                return address.error();
-            }
+            if (!address) { return address.error(); }
             new (*address) value_type{std::move(local_value)};
         }
 
@@ -142,9 +134,7 @@ class LockFreeMPSCQueue {
     }
     void destroy_buffer(pointer ptr,
                         size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
-        if constexpr (!std::is_trivially_destructible_v<value_type>) {
-            std::destroy_n(ptr, n);
-        }
+        if constexpr (!std::is_trivially_destructible_v<value_type>) { std::destroy_n(ptr, n); }
     }
     [[nodiscard]] auto get_next_write_address() noexcept
         -> std::expected<pointer, ELockFreeMPSCQueueEnqueueResult> {

@@ -41,7 +41,5 @@ void AKillAllEnemiesGameMode::BeginPlay() {
 void AKillAllEnemiesGameMode::handle_enemy_death() {
     enemies_left--;
 
-    if (enemies_left <= 0) {
-        UGameplayStatics::OpenLevel(GetWorld(), FName("MainMenu"));
-    }
+    if (enemies_left <= 0) { UGameplayStatics::OpenLevel(GetWorld(), FName("MainMenu")); }
 }

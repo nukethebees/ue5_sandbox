@@ -61,17 +61,13 @@ void UDestructionManagerSubsystem::Tick(float DeltaTime) {
 
     // Destroy queued actors
     for (auto& weak_actor : queued_actors) {
-        if (weak_actor.IsValid()) {
-            weak_actor->Destroy();
-        }
+        if (weak_actor.IsValid()) { weak_actor->Destroy(); }
     }
     queued_actors.Empty();
 
     // Destroy queued components
     for (auto& weak_component : queued_components) {
-        if (weak_component.IsValid()) {
-            weak_component->DestroyComponent();
-        }
+        if (weak_component.IsValid()) { weak_component->DestroyComponent(); }
     }
     queued_components.Empty();
 
@@ -104,9 +100,7 @@ void UDestructionManagerSubsystem::destroy_component_delayed(int32 destruction_i
     TRACE_CPUPROFILER_EVENT_SCOPE(
         TEXT("Sandbox::UDestructionManagerSubsystem::destroy_component_delayed"))
     if (auto* component_ptr{delayed_components.Find(destruction_id)}) {
-        if (component_ptr->IsValid()) {
-            (*component_ptr)->DestroyComponent();
-        }
+        if (component_ptr->IsValid()) { (*component_ptr)->DestroyComponent(); }
         delayed_components.Remove(destruction_id);
         active_timers.Remove(destruction_id);
     }

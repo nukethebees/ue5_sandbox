@@ -61,9 +61,7 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
     TArray<AActor*> hit_actors{};
     for (auto& hit_result : hit_results) {
         auto* const actor{hit_result.GetActor()};
-        if (actor == owner) {
-            continue;
-        }
+        if (actor == owner) { continue; }
 
         CONTINUE_IF_FALSE(actor);
         hit_actors.Add(actor);
@@ -71,9 +69,7 @@ void UInteractorComponent::try_interact(FVector sweep_start, FVector sweep_end) 
 
     auto const n_hit_actors{hit_actors.Num()};
     LOG.log_verbose(TEXT("%d valid hit actors."), n_hit_actors);
-    if (!n_hit_actors) {
-        return;
-    }
+    if (!n_hit_actors) { return; }
 
     // Try new trigger system first
     TRY_INIT_PTR(subsystem, world->GetSubsystem<UTriggerSubsystem>());

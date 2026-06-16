@@ -39,9 +39,7 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
 
     defend_position = GetActorLocation();
 
-    if (controller_class) {
-        AIControllerClass = controller_class;
-    }
+    if (controller_class) { AIControllerClass = controller_class; }
 }
 void ATestEnemy::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};

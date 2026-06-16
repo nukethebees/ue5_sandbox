@@ -39,9 +39,7 @@ void AShipTrainingTarget::Tick(float dt) {
 
     auto const t{world->GetTimeSeconds()};
     wt = angular_frequency * t;
-    if (wt >= 1.f) {
-        wt -= 1.f;
-    }
+    if (wt >= 1.f) { wt -= 1.f; }
     auto const loc{GetActorLocation()};
     auto const fwd{GetActorForwardVector()};
     auto const d_speed{speed * dt};
@@ -81,9 +79,7 @@ void AShipTrainingTarget::Tick(float dt) {
 }
 
 auto AShipTrainingTarget::apply_damage(ShipDamageContext context) -> FShipDamageResult {
-    if (IsActorBeingDestroyed()) {
-        return {EDamageResult::AlreadyDestroyed};
-    }
+    if (IsActorBeingDestroyed()) { return {EDamageResult::AlreadyDestroyed}; }
 
     FShipDamageResult const result{EDamageResult::ActorKilled};
 

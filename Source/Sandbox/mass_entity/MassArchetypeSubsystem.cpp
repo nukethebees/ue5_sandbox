@@ -53,9 +53,7 @@ auto UMassArchetypeSubsystem::get_bullet_archetype() const -> FMassArchetypeHand
 }
 auto UMassArchetypeSubsystem::get_definition(FPrimaryAssetId id)
     -> std::optional<FEntityDefinition> {
-    if (auto i{definition_indexes.Find(id)}) {
-        return definitions[*i];
-    }
+    if (auto i{definition_indexes.Find(id)}) { return definitions[*i]; }
     return {};
 }
 
@@ -90,22 +88,14 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
     constexpr auto logger{NestedLogger<"build_definitions">()};
 
     auto* world{GetWorld()};
-    if (!world) {
-        return;
-    }
+    if (!world) { return; }
     auto ndc_subsystem{world->GetSubsystem<UNiagaraNdcWriterSubsystem>()};
-    if (!ndc_subsystem) {
-        return;
-    }
+    if (!ndc_subsystem) { return; }
 
     auto visualization_actor{ml::get_first_actor<AMassBulletVisualizationActor>(*world)};
-    if (!visualization_actor) {
-        return;
-    }
+    if (!visualization_actor) { return; }
     auto data_actor{ml::get_first_actor<AMassBulletSubsystemData>(*world)};
-    if (!data_actor) {
-        return;
-    }
+    if (!data_actor) { return; }
 
     RETURN_IF_TRUE(data_actor->bullet_types.IsEmpty());
 

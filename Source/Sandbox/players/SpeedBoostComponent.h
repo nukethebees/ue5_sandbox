@@ -26,9 +26,7 @@ class SANDBOX_API USpeedBoostComponent : public UActorComponent {
 
     auto get_multiplier_receiver() -> IMovementMultiplierReceiver* {
         auto* const owner{GetOwner()};
-        if (!owner) {
-            return nullptr;
-        }
+        if (!owner) { return nullptr; }
 
         return Cast<IMovementMultiplierReceiver>(owner);
     }

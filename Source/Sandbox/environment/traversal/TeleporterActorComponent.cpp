@@ -14,14 +14,10 @@ void UTeleporterActorComponent::BeginPlay() {
     auto* owner{GetOwner()};
     auto comps{
         owner->GetComponentsByTag(UPrimitiveComponent::StaticClass(), FName("TeleportTrigger"))};
-    if (comps.Num() > 0) {
-        collision_trigger = Cast<UPrimitiveComponent>(comps[0]);
-    }
+    if (comps.Num() > 0) { collision_trigger = Cast<UPrimitiveComponent>(comps[0]); }
 
     comps = owner->GetComponentsByTag(USceneComponent::StaticClass(), FName("TeleportTarget"));
-    if (comps.Num() > 0) {
-        target_location = Cast<USceneComponent>(comps[0]);
-    }
+    if (comps.Num() > 0) { target_location = Cast<USceneComponent>(comps[0]); }
 
     if (collision_trigger) {
         collision_trigger->OnComponentBeginOverlap.AddDynamic(
@@ -30,9 +26,7 @@ void UTeleporterActorComponent::BeginPlay() {
         UE_LOG(LogTemp, Warning, TEXT("No collision trigger."));
     }
 
-    if (!target_location) {
-        UE_LOG(LogTemp, Warning, TEXT("No target location."));
-    }
+    if (!target_location) { UE_LOG(LogTemp, Warning, TEXT("No target location.")); }
 }
 void UTeleporterActorComponent::HandleOverlap(UPrimitiveComponent* OverlappedComp,
                                               AActor* other_actor,

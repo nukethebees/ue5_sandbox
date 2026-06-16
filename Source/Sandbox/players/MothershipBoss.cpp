@@ -38,9 +38,7 @@ void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& na
     for (int32 i{0}; i < N; i++) {
         auto const name{FString::Printf(TEXT("%s_%d"), *name_base, i)};
         auto* new_component{CreateDefaultSubobject<T>(*name)};
-        if (!new_component) {
-            WARN_IS_FALSE(LogSandboxActor, new_component);
-        }
+        if (!new_component) { WARN_IS_FALSE(LogSandboxActor, new_component); }
         if constexpr (std::is_base_of_v<USceneComponent, T>) {
             new_component->SetupAttachment(mesh_component);
         }
@@ -81,9 +79,7 @@ void AMothershipBoss::Tick(float dt) {
     }
 
 #if WITH_EDITOR
-    if (log_cooldown.is_finished()) {
-        log_cooldown.reset();
-    }
+    if (log_cooldown.is_finished()) { log_cooldown.reset(); }
 #endif
 }
 void AMothershipBoss::BeginPlay() {
@@ -144,16 +140,12 @@ void AMothershipBoss::handle_spawning(float dt) {
         spawn_ships();
         spawn_interval.reset();
     }
-    if (spawn_cycle.is_finished()) {
-        set_state(EMothershipBossState::SpawnCooldown);
-    }
+    if (spawn_cycle.is_finished()) { set_state(EMothershipBossState::SpawnCooldown); }
 }
 void AMothershipBoss::handle_spawn_cooldown(float dt) {
     idle_rotation(dt);
     spawn_cooldown -= dt;
-    if (spawn_cooldown.is_finished()) {
-        set_state(EMothershipBossState::Spawning);
-    }
+    if (spawn_cooldown.is_finished()) { set_state(EMothershipBossState::Spawning); }
 }
 void AMothershipBoss::handle_destroyed(float dt) {}
 
@@ -213,9 +205,7 @@ auto AMothershipBoss::apply_damage(ShipDamageContext context) -> FShipDamageResu
             UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d hit."), i);
 
             auto* health{hatch_healths[i]};
-            if (health->is_dead()) {
-                return {EDamageResult::AlreadyDestroyed};
-            }
+            if (health->is_dead()) { return {EDamageResult::AlreadyDestroyed}; }
             health->apply_damage(context.damage);
             if (health->is_dead()) {
                 UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d destroyed."), i);
@@ -292,9 +282,7 @@ void AMothershipBoss::spawn_ships() {
     TRY_INIT_PTR(world, GetWorld());
     for (int32 i{0}; i < n_hatches; i++) {
         auto* hatch_health{hatch_healths[i]};
-        if (hatch_health->is_dead()) {
-            continue;
-        }
+        if (hatch_health->is_dead()) { continue; }
         auto* hatch{hatch_meshes[i]};
         if (!hatch->DoesSocketExist(socket_name)) {
             UE_LOG(LogSandboxActor,
@@ -317,9 +305,7 @@ void AMothershipBoss::on_hatch_destroyed(UStaticMeshComponent& hatch) {
 
     auto const n{num_alive_hatches()};
     UE_LOG(LogSandboxActor, Display, TEXT("%d/%d hatches alive"), n, n_hatches);
-    if (!n) {
-        set_state(EMothershipBossState::Destroyed);
-    }
+    if (!n) { set_state(EMothershipBossState::Destroyed); }
 }
 auto AMothershipBoss::num_dead_hatches() -> int32 {
     return n_hatches - num_alive_hatches();
@@ -328,9 +314,7 @@ auto AMothershipBoss::num_alive_hatches() -> int32 {
     int32 out{0};
 
     for (auto* health : hatch_healths) {
-        if (!health->is_dead()) {
-            out++;
-        }
+        if (!health->is_dead()) { out++; }
     }
 
     return out;

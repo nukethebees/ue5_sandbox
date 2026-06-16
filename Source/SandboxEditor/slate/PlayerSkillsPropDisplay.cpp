@@ -17,9 +17,7 @@ void FPlayerSkillsPropDisplay::CustomizeChildren(
     TSharedRef<IPropertyHandle> PropertyHandle,
     IDetailChildrenBuilder& ChildBuilder,
     IPropertyTypeCustomizationUtils& CustomizationUtils) {
-    if (!PropertyHandle->IsValidHandle()) {
-        return;
-    }
+    if (!PropertyHandle->IsValidHandle()) { return; }
 
     void* raw_data{nullptr};
     if (auto result{PropertyHandle->GetValueData(raw_data)};

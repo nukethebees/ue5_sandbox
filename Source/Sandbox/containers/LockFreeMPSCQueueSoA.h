@@ -64,13 +64,9 @@ class LockFreeMPSCQueueSoA {
     }
 
     [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
-        if (n == 0) {
-            return ELockFreeMPSCQueueInitResult::Success;
-        }
+        if (n == 0) { return ELockFreeMPSCQueueInitResult::Success; }
 
-        if (is_initialised()) {
-            return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
-        }
+        if (is_initialised()) { return ELockFreeMPSCQueueInitResult::AlreadyInitialised; }
 
         layout_ = BufferLayout::compute(n);
         capacity_per_buffer_ = n;
@@ -96,9 +92,7 @@ class LockFreeMPSCQueueSoA {
                  (std::is_nothrow_constructible_v<Ts, Args &&> && ...)
     [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
         auto const address_result{get_next_write_index()};
-        if (!address_result) {
-            return address_result.error();
-        }
+        if (!address_result) { return address_result.error(); }
 
         auto const cur_write_buf_idx{write_buffer_index_.load(std::memory_order_relaxed)};
 

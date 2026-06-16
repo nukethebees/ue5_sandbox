@@ -45,9 +45,7 @@ class UObjectPoolSubsystemCore
         static constexpr auto logger{NestedLogger<"get_item">()};
 
         // Use default class if none specified
-        if (!actor_class) {
-            actor_class = Config::GetDefaultClass();
-        }
+        if (!actor_class) { actor_class = Config::GetDefaultClass(); }
 
         if (!actor_class) {
             logger.log_error(TEXT("No actor_class specified and no default available"));
@@ -94,9 +92,7 @@ class UObjectPoolSubsystemCore
         auto& pool{get_pool<Config>()};
         auto const pool_idx{pool.Find(item)};
 
-        if (pool_idx == INDEX_NONE) {
-            return EObjectPoolSubsystemReturnStatus::ItemNotInPool;
-        }
+        if (pool_idx == INDEX_NONE) { return EObjectPoolSubsystemReturnStatus::ItemNotInPool; }
 
         // Look up which free list this actor's class belongs to
         auto actor_class{item->GetClass()};

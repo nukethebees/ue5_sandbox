@@ -40,16 +40,12 @@ void ASandboxGameMode::BeginPlay() {
     }
 
 #if WITH_EDITOR
-    if (settings->show_collision) {
-        pc->ConsoleCommand(TEXT("show collision"));
-    }
+    if (settings->show_collision) { pc->ConsoleCommand(TEXT("show collision")); }
 #endif
 
 #if WITH_EDITOR
     if (settings->pause_pie_on_start) {
-        if (GUnrealEd->SetPIEWorldsPaused(true)) {
-            GUnrealEd->PlaySessionPaused();
-        }
+        if (GUnrealEd->SetPIEWorldsPaused(true)) { GUnrealEd->PlaySessionPaused(); }
     }
 #endif
 }

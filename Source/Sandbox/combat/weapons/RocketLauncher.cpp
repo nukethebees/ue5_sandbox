@@ -23,9 +23,7 @@ bool ARocketLauncher::can_fire() const {
     return ammo > 0;
 }
 void ARocketLauncher::start_firing() {
-    if (!can_fire()) {
-        return;
-    }
+    if (!can_fire()) { return; }
 
     FName const socket_name{TEXT("Fire")};
 

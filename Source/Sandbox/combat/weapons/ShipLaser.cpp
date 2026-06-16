@@ -56,9 +56,7 @@ void AShipLaser::BeginPlay() {
 
     SetLifeSpan(20.0f);
 
-    if (auto* owner{GetOwner()}) {
-        mesh_component->IgnoreActorWhenMoving(owner, true);
-    }
+    if (auto* owner{GetOwner()}) { mesh_component->IgnoreActorWhenMoving(owner, true); }
     if (auto* instigator{GetInstigator()}) {
         mesh_component->IgnoreActorWhenMoving(instigator, true);
     }
@@ -91,16 +89,12 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
 }
 void AShipLaser::do_hit(AActor& actor, UPrimitiveComponent& other_component) {
     auto* ship{Cast<IDamageableShip>(&actor)};
-    if (!ship) {
-        return;
-    }
+    if (!ship) { return; }
 
     TRY_INIT_PTR(instigator, GetInstigator());
     auto const damage_result{ship->apply_damage({damage, *instigator, other_component})};
 
-    if (!damage_result.was_killed()) {
-        return;
-    }
+    if (!damage_result.was_killed()) { return; }
 
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());

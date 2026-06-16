@@ -64,13 +64,9 @@ bool FTypedefCodeGenerator::run_python_script(FString const& script_path) {
     }
 
     // Log output
-    if (!std_out.IsEmpty()) {
-        logger.log_log(TEXT("Python output:\n%s"), *std_out);
-    }
+    if (!std_out.IsEmpty()) { logger.log_log(TEXT("Python output:\n%s"), *std_out); }
 
-    if (!std_err.IsEmpty()) {
-        logger.log_warning(TEXT("Python stderr:\n%s"), *std_err);
-    }
+    if (!std_err.IsEmpty()) { logger.log_warning(TEXT("Python stderr:\n%s"), *std_err); }
 
     if (return_code != 0) {
         logger.log_error(TEXT("Python script returned error code: %d"), return_code);

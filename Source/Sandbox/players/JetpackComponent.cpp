@@ -18,19 +18,13 @@ void UJetpackComponent::TickComponent(float delta_time,
                                       FActorComponentTickFunction* this_tick_function) {
     Super::TickComponent(delta_time, tick_type, this_tick_function);
 
-    if (is_jetpacking) {
-        apply_jetpack_force(delta_time);
-    }
+    if (is_jetpacking) { apply_jetpack_force(delta_time); }
 }
 void UJetpackComponent::start_jetpack() {
-    if (fuel <= 0.0f) {
-        return;
-    }
+    if (fuel <= 0.0f) { return; }
 
     auto* world{GetWorld()};
-    if (!world) {
-        return;
-    }
+    if (!world) { return; }
     auto& timer_manager{world->GetTimerManager()};
 
     is_jetpacking = true;
@@ -63,22 +57,16 @@ void UJetpackComponent::stop_jetpack() {
     }
 }
 void UJetpackComponent::apply_jetpack_force(float delta_time) {
-    if (fuel <= 0.0f) {
-        return;
-    }
+    if (fuel <= 0.0f) { return; }
 
     if (auto* character{Cast<ACharacter>(GetOwner())}) {
         auto const fuel_needed{fuel_consumption_rate * delta_time};
         auto const fuel_ratio{FMath::Clamp(fuel / fuel_needed, 0.0f, 1.0f)};
 
-        if (fuel_ratio <= 0.01) {
-            return;
-        }
+        if (fuel_ratio <= 0.01) { return; }
 
         auto const scaled_force{lift_force * delta_time * fuel_ratio};
-        if (scaled_force <= 100.0f) {
-            return;
-        }
+        if (scaled_force <= 100.0f) { return; }
 
         FVector const force{0.0f, 0.0f, scaled_force};
         character->LaunchCharacter(force, false, true);

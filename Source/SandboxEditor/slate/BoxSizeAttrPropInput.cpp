@@ -45,35 +45,27 @@ auto SBoxSizeAttrPropInput::get_vector_value() const -> vector_type {
     return get_vector().Get(vector_type::ZeroVector);
 }
 void SBoxSizeAttrPropInput::set_vector(vector_type const& new_value) {
-    if (on_value_changed.IsBound()) {
-        on_value_changed.Execute(new_value);
-    }
+    if (on_value_changed.IsBound()) { on_value_changed.Execute(new_value); }
 }
 
 auto SBoxSizeAttrPropInput::get_x() const -> TOptional<value_type> {
     auto const v{get_vector()};
 
-    if (!v.IsSet()) {
-        return {};
-    }
+    if (!v.IsSet()) { return {}; }
 
     return v->X;
 }
 auto SBoxSizeAttrPropInput::get_y() const -> TOptional<value_type> {
     auto const v{get_vector()};
 
-    if (!v.IsSet()) {
-        return {};
-    }
+    if (!v.IsSet()) { return {}; }
 
     return v->Y;
 }
 auto SBoxSizeAttrPropInput::get_z() const -> TOptional<value_type> {
     auto const v{get_vector()};
 
-    if (!v.IsSet()) {
-        return {};
-    }
+    if (!v.IsSet()) { return {}; }
 
     return v->Z;
 }
@@ -163,9 +155,7 @@ auto SBoxSizeAttrPropInput::make_uniform_widget() -> TSharedRef<SWidget> {
         .Font(IDetailLayoutBuilder::GetDetailFont())
         .Value_Lambda([this]() -> TOptional<value_type> {
             auto const v{get_vector_value()};
-            if (FMath::IsNearlyEqual(v.X, v.Y) && FMath::IsNearlyEqual(v.X, v.Z)) {
-                return v.X;
-            }
+            if (FMath::IsNearlyEqual(v.X, v.Y) && FMath::IsNearlyEqual(v.X, v.Z)) { return v.X; }
             return {};
         })
         .OnValueChanged_Lambda([this](value_type value) { set_vector({value, value, value}); });
@@ -180,9 +170,7 @@ auto SBoxSizeAttrPropInput::make_xy_and_z_widget() -> TSharedRef<SWidget> {
         .bColorAxisLabels(colour_axis_labels)
         .X_Lambda([this] -> TOptional<value_type> {
             auto const v{get_vector_value()};
-            if (FMath::IsNearlyEqual(v.X, v.Y)) {
-                return v.X;
-            }
+            if (FMath::IsNearlyEqual(v.X, v.Y)) { return v.X; }
             return {};
         })
         .Y_Lambda([&] -> TOptional<value_type> { return get_z(); })

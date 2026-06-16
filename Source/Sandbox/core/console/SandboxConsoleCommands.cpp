@@ -59,9 +59,7 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
 
     auto set{[new_verbosity](this auto& self, auto& cat, auto&... remaining) -> void {
         cat.SetVerbosity(new_verbosity);
-        if constexpr (sizeof...(remaining)) {
-            self(remaining...);
-        }
+        if constexpr (sizeof...(remaining)) { self(remaining...); }
     }};
 
     if (valid_verbosity) {

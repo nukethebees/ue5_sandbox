@@ -95,9 +95,7 @@ class UCollisionEffectSubsystemCore
         TRACE_CPUPROFILER_EVENT_SCOPE(
             TEXT("Sandbox::UCollisionEffectSubsystemCore::register_actor"))
 
-        if (auto const* i{self.actor_ids.Find(&actor)}) {
-            return *i;
-        }
+        if (auto const* i{self.actor_ids.Find(&actor)}) { return *i; }
 
         INIT_OR_RETURN_VALUE_IF_FALSE(auto*, collision_owner, Cast<ICollisionOwner>(&actor), {});
         INIT_OR_RETURN_VALUE_IF_FALSE(

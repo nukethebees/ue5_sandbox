@@ -43,23 +43,17 @@ void ATestUniformFieldDynPointSource::Tick(float dt) {
     log_cooldown.tick(dt);
 
     if (at_destination()) {
-        if (enable_log_prints) {
-            UE_LOG(LogSandboxLearning, Display, TEXT("At destination"));
-        }
+        if (enable_log_prints) { UE_LOG(LogSandboxLearning, Display, TEXT("At destination")); }
 
         update_destination();
     }
 
     move_to_destination(dt);
 
-    if (should_update_sources()) {
-        update_sources();
-    }
+    if (should_update_sources()) { update_sources(); }
     broadcast_update_to_field();
 
-    if (log_cooldown.is_finished()) {
-        log_cooldown.reset();
-    }
+    if (log_cooldown.is_finished()) { log_cooldown.reset(); }
 }
 void ATestUniformFieldDynPointSource::EndPlay(EEndPlayReason::Type const reason) {
     WARN_IF_EXPR_ELSE(field == nullptr) {

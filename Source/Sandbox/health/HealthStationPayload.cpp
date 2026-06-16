@@ -41,18 +41,12 @@ FTriggerResult FHealthStationPayload::trigger(FTriggerContext context) {
 }
 
 bool FHealthStationPayload::can_trigger(FTriggerContext const& context) const {
-    if (current_capacity <= 0.0f) {
-        return false;
-    }
+    if (current_capacity <= 0.0f) { return false; }
 
-    if (cooldown_remaining > 0.0f) {
-        return false;
-    }
+    if (cooldown_remaining > 0.0f) { return false; }
 
     auto* instigator{context.source.get_instigator()};
-    if (!instigator) {
-        return false;
-    }
+    if (!instigator) { return false; }
 
     auto* const health{instigator->FindComponentByClass<UHealthComponent>()};
     return health && !health->at_max_health();

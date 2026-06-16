@@ -136,9 +136,7 @@ void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
 
     player_kills = new_kills;
 
-    if (new_kills != old_kills) {
-        on_mission_update.Broadcast(*this);
-    }
+    if (new_kills != old_kills) { on_mission_update.Broadcast(*this); }
 }
 
 void ATestMissionManager::handle_mission_success() {

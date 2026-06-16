@@ -19,9 +19,7 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
     constexpr auto logger{NestedLogger<"add_item">()};
     auto const free_point{find_free_point(*item)};
 
-    if (auto* actor{Cast<AActor>(item.GetObject())}) {
-        actor->SetOwner(GetOwner());
-    }
+    if (auto* actor{Cast<AActor>(item.GetObject())}) { actor->SetOwner(GetOwner()); }
 
     if (!free_point) {
         logger.log_warning(TEXT("Couldn't find a free spot for %s in the inventory."),
@@ -85,13 +83,9 @@ bool UInventoryComponent::move_item(FInventoryEntry const& moving_slot,
 #endif
 
     for (auto& item_entry : item_entries) {
-        if (&item_entry != &moving_slot) {
-            continue;
-        }
+        if (&item_entry != &moving_slot) { continue; }
 
-        if (!is_free(new_origin, moving_slot.dimensions(), &moving_slot)) {
-            return false;
-        }
+        if (!is_free(new_origin, moving_slot.dimensions(), &moving_slot)) { return false; }
 
         item_entry.origin = new_origin;
 
@@ -109,9 +103,7 @@ auto UInventoryComponent::find_free_point(IInventoryItem const& item) const
     for (int32 row{0}; row < n_rows; row++) {
         for (int32 col{0}; col < n_cols; col++) {
             FCoord coord{col, row};
-            if (is_free(coord, size)) {
-                return coord;
-            }
+            if (is_free(coord, size)) { return coord; }
         }
     }
 
@@ -126,9 +118,7 @@ auto UInventoryComponent::get_first_weapon() -> AWeaponBase* {
         for (int32 col{0}; col < n_cols; ++col) {
             FCoord const coord{col, row};
             if (auto* item{get_entry_at_origin(coord)}) {
-                if (auto* weapon{item->item->get_weapon()}) {
-                    return weapon;
-                }
+                if (auto* weapon{item->item->get_weapon()}) { return weapon; }
             }
         }
     }
@@ -146,9 +136,7 @@ auto UInventoryComponent::get_last_weapon() -> AWeaponBase* {
         for (int32 col{n_cols - 1}; col >= 0; --col) {
             FCoord const coord{col, row};
             if (auto* item{get_entry_at_origin(coord)}) {
-                if (auto* weapon{item->item->get_weapon()}) {
-                    return weapon;
-                }
+                if (auto* weapon{item->item->get_weapon()}) { return weapon; }
             }
         }
     }
@@ -167,9 +155,7 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     Algo::RandomShuffle(indexes);
 
     for (int32 i : indexes) {
-        if (auto* weapon{item_entries[i].item->get_weapon()}) {
-            return weapon;
-        }
+        if (auto* weapon{item_entries[i].item->get_weapon()}) { return weapon; }
     }
 
     return nullptr;
@@ -184,14 +170,10 @@ auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
     FAmmoData out{ammo_needed.type};
 
     for (auto& item_entry : item_entries) {
-        if (item_entry.item_type() != EItemType::Ammo) {
-            continue;
-        }
+        if (item_entry.item_type() != EItemType::Ammo) { continue; }
 
         auto* ammo{Cast<AAmmoItem>(item_entry.item.GetObject())};
-        if ((!ammo) || (ammo->ammo_type != ammo_needed.type)) {
-            continue;
-        }
+        if ((!ammo) || (ammo->ammo_type != ammo_needed.type)) { continue; }
 
         auto const ammo_taken{std::min(ammo_needed.amount, item_entry.stack_size.get_value())};
 
@@ -200,9 +182,7 @@ auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
         ammo_needed.amount -= ammo_taken;
         out.amount += ammo_taken;
 
-        if (ammo_needed.is_empty()) {
-            break;
-        }
+        if (ammo_needed.is_empty()) { break; }
     }
 
     remove_empty_entries();
@@ -213,14 +193,10 @@ auto UInventoryComponent::count_ammo(EAmmoType type) -> FAmmoData {
     FAmmoData out{type};
 
     for (auto& item_entry : item_entries) {
-        if (item_entry.item_type() != EItemType::Ammo) {
-            continue;
-        }
+        if (item_entry.item_type() != EItemType::Ammo) { continue; }
 
         auto* ammo{Cast<AAmmoItem>(item_entry.item.GetObject())};
-        if ((!ammo) || (ammo->ammo_type != type)) {
-            continue;
-        }
+        if ((!ammo) || (ammo->ammo_type != type)) { continue; }
 
         out.amount += item_entry.stack_size.get_value();
     }
@@ -264,9 +240,7 @@ bool UInventoryComponent::is_free(FCoord coord,
     }
 
     for (auto const& item_entry : item_entries) {
-        if (&item_entry == to_ignore) {
-            continue;
-        }
+        if (&item_entry == to_ignore) { continue; }
 
         // AABB collision
         // Check if A's left edge is to the left of B's right edge
@@ -295,9 +269,7 @@ bool UInventoryComponent::is_free(FCoord coord,
 }
 auto UInventoryComponent::get_entry_at_origin(FCoord coord) -> FInventoryEntry* {
     for (auto& item_entry : item_entries) {
-        if (item_entry.origin == coord) {
-            return &item_entry;
-        }
+        if (item_entry.origin == coord) { return &item_entry; }
     }
 
     return nullptr;
@@ -325,9 +297,7 @@ auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> 
         auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
 
         if (auto* item{get_entry_at_origin(coord_2d)}) {
-            if (auto* weapon{item->item->get_weapon()}) {
-                return weapon;
-            }
+            if (auto* weapon{item->item->get_weapon()}) { return weapon; }
         }
 
         coord_1d = next_index_fn(grid_area, coord_1d);

@@ -16,14 +16,10 @@ void URemoveGhostsOnStartComponent::TickComponent(float DeltaTime,
 
     if (auto* world{GetWorld()}) {
         auto* destruction_manager{world->GetSubsystem<UDestructionManagerSubsystem>()};
-        if (!destruction_manager) {
-            return;
-        }
+        if (!destruction_manager) { return; }
 
         for (auto* actor : TActorRange<AActor>(world)) {
-            if (!actor) {
-                continue;
-            }
+            if (!actor) { continue; }
 
             auto components{actor->GetComponents()};
             for (auto* component : components) {

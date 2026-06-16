@@ -127,9 +127,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         auto const actor_id{self.get_or_create_actor_id(actor)};
 
         if (auto* range{self.actor_id_to_range.Find(actor_id)}) {
-            if (range->is_empty()) {
-                range->offset = triggerable_id_index;
-            }
+            if (range->is_empty()) { range->offset = triggerable_id_index; }
             range->length++;
         }
 
@@ -147,9 +145,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::deregister_triggerable"))
 
         auto triggerable_ids{self.get_triggerable_ids(actor)};
-        if (triggerable_ids.empty()) {
-            return;
-        }
+        if (triggerable_ids.empty()) { return; }
 
         // Remove all TriggerableIds for this actor from id_to_actor map
         for (auto const& id : triggerable_ids) {
@@ -169,14 +165,10 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
     template <typename Self>
     std::span<TriggerableId const> get_triggerable_ids(this Self&& self, AActor& actor) {
         auto const actor_id_opt{self.get_actor_id(actor)};
-        if (!actor_id_opt) {
-            return {};
-        }
+        if (!actor_id_opt) { return {}; }
 
         auto const* range{self.actor_id_to_range.Find(*actor_id_opt)};
-        if (!range || range->is_empty()) {
-            return {};
-        }
+        if (!range || range->is_empty()) { return {}; }
 
         return std::span{&self.triggerable_ids[range->offset], range->length};
     }
@@ -274,9 +266,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
     template <typename Self>
     void tick_payloads(this Self&& self, float delta_time) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UCollisionEffectSubsystemCore::tick_payloads"))
-        if (self.ticking_payloads.IsEmpty()) {
-            return;
-        }
+        if (self.ticking_payloads.IsEmpty()) { return; }
 
         int32 write_index{0}; // Where to write next still-ticking ID
 
@@ -307,9 +297,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
             TEXT("Sandbox::UCollisionEffectSubsystemCore::get_or_create_actor_id"))
         static constexpr auto LOG{self.template NestedLogger<"get_or_create_actor_id">()};
 
-        if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) {
-            return *existing_id;
-        }
+        if (auto* existing_id{self.actor_to_actor_id.Find(&actor)}) { return *existing_id; }
 
         ActorId const new_id{self.next_actor_id++};
         self.actor_to_actor_id.Add(&actor, new_id);
@@ -324,9 +312,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
     template <typename Self>
     std::optional<ActorId> get_actor_id(this Self&& self, AActor& actor) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UCollisionEffectSubsystemCore::get_actor_id"))
-        if (auto* id{self.actor_to_actor_id.Find(&actor)}) {
-            return *id;
-        }
+        if (auto* id{self.actor_to_actor_id.Find(&actor)}) { return *id; }
 
         return std::nullopt;
     }

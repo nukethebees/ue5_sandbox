@@ -23,9 +23,7 @@ void FMassBulletDestructionExecutor::Execute(FMassExecutionContext& context) {
         auto const& bullet_data_frag{context.GetConstSharedFragment<FMassBulletDataFragment>()};
 
         for (int32 i{0}; i < n; ++i) {
-            if (!state_fragments[i].hit_occurred) {
-                continue;
-            }
+            if (!state_fragments[i].hit_occurred) { continue; }
 
             auto entity{context.GetEntity(i)};
             bullet_subsystem->destroy_bullet(entity, bullet_data_frag.bullet_type);

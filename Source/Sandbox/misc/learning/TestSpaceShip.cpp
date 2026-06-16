@@ -245,9 +245,7 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
         case EBoostBrakeState::None: {
             target_speed = cruise_speed;
             thrust_change_rate = 1.f / thrust_recharge_time;
-            if (target_speed < cur_speed) {
-                response = speed_responses.slowing_to_cruise;
-            }
+            if (target_speed < cur_speed) { response = speed_responses.slowing_to_cruise; }
 
             boost_engine_effect->Deactivate();
 
@@ -265,9 +263,7 @@ void ATestSpaceShip::start_boost() {
     }
 }
 void ATestSpaceShip::stop_boost() {
-    if (boost_brake_state == EBoostBrakeState::Boost) {
-        set(EBoostBrakeState::None);
-    }
+    if (boost_brake_state == EBoostBrakeState::Boost) { set(EBoostBrakeState::None); }
 }
 void ATestSpaceShip::start_brake() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
@@ -275,16 +271,12 @@ void ATestSpaceShip::start_brake() {
     }
 }
 void ATestSpaceShip::stop_brake() {
-    if (boost_brake_state == EBoostBrakeState::Brake) {
-        set(EBoostBrakeState::None);
-    }
+    if (boost_brake_state == EBoostBrakeState::Brake) { set(EBoostBrakeState::None); }
 }
 void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
     auto const starting_thrust_energy{self.thrust_energy};
 
-    if (starting_thrust_energy <= 0.f) {
-        self.set(EBoostBrakeState::None);
-    }
+    if (starting_thrust_energy <= 0.f) { self.set(EBoostBrakeState::None); }
 
     self.thrust_energy += dt * self.thrust_change_rate;
     self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
@@ -303,9 +295,7 @@ void ATestSpaceShip::roll(float direction) {
     manual_bank_direction = clamp(direction, 1.f);
 }
 void ATestSpaceShip::barrel_roll(float direction) {
-    if (!roll_state.can_roll()) {
-        return;
-    }
+    if (!roll_state.can_roll()) { return; }
 
     roll_state.time_remaining = roll_state.roll_duration;
     roll_state.direction = FMath::Sign(direction);
@@ -350,9 +340,7 @@ void ATestSpaceShip::update_laser_firing() {
             break;
         }
         case ELaserFiringMode::lock_on_transition: {
-            if (cooldown_finished) {
-                set_laser_mode(ELaserFiringMode::lock_on_searching);
-            }
+            if (cooldown_finished) { set_laser_mode(ELaserFiringMode::lock_on_searching); }
         }
         case ELaserFiringMode::lock_on_searching: {
             TRY_INIT_PTR(world, GetWorld());
@@ -372,9 +360,7 @@ void ATestSpaceShip::update_laser_firing() {
                     hit, start, end, obj_query_params, query_params)) {
 
                 auto const actor_hit{hit.GetActor()};
-                if (!actor_hit) {
-                    break;
-                }
+                if (!actor_hit) { break; }
 
                 set_lock_on_target(hit.GetActor());
                 set_laser_mode(ELaserFiringMode::lock_on_acquired);
@@ -637,9 +623,7 @@ void ATestSpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
                                          FMath::Clamp(velocity.Size(), 0.0, 100e3)};
     speed_sample_index++;
-    if (speed_sample_index >= speed_sample_max) {
-        speed_sample_index = 0;
-    }
+    if (speed_sample_index >= speed_sample_max) { speed_sample_index = 0; }
 
     on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
                                     speed_sample_index);

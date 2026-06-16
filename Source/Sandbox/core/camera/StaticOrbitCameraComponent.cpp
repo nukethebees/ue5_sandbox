@@ -9,9 +9,7 @@ void UStaticOrbitCameraComponent::BeginPlay() {
     Super::BeginPlay();
 
     auto const* const owner{GetOwner()};
-    if (owner) {
-        pivot_point = owner->GetActorLocation();
-    }
+    if (owner) { pivot_point = owner->GetActorLocation(); }
 }
 void UStaticOrbitCameraComponent::TickComponent(float DeltaTime,
                                                 ELevelTick TickType,

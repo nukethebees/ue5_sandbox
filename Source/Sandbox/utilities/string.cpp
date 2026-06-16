@@ -8,9 +8,7 @@ auto without_class_prefix(FString const& input) -> FString {
     int32 n{0};
     for (int32 i{n_full - 1}; i >= 0; --i) {
         auto const c{input[i]};
-        if (c == TEXT(':')) {
-            break;
-        }
+        if (c == TEXT(':')) { break; }
         n++;
     }
 

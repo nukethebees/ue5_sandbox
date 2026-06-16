@@ -130,9 +130,7 @@ void ASpaceShip::tick_debugs(float dt) {
         DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
     }
 
-    if (can_log()) {
-        seconds_since_last_log = 0.f;
-    }
+    if (can_log()) { seconds_since_last_log = 0.f; }
     seconds_since_last_log += dt;
 }
 #endif
@@ -163,9 +161,7 @@ void ASpaceShip::set(EBoostBrakeState s) {
         case EBoostBrakeState::None: {
             target_speed = cruise_speed;
             thrust_change_rate = 1.f / thrust_recharge_time;
-            if (target_speed < cur_speed) {
-                response = speed_responses.slowing_to_cruise;
-            }
+            if (target_speed < cur_speed) { response = speed_responses.slowing_to_cruise; }
 
             boost_engine_effect->Deactivate();
 
@@ -186,9 +182,7 @@ void ASpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
 void ASpaceShip::update_boost_brake(this ASpaceShip& self, float dt) {
     auto const starting_thrust_energy{self.thrust_energy};
 
-    if (starting_thrust_energy <= 0.f) {
-        self.set(EBoostBrakeState::None);
-    }
+    if (starting_thrust_energy <= 0.f) { self.set(EBoostBrakeState::None); }
 
     self.thrust_energy += dt * self.thrust_change_rate;
     self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
@@ -285,9 +279,7 @@ void ASpaceShip::update_laser_firing(float dt) {
             break;
         }
         case ELaserFiringMode::lock_on_transition: {
-            if (cooldown_finished) {
-                set_laser_mode(ELaserFiringMode::lock_on_searching);
-            }
+            if (cooldown_finished) { set_laser_mode(ELaserFiringMode::lock_on_searching); }
         }
         case ELaserFiringMode::lock_on_searching: {
             TRY_INIT_PTR(world, GetWorld());
@@ -307,9 +299,7 @@ void ASpaceShip::update_laser_firing(float dt) {
                     hit, start, end, obj_query_params, query_params)) {
 
                 auto const actor_hit{hit.GetActor()};
-                if (!actor_hit) {
-                    break;
-                }
+                if (!actor_hit) { break; }
 #if WITH_EDITOR
                 auto const actor_name{ml::get_best_display_name(*actor_hit)};
                 UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
@@ -337,9 +327,7 @@ void ASpaceShip::update_laser_firing(float dt) {
 
 void ASpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
-    if (can_log()) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString());
-    }
+    if (can_log()) { UE_LOG(LogSandboxActor, Verbose, TEXT("Turning: %s"), *direction.ToString()); }
 #endif
 
     rotation_input = direction;
@@ -350,9 +338,7 @@ void ASpaceShip::start_boost() {
     }
 }
 void ASpaceShip::stop_boost() {
-    if (boost_brake_state == EBoostBrakeState::Boost) {
-        set(EBoostBrakeState::None);
-    }
+    if (boost_brake_state == EBoostBrakeState::Boost) { set(EBoostBrakeState::None); }
 }
 void ASpaceShip::start_brake() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
@@ -360,22 +346,16 @@ void ASpaceShip::start_brake() {
     }
 }
 void ASpaceShip::stop_brake() {
-    if (boost_brake_state == EBoostBrakeState::Brake) {
-        set(EBoostBrakeState::None);
-    }
+    if (boost_brake_state == EBoostBrakeState::Brake) { set(EBoostBrakeState::None); }
 }
 void ASpaceShip::roll(float direction) {
 #if WITH_EDITOR
-    if (can_log()) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction);
-    }
+    if (can_log()) { UE_LOG(LogSandboxActor, Verbose, TEXT("Rolling: %.2f"), direction); }
 #endif
     manual_bank_direction = clamp(direction, 1.f);
 }
 void ASpaceShip::barrel_roll(float direction) {
-    if (!roll_state.can_roll()) {
-        return;
-    }
+    if (!roll_state.can_roll()) { return; }
 
     roll_state.time_remaining = roll_state.roll_duration;
     roll_state.direction = FMath::Sign(direction);
@@ -576,9 +556,7 @@ void ASpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
                                          FMath::Clamp(velocity.Size(), 0.0, 100e3)};
     speed_sample_index++;
-    if (speed_sample_index >= speed_sample_max) {
-        speed_sample_index = 0;
-    }
+    if (speed_sample_index >= speed_sample_max) { speed_sample_index = 0; }
 
     on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
                                     speed_sample_index);

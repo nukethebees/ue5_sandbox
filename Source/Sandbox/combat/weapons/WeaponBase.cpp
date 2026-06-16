@@ -26,13 +26,9 @@ FAmmoReloadResult AWeaponBase::reload(FAmmoData const& offered) {
     FAmmoReloadResult result;
     result.AmmoOfferedRemaining = offered;
 
-    if (offered.type != get_ammo_type()) {
-        return result;
-    }
+    if (offered.type != get_ammo_type()) { return result; }
 
-    if (!can_reload()) {
-        return result;
-    }
+    if (!can_reload()) { return result; }
 
     auto const needed{get_ammo_needed_for_reload()};
     auto const taken{FMath::Min(needed.amount, offered.amount)};

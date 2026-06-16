@@ -37,9 +37,7 @@ void UDamageManagerSubsystem::Tick(float delta_time) {
         change.Receiver->modify_health(change.Change);
     }
 
-    if (changes.view.empty()) {
-        tick_enabled = false;
-    }
+    if (changes.view.empty()) { tick_enabled = false; }
 }
 
 TStatId UDamageManagerSubsystem::GetStatId() const {

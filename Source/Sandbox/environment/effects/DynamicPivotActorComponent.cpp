@@ -11,9 +11,7 @@ void UDynamicPivotActorComponent::BeginPlay() {
     Super::BeginPlay();
 
     auto const* const owner{GetOwner()};
-    if (owner) {
-        pivot_point = owner->GetActorLocation();
-    }
+    if (owner) { pivot_point = owner->GetActorLocation(); }
 
     // Get arrow used for positioning
     // If it doesn't exist then do a raycast instead

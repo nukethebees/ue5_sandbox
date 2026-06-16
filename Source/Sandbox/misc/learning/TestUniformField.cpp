@@ -109,9 +109,7 @@ void ATestUniformField::Tick(float dt) {
     update_visualisation();
 
 #if WITH_EDITOR
-    if (dbg_timer.is_finished()) {
-        dbg_timer.reset();
-    }
+    if (dbg_timer.is_finished()) { dbg_timer.reset(); }
 #endif
 
     SetActorTickEnabled(false);
@@ -215,9 +213,7 @@ void ATestUniformField::update_cells_array(
 
             auto const within_radii{(dist_cm > ps.inner_radius) && (dist_cm < ps.outer_radius)};
 
-            if (!within_radii) {
-                return;
-            }
+            if (!within_radii) { return; }
 
             auto const strength{ps.strength * FMath::Pow(dist_from_radius_m, ps.falloff)};
             auto const dir{
@@ -233,9 +229,7 @@ void ATestUniformField::update_cells_array(
 }
 
 void ATestUniformField::update_cells() {
-    if (!grid_dirty) {
-        return;
-    }
+    if (!grid_dirty) { return; }
 
     auto const n_cells{get_num_cells()};
 
@@ -307,9 +301,7 @@ void ATestUniformField::configure_box_mesh() {
 
     box_mesh->SetVisibility(display_box);
     auto box_mesh_src{box_mesh->GetStaticMesh()};
-    if (!box_mesh_src) {
-        return;
-    }
+    if (!box_mesh_src) { return; }
 
     box_mesh->SetRelativeScale3D(get_field_extent() / box_mesh_src->GetBounds().BoxExtent);
 }
@@ -357,9 +349,7 @@ void ATestUniformField::update_visualisation() {
     update_hism_visualisation();
 }
 void ATestUniformField::update_hism_visualisation() {
-    if (!visualisation_dirty) {
-        return;
-    }
+    if (!visualisation_dirty) { return; }
 
     constexpr bool world_space{true};
     constexpr bool mark_render_dirty{false};
@@ -384,9 +374,7 @@ void ATestUniformField::update_hism_visualisation() {
     dirty_cells.Reset();
     for (int32 i{0}; i < num_cells; ++i) {
         auto& cell{cells[i]};
-        if (cell.quantised_changed()) {
-            dirty_cells.Emplace(i);
-        }
+        if (cell.quantised_changed()) { dirty_cells.Emplace(i); }
     }
 
     auto const n_dirty{dirty_cells.Num()};
@@ -423,9 +411,7 @@ void ATestUniformField::update_hism_visualisation() {
         }
 
         // Add final if it wasn't done
-        if (run_end == run_start) {
-            dirty_runs.Emplace(run_start, 1 + (run_end - run_start));
-        }
+        if (run_end == run_start) { dirty_runs.Emplace(run_start, 1 + (run_end - run_start)); }
 
         auto const n_dirty_runs{dirty_runs.Num()};
 

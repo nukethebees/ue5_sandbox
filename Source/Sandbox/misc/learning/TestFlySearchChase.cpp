@@ -27,9 +27,7 @@ void ATestFlySearchChase::Tick(float dt) {
         }
     }
 
-    if (show_debug_shapes) {
-        draw_debug_shapes();
-    }
+    if (show_debug_shapes) { draw_debug_shapes(); }
 }
 
 void ATestFlySearchChase::BeginPlay() {
@@ -124,9 +122,7 @@ auto ATestFlySearchChase::scan_for_target() -> bool {
         *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), ThisClass::StaticClass())};
 
     chase_target = ml::get_centre_actor_in_fov(*this, hits);
-    if (!chase_target.IsValid()) {
-        return false;
-    }
+    if (!chase_target.IsValid()) { return false; }
 
     return true;
 }

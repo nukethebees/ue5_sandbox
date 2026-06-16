@@ -48,9 +48,7 @@ void ATestFlyCircularArc::move_to_point(float dt) {
     auto const proportion_left{abs_angle_left / (2.f * PI)};
     auto const dist_left{proportion_left * circumfrence};
 
-    if (FMath::IsNearlyZero(dist_left)) {
-        SetActorTickEnabled(false);
-    }
+    if (FMath::IsNearlyZero(dist_left)) { SetActorTickEnabled(false); }
 
     auto const dist_move{FMath::Min(dist_left, max_dist)};
     auto const proportion_move{dist_move / circumfrence};
@@ -124,12 +122,8 @@ New point: %s
 void ATestFlyCircularArc::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
 
-    if (!target_actor.IsValid()) {
-        return;
-    }
-    if (!on_same_z()) {
-        return;
-    }
+    if (!target_actor.IsValid()) { return; }
+    if (!on_same_z()) { return; }
     initial_setup(*target_actor);
 }
 void ATestFlyCircularArc::BeginPlay() {

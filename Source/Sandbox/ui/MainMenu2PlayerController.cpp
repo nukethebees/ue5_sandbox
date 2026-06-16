@@ -40,7 +40,5 @@ void AMainMenu2PlayerController::spawn_menu_widget() {
     RETURN_IF_NULLPTR(main_menu_widget_class);
 
     main_menu_widget_instance = CreateWidget<UMainMenu2Widget>(this, main_menu_widget_class);
-    if (main_menu_widget_instance) {
-        main_menu_widget_instance->AddToViewport();
-    }
+    if (main_menu_widget_instance) { main_menu_widget_instance->AddToViewport(); }
 }

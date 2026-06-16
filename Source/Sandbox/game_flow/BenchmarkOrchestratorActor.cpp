@@ -23,9 +23,7 @@ ABenchmarkOrchestratorActor::ABenchmarkOrchestratorActor() {
 void ABenchmarkOrchestratorActor::BeginPlay() {
     Super::BeginPlay();
 
-    if (!enabled) {
-        return;
-    }
+    if (!enabled) { return; }
 
     if (benchmark_camera) {
         if (auto* pc{UGameplayStatics::GetPlayerController(this, 0)}) {
@@ -37,9 +35,7 @@ void ABenchmarkOrchestratorActor::BeginPlay() {
         UE_LOG(LogSandbox, Fatal, TEXT("benchmark_camera is nullptr"));
     }
 
-    if (!run_benchmark) {
-        return;
-    }
+    if (!run_benchmark) { return; }
 
     constexpr float minimum_print_time{5.0f};
 
@@ -68,9 +64,7 @@ void ABenchmarkOrchestratorActor::BeginPlay() {
 void ABenchmarkOrchestratorActor::EndPlay(EEndPlayReason::Type const EndPlayReason) {
     Super::EndPlay(EndPlayReason);
 
-    if (!run_benchmark) {
-        return;
-    }
+    if (!run_benchmark) { return; }
 
     stop_trace();
 }
@@ -98,17 +92,13 @@ void ABenchmarkOrchestratorActor::start_trace() {
     channels.Reset(0);
     bool first{true};
     for (auto const& ch : trace_channels) {
-        if (!first) {
-            channels += TEXT(',');
-        }
+        if (!first) { channels += TEXT(','); }
 
         channels += ch.ToLower();
         first = false;
     }
 
-    if (trace_none) {
-        channels = TEXT("");
-    }
+    if (trace_none) { channels = TEXT(""); }
 
     FTraceAuxiliary::Start(
         FTraceAuxiliary::EConnectionType::File, *trace_filename, *channels, &tracing_options);

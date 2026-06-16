@@ -27,9 +27,7 @@ bool ATestPistol::can_fire() const {
     return ammo > 0;
 }
 void ATestPistol::start_firing() {
-    if (!can_fire()) {
-        return;
-    }
+    if (!can_fire()) { return; }
 
     RETURN_IF_NULLPTR(fire_point_arrow);
     TRY_INIT_PTR(world, GetWorld());

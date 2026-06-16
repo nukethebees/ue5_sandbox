@@ -63,9 +63,7 @@ void UAntigravLiftActorComponent::OnOverlapBegin(UPrimitiveComponent* Overlapped
         }
     }
 
-    if (!floating_characters.IsEmpty()) {
-        SetComponentTickEnabled(true);
-    }
+    if (!floating_characters.IsEmpty()) { SetComponentTickEnabled(true); }
 }
 
 void UAntigravLiftActorComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp,
@@ -79,9 +77,7 @@ void UAntigravLiftActorComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedCo
         }
     }
 
-    if (floating_characters.IsEmpty()) {
-        SetComponentTickEnabled(false);
-    }
+    if (floating_characters.IsEmpty()) { SetComponentTickEnabled(false); }
 }
 
 void UAntigravLiftActorComponent::display_n_floating() {

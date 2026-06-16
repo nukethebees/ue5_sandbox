@@ -36,9 +36,7 @@ void FSandboxEditorModule::StartupModule() {
     } else {
         // Delay registration until ToolMenus is ready
         FCoreDelegates::OnPostEngineInit.AddLambda([this]() {
-            if (UToolMenus::IsToolMenuUIEnabled()) {
-                register_menu_extensions();
-            }
+            if (UToolMenus::IsToolMenuUIEnabled()) { register_menu_extensions(); }
         });
     }
     register_custom_properties();

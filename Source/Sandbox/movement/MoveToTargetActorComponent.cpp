@@ -48,9 +48,7 @@ void UMoveToTargetActorComponent::TickComponent(float DeltaTime,
 void UMoveToTargetActorComponent::OnClicked() {
     if (auto* owner{GetOwner()}) {
         start_location = owner->GetActorLocation();
-        if (target_component) {
-            end_location = target_component->GetComponentLocation();
-        }
+        if (target_component) { end_location = target_component->GetComponentLocation(); }
     }
 
     SetComponentTickEnabled(true);

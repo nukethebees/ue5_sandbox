@@ -141,28 +141,18 @@ auto AFloorTurret::search_for_enemy(float vision_radius, float vision_angle) con
     }
 #endif
 
-    if (!sweep_hit) {
-        return nullptr;
-    }
+    if (!sweep_hit) { return nullptr; }
 
     for (auto const& hit : hits) {
         auto const target{hit.GetActor()};
-        if (!target) {
-            continue;
-        }
+        if (!target) { continue; }
 
-        if (!within_vision_cone(*target, vision_angle)) {
-            continue;
-        }
+        if (!within_vision_cone(*target, vision_angle)) { continue; }
 
-        if (!is_enemy(*target)) {
-            continue;
-        }
+        if (!is_enemy(*target)) { continue; }
 
         auto* tgt_health{target->FindComponentByClass<UHealthComponent>()};
-        if (!tgt_health) {
-            continue;
-        }
+        if (!tgt_health) { continue; }
 
         UE_LOG(LogSandboxAI, Verbose, TEXT("Found enemy: %s\n"), *target->GetActorLabel());
 
@@ -245,9 +235,7 @@ void AFloorTurret::handle_attacking_state(float dt) {
 
     if (state.time_since_last_shot >= seconds_per_bullet) {
 #if WITH_EDITOR
-        if (can_fire) {
-            fire_bullet();
-        }
+        if (can_fire) { fire_bullet(); }
 #else
         fire_bullet();
 #endif

@@ -20,9 +20,7 @@ class SANDBOX_API UValueWidget : public UUserWidget {
 
     template <ml::Numeric... Ts>
     void update(Ts const... values) {
-        if (!value_text) {
-            return;
-        }
+        if (!value_text) { return; }
 
         auto const display{FText::Format(format_spec_text, FText::AsNumber(values)...)};
 
@@ -30,9 +28,7 @@ class SANDBOX_API UValueWidget : public UUserWidget {
     }
     template <ml::Numeric... Ts>
     void update(FNumberFormattingOptions const& options, Ts const... values) {
-        if (!value_text) {
-            return;
-        }
+        if (!value_text) { return; }
 
         auto const display{FText::Format(format_spec_text, FText::AsNumber(values, &options)...)};
 

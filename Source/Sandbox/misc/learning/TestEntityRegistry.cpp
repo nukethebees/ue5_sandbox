@@ -8,6 +8,9 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
+// -------------------------------------------------------------------------------------------------
+// TraceHits
+// -------------------------------------------------------------------------------------------------
 void TraceHits::reset() {
     ml::reset(actors, actor_components, hit_items);
 }
@@ -29,6 +32,9 @@ void TraceHits::validate_array_sizes() const {
     });
 }
 
+// -------------------------------------------------------------------------------------------------
+// DamageEvents
+// -------------------------------------------------------------------------------------------------
 auto DamageEvents::num() const -> int32 {
     return damage_amounts.Num();
 }
@@ -50,6 +56,9 @@ void DamageEvents::validate_array_sizes() const {
     });
 }
 
+// -------------------------------------------------------------------------------------------------
+// TestEntityUniqueEntityData
+// -------------------------------------------------------------------------------------------------
 auto TestEntityUniqueEntityData::num() const -> int32 {
     return registry_handles.Num();
 }
@@ -72,6 +81,9 @@ void TestEntityUniqueEntityData::validate_array_sizes() const {
     });
 }
 
+// -------------------------------------------------------------------------------------------------
+// NewEntities
+// -------------------------------------------------------------------------------------------------
 auto NewEntities::num() const -> int32 {
     return registry_indices.Num();
 }
@@ -85,6 +97,9 @@ void NewEntities::add_uninitialised(int32 const count) {
     registry_indices.AddUninitialized(count);
 }
 
+// -------------------------------------------------------------------------------------------------
+// EntityDeathInfo
+// -------------------------------------------------------------------------------------------------
 auto EntityDeathInfo::num() const -> int32 {
     return reasons.Num();
 }
@@ -96,6 +111,10 @@ void EntityDeathInfo::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(killers),
     });
 }
+
+// -------------------------------------------------------------------------------------------------
+// ATestEntityRegistry
+// -------------------------------------------------------------------------------------------------
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -214,9 +233,7 @@ void ATestEntityRegistry::queue_damage_events(TConstArrayView<int32> const damag
 
     for (int32 i{0}; i < n; ++i) {
         auto const id{get_owner(actors[i])};
-        if (!id.is_valid()) {
-            continue;
-        }
+        if (!id.is_valid()) { continue; }
 
         auto& actor_damage_events{queued_damage_events[id.id]};
         actor_damage_events.damage_amounts.Add(damages[i]);
@@ -250,9 +267,7 @@ void ATestEntityRegistry::commit_entity_updates() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const generation_index{queued_entity_generations[i]};
-        if (!is_valid_index(generation_index)) {
-            continue;
-        }
+        if (!is_valid_index(generation_index)) { continue; }
         auto const entity_index{generation_index.index};
 
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
@@ -268,9 +283,7 @@ void ATestEntityRegistry::commit_death_updates() {
     dead_entities_this_frame.Reset();
     auto const n{entity_data.get_num()};
     for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] == 0u) {
-            dead_entities_this_frame.Emplace(i, generations[i]);
-        }
+        if (entity_data.alive[i] == 0u) { dead_entities_this_frame.Emplace(i, generations[i]); }
     }
 }
 
@@ -289,9 +302,7 @@ void ATestEntityRegistry::refresh_free_indices() {
     free_indices.Reset();
     auto const n{entity_data.get_num()};
     for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] == 0u) {
-            free_indices.Add(i);
-        }
+        if (entity_data.alive[i] == 0u) { free_indices.Add(i); }
     }
 }
 void ATestEntityRegistry::end_tick() {
@@ -380,9 +391,7 @@ auto ATestEntityRegistry::collect_entities_in_range(
             out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
         }
 
-        if (count >= n_out_limit) {
-            break;
-        }
+        if (count >= n_out_limit) { break; }
     }
 
     return count;
@@ -407,19 +416,13 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
     for (int32 i{0}; i < n; ++i) {
         auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
 
-        if (dist_sq > radius_squared) {
-            continue;
-        }
+        if (dist_sq > radius_squared) { continue; }
 
-        if (entity_data.teams[i] == team) {
-            continue;
-        }
+        if (entity_data.teams[i] == team) { continue; }
 
         out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
 
-        if (count >= n_out_limit) {
-            break;
-        }
+        if (count >= n_out_limit) { break; }
     }
 
     return count;

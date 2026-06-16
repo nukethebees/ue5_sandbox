@@ -146,9 +146,7 @@ void ATestCapitalShipFighters::update_visuals() {
     update_ismc_transforms();
     instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
 
-    if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
-        draw_debug_shapes();
-    }
+    if (enable_target_debug_drawing || enable_ship_location_debug_drawing) { draw_debug_shapes(); }
 }
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
@@ -198,14 +196,10 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{ml::get_vector3d(locations, i)};
 
-        if (enable_ship_location_debug_drawing) {
-            debug_drawer.draw_sphere(ship_location);
-        }
+        if (enable_ship_location_debug_drawing) { debug_drawer.draw_sphere(ship_location); }
 
         if (enable_target_debug_drawing) {
-            if (!target_indices[i].is_valid()) {
-                continue;
-            }
+            if (!target_indices[i].is_valid()) { continue; }
 
             auto const target_location{ml::get_vector3d(target_locations, i)};
             debug_drawer.draw_line(ship_location, target_location);
@@ -254,9 +248,7 @@ void ATestCapitalShipFighters::spawn_instances(
         SANDBOX_NAMED_NUM(new_teams),
         SANDBOX_NAMED_NUM(new_targets),
     });
-    if (n_new < 1) {
-        return;
-    }
+    if (n_new < 1) { return; }
 
     auto const speed{actor_config->speed};
 
@@ -323,22 +315,16 @@ void ATestCapitalShipFighters::handle_firing() {
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
-        if (laser_cooldowns.remaining_times[ship_index] > 0.f) {
-            continue;
-        }
+        if (laser_cooldowns.remaining_times[ship_index] > 0.f) { continue; }
 
-        if (!target_indices[ship_index].is_valid()) {
-            continue;
-        }
+        if (!target_indices[ship_index].is_valid()) { continue; }
 
         auto const ship_location{ml::get_vector3f(locations, ship_index)};
         auto const target_direction{ml::get_vector3f(target_directions, ship_index)};
         auto const direction{ml::get_vector3f(directions, ship_index)};
 
         auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
-        if (dot_product < aim_threshold) {
-            continue;
-        }
+        if (dot_product < aim_threshold) { continue; }
 
         auto const laser_offset{fire_point_offset * direction};
         auto const laser_location{ship_location + laser_offset};

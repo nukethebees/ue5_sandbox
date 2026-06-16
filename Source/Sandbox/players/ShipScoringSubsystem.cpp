@@ -6,9 +6,7 @@
 
 void UShipScoringSubsystem::register_kills(FShipAttackResult attack) {
     int32 kills{attack.killed_actors.Num()};
-    if (attack.projectile_type == EShipProjectileType::homing_laser) {
-        kills += kills - 1;
-    }
+    if (attack.projectile_type == EShipProjectileType::homing_laser) { kills += kills - 1; }
 
     UE_LOG(LogSandboxSubsystem, Verbose, TEXT("Registering %d kill(s)."), kills);
     if (attack.instigator.IsValid()) {

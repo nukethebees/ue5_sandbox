@@ -100,20 +100,14 @@ void ATestUniformFieldFly2::set_state(ETestUniformFieldFly2State new_state) {
     }
 }
 void ATestUniformFieldFly2::explore(float dt) {
-    if (show_vision_cone) {
-        display_vision_cone();
-    }
+    if (show_vision_cone) { display_vision_cone(); }
 
-    if (at_target()) {
-        set_new_destination();
-    }
+    if (at_target()) { set_new_destination(); }
 
     ml::face_point(*this, destination);
     move_to_destination(dt);
 
-    if (try_find_target()) {
-        set_state(ETestUniformFieldFly2State::tracking);
-    }
+    if (try_find_target()) { set_state(ETestUniformFieldFly2State::tracking); }
 }
 void ATestUniformFieldFly2::track(float dt) {
     if (!target.IsValid()) {
@@ -269,9 +263,7 @@ bool ATestUniformFieldFly2::try_find_target() {
                                           target_classes)};
 
     target = ml::get_centre_actor_in_fov(*this, hits);
-    if (!target.IsValid()) {
-        return false;
-    }
+    if (!target.IsValid()) { return false; }
 
     if (can_log(EActorLogVerbosity::Basic)) {
         UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ml::get_best_display_name(*target));

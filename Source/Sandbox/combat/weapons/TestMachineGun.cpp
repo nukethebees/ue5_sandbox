@@ -37,13 +37,9 @@ void ATestMachineGun::start_firing() {
 }
 
 void ATestMachineGun::sustain_firing(float delta_time) {
-    if (!is_firing) {
-        return;
-    }
+    if (!is_firing) { return; }
 
-    if (!can_fire()) {
-        return;
-    }
+    if (!can_fire()) { return; }
 
     time_since_last_shot += delta_time;
     auto const seconds_per_bullet{1.0f / fire_rate};
