@@ -85,6 +85,17 @@ void NewEntities::add_uninitialised(int32 const count) {
     registry_indices.AddUninitialized(count);
 }
 
+auto EntityDeathInfo::num() const -> int32 {
+    return reasons.Num();
+}
+
+void EntityDeathInfo::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(reasons),
+        SANDBOX_NAMED_NUM(victims),
+        SANDBOX_NAMED_NUM(killers),
+    });
+}
 ATestEntityRegistry::ATestEntityRegistry() {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -225,6 +236,12 @@ void ATestEntityRegistry::update_entities(ConstView const view) {
 
     queued_entity_data.add(view.data);
     queued_entity_generations.Append(view.indices);
+}
+void ATestEntityRegistry::set_death_info(EntityDeathInfo const& death_info) {
+    death_info.validate_array_sizes();
+
+    auto const n{death_info.num()};
+    if (num < 1) { return; }
 }
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);

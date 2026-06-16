@@ -3,6 +3,7 @@
 #include "TestEntityRegistryData.h"
 
 #include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/TestDeathReason.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestEntityUniqueId.h>
 #include <Sandbox/misc/learning/TestTeam.h>
@@ -66,6 +67,16 @@ struct NewEntities {
     void add_uninitialised(int32 const count);
 };
 
+struct EntityDeathInfo {
+    TArray<ETestDeathReason> reasons;
+    TArray<FRegistryEntityHandle> victims;
+    TArray<FRegistryEntityHandle> killers;
+
+    auto num() const -> int32;
+
+    void validate_array_sizes() const;
+};
+
 UCLASS()
 class ATestEntityRegistry : public AActor {
   public:
@@ -109,6 +120,7 @@ class ATestEntityRegistry : public AActor {
 
     // General entity updates
     void update_entities(ConstView const view);
+    void set_death_info(EntityDeathInfo const& death_info);
 
     // Frame events
     void commit_updates();
