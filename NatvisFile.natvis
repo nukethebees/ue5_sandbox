@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="FVectors3f">
+    <DisplayString>{{ num = {xs.ArrayNum} }}</DisplayString>
+    <Expand>
+      <Item Name="num">xs.ArrayNum</Item>
+      <CustomListItems MaxItemsPerView="5000">
+        <Variable Name="i" InitialValue="0" />
+        <Size>xs.ArrayNum*3</Size>
+        <Loop>
+          <Item Name="x[{i}]">xs[i]</Item>
+          <Item Name="y[{i}]">ys[i]</Item>
+          <Item Name="z[{i}]">zs[i]</Item>
+          <Exec>++i</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>
