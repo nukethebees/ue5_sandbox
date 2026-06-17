@@ -90,7 +90,8 @@ void ATestStaticTurrets::resolve_hit_events() {
         if (healths[ismc_index_hit] <= 0) {
             local_indices_to_remove.Add(ismc_index_hit);
             entity_death_info.add(ETestDeathReason::Combat,
-                                  entity_registry_handles[ismc_index_hit]);
+                                  entity_registry_handles[ismc_index_hit],
+                                  view.instigators[i]);
         }
     }
 

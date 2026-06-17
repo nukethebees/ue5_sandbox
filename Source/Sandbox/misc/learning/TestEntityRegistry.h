@@ -36,10 +36,23 @@ struct TraceHits {
     void validate_array_sizes() const;
 };
 
+struct UnresolvedDamageEvents {
+    TArray<AActor*> damaged_actors;
+    TArray<int32> damage_amounts;
+    TArray<UActorComponent*> actor_components;
+    TArray<int32> hit_items;
+    TArray<FRegistryEntityHandle> instigators;
+
+    auto num() const -> int32;
+    void reset();
+    void validate_array_sizes() const;
+};
+
 struct DamageEvents {
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;
+    TArray<FRegistryEntityHandle> instigators;
 
     auto num() const -> int32;
     void reset();
@@ -128,10 +141,7 @@ class ATestEntityRegistry : public AActor {
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> NewEntities;
 
     // Damage updates
-    void queue_damage_events(TConstArrayView<int32> const damages,
-                             TConstArrayView<AActor*> const actors,
-                             TConstArrayView<UActorComponent*> const components,
-                             TConstArrayView<int32> const items);
+    void queue_damage_events(UnresolvedDamageEvents const& damage_events);
     auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
 
     // General entity updates

@@ -183,7 +183,7 @@ void ATestLasers::handle_collisions(float const dt) {
 
     auto const damage{actor_config->damage};
 
-    ml::reset(to_remove, hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
+    ml::reset(to_remove, damage_events);
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{ml::get_vector3d(locations, i)};
@@ -202,14 +202,14 @@ void ATestLasers::handle_collisions(float const dt) {
         auto* hit_component{hit.GetComponent()};
         if (!IsValid(hit_component)) { continue; }
 
-        hit_damage_queue.Add(damage);
-        hit_actor_queue.Add(hit_actor);
-        hit_component_queue.Add(hit_component);
-        hit_item_queue.Add(hit.Item);
+        damage_events.damage_amounts.Add(damage);
+        damage_events.damaged_actors.Add(hit_actor);
+        damage_events.actor_components.Add(hit_component);
+        damage_events.hit_items.Add(hit.Item);
+        damage_events.instigators.Add(instigator_handles[i]);
     }
 
-    entity_registry->queue_damage_events(
-        hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
+    entity_registry->queue_damage_events(damage_events);
 
     remove_instances(to_remove);
 }
@@ -304,10 +304,7 @@ void ATestLasers::clear_runtime_state() {
               rotations_to_add,
               to_remove,
               instigator_handles,
-              hit_damage_queue,
-              hit_actor_queue,
-              hit_component_queue,
-              hit_item_queue);
+              damage_events);
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
@@ -327,7 +324,7 @@ void ATestLasers::clear_spawn_buffers() {
     ml::reset(locations_to_add, rotations_to_add, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
-    ml::reset(hit_damage_queue, hit_actor_queue, hit_component_queue, hit_item_queue);
+    ml::reset(damage_events);
 }
 
 // Checks

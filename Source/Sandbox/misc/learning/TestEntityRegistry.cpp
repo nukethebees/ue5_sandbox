@@ -35,11 +35,33 @@ void TraceHits::validate_array_sizes() const {
 // -------------------------------------------------------------------------------------------------
 // DamageEvents
 // -------------------------------------------------------------------------------------------------
+auto UnresolvedDamageEvents::num() const -> int32 {
+    return damaged_actors.Num();
+}
+
+void UnresolvedDamageEvents::reset() {
+    damaged_actors.Reset();
+    damage_amounts.Reset();
+    actor_components.Reset();
+    hit_items.Reset();
+    instigators.Reset();
+}
+
+void UnresolvedDamageEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(damaged_actors),
+        SANDBOX_NAMED_NUM(damage_amounts),
+        SANDBOX_NAMED_NUM(actor_components),
+        SANDBOX_NAMED_NUM(hit_items),
+        SANDBOX_NAMED_NUM(instigators),
+    });
+}
+
 auto DamageEvents::num() const -> int32 {
     return damage_amounts.Num();
 }
 void DamageEvents::reset() {
-    ml::reset(damage_amounts, actor_components, hit_items);
+    ml::reset(damage_amounts, actor_components, hit_items, instigators);
 }
 void DamageEvents::remove_at_swap(int32 const index,
                                   int32 const count,
@@ -47,12 +69,14 @@ void DamageEvents::remove_at_swap(int32 const index,
     damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
     actor_components.RemoveAtSwap(index, count, allow_shrinking);
     hit_items.RemoveAtSwap(index, count, allow_shrinking);
+    instigators.RemoveAtSwap(index, count, allow_shrinking);
 }
 void DamageEvents::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(damage_amounts),
         SANDBOX_NAMED_NUM(actor_components),
         SANDBOX_NAMED_NUM(hit_items),
+        SANDBOX_NAMED_NUM(instigators),
     });
 }
 
@@ -240,27 +264,20 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 }
 
 // Damage updates
-void ATestEntityRegistry::queue_damage_events(TConstArrayView<int32> const damages,
-                                              TConstArrayView<AActor*> const actors,
-                                              TConstArrayView<UActorComponent*> const components,
-                                              TConstArrayView<int32> const items) {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(damages),
-        SANDBOX_NAMED_NUM(actors),
-        SANDBOX_NAMED_NUM(components),
-        SANDBOX_NAMED_NUM(items),
-    });
+void ATestEntityRegistry::queue_damage_events(UnresolvedDamageEvents const& damage_events) {
+    damage_events.validate_array_sizes();
 
-    auto const n{ml::num(damages)};
+    auto const n{ml::num(damage_events)};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const id{get_owner(actors[i])};
+        auto const id{get_owner(damage_events.damaged_actors[i])};
         if (!id.is_valid()) { continue; }
 
         auto& actor_damage_events{queued_damage_events[id.id]};
-        actor_damage_events.damage_amounts.Add(damages[i]);
-        actor_damage_events.actor_components.Add(components[i]);
-        actor_damage_events.hit_items.Add(items[i]);
+        actor_damage_events.damage_amounts.Add(damage_events.damage_amounts[i]);
+        actor_damage_events.actor_components.Add(damage_events.actor_components[i]);
+        actor_damage_events.hit_items.Add(damage_events.hit_items[i]);
+        actor_damage_events.instigators.Add(damage_events.instigators[i]);
     }
 }
 auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) const
@@ -292,7 +309,7 @@ void ATestEntityRegistry::set_death_infos(EntityDeathInfo const& death_info) {
         auto const killer_handle{death_info.killers[i]};
 
         if (killer_handle.is_valid()) {
-            auto const killer_id{find_unique_id(victim_handle)};
+            auto const killer_id{find_unique_id(killer_handle)};
             unique_entities.killed_by[victim_id.id] = killer_id;
             unique_entities.kills[killer_id.id] += 1;
         }

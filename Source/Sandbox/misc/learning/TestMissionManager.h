@@ -49,6 +49,9 @@ class ATestMissionManager : public AActor {
     auto get_player_kills() const noexcept -> int32 { return player_kills; }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
+    auto mission_running() const noexcept -> bool {
+        return mission_state == ETestMissionState::Running;
+    }
     auto is_ready() const noexcept -> bool;
 
     auto get_player_id() const { return player_id; }

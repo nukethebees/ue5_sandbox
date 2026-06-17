@@ -86,7 +86,9 @@ void ATestSpaceShipController::Tick(float dt) {
     update_crosshair_positions(*ss);
     update_lock_on_widget(*ss);
 
-    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+    if (mission_manager->mission_running()) {
+        hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+    }
 
     log_config.on_tick_end();
 }
@@ -381,7 +383,10 @@ void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManag
     on_mission_update_handle =
         mission_manager->on_mission_update.AddUObject(this, &ThisClass::on_mission_update);
 }
-void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {}
+void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {
+    FString const mission_status{make_mission_status_message(manager)};
+    hud_widget->set_mission_status(mission_status);
+}
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
 

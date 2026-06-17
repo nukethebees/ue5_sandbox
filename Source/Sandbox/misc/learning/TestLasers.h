@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>
@@ -116,14 +117,7 @@ class ATestLasers : public AActor {
     TArray<int32> to_remove;
 
     // Damage transaction
-    UPROPERTY()
-    TArray<int32> hit_damage_queue;
-    UPROPERTY()
-    TArray<AActor*> hit_actor_queue;
-    UPROPERTY()
-    TArray<UActorComponent*> hit_component_queue;
-    UPROPERTY()
-    TArray<int32> hit_item_queue;
+    UnresolvedDamageEvents damage_events;
 
 #if WITH_EDITORONLY_DATA
     // Debugging
