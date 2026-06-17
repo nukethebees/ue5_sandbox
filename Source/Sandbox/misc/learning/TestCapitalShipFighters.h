@@ -87,8 +87,10 @@ class ATestCapitalShipFighters : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    TArray<FRegistryEntityHandle> entity_indices;
+
+    TArray<FRegistryEntityHandle> entity_handles;
     TArray<int32> local_indices_to_remove;
+    EntityDeathInfo entity_death_info;
 
     // Transform
     FVectors3f locations;

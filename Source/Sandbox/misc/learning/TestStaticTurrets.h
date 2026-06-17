@@ -84,7 +84,7 @@ class ATestStaticTurrets : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     TestEntityOwnerId owner_id{};
-    TArray<FRegistryEntityHandle> entity_registry_handles{};
+    TArray<FRegistryEntityHandle> entity_handles{};
     EntityDeathInfo entity_death_info;
 
     // Location

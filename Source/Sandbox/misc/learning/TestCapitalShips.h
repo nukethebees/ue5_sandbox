@@ -2,6 +2,7 @@
 
 #include <Sandbox/misc/learning/RegistryEntityHandle.h>
 #include <Sandbox/misc/learning/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -89,9 +90,10 @@ class ATestCapitalShips : public AActor {
     // Entity data
     TestEntityOwnerId owner_id{};
     UPROPERTY()
-    TArray<FRegistryEntityHandle> entity_indices;
+    TArray<FRegistryEntityHandle> entity_handles;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
+    EntityDeathInfo entity_death_info;
 
     // Transform
     UPROPERTY()

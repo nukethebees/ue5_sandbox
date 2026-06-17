@@ -77,11 +77,16 @@ void ATestCapitalShips::resolve_hit_events() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const ismc_index_hit{view.hit_items[i]};
-        auto const entity_hit{entity_indices[ismc_index_hit]};
 
-        auto const damage_done{view.damage_amounts[i]};
-        healths[ismc_index_hit] -= damage_done;
+        healths[ismc_index_hit] -= view.damage_amounts[i];
+        if (healths[ismc_index_hit] <= 0) {
+            local_indices_to_remove.Add(ismc_index_hit);
+            entity_death_info.add(
+                ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
+        }
     }
+
+    validate_array_sizes();
 }
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
@@ -100,18 +105,19 @@ void ATestCapitalShips::update_entity_registry() {
         update_data.alive[i] = healths[i] > 0;
     }
 
-    entity_registry->update_entities({entity_indices, update_data.get_const_view()});
+    entity_registry->update_entities({entity_handles, update_data.get_const_view()});
+    entity_registry->set_death_infos(entity_death_info);
 }
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
 
     auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
 
-    ml::collect_valid_indices_by_key(entity_indices, dead_entities, local_indices_to_remove);
+    ml::collect_valid_indices_by_key(entity_handles, dead_entities, local_indices_to_remove);
     local_indices_to_remove.Sort(TGreater<int32>{});
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        entity_indices,
+                                        entity_handles,
                                         locations,
                                         rotations,
                                         spawn_timers.remaining_times,
@@ -122,7 +128,7 @@ void ATestCapitalShips::sync_from_registry() {
     {
         auto const n{get_num_instances()};
         for (int32 i{0}; i < n; ++i) {
-            healths[i] = entity_registry->get_health(entity_indices[i]);
+            healths[i] = entity_registry->get_health(entity_handles[i]);
         }
     }
 
@@ -146,7 +152,7 @@ void ATestCapitalShips::end_tick() {
 
 // Accessors
 auto ATestCapitalShips::get_num_instances() const -> int32 {
-    return entity_indices.Num();
+    return entity_handles.Num();
 }
 auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> bool {
     if (!index.is_valid()) { return false; }
@@ -157,7 +163,7 @@ auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> boo
 }
 auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const
     -> FRegistryEntityHandle {
-    return entity_indices.IsValidIndex(hit_slot) ? entity_indices[hit_slot]
+    return entity_handles.IsValidIndex(hit_slot) ? entity_handles[hit_slot]
                                                  : FRegistryEntityHandle{};
 }
 
@@ -183,9 +189,9 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     auto new_entities{entity_registry->reserve_entities(n_to_add)};
 
-    entity_indices = MoveTemp(new_entities.registry_handles);
+    entity_handles = MoveTemp(new_entities.registry_handles);
     for (int32 i{0}; i < n_to_add; ++i) {
-        proxy_to_index.Add(proxies[i], entity_indices[i]);
+        proxy_to_index.Add(proxies[i], entity_handles[i]);
     }
 
     TArray<FRegistryEntityHandle> new_targets;
@@ -215,7 +221,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         new_teams[i] = proxy->team;
     }
 
-    spawn_ships(entity_indices,
+    spawn_ships(entity_handles,
                 new_locations.get_const_view(),
                 new_rotations.get_const_view(),
                 new_teams,
@@ -314,7 +320,7 @@ void ATestCapitalShips::configure_ismc() {
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset(entity_indices,
+    ml::reset(entity_handles,
               local_indices_to_remove,
               locations,
               rotations,
@@ -352,7 +358,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
         }
 
         // Draw HP
-        auto const ship_index{entity_indices[i]};
+        auto const ship_index{entity_handles[i]};
 
         auto const msg{FString::Printf(
             TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, healths[i])};
@@ -364,7 +370,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 // Checks
 void ATestCapitalShips::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_indices),
+        SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(spawn_timers),

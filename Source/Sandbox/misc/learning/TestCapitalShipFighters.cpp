@@ -82,30 +82,37 @@ void ATestCapitalShipFighters::resolve_hit_events() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const ismc_index_hit{view.hit_items[i]};
-        auto const entity_hit{entity_indices[ismc_index_hit]};
 
-        auto const damage_done{view.damage_amounts[i]};
-        healths[ismc_index_hit] -= damage_done;
+        healths[ismc_index_hit] -= view.damage_amounts[i];
+        if (healths[ismc_index_hit] <= 0) {
+            local_indices_to_remove.Add(ismc_index_hit);
+            entity_death_info.add(
+                ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
+        }
     }
+
+    validate_array_sizes();
 }
 void ATestCapitalShipFighters::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
 
     auto const data{get_entity_data()};
-    ATestEntityRegistry::ConstView view{entity_indices, data.get_const_view()};
+    ATestEntityRegistry::ConstView view{entity_handles, data.get_const_view()};
     entity_registry->update_entities(view);
+
+    entity_registry->set_death_infos(entity_death_info);
 }
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
 
     auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
 
-    ml::collect_valid_indices_by_key(entity_indices, dead_entities, local_indices_to_remove);
+    ml::collect_valid_indices_by_key(entity_handles, dead_entities, local_indices_to_remove);
     local_indices_to_remove.Sort(TGreater<int32>{});
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
                                         ismc_transforms,
-                                        entity_indices,
+                                        entity_handles,
                                         locations,
                                         directions,
                                         speeds,
@@ -119,7 +126,7 @@ void ATestCapitalShipFighters::sync_from_registry() {
     // Update health and the target entity index
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{entity_indices[i]};
+        auto const entity_index{entity_handles[i]};
         healths[i] = entity_registry->get_health(entity_index);
 
         auto const target_entity_index{target_indices[i]};
@@ -286,7 +293,7 @@ void ATestCapitalShipFighters::spawn_instances(
 
     // Entity indices
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-    entity_indices.Append(MoveTemp(new_entities.registry_handles));
+    entity_handles.Append(MoveTemp(new_entities.registry_handles));
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);
@@ -331,7 +338,7 @@ void ATestCapitalShipFighters::handle_firing() {
 
         ml::assign(new_laser_locations, write_index, laser_location);
         ml::assign(new_laser_rotations, write_index, direction.ToOrientationRotator());
-        new_laser_instigator_handles[write_index] = entity_indices[ship_index];
+        new_laser_instigator_handles[write_index] = entity_handles[ship_index];
 
         laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
@@ -352,7 +359,7 @@ void ATestCapitalShipFighters::handle_firing() {
 void ATestCapitalShipFighters::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset(entity_indices,
+    ml::reset(entity_handles,
               local_indices_to_remove,
               locations,
               directions,
@@ -373,13 +380,14 @@ void ATestCapitalShipFighters::clear_tick_buffers() {
               indices_ready_to_fire_buffer,
               new_laser_locations,
               new_laser_rotations,
-              new_laser_instigator_handles);
+              new_laser_instigator_handles,
+              entity_death_info);
 }
 
 // Checks
 void ATestCapitalShipFighters::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_indices),
+        SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(directions),
         SANDBOX_NAMED_NUM(speeds),

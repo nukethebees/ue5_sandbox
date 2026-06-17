@@ -89,9 +89,8 @@ void ATestStaticTurrets::resolve_hit_events() {
         healths[ismc_index_hit] -= view.damage_amounts[i];
         if (healths[ismc_index_hit] <= 0) {
             local_indices_to_remove.Add(ismc_index_hit);
-            entity_death_info.add(ETestDeathReason::Combat,
-                                  entity_registry_handles[ismc_index_hit],
-                                  view.instigators[i]);
+            entity_death_info.add(
+                ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
         }
     }
 
@@ -102,7 +101,7 @@ void ATestStaticTurrets::update_entity_registry() {
 
     auto const data{get_entity_data()};
     entity_registry->update_entities({
-        .indices = entity_registry_handles,
+        .indices = entity_handles,
         .data = data.get_const_view(),
     });
 
@@ -114,7 +113,7 @@ void ATestStaticTurrets::sync_from_registry() {
     local_indices_to_remove.Sort(TGreater<int32>{});
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
                                         ismc_transforms,
-                                        entity_registry_handles,
+                                        entity_handles,
                                         locations,
                                         teams,
                                         laser_cooldowns.remaining_times,
@@ -258,7 +257,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         ml::append(new_laser_locations, loc_x, loc_y, loc_z);
         ml::append(new_laser_rotations, fire_dir);
-        new_laser_instigator_handles.Add(entity_registry_handles[i]);
+        new_laser_instigator_handles.Add(entity_handles[i]);
 
         laser_cooldowns[i] = cooldown;
     }
@@ -287,7 +286,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);
 
     auto new_entities{entity_registry->reserve_entities(n)};
-    entity_registry_handles = MoveTemp(new_entities.registry_handles);
+    entity_handles = MoveTemp(new_entities.registry_handles);
 
     ml::fill(healths, actor_config->max_health);
     target_registry_handles.AddDefaulted(n);
@@ -314,7 +313,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     entity_data.set_all_alive();
 
     entity_registry->update_entities({
-        .indices = entity_registry_handles,
+        .indices = entity_handles,
         .data = entity_data.get_const_view(),
     });
 
@@ -325,7 +324,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(entity_registry_handles,
+    ml::reset(entity_handles,
               entity_death_info,
               local_indices_to_remove,
               ismc_transforms,
@@ -351,7 +350,7 @@ void ATestStaticTurrets::clear_tick_buffers() {
 // Checks
 void ATestStaticTurrets::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_registry_handles),
+        SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(teams),
@@ -392,7 +391,7 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
         }
 
         if (draw_debug_entity_info_enabled) {
-            auto const turret_handle{entity_registry_handles[i]};
+            auto const turret_handle{entity_handles[i]};
 
             auto const msg{FString::Printf(
                 TEXT("[%d, %d] HP=%d"), turret_handle.index, turret_handle.generation, healths[i])};
