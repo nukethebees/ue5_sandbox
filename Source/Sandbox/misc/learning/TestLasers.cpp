@@ -1,13 +1,13 @@
 #include "TestLasers.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
-#include "Sandbox/misc/learning/TestCapitalShips.h"
-#include "Sandbox/misc/learning/TestEntityRegistry.h"
-#include "Sandbox/misc/learning/TestLasersConfig.h"
-#include "Sandbox/misc/learning/TestStaticTurrets.h"
-#include "Sandbox/misc/learning/TestTubeSpinners.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestCapitalShipFighters.h>
+#include <Sandbox/misc/learning/TestCapitalShips.h>
+#include <Sandbox/misc/learning/TestLasersConfig.h>
+#include <Sandbox/misc/learning/TestStaticTurrets.h>
+#include <Sandbox/misc/learning/TestTubeSpinners.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>

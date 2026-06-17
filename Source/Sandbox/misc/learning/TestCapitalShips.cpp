@@ -1,11 +1,12 @@
 #include "TestCapitalShips.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/misc/learning/TestCapitalShipFighters.h"
-#include "Sandbox/misc/learning/TestCapitalShipProxy.h"
-#include "Sandbox/misc/learning/TestCapitalShipsConfig.h"
-#include "Sandbox/misc/learning/TestEntityRegistry.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/test_entity_registry/DamageEvents.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestCapitalShipFighters.h>
+#include <Sandbox/misc/learning/TestCapitalShipProxy.h>
+#include <Sandbox/misc/learning/TestCapitalShipsConfig.h>
+#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>

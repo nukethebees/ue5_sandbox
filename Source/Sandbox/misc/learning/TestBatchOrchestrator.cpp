@@ -1,6 +1,7 @@
 #include "TestBatchOrchestrator.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/TestCapitalShipFighters.h>
 #include <Sandbox/misc/learning/TestCapitalShips.h>
 #include <Sandbox/misc/learning/TestLasers.h>

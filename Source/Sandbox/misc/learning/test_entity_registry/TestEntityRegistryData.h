@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TestTeam.h"
+#include <Sandbox/misc/learning/TestTeam.h>
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vectors.h>
@@ -9,7 +9,6 @@
 #include <Containers/ArrayView.h>
 #include <HAL/Platform.h>
 
-#include <array>
 #include <type_traits>
 
 #include "TestEntityRegistryData.generated.h"

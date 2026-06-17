@@ -6,8 +6,8 @@
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/TestEntityRegistryData.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/misc/learning/TestLasers.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/actor_utils.h>

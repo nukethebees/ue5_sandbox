@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Sandbox/misc/learning/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/test_entity_registry/DamageEvents.h>
+#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>

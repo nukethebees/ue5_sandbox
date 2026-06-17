@@ -2,81 +2,26 @@
 
 #include "TestEntityRegistryData.h"
 
-#include <Sandbox/misc/learning/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/TestDeathReason.h>
-#include <Sandbox/misc/learning/TestEntityOwnerId.h>
-#include <Sandbox/misc/learning/TestEntityUniqueId.h>
+#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/test_entity_registry/RegistryHandleState.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestDeathReason.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityUniqueEntityData.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/misc/learning/TestTeam.h>
+
+#include <SandboxCore/array_utils.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-
-#include <array>
 
 #include "TestEntityRegistry.generated.h"
 
 class UActorComponent;
 
-enum class ERegistryHandleState : uint8 {
-    Active,
-    Stale,
-    Invalid,
-};
-
-struct TraceHits {
-    TArray<AActor*> actors;
-    TArray<UActorComponent*> actor_components;
-    TArray<int32> hit_items;
-
-    void reset();
-    auto num() const -> int32;
-    void
-        remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
-
-    void validate_array_sizes() const;
-};
-
-struct UnresolvedDamageEvents {
-    TArray<AActor*> damaged_actors;
-    TArray<int32> damage_amounts;
-    TArray<UActorComponent*> actor_components;
-    TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
-
-    auto num() const -> int32;
-    void reset();
-    void validate_array_sizes() const;
-};
-
-struct DamageEvents {
-    TArray<int32> damage_amounts;
-    TArray<UActorComponent*> actor_components;
-    TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
-
-    auto num() const -> int32;
-    void reset();
-    void
-        remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
-
-    void validate_array_sizes() const;
-};
-
-struct TestEntityUniqueEntityData {
-    using kills_type = uint32;
-
-    TArray<FRegistryEntityHandle> registry_handles;
-    TArray<kills_type> kills;
-    TArray<uint8> alive;
-    TArray<TestEntityUniqueId> killed_by;
-    TArray<ETestDeathReason> death_reason;
-
-    auto num() const -> int32;
-    void reset();
-    void add_defaulted(int32 const count);
-
-    void validate_array_sizes() const;
-};
+struct DamageEvents;
+struct UnresolvedDamageEvents;
+struct EntityDeathInfo;
 
 struct NewEntities {
     TArray<FRegistryEntityHandle> registry_handles;
@@ -86,24 +31,6 @@ struct NewEntities {
     void reset();
     void add_defaulted(int32 const count);
     void add_uninitialised(int32 const count);
-};
-
-struct EntityDeathInfo {
-    TArray<ETestDeathReason> reasons;
-    TArray<FRegistryEntityHandle> victims;
-    TArray<FRegistryEntityHandle> killers;
-
-    void add(ETestDeathReason const reason,
-             FRegistryEntityHandle const victim,
-             FRegistryEntityHandle const killer);
-    void add(ETestDeathReason const reason, FRegistryEntityHandle const victim) {
-        add(reason, victim, FRegistryEntityHandle{});
-    }
-
-    auto num() const -> int32;
-    void reset();
-
-    void validate_array_sizes() const;
 };
 
 UCLASS()

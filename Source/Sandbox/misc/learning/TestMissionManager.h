@@ -1,8 +1,7 @@
 #pragma once
 
-#include "TestEntityUniqueId.h"
-
-#include <Sandbox/misc/learning/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityUniqueId.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>

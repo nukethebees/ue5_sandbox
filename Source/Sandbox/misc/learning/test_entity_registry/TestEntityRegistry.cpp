@@ -1,110 +1,14 @@
 #include "TestEntityRegistry.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/misc/learning/test_entity_registry/DamageEvents.h>
+#include <Sandbox/misc/learning/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-
-// -------------------------------------------------------------------------------------------------
-// TraceHits
-// -------------------------------------------------------------------------------------------------
-void TraceHits::reset() {
-    ml::reset(actors, actor_components, hit_items);
-}
-auto TraceHits::num() const -> int32 {
-    return actors.Num();
-}
-void TraceHits::remove_at_swap(int32 const index,
-                               int32 const count,
-                               EAllowShrinking const allow_shrinking) {
-    actors.RemoveAtSwap(index, count, allow_shrinking);
-    actor_components.RemoveAtSwap(index, count, allow_shrinking);
-    hit_items.RemoveAtSwap(index, count, allow_shrinking);
-}
-void TraceHits::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(actors),
-        SANDBOX_NAMED_NUM(actor_components),
-        SANDBOX_NAMED_NUM(hit_items),
-    });
-}
-
-// -------------------------------------------------------------------------------------------------
-// DamageEvents
-// -------------------------------------------------------------------------------------------------
-auto UnresolvedDamageEvents::num() const -> int32 {
-    return damaged_actors.Num();
-}
-
-void UnresolvedDamageEvents::reset() {
-    damaged_actors.Reset();
-    damage_amounts.Reset();
-    actor_components.Reset();
-    hit_items.Reset();
-    instigators.Reset();
-}
-
-void UnresolvedDamageEvents::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(damaged_actors),
-        SANDBOX_NAMED_NUM(damage_amounts),
-        SANDBOX_NAMED_NUM(actor_components),
-        SANDBOX_NAMED_NUM(hit_items),
-        SANDBOX_NAMED_NUM(instigators),
-    });
-}
-
-auto DamageEvents::num() const -> int32 {
-    return damage_amounts.Num();
-}
-void DamageEvents::reset() {
-    ml::reset(damage_amounts, actor_components, hit_items, instigators);
-}
-void DamageEvents::remove_at_swap(int32 const index,
-                                  int32 const count,
-                                  EAllowShrinking const allow_shrinking) {
-    damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
-    actor_components.RemoveAtSwap(index, count, allow_shrinking);
-    hit_items.RemoveAtSwap(index, count, allow_shrinking);
-    instigators.RemoveAtSwap(index, count, allow_shrinking);
-}
-void DamageEvents::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(damage_amounts),
-        SANDBOX_NAMED_NUM(actor_components),
-        SANDBOX_NAMED_NUM(hit_items),
-        SANDBOX_NAMED_NUM(instigators),
-    });
-}
-
-// -------------------------------------------------------------------------------------------------
-// TestEntityUniqueEntityData
-// -------------------------------------------------------------------------------------------------
-auto TestEntityUniqueEntityData::num() const -> int32 {
-    return registry_handles.Num();
-}
-void TestEntityUniqueEntityData::reset() {
-    ml::reset(registry_handles, kills, alive, killed_by);
-}
-void TestEntityUniqueEntityData::add_defaulted(int32 const count) {
-    registry_handles.AddDefaulted(count);
-    kills.AddDefaulted(count);
-    alive.AddDefaulted(count);
-    killed_by.AddDefaulted(count);
-    death_reason.AddDefaulted(count);
-}
-
-void TestEntityUniqueEntityData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(registry_handles),
-        SANDBOX_NAMED_NUM(kills),
-        SANDBOX_NAMED_NUM(alive),
-        SANDBOX_NAMED_NUM(killed_by),
-    });
-}
 
 // -------------------------------------------------------------------------------------------------
 // NewEntities
@@ -120,31 +24,6 @@ void NewEntities::add_defaulted(int32 const count) {
 }
 void NewEntities::add_uninitialised(int32 const count) {
     registry_handles.AddUninitialized(count);
-}
-
-// -------------------------------------------------------------------------------------------------
-// EntityDeathInfo
-// -------------------------------------------------------------------------------------------------
-auto EntityDeathInfo::num() const -> int32 {
-    return reasons.Num();
-}
-void EntityDeathInfo::reset() {
-    ml::reset(reasons, victims, killers);
-}
-void EntityDeathInfo::add(ETestDeathReason const reason,
-                          FRegistryEntityHandle const victim,
-                          FRegistryEntityHandle const killer) {
-    reasons.Add(reason);
-    victims.Add(victim);
-    killers.Add(killer);
-}
-
-void EntityDeathInfo::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(reasons),
-        SANDBOX_NAMED_NUM(victims),
-        SANDBOX_NAMED_NUM(killers),
-    });
 }
 
 // -------------------------------------------------------------------------------------------------

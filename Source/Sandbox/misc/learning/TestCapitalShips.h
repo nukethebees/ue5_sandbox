@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Sandbox/misc/learning/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/TestEntityOwnerId.h>
-#include <Sandbox/misc/learning/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/test_entity_registry/EntityDeathInfo.h>
+#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/misc/learning/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
