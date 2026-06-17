@@ -234,7 +234,7 @@ void ATestStaticTurrets::fire_at_enemies() {
     for (int32 i{0}; i < n; ++i) {
         auto const target_index{target_registry_handles[i]};
 
-        if (!entity_registry->is_valid_index(target_index)) { continue; }
+        if (!entity_registry->is_valid_handle(target_index)) { continue; }
         if (!(laser_cooldowns[i] <= 0.f)) { continue; }
 
         auto const target_location{entity_registry->get_location(target_index)};
@@ -384,7 +384,7 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
         if (draw_target_arrows_enabled) {
             auto const target_handle{target_registry_handles[i]};
 
-            if (entity_registry->is_valid_index(target_handle)) {
+            if (entity_registry->is_valid_handle(target_handle)) {
                 FVector3d const target_location{entity_registry->get_location(target_handle)};
                 drawer.draw_line(turret_location, target_location);
             }

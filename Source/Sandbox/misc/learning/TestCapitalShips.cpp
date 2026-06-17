@@ -352,7 +352,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 
         // Draw target
         auto const target_index{target_entity_indices[i]};
-        if (entity_registry->is_valid_index(target_index)) {
+        if (entity_registry->is_valid_handle(target_index)) {
             FVector3d const target_location{entity_registry->get_location(target_index)};
             drawer.draw_line(ship_location, target_location);
         }

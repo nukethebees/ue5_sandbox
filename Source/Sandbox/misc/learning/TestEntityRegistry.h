@@ -154,7 +154,7 @@ class ATestEntityRegistry : public AActor {
 
     // Handle queries
     auto analyse_handle(FRegistryEntityHandle const handle) const -> ERegistryHandleState;
-    auto is_valid_index(FRegistryEntityHandle const index) const -> bool;
+    auto is_valid_handle(FRegistryEntityHandle const index) const -> bool;
     auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
     // Entity queries

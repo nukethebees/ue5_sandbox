@@ -322,7 +322,7 @@ void ATestEntityRegistry::commit_entity_updates() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const entity_handle{queued_entity_update_handles[i]};
-        if (!is_valid_index(entity_handle)) { continue; }
+        if (!is_valid_handle(entity_handle)) { continue; }
         auto const entity_index{entity_handle.index};
 
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
@@ -393,7 +393,7 @@ auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) con
 
     return ERegistryHandleState::Invalid;
 }
-auto ATestEntityRegistry::is_valid_index(FRegistryEntityHandle const index) const -> bool {
+auto ATestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
 auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
@@ -443,23 +443,23 @@ auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
 
 // Entity queries
 auto ATestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
-    check(is_valid_index(index));
+    check(is_valid_handle(index));
     return ml::get_vector3f(entity_data.locations, index.index);
 }
 auto ATestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
-    check(is_valid_index(index));
+    check(is_valid_handle(index));
     return ml::get_vector3f(entity_data.velocities, index.index);
 }
 auto ATestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
-    check(is_valid_index(index));
+    check(is_valid_handle(index));
     return entity_data.healths[index.index];
 }
 auto ATestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
-    check(is_valid_index(index));
+    check(is_valid_handle(index));
     return entity_data.teams[index.index];
 }
 auto ATestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
-    check(is_valid_index(index));
+    check(is_valid_handle(index));
     return static_cast<bool>(entity_data.alive[index.index]);
 }
 auto ATestEntityRegistry::get_dead_entities_this_frame() const
