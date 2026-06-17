@@ -51,6 +51,8 @@ class ATestMissionManager : public AActor {
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
     auto is_ready() const noexcept -> bool;
 
+    auto get_player_id() const { return player_id; }
+
     FTestMissionEndedDelegate on_mission_ended;
     FOnMissionManagerReady on_ready;
     FOnMissionManagerUpdate on_mission_update;
@@ -70,7 +72,7 @@ class ATestMissionManager : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
 
-    FRegistryEntityHandle player_registry_index{};
+    FRegistryEntityHandle player_registry_handle{};
     TestEntityUniqueId player_id{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

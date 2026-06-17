@@ -286,7 +286,7 @@ void ATestCapitalShipFighters::spawn_instances(
 
     // Entity indices
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-    entity_indices.Append(MoveTemp(new_entities.registry_indices));
+    entity_indices.Append(MoveTemp(new_entities.registry_handles));
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);

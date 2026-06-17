@@ -70,6 +70,7 @@ void TestEntityUniqueEntityData::add_defaulted(int32 const count) {
     kills.AddDefaulted(count);
     alive.AddDefaulted(count);
     killed_by.AddDefaulted(count);
+    death_reason.AddDefaulted(count);
 }
 
 void TestEntityUniqueEntityData::validate_array_sizes() const {
@@ -85,16 +86,16 @@ void TestEntityUniqueEntityData::validate_array_sizes() const {
 // NewEntities
 // -------------------------------------------------------------------------------------------------
 auto NewEntities::num() const -> int32 {
-    return registry_indices.Num();
+    return registry_handles.Num();
 }
 void NewEntities::reset() {
-    ml::reset(registry_indices);
+    ml::reset(registry_handles);
 }
 void NewEntities::add_defaulted(int32 const count) {
-    registry_indices.AddDefaulted(count);
+    registry_handles.AddDefaulted(count);
 }
 void NewEntities::add_uninitialised(int32 const count) {
-    registry_indices.AddUninitialized(count);
+    registry_handles.AddUninitialized(count);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -102,6 +103,16 @@ void NewEntities::add_uninitialised(int32 const count) {
 // -------------------------------------------------------------------------------------------------
 auto EntityDeathInfo::num() const -> int32 {
     return reasons.Num();
+}
+void EntityDeathInfo::reset() {
+    ml::reset(reasons, victims, killers);
+}
+void EntityDeathInfo::add(ETestDeathReason const reason,
+                          FRegistryEntityHandle const victim,
+                          FRegistryEntityHandle const killer) {
+    reasons.Add(reason);
+    victims.Add(victim);
+    killers.Add(killer);
 }
 
 void EntityDeathInfo::validate_array_sizes() const {
@@ -126,7 +137,7 @@ void ATestEntityRegistry::reset() {
     queued_entity_data.reset();
 
     ml::reset(generations,
-              queued_entity_generations,
+              queued_entity_update_handles,
               queued_damage_events,
               dead_entities_this_frame,
               free_indices);
@@ -178,23 +189,29 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
     int32 new_entity_index{0};
     for (int32 i{0}; i < free_to_reserve; ++i) {
-        auto const index{free_indices.Pop(EAllowShrinking::No)};
+        auto const entity_index{free_indices.Pop(EAllowShrinking::No)};
 
-        ml::assign_from(entity_data.locations, index, view.locations, i);
-        ml::assign_from(entity_data.velocities, index, view.velocities, i);
+        ml::assign_from(entity_data.locations, entity_index, view.locations, i);
+        ml::assign_from(entity_data.velocities, entity_index, view.velocities, i);
 
-        entity_data.healths[index] = view.healths[i];
-        entity_data.teams[index] = view.teams[i];
-        entity_data.alive[index] = view.alive[i];
+        entity_data.healths[entity_index] = view.healths[i];
+        entity_data.teams[entity_index] = view.teams[i];
+        entity_data.alive[entity_index] = view.alive[i];
 
-        ++generations[index];
-        unique_ids[index] = first_id + new_entity_index;
+        ++generations[entity_index];
 
-        new_entities.registry_indices.Emplace(index, generations[index]);
+        auto const unique_id{first_id + new_entity_index};
+        unique_ids[entity_index] = unique_id;
+
+        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
+
+        unique_entities.registry_handles[unique_id.id] =
+            FRegistryEntityHandle{entity_index, generations[entity_index]};
+
         new_entity_index++;
     }
 
-    auto const indices_left_to_reserve{count - new_entities.registry_indices.Num()};
+    auto const indices_left_to_reserve{count - new_entities.registry_handles.Num()};
     auto start_index{get_num_elements()};
 
     generations.AddZeroed(indices_left_to_reserve);
@@ -203,10 +220,15 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     entity_data.add(view.get_slice(ml::num(new_entities), indices_left_to_reserve));
 
     for (int32 i{0}; i < indices_left_to_reserve; ++i) {
-        auto const index{start_index + i};
+        auto const entity_index{start_index + i};
 
-        new_entities.registry_indices.Emplace(index, generations[index]);
-        unique_ids[index] = first_id + new_entity_index;
+        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
+
+        auto const unique_id{first_id + new_entity_index};
+        unique_ids[entity_index] = unique_id;
+
+        unique_entities.registry_handles[unique_id.id] =
+            FRegistryEntityHandle{entity_index, generations[entity_index]};
 
         new_entity_index++;
     }
@@ -252,13 +274,29 @@ void ATestEntityRegistry::update_entities(ConstView const view) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
 
     queued_entity_data.add(view.data);
-    queued_entity_generations.Append(view.indices);
+    queued_entity_update_handles.Append(view.indices);
 }
-void ATestEntityRegistry::set_death_info(EntityDeathInfo const& death_info) {
+void ATestEntityRegistry::set_death_infos(EntityDeathInfo const& death_info) {
     death_info.validate_array_sizes();
 
     auto const n{death_info.num()};
-    if (num < 1) { return; }
+    if (n < 1) { return; }
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const victim_handle{death_info.victims[i]};
+        auto const victim_id{find_unique_id(victim_handle)};
+
+        unique_entities.alive[victim_id.id] = 0;
+        unique_entities.death_reason[victim_id.id] = death_info.reasons[i];
+
+        auto const killer_handle{death_info.killers[i]};
+
+        if (killer_handle.is_valid()) {
+            auto const killer_id{find_unique_id(victim_handle)};
+            unique_entities.killed_by[victim_id.id] = killer_id;
+            unique_entities.kills[killer_id.id] += 1;
+        }
+    }
 }
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
@@ -266,15 +304,18 @@ void ATestEntityRegistry::commit_entity_updates() {
     auto const n{queued_entity_data.get_num()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const generation_index{queued_entity_generations[i]};
-        if (!is_valid_index(generation_index)) { continue; }
-        auto const entity_index{generation_index.index};
+        auto const entity_handle{queued_entity_update_handles[i]};
+        if (!is_valid_index(entity_handle)) { continue; }
+        auto const entity_index{entity_handle.index};
 
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];
+
+        auto const unique_id{unique_ids[entity_index]};
+        unique_entities.alive[unique_id.id] = queued_entity_data.alive[i];
     }
 }
 void ATestEntityRegistry::commit_death_updates() {
@@ -311,8 +352,8 @@ void ATestEntityRegistry::end_tick() {
     refresh_free_indices();
 
     ml::reset(queued_entity_data,
-              queued_entity_generations,
-              queued_entity_generations,
+              queued_entity_update_handles,
+              queued_entity_update_handles,
               dead_entities_this_frame);
 
     auto const n_owners{entity_owners.Num()};
@@ -322,9 +363,19 @@ void ATestEntityRegistry::end_tick() {
 
     validate_array_sizes();
     validate_unique_ids();
+    validate_unique_entity_data();
 }
 
 // Index queries
+auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
+    -> ERegistryHandleState {
+    if (!generations.IsValidIndex(handle.index)) { return ERegistryHandleState::Invalid; }
+    auto const current_generation{generations[handle.index]};
+    if (current_generation == handle.generation) { return ERegistryHandleState::Active; }
+    if (current_generation > handle.generation) { return ERegistryHandleState::Stale; }
+
+    return ERegistryHandleState::Invalid;
+}
 auto ATestEntityRegistry::is_valid_index(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
@@ -335,6 +386,36 @@ auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> b
 // Unique id queries
 auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());
+}
+auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
+    -> TestEntityUniqueId {
+    auto const handle_state{analyse_handle(handle)};
+
+    switch (handle_state) {
+        case ERegistryHandleState::Invalid: {
+            check(false);
+            return {};
+        }
+        case ERegistryHandleState::Active: {
+            break;
+        }
+        case ERegistryHandleState::Stale: {
+            return {};
+        }
+        default: {
+            check(false);
+            return {};
+        }
+    }
+
+    auto const n_unique{unique_entities.num()};
+
+    for (int32 i{0}; i < n_unique; ++i) {
+        if (unique_entities.registry_handles[i] == handle) { return {.id = i}; }
+    }
+
+    checkf(false, TEXT("A missing unique ID should be impossible here."));
+    return {};
 }
 
 auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
@@ -467,5 +548,19 @@ void ATestEntityRegistry::validate_unique_ids() const {
                    i,
                    unique_ids[i].id);
         }
+    }
+}
+void ATestEntityRegistry::validate_unique_entity_data() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::validate_death_reasons);
+
+    auto const n{unique_entities.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const handle{unique_entities.registry_handles[i]};
+        auto const handle_status{analyse_handle(handle)};
+        check(handle_status != ERegistryHandleState::Invalid);
+
+        if (unique_entities.alive[i]) { continue; }
+        check(unique_entities.death_reason[i] != ETestDeathReason::Unset);
     }
 }

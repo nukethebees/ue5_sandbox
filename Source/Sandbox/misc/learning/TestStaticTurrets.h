@@ -85,6 +85,7 @@ class ATestStaticTurrets : public AActor {
 
     TestEntityOwnerId owner_id{};
     TArray<FRegistryEntityHandle> entity_registry_handles{};
+    EntityDeathInfo entity_death_info;
 
     // Location
     FVectors3f locations;

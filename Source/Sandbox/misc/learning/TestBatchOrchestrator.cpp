@@ -79,6 +79,7 @@ void ATestBatchOrchestrator::BeginPlay() {
                       mission_manager);
 
     mission_manager->update_player_handles();
+    check(entity_registry->is_valid_unique_id(mission_manager->get_player_id()));
 
     entity_registry->commit_updates();
     entity_registry->end_tick();

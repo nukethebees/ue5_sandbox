@@ -64,7 +64,7 @@ class ATestSpaceShip : public APawn {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
     auto get_unique_id() const -> TestEntityUniqueId;
-    auto get_entity_registry_index() const -> FRegistryEntityHandle;
+    auto get_entity_registry_handle() const -> FRegistryEntityHandle;
 
     // Movement
     void turn(FVector2D direction);
@@ -129,6 +129,7 @@ class ATestSpaceShip : public APawn {
 #endif
   protected:
     // Entity data
+    void register_with_entity_registry();
     auto get_entity_update_data() const -> FTestEntityRegistryEntityData;
 
     // Movement
@@ -151,6 +152,10 @@ class ATestSpaceShip : public APawn {
     void fire_homing_laser();
 
     // Visuals
+    void configure_boost_pulse();
+    void configure_boost_engine_effect();
+    void configure_ship_mesh();
+
     void update_actor_rotation(this ATestSpaceShip& self, float dt);
     void update_visual_orientation(this ATestSpaceShip& self, float dt);
 
@@ -165,6 +170,7 @@ class ATestSpaceShip : public APawn {
 #if WITH_EDITOR
     void sample_speed();
 #endif
+    void configure_speed_sampling();
 
     // ------------------------------------------------------------------------
     // Entity data
@@ -175,7 +181,7 @@ class ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    FRegistryEntityHandle entity_index{};
+    FRegistryEntityHandle registry_handle{};
 
     // ------------------------------------------------------------------------
     // Collision

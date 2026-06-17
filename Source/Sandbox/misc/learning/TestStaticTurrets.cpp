@@ -87,7 +87,11 @@ void ATestStaticTurrets::resolve_hit_events() {
         auto const ismc_index_hit{view.hit_items[i]};
 
         healths[ismc_index_hit] -= view.damage_amounts[i];
-        if (healths[ismc_index_hit] <= 0) { local_indices_to_remove.Add(ismc_index_hit); }
+        if (healths[ismc_index_hit] <= 0) {
+            local_indices_to_remove.Add(ismc_index_hit);
+            entity_death_info.add(ETestDeathReason::Combat,
+                                  entity_registry_handles[ismc_index_hit]);
+        }
     }
 
     validate_array_sizes();
@@ -100,6 +104,8 @@ void ATestStaticTurrets::update_entity_registry() {
         .indices = entity_registry_handles,
         .data = data.get_const_view(),
     });
+
+    entity_registry->set_death_infos(entity_death_info);
 }
 void ATestStaticTurrets::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
@@ -280,7 +286,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);
 
     auto new_entities{entity_registry->reserve_entities(n)};
-    entity_registry_handles = MoveTemp(new_entities.registry_indices);
+    entity_registry_handles = MoveTemp(new_entities.registry_handles);
 
     ml::fill(healths, actor_config->max_health);
     target_registry_handles.AddDefaulted(n);
@@ -319,6 +325,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(entity_registry_handles,
+              entity_death_info,
               local_indices_to_remove,
               ismc_transforms,
               locations,
@@ -332,7 +339,8 @@ void ATestStaticTurrets::clear_runtime_state() {
               healths);
 }
 void ATestStaticTurrets::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove,
+    ml::reset(entity_death_info,
+              local_indices_to_remove,
               indices_ready_to_fire,
               new_laser_locations,
               new_laser_rotations,

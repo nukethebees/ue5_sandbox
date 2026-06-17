@@ -85,7 +85,7 @@ void ATestMissionManager::mission_tick(float const dt) {
 }
 
 void ATestMissionManager::update_player_handles() {
-    player_registry_index = player_ship->get_entity_registry_index();
+    player_registry_handle = player_ship->get_entity_registry_handle();
     player_id = player_ship->get_unique_id();
 }
 

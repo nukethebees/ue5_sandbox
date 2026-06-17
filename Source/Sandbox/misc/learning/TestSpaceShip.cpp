@@ -74,43 +74,17 @@ void ATestSpaceShip::begin_play() {
 
     set_laser_mode(ELaserFiringMode::idle);
 
-#if WITH_EDITOR
-    static constexpr float sample_rate_hz{60.0f};
-    static constexpr float sample_interval{1.0f / sample_rate_hz};
-    static constexpr float sample_window{5.0f};
-    speed_sample_index = 0;
-    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
-    speed_samples.Reserve(speed_sample_max);
-    for (int32 i{0}; i < speed_sample_max; ++i) {
-        speed_samples.Add(FVector2d::ZeroVector);
-    }
-
-    GetWorldTimerManager().SetTimer(
-        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
-#endif
+    configure_speed_sampling();
 
     thrust_change_rate = thrust_change_rate;
     velocity = FVector3d::ZeroVector;
     set(EBoostBrakeState::None);
 
-    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
-    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+    configure_boost_pulse();
+    configure_boost_engine_effect();
+    configure_ship_mesh();
 
-    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                           boost_effect_colour_intensity);
-
-    ship_mesh->SetCanEverAffectNavigation(false);
-    ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    ship_mesh->SetGenerateOverlapEvents(false);
-
-    auto const new_entities{
-        entity_registry->add_entities(get_entity_update_data().get_const_view())};
-    entity_index = new_entities.registry_indices[0];
-    unique_entity_id = new_entities.first_id;
-
-    check(entity_registry->is_valid_unique_id(unique_entity_id));
+    register_with_entity_registry();
 }
 void ATestSpaceShip::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);
@@ -139,7 +113,7 @@ void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
 
     entity_registry->update_entities(ATestEntityRegistry::ConstView{
-        {&entity_index, 1},
+        {&registry_handle, 1},
         get_entity_update_data().get_const_view(),
     });
 }
@@ -162,6 +136,16 @@ void ATestSpaceShip::end_tick() {
 // -------------------------------------------------------------------------------------------------
 // Entity data
 // -------------------------------------------------------------------------------------------------
+void ATestSpaceShip::register_with_entity_registry() {
+    auto const new_entities{
+        entity_registry->add_entities(get_entity_update_data().get_const_view())};
+    registry_handle = new_entities.registry_handles[0];
+    unique_entity_id = new_entities.first_id;
+
+    check(entity_registry->is_valid_unique_id(unique_entity_id));
+
+    update_entity_registry();
+}
 auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
     FTestEntityRegistryEntityData entity_data;
     ml::append(entity_data.locations, GetActorLocation());
@@ -185,8 +169,8 @@ auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
 auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
     return unique_entity_id;
 }
-auto ATestSpaceShip::get_entity_registry_index() const -> FRegistryEntityHandle {
-    return entity_index;
+auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle {
+    return registry_handle;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -441,7 +425,7 @@ void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
         ml::assign(locations, i, fire_points[i].GetLocation());
         ml::assign(rotations, i, fire_points[i].Rotator());
     }
-    ml::fill(instigator_handles, entity_index);
+    ml::fill(instigator_handles, registry_handle);
 
     laser_actor->spawn_lasers({
         .locations = locations.get_const_view(),
@@ -578,6 +562,22 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
 
+void ATestSpaceShip::configure_boost_pulse() {
+    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+}
+void ATestSpaceShip::configure_boost_engine_effect() {
+    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                           boost_effect_colour_intensity);
+}
+void ATestSpaceShip::configure_ship_mesh() {
+    ship_mesh->SetCanEverAffectNavigation(false);
+    ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ship_mesh->SetGenerateOverlapEvents(false);
+}
+
 // Mesh
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
     check(ship_mesh);
@@ -647,4 +647,20 @@ void ATestSpaceShip::draw_debug_shapes() {
         FVector const end = start + fwd * len;
         DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.0f, 0, 10.0f);
     }
+}
+void ATestSpaceShip::configure_speed_sampling() {
+#if WITH_EDITOR
+    static constexpr float sample_rate_hz{60.0f};
+    static constexpr float sample_interval{1.0f / sample_rate_hz};
+    static constexpr float sample_window{5.0f};
+    speed_sample_index = 0;
+    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
+    speed_samples.Reserve(speed_sample_max);
+    for (int32 i{0}; i < speed_sample_max; ++i) {
+        speed_samples.Add(FVector2d::ZeroVector);
+    }
+
+    GetWorldTimerManager().SetTimer(
+        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
+#endif
 }

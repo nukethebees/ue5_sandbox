@@ -132,7 +132,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     auto const existing_total{get_num_instances()};
 
     auto new_entities{entity_registry->reserve_entities(n)};
-    registry_entity_handles.Append(MoveTemp(new_entities.registry_indices));
+    registry_entity_handles.Append(MoveTemp(new_entities.registry_handles));
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(new_locations),

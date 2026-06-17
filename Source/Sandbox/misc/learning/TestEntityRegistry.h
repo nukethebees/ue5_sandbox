@@ -17,6 +17,12 @@
 
 class UActorComponent;
 
+enum class ERegistryHandleState : uint8 {
+    Active,
+    Stale,
+    Invalid,
+};
+
 struct TraceHits {
     TArray<AActor*> actors;
     TArray<UActorComponent*> actor_components;
@@ -49,7 +55,8 @@ struct TestEntityUniqueEntityData {
     TArray<FRegistryEntityHandle> registry_handles;
     TArray<kills_type> kills;
     TArray<uint8> alive;
-    TArray<FRegistryEntityHandle> killed_by;
+    TArray<TestEntityUniqueId> killed_by;
+    TArray<ETestDeathReason> death_reason;
 
     auto num() const -> int32;
     void reset();
@@ -59,7 +66,7 @@ struct TestEntityUniqueEntityData {
 };
 
 struct NewEntities {
-    TArray<FRegistryEntityHandle> registry_indices;
+    TArray<FRegistryEntityHandle> registry_handles;
     TestEntityUniqueId first_id;
 
     auto num() const -> int32;
@@ -73,7 +80,15 @@ struct EntityDeathInfo {
     TArray<FRegistryEntityHandle> victims;
     TArray<FRegistryEntityHandle> killers;
 
+    void add(ETestDeathReason const reason,
+             FRegistryEntityHandle const victim,
+             FRegistryEntityHandle const killer);
+    void add(ETestDeathReason const reason, FRegistryEntityHandle const victim) {
+        add(reason, victim, FRegistryEntityHandle{});
+    }
+
     auto num() const -> int32;
+    void reset();
 
     void validate_array_sizes() const;
 };
@@ -121,13 +136,14 @@ class ATestEntityRegistry : public AActor {
 
     // General entity updates
     void update_entities(ConstView const view);
-    void set_death_info(EntityDeathInfo const& death_info);
+    void set_death_infos(EntityDeathInfo const& death_info);
 
     // Frame events
     void commit_updates();
     void end_tick();
 
-    // Index queries
+    // Handle queries
+    auto analyse_handle(FRegistryEntityHandle const handle) const -> ERegistryHandleState;
     auto is_valid_index(FRegistryEntityHandle const index) const -> bool;
     auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
@@ -143,6 +159,7 @@ class ATestEntityRegistry : public AActor {
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
+    auto find_unique_id(FRegistryEntityHandle const handle) const -> TestEntityUniqueId;
 
     auto get_kills(TestEntityUniqueId const id) const -> TestEntityUniqueEntityData::kills_type;
 
@@ -165,6 +182,7 @@ class ATestEntityRegistry : public AActor {
     void refresh_free_indices();
 
     void validate_unique_ids() const;
+    void validate_unique_entity_data() const;
 
     FTestEntityRegistryEntityData entity_data;
     TArray<int32> generations;
@@ -175,7 +193,7 @@ class ATestEntityRegistry : public AActor {
 
     // Queued updates
     FTestEntityRegistryEntityData queued_entity_data;
-    TArray<FRegistryEntityHandle> queued_entity_generations;
+    TArray<FRegistryEntityHandle> queued_entity_update_handles;
 
     // Queued damage events
     TArray<DamageEvents> queued_damage_events;
