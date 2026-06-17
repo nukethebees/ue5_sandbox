@@ -414,10 +414,10 @@ auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
             return {};
         }
         case ERegistryHandleState::Active: {
-            break;
+            return unique_ids[handle.index];
         }
         case ERegistryHandleState::Stale: {
-            return {};
+            break;
         }
         default: {
             check(false);
