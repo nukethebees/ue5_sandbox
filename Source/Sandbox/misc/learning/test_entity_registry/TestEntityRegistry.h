@@ -57,6 +57,11 @@ class ATestEntityRegistry : public AActor {
 
     void reset();
 
+    // Getters
+    auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData const& {
+        return unique_entities;
+    }
+
     // Registration
     auto register_owner(AActor const& actor) -> TestEntityOwnerId;
     auto is_owner(AActor const* const actor) const -> bool;
@@ -86,6 +91,12 @@ class ATestEntityRegistry : public AActor {
 
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
+    auto get_num_alive_active_entities() const noexcept -> int32;
+
+    auto get_entity_data() const noexcept -> FTestEntityRegistryEntityData const& {
+        return entity_data;
+    }
+    auto get_generations() const noexcept -> TConstArrayView<int> { return generations; }
     auto get_location(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_velocity(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_health(FRegistryEntityHandle const index) const -> int32;
@@ -95,6 +106,7 @@ class ATestEntityRegistry : public AActor {
 
     // Total queries
     auto get_total_kills() const noexcept -> int32;
+    auto get_total_alive() const noexcept -> int32;
 
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;

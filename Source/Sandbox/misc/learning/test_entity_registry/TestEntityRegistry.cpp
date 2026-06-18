@@ -201,7 +201,8 @@ void ATestEntityRegistry::commit_entity_updates() {
 
     for (int32 i{0}; i < n; ++i) {
         auto const entity_handle{queued_entity_update_handles[i]};
-        if (!is_valid_handle(entity_handle)) { continue; }
+        check(is_valid_handle(entity_handle));
+
         auto const entity_index{entity_handle.index};
 
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
@@ -357,6 +358,16 @@ auto ATestEntityRegistry::get_total_kills() const noexcept -> int32 {
 
     return total;
 }
+auto ATestEntityRegistry::get_total_alive() const noexcept -> int32 {
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (auto const& alive : unique_entities.alive) {
+        if (alive) { ++total; }
+    }
+
+    return total;
+}
 
 // Area queries
 auto ATestEntityRegistry::collect_entities_in_range(
@@ -420,6 +431,15 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
 }
 auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.get_num();
+}
+auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
+    int32 total{0};
+
+    for (auto const& alive : entity_data.alive) {
+        if (alive) { ++total; }
+    }
+
+    return total;
 }
 
 // Checks
