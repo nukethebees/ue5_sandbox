@@ -31,7 +31,6 @@ void ATestBatchOrchestrator::BeginPlay() {
     tick_counter = 0;
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(player_ship),
         SANDBOX_NAMED_UOBJECT_PTR(lasers),
         SANDBOX_NAMED_UOBJECT_PTR(capital_ships),
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
@@ -62,25 +61,27 @@ void ATestBatchOrchestrator::BeginPlay() {
                       turrets,
                       spinners);
 
-    ml::invoke_on_all(
-        [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); },
-        player_ship,
-        capital_ships,
-        capital_ship_fighters,
-        turrets,
-        spinners);
+    auto register_owner{
+        [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); }};
 
+    if (player_ship) { register_owner(player_ship); }
+    ml::invoke_on_all(register_owner, capital_ships, capital_ship_fighters, turrets, spinners);
+
+    if (player_ship) {
+        player_ship->begin_play();
+        mission_manager->begin_play();
+    }
     ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
-                      player_ship,
                       capital_ships,
                       capital_ship_fighters,
                       turrets,
                       spinners,
-                      lasers,
-                      mission_manager);
+                      lasers);
 
-    mission_manager->update_player_handles();
-    check(entity_registry->is_valid_unique_id(mission_manager->get_player_id()));
+    if (player_ship) {
+        mission_manager->update_player_handles();
+        check(entity_registry->is_valid_unique_id(mission_manager->get_player_id()));
+    }
 
     entity_registry->commit_updates();
     entity_registry->end_tick();
@@ -103,7 +104,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Assume registry data is stable here
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
-        player_ship->begin_tick();
+        if (player_ship) { player_ship->begin_tick(); }
 
         capital_ships->begin_tick();
         capital_ship_fighters->begin_tick();
@@ -128,7 +129,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Queue projectile spawns
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::tick);
 
-        player_ship->tick(dt);
+        if (player_ship) { player_ship->tick(dt); }
 
         capital_ships->tick(dt);
         capital_ship_fighters->tick(dt);
@@ -143,7 +144,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Movement
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
-        player_ship->move(dt);
+        if (player_ship) { player_ship->move(dt); }
 
         capital_ship_fighters->move(dt);
     }
@@ -152,7 +153,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Queue commands
         // e.g. spawning lasers for the next frame
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
-        player_ship->queue_commands();
+
+        if (player_ship) { player_ship->queue_commands(); }
 
         capital_ship_fighters->queue_commands();
         turrets->queue_commands();
@@ -177,7 +179,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Resolve hit events
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_hit_events);
 
-        player_ship->resolve_hit_events();
+        if (player_ship) { player_ship->resolve_hit_events(); }
 
         capital_ships->resolve_hit_events();
         capital_ship_fighters->resolve_hit_events();
@@ -189,7 +191,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         TRACE_CPUPROFILER_EVENT_SCOPE(
             Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
 
-        player_ship->update_entity_registry();
+        if (player_ship) { player_ship->update_entity_registry(); }
 
         capital_ships->update_entity_registry();
         capital_ship_fighters->update_entity_registry();
@@ -207,14 +209,14 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Apply changes from the registry e.g. destroyed targets
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
 
-        player_ship->sync_from_registry();
+        if (player_ship) { player_ship->sync_from_registry(); }
 
         capital_ships->sync_from_registry();
         capital_ship_fighters->sync_from_registry();
         turrets->sync_from_registry();
     }
 
-    mission_manager->mission_tick(dt);
+    if (player_ship) { mission_manager->mission_tick(dt); }
 
     // ---------------------------------------------------------------------------------------------
     // End phase
@@ -223,7 +225,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Update visual state
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_visuals);
 
-        player_ship->update_visuals();
+        if (player_ship) { player_ship->update_visuals(); }
 
         capital_ships->update_visuals();
         capital_ship_fighters->update_visuals();
@@ -235,7 +237,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
-        player_ship->end_tick();
+        if (player_ship) { player_ship->end_tick(); }
 
         capital_ships->end_tick();
         capital_ship_fighters->end_tick();
