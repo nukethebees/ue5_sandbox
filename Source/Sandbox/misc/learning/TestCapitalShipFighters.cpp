@@ -234,7 +234,7 @@ auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEnt
 
     ml::add_uninitialised(entity_data.alive, n);
     for (int32 i{0}; i < n; ++i) {
-        entity_data.alive[i] = static_cast<uint8>(healths[i]);
+        entity_data.alive[i] = static_cast<uint8>(healths[i] > 0);
     }
 
     return entity_data;

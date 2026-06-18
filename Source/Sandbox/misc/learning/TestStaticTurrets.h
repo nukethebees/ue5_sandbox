@@ -62,7 +62,7 @@ class ATestStaticTurrets : public AActor {
     void configure_ismc();
 
     // Entity data
-    auto get_entity_data() const -> FTestEntityRegistryEntityData;
+    void prepare_entity_update_data();
 
     // Searchng
     void perform_search();
@@ -86,6 +86,7 @@ class ATestStaticTurrets : public AActor {
     TestEntityOwnerId owner_id{};
     TArray<FRegistryEntityHandle> entity_handles{};
     EntityDeathInfo entity_death_info;
+    FTestEntityRegistryEntityData entity_update_data;
 
     // Location
     FVectors3f locations;

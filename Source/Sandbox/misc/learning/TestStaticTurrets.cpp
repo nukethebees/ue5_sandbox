@@ -102,10 +102,11 @@ void ATestStaticTurrets::resolve_hit_events() {
 void ATestStaticTurrets::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_entity_registry);
 
-    auto const data{get_entity_data()};
+    prepare_entity_update_data();
+
     entity_registry->update_entities({
         .indices = entity_handles,
-        .data = data.get_const_view(),
+        .data = entity_update_data.get_const_view(),
     });
 
     entity_registry->set_death_infos(entity_death_info);
@@ -154,24 +155,21 @@ void ATestStaticTurrets::configure_ismc() {
 }
 
 // Entity data
-auto ATestStaticTurrets::get_entity_data() const -> FTestEntityRegistryEntityData {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::get_entity_data);
+void ATestStaticTurrets::prepare_entity_update_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::prepare_entity_update_data);
 
     auto const n{get_num_instances()};
 
-    FTestEntityRegistryEntityData entity_data;
-    ml::add_uninitialised(entity_data, n);
+    ml::add_uninitialised(entity_update_data, n);
 
-    entity_data.locations = locations;
-    ml::fill(entity_data.velocities, 0.f);
-    entity_data.healths = healths;
-    entity_data.teams = teams;
+    entity_update_data.locations = locations;
+    ml::fill(entity_update_data.velocities, 0.f);
+    entity_update_data.healths = healths;
+    entity_update_data.teams = teams;
 
     for (int32 i{0}; i < n; ++i) {
-        entity_data.alive[i] = static_cast<uint8>(healths[i]);
+        entity_update_data.alive[i] = static_cast<uint8>(healths[i] > 0);
     }
-
-    return entity_data;
 }
 
 // Accessors
@@ -343,6 +341,7 @@ void ATestStaticTurrets::clear_runtime_state() {
 }
 void ATestStaticTurrets::clear_tick_buffers() {
     ml::reset(entity_death_info,
+              entity_update_data,
               local_indices_to_remove,
               indices_ready_to_fire,
               new_laser_locations,
