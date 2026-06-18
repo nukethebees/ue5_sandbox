@@ -2,6 +2,7 @@
 
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/misc/learning/TestBatchActorCore.h>
 #include <Sandbox/misc/learning/TestCapitalShipFightersConfig.h>
 #include <Sandbox/misc/learning/TestLasers.h>
 #include <Sandbox/utilities/actor_utils.h>
@@ -77,19 +78,12 @@ void ATestCapitalShipFighters::queue_commands() {
 void ATestCapitalShipFighters::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
 
-    auto const view{entity_registry->get_damage_queue_view(owner_id)};
-    auto const n{view.num()};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const ismc_index_hit{view.hit_items[i]};
-
-        healths[ismc_index_hit] -= view.damage_amounts[i];
-        if ((healths[ismc_index_hit] <= 0) && !local_indices_to_remove.Contains(ismc_index_hit)) {
-            local_indices_to_remove.Add(ismc_index_hit);
-            entity_death_info.add(
-                ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
-        }
-    }
+    ml::batch::resolve_hit_events(*entity_registry,
+                                  owner_id,
+                                  entity_handles,
+                                  healths,
+                                  local_indices_to_remove,
+                                  entity_death_info);
 
     validate_array_sizes();
 }
