@@ -84,10 +84,8 @@ void ATestCapitalShipFighters::resolve_hit_events() {
         auto const ismc_index_hit{view.hit_items[i]};
 
         healths[ismc_index_hit] -= view.damage_amounts[i];
-        if (healths[ismc_index_hit] <= 0) {
-            if (!local_indices_to_remove.Contains(ismc_index_hit)) {
-                local_indices_to_remove.Add(ismc_index_hit);
-            }
+        if ((healths[ismc_index_hit] <= 0) && !local_indices_to_remove.Contains(ismc_index_hit)) {
+            local_indices_to_remove.Add(ismc_index_hit);
             entity_death_info.add(
                 ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
         }
