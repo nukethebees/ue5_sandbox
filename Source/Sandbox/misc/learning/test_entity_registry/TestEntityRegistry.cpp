@@ -345,6 +345,20 @@ auto ATestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
 }
+
+// Total queries
+auto ATestEntityRegistry::get_total_kills() const noexcept -> int32 {
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (auto const& kills : unique_entities.kills) {
+        total += kills;
+    }
+
+    return total;
+}
+
+// Area queries
 auto ATestEntityRegistry::collect_entities_in_range(
     FVector3f const& origin,
     float const radius,

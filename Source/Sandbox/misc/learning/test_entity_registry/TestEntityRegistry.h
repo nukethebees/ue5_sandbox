@@ -93,6 +93,9 @@ class ATestEntityRegistry : public AActor {
     auto get_alive(FRegistryEntityHandle const index) const -> bool;
     auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
 
+    // Total queries
+    auto get_total_kills() const noexcept -> int32;
+
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
