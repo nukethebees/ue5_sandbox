@@ -96,6 +96,10 @@ class ATestEntityRegistry : public AActor {
     auto get_entity_data() const noexcept -> FTestEntityRegistryEntityData const& {
         return entity_data;
     }
+    auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
+        return unique_ids;
+    }
+
     auto get_generations() const noexcept -> TConstArrayView<int> { return generations; }
     auto get_location(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_velocity(FRegistryEntityHandle const index) const -> FVector3f;
