@@ -2,6 +2,8 @@
 
 #include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
 
+#include <SandboxCore/soa_vector_utils.h>
+
 void ATestSimpleBatch::StartTest() {
     Super::StartTest();
 
@@ -40,13 +42,17 @@ void ATestSimpleBatch::Tick(float dt) {
 
         auto const& entity_data{entity_registry->get_entity_data()};
         auto const generations{entity_registry->get_generations()};
+        auto const active_ids{entity_registry->get_active_unique_ids()};
 
         for (int32 i{0}; i < n_active; ++i) {
-            msg += FString::Printf(TEXT("\nIndex: %d, Gen: %d, Health: %d, Alive: %d"),
-                                   i,
-                                   generations[i],
-                                   entity_data.healths[i],
-                                   entity_data.alive[i]);
+            msg +=
+                FString::Printf(TEXT("\nIndex: %d, Gen: %d, Id: %d, Health: %d, Alive: %d, loc=%s"),
+                                i,
+                                generations[i],
+                                active_ids[i].id,
+                                entity_data.healths[i],
+                                entity_data.alive[i],
+                                *ml::get_vector3f(entity_data.locations, 1).ToCompactString());
         }
 
         msg += TEXT("\n\nGlobal id data:");
