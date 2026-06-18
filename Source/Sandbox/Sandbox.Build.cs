@@ -44,7 +44,8 @@ public class Sandbox : ModuleRules
             "SlateCore",
             "TraceLog",
             "UMG",
-            "UnrealEd" // Scoped transaction
+            "UnrealEd", // Scoped transaction
+            "FunctionalTesting",
         });
 
         Target.Logger.LogInformation("=== Sandbox Build.cs [Start] ===");
