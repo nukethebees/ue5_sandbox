@@ -9,6 +9,7 @@
 #include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/misc/learning/TestLasers.h>
+#include <Sandbox/misc/learning/TestSpaceShipData.h>
 #include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -55,18 +56,19 @@ ATestSpaceShip::ATestSpaceShip()
 void ATestSpaceShip::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
 
-    velocity = GetActorForwardVector() * cruise_speed;
-    thrust_energy = thrust_energy_max;
-
     ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(ship_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(laser_class),
-        SANDBOX_NAMED_UOBJECT_PTR(laser_config),
-        SANDBOX_NAMED_UOBJECT_PTR(hyper_laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(ship_config->laser_class),
+        SANDBOX_NAMED_UOBJECT_PTR(ship_config->laser_config),
+        SANDBOX_NAMED_UOBJECT_PTR(ship_config->hyper_laser_config),
         SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
     });
+
+    velocity = GetActorForwardVector() * ship_config->cruise_speed;
+    thrust_energy = ship_config->thrust_energy_max;
 
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
@@ -221,8 +223,8 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
 
     switch (s) {
         case EBoostBrakeState::Boost: {
-            target_speed = boost_speed;
-            thrust_change_rate = -(1.f / boost_depletion_time);
+            target_speed = ship_config->boost_speed;
+            thrust_change_rate = -(1.f / ship_config->boost_depletion_time);
             response = speed_responses.boost;
             boost_pulse->Activate();
 
@@ -230,8 +232,8 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
             break;
         }
         case EBoostBrakeState::Brake: {
-            target_speed = brake_speed;
-            thrust_change_rate = -(1.f / brake_depletion_time);
+            target_speed = ship_config->brake_speed;
+            thrust_change_rate = -(1.f / ship_config->brake_depletion_time);
             response = speed_responses.brake;
             break;
         }
@@ -239,8 +241,8 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
             UE_LOG(LogSandbox, Error, TEXT("Unhandled state."));
             [[fallthrough]];
         case EBoostBrakeState::None: {
-            target_speed = cruise_speed;
-            thrust_change_rate = 1.f / thrust_recharge_time;
+            target_speed = ship_config->cruise_speed;
+            thrust_change_rate = 1.f / ship_config->thrust_recharge_time;
             if (target_speed < cur_speed) { response = speed_responses.slowing_to_cruise; }
 
             boost_engine_effect->Deactivate();
@@ -275,9 +277,10 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
     if (starting_thrust_energy <= 0.f) { self.set(EBoostBrakeState::None); }
 
     self.thrust_energy += dt * self.thrust_change_rate;
-    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.thrust_energy_max);
+    self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.ship_config->thrust_energy_max);
     if (starting_thrust_energy != self.thrust_energy) {
-        self.on_energy_changed.ExecuteIfBound(self.thrust_energy / self.thrust_energy_max);
+        self.on_energy_changed.ExecuteIfBound(self.thrust_energy /
+                                              self.ship_config->thrust_energy_max);
     }
 }
 
@@ -326,10 +329,10 @@ void ATestSpaceShip::update_laser_firing() {
         case ELaserFiringMode::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = laser_firing_period;
+                laser_shot_cooldown = ship_config->laser_firing_period;
 
-                if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_shot_cooldown = laser_lock_on_transition_delay;
+                if (lasers_fired_this_burst >= ship_config->lasers_per_burst) {
+                    laser_shot_cooldown = ship_config->laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringMode::lock_on_transition);
                 }
             }
@@ -344,7 +347,7 @@ void ATestSpaceShip::update_laser_firing() {
 
             auto const start{middle.GetLocation()};
             auto const fwd{middle.Rotator().Vector()};
-            auto const distance{laser_lock_on_distance};
+            auto const distance{ship_config->laser_lock_on_distance};
             auto const end{start + fwd * distance};
 
             FHitResult hit;
@@ -396,7 +399,7 @@ void ATestSpaceShip::fire_laser() {
             TStaticArray<FTransform, 1> fire_points{
                 get_middle_socket(),
             };
-            fire_lasers_from(*laser_config, fire_points);
+            fire_lasers_from(*ship_config->laser_config, fire_points);
             break;
         }
         case EShipLaserMode::Double: {
@@ -404,7 +407,7 @@ void ATestSpaceShip::fire_laser() {
                 ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
                 ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
             };
-            fire_lasers_from(*laser_config, fire_points);
+            fire_lasers_from(*ship_config->laser_config, fire_points);
             break;
         }
         case EShipLaserMode::Hyper: {
@@ -412,7 +415,7 @@ void ATestSpaceShip::fire_laser() {
                 ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
                 ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
             };
-            fire_lasers_from(*hyper_laser_config, fire_points);
+            fire_lasers_from(*ship_config->hyper_laser_config, fire_points);
             break;
         }
         default: {
@@ -422,7 +425,7 @@ void ATestSpaceShip::fire_laser() {
     }
 
     lasers_fired_this_burst++;
-    laser_shot_cooldown = laser_firing_period;
+    laser_shot_cooldown = ship_config->laser_firing_period;
 }
 void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
                                       TConstArrayView<FTransform> const fire_points) {
@@ -472,7 +475,8 @@ void ATestSpaceShip::fire_bomb() {
 
     UE_LOG(LogSandbox, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
 
-    active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
+    active_bomb =
+        world->SpawnActorDeferred<AShipBomb>(ship_config->bomb_class, fire_point, nullptr, this);
     if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
         active_bomb->set_target(this->lock_on_target);
         set_lock_on_target(nullptr);
@@ -504,10 +508,10 @@ void ATestSpaceShip::fire_homing_laser() {
 
     UE_LOG(LogSandbox, Verbose, TEXT("Spawning laser at %s"), *fire_point.ToHumanReadableString());
 
-    TRY_INIT_PTR(
-        laser,
-        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
-    laser->set_speed(laser_speed);
+    TRY_INIT_PTR(laser,
+                 world->SpawnActorDeferred<AShipHomingLaser>(
+                     ship_config->homing_laser_class, fire_point, nullptr, this));
+    laser->set_speed(ship_config->laser_speed);
     laser->set_target(lock_on_target);
     laser->FinishSpawning(fire_point);
 }
@@ -516,7 +520,7 @@ void ATestSpaceShip::fire_homing_laser() {
 /* Visuals */
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
-    auto const drot{self.rotation_speed * dt};
+    auto const drot{self.ship_config->rotation_speed * dt};
     if (self.rotation_input == FVector2D::ZeroVector) {
 
         auto const rot{self.GetActorRotation()};
@@ -529,7 +533,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) 
 
         auto const manual_bank_strength{self.manual_bank_direction * 0.5};
         auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
-        auto const yaw_speed{self.rotation_speed * abs_yaw_strength};
+        auto const yaw_speed{self.ship_config->rotation_speed * abs_yaw_strength};
         auto const drot_yaw{yaw_speed * dt};
 
         auto const d_pitch{self.rotation_input.Y * drot_pitch};
@@ -543,20 +547,21 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) 
 void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float dt) {
     auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
 
-    auto const target_pitch{self.rotation_input.Y * self.pitch_angle_max};
+    auto const target_pitch{self.rotation_input.Y * self.ship_config->pitch_angle_max};
     auto const new_pitch{
-        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.pitch_speed)};
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.ship_config->pitch_speed)};
 
-    auto const target_yaw{self.rotation_input.X * self.yaw_angle_max};
-    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.yaw_speed)};
+    auto const target_yaw{self.rotation_input.X * self.ship_config->yaw_angle_max};
+    auto const new_yaw{
+        FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.ship_config->yaw_speed)};
 
     auto const turn_intensity{self.rotation_input.X};
-    auto const turn_target{turn_intensity * self.turn_bank_angle_max};
-    auto const turn_speed{turn_intensity * self.turn_bank_speed};
+    auto const turn_target{turn_intensity * self.ship_config->turn_bank_angle_max};
+    auto const turn_speed{turn_intensity * self.ship_config->turn_bank_speed};
 
     auto const manual_bank_intensity{self.manual_bank_direction};
-    auto const manual_bank_target{manual_bank_intensity * self.manual_bank_angle_max};
-    auto const manual_bank_speed{manual_bank_intensity * self.manual_bank_speed};
+    auto const manual_bank_target{manual_bank_intensity * self.ship_config->manual_bank_angle_max};
+    auto const manual_bank_speed{manual_bank_intensity * self.ship_config->manual_bank_speed};
 
     double new_roll{current_rotation.Roll};
     if (self.roll_state.is_rolling()) {
@@ -564,8 +569,8 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
         UE_LOG(LogSandbox, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
         new_roll = current_rotation.Roll + delta_roll;
     } else {
-        auto const roll_speed{
-            FMath::Max(self.turn_bank_speed, FMath::Abs(turn_speed + manual_bank_speed))};
+        auto const roll_speed{FMath::Max(self.ship_config->turn_bank_speed,
+                                         FMath::Abs(turn_speed + manual_bank_speed))};
         auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
         auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
         new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
@@ -575,14 +580,16 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
 }
 
 void ATestSpaceShip::configure_boost_pulse() {
-    boost_pulse->SetColorParameter(TEXT("colour"), engine_colour);
-    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"), boost_effect_colour_intensity);
-    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"), boost_effect_colour_intensity);
+    boost_pulse->SetColorParameter(TEXT("colour"), ship_config->engine_colour);
+    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"),
+                                   ship_config->boost_effect_colour_intensity);
+    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"),
+                                   ship_config->boost_effect_colour_intensity);
 }
 void ATestSpaceShip::configure_boost_engine_effect() {
-    boost_engine_effect->SetColorParameter(TEXT("colour"), engine_colour);
+    boost_engine_effect->SetColorParameter(TEXT("colour"), ship_config->engine_colour);
     boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                           boost_effect_colour_intensity);
+                                           ship_config->boost_effect_colour_intensity);
 }
 void ATestSpaceShip::configure_ship_mesh() {
     ship_mesh->SetCanEverAffectNavigation(false);
@@ -632,6 +639,13 @@ void ATestSpaceShip::set_health(int32 new_health) {
 void ATestSpaceShip::add_life() {
     lives += 1;
     on_lives_changed.ExecuteIfBound(lives);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Energy */
+/* ------------------------------------------------------------------------------------------ */
+bool ATestSpaceShip::energy_is_full() const {
+    return thrust_energy == ship_config->thrust_energy_max;
 }
 
 /* ------------------------------------------------------------------------------------------ */
