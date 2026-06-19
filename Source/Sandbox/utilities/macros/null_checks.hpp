@@ -37,7 +37,7 @@
     } else
 
 // Pointers
-// -------------------------------------------------------------------------------------------------
+/* ------------------------------------------------------------------------------------------ */
 #define RETURN_IF_NULLPTR(VAR_NAME) \
     RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !(VAR_NAME), "nullptr", )
 #define RETURN_VALUE_IF_NULLPTR(VAR_NAME, RETURN_VALUE) \
@@ -53,7 +53,7 @@
 #define CONTINUE_IF_NULLPTR(VAR_NAME) CONTINUE_AND_WARN_IF_EXPR(VAR_NAME, !(VAR_NAME), "nullptr")
 
 // Objects with IsValid()
-// -------------------------------------------------------------------------------------------------
+/* ------------------------------------------------------------------------------------------ */
 #define RETURN_IF_INVALID(VAR_NAME) \
     RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !(VAR_NAME.IsValid()), "invalid", )
 
@@ -62,7 +62,7 @@
     RETURN_IF_INVALID(VAR_NAME)
 
 // std::optional
-// -------------------------------------------------------------------------------------------------
+/* ------------------------------------------------------------------------------------------ */
 #define RETURN_IF_NULLOPT(VAR_NAME) \
     RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, !(VAR_NAME), "nullopt", )
 
@@ -78,7 +78,7 @@
     RETURN_VALUE_IF_NULLOPT(VAR_NAME, RETURN_VALUE)
 
 // Boolean
-// -------------------------------------------------------------------------------------------------
+/* ------------------------------------------------------------------------------------------ */
 #define RETURN_IF_TRUE(BOOLEAN_EXPR) \
     RETURN_VALUE_AND_WARN_IF_EXPR(#BOOLEAN_EXPR, BOOLEAN_EXPR, "true", )
 #define RETURN_IF_FALSE(BOOLEAN_EXPR) \
