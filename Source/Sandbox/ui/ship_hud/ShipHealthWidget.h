@@ -9,6 +9,8 @@
 
 class UProgressBar;
 
+class UValueWidget;
+
 UCLASS()
 class SANDBOX_API UShipHealthWidget : public UUserWidget {
   public:
@@ -18,4 +20,7 @@ class SANDBOX_API UShipHealthWidget : public UUserWidget {
   protected:
     UPROPERTY(meta = (BindWidget))
     UProgressBar* health_bar{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* health_text{nullptr};
 };
