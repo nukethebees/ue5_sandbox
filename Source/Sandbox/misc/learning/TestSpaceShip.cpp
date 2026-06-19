@@ -108,6 +108,18 @@ void ATestSpaceShip::queue_commands() {
 }
 void ATestSpaceShip::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_hit_events);
+
+    auto const view{entity_registry->get_damage_queue_view(owner_id)};
+    auto const n{view.num()};
+
+    auto const original_health{health.health};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const ismc_index_hit{view.hit_items[i]};
+        health.health -= view.damage_amounts[i];
+}
+
+    if (health.health != original_health) { on_health_changed.ExecuteIfBound(health); }
 }
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
@@ -606,7 +618,14 @@ void ATestSpaceShip::record_kills(int32 kills) {
 // Health
 // -------------------------------------------------------------------------------------------------
 void ATestSpaceShip::add_health(int32 added_health) {
-    health.health = FMath::Min(health.health + added_health, health.max_health);
+    set_health(health.health + added_health);
+}
+void ATestSpaceShip::set_health(int32 new_health) {
+    if (new_health == health.health) { return; }
+
+    auto const old_health{health.max_health};
+    health.health = FMath::Min(new_health, health.max_health);
+    on_health_changed.ExecuteIfBound(health);
 }
 
 // Lives
