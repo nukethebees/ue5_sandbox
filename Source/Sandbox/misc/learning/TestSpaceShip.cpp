@@ -61,7 +61,6 @@ void ATestSpaceShip::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(ship_config->laser_class),
         SANDBOX_NAMED_UOBJECT_PTR(ship_config->laser_config),
         SANDBOX_NAMED_UOBJECT_PTR(ship_config->hyper_laser_config),
         SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
@@ -496,25 +495,7 @@ void ATestSpaceShip::subtract_bomb() {
 }
 
 // Combat - homing laser
-void ATestSpaceShip::fire_homing_laser() {
-    UE_LOG(LogSandbox, Verbose, TEXT("Firing homing laser."));
-
-    if (!IsValid(lock_on_target)) {
-        UE_LOG(LogSandbox, Verbose, TEXT("Invalid lock-on target when firing."));
-        return;
-    }
-    TRY_INIT_PTR(world, GetWorld());
-    auto const fire_point{get_middle_socket()};
-
-    UE_LOG(LogSandbox, Verbose, TEXT("Spawning laser at %s"), *fire_point.ToHumanReadableString());
-
-    TRY_INIT_PTR(laser,
-                 world->SpawnActorDeferred<AShipHomingLaser>(
-                     ship_config->homing_laser_class, fire_point, nullptr, this));
-    laser->set_speed(ship_config->laser_speed);
-    laser->set_target(lock_on_target);
-    laser->FinishSpawning(fire_point);
-}
+void ATestSpaceShip::fire_homing_laser() {}
 
 /* ------------------------------------------------------------------------------------------ */
 /* Visuals */

@@ -91,10 +91,6 @@ class UTestSpaceShipData : public UDataAsset {
     float laser_lock_on_distance{10000.f};
 
     UPROPERTY(EditAnywhere, Category = "Laser")
-    TSubclassOf<AShipLaser> laser_class;
-    UPROPERTY(EditAnywhere, Category = "Laser")
-    TSubclassOf<AShipHomingLaser> homing_laser_class;
-    UPROPERTY(EditAnywhere, Category = "Laser")
     UShipLaserConfig* laser_config;
     UPROPERTY(EditAnywhere, Category = "Laser")
     UShipLaserConfig* hyper_laser_config;
