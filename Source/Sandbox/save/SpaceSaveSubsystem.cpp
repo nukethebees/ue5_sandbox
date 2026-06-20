@@ -10,17 +10,17 @@
 
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
 
     load_or_create();
-
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
+    log_save_data();
 }
 void USpaceSaveSubsystem::Deinitialize() {
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
+
     if (current_save) { save_to_disk(); }
 
     log_save_data();
-
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
 
     Super::Deinitialize();
 }
