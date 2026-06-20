@@ -97,13 +97,6 @@ class ATestSpaceShip : public APawn {
     /* ------------------------------------------------------------------------------------------ */
     void add_health(int32 added_health);
     auto get_health_info() const -> FShipHealth { return health; }
-    // Lives
-    auto get_lives() const { return lives; }
-    void add_life();
-
-    // Points
-    auto get_points() const { return points; }
-    void record_kills(int32 kills);
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
@@ -121,9 +114,6 @@ class ATestSpaceShip : public APawn {
     FOnShipHealthChanged on_health_changed;
     FOnShipEnergyChanged on_energy_changed;
     FOnShipBombsChanged on_bombs_changed;
-    FOnShipGoldRingsChanged on_gold_rings_changed;
-    FOnShipPointsChanged on_points_changed;
-    FOnLivesChanged on_lives_changed;
     FOnLaserModeChanged on_laser_mode_changed;
     FOnLockOnAcquired on_lock_on_acquired;
 
@@ -166,9 +156,6 @@ class ATestSpaceShip : public APawn {
     // Health
     /* ------------------------------------------------------------------------------------------ */
     void set_health(int32 new_health);
-
-    // Scoring
-    void add_points(int32 x);
 
     // Mesh
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
@@ -255,7 +242,6 @@ class ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
     float manual_bank_direction{0.f};
 
-
     UPROPERTY(EditAnywhere, Category = "SpaceShip")
     FBarrelRoll roll_state{};
 
@@ -284,23 +270,10 @@ class ATestSpaceShip : public APawn {
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
-    // Misc
-    /* ------------------------------------------------------------------------------------------ */
-    // Points
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
-    int32 points{0};
-
-    /* ------------------------------------------------------------------------------------------ */
     // Health
     /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    int32 gold_rings_collected{0};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
     FShipHealth health{1000000};
-
-    // Lives
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    int32 lives{3};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")

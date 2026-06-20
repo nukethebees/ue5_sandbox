@@ -147,7 +147,7 @@ void ATestSpaceShip::end_tick() {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-/* Entity data                                                                                    */
+// Entity data                                                                                    
 /* ---------------------------------------------------------------------------------------------- */
 void ATestSpaceShip::register_with_entity_registry() {
     auto const new_entities{
@@ -187,7 +187,7 @@ auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Movement */
+// Movement
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
     auto const fwd{self.GetActorForwardVector()};
@@ -498,7 +498,7 @@ void ATestSpaceShip::subtract_bomb() {
 void ATestSpaceShip::fire_homing_laser() {}
 
 /* ------------------------------------------------------------------------------------------ */
-/* Visuals */
+// Visuals
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
     auto const drot{self.ship_config->rotation_speed * dt};
@@ -592,18 +592,7 @@ auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Points */
-/* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::add_points(int32 x) {
-    points += x;
-    on_points_changed.ExecuteIfBound(points);
-}
-void ATestSpaceShip::record_kills(int32 kills) {
-    add_points(kills);
-}
-
-/* ------------------------------------------------------------------------------------------ */
-/* Health */
+// Health
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::add_health(int32 added_health) {
     set_health(health.health + added_health);
@@ -616,21 +605,15 @@ void ATestSpaceShip::set_health(int32 new_health) {
     on_health_changed.ExecuteIfBound(health);
 }
 
-// Lives
-void ATestSpaceShip::add_life() {
-    lives += 1;
-    on_lives_changed.ExecuteIfBound(lives);
-}
-
 /* ------------------------------------------------------------------------------------------ */
-/* Energy */
+// Energy
 /* ------------------------------------------------------------------------------------------ */
 bool ATestSpaceShip::energy_is_full() const {
     return thrust_energy == ship_config->thrust_energy_max;
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Debugging */
+// Debugging
 /* ------------------------------------------------------------------------------------------ */
 #if WITH_EDITOR
 void ATestSpaceShip::sample_speed() {
