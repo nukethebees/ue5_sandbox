@@ -88,21 +88,9 @@ void ATestCapitalShips::resolve_hit_events() {
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
 
-    auto const n{get_num_instances()};
+    prepare_entity_update_data();
 
-    FTestEntityRegistryEntityData update_data;
-    update_data.add_uninitialised(n);
-
-    update_data.locations = locations;
-    ml::fill(update_data.velocities, 0.f);
-    update_data.healths = healths;
-    update_data.teams = teams;
-
-    for (int32 i{0}; i < n; ++i) {
-        update_data.alive[i] = healths[i] > 0;
-    }
-
-    entity_registry->update_entities({entity_handles, update_data.get_const_view()});
+    entity_registry->update_entities({entity_handles, entity_update_data.get_const_view()});
     entity_registry->set_death_infos(entity_death_info);
 }
 void ATestCapitalShips::sync_from_registry() {
@@ -161,47 +149,26 @@ void ATestCapitalShips::set_niagara_spawner(ADelayedNiagaraSpawner& spawner) {
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
 
+    check(entity_handles.IsEmpty());
     auto* world{GetWorld()};
+    check(world);
 
-    if (!world) { return; }
-
-    TMap<Proxy const*, FRegistryEntityHandle> proxy_to_index{};
     auto const proxies{ml::get_actors<Proxy>(*world)};
-
     auto const n_to_add{proxies.Num()};
-
-    auto new_entities{entity_registry->reserve_entities(n_to_add)};
-
-    entity_handles = MoveTemp(new_entities.registry_handles);
-    for (int32 i{0}; i < n_to_add; ++i) {
-        proxy_to_index.Add(proxies[i], entity_handles[i]);
-    }
 
     TArray<FRegistryEntityHandle> new_targets;
     FVectors3f new_locations;
     FRotatorsf new_rotations;
     TArray<ETestTeam> new_teams;
 
-    ml::add_uninitialised(n_to_add, new_targets, new_locations, new_rotations, new_teams);
+    ml::add_uninitialised(
+        n_to_add, entity_handles, new_targets, new_locations, new_rotations, new_teams);
 
     for (int32 i{0}; i < n_to_add; ++i) {
-        FRegistryEntityHandle target_index{};
-        auto* proxy{proxies[i]};
-
-        if (auto const found{proxy_to_index.Find(proxy->target_ship)}) {
-            target_index = *found;
-        } else {
-            UE_LOG(LogSandboxLearning,
-                   Fatal,
-                   TEXT("ATestCapitalShips::register_all_proxies_in_level: Lookup failed"));
-        }
-
-        new_targets[i] = target_index;
-        auto const& proxy_transform{proxy->GetActorTransform()};
-
+        auto const& proxy_transform{proxies[i]->GetActorTransform()};
         ml::assign(new_locations, i, proxy_transform.GetLocation());
         ml::assign(new_rotations, i, proxy_transform.Rotator());
-        new_teams[i] = proxy->team;
+        new_teams[i] = proxies[i]->team;
     }
 
     spawn_ships(entity_handles,
@@ -209,7 +176,32 @@ void ATestCapitalShips::register_all_proxies_in_level() {
                 new_rotations.get_const_view(),
                 new_teams,
                 new_targets);
-    update_entity_registry();
+
+    prepare_entity_update_data();
+    auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
+    entity_handles = MoveTemp(new_entities.registry_handles);
+
+    // Map the proxies to the new handles
+    TMap<Proxy const*, FRegistryEntityHandle> proxy_to_index{};
+    for (int32 i{0}; i < n_to_add; ++i) {
+        proxy_to_index.Add(proxies[i], entity_handles[i]);
+    }
+
+    // Assign the entity targets
+    for (int32 i{0}; i < n_to_add; ++i) {
+        FRegistryEntityHandle target_index{};
+
+        if (auto const found{proxy_to_index.Find(proxies[i]->target_ship)}) {
+            target_index = *found;
+        } else {
+            UE_LOG(LogSandboxLearning, Fatal, TEXT("Lookup failed"));
+        }
+
+        new_targets[i] = target_index;
+    }
+
+    target_entity_indices = MoveTemp(new_targets);
+
     ml::destroy_all_actors(proxies);
 }
 void ATestCapitalShips::spawn_ships(
@@ -242,6 +234,25 @@ void ATestCapitalShips::spawn_ships(
     instances->AddInstances(new_transforms, false, is_world_space, false);
 
     validate_array_sizes();
+}
+
+// Entity data
+void ATestCapitalShips::prepare_entity_update_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::prepare_entity_update_data);
+    check(entity_update_data.get_num() == 0);
+
+    auto const n{get_num_instances()};
+
+    entity_update_data.add_uninitialised(n);
+
+    entity_update_data.locations = locations;
+    ml::fill(entity_update_data.velocities, 0.f);
+    entity_update_data.healths = healths;
+    entity_update_data.teams = teams;
+
+    for (int32 i{0}; i < n; ++i) {
+        entity_update_data.alive[i] = healths[i] > 0;
+    }
 }
 
 // Fighter spawning
@@ -420,7 +431,8 @@ void ATestCapitalShips::clear_tick_buffers() {
               ships_ready_to_spawn_fighters_buffer,
               new_fighter_locations,
               new_fighter_rotations,
-              new_fighter_targets);
+              new_fighter_targets,
+              entity_update_data);
 }
 
 // Debugging

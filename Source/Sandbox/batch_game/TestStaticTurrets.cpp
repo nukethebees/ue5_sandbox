@@ -139,6 +139,7 @@ void ATestStaticTurrets::configure_ismc() {
 // Entity data
 void ATestStaticTurrets::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::prepare_entity_update_data);
+    check(entity_update_data.get_num() == 0);
 
     auto const n{get_num_instances()};
 
@@ -294,9 +295,6 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     // Set entity data
     ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);
 
-    auto new_entities{entity_registry->reserve_entities(n)};
-    entity_handles = MoveTemp(new_entities.registry_handles);
-
     ml::fill(healths, actor_config->max_health);
     target_handles.AddDefaulted(n);
     laser_cooldowns.remaining_times.AddZeroed(n);
@@ -312,19 +310,9 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     instances->AddInstances(ismc_transforms, false);
 
-    FTestEntityRegistryEntityData entity_data;
-    entity_data.add_uninitialised(n);
-
-    entity_data.set_all_velocities(0.f);
-    entity_data.locations = locations;
-    entity_data.healths = healths;
-    entity_data.teams = teams;
-    entity_data.set_all_alive();
-
-    entity_registry->update_entities({
-        .indices = entity_handles,
-        .data = entity_data.get_const_view(),
-    });
+    prepare_entity_update_data();
+    auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
+    entity_handles = MoveTemp(new_entities.registry_handles);
 
     ml::destroy_all_actors(proxies);
     validate_array_sizes();

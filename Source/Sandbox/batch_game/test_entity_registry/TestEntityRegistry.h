@@ -69,7 +69,6 @@ class ATestEntityRegistry : public AActor {
     auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
 
     // Entity creation
-    auto reserve_entities(int32 const count) -> NewEntities;
     auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> NewEntities;
 
     // Damage updates

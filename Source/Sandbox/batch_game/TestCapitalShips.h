@@ -3,6 +3,7 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -73,6 +74,9 @@ class ATestCapitalShips : public AActor {
                      TConstArrayView<ETestTeam> const new_teams,
                      TConstArrayView<FRegistryEntityHandle> const new_target_indices);
 
+    // Entity data
+    void prepare_entity_update_data();
+
     // Fighter spawning
     void handle_fighter_spawning();
 
@@ -108,6 +112,7 @@ class ATestCapitalShips : public AActor {
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
+    FTestEntityRegistryEntityData entity_update_data;
 
     // Transform
     UPROPERTY()

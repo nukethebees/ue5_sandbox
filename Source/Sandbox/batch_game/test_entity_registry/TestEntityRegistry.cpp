@@ -1,8 +1,8 @@
 #include "TestEntityRegistry.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
@@ -66,14 +66,6 @@ auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwne
 }
 
 // Entity creation
-auto ATestEntityRegistry::reserve_entities(int32 const count) -> NewEntities {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::reserve_entities);
-
-    FTestEntityRegistryEntityData empty_data;
-    empty_data.add_disabled(count);
-
-    return add_entities(empty_data.get_const_view());
-}
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
     -> NewEntities {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
@@ -91,6 +83,20 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     auto const free_to_reserve{FMath::Min(n_free_indices, count)};
 
     int32 new_entity_index{0};
+
+    auto set_up_unique_data{[&](int32 const view_index, int32 const entity_index) {
+        auto const unique_id{first_id + new_entity_index};
+        unique_ids[entity_index] = unique_id;
+
+        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
+
+        unique_entities.registry_handles[unique_id.id] =
+            FRegistryEntityHandle{entity_index, generations[entity_index]};
+        unique_entities.alive[unique_id.id] = view.alive[view_index];
+
+        new_entity_index++;
+    }};
+
     for (int32 i{0}; i < free_to_reserve; ++i) {
         auto const entity_index{free_indices.Pop(EAllowShrinking::No)};
 
@@ -103,15 +109,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
         ++generations[entity_index];
 
-        auto const unique_id{first_id + new_entity_index};
-        unique_ids[entity_index] = unique_id;
-
-        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
-
-        unique_entities.registry_handles[unique_id.id] =
-            FRegistryEntityHandle{entity_index, generations[entity_index]};
-
-        new_entity_index++;
+        set_up_unique_data(i, entity_index);
     }
 
     auto const indices_left_to_reserve{count - new_entities.registry_handles.Num()};
@@ -124,16 +122,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
     for (int32 i{0}; i < indices_left_to_reserve; ++i) {
         auto const entity_index{start_index + i};
-
-        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
-
-        auto const unique_id{first_id + new_entity_index};
-        unique_ids[entity_index] = unique_id;
-
-        unique_entities.registry_handles[unique_id.id] =
-            FRegistryEntityHandle{entity_index, generations[entity_index]};
-
-        new_entity_index++;
+        set_up_unique_data(free_to_reserve + i, entity_index);
     }
 
     validate_array_sizes();

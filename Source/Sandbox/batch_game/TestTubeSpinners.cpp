@@ -131,9 +131,6 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     auto const n{new_locations.num()};
     auto const existing_total{get_num_instances()};
 
-    auto new_entities{entity_registry->reserve_entities(n)};
-    registry_entity_handles.Append(MoveTemp(new_entities.registry_handles));
-
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(new_locations),
         SANDBOX_NAMED_NUM(new_yaws),
@@ -159,7 +156,8 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     ml::fill(entity_data.teams, ETestTeam::neutral);
     entity_data.set_all_alive();
 
-    entity_registry->update_entities({registry_entity_handles, entity_data.get_const_view()});
+    auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
+    registry_entity_handles.Append(MoveTemp(new_entities.registry_handles));
 
     validate_array_sizes();
 }
