@@ -473,6 +473,15 @@
 		{
 			"Name": "ExampleCustomDataInterface",
 			"Enabled": true
+		},
+		{
+			"Name": "InterchangeEditor",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux",
+				"Mac"
+			]
 		}
 	],
 	"TargetPlatforms": [
