@@ -218,6 +218,9 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const cooldown{actor_config->attack_cooldown};
     auto const laser_speed{laser_actor->get_config()->speed};
 
+    auto const disengage_radius{get_disengage_radius()};
+    auto const disengage_radius_sq{disengage_radius * disengage_radius};
+
     FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -233,7 +236,15 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         if (!(laser_cooldowns[i] <= 0.f)) { continue; }
 
+        auto const turret_location{ml::get_vector3f(locations, i)};
         auto const target_location{entity_registry->get_location(target_handle)};
+
+        auto const distance_sq{FVector3f::DistSquared(turret_location, target_location)};
+        if (distance_sq >= disengage_radius_sq) {
+            target_handles[i].reset();
+            continue;
+        }
+
         auto const target_velocity{entity_registry->get_velocity(target_handle)};
 
         auto const loc_x{locations.xs[i] + fire_point_offset.X};
@@ -263,6 +274,9 @@ void ATestStaticTurrets::fire_at_enemies() {
         .rotations = new_laser_rotations.get_const_view(),
         .instigator_handles = new_laser_instigator_handles,
     });
+}
+auto ATestStaticTurrets::get_disengage_radius() const -> float {
+    return actor_config->detection_radius * 1.2f;
 }
 
 // Spawning

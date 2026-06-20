@@ -77,6 +77,7 @@ class ATestStaticTurrets : public AActor {
 
     // Attacking
     void fire_at_enemies();
+    auto get_disengage_radius() const -> float;
 
     // Death handling
     void handle_dead_entities();
