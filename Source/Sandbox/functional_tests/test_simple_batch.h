@@ -5,6 +5,7 @@
 #include "test_simple_batch.generated.h"
 
 class ATestEntityRegistry;
+class ATestStaticTurrets;
 
 UCLASS()
 class ATestSimpleBatch : public AFunctionalTest {
@@ -15,9 +16,15 @@ class ATestSimpleBatch : public AFunctionalTest {
   protected:
     void check_alive_matches_kills();
     void update_kills();
+    
+    void handle_kill_count_reached();
+    void handle_fail();
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     ATestEntityRegistry* entity_registry{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    ATestStaticTurrets* turrets{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 expected_kills{1};
