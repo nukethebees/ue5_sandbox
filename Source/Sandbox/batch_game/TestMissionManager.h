@@ -2,6 +2,8 @@
 
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestMissionMode.h>
+#include <Sandbox/batch_game/TestMissionState.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -10,22 +12,6 @@
 
 class ATestEntityRegistry;
 class ATestSpaceShip;
-
-UENUM()
-enum class ETestMissionState : uint8 {
-    NotStarted,
-    Running,
-    Succeeded,
-    Failed,
-    Disabled,
-};
-
-UENUM()
-enum class ETestMissionMode : uint8 {
-    None,
-    SurviveTime,
-    KillEnemies,
-};
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
