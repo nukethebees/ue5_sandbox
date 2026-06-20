@@ -166,6 +166,10 @@ auto ATestStaticTurrets::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
 }
 
+auto ATestStaticTurrets::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
+    return target_handles;
+}
+
 // Searching
 void ATestStaticTurrets::perform_search() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::perform_search);
@@ -188,14 +192,14 @@ void ATestStaticTurrets::perform_search() {
             auto const n_entities{entity_registry->collect_non_team_entities_in_range(
                 turret_location, this_team, radius, elems)};
 
-            target_registry_handles[i] = FRegistryEntityHandle{};
+            target_handles[i] = FRegistryEntityHandle{};
 
             for (int32 j{0}; j < n_entities; ++j) {
                 auto const target_index{elems[j]};
 
                 if (this_team == entity_registry->get_team(target_index)) { continue; }
 
-                target_registry_handles[i] = target_index;
+                target_handles[i] = target_index;
                 break;
             }
         }
@@ -215,13 +219,20 @@ void ATestStaticTurrets::fire_at_enemies() {
     FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const target_index{target_registry_handles[i]};
+        auto const target_handle{target_handles[i]};
 
-        if (!entity_registry->is_valid_handle(target_index)) { continue; }
+        if (target_handle.is_null()) { continue; }
+
+        if (!(entity_registry->is_valid_handle(target_handle) &&
+              entity_registry->get_alive(target_handle))) {
+            target_handles[i].reset();
+            continue;
+        }
+
         if (!(laser_cooldowns[i] <= 0.f)) { continue; }
 
-        auto const target_location{entity_registry->get_location(target_index)};
-        auto const target_velocity{entity_registry->get_velocity(target_index)};
+        auto const target_location{entity_registry->get_location(target_handle)};
+        auto const target_velocity{entity_registry->get_velocity(target_handle)};
 
         auto const loc_x{locations.xs[i] + fire_point_offset.X};
         auto const loc_y{locations.ys[i] + fire_point_offset.Y};
@@ -272,7 +283,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     entity_handles = MoveTemp(new_entities.registry_handles);
 
     ml::fill(healths, actor_config->max_health);
-    target_registry_handles.AddDefaulted(n);
+    target_handles.AddDefaulted(n);
     laser_cooldowns.remaining_times.AddZeroed(n);
 
     for (int32 i{0}; i < n; ++i) {
@@ -350,7 +361,7 @@ void ATestStaticTurrets::handle_dead_entities() {
                                         teams,
                                         laser_cooldowns.remaining_times,
                                         healths,
-                                        target_registry_handles);
+                                        target_handles);
 }
 
 // Misc
@@ -367,7 +378,7 @@ void ATestStaticTurrets::clear_runtime_state() {
               new_laser_locations,
               new_laser_rotations,
               new_laser_instigator_handles,
-              target_registry_handles,
+              target_handles,
               healths);
 }
 void ATestStaticTurrets::clear_tick_buffers() {
@@ -388,7 +399,7 @@ void ATestStaticTurrets::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(target_registry_handles),
+        SANDBOX_NAMED_NUM(target_handles),
         SANDBOX_NAMED_NUM(healths),
     });
 
@@ -415,7 +426,7 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
         auto const turret_location{ml::get_vector3d(locations, i)};
 
         if (draw_target_arrows_enabled) {
-            auto const target_handle{target_registry_handles[i]};
+            auto const target_handle{target_handles[i]};
 
             if (entity_registry->is_valid_handle(target_handle)) {
                 FVector3d const target_location{entity_registry->get_location(target_handle)};

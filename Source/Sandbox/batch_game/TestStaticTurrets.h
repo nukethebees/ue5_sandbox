@@ -52,6 +52,8 @@ class ATestStaticTurrets : public AActor {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
+    auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
+
     // Checks
     void validate_array_sizes() const;
   protected:
@@ -121,7 +123,7 @@ class ATestStaticTurrets : public AActor {
 
     // Enemies
     UPROPERTY()
-    TArray<FRegistryEntityHandle> target_registry_handles{};
+    TArray<FRegistryEntityHandle> target_handles{};
 
     // Health
     UPROPERTY()
