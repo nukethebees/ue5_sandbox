@@ -1,10 +1,10 @@
 #include "TestCapitalShipFighters.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
 #include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
@@ -145,7 +145,11 @@ void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
 
     update_ismc_transforms();
-    instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true);
+
+    constexpr bool mark_render_state_dirty{true};
+    constexpr bool teleport{true};
+    instances->BatchUpdateInstancesTransforms(
+        0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) { draw_debug_shapes(); }
 }

@@ -273,9 +273,6 @@ auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) con
 
     return ERegistryHandleState::Invalid;
 }
-auto ATestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {
-    return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
-}
 auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }

@@ -108,6 +108,8 @@ class ATestEntityRegistry : public AActor {
     auto get_alive(FRegistryEntityHandle const index) const -> bool;
     auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
 
+    auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
+
     // Total queries
     auto get_total_kills() const noexcept -> int32;
     auto get_total_alive() const noexcept -> int32;
@@ -159,3 +161,11 @@ class ATestEntityRegistry : public AActor {
     TArray<FRegistryEntityHandle> dead_entities_this_frame;
     TArray<int32> free_indices;
 };
+
+inline auto ATestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {
+    return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
+}
+
+inline auto ATestEntityRegistry::is_valid_alive(FRegistryEntityHandle const handle) const -> bool {
+    return is_valid_handle(handle) && (entity_data.alive[handle.index] > 0);
+}

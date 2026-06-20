@@ -228,8 +228,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         if (target_handle.is_null()) { continue; }
 
-        if (!(entity_registry->is_valid_handle(target_handle) &&
-              entity_registry->get_alive(target_handle))) {
+        if (!entity_registry->is_valid_alive(target_handle)) {
             target_handles[i].reset();
             continue;
         }
