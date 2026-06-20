@@ -23,30 +23,31 @@ concept is_vec3f = requires(T const& vecs) {
     { vecs.num() } -> std::convertible_to<int32>;
 };
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
+// Checks
+/* ---------------------------------------------------------------------------------------------- */
+void SANDBOXCORE_API check_is_consistent(FVectors3f const& vec);
+
+/* ---------------------------------------------------------------------------------------------- */
 // Comparison
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 [[nodiscard]]
 inline auto SANDBOXCORE_API almost_equal(FVectors3f const& a,
                                          FVectors3f const& b,
                                          float const tolerance = KINDA_SMALL_NUMBER) -> bool {
     auto const n{ml::num(a)};
-    if (n != ml::num(b)) {
-        return false;
-    }
+    if (n != ml::num(b)) { return false; }
 
-    if (n == 0) {
-        return true;
-    }
+    if (n == 0) { return true; }
 
     return ml::kernel::almost_equal(a.xs.GetData(), b.xs.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.ys.GetData(), b.ys.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.zs.GetData(), b.zs.GetData(), n, tolerance);
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Construction
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 [[nodiscard]]
 inline auto SANDBOXCORE_API make_vectors3f(std::initializer_list<float> const xs,
                                            std::initializer_list<float> const ys,
@@ -75,9 +76,9 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, T
     };
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Assignment
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
 void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
                                         FVectors3f const& src,
@@ -123,9 +124,9 @@ inline void fill(FVectors3f::View vector, float const value) {
         vector.xs.GetData(), vector.ys.GetData(), vector.zs.GetData(), value, vector.num());
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Appending
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline void append(FVectors3f& vector, float const x, float const y, float const z) {
     vector.xs.Add(x);
     vector.ys.Add(y);
@@ -176,9 +177,7 @@ inline void add_zeroed(FVectors3f& vector, int32 const count) {
 
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
-    if constexpr (std::is_same_v<Vec3f, FVectors3f>) {
-        check(&vector != &to_append);
-    }
+    if constexpr (std::is_same_v<Vec3f, FVectors3f>) { check(&vector != &to_append); }
 
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
@@ -200,9 +199,9 @@ inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int3
     vector.zs.Add(to_append.zs[i]);
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Addition
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& src,
                                          float const scale_factor);
@@ -216,9 +215,9 @@ void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          TConstArrayView<float> const b,
                                          float const c);
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Interpolation
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline void
     lerp_in_place(FVectors3f& current, FVectors3f const& target, TArrayView<float> const alpha) {
     ml::lerp_3d_in_place(TArrayView<float>{current.xs},
@@ -240,15 +239,15 @@ inline void lerp_in_place(FVectors3f& current, FVectors3f const& target, float c
                          alpha);
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Multiplication
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, float const value);
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values);
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Distance
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline auto dist_sq(FVectors3f const& vecs, int32 const i, FVector3f const& other) -> float {
     auto const dx{vecs.xs[i] - other.X};
     auto const dy{vecs.ys[i] - other.Y};
@@ -265,16 +264,16 @@ inline auto
 
     return ml::size_sq(dx, dy, dz);
 }
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Size
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
     return ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Normalisation
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
     auto const n{vecs.num()};
     check(vecs.ys.Num() == n);
@@ -282,26 +281,22 @@ inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
 
     for (int32 i{0}; i < n; ++i) {
         auto const size_sq{ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i])};
-        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) {
-            return false;
-        }
+        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) { return false; }
     }
 
     return true;
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Direction
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 template <is_vec3f T>
 inline void direction(T& out, T const& from, T const& to) {
     auto const n{ml::num(from)};
     check(ml::num(to) == n);
     check(ml::num(out) >= n);
 
-    if (n < 1) {
-        return;
-    }
+    if (n < 1) { return; }
 
     check(out.xs.GetData() != from.xs.GetData());
     check(out.ys.GetData() != from.ys.GetData());
@@ -327,9 +322,9 @@ inline void direction(T& out, T const& from, T const& to) {
                           n);
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Conversion
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline auto get_vector3d(FVectors3f const& src, int32 i) -> FVector {
     return {
         static_cast<double>(src.xs[i]),
@@ -379,9 +374,9 @@ inline auto to_rotatorsf(Vec3f const& vectors) -> FRotatorsf {
 }
 }
 
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 // Operators
-// -------------------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------------- */
 inline auto operator*=(FVectors3f& vectors, float const scale) -> FVectors3f& {
     ml::multiply_in_place(vectors, scale);
     return vectors;
