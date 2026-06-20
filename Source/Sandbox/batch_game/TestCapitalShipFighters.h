@@ -54,6 +54,12 @@ class ATestCapitalShipFighters : public AActor {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+
+    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
+    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
+
     // Checks
     void validate_array_sizes() const;
   protected:

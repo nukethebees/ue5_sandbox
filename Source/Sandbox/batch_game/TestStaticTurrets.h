@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestTeam.h>
+#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
@@ -53,6 +53,12 @@ class ATestStaticTurrets : public AActor {
     auto get_owner_id() const -> TestEntityOwnerId;
 
     auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
+
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+
+    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
+    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
 
     // Checks
     void validate_array_sizes() const;

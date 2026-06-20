@@ -47,6 +47,9 @@ class ATestLasers : public AActor {
     auto get_num_instances() const noexcept -> int32;
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
 
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+
     // Spawning / configuration
     void spawn_lasers(FTestLasersSpawnRequest const& spawn_data);
 

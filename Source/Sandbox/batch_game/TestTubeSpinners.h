@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/logging/ActorLoggingConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/soa_rotators.h>
@@ -44,6 +44,12 @@ class ATestTubeSpinners : public AActor {
 
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+
+    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
+    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
 
     // Checks
     void validate_array_sizes() const;

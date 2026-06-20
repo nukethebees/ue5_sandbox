@@ -58,9 +58,9 @@ class ATestCapitalShips : public AActor {
 
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const*;
     void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
-    
-    auto get_entity_registry() const -> ATestEntityRegistry const*;
-    void set_entity_registry(ATestEntityRegistry& reg);
+
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     // Checks
     void validate_array_sizes() const;

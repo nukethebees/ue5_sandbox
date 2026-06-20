@@ -351,6 +351,8 @@ void ATestStaticTurrets::trigger_death_effects() {
     }
 }
 void ATestStaticTurrets::handle_dead_entities() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::handle_dead_entities);
+
     if (local_indices_to_remove.IsEmpty()) { return; }
 
     trigger_death_effects();

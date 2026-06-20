@@ -42,8 +42,7 @@ void ATestBatchOrchestrator::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
     });
 
-    capital_ships->set_entity_registry(*entity_registry);
-    capital_ships->set_niagara_spawner(*niagara_spawner);
+    route_actor_references();
 
     entity_registry->reset();
 
@@ -253,4 +252,23 @@ void ATestBatchOrchestrator::tick(float const dt) {
         lasers->end_tick();
         entity_registry->end_tick();
     }
+}
+
+void ATestBatchOrchestrator::route_actor_references() {
+    capital_ships->set_niagara_spawner(*niagara_spawner);
+
+    if (player_ship) { mission_manager->set_player_ship(*player_ship); }
+
+    ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(*entity_registry); },
+                      lasers,
+                      capital_ships,
+                      capital_ship_fighters,
+                      turrets,
+                      spinners,
+                      mission_manager);
+
+    ml::invoke_on_all([&](auto actor) { actor->set_laser_actor(*lasers); },
+                      capital_ship_fighters,
+                      turrets,
+                      spinners);
 }

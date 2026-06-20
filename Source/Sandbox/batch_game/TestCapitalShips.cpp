@@ -157,13 +157,6 @@ void ATestCapitalShips::set_niagara_spawner(ADelayedNiagaraSpawner& spawner) {
     niagara_spawner = &spawner;
 }
 
-auto ATestCapitalShips::get_entity_registry() const -> ATestEntityRegistry const* {
-    return entity_registry;
-}
-void ATestCapitalShips::set_entity_registry(ATestEntityRegistry& reg) {
-    entity_registry = &reg;
-}
-
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
@@ -388,6 +381,8 @@ void ATestCapitalShips::trigger_death_effects() {
 }
 void ATestCapitalShips::handle_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_dead_entities);
+
+    if (local_indices_to_remove.IsEmpty()) { return; }
 
     trigger_death_effects();
 

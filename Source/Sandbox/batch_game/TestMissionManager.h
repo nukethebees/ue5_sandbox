@@ -26,6 +26,7 @@ class ATestMissionManager : public AActor {
 
     void update_player_handles();
 
+    // Accessors
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
     auto get_mission_state() const noexcept -> ETestMissionState { return mission_state; }
 
@@ -40,6 +41,12 @@ class ATestMissionManager : public AActor {
     auto is_ready() const noexcept -> bool;
 
     auto get_player_id() const { return player_id; }
+
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+
+    auto get_player_ship() const -> ATestSpaceShip const* { return player_ship; }
+    void set_player_ship(ATestSpaceShip& new_ref) { player_ship = &new_ref; }
 
     FTestMissionEndedDelegate on_mission_ended;
     FOnMissionManagerReady on_ready;

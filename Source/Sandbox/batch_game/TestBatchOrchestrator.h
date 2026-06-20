@@ -27,6 +27,8 @@ class ATestBatchOrchestrator : public AActor {
   protected:
     void BeginPlay() override;
   private:
+    void route_actor_references();
+
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
