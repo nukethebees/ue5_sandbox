@@ -8,6 +8,7 @@
 #include "TestStaticTurretsConfig.generated.h"
 
 class UStaticMesh;
+class UNiagaraSystem;
 
 UCLASS(BlueprintType)
 class UTestStaticTurretsConfig : public UDataAsset {
@@ -24,6 +25,15 @@ class UTestStaticTurretsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FTransform fire_point_offset{FTransform::Identity};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UNiagaraSystem* death_effect{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FVector death_effect_offset{FVector::ZeroVector};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float death_effect_scale{1.f};
 
     // Combat
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

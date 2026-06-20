@@ -469,6 +469,10 @@
 		{
 			"Name": "HDRIBackdrop",
 			"Enabled": true
+		},
+		{
+			"Name": "ExampleCustomDataInterface",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

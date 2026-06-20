@@ -23,6 +23,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
+#include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
@@ -104,15 +105,7 @@ void ATestStaticTurrets::update_entity_registry() {
 void ATestStaticTurrets::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
 
-    local_indices_to_remove.Sort(TGreater<int32>{});
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        ismc_transforms,
-                                        entity_handles,
-                                        locations,
-                                        teams,
-                                        laser_cooldowns.remaining_times,
-                                        healths,
-                                        target_registry_handles);
+    handle_dead_entities();
 }
 void ATestStaticTurrets::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_visuals);
@@ -310,6 +303,55 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     ml::destroy_all_actors(proxies);
     validate_array_sizes();
+}
+
+// Death handling
+void ATestStaticTurrets::trigger_death_effects() {
+    auto const n{ml::num(local_indices_to_remove)};
+    auto* world{GetWorld()};
+    auto* explosion_system{actor_config->death_effect};
+
+    if (!IsValid(explosion_system)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("ATestStaticTurrets::trigger_death_effects: death_effect is nullptr"));
+        return;
+    }
+
+    FVector const scale{actor_config->death_effect_scale};
+    FVector const location_offset{actor_config->death_effect_offset};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_index{local_indices_to_remove[i]};
+
+        constexpr bool auto_destroy{true};
+        constexpr bool auto_activate{true};
+
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+                                                       explosion_system,
+                                                       ml::get_vector3d(locations, entity_index) +
+                                                           location_offset,
+                                                       FRotator::ZeroRotator,
+                                                       scale,
+                                                       auto_destroy,
+                                                       auto_activate,
+                                                       ENCPoolMethod::AutoRelease);
+    }
+}
+void ATestStaticTurrets::handle_dead_entities() {
+    if (local_indices_to_remove.IsEmpty()) { return; }
+
+    trigger_death_effects();
+
+    local_indices_to_remove.Sort(TGreater<int32>{});
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        ismc_transforms,
+                                        entity_handles,
+                                        locations,
+                                        teams,
+                                        laser_cooldowns.remaining_times,
+                                        healths,
+                                        target_registry_handles);
 }
 
 // Misc

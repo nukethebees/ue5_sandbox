@@ -267,7 +267,7 @@ class ATestSpaceShip : public APawn {
     // Health
     /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
-    FShipHealth health{1000000};
+    FShipHealth health{1000};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")

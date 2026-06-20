@@ -70,6 +70,10 @@ class ATestStaticTurrets : public AActor {
     // Attacking
     void fire_at_enemies();
 
+    // Death handling
+    void handle_dead_entities();
+    void trigger_death_effects();
+
     // Misc
     void clear_tick_buffers();
 
