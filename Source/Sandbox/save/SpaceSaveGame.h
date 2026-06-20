@@ -32,10 +32,10 @@ struct FScoreRecord {
 
     // Objectives
     UPROPERTY()
-    int32 kill_target{-1};
+    int32 target_kills{-1};
 
     UPROPERTY()
-    float time_target{-1.f};
+    float target_completion_time{-1.f};
 };
 
 UCLASS()

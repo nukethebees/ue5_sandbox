@@ -2,6 +2,7 @@
 
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/save/SpaceSaveGame.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <CoreMinimal.h>
 #include <Kismet/GameplayStatics.h>
@@ -12,29 +13,34 @@ void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 
     load_or_create();
 
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("Initialised USpaceSaveSubsystem."));
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
 }
-
 void USpaceSaveSubsystem::Deinitialize() {
     if (current_save) { save_to_disk(); }
 
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("Deinitialising USpaceSaveSubsystem."));
+    log_save_data();
+
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
 
     Super::Deinitialize();
 }
 
+// Accessors
 auto USpaceSaveSubsystem::get_save() const -> USpaceSaveGame const* {
     return current_save;
 }
-
 auto USpaceSaveSubsystem::get_mutable_save() -> USpaceSaveGame& {
     if (!current_save) { load_or_create(); }
 
     check(current_save);
     return *current_save;
 }
+auto USpaceSaveSubsystem::slot_name() -> FString {
+    return TEXT("SandboxSave");
+}
 
-void USpaceSaveSubsystem::append_score_record(FScoreRecord const& record) {
+// Appending
+void USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) {
     auto& save{get_mutable_save()};
 
     save.score_records.Add(record);
@@ -42,21 +48,7 @@ void USpaceSaveSubsystem::append_score_record(FScoreRecord const& record) {
     save_to_disk();
 }
 
-bool USpaceSaveSubsystem::save_to_disk() {
-    if (!current_save) {
-        UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("USpaceSaveSubsystem::save_to_disk: No save to write to."));
-        return false;
-    }
-
-    auto const saving_slot{slot_name()};
-
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("Saving game: %s"), *saving_slot);
-
-    return UGameplayStatics::SaveGameToSlot(current_save, saving_slot, user_index);
-}
-
+// Loading
 bool USpaceSaveSubsystem::load_or_create() {
     auto const loaded_slot_name{slot_name()};
 
@@ -68,14 +60,18 @@ bool USpaceSaveSubsystem::load_or_create() {
             current_save = loaded_save;
             migrate_if_needed();
 
-            UE_LOG(LogSandboxSubsystem, Display, TEXT("Loaded save file: %s"), *loaded_slot_name);
+            UE_LOG(LogSandboxSubsystem,
+                   Display,
+                   TEXT("USpaceSaveSubsystem::load_or_create: Loaded save file: %s"),
+                   *loaded_slot_name);
 
             return true;
         }
 
         UE_LOG(LogSandboxSubsystem,
                Warning,
-               TEXT("Save file existed but failed to load. Creating a new save."));
+               TEXT("USpaceSaveSubsystem::load_or_create: Save file existed but failed to load. "
+                    "Creating a new save."));
     }
 
     auto* new_save =
@@ -86,15 +82,84 @@ bool USpaceSaveSubsystem::load_or_create() {
     current_save = new_save;
     current_save->save_version = USpaceSaveGame::current_save_version;
 
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("Created new save file."));
+    UE_LOG(LogSandboxSubsystem,
+           Display,
+           TEXT("USpaceSaveSubsystem::load_or_create: Created new save file."));
 
     return save_to_disk();
 }
 
-auto USpaceSaveSubsystem::slot_name() -> FString {
-    return TEXT("SandboxSave");
+// Saving
+bool USpaceSaveSubsystem::save_to_disk() {
+    if (!current_save) {
+        UE_LOG(LogSandboxSubsystem,
+               Warning,
+               TEXT("USpaceSaveSubsystem::save_to_disk: No save to write to."));
+        return false;
+    }
+
+    auto const saving_slot{slot_name()};
+
+    UE_LOG(LogSandboxSubsystem,
+           Display,
+           TEXT("USpaceSaveSubsystem::save_to_disk: Saving game: %s"),
+           *saving_slot);
+
+    return UGameplayStatics::SaveGameToSlot(current_save, saving_slot, user_index);
 }
 
+// Displaying
+void USpaceSaveSubsystem::log_save_data() const {
+    if (!current_save) {
+        UE_LOG(LogSandboxSubsystem,
+               Warning,
+               TEXT("USpaceSaveSubsystem::log_save_data: No save to print."));
+        return;
+    }
+
+    auto const dump_name{slot_name()};
+
+    FString msg{};
+    msg += FString::Printf(TEXT("\nPrinting save slot: %s"), *dump_name);
+
+    auto const n{current_save->score_records.Num()};
+    msg += FString::Printf(TEXT("\nRecords: %d"), n);
+
+    for (auto const& record : current_save->score_records) {
+        msg += FString::Printf(TEXT(R"(
+    Date: %s
+    Level: %s
+    Mode: %s
+    End state: %s
+    Kills: %d
+    Time: %.2f)"),
+                               *record.date.ToString(),
+                               *record.level_name.ToString(),
+                               *ml::to_string_without_type_prefix(record.mission_mode),
+                               *ml::to_string_without_type_prefix(record.end_state),
+                               record.kills,
+                               record.time_seconds);
+
+        switch (record.mission_mode) {
+            case ETestMissionMode::None: {
+                break;
+            }
+            case ETestMissionMode::KillEnemies: {
+                msg += FString::Printf(TEXT("\nKill target: %d"), record.target_kills);
+                break;
+            }
+            case ETestMissionMode::SurviveTime: {
+                msg += FString::Printf(TEXT("\nTarget completion time: %.2f"),
+                                       record.target_completion_time);
+                break;
+            }
+        }
+    }
+
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::log_save_data: %s"), *msg);
+}
+
+// Migration
 void USpaceSaveSubsystem::migrate_if_needed() {
     if (!current_save) { return; }
 

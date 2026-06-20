@@ -15,13 +15,21 @@ class USpaceSaveSubsystem : public UGameInstanceSubsystem {
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
+    // Accessors
     auto get_save() const -> USpaceSaveGame const*;
     auto get_mutable_save() -> USpaceSaveGame&;
 
-    void append_score_record(FScoreRecord const& record);
+    // Appending
+    void save_score_record(FScoreRecord const& record);
 
-    bool save_to_disk();
+    // Loading
     bool load_or_create();
+
+    // Saving
+    bool save_to_disk();
+
+    // Displaying
+    void log_save_data() const;
   private:
     static auto slot_name() -> FString;
     static constexpr int32 user_index{0};

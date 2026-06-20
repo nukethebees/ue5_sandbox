@@ -1,12 +1,16 @@
 #include "TestMissionManager.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/save/SpaceSaveGame.h>
+#include <Sandbox/save/SpaceSaveSubsystem.h>
 
 #include <SandboxCore/uobject_utils.h>
 
+#include <Engine/GameInstance.h>
 #include <Engine/World.h>
+#include <Kismet/GameplayStatics.h>
 
 void ATestMissionManager::begin_play() {
     ml::fatal_if_uobject_ptrs_invalid({
@@ -141,13 +145,37 @@ void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
     if (player_kills >= kill_target) { set_mission_state(ETestMissionState::Succeeded); }
 }
 
+void ATestMissionManager::handle_mission_ended() {
+    auto* world{GetWorld()};
+    auto* game_instance{world->GetGameInstance()};
+    auto* save_manager{game_instance->GetSubsystem<USpaceSaveSubsystem>()};
+
+    auto const level_name{UGameplayStatics::GetCurrentLevelName(this)};
+
+    FScoreRecord const record{
+        .date = FDateTime::Now(),
+        .level_name = *level_name,
+        .mission_mode = mission_mode,
+        .end_state = mission_state,
+        .kills = player_kills,
+        .time_seconds = mission_elapsed_seconds,
+        .target_kills = kill_target,
+        .target_completion_time = survive_seconds,
+    };
+
+    save_manager->save_score_record(record);
+}
 void ATestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));
+
+    handle_mission_ended();
 
     on_mission_ended.Broadcast(*this);
 }
 void ATestMissionManager::handle_mission_failure() {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
+
+    handle_mission_ended();
 
     on_mission_ended.Broadcast(*this);
 }
