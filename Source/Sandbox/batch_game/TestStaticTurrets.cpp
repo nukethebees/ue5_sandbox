@@ -185,6 +185,8 @@ void ATestStaticTurrets::perform_search() {
         auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
         for (int32 i{begin}; i < end; ++i) {
+            if (!target_handles[i].is_null()) { continue; }
+
             auto const turret_location{ml::get_vector3f(locations, i)};
             auto const this_team{teams[i]};
 
