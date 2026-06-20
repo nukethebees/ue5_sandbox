@@ -11,6 +11,7 @@
 #include "TestCapitalShipsConfig.generated.h"
 
 class UStaticMesh;
+class UNiagaraSystem;
 
 class AShipLaser;
 
@@ -26,25 +27,31 @@ class UTestCapitalShipsConfig : public UDataAsset {
 #endif
 
     // Visuals
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
+    UPROPERTY(EditAnywhere)
+    UNiagaraSystem* small_death_explosion{nullptr};
+
+    UPROPERTY(EditAnywhere)
+    UNiagaraSystem* main_death_explosion{nullptr};
+
     // Collision
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     FCollisionSettings collision_settings;
 
     // Fighter spawning
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float spawn_delay{5.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     int32 fighter_spawn_slots{6};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
 
     // Health
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     int32 max_health{5000};
 
     // Debugging

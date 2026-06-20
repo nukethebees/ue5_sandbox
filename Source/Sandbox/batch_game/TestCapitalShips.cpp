@@ -9,6 +9,7 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
+#include <NiagaraFunctionLibrary.h>
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -106,28 +107,7 @@ void ATestCapitalShips::update_entity_registry() {
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);
 
-    auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
-
-    ml::collect_valid_indices_by_key(entity_handles, dead_entities, local_indices_to_remove);
-    local_indices_to_remove.Sort(TGreater<int32>{});
-
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        entity_handles,
-                                        locations,
-                                        rotations,
-                                        spawn_timers.remaining_times,
-                                        teams,
-                                        healths,
-                                        target_entity_indices);
-
-    {
-        auto const n{get_num_instances()};
-        for (int32 i{0}; i < n; ++i) {
-            healths[i] = entity_registry->get_health(entity_handles[i]);
-        }
-    }
-
-    validate_array_sizes();
+    handle_dead_entities();
 }
 void ATestCapitalShips::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_visuals);
@@ -311,6 +291,59 @@ void ATestCapitalShips::configure_ismc() {
     ml::apply_collision_settings(*instances, actor_config->collision_settings);
 }
 
+void ATestCapitalShips::trigger_death_effects() {
+    auto const n{ml::num(local_indices_to_remove)};
+    auto* world{GetWorld()};
+    auto* small_death_explosion{actor_config->small_death_explosion};
+    auto* main_death_explosion{actor_config->main_death_explosion};
+
+    if (!IsValid(small_death_explosion)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("ATestStaticTurrets::trigger_death_effects: small_death_explosion is nullptr"));
+        return;
+    }
+    if (!IsValid(main_death_explosion)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("ATestStaticTurrets::trigger_death_effects: main_death_explosion is nullptr"));
+        return;
+    }
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_index{local_indices_to_remove[i]};
+
+        constexpr bool auto_destroy{true};
+        constexpr bool auto_activate{true};
+
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+                                                       main_death_explosion,
+                                                       ml::get_vector3d(locations, entity_index),
+                                                       FRotator::ZeroRotator,
+                                                       FVector::OneVector,
+                                                       auto_destroy,
+                                                       auto_activate,
+                                                       ENCPoolMethod::AutoRelease);
+    }
+}
+void ATestCapitalShips::handle_dead_entities() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_dead_entities);
+
+    trigger_death_effects();
+
+    local_indices_to_remove.Sort(TGreater<int32>{});
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        entity_handles,
+                                        locations,
+                                        rotations,
+                                        spawn_timers.remaining_times,
+                                        teams,
+                                        healths,
+                                        target_entity_indices);
+
+    validate_array_sizes();
+}
+
 // Misc
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
@@ -328,7 +361,8 @@ void ATestCapitalShips::clear_runtime_state() {
               target_entity_indices);
 }
 void ATestCapitalShips::clear_tick_buffers() {
-    ml::reset(ships_ready_to_spawn_fighters_buffer,
+    ml::reset(local_indices_to_remove,
+              ships_ready_to_spawn_fighters_buffer,
               new_fighter_locations,
               new_fighter_rotations,
               new_fighter_targets);

@@ -72,6 +72,10 @@ class ATestCapitalShips : public AActor {
     // Visuals
     void configure_ismc();
 
+    // Death handling
+    void handle_dead_entities();
+    void trigger_death_effects();
+
     // Debugging
     void draw_debugging_shapes() const;
 
