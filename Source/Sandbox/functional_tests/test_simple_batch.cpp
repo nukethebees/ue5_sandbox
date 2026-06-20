@@ -5,6 +5,10 @@
 
 #include <SandboxCore/soa_vector_utils.h>
 
+ATestSimpleBatch::ATestSimpleBatch() {
+    PrimaryActorTick.TickGroup = ETickingGroup::TG_PostUpdateWork;
+}
+
 void ATestSimpleBatch::StartTest() {
     Super::StartTest();
 

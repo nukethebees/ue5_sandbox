@@ -11,6 +11,8 @@ UCLASS()
 class ATestSimpleBatch : public AFunctionalTest {
     GENERATED_BODY()
   public:
+    ATestSimpleBatch();
+
     void StartTest() override;
     void Tick(float dt) override;
   protected:
