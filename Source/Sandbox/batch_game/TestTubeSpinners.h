@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/soa_rotators.h>

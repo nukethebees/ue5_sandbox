@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Sandbox/misc/learning/TestTeam.h>
+#include <Sandbox/batch_game/TestTeam.h>
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vectors.h>

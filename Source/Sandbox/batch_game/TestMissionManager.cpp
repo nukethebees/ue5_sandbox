@@ -1,8 +1,8 @@
 #include "TestMissionManager.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/TestSpaceShip.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 
 #include <SandboxCore/uobject_utils.h>
 

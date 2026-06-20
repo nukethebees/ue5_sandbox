@@ -1,14 +1,14 @@
 #include "TestBatchOrchestrator.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <Sandbox/batch_game/TestStaticTurrets.h>
+#include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/TestCapitalShipFighters.h>
-#include <Sandbox/misc/learning/TestCapitalShips.h>
-#include <Sandbox/misc/learning/TestLasers.h>
-#include <Sandbox/misc/learning/TestMissionManager.h>
-#include <Sandbox/misc/learning/TestSpaceShip.h>
-#include <Sandbox/misc/learning/TestStaticTurrets.h>
-#include <Sandbox/misc/learning/TestTubeSpinners.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>

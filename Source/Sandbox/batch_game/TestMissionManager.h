@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>

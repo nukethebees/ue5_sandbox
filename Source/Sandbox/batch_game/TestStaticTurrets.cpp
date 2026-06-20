@@ -1,13 +1,13 @@
 #include "TestStaticTurrets.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestBatchActorCore.h>
+#include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestLasersConfig.h>
+#include <Sandbox/batch_game/TestStaticTurretsConfig.h>
+#include <Sandbox/batch_game/TestStaticTurretsProxy.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistryData.h>
-#include <Sandbox/misc/learning/TestBatchActorCore.h>
-#include <Sandbox/misc/learning/TestLasers.h>
-#include <Sandbox/misc/learning/TestLasersConfig.h>
-#include <Sandbox/misc/learning/TestStaticTurretsConfig.h>
-#include <Sandbox/misc/learning/TestStaticTurretsProxy.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/actor_utils.h>

@@ -1,10 +1,10 @@
 #include "TestCapitalShipFighters.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/TestBatchActorCore.h>
-#include <Sandbox/misc/learning/TestCapitalShipFightersConfig.h>
-#include <Sandbox/misc/learning/TestLasers.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestBatchActorCore.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
+#include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>

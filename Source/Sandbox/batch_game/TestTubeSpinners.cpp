@@ -1,10 +1,10 @@
 #include "TestTubeSpinners.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/TestLasers.h>
-#include <Sandbox/misc/learning/TestTubeSpinnerProxy.h>
-#include <Sandbox/misc/learning/TestTubeSpinnersConfig.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
+#include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/actor_utils.h>

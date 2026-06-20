@@ -1,16 +1,16 @@
 #include "TestSpaceShip.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestSpaceShipData.h>
+#include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/combat/weapons/ShipBomb.h>
 #include <Sandbox/combat/weapons/ShipHomingLaser.h>
 #include <Sandbox/combat/weapons/ShipLaser.h>
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistryData.h>
-#include <Sandbox/misc/learning/TestLasers.h>
-#include <Sandbox/misc/learning/TestSpaceShipData.h>
-#include <Sandbox/misc/learning/TestTeam.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/soa_rotator_utils.h>

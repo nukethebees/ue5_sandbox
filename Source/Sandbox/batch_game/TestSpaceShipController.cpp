@@ -2,8 +2,8 @@
 
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/TestMissionManager.h>
-#include <Sandbox/misc/learning/TestSpaceShip.h>
+#include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
 #include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/world.h>

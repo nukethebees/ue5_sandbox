@@ -1,8 +1,8 @@
 #include "TestEntityRegistry.h"
 
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/misc/learning/test_entity_registry/DamageEvents.h>
-#include <Sandbox/misc/learning/test_entity_registry/EntityDeathInfo.h>
+#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>

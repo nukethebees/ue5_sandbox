@@ -2,10 +2,10 @@
 
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/misc/learning/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityOwnerId.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistryData.h>
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/players/LaserFiringMode.h>
 #include <Sandbox/players/ShipLaserMode.h>

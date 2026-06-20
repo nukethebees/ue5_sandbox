@@ -1,6 +1,6 @@
 #include "test_simple_batch.h"
 
-#include <Sandbox/misc/learning/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 
