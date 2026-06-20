@@ -13,7 +13,7 @@ class SANDBOX_API ADelayedNiagaraSpawner : public AActor {
   public:
     ADelayedNiagaraSpawner();
 
-    void tick(float const dt);
+    void update_spawns(float const dt);
 
     UFUNCTION()
     void add_spawn(UNiagaraSystem* system,
@@ -25,6 +25,9 @@ class SANDBOX_API ADelayedNiagaraSpawner : public AActor {
                     TConstArrayView<FVector> new_locations,
                     TConstArrayView<FRotator> new_rotations,
                     TConstArrayView<FVector> new_scales,
+                    TConstArrayView<float> new_delays);
+    void add_spawns(TArrayView<UNiagaraSystem*> new_systems,
+                    TConstArrayView<FVector> new_locations,
                     TConstArrayView<float> new_delays);
   private:
     auto num() const -> int32;

@@ -23,6 +23,7 @@ class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
 class ATestCapitalShipFighters;
 class ATestEntityRegistry;
+class ADelayedNiagaraSpawner;
 
 UCLASS()
 class ATestCapitalShips : public AActor {
@@ -54,6 +55,12 @@ class ATestCapitalShips : public AActor {
 
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+
+    auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const*;
+    void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
+    
+    auto get_entity_registry() const -> ATestEntityRegistry const*;
+    void set_entity_registry(ATestEntityRegistry& reg);
 
     // Checks
     void validate_array_sizes() const;
@@ -88,8 +95,11 @@ class ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
-    UPROPERTY(EditDefaultsOnly)
+    // Visuals
+    UPROPERTY(EditDefaultsOnly, Category = "Sandbox")
     TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
     // Entity data
     TestEntityOwnerId owner_id{};
@@ -131,7 +141,7 @@ class ATestCapitalShips : public AActor {
     TArray<FRegistryEntityHandle> target_entity_indices;
 
     // Debugging
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};

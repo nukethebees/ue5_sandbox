@@ -1,4 +1,6 @@
-#include "Sandbox/environment/effects/DelayedNiagaraSpawner.h"
+#include "DelayedNiagaraSpawner.h"
+
+#include <SandboxCore/array_utils.h>
 
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
@@ -9,7 +11,7 @@ ADelayedNiagaraSpawner::ADelayedNiagaraSpawner() {
     PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
-void ADelayedNiagaraSpawner::tick(float const dt) {
+void ADelayedNiagaraSpawner::update_spawns(float const dt) {
     auto* world{GetWorld()};
     auto const pending_spawn_count{num()};
 
@@ -55,6 +57,17 @@ void ADelayedNiagaraSpawner::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
     locations.Append(new_locations);
     rotations.Append(new_rotations);
     scales.Append(new_scales);
+    times_remaining.Append(new_delays);
+}
+void ADelayedNiagaraSpawner::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
+                                        TConstArrayView<FVector> new_locations,
+                                        TConstArrayView<float> new_delays) {
+    auto const n{new_systems.Num()};
+
+    systems.Append(new_systems);
+    locations.Append(new_locations);
+    ml::append_n(rotations, FRotator::ZeroRotator, n);
+    ml::append_n(scales, FVector::OneVector, n);
     times_remaining.Append(new_delays);
 }
 

@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShipsConfig.h>
+#include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -147,6 +148,20 @@ void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
 }
 auto ATestCapitalShips::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
+}
+
+auto ATestCapitalShips::get_niagara_spawner() const -> ADelayedNiagaraSpawner const* {
+    return niagara_spawner;
+}
+void ATestCapitalShips::set_niagara_spawner(ADelayedNiagaraSpawner& spawner) {
+    niagara_spawner = &spawner;
+}
+
+auto ATestCapitalShips::get_entity_registry() const -> ATestEntityRegistry const* {
+    return entity_registry;
+}
+void ATestCapitalShips::set_entity_registry(ATestEntityRegistry& reg) {
+    entity_registry = &reg;
 }
 
 // Ship spawning
@@ -300,31 +315,76 @@ void ATestCapitalShips::trigger_death_effects() {
     if (!IsValid(small_death_explosion)) {
         UE_LOG(LogSandbox,
                Warning,
-               TEXT("ATestStaticTurrets::trigger_death_effects: small_death_explosion is nullptr"));
+               TEXT("ATestCapitalShips::trigger_death_effects: small_death_explosion is nullptr"));
         return;
     }
     if (!IsValid(main_death_explosion)) {
         UE_LOG(LogSandbox,
                Warning,
-               TEXT("ATestStaticTurrets::trigger_death_effects: main_death_explosion is nullptr"));
+               TEXT("ATestCapitalShips::trigger_death_effects: main_death_explosion is nullptr"));
+        return;
+    }
+    if (!IsValid(niagara_spawner)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("ATestCapitalShips::trigger_death_effects: niagara_spawner is nullptr"));
         return;
     }
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{local_indices_to_remove[i]};
+    constexpr bool auto_destroy{true};
+    constexpr bool auto_activate{true};
 
-        constexpr bool auto_destroy{true};
-        constexpr bool auto_activate{true};
+    auto const n_small_burst_explosions{actor_config->n_small_explosions};
+    auto const time_between_explosions{actor_config->time_between_explosions};
+    auto const large_explosion_delay{actor_config->large_explosion_delay};
+    auto const main_explosion_delay_mode{actor_config->main_explosion_delay_mode};
 
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
-                                                       main_death_explosion,
-                                                       ml::get_vector3d(locations, entity_index),
-                                                       FRotator::ZeroRotator,
-                                                       FVector::OneVector,
-                                                       auto_destroy,
-                                                       auto_activate,
-                                                       ENCPoolMethod::AutoRelease);
+    TArray<UNiagaraSystem*> spawn_systems;
+    TArray<FVector> spawn_locations;
+    TArray<float> spawn_delays;
+
+    auto const expected_instances{n * (n_small_burst_explosions + 1)};
+    ml::reserve(expected_instances, spawn_systems, spawn_locations, spawn_delays);
+
+    auto const min_range{actor_config->min_small_explosion_range};
+    auto const max_range{actor_config->max_small_explosion_range};
+
+    auto main_explosion_delay{large_explosion_delay};
+    if (main_explosion_delay_mode ==
+        ETestCapitalShipsMainExplosionDelayMode::AfterSmallExplosions) {
+        // If there is only 1 explosion then there will be no small delays
+        // the small delay is between explosions
+        if (n_small_burst_explosions > 1) {
+            main_explosion_delay += (n_small_burst_explosions * (n_small_burst_explosions - 1));
+        }
     }
+
+    float current_delay{0.f};
+    for (int32 entity_remove_i{0}; entity_remove_i < n; ++entity_remove_i) {
+        auto const entity_index{local_indices_to_remove[entity_remove_i]};
+
+        auto const base_location{ml::get_vector3d(locations, entity_index)};
+
+        for (int32 explosion_i{0}; explosion_i < n_small_burst_explosions; ++explosion_i) {
+            if (explosion_i > 0) { current_delay += time_between_explosions; }
+
+            auto const offset{FVector{
+                FMath::FRandRange(min_range.X, max_range.X),
+                FMath::FRandRange(min_range.Y, max_range.Y),
+                FMath::FRandRange(min_range.Z, max_range.Z),
+            }};
+
+            spawn_systems.Add(small_death_explosion);
+            spawn_locations.Add(base_location + offset);
+            spawn_delays.Add(current_delay);
+        }
+
+        spawn_systems.Add(main_death_explosion);
+        spawn_locations.Add(ml::get_vector3d(locations, entity_index));
+        spawn_delays.Add(main_explosion_delay);
+    }
+
+    niagara_spawner->add_spawns(spawn_systems, spawn_locations, spawn_delays);
 }
 void ATestCapitalShips::handle_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_dead_entities);

@@ -14,6 +14,7 @@ class ATestTubeSpinners;
 
 class ATestEntityRegistry;
 class ATestMissionManager;
+class ADelayedNiagaraSpawner;
 
 UCLASS()
 class ATestBatchOrchestrator : public AActor {
@@ -43,6 +44,8 @@ class ATestBatchOrchestrator : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
     UPROPERTY(Transient)
     uint64 tick_counter{0};

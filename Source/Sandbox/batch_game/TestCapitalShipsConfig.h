@@ -15,6 +15,12 @@ class UNiagaraSystem;
 
 class AShipLaser;
 
+UENUM()
+enum class ETestCapitalShipsMainExplosionDelayMode : uint8 {
+    AfterSmallExplosions,
+    Absolute,
+};
+
 UCLASS(BlueprintType)
 class UTestCapitalShipsConfig : public UDataAsset {
     GENERATED_BODY()
@@ -34,7 +40,26 @@ class UTestCapitalShipsConfig : public UDataAsset {
     UNiagaraSystem* small_death_explosion{nullptr};
 
     UPROPERTY(EditAnywhere)
+    int32 n_small_explosions{6};
+
+    UPROPERTY(EditAnywhere)
+    float time_between_explosions{0.1f};
+
+    UPROPERTY(EditAnywhere)
+    FVector3f min_small_explosion_range{FVector3f::ZeroVector};
+
+    UPROPERTY(EditAnywhere)
+    FVector3f max_small_explosion_range{FVector3f::OneVector};
+
+    UPROPERTY(EditAnywhere)
     UNiagaraSystem* main_death_explosion{nullptr};
+
+    UPROPERTY(EditAnywhere)
+    ETestCapitalShipsMainExplosionDelayMode main_explosion_delay_mode{
+        ETestCapitalShipsMainExplosionDelayMode::AfterSmallExplosions};
+
+    UPROPERTY(EditAnywhere)
+    float large_explosion_delay{0.0f};
 
     // Collision
     UPROPERTY(EditAnywhere)

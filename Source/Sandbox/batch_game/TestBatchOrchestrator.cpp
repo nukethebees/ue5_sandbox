@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
+#include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -38,7 +39,11 @@ void ATestBatchOrchestrator::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
+        SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
     });
+
+    capital_ships->set_entity_registry(*entity_registry);
+    capital_ships->set_niagara_spawner(*niagara_spawner);
 
     entity_registry->reset();
 
@@ -232,6 +237,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
         turrets->update_visuals();
         spinners->update_visuals();
         lasers->update_visuals();
+
+        niagara_spawner->update_spawns(dt);
     }
 
     {
