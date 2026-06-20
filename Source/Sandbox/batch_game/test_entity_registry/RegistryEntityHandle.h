@@ -18,7 +18,9 @@ struct FRegistryEntityHandle {
     bool operator==(FRegistryEntityHandle const&) const noexcept = default;
 
     [[nodiscard]] auto is_valid() const noexcept -> bool;
+    [[nodiscard]] auto is_null() const noexcept -> bool;
     auto to_string() const -> FString;
+    void reset();
 
     UPROPERTY(VisibleAnywhere)
     int32 index{INDEX_NONE};
@@ -26,3 +28,11 @@ struct FRegistryEntityHandle {
     UPROPERTY(VisibleAnywhere)
     int32 generation{INDEX_NONE};
 };
+
+inline void FRegistryEntityHandle::reset() {
+    index = INDEX_NONE;
+    generation = INDEX_NONE;
+}
+inline auto FRegistryEntityHandle::is_null() const noexcept -> bool {
+    return (index == INDEX_NONE) && (generation == INDEX_NONE);
+}
