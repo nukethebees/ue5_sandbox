@@ -6,19 +6,16 @@
 #include <Sandbox/batch_game/TestSpaceShipData.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/combat/weapons/ShipBomb.h>
-#include <Sandbox/combat/weapons/ShipHomingLaser.h>
-#include <Sandbox/combat/weapons/ShipLaser.h>
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
+#include <Sandbox/constants/collision_channels.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/uobject_utils.h>
 
 #include <Camera/CameraComponent.h>
-#include <Components/BoxComponent.h>
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
@@ -30,8 +27,7 @@
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
 ATestSpaceShip::ATestSpaceShip()
-    : collision_box(CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box")))
-    , camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
+    : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
     , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))} {
@@ -39,7 +35,6 @@ ATestSpaceShip::ATestSpaceShip()
 
     camera->SetupAttachment(RootComponent);
     ship_mesh->SetupAttachment(RootComponent);
-    collision_box->SetupAttachment(RootComponent);
 
     boost_pulse->SetupAttachment(RootComponent);
     boost_pulse->bAutoActivate = false;
@@ -51,6 +46,8 @@ ATestSpaceShip::ATestSpaceShip()
 
     PrimaryActorTick.bCanEverTick = false;
     PrimaryActorTick.bStartWithTickEnabled = false;
+
+    configure_ship_mesh();
 }
 
 void ATestSpaceShip::begin_play() {
@@ -83,7 +80,6 @@ void ATestSpaceShip::begin_play() {
 
     configure_boost_pulse();
     configure_boost_engine_effect();
-    configure_ship_mesh();
 
     register_with_entity_registry();
 }
@@ -147,7 +143,7 @@ void ATestSpaceShip::end_tick() {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-// Entity data                                                                                    
+// Entity data
 /* ---------------------------------------------------------------------------------------------- */
 void ATestSpaceShip::register_with_entity_registry() {
     auto const new_entities{
@@ -574,8 +570,21 @@ void ATestSpaceShip::configure_boost_engine_effect() {
 }
 void ATestSpaceShip::configure_ship_mesh() {
     ship_mesh->SetCanEverAffectNavigation(false);
-    ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ship_mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     ship_mesh->SetGenerateOverlapEvents(false);
+
+    FCollisionResponseContainer collision_response;
+
+    constexpr auto block{ECollisionResponse::ECR_Block};
+
+    collision_response.Visibility = block;
+    collision_response.WorldDynamic = block;
+    collision_response.WorldStatic = block;
+
+    collision_response.SetResponse(ml::collision::projectile, block);
+    collision_response.SetResponse(ml::collision::description, block);
+
+    ship_mesh->SetCollisionResponseToChannels(collision_response);
 }
 
 // Mesh
