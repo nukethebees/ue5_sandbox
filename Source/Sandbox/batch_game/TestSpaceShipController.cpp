@@ -1,9 +1,9 @@
 #include "TestSpaceShipController.h"
 
-#include <Sandbox/health/ShipHealthComponent.h>
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
+#include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
 #include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/world.h>
@@ -171,6 +171,8 @@ void ATestSpaceShipController::initialise_hud() {
     hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
     hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
     hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
+
+    hud_widget->set_points(0);
 
     hud_widget->set_stopwatch_time(0.f);
 }
@@ -377,6 +379,7 @@ void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManag
 void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
+    hud_widget->set_points(manager.get_player_kills());
 }
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
