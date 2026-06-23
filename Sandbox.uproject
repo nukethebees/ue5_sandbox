@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{B939151C-4B8A-5814-082A-439E932E74B1}",
+	"EngineAssociation": "{CF5EF2AA-42D6-0E10-3470-918CDD9D45B2}",
 	"Category": "",
 	"Description": "",
 	"DisableEnginePluginsByDefault": true,
@@ -439,6 +439,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SpaceGameContent",
+			"Enabled": true
+		},
+		{
 			"Name": "SteamController",
 			"Enabled": true
 		},
@@ -486,5 +490,8 @@
 	],
 	"TargetPlatforms": [
 		"Windows"
+	],
+	"AdditionalPluginDirectories": [
+		"./unreal-content"
 	]
 }
