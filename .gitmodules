@@ -1,0 +1,3 @@
+[submodule "Plugins/GameAssets"]
+	path = Plugins/GameAssets
+	url = https://matthewlove.visualstudio.com/unreal-content/_git/unreal-content
