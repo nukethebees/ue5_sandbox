@@ -44,9 +44,16 @@ public class Sandbox : ModuleRules
             "SlateCore",
             "TraceLog",
             "UMG",
-            "UnrealEd", // Scoped transaction
-            "FunctionalTesting",
         });
+
+        if (Target.bBuildEditor)
+        {
+            // Scoped transaction
+            PrivateDependencyModuleNames.AddRange(new string[] { 
+                "UnrealEd", 
+                "FunctionalTesting", 
+            });
+        }
 
         Target.Logger.LogInformation("=== Sandbox Build.cs [Start] ===");
         Target.Logger.LogInformation($"OptimizeCode : {OptimizeCode}");

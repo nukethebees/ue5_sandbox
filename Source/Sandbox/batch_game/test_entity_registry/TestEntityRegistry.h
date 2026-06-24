@@ -34,7 +34,7 @@ struct NewEntities {
 };
 
 UCLASS()
-class ATestEntityRegistry : public AActor {
+class SANDBOX_API ATestEntityRegistry : public AActor {
   public:
     GENERATED_BODY()
 

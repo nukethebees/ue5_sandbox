@@ -7,7 +7,7 @@
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
 
-struct TestEntityUniqueEntityData {
+struct SANDBOX_API TestEntityUniqueEntityData {
     using kills_type = uint32;
 
     TArray<FRegistryEntityHandle> registry_handles;

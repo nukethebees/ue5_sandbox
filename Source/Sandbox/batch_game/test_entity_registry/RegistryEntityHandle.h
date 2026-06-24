@@ -5,7 +5,7 @@
 #include "RegistryEntityHandle.generated.h"
 
 USTRUCT()
-struct FRegistryEntityHandle {
+struct SANDBOX_API FRegistryEntityHandle {
     GENERATED_BODY()
 
     static constexpr int32 INDEX_NONE{-1};

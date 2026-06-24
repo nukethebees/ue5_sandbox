@@ -25,7 +25,7 @@ class ATestLasers;
 class ATestEntityRegistry;
 
 UCLASS()
-class ATestStaticTurrets : public AActor {
+class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
   public:
     using Proxy = ATestStaticTurretsProxy;
