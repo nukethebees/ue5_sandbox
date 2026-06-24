@@ -486,12 +486,18 @@
 				"Linux",
 				"Mac"
 			]
+		},
+		{
+			"Name": "ProjectLauncher",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux",
+				"Mac"
+			]
 		}
 	],
 	"TargetPlatforms": [
 		"Windows"
-	],
-	"AdditionalPluginDirectories": [
-		"./unreal-content"
 	]
 }
