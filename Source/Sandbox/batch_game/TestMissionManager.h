@@ -30,7 +30,8 @@ class ATestMissionManager : public AActor {
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
     auto get_mission_state() const noexcept -> ETestMissionState { return mission_state; }
 
-    auto get_survive_seconds() const noexcept -> float { return survive_seconds; }
+    auto get_survive_seconds() const noexcept -> float { return target_time; }
+    auto get_target_time() const noexcept -> float { return target_time; }
     auto get_kill_target() const noexcept -> int32 { return kill_target; }
     auto get_player_kills() const noexcept -> int32 { return player_kills; }
 
@@ -57,6 +58,7 @@ class ATestMissionManager : public AActor {
 
     void mission_tick_survive_seconds(float const dt);
     void mission_tick_kill_enemies(float const dt);
+    void mission_tick_kill_enemies_within_time(float const dt);
 
     void handle_mission_ended();
     void handle_mission_success();
@@ -78,7 +80,7 @@ class ATestMissionManager : public AActor {
     ETestMissionMode mission_mode{ETestMissionMode::None};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    float survive_seconds{60.0f};
+    float target_time{60.0f};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 kill_target{5};

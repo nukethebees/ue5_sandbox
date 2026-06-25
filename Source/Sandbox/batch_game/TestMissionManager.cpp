@@ -25,6 +25,8 @@ void ATestMissionManager::begin_play() {
         }
         case ETestMissionMode::SurviveTime:
             [[fallthrough]];
+        case ETestMissionMode::KillEnemiesWithinTime:
+            [[fallthrough]];
         case ETestMissionMode::KillEnemies: {
             set_mission_state(ETestMissionState::Running);
             break;
@@ -81,6 +83,10 @@ void ATestMissionManager::mission_tick(float const dt) {
             mission_tick_kill_enemies(dt);
             break;
         }
+        case ETestMissionMode::KillEnemiesWithinTime: {
+            mission_tick_kill_enemies_within_time(dt);
+            break;
+        }
         default: {
             UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
             break;
@@ -130,9 +136,7 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state) {
 }
 
 void ATestMissionManager::mission_tick_survive_seconds(float const dt) {
-    if (mission_elapsed_seconds >= survive_seconds) {
-        set_mission_state(ETestMissionState::Succeeded);
-    }
+    if (mission_elapsed_seconds >= target_time) { set_mission_state(ETestMissionState::Succeeded); }
 }
 void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
     auto const old_kills{player_kills};
@@ -143,6 +147,21 @@ void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
     if (new_kills != old_kills) { on_mission_update.Broadcast(*this); }
 
     if (player_kills >= kill_target) { set_mission_state(ETestMissionState::Succeeded); }
+}
+void ATestMissionManager::mission_tick_kill_enemies_within_time(float const dt) {
+    auto const old_kills{player_kills};
+    auto const new_kills{entity_registry->get_kills(player_id)};
+
+    player_kills = new_kills;
+
+    if (new_kills != old_kills) { on_mission_update.Broadcast(*this); }
+
+    if (player_kills >= kill_target) { set_mission_state(ETestMissionState::Succeeded); }
+
+    auto const mission_time{get_mission_stopwatch()};
+    auto const mission_time_limit{get_target_time()};
+
+    if (mission_time >= mission_time_limit) { set_mission_state(ETestMissionState::Failed); }
 }
 
 void ATestMissionManager::handle_mission_ended() {
@@ -160,7 +179,7 @@ void ATestMissionManager::handle_mission_ended() {
         .kills = player_kills,
         .time_seconds = mission_elapsed_seconds,
         .target_kills = kill_target,
-        .target_completion_time = survive_seconds,
+        .target_completion_time = target_time,
     };
 
     save_manager->save_score_record(record);

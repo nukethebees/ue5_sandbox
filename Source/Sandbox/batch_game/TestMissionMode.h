@@ -9,4 +9,5 @@ enum class ETestMissionMode : uint8 {
     None,
     SurviveTime,
     KillEnemies,
+    KillEnemiesWithinTime,
 };

@@ -410,6 +410,15 @@ auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager c
                                          manager.get_kill_target());
             break;
         }
+        case ETestMissionMode::KillEnemiesWithinTime: {
+            auto const kill_target{manager.get_kill_target()};
+            status_msg = FString::Printf(TEXT("Kill %d enemies within %.2f seconds (%d / %d)"),
+                                         kill_target,
+                                         manager.get_target_time(),
+                                         manager.get_player_kills(),
+                                         kill_target);
+            break;
+        }
         default: {
             UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
             break;
