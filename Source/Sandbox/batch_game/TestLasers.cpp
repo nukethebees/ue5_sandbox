@@ -28,6 +28,27 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
+void FTestLasersSpawnRequests::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(rotations),
+        SANDBOX_NAMED_NUM(damages),
+        SANDBOX_NAMED_NUM(instigator_handles),
+    });
+}
+void FTestLasersSpawnRequests::reset() {
+    ml::reset(locations, rotations, damages, instigator_handles);
+}
+auto FTestLasersSpawnRequests::num() const noexcept -> int32 {
+    return locations.num();
+}
+void FTestLasersSpawnRequests::reserve(int32 const count) {
+    ml::reserve(count, locations, rotations, damages, instigator_handles);
+}
+void FTestLasersSpawnRequests::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(count, locations, rotations, damages, instigator_handles);
+}
+
 ATestLasers::ATestLasers()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -100,20 +121,15 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 }
 
 // Spawning / Configuration
-void ATestLasers::spawn_lasers(FTestLasersSpawnRequest const& spawn_data) {
+void ATestLasers::spawn_lasers(FTestLasersSpawnRequests const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
 
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(spawn_data.locations),
-        SANDBOX_NAMED_NUM(spawn_data.rotations),
-        SANDBOX_NAMED_NUM(spawn_data.damages),
-        SANDBOX_NAMED_NUM(spawn_data.instigator_handles),
-    });
+    spawn_data.validate_array_sizes();
 
-    ml::append_from(locations_to_add, spawn_data.locations);
-    ml::append_from(rotations_to_add, spawn_data.rotations);
-    damages_to_add.Append(spawn_data.damages);
-    instigator_handles_to_add.Append(spawn_data.instigator_handles);
+    ml::append_from(pending_spawns.locations, spawn_data.locations);
+    ml::append_from(pending_spawns.rotations, spawn_data.rotations);
+    pending_spawns.damages.Append(spawn_data.damages);
+    pending_spawns.instigator_handles.Append(spawn_data.instigator_handles);
 }
 void ATestLasers::preallocate_instances() {
     instances->PreAllocateInstancesMemory(n_preallocated_instances);
@@ -126,15 +142,10 @@ void ATestLasers::preallocate_instances() {
 void ATestLasers::process_pending_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::process_pending_spawns);
 
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(locations_to_add),
-        SANDBOX_NAMED_NUM(rotations_to_add),
-        SANDBOX_NAMED_NUM(damages_to_add),
-        SANDBOX_NAMED_NUM(instigator_handles_to_add),
-    });
+    pending_spawns.validate_array_sizes();
 
     auto const offset{get_num_instances()};
-    auto const n_to_add{ml::num(locations_to_add)};
+    auto const n_to_add{ml::num(pending_spawns)};
 
     auto const cur_total{get_num_instances()};
     auto const new_total{cur_total + n_to_add};
@@ -147,10 +158,10 @@ void ATestLasers::process_pending_spawns() {
         instances->AddInstances(dummy_transforms, false, is_world_space, false);
     }
 
-    ml::append_from(locations, locations_to_add);
-    ml::append_from(rotations, rotations_to_add);
-    damages.Append(damages_to_add);
-    instigator_handles.Append(instigator_handles_to_add);
+    ml::append_from(locations, pending_spawns.locations);
+    ml::append_from(rotations, pending_spawns.rotations);
+    damages.Append(pending_spawns.damages);
+    instigator_handles.Append(pending_spawns.instigator_handles);
 
     lifetimes.AddZeroed(n_to_add);
     ml::add_uninitialised(velocities, n_to_add);
@@ -321,8 +332,7 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     validate_array_sizes();
 }
 void ATestLasers::clear_spawn_buffers() {
-    ml::reset(
-        locations_to_add, rotations_to_add, damages_to_add, instigator_handles_to_add, to_remove);
+    ml::reset(pending_spawns, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
     ml::reset(damage_events);

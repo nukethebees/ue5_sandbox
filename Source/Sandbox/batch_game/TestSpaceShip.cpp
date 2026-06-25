@@ -473,27 +473,19 @@ void ATestSpaceShip::fire_laser() {
 }
 void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
                                       TConstArrayView<FTransform> const fire_points) {
-    FVectors3f locations;
-    FRotatorsf rotations;
-    TArray<int32> damages;
-    TArray<FRegistryEntityHandle> instigator_handles;
+    FTestLasersSpawnRequests new_lasers;
 
     auto const n{fire_points.Num()};
-    ml::add_uninitialised(n, locations, rotations, damages, instigator_handles);
+    ml::add_uninitialised(n, new_lasers);
 
     for (int32 i{0}; i < n; ++i) {
-        ml::assign(locations, i, fire_points[i].GetLocation());
-        ml::assign(rotations, i, fire_points[i].Rotator());
-        damages[i] = ship_config->laser_config->damage;
+        ml::assign(new_lasers.locations, i, fire_points[i].GetLocation());
+        ml::assign(new_lasers.rotations, i, fire_points[i].Rotator());
     }
-    ml::fill(instigator_handles, registry_handle);
+    ml::fill(new_lasers.damages, ship_config->laser_config->damage);
+    ml::fill(new_lasers.instigator_handles, registry_handle);
 
-    laser_actor->spawn_lasers({
-        .locations = locations.get_const_view(),
-        .rotations = rotations.get_const_view(),
-        .damages = damages,
-        .instigator_handles = instigator_handles,
-    });
+    laser_actor->spawn_lasers(new_lasers);
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {

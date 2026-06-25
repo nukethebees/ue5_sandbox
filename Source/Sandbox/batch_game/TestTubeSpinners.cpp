@@ -39,8 +39,7 @@ void ATestTubeSpinners::clear_runtime_state() {
               laser_cooldowns,
               next_fire_point_indices,
               indices_ready_to_fire,
-              new_laser_locations,
-              new_laser_rotations);
+              new_lasers);
 }
 void ATestTubeSpinners::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play);
@@ -78,7 +77,7 @@ void ATestTubeSpinners::update_visuals() {
 void ATestTubeSpinners::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick);
 
-    ml::reset(indices_ready_to_fire, new_laser_locations, new_laser_rotations);
+    ml::reset(indices_ready_to_fire, new_lasers);
 }
 
 // Accessors
@@ -211,11 +210,7 @@ void ATestTubeSpinners::fire_lasers() {
 
     if (n_firing_points < 1) { return; }
 
-    ml::reset(indices_ready_to_fire,
-              new_laser_locations,
-              new_laser_rotations,
-              new_laser_damages,
-              new_laser_instigator_handles);
+    ml::reset(indices_ready_to_fire, new_lasers);
 
     for (int32 i{0}; i < n; ++i) {
         if (!(laser_cooldowns[i] <= 0.f)) { continue; }
@@ -225,9 +220,8 @@ void ATestTubeSpinners::fire_lasers() {
     }
 
     auto const n_ready_to_fire{indices_ready_to_fire.Num()};
-    ml::reserve(n_ready_to_fire, new_laser_locations, new_laser_rotations);
-    ml::add_uninitialised(
-        n_ready_to_fire, new_laser_locations, new_laser_rotations, new_laser_instigator_handles);
+    ml::reserve(n_ready_to_fire, new_lasers);
+    ml::add_uninitialised(n_ready_to_fire, new_lasers);
 
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
         auto const index{indices_ready_to_fire[i]};
@@ -236,30 +230,26 @@ void ATestTubeSpinners::fire_lasers() {
         auto const& offset{firing_point_offsets[fire_point_index]};
 
         auto const fire_point_location{offset.GetLocation()};
-        ml::assign(new_laser_locations,
+        ml::assign(new_lasers.locations,
                    i,
                    locations.xs[index] + fire_point_location.X,
                    locations.ys[index] + fire_point_location.Y,
                    locations.zs[index] + fire_point_location.Z);
 
         auto const fire_point_rotation{offset.Rotator()};
-        ml::assign(new_laser_rotations,
+        ml::assign(new_lasers.rotations,
                    i,
                    fire_point_rotation.Pitch,
                    fire_point_rotation.Yaw + yaws[index],
                    fire_point_rotation.Roll);
 
-        new_laser_damages[i] = laser_damage;
-        new_laser_instigator_handles[i] = registry_entity_handles[index];
+        new_lasers.damages[i] = laser_damage;
+        new_lasers.instigator_handles[i] = registry_entity_handles[index];
+
         next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_actor->spawn_lasers({
-        .locations = new_laser_locations.get_const_view(),
-        .rotations = new_laser_rotations.get_const_view(),
-        .damages = new_laser_damages,
-        .instigator_handles = new_laser_instigator_handles,
-    });
+    laser_actor->spawn_lasers(new_lasers);
 }
 
 // Checks

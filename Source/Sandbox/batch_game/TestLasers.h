@@ -20,11 +20,17 @@ class UActorComponent;
 class UTestLasersConfig;
 class ATestEntityRegistry;
 
-struct FTestLasersSpawnRequest {
-    TVectors3View<float const> locations;
-    TRotatorsView<float const> rotations;
-    TConstArrayView<int32> damages;
-    TConstArrayView<FRegistryEntityHandle> instigator_handles;
+struct FTestLasersSpawnRequests {
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<int32> damages;
+    TArray<FRegistryEntityHandle> instigator_handles;
+    
+    void validate_array_sizes() const;
+    void reset();
+    auto num() const noexcept -> int32;
+    void reserve(int32 const count);
+    void add_uninitialised(int32 const count);
 };
 
 UCLASS()
@@ -52,7 +58,7 @@ class ATestLasers : public AActor {
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     // Spawning / configuration
-    void spawn_lasers(FTestLasersSpawnRequest const& spawn_data);
+    void spawn_lasers(FTestLasersSpawnRequests const& spawn_data);
 
     // Checks
     void validate_array_sizes() const;
@@ -112,10 +118,7 @@ class ATestLasers : public AActor {
     TArray<FRegistryEntityHandle> instigator_handles;
 
     // Spawning
-    FVectors3f locations_to_add;
-    FRotatorsf rotations_to_add;
-    TArray<int32> damages_to_add;
-    TArray<FRegistryEntityHandle> instigator_handles_to_add;
+    FTestLasersSpawnRequests pending_spawns;
 
     // Removal
     UPROPERTY()

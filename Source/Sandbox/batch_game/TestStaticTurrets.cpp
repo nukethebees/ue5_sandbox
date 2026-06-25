@@ -263,20 +263,15 @@ void ATestStaticTurrets::fire_at_enemies() {
         FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
         FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
 
-        ml::append(new_laser_locations, loc_x, loc_y, loc_z);
-        ml::append(new_laser_rotations, fire_dir);
-        new_laser_damages.Add(laser_damage);
-        new_laser_instigator_handles.Add(entity_handles[i]);
+        ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
+        ml::append(new_lasers.rotations, fire_dir);
+        new_lasers.damages.Add(laser_damage);
+        new_lasers.instigator_handles.Add(entity_handles[i]);
 
         laser_cooldowns[i] = cooldown;
     }
 
-    laser_actor->spawn_lasers({
-        .locations = new_laser_locations.get_const_view(),
-        .rotations = new_laser_rotations.get_const_view(),
-        .damages = new_laser_damages,
-        .instigator_handles = new_laser_instigator_handles,
-    });
+    laser_actor->spawn_lasers(new_lasers);
 }
 auto ATestStaticTurrets::get_disengage_radius() const -> float {
     return actor_config->detection_radius * 1.2f;
@@ -389,10 +384,7 @@ void ATestStaticTurrets::clear_tick_buffers() {
               entity_update_data,
               local_indices_to_remove,
               indices_ready_to_fire,
-              new_laser_locations,
-              new_laser_rotations,
-              new_laser_damages,
-              new_laser_instigator_handles);
+              new_lasers);
 }
 
 // Checks

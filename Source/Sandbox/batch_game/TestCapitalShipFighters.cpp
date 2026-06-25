@@ -315,10 +315,8 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const aim_threshold{fire_dot_product_threshold};
     auto const laser_damage{actor_config->laser_damage};
 
-    ml::reset(
-        new_laser_locations, new_laser_rotations, new_laser_damages, new_laser_instigator_handles);
-    ml::add_uninitialised(
-        n_ships, new_laser_locations, new_laser_rotations, new_laser_instigator_handles);
+    ml::reset(new_lasers);
+    ml::add_uninitialised(n_ships, new_lasers);
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
@@ -336,27 +334,22 @@ void ATestCapitalShipFighters::handle_firing() {
         auto const laser_offset{fire_point_offset * direction};
         auto const laser_location{ship_location + laser_offset};
 
-        ml::assign(new_laser_locations, write_index, laser_location);
-        ml::assign(new_laser_rotations, write_index, direction.ToOrientationRotator());
-        new_laser_instigator_handles[write_index] = entity_handles[ship_index];
+        ml::assign(new_lasers.locations, write_index, laser_location);
+        ml::assign(new_lasers.rotations, write_index, direction.ToOrientationRotator());
+        new_lasers.instigator_handles[write_index] = entity_handles[ship_index];
 
         laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
     }
 
-    new_laser_locations.set_num(write_index, EAllowShrinking::No);
-    new_laser_rotations.set_num(write_index, EAllowShrinking::No);
-    new_laser_instigator_handles.SetNum(write_index, EAllowShrinking::No);
+    new_lasers.locations.set_num(write_index, EAllowShrinking::No);
+    new_lasers.rotations.set_num(write_index, EAllowShrinking::No);
+    new_lasers.instigator_handles.SetNum(write_index, EAllowShrinking::No);
 
-    new_laser_damages.SetNumUninitialized(write_index, EAllowShrinking::No);
-    ml::fill(new_laser_damages, laser_damage);
+    new_lasers.damages.SetNumUninitialized(write_index, EAllowShrinking::No);
+    ml::fill(new_lasers.damages, laser_damage);
 
-    laser_actor->spawn_lasers({
-        .locations = new_laser_locations.get_const_view(),
-        .rotations = new_laser_rotations.get_const_view(),
-        .damages = new_laser_damages,
-        .instigator_handles = new_laser_instigator_handles,
-    });
+    laser_actor->spawn_lasers(new_lasers);
 }
 
 // Misc
@@ -375,17 +368,10 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               target_directions,
               laser_cooldowns,
               indices_ready_to_fire_buffer,
-              new_laser_locations,
-              new_laser_rotations,
-              new_laser_instigator_handles);
+              new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove,
-              indices_ready_to_fire_buffer,
-              new_laser_locations,
-              new_laser_rotations,
-              new_laser_instigator_handles,
-              entity_death_info);
+    ml::reset(local_indices_to_remove, indices_ready_to_fire_buffer, new_lasers, entity_death_info);
 }
 
 // Checks

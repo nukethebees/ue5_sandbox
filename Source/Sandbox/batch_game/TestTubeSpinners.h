@@ -2,6 +2,7 @@
 
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
@@ -97,18 +98,10 @@ class ATestTubeSpinners : public AActor {
     // Firing
     UPROPERTY(EditAnywhere, Category = "Turrets")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY()
     FCountdownTimers laser_cooldowns;
-    UPROPERTY()
     TArray<int32> next_fire_point_indices;
-    UPROPERTY()
     TArray<int32> indices_ready_to_fire;
-
-    // Laser spawning
-    FVectors3f new_laser_locations;
-    FRotatorsf new_laser_rotations;
-    TArray<int32> new_laser_damages;
-    TArray<FRegistryEntityHandle> new_laser_instigator_handles;
+    FTestLasersSpawnRequests new_lasers;
 
     // Debugging / logging
     UPROPERTY(EditAnywhere, Category = "Turrets")
