@@ -112,6 +112,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Total queries
     auto count_kills() const noexcept -> int32;
     auto count_alive() const noexcept -> int32;
+    auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
 
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;

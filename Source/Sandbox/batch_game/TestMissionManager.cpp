@@ -19,6 +19,11 @@ void ATestMissionManager::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
+    if (kill_target <= 0) {
+        auto const player_team{player_ship->get_team()};
+        kill_target = entity_registry->count_alive_not_on_team(player_team);
+    }
+
     switch (mission_mode) {
         case ETestMissionMode::None: {
             set_mission_state(ETestMissionState::Disabled);

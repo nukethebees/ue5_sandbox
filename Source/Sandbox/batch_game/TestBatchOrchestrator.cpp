@@ -71,10 +71,7 @@ void ATestBatchOrchestrator::BeginPlay() {
     if (player_ship) { register_owner(player_ship); }
     ml::invoke_on_all(register_owner, capital_ships, capital_ship_fighters, turrets, spinners);
 
-    if (player_ship) {
-        player_ship->begin_play();
-        mission_manager->begin_play();
-    }
+    if (player_ship) { player_ship->begin_play(); }
     ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
                       capital_ships,
                       capital_ship_fighters,
@@ -89,6 +86,8 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     entity_registry->commit_updates();
     entity_registry->end_tick();
+
+    if (player_ship) { mission_manager->begin_play(); }
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);

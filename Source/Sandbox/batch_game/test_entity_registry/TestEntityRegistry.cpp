@@ -354,6 +354,16 @@ auto ATestEntityRegistry::count_alive() const noexcept -> int32 {
 
     return total;
 }
+auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
+    auto const n{get_num_elements()};
+    int32 count{0};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] && (entity_data.teams[i] != team)) { ++count; }
+    }
+
+    return count;
+}
 
 // Area queries
 auto ATestEntityRegistry::collect_entities_in_range(
