@@ -384,6 +384,9 @@ void ATestSpaceShipController::on_mission_update(ATestMissionManager const& mana
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
 
+    // Do final update
+    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
 }
