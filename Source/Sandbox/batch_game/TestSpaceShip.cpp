@@ -91,15 +91,8 @@ void ATestSpaceShip::tick(float const dt) {
 
     log_config.tick(dt);
 
-    auto const original_roll_time{roll_state.roll_time_remaining};
-
     laser_shot_cooldown -= dt;
-    roll_state.roll_time_remaining -= dt;
-    roll_state.cooldown_remaining -= dt;
-
-    if ((original_roll_time >= 0.f) && (roll_state.roll_time_remaining <= 0.f)) {
-        roll_state.cooldown_remaining = ship_config->barrel_roll_config.roll_cooldown;
-    }
+    update_barrel_roll_timers(dt);
 }
 void ATestSpaceShip::move(float const dt) {
     update_boost_brake(dt);
@@ -287,6 +280,16 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
 }
 
 // Movement - rolling
+void ATestSpaceShip::update_barrel_roll_timers(float const dt) {
+    auto const original_roll_time{roll_state.roll_time_remaining};
+
+    roll_state.roll_time_remaining -= dt;
+    roll_state.cooldown_remaining -= dt;
+
+    if ((original_roll_time >= 0.f) && (roll_state.roll_time_remaining <= 0.f)) {
+        roll_state.cooldown_remaining = ship_config->barrel_roll_config.roll_cooldown;
+    }
+}
 void ATestSpaceShip::roll(float direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

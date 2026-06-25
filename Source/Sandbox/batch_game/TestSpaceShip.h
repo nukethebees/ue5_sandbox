@@ -127,6 +127,7 @@ class ATestSpaceShip : public APawn {
     auto get_entity_update_data() const -> FTestEntityRegistryEntityData;
 
     // Movement
+    void update_barrel_roll_timers(float const dt);
     auto GetVelocity() const -> FVector override;
     void set(EBoostBrakeState s);
     void update_boost_brake(this ATestSpaceShip& self, float dt);
