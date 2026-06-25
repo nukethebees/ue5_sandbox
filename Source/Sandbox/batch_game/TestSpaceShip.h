@@ -130,8 +130,8 @@ class ATestSpaceShip : public APawn {
     void update_barrel_roll_timers(float const dt);
     auto GetVelocity() const -> FVector override;
     void set(EBoostBrakeState s);
-    void update_boost_brake(this ATestSpaceShip& self, float dt);
-    void integrate_velocity(this ATestSpaceShip& self, float dt);
+    void update_boost_brake(this ATestSpaceShip& self, float const dt);
+    void integrate_velocity(this ATestSpaceShip& self, float const dt);
 
     // Combat
     void set_lock_on_target(AActor* target);
@@ -151,8 +151,8 @@ class ATestSpaceShip : public APawn {
     void configure_boost_engine_effect();
     void configure_ship_mesh();
 
-    void update_actor_rotation(this ATestSpaceShip& self, float dt);
-    void update_visual_orientation(this ATestSpaceShip& self, float dt);
+    void update_actor_rotation(this ATestSpaceShip& self, float const dt);
+    void update_visual_orientation(this ATestSpaceShip& self, float const dt);
 
     /* ------------------------------------------------------------------------------------------ */
     // Health

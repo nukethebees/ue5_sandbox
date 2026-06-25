@@ -185,7 +185,7 @@ auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle
 /* ------------------------------------------------------------------------------------------ */
 // Movement
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float dt) {
+void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const dt) {
     auto const fwd{self.GetActorForwardVector()};
     auto const new_speed{self.flight_model.update_y(dt)};
     self.velocity = fwd * new_speed;
@@ -266,13 +266,14 @@ void ATestSpaceShip::start_brake() {
 void ATestSpaceShip::stop_brake() {
     if (boost_brake_state == EBoostBrakeState::Brake) { set(EBoostBrakeState::None); }
 }
-void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float dt) {
+void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float const dt) {
     auto const starting_thrust_energy{self.thrust_energy};
 
     if (starting_thrust_energy <= 0.f) { self.set(EBoostBrakeState::None); }
 
     self.thrust_energy += dt * self.thrust_change_rate;
     self.thrust_energy = FMath::Clamp(self.thrust_energy, 0.f, self.ship_config->thrust_energy_max);
+
     if (starting_thrust_energy != self.thrust_energy) {
         self.on_energy_changed.ExecuteIfBound(self.thrust_energy /
                                               self.ship_config->thrust_energy_max);
@@ -506,7 +507,7 @@ void ATestSpaceShip::fire_homing_laser() {}
 /* ------------------------------------------------------------------------------------------ */
 // Visuals
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) {
+void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float const dt) {
     auto const drot{self.ship_config->rotation_speed * dt};
     if (self.rotation_input == FVector2D::ZeroVector) {
 
@@ -531,7 +532,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float dt) 
         self.AddActorLocalRotation(delta_rotation);
     }
 }
-void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float dt) {
+void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float const dt) {
     auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
 
     auto const target_pitch{self.rotation_input.Y * self.ship_config->pitch_angle_max};
