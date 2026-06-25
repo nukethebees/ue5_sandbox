@@ -334,7 +334,7 @@ auto ATestEntityRegistry::get_dead_entities_this_frame() const
 }
 
 // Total queries
-auto ATestEntityRegistry::get_total_kills() const noexcept -> int32 {
+auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
 
     int32 total{0};
@@ -344,7 +344,7 @@ auto ATestEntityRegistry::get_total_kills() const noexcept -> int32 {
 
     return total;
 }
-auto ATestEntityRegistry::get_total_alive() const noexcept -> int32 {
+auto ATestEntityRegistry::count_alive() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
 
     int32 total{0};

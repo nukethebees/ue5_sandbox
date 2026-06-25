@@ -40,7 +40,7 @@ void ATestSimpleBatch::Tick(float dt) {
 }
 
 void ATestSimpleBatch::check_alive_matches_kills() {
-    auto const n_alive{entity_registry->get_total_alive()};
+    auto const n_alive{entity_registry->count_alive()};
     auto const n_unique{entity_registry->get_num_unique_ids_issued()};
 
     auto const n_alive_expected{n_unique - kills};
@@ -48,7 +48,7 @@ void ATestSimpleBatch::check_alive_matches_kills() {
     all_passed &= AssertEqual_Int(n_alive, n_alive_expected, TEXT("number of alive entities"));
 }
 void ATestSimpleBatch::update_kills() {
-    kills = entity_registry->get_total_kills();
+    kills = entity_registry->count_kills();
 }
 
 void ATestSimpleBatch::handle_fail() {
@@ -80,7 +80,7 @@ void ATestSimpleBatch::handle_fail() {
     }
 
     msg += TEXT("\n\nGlobal id data:");
-    msg += FString::Printf(TEXT("\nAlive: %d"), entity_registry->get_total_alive());
+    msg += FString::Printf(TEXT("\nAlive: %d"), entity_registry->count_alive());
     msg += FString::Printf(TEXT("\nKills: %d"), kills);
     for (int32 i{0}; i < n; ++i) {
         msg += FString::Printf(TEXT("\nId: %d, Kills: %d, Alive: %d"),

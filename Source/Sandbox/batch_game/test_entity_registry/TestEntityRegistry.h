@@ -110,8 +110,8 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
 
     // Total queries
-    auto get_total_kills() const noexcept -> int32;
-    auto get_total_alive() const noexcept -> int32;
+    auto count_kills() const noexcept -> int32;
+    auto count_alive() const noexcept -> int32;
 
     // Unique id queries
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
