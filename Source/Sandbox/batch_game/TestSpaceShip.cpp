@@ -182,6 +182,9 @@ auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
 auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle {
     return registry_handle;
 }
+auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
+    return team;
+}
 
 /* ------------------------------------------------------------------------------------------ */
 // Movement
