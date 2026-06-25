@@ -240,7 +240,7 @@ class ATestSpaceShip : public APawn {
     float manual_bank_direction{0.f};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    FBarrelRoll roll_state{};
+    FBarrelRollState roll_state{};
 
     /* ------------------------------------------------------------------------ */
     /* Combat */

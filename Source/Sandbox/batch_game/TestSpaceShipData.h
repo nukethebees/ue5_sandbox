@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/collision_settings.h>
@@ -73,6 +74,9 @@ class UTestSpaceShipData : public UDataAsset {
     float manual_bank_angle_max{90.f};
     UPROPERTY(EditAnywhere, Category = "Steering|Roll")
     float manual_bank_speed{5.f};
+
+    UPROPERTY(EditAnywhere, Category = "Steering|Roll")
+    FBarrelRollConfig barrel_roll_config;
 
     /* ------------------------------------------------------------------------ */
     /* Combat */

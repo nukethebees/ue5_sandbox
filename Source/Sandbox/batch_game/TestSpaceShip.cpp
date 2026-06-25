@@ -91,8 +91,15 @@ void ATestSpaceShip::tick(float const dt) {
 
     log_config.tick(dt);
 
+    auto const original_roll_time{roll_state.roll_time_remaining};
+
     laser_shot_cooldown -= dt;
-    roll_state.time_remaining -= dt;
+    roll_state.roll_time_remaining -= dt;
+    roll_state.cooldown_remaining -= dt;
+
+    if ((original_roll_time >= 0.f) && (roll_state.roll_time_remaining <= 0.f)) {
+        roll_state.cooldown_remaining = ship_config->barrel_roll_config.roll_cooldown;
+    }
 }
 void ATestSpaceShip::move(float const dt) {
     update_boost_brake(dt);
@@ -289,9 +296,9 @@ void ATestSpaceShip::roll(float direction) {
     manual_bank_direction = clamp(direction, 1.f);
 }
 void ATestSpaceShip::barrel_roll(float direction) {
-    if (!roll_state.can_roll()) { return; }
+    if (!roll_state.can_start_rolling()) { return; }
 
-    roll_state.time_remaining = roll_state.roll_duration;
+    roll_state.roll_time_remaining = ship_config->barrel_roll_config.roll_duration;
     roll_state.direction = FMath::Sign(direction);
 
 #if WITH_EDITOR
@@ -542,7 +549,8 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
 
     double new_roll{current_rotation.Roll};
     if (self.roll_state.is_rolling()) {
-        auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
+        auto const delta_roll{dt * self.ship_config->barrel_roll_config.roll_speed *
+                              self.roll_state.direction};
         new_roll = current_rotation.Roll + delta_roll;
     } else {
         auto const roll_speed{FMath::Max(self.ship_config->turn_bank_speed,
