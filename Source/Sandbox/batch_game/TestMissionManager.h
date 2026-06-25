@@ -2,6 +2,7 @@
 
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestMissionFailReason.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
 
@@ -60,7 +61,7 @@ class ATestMissionManager : public AActor {
     void mission_tick_kill_enemies(float const dt);
     void mission_tick_kill_enemies_within_time(float const dt);
 
-    void handle_mission_ended();
+    void handle_mission_ended(ETestMissionFailReason const fail_reason);
     void handle_mission_success();
     void handle_mission_failure();
 

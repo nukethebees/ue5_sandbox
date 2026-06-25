@@ -5,6 +5,7 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/save/SpaceSaveGame.h>
 #include <Sandbox/save/SpaceSaveSubsystem.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <SandboxCore/uobject_utils.h>
 
@@ -167,7 +168,7 @@ void ATestMissionManager::mission_tick_kill_enemies_within_time(float const dt) 
     if (mission_time >= mission_time_limit) { set_mission_state(ETestMissionState::Failed); }
 }
 
-void ATestMissionManager::handle_mission_ended() {
+void ATestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
     auto* world{GetWorld()};
     auto* game_instance{world->GetGameInstance()};
     auto* save_manager{game_instance->GetSubsystem<USpaceSaveSubsystem>()};
@@ -179,6 +180,7 @@ void ATestMissionManager::handle_mission_ended() {
         .level_name = *level_name,
         .mission_mode = mission_mode,
         .end_state = mission_state,
+        .fail_reason = fail_reason,
         .kills = player_kills,
         .time_seconds = mission_elapsed_seconds,
         .target_kills = kill_target,
@@ -190,14 +192,39 @@ void ATestMissionManager::handle_mission_ended() {
 void ATestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));
 
-    handle_mission_ended();
+    handle_mission_ended(ETestMissionFailReason::None);
 
     on_mission_ended.Broadcast(*this);
 }
 void ATestMissionManager::handle_mission_failure() {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
 
-    handle_mission_ended();
+    auto fail_reason{ETestMissionFailReason::None};
+    if (!player_ship->is_alive()) { fail_reason = ETestMissionFailReason::PlayerKilled; }
+
+    switch (mission_mode) {
+        case ETestMissionMode::SurviveTime: {
+            break;
+        }
+        case ETestMissionMode::KillEnemies: {
+            break;
+        }
+        case ETestMissionMode::KillEnemiesWithinTime: {
+            if (mission_elapsed_seconds >= target_time) {
+                fail_reason = ETestMissionFailReason::TimeElapsed;
+            }
+            break;
+        }
+        default: {
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("ATestMissionManager::handle_mission_failure: Unhandled mission mode: %s"),
+                   *ml::to_string_without_type_prefix(mission_mode));
+            break;
+        }
+    }
+
+    handle_mission_ended(fail_reason);
 
     on_mission_ended.Broadcast(*this);
 }

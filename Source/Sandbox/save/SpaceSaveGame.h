@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/TestMissionFailReason.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
 
@@ -25,6 +26,9 @@ struct FScoreRecord {
     ETestMissionState end_state{ETestMissionState::NotStarted};
 
     UPROPERTY()
+    ETestMissionFailReason fail_reason{ETestMissionFailReason::None};
+
+    UPROPERTY()
     int32 kills{};
 
     UPROPERTY()
@@ -42,7 +46,7 @@ UCLASS()
 class SANDBOX_API USpaceSaveGame : public USaveGame {
     GENERATED_BODY()
   public:
-    static constexpr int32 current_save_version{1};
+    static constexpr int32 current_save_version{2};
 
     UPROPERTY()
     int32 save_version{current_save_version};

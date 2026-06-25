@@ -145,14 +145,19 @@ void USpaceSaveSubsystem::log_save_data() const {
                 break;
             }
             case ETestMissionMode::KillEnemies: {
-                msg += FString::Printf(TEXT("\nKill target: %d"), record.target_kills);
+                msg += FString::Printf(TEXT("\n    Kill target: %d"), record.target_kills);
                 break;
             }
             case ETestMissionMode::SurviveTime: {
-                msg += FString::Printf(TEXT("\nTarget completion time: %.2f"),
+                msg += FString::Printf(TEXT("\n    Target completion time: %.2f"),
                                        record.target_completion_time);
                 break;
             }
+        }
+
+        if (record.end_state == ETestMissionState::Failed) {
+            msg += FString::Printf(TEXT("\n    Fail reason: %s"),
+                                   *ml::to_string_without_type_prefix(record.fail_reason));
         }
     }
 
@@ -163,16 +168,35 @@ void USpaceSaveSubsystem::log_save_data() const {
 void USpaceSaveSubsystem::migrate_if_needed() {
     if (!current_save) { return; }
 
-    if (current_save->save_version < USpaceSaveGame::current_save_version) {
-        // Future migrations go here.
-        //
-        // Example:
-        // if (current_save->save_version < 2)
-        // {
-        //     // Fill defaults for newly-added fields.
-        // }
+    while (current_save->save_version < USpaceSaveGame::current_save_version) {
+        switch (current_save->save_version) {
+            case 1:
+                migrate_to_v2();
+                current_save->save_version = 2;
+                break;
+            default:
+                checkNoEntry(); // Unknown or unsupported version.
+                return;
+        }
+    }
 
-        current_save->save_version = USpaceSaveGame::current_save_version;
-        save_to_disk();
+    save_to_disk();
+}
+void USpaceSaveSubsystem::migrate_to_v2() {
+    for (auto& record : current_save->score_records) {
+        record.fail_reason = ETestMissionFailReason::None;
+
+        if (record.end_state == ETestMissionState::Failed) { continue; }
+
+        switch (record.mission_mode) {
+            case ETestMissionMode::KillEnemiesWithinTime: {
+                if (record.time_seconds >= record.target_completion_time) {
+                    record.fail_reason = ETestMissionFailReason::TimeElapsed;
+                }
+            }
+            default: {
+                break;
+            }
+        }
     }
 }

@@ -35,7 +35,8 @@ class USpaceSaveSubsystem : public UGameInstanceSubsystem {
     static constexpr int32 user_index{0};
 
     void migrate_if_needed();
-  private:
+    void migrate_to_v2();
+
     UPROPERTY()
     TObjectPtr<USpaceSaveGame> current_save{nullptr};
 };
