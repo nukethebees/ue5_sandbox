@@ -347,11 +347,15 @@ void ATestCapitalShipFighters::handle_firing() {
 
     new_lasers.locations.set_num(write_index, EAllowShrinking::No);
     new_lasers.rotations.set_num(write_index, EAllowShrinking::No);
-    new_lasers.instigator_handles.SetNum(write_index, EAllowShrinking::No);
+    new_lasers.instigator_handles.SetNumUninitialized(write_index, EAllowShrinking::No);
 
-    ml::append_n(new_lasers.damages, laser_damage, write_index);
-    ml::append_n(new_lasers.speeds, laser_speed, write_index);
-    ml::append_n(new_lasers.max_distances, laser_max_distance, write_index);
+    new_lasers.damages.SetNumUninitialized(write_index);
+    new_lasers.speeds.SetNumUninitialized(write_index);
+    new_lasers.max_distances.SetNumUninitialized(write_index);
+
+    new_lasers.set_damages(laser_damage);
+    new_lasers.set_speeds(laser_speed);
+    new_lasers.set_max_distances(laser_max_distance);
 
     laser_actor->spawn_lasers(new_lasers);
 }
