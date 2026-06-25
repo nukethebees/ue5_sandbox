@@ -508,18 +508,16 @@ void ATestSpaceShip::fire_homing_laser() {}
 // Visuals
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float const dt) {
-    auto const d_rot{self.ship_config->rotation_speed * dt};
+    auto const rotation_speed{self.ship_config->rotation_speed};
+    auto const d_rot{rotation_speed * dt};
 
     if (self.rotation_input == FVector2D::ZeroVector) {
-
+        auto const auto_level_speed{self.ship_config->auto_level_speed};
         auto const rot{self.GetActorRotation()};
-        FRotator const delta_rotation{
-            self.tick_clamp(-rot.Pitch, dt, d_rot),
-            0.0f,
-            self.tick_clamp(-rot.Roll, dt, d_rot),
-        };
 
-        self.AddActorLocalRotation(delta_rotation);
+        auto const roll{FMath::FInterpConstantTo(rot.Roll, 0.0f, dt, auto_level_speed)};
+
+        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
     } else {
         auto const drot_pitch{d_rot};
 
