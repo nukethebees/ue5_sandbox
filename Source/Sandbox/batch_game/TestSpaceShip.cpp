@@ -535,7 +535,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
         auto const auto_level_speed{self.ship_config->auto_level_speed};
         auto const rot{self.GetActorRotation()};
 
-        auto const roll{FMath::FInterpConstantTo(rot.Roll, 0.0f, dt, auto_level_speed)};
+        auto const roll{FMath::FInterpTo(rot.Roll, 0.0f, dt, auto_level_speed)};
 
         self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
     }
