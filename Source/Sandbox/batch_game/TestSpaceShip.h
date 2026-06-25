@@ -236,10 +236,10 @@ class ATestSpaceShip : public APawn {
     FVector2D rotation_input{FVector2D::ZeroVector};
 
     // Movement - bank/roll
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Steering|Roll")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering|Roll")
     float manual_bank_direction{0.f};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     FBarrelRoll roll_state{};
 
     /* ------------------------------------------------------------------------ */
