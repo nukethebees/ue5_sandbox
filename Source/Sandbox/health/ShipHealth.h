@@ -22,6 +22,7 @@ struct SANDBOX_API FShipHealth {
         , max_health(max_health) {}
 
     void upgrade_max_health() { max_health = upgraded_max_health; }
+    bool is_alive() const noexcept { return health > 0; }
 
     UPROPERTY(EditAnywhere, Category = "Health")
     int32 health{100};

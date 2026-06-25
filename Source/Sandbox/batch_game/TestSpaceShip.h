@@ -97,6 +97,7 @@ class ATestSpaceShip : public APawn {
     /* ------------------------------------------------------------------------------------------ */
     void add_health(int32 added_health);
     auto get_health_info() const -> FShipHealth { return health; }
+    bool is_alive() const noexcept { return health.is_alive(); }
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
