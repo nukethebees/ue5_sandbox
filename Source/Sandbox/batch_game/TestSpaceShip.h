@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Sandbox/health/ShipHealthComponent.h>
-#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/health/ShipHealthComponent.h>
+#include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/players/LaserFiringMode.h>
 #include <Sandbox/players/ShipLaserMode.h>
@@ -170,7 +170,7 @@ class ATestSpaceShip : public APawn {
     /* ------------------------------------------------------------------------------------------ */
     // Config
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestSpaceShipData> ship_config{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
@@ -179,34 +179,37 @@ class ATestSpaceShip : public APawn {
     TestEntityOwnerId owner_id{};
     TestEntityUniqueId unique_entity_id;
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FRegistryEntityHandle registry_handle{};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    ETestTeam team{ETestTeam::neutral};
 
     /* ------------------------------------------------------------------------------------------ */
     // Visuals
     /* ------------------------------------------------------------------------------------------ */
     // Camera
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     UCameraComponent* camera{nullptr};
 
     // Ship
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     UStaticMeshComponent* ship_mesh{nullptr};
 
     // Visuals - engine
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara")
     UNiagaraComponent* boost_pulse{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Niagara")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara")
     UNiagaraComponent* boost_engine_effect{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Energy
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy")
     float thrust_energy{1.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy")
     float thrust_change_rate{0.f};
 
     /* ------------------------------------------------------------------------------------------ */
@@ -214,63 +217,63 @@ class ATestSpaceShip : public APawn {
     /* ------------------------------------------------------------------------------------------ */
 
     // Movement - Speed
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpaceShipFlightModel flight_model{};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpeedResponses speed_responses{};
 
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     FVector velocity;
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     float target_speed{0.f};
 
     // Movement - Cruising
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
     // Movement - rotation
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Steering")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
 
     // Movement - bank/roll
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Steering|Roll")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Steering|Roll")
     float manual_bank_direction{0.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FBarrelRoll roll_state{};
 
     /* ------------------------------------------------------------------------ */
     /* Combat */
     /* ------------------------------------------------------------------------ */
     // Combat - Laser
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
     EShipLaserMode laser_mode{EShipLaserMode::Single};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     float laser_shot_cooldown{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     int32 lasers_fired_this_burst{0};
 
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     AActor* lock_on_target{nullptr};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
 
     // Combat - Bombs
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb")
     int32 bombs{3};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Bomb")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Bomb")
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Health
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Health")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Health")
     FShipHealth health{1000};
 
     // Logging
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Logging")
     FActorLoggingConfig log_config{1.f};
 
 #if WITH_EDITORONLY_DATA

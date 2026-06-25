@@ -164,7 +164,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntity
     entity_data.velocities.zs.Add(velocity.Z);
 
     entity_data.healths.Add(health.health);
-    entity_data.teams.Add(ETestTeam::neutral);
+    entity_data.teams.Add(team);
     entity_data.alive.Add(1);
 
     return entity_data;
