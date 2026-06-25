@@ -82,6 +82,8 @@ void ATestSpaceShip::begin_play() {
     configure_boost_engine_effect();
 
     register_with_entity_registry();
+
+    health.clamp_to_max();
 }
 void ATestSpaceShip::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);
