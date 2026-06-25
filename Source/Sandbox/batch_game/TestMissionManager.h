@@ -77,18 +77,18 @@ class ATestMissionManager : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionMode mission_mode{ETestMissionMode::None};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     float survive_seconds{60.0f};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 kill_target{5};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     int32 player_kills{0};
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     float mission_elapsed_seconds{0.0f};
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     float mission_start_time{0.0f};
 };
