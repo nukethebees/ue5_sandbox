@@ -76,6 +76,13 @@ void ATestSpaceShipController::BeginPlay() {
         on_mission_manager_ready_handle =
             mission_manager->on_ready.AddUObject(this, &ThisClass::on_mission_manager_ready);
     }
+
+    if (!IsValid(GetPawn())) {
+        UE_LOG(LogSandbox,
+               Display,
+               TEXT("ATestSpaceShipController::BeginPlay: No valid pawn, disabling tick."));
+        SetActorTickEnabled(false);
+    }
 }
 void ATestSpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -119,7 +126,11 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     initialise_hud();
 
     RETURN_IF_NULLPTR(hud_widget);
-    TRY_INIT_PTR(ship, Cast<Pawn>(in_pawn));
+    auto* ship{Cast<Pawn>(in_pawn)};
+
+    if (!IsValid(ship)) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShipController::OnPossess: Invalid pawn."));
+    }
 
     auto& health_delegate{ship->on_health_changed};
     health_delegate.BindUObject(hud_widget, &UShipHudWidget::set_health);
@@ -138,29 +149,31 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
 #if WITH_EDITOR
     ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
 #endif
+
+    SetActorTickEnabled(true);
 }
 void ATestSpaceShipController::OnUnPossess() {
-    if (auto* ship{Cast<Pawn>(GetPawn())}) {
-        ship->SetActorTickEnabled(false);
+    auto& ship{get_pawn()};
 
-        ship->on_health_changed.Unbind();
-        ship->on_speed_changed.Unbind();
-        ship->on_energy_changed.Unbind();
-        ship->on_bombs_changed.Unbind();
-        ship->on_laser_mode_changed.Unbind();
-        ship->on_lock_on_acquired.Unbind();
+    ship.on_health_changed.Unbind();
+    ship.on_speed_changed.Unbind();
+    ship.on_energy_changed.Unbind();
+    ship.on_bombs_changed.Unbind();
+    ship.on_laser_mode_changed.Unbind();
+    ship.on_lock_on_acquired.Unbind();
 
 #if WITH_EDITOR
-        ship->on_speed_sampled.Unbind();
+    ship.on_speed_sampled.Unbind();
 #endif
-    }
+
+    SetActorTickEnabled(false);
 
     Super::OnUnPossess();
 }
 
 // UI
 void ATestSpaceShipController::initialise_hud() {
-    if (hud_widget) { return; }
+    if (IsValid(hud_widget)) { return; }
 
     ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
 
@@ -242,18 +255,16 @@ void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship)
 
 // Movement
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->turn(value.Get<FVector2D>());
+    get_pawn().turn(value.Get<FVector2D>());
 }
 void ATestSpaceShipController::turn_completed(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->turn(FVector2D::ZeroVector);
+    get_pawn().turn(FVector2D::ZeroVector);
 }
 void ATestSpaceShipController::start_roll(FInputActionValue const& value) {
     UE_LOG(LogSandboxController, Verbose, TEXT("Begin roll: %.1f"), value.Get<float>());
 }
 void ATestSpaceShipController::roll(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
+    auto& ship{get_pawn()};
 
     auto& br{barrel_roll_input};
 
@@ -282,53 +293,45 @@ void ATestSpaceShipController::roll(FInputActionValue const& value) {
                    last_crossing_time,
                    br.last_crossing_time,
                    delta_time);
-            ship->barrel_roll(r);
+            ship.barrel_roll(r);
         }
     } else {
-        ship->roll(r);
+        ship.roll(r);
     }
 }
 void ATestSpaceShipController::stop_roll(FInputActionValue const& value) {
     UE_LOG(LogSandboxController, Verbose, TEXT("End roll: %.1f"), value.Get<float>());
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->roll(0.f);
+    get_pawn().roll(0.f);
     barrel_roll_input.threshold_crossed_this_input = false;
 }
 void ATestSpaceShipController::barrel_roll(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->barrel_roll(value.Get<float>());
+    get_pawn().barrel_roll(value.Get<float>());
 }
 
 // Boost / brake
 void ATestSpaceShipController::start_boost(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->start_boost();
+    get_pawn().start_boost();
 }
 void ATestSpaceShipController::stop_boost(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->stop_boost();
+    get_pawn().stop_boost();
 }
 void ATestSpaceShipController::start_brake(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->start_brake();
+    get_pawn().start_brake();
 }
 void ATestSpaceShipController::stop_brake(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->stop_brake();
+    get_pawn().stop_brake();
 }
 
 // Laser
 void ATestSpaceShipController::start_fire_laser() {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->start_fire_laser();
+    get_pawn().start_fire_laser();
 }
 void ATestSpaceShipController::stop_fire_laser() {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->stop_fire_laser();
+    get_pawn().stop_fire_laser();
 }
 
 void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
-    RETURN_IF_NULLPTR(hud_widget);
+    check(hud_widget);
 
     switch (mode) {
         case ELaserFiringMode::lock_on_searching: {
@@ -353,14 +356,13 @@ void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mod
     }
 }
 void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
-    RETURN_IF_NULLPTR(hud_widget);
+    check(hud_widget);
     hud_widget->set_lock_on_widget_visibility(target != nullptr);
 }
 
 // Bomb
 void ATestSpaceShipController::fire_bomb(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<Pawn>(GetPawn()));
-    ship->fire_bomb();
+    get_pawn().fire_bomb();
 }
 
 // Mission
@@ -431,4 +433,14 @@ auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager c
     status_msg += FString::Printf(TEXT(" (%s)"), *ml::to_string_without_type_prefix(mission_state));
 
     return status_msg;
+}
+
+auto ATestSpaceShipController::get_pawn() -> Pawn& {
+    auto* pawn{Cast<Pawn>(GetPawn())};
+
+    if (!IsValid(pawn)) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShipController::get_pawn: Invalid pawn."));
+    }
+
+    return *pawn;
 }

@@ -40,6 +40,8 @@ class ATestSpaceShipController
     void update_crosshair_positions(ATestSpaceShip const& ship);
     void update_lock_on_widget(ATestSpaceShip const& ship);
 
+    auto get_pawn() -> Pawn&;
+
     // Movement
     UFUNCTION()
     void turn(FInputActionValue const& value);
