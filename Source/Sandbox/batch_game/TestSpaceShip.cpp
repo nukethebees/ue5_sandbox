@@ -211,6 +211,38 @@ void ATestSpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
+void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float const dt) {
+    auto const rotation_speed{self.ship_config->rotation_speed};
+    auto const d_rot{rotation_speed * dt};
+
+    if (self.rotation_input != FVector2D::ZeroVector) {
+        auto const drot_pitch{d_rot};
+
+        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
+        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
+        auto const yaw_speed{self.ship_config->rotation_speed * abs_yaw_strength};
+        auto const drot_yaw{yaw_speed * dt};
+
+        auto const d_pitch{self.rotation_input.Y * drot_pitch};
+        auto const d_yaw{self.rotation_input.X * drot_yaw};
+        auto const d_roll{0.f};
+
+        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
+        self.AddActorLocalRotation(delta_rotation);
+
+        self.time_since_rotation_input = 0.f;
+        return;
+    }
+
+    if (self.time_since_rotation_input >= self.ship_config->auto_level_roll_delay) {
+        auto const auto_level_speed{self.ship_config->auto_level_speed};
+        auto const rot{self.GetActorRotation()};
+
+        auto const roll{FMath::FInterpTo(rot.Roll, 0.0f, dt, auto_level_speed)};
+
+        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
+    }
+}
 
 // Movement - boost/brake
 void ATestSpaceShip::set(EBoostBrakeState s) {
@@ -508,38 +540,6 @@ void ATestSpaceShip::fire_homing_laser() {}
 /* ------------------------------------------------------------------------------------------ */
 // Visuals
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float const dt) {
-    auto const rotation_speed{self.ship_config->rotation_speed};
-    auto const d_rot{rotation_speed * dt};
-
-    if (self.rotation_input != FVector2D::ZeroVector) {
-        auto const drot_pitch{d_rot};
-
-        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
-        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
-        auto const yaw_speed{self.ship_config->rotation_speed * abs_yaw_strength};
-        auto const drot_yaw{yaw_speed * dt};
-
-        auto const d_pitch{self.rotation_input.Y * drot_pitch};
-        auto const d_yaw{self.rotation_input.X * drot_yaw};
-        auto const d_roll{0.f};
-
-        FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
-        self.AddActorLocalRotation(delta_rotation);
-
-        self.time_since_rotation_input = 0.f;
-        return;
-    }
-
-    if (self.time_since_rotation_input >= self.ship_config->auto_level_roll_delay) {
-        auto const auto_level_speed{self.ship_config->auto_level_speed};
-        auto const rot{self.GetActorRotation()};
-
-        auto const roll{FMath::FInterpTo(rot.Roll, 0.0f, dt, auto_level_speed)};
-
-        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
-    }
-}
 void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float const dt) {
     auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
 
