@@ -543,7 +543,6 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
     double new_roll{current_rotation.Roll};
     if (self.roll_state.is_rolling()) {
         auto const delta_roll{dt * self.roll_state.roll_speed * self.roll_state.direction};
-        UE_LOG(LogSandbox, Verbose, TEXT("Rolling delta: %.2f"), delta_roll);
         new_roll = current_rotation.Roll + delta_roll;
     } else {
         auto const roll_speed{FMath::Max(self.ship_config->turn_bank_speed,

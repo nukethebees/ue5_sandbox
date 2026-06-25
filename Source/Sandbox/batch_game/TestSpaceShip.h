@@ -239,7 +239,7 @@ class ATestSpaceShip : public APawn {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering|Roll")
     float manual_bank_direction{0.f};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FBarrelRoll roll_state{};
 
     /* ------------------------------------------------------------------------ */
