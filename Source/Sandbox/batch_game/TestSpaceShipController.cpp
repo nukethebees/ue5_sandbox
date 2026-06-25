@@ -410,18 +410,15 @@ auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager c
             break;
         }
         case ETestMissionMode::KillEnemies: {
-            status_msg = FString::Printf(TEXT("Kill enemies (%d / %d)"),
-                                         manager.get_player_kills(),
-                                         manager.get_kill_target());
+            status_msg =
+                FString::Printf(TEXT("Kill enemies (%d remaining)"), manager.get_kills_remaining());
             break;
         }
         case ETestMissionMode::KillEnemiesWithinTime: {
-            auto const kill_target{manager.get_kill_target()};
-            status_msg = FString::Printf(TEXT("Kill %d enemies within %.2f seconds (%d / %d)"),
-                                         kill_target,
+            status_msg = FString::Printf(TEXT("Kill %d enemies within %.2f seconds (%d remaining)"),
+                                         manager.get_kill_target(),
                                          manager.get_target_time(),
-                                         manager.get_player_kills(),
-                                         kill_target);
+                                         manager.get_kills_remaining());
             break;
         }
         default: {

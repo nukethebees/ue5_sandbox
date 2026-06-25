@@ -34,6 +34,7 @@ class ATestMissionManager : public AActor {
     auto get_survive_seconds() const noexcept -> float { return target_time; }
     auto get_target_time() const noexcept -> float { return target_time; }
     auto get_kill_target() const noexcept -> int32 { return kill_target; }
+    auto get_kills_remaining() const noexcept -> int32 { return kill_target - player_kills; }
     auto get_player_kills() const noexcept -> int32 { return player_kills; }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
