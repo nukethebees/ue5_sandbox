@@ -92,6 +92,7 @@ void ATestSpaceShip::tick(float const dt) {
     log_config.tick(dt);
 
     laser_shot_cooldown -= dt;
+    time_since_rotation_input += dt;
     update_barrel_roll_timers(dt);
 }
 void ATestSpaceShip::move(float const dt) {
@@ -511,14 +512,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
     auto const rotation_speed{self.ship_config->rotation_speed};
     auto const d_rot{rotation_speed * dt};
 
-    if (self.rotation_input == FVector2D::ZeroVector) {
-        auto const auto_level_speed{self.ship_config->auto_level_speed};
-        auto const rot{self.GetActorRotation()};
-
-        auto const roll{FMath::FInterpConstantTo(rot.Roll, 0.0f, dt, auto_level_speed)};
-
-        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
-    } else {
+    if (self.rotation_input != FVector2D::ZeroVector) {
         auto const drot_pitch{d_rot};
 
         auto const manual_bank_strength{self.manual_bank_direction * 0.5};
@@ -532,6 +526,18 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
 
         FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
         self.AddActorLocalRotation(delta_rotation);
+
+        self.time_since_rotation_input = 0.f;
+        return;
+    }
+
+    if (self.time_since_rotation_input >= self.ship_config->auto_level_roll_delay) {
+        auto const auto_level_speed{self.ship_config->auto_level_speed};
+        auto const rot{self.GetActorRotation()};
+
+        auto const roll{FMath::FInterpConstantTo(rot.Roll, 0.0f, dt, auto_level_speed)};
+
+        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
     }
 }
 void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float const dt) {

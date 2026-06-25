@@ -78,8 +78,11 @@ class UTestSpaceShipData : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Steering|Roll")
     FBarrelRollConfig barrel_roll_config;
 
-    UPROPERTY(EditAnywhere, Category = "Speed")
+    UPROPERTY(EditAnywhere, Category = "Movement")
     float auto_level_speed{10.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement")
+    float auto_level_roll_delay{1.f};
 
     /* ------------------------------------------------------------------------ */
     /* Combat */

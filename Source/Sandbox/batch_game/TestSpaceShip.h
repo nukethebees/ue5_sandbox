@@ -244,6 +244,9 @@ class ATestSpaceShip : public APawn {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     FBarrelRollState roll_state{};
 
+    UPROPERTY()
+    float time_since_rotation_input{100.f};
+
     /* ------------------------------------------------------------------------ */
     /* Combat */
     /* ------------------------------------------------------------------------ */
