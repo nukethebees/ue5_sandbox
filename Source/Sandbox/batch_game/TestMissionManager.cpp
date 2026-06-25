@@ -70,6 +70,9 @@ void ATestMissionManager::mission_tick(float const dt) {
     }
 
     mission_elapsed_seconds = GetWorld()->GetTimeSeconds() - mission_start_time;
+    auto const ship_alive(player_ship->is_alive());
+
+    if (!ship_alive) { set_mission_state(ETestMissionState::Failed); }
 
     switch (mission_mode) {
         case ETestMissionMode::None: {
