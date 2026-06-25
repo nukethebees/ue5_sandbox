@@ -88,12 +88,15 @@ void UShipHudWidget::set_stopwatch_time(float const time_s) {
 
     auto const total_seconds{static_cast<int32>(time_s)};
     auto const minutes{total_seconds / 60};
-    auto const remaining_seconds{total_seconds % 60};
+    auto const seconds{total_seconds % 60};
+
+    auto const frac_part{time_s - FMath::Floor(time_s)};
+    auto const centiseconds{static_cast<int32>(frac_part * 100.f)};
 
     FNumberFormattingOptions options;
     options.MinimumIntegralDigits = 2;
 
-    stopwatch_widget->update(options, minutes, remaining_seconds);
+    stopwatch_widget->update(options, minutes, seconds, centiseconds);
 }
 void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(stopwatch_widget, new_visibility);
