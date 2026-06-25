@@ -207,6 +207,8 @@ void ATestTubeSpinners::fire_lasers() {
     auto const& firing_point_offsets{actor_config->fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
     auto const laser_damage{actor_config->laser_damage};
+    auto const laser_speed{actor_config->laser_speed};
+    auto const laser_max_distance{actor_config->laser_max_distance};
 
     if (n_firing_points < 1) { return; }
 
@@ -244,6 +246,8 @@ void ATestTubeSpinners::fire_lasers() {
                    fire_point_rotation.Roll);
 
         new_lasers.damages[i] = laser_damage;
+        new_lasers.speeds[i] = laser_speed;
+        new_lasers.max_distances[i] = laser_max_distance;
         new_lasers.instigator_handles[i] = registry_entity_handles[index];
 
         next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;

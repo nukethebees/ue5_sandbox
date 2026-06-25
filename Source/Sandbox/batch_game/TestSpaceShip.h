@@ -140,8 +140,7 @@ class ATestSpaceShip : public APawn {
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_laser_firing();
     void fire_laser();
-    void fire_lasers_from(UShipLaserConfig const& fire_laser_config,
-                          TConstArrayView<FTransform> const fire_points);
+    void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
     // Combat - bomb
     void subtract_bomb();
     // Combat - homing laser

@@ -32,6 +32,12 @@ class UTestTubeSpinnersConfig : public UDataAsset {
     int32 laser_damage{2};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_speed{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_max_distance{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float attack_cooldown{0.05f};
 
     // Debugging

@@ -88,8 +88,6 @@ class UTestSpaceShipData : public UDataAsset {
     /* Combat */
     /* ------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "Laser")
-    float laser_speed{1000.f};
-    UPROPERTY(EditAnywhere, Category = "Laser")
     float laser_firing_period{0.15f};
 
     UPROPERTY(EditAnywhere, Category = "Laser")
@@ -101,9 +99,13 @@ class UTestSpaceShipData : public UDataAsset {
     float laser_lock_on_distance{10000.f};
 
     UPROPERTY(EditAnywhere, Category = "Laser")
-    UShipLaserConfig* laser_config;
+    int32 laser_damage{5};
+
     UPROPERTY(EditAnywhere, Category = "Laser")
-    UShipLaserConfig* hyper_laser_config;
+    float laser_speed{10000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Laser")
+    float laser_max_distance{10000.f};
 
     UPROPERTY(EditAnywhere, Category = "Bomb")
     TSubclassOf<AShipBomb> bomb_class;

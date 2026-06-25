@@ -40,6 +40,12 @@ class UTestStaticTurretsConfig : public UDataAsset {
     int32 laser_damage{5};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_speed{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_max_distance{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float attack_cooldown{0.33f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

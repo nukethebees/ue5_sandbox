@@ -313,7 +313,10 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const cooldown{actor_config->fire_cooldown};
     auto const fire_point_offset{actor_config->fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
+
     auto const laser_damage{actor_config->laser_damage};
+    auto const laser_speed{actor_config->laser_speed};
+    auto const laser_max_distance{actor_config->laser_max_distance};
 
     ml::reset(new_lasers);
     ml::add_uninitialised(n_ships, new_lasers);
@@ -346,8 +349,9 @@ void ATestCapitalShipFighters::handle_firing() {
     new_lasers.rotations.set_num(write_index, EAllowShrinking::No);
     new_lasers.instigator_handles.SetNum(write_index, EAllowShrinking::No);
 
-    new_lasers.damages.SetNumUninitialized(write_index, EAllowShrinking::No);
-    ml::fill(new_lasers.damages, laser_damage);
+    ml::append_n(new_lasers.damages, laser_damage, write_index);
+    ml::append_n(new_lasers.speeds, laser_speed, write_index);
+    ml::append_n(new_lasers.max_distances, laser_max_distance, write_index);
 
     laser_actor->spawn_lasers(new_lasers);
 }

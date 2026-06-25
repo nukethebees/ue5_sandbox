@@ -28,12 +28,6 @@ class UTestLasersConfig : public UDataAsset {
     float max_cull_distance{50000.0f};
 
     UPROPERTY(EditAnywhere)
-    float speed{5000.0f};
-
-    UPROPERTY(EditAnywhere)
-    float lifetime{20.0f};
-
-    UPROPERTY(EditAnywhere)
     float radius{5.0f};
 
     UPROPERTY(EditAnywhere)

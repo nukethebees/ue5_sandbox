@@ -37,16 +37,40 @@ void FTestLasersSpawnRequests::validate_array_sizes() const {
     });
 }
 void FTestLasersSpawnRequests::reset() {
-    ml::reset(locations, rotations, damages, instigator_handles);
+    ml::reset(locations, rotations, damages, speeds, max_distances, instigator_handles);
 }
 auto FTestLasersSpawnRequests::num() const noexcept -> int32 {
     return locations.num();
 }
 void FTestLasersSpawnRequests::reserve(int32 const count) {
-    ml::reserve(count, locations, rotations, damages, instigator_handles);
+    ml::reserve(count, locations, rotations, damages, speeds, max_distances, instigator_handles);
 }
 void FTestLasersSpawnRequests::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(count, locations, rotations, damages, instigator_handles);
+    ml::add_uninitialised(
+        count, locations, rotations, damages, speeds, max_distances, instigator_handles);
+}
+
+void FTestLasersSpawnRequests::set_damages(int32 const value) {
+    ml::fill(damages, value);
+}
+void FTestLasersSpawnRequests::set_speeds(float const value) {
+    ml::fill(speeds, value);
+}
+void FTestLasersSpawnRequests::set_max_distances(float const value) {
+    ml::fill(max_distances, value);
+}
+
+void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestLasersSpawnRequests::append_from);
+
+    other.validate_array_sizes();
+
+    ml::append_from(locations, other.locations);
+    ml::append_from(rotations, other.rotations);
+    damages.Append(other.damages);
+    speeds.Append(other.speeds);
+    max_distances.Append(other.max_distances);
+    instigator_handles.Append(other.instigator_handles);
 }
 
 ATestLasers::ATestLasers()
@@ -124,12 +148,7 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 void ATestLasers::spawn_lasers(FTestLasersSpawnRequests const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
 
-    spawn_data.validate_array_sizes();
-
-    ml::append_from(pending_spawns.locations, spawn_data.locations);
-    ml::append_from(pending_spawns.rotations, spawn_data.rotations);
-    pending_spawns.damages.Append(spawn_data.damages);
-    pending_spawns.instigator_handles.Append(spawn_data.instigator_handles);
+    pending_spawns.append_from(spawn_data);
 }
 void ATestLasers::preallocate_instances() {
     instances->PreAllocateInstancesMemory(n_preallocated_instances);
@@ -163,14 +182,19 @@ void ATestLasers::process_pending_spawns() {
     damages.Append(pending_spawns.damages);
     instigator_handles.Append(pending_spawns.instigator_handles);
 
-    lifetimes.AddZeroed(n_to_add);
-    ml::add_uninitialised(velocities, n_to_add);
+    ml::add_uninitialised(n_to_add, velocities, lifetimes);
 
-    auto const laser_speed{actor_config->speed};
     for (int32 i{0}; i < n_to_add; ++i) {
+        auto const speed{pending_spawns.speeds[i]};
+        auto const max_distance{pending_spawns.max_distances[i]};
+        auto const lifetime{max_distance / speed};
+
         auto const index{offset + i};
-        auto const velocity{ml::get_rotator3f(rotations, index).Vector() * laser_speed};
+
+        auto const velocity{ml::get_rotator3f(rotations, index).Vector() * speed};
+
         ml::assign(velocities, index, velocity);
+        lifetimes[index] = lifetime;
     }
 
     validate_array_sizes();

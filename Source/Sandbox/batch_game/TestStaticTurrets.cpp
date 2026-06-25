@@ -217,8 +217,9 @@ void ATestStaticTurrets::fire_at_enemies() {
 
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};
-    auto const laser_speed{laser_actor->get_config()->speed};
+    auto const laser_speed{actor_config->laser_speed};
     auto const laser_damage{actor_config->laser_damage};
+    auto const laser_max_distance{actor_config->laser_max_distance};
 
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
@@ -266,6 +267,8 @@ void ATestStaticTurrets::fire_at_enemies() {
         ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
         ml::append(new_lasers.rotations, fire_dir);
         new_lasers.damages.Add(laser_damage);
+        new_lasers.speeds.Add(laser_speed);
+        new_lasers.max_distances.Add(laser_max_distance);
         new_lasers.instigator_handles.Add(entity_handles[i]);
 
         laser_cooldowns[i] = cooldown;

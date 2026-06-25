@@ -24,6 +24,8 @@ struct FTestLasersSpawnRequests {
     FVectors3f locations;
     FRotatorsf rotations;
     TArray<int32> damages;
+    TArray<float> speeds;
+    TArray<float> max_distances;
     TArray<FRegistryEntityHandle> instigator_handles;
     
     void validate_array_sizes() const;
@@ -31,6 +33,12 @@ struct FTestLasersSpawnRequests {
     auto num() const noexcept -> int32;
     void reserve(int32 const count);
     void add_uninitialised(int32 const count);
+
+    void set_damages(int32 const value);
+    void set_speeds(float const value);
+    void set_max_distances(float const value);
+
+    void append_from(FTestLasersSpawnRequests const& other);
 };
 
 UCLASS()

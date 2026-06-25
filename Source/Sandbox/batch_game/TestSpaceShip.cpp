@@ -58,8 +58,6 @@ void ATestSpaceShip::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(ship_config->laser_config),
-        SANDBOX_NAMED_UOBJECT_PTR(ship_config->hyper_laser_config),
         SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
     });
 
@@ -443,7 +441,7 @@ void ATestSpaceShip::fire_laser() {
             TStaticArray<FTransform, 1> fire_points{
                 get_middle_socket(),
             };
-            fire_lasers_from(*ship_config->laser_config, fire_points);
+            fire_lasers_from(fire_points);
             break;
         }
         case EShipLaserMode::Double: {
@@ -451,7 +449,7 @@ void ATestSpaceShip::fire_laser() {
                 ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
                 ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
             };
-            fire_lasers_from(*ship_config->laser_config, fire_points);
+            fire_lasers_from(fire_points);
             break;
         }
         case EShipLaserMode::Hyper: {
@@ -459,7 +457,7 @@ void ATestSpaceShip::fire_laser() {
                 ship_mesh->GetSocketTransform(Sockets::left, RTS_World),
                 ship_mesh->GetSocketTransform(Sockets::right, RTS_World),
             };
-            fire_lasers_from(*ship_config->hyper_laser_config, fire_points);
+            fire_lasers_from(fire_points);
             break;
         }
         default: {
@@ -471,8 +469,7 @@ void ATestSpaceShip::fire_laser() {
     lasers_fired_this_burst++;
     laser_shot_cooldown = ship_config->laser_firing_period;
 }
-void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
-                                      TConstArrayView<FTransform> const fire_points) {
+void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
     FTestLasersSpawnRequests new_lasers;
 
     auto const n{fire_points.Num()};
@@ -482,7 +479,10 @@ void ATestSpaceShip::fire_lasers_from(UShipLaserConfig const& fire_laser_config,
         ml::assign(new_lasers.locations, i, fire_points[i].GetLocation());
         ml::assign(new_lasers.rotations, i, fire_points[i].Rotator());
     }
-    ml::fill(new_lasers.damages, ship_config->laser_config->damage);
+
+    new_lasers.set_damages(ship_config->laser_damage);
+    new_lasers.set_speeds(ship_config->laser_speed);
+    new_lasers.set_max_distances(ship_config->laser_max_distance);
     ml::fill(new_lasers.instigator_handles, registry_handle);
 
     laser_actor->spawn_lasers(new_lasers);

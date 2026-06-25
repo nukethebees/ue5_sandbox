@@ -31,6 +31,12 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     int32 laser_damage{10};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_speed{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float laser_max_distance{10000.f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 health{50};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
