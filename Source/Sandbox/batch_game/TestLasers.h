@@ -120,7 +120,7 @@ class ATestLasers : public AActor {
 
     // Lifetime
     UPROPERTY()
-    TArray<float> lifetimes;
+    TArray<float> lifetimes_remaining;
 
     UPROPERTY()
     TArray<FRegistryEntityHandle> instigator_handles;

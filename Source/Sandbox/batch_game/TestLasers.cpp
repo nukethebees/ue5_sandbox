@@ -141,7 +141,7 @@ void ATestLasers::end_tick() {
 
 // Accessors
 auto ATestLasers::get_num_instances() const noexcept -> int32 {
-    return lifetimes.Num();
+    return lifetimes_remaining.Num();
 }
 
 // Spawning / Configuration
@@ -156,15 +156,16 @@ void ATestLasers::preallocate_instances() {
                       locations,
                       rotations,
                       velocities,
-                      lifetimes);
+                      lifetimes_remaining);
 }
 void ATestLasers::process_pending_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::process_pending_spawns);
 
     pending_spawns.validate_array_sizes();
+    auto const n_to_add{ml::num(pending_spawns)};
+    if (n_to_add <= 0) { return; }
 
     auto const offset{get_num_instances()};
-    auto const n_to_add{ml::num(pending_spawns)};
 
     auto const cur_total{get_num_instances()};
     auto const new_total{cur_total + n_to_add};
@@ -182,7 +183,7 @@ void ATestLasers::process_pending_spawns() {
     damages.Append(pending_spawns.damages);
     instigator_handles.Append(pending_spawns.instigator_handles);
 
-    ml::add_uninitialised(n_to_add, velocities, lifetimes);
+    ml::add_uninitialised(n_to_add, velocities, lifetimes_remaining);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const speed{pending_spawns.speeds[i]};
@@ -194,7 +195,7 @@ void ATestLasers::process_pending_spawns() {
         auto const velocity{ml::get_rotator3f(rotations, index).Vector() * speed};
 
         ml::assign(velocities, index, velocity);
-        lifetimes[index] = lifetime;
+        lifetimes_remaining[index] = lifetime;
     }
 
     validate_array_sizes();
@@ -312,7 +313,7 @@ void ATestLasers::update_ismc_transforms() {
 void ATestLasers::tick_lifetimes(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::tick_lifetimes);
 
-    ml::add_in_place(TArrayView<float>{lifetimes}, dt);
+    ml::subtract_in_place(TArrayView<float>{lifetimes_remaining}, dt);
 }
 void ATestLasers::collect_old_instance_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::collect_old_instance_indices);
@@ -320,12 +321,10 @@ void ATestLasers::collect_old_instance_indices() {
     auto const n{get_num_instances()};
     if (n < 1) { return; }
 
-    auto const laser_lifetime{actor_config->lifetime};
-
     to_remove.Reset();
 
     for (int32 i{n - 1}; i >= 0; --i) {
-        if (lifetimes[i] >= laser_lifetime) { to_remove.Add(i); }
+        if (lifetimes_remaining[i] <= 0.f) { to_remove.Add(i); }
     }
 }
 
@@ -336,7 +335,7 @@ void ATestLasers::clear_runtime_state() {
               locations,
               rotations,
               velocities,
-              lifetimes,
+              lifetimes_remaining,
               instigator_handles,
               damage_events);
     clear_spawn_buffers();
@@ -350,7 +349,7 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);
         ml::remove_at_swap_many_sorted_desc(
-            indices, locations, rotations, velocities, lifetimes, instigator_handles);
+            indices, locations, rotations, velocities, lifetimes_remaining, instigator_handles);
     }
 
     validate_array_sizes();
@@ -368,7 +367,7 @@ void ATestLasers::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(velocities),
-        SANDBOX_NAMED_NUM(lifetimes),
+        SANDBOX_NAMED_NUM(lifetimes_remaining),
         SANDBOX_NAMED_NUM(instigator_handles),
     });
 
