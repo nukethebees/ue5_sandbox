@@ -1,12 +1,12 @@
 #include "TestLasers.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasersConfig.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
@@ -106,11 +106,13 @@ void ATestLasers::spawn_lasers(FTestLasersSpawnRequest const& spawn_data) {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(spawn_data.locations),
         SANDBOX_NAMED_NUM(spawn_data.rotations),
+        SANDBOX_NAMED_NUM(spawn_data.damages),
         SANDBOX_NAMED_NUM(spawn_data.instigator_handles),
     });
 
     ml::append_from(locations_to_add, spawn_data.locations);
     ml::append_from(rotations_to_add, spawn_data.rotations);
+    damages_to_add.Append(spawn_data.damages);
     instigator_handles_to_add.Append(spawn_data.instigator_handles);
 }
 void ATestLasers::preallocate_instances() {
@@ -127,6 +129,7 @@ void ATestLasers::process_pending_spawns() {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(locations_to_add),
         SANDBOX_NAMED_NUM(rotations_to_add),
+        SANDBOX_NAMED_NUM(damages_to_add),
         SANDBOX_NAMED_NUM(instigator_handles_to_add),
     });
 
@@ -146,6 +149,7 @@ void ATestLasers::process_pending_spawns() {
 
     ml::append_from(locations, locations_to_add);
     ml::append_from(rotations, rotations_to_add);
+    damages.Append(damages_to_add);
     instigator_handles.Append(instigator_handles_to_add);
 
     lifetimes.AddZeroed(n_to_add);
@@ -159,7 +163,7 @@ void ATestLasers::process_pending_spawns() {
     }
 
     validate_array_sizes();
-    ml::reset(locations_to_add, rotations_to_add, instigator_handles_to_add);
+    clear_spawn_buffers();
 }
 
 // Movement
@@ -181,8 +185,6 @@ void ATestLasers::handle_collisions(float const dt) {
     FCollisionQueryParams params{};
     params.AddIgnoredActor(this);
 
-    auto const damage{actor_config->damage};
-
     ml::reset(to_remove, damage_events);
 
     for (int32 i{n - 1}; i >= 0; --i) {
@@ -202,7 +204,7 @@ void ATestLasers::handle_collisions(float const dt) {
         auto* hit_component{hit.GetComponent()};
         if (!IsValid(hit_component)) { continue; }
 
-        damage_events.damage_amounts.Add(damage);
+        damage_events.damage_amounts.Add(damages[i]);
         damage_events.damaged_actors.Add(hit_actor);
         damage_events.actor_components.Add(hit_component);
         damage_events.hit_items.Add(hit.Item);
@@ -300,11 +302,9 @@ void ATestLasers::clear_runtime_state() {
               rotations,
               velocities,
               lifetimes,
-              locations_to_add,
-              rotations_to_add,
-              to_remove,
               instigator_handles,
               damage_events);
+    clear_spawn_buffers();
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
@@ -321,7 +321,8 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
     validate_array_sizes();
 }
 void ATestLasers::clear_spawn_buffers() {
-    ml::reset(locations_to_add, rotations_to_add, to_remove);
+    ml::reset(
+        locations_to_add, rotations_to_add, damages_to_add, instigator_handles_to_add, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
     ml::reset(damage_events);

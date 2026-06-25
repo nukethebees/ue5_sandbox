@@ -1,10 +1,10 @@
 #include "TestTubeSpinners.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/actor_utils.h>
@@ -207,12 +207,14 @@ void ATestTubeSpinners::fire_lasers() {
     auto const cooldown{actor_config->attack_cooldown};
     auto const& firing_point_offsets{actor_config->fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
+    auto const laser_damage{actor_config->laser_damage};
 
     if (n_firing_points < 1) { return; }
 
     ml::reset(indices_ready_to_fire,
               new_laser_locations,
               new_laser_rotations,
+              new_laser_damages,
               new_laser_instigator_handles);
 
     for (int32 i{0}; i < n; ++i) {
@@ -247,6 +249,7 @@ void ATestTubeSpinners::fire_lasers() {
                    fire_point_rotation.Yaw + yaws[index],
                    fire_point_rotation.Roll);
 
+        new_laser_damages[i] = laser_damage;
         new_laser_instigator_handles[i] = registry_entity_handles[index];
         next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
@@ -254,6 +257,7 @@ void ATestTubeSpinners::fire_lasers() {
     laser_actor->spawn_lasers({
         .locations = new_laser_locations.get_const_view(),
         .rotations = new_laser_rotations.get_const_view(),
+        .damages = new_laser_damages,
         .instigator_handles = new_laser_instigator_handles,
     });
 }

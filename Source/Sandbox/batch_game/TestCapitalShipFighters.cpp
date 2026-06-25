@@ -313,8 +313,10 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const cooldown{actor_config->fire_cooldown};
     auto const fire_point_offset{actor_config->fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
+    auto const laser_damage{actor_config->laser_damage};
 
-    ml::reset(new_laser_locations, new_laser_rotations);
+    ml::reset(
+        new_laser_locations, new_laser_rotations, new_laser_damages, new_laser_instigator_handles);
     ml::add_uninitialised(
         n_ships, new_laser_locations, new_laser_rotations, new_laser_instigator_handles);
 
@@ -346,9 +348,13 @@ void ATestCapitalShipFighters::handle_firing() {
     new_laser_rotations.set_num(write_index, EAllowShrinking::No);
     new_laser_instigator_handles.SetNum(write_index, EAllowShrinking::No);
 
+    new_laser_damages.SetNumUninitialized(write_index, EAllowShrinking::No);
+    ml::fill(new_laser_damages, laser_damage);
+
     laser_actor->spawn_lasers({
         .locations = new_laser_locations.get_const_view(),
         .rotations = new_laser_rotations.get_const_view(),
+        .damages = new_laser_damages,
         .instigator_handles = new_laser_instigator_handles,
     });
 }

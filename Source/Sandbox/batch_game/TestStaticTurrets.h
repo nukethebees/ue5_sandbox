@@ -126,6 +126,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     // Laser spawning
     FVectors3f new_laser_locations;
     FRotatorsf new_laser_rotations;
+    TArray<int32> new_laser_damages;
     TArray<FRegistryEntityHandle> new_laser_instigator_handles;
 
     // Enemies

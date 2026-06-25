@@ -218,6 +218,7 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const n{get_num_instances()};
     auto const cooldown{actor_config->attack_cooldown};
     auto const laser_speed{laser_actor->get_config()->speed};
+    auto const laser_damage{actor_config->laser_damage};
 
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
@@ -264,6 +265,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         ml::append(new_laser_locations, loc_x, loc_y, loc_z);
         ml::append(new_laser_rotations, fire_dir);
+        new_laser_damages.Add(laser_damage);
         new_laser_instigator_handles.Add(entity_handles[i]);
 
         laser_cooldowns[i] = cooldown;
@@ -272,6 +274,7 @@ void ATestStaticTurrets::fire_at_enemies() {
     laser_actor->spawn_lasers({
         .locations = new_laser_locations.get_const_view(),
         .rotations = new_laser_rotations.get_const_view(),
+        .damages = new_laser_damages,
         .instigator_handles = new_laser_instigator_handles,
     });
 }
@@ -373,18 +376,13 @@ void ATestStaticTurrets::handle_dead_entities() {
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(entity_handles,
-              entity_death_info,
-              local_indices_to_remove,
               ismc_transforms,
               locations,
               teams,
               laser_cooldowns,
-              indices_ready_to_fire,
-              new_laser_locations,
-              new_laser_rotations,
-              new_laser_instigator_handles,
               target_handles,
               healths);
+    clear_tick_buffers();
 }
 void ATestStaticTurrets::clear_tick_buffers() {
     ml::reset(entity_death_info,
@@ -393,6 +391,7 @@ void ATestStaticTurrets::clear_tick_buffers() {
               indices_ready_to_fire,
               new_laser_locations,
               new_laser_rotations,
+              new_laser_damages,
               new_laser_instigator_handles);
 }
 

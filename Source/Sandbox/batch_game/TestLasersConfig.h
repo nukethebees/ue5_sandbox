@@ -34,9 +34,6 @@ class UTestLasersConfig : public UDataAsset {
     float lifetime{20.0f};
 
     UPROPERTY(EditAnywhere)
-    float damage{10.0f};
-
-    UPROPERTY(EditAnywhere)
     float radius{5.0f};
 
     UPROPERTY(EditAnywhere)

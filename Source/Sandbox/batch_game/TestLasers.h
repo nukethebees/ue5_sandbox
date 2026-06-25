@@ -23,6 +23,7 @@ class ATestEntityRegistry;
 struct FTestLasersSpawnRequest {
     TVectors3View<float const> locations;
     TRotatorsView<float const> rotations;
+    TConstArrayView<int32> damages;
     TConstArrayView<FRegistryEntityHandle> instigator_handles;
 };
 
@@ -100,6 +101,9 @@ class ATestLasers : public AActor {
     UPROPERTY()
     FVectors3f velocities;
 
+    UPROPERTY()
+    TArray<int32> damages;
+
     // Lifetime
     UPROPERTY()
     TArray<float> lifetimes;
@@ -108,11 +112,9 @@ class ATestLasers : public AActor {
     TArray<FRegistryEntityHandle> instigator_handles;
 
     // Spawning
-    UPROPERTY()
     FVectors3f locations_to_add;
-    UPROPERTY()
     FRotatorsf rotations_to_add;
-    UPROPERTY()
+    TArray<int32> damages_to_add;
     TArray<FRegistryEntityHandle> instigator_handles_to_add;
 
     // Removal
