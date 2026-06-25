@@ -33,6 +33,8 @@ void FTestLasersSpawnRequests::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(damages),
+        SANDBOX_NAMED_NUM(speeds),
+        SANDBOX_NAMED_NUM(max_distances),
         SANDBOX_NAMED_NUM(instigator_handles),
     });
 }
