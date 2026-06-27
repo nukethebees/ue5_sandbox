@@ -140,6 +140,8 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
 
     instances->SetRemoveSwap();
+
+    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
 }
 
 // Entity data
@@ -294,13 +296,15 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
 
     auto* world{GetWorld()};
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(world),
-    });
-
     auto const proxies{ml::get_actors<Proxy>(*world)};
     auto const n{proxies.Num()};
     if (n == 0) { return; }
+
+    auto const colour_cache{
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+
+    TArray<float> custom_data_spawn_buffer;
+    custom_data_spawn_buffer.SetNumUninitialized(n * n_custom_ismc_floats, EAllowShrinking::No);
 
     // Set entity data
     ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);
@@ -315,10 +319,19 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         ismc_transforms[i] = transform;
         ml::assign(locations, i, transform.GetLocation());
 
-        teams[i] = proxies[i]->get_team();
+        auto const team{proxies[i]->get_team()};
+        teams[i] = team;
+
+        // Custom ISMC data
+        auto const base{i * n_custom_ismc_floats};
+        auto const& colour{colour_cache[team]};
+        custom_data_spawn_buffer[base + 0] = colour.R;
+        custom_data_spawn_buffer[base + 1] = colour.G;
+        custom_data_spawn_buffer[base + 2] = colour.B;
     }
 
     instances->AddInstances(ismc_transforms, false);
+    instances->SetCustomData(0, n - 1, custom_data_spawn_buffer, false);
 
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
