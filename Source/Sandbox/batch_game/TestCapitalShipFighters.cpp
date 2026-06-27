@@ -414,16 +414,6 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(target_indices),
         SANDBOX_NAMED_NUM(target_locations),
         SANDBOX_NAMED_NUM(target_directions),
+        SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
-
-    auto const n{get_num_instances()};
-    auto const n_ismc{instances->GetNumInstances()};
-    if (n_ismc < n) {
-        UE_LOG(
-            LogSandbox,
-            Fatal,
-            TEXT("ATestCapitalShipFighters::validate_array_sizes %d entities, %d ISMC instances"),
-            n,
-            n_ismc);
-    }
 }

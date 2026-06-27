@@ -160,26 +160,21 @@ void ATestLasers::process_pending_spawns() {
     auto const cur_total{get_num_instances()};
     auto const new_total{cur_total + n_to_add};
 
-    auto const n_ismc_instances{instances->GetNumInstances()};
-    auto const n_ismc_instances_to_add{new_total - n_ismc_instances};
-    if (n_ismc_instances_to_add > 0) {
-        TArray<FTransform> dummy_transforms;
-        dummy_transforms.AddDefaulted(n_ismc_instances_to_add);
+    TArray<FTransform> dummy_transforms;
+    dummy_transforms.AddDefaulted(n_to_add);
 
-        constexpr bool return_indices{false};
-        constexpr bool update_navigation{false};
-        instances->AddInstances(
-            dummy_transforms, return_indices, is_world_space, update_navigation);
+    constexpr bool return_indices{false};
+    constexpr bool update_navigation{false};
+    instances->AddInstances(dummy_transforms, return_indices, is_world_space, update_navigation);
 
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::ATestLasers::process_pending_spawns::set_custom_data);
-            for (int32 i{}; i < n_ismc_instances_to_add; ++i) {
-                auto const& colour{pending_spawns.colours[i]};
-                TStaticArray<float, 3> rgb{colour.R, colour.G, colour.B};
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::ATestLasers::process_pending_spawns::set_custom_data);
+        for (int32 i{}; i < n_to_add; ++i) {
+            auto const& colour{pending_spawns.colours[i]};
+            TStaticArray<float, 3> rgb{colour.R, colour.G, colour.B};
 
-                instances->SetCustomData(offset + i, rgb, false);
-            }
+            instances->SetCustomData(offset + i, rgb, false);
         }
     }
 
@@ -438,15 +433,6 @@ void ATestLasers::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(damages),
         SANDBOX_NAMED_NUM(lifetimes_remaining),
         SANDBOX_NAMED_NUM(instigator_handles),
+        SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
-
-    auto const n{get_num_instances()};
-    auto const n_ismc{instances->GetNumInstances()};
-    if (n_ismc < n) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("ATestLasers::validate_array_sizes %d entities, %d ISMC instances"),
-               n,
-               n_ismc);
-    }
 }

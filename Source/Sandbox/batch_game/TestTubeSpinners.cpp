@@ -263,15 +263,6 @@ void ATestTubeSpinners::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(yaws),
         SANDBOX_NAMED_NUM(laser_cooldowns),
         SANDBOX_NAMED_NUM(next_fire_point_indices),
+        SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
-
-    auto const n{get_num_instances()};
-    auto const n_ismc{instances->GetNumInstances()};
-    if (n_ismc < n) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("ATestTubeSpinners::validate_array_sizes %d entities, %d ISMC instances"),
-               n,
-               n_ismc);
-    }
 }
