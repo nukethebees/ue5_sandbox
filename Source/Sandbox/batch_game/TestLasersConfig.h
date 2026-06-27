@@ -28,8 +28,5 @@ class UTestLasersConfig : public UDataAsset {
     float max_cull_distance{50000.0f};
 
     UPROPERTY(EditAnywhere)
-    float radius{5.0f};
-
-    UPROPERTY(EditAnywhere)
     TEnumAsByte<ECollisionChannel> collision_channel{ECC_Visibility};
 };
