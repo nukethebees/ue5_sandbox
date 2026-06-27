@@ -6,6 +6,7 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 
+#include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 #include <Math/UnrealMathUtility.h>
 
@@ -58,9 +59,7 @@ auto almost_equal(T const* const lhs,
     check(count >= 0);
 
     for (int32 i{0}; i < count; ++i) {
-        if (!FMath::IsNearlyEqual(lhs[i], rhs[i], tolerance)) {
-            return false;
-        }
+        if (!FMath::IsNearlyEqual(lhs[i], rhs[i], tolerance)) { return false; }
     }
 
     return true;
@@ -73,8 +72,7 @@ auto num(T const& value) noexcept -> int32 {
     return NumTraits<T>::num(value);
 }
 
-template <typename... Arrays>
-    requires (ml::SupportsNum<Arrays> && ...)
+template <SupportsNum... Arrays>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((num(arrays) == count) && ...);
 }
@@ -86,6 +84,21 @@ auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) 
     return all_num_equal_to(ml::num(array), other, rest...);
 }
 
+template <SupportsRemoveAtSwap T>
+void remove_at_swap(T& array,
+                    int32 const index,
+                    int32 const count,
+                    EAllowShrinking const allow_shrinking) noexcept {
+    RemoveAtSwapTraits<T>::remove_at_swap(array, index, count, allow_shrinking);
+}
+template <SupportsRemoveAtSwap... T>
+void remove_at_swap(int32 const index,
+                    int32 const count,
+                    EAllowShrinking const allow_shrinking,
+                    T&... arrays) noexcept {
+    (remove_at_swap(arrays, index, count, allow_shrinking), ...);
+}
+
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
 
 template <typename... TArrays>
@@ -93,9 +106,7 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
     check(ml::is_sorted_desc(indices));
 
     auto const n{indices.Num()};
-    if (n < 1) {
-        return;
-    }
+    if (n < 1) { return; }
 
     for (int32 i{0}; i < n; ++i) {
         auto const index{indices[i]};
@@ -103,8 +114,7 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
     }
 }
 
-template <typename... Arrays>
-    requires (ml::SupportsReset<Arrays> && ...)
+template <SupportsReset... Arrays>
 auto reset(Arrays&... arrays) -> void {
     return (ResetTraits<Arrays>::reset(arrays), ...);
 }
@@ -114,8 +124,7 @@ auto reserve(Array& array, int32 count) -> void {
     ReserveTraits<Array>::reserve(array, count);
 }
 
-template <typename... Containers>
-    requires (SupportsReserve<Containers> && ...)
+template <SupportsReserve... Containers>
 auto reserve(int32 count, Containers&... containers) -> void {
     (ReserveTraits<Containers>::reserve(containers, count), ...);
 }
@@ -124,8 +133,7 @@ template <SupportsAddUninitialised Array>
 auto add_uninitialised(Array& array, int32 count) -> void {
     AddUninitialisedTraits<Array>::add_uninitialised(array, count);
 }
-template <typename... Containers>
-    requires (SupportsAddUninitialised<Containers> && ...)
+template <SupportsAddUninitialised... Containers>
 auto add_uninitialised(int32 count, Containers&... containers) -> void {
     (AddUninitialisedTraits<Containers>::add_uninitialised(containers, count), ...);
 }
@@ -163,9 +171,7 @@ void collect_valid_indices_by_key(KeysType const& keys,
     for (auto const& search_key : search_keys) {
         auto const index{keys.IndexOfByKey(search_key)};
 
-        if (index == INDEX_NONE) {
-            continue;
-        }
+        if (index == INDEX_NONE) { continue; }
 
         out_indices[n] = index;
         ++n;

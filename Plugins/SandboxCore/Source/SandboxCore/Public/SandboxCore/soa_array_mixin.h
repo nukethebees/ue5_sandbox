@@ -3,6 +3,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 
+#include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 
 namespace ml {
@@ -26,6 +27,15 @@ struct FSoAArrayMixin {
 
     void add_uninitialised(this auto& self, int32 const count) {
         self.apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
+    }
+
+    void remove_at_swap(this auto& self,
+                        int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        self.apply_arrays([index, count, allow_shrinking](auto&... arrays) {
+            ml::remove_at_swap(index, count, allow_shrinking, arrays...);
+        });
     }
 };
 }
