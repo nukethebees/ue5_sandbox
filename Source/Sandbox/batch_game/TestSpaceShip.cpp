@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestSpaceShipData.h>
 #include <Sandbox/batch_game/TestTeam.h>
+#include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/combat/weapons/ShipBomb.h>
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
 #include <Sandbox/constants/collision_channels.h>
@@ -60,6 +61,8 @@ void ATestSpaceShip::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
         SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
     });
+
+    ensureAlways(IsValid(ship_config->team_visual_data));
 
     velocity = GetActorForwardVector() * ship_config->cruise_speed;
     thrust_energy = ship_config->thrust_energy_max;
@@ -472,6 +475,9 @@ void ATestSpaceShip::fire_laser() {
 void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
     FTestLasersSpawnRequests new_lasers;
 
+    auto const colour_cache{
+        UTestTeamVisualData::build_team_colour_cache(ship_config->team_visual_data)};
+
     auto const n{fire_points.Num()};
     ml::add_uninitialised(n, new_lasers);
 
@@ -483,7 +489,7 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
     new_lasers.set_damages(ship_config->laser_damage);
     new_lasers.set_speeds(ship_config->laser_speed);
     new_lasers.set_max_distances(ship_config->laser_max_distance);
-    new_lasers.set_colours(FLinearColor::Green);
+    new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);
 
     laser_actor->spawn_lasers(new_lasers);

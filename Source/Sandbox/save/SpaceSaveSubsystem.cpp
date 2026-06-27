@@ -127,12 +127,8 @@ void USpaceSaveSubsystem::log_save_data() const {
 
     for (auto const& record : current_save->score_records) {
         msg += FString::Printf(TEXT(R"(
-    Date: %s
-    Level: %s
-    Mode: %s
-    End state: %s
-    Kills: %d
-    Time: %.2f)"),
+    Date: %s, Level: %s, Mode: %s, End state: %s
+        Kills: %d, Time: %.2f)"),
                                *record.date.ToString(),
                                *record.level_name.ToString(),
                                *ml::to_string_without_type_prefix(record.mission_mode),
@@ -145,11 +141,11 @@ void USpaceSaveSubsystem::log_save_data() const {
                 break;
             }
             case ETestMissionMode::KillEnemies: {
-                msg += FString::Printf(TEXT("\n    Kill target: %d"), record.target_kills);
+                msg += FString::Printf(TEXT(", Kill target: %d"), record.target_kills);
                 break;
             }
             case ETestMissionMode::SurviveTime: {
-                msg += FString::Printf(TEXT("\n    Target completion time: %.2f"),
+                msg += FString::Printf(TEXT(", Target completion time: %.2f"),
                                        record.target_completion_time);
                 break;
             }

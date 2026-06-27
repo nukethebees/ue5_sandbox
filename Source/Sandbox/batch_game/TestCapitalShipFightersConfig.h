@@ -9,6 +9,8 @@
 
 class UStaticMesh;
 
+class UTestTeamVisualData;
+
 UCLASS(BlueprintType)
 class UTestCapitalShipFightersConfig : public UDataAsset {
     GENERATED_BODY()
@@ -18,6 +20,9 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     // Visuals
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UStaticMesh> mesh{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Visuals")
+    TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Movement
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

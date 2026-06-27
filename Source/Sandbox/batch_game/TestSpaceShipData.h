@@ -13,7 +13,7 @@
 
 class UStaticMesh;
 
-class AShipLaser;
+class UTestTeamVisualData;
 
 UCLASS(BlueprintType)
 class UTestSpaceShipData : public UDataAsset {
@@ -27,6 +27,9 @@ class UTestSpaceShipData : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};
+
+    UPROPERTY(EditAnywhere, Category = "Visuals")
+    TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Energy

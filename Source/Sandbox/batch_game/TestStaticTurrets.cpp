@@ -7,6 +7,7 @@
 #include <Sandbox/batch_game/TestLasersConfig.h>
 #include <Sandbox/batch_game/TestStaticTurretsConfig.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
+#include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -51,9 +52,12 @@ void ATestStaticTurrets::begin_play() {
     ml::fatal_if_uobject_ptrs_invalid({
         {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
+
+    ensureAlways(IsValid(actor_config->team_visual_data));
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
@@ -227,6 +231,8 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
     FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
+    auto const colour_cache{
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_handle{target_handles[i]};
@@ -272,7 +278,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.speeds.Add(laser_speed);
         new_lasers.max_distances.Add(laser_max_distance);
         new_lasers.instigator_handles.Add(entity_handles[i]);
-        new_lasers.colours.Add(FLinearColor::Red);
+        new_lasers.colours.Add(colour_cache[teams[i]]);
 
         laser_cooldowns[i] = cooldown;
     }

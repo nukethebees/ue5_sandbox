@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
 #include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -48,6 +49,8 @@ void ATestCapitalShipFighters::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
+
+    ensureAlways(IsValid(actor_config->team_visual_data));
 
     configure_ismc();
 
@@ -296,6 +299,9 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_max_distance{actor_config->laser_max_distance};
 
+    auto const colour_cache{
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+
     ml::reset(new_lasers);
     ml::add_uninitialised(n_ships, new_lasers);
 
@@ -318,6 +324,7 @@ void ATestCapitalShipFighters::handle_firing() {
         ml::assign(new_lasers.locations, write_index, laser_location);
         ml::assign(new_lasers.rotations, write_index, direction.ToOrientationRotator());
         new_lasers.instigator_handles[write_index] = entity_handles[ship_index];
+        new_lasers.colours[write_index] = colour_cache[teams[ship_index]];
 
         laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
@@ -328,7 +335,6 @@ void ATestCapitalShipFighters::handle_firing() {
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
-    new_lasers.set_colours(FLinearColor::Blue);
 
     laser_actor->spawn_lasers(new_lasers);
 }

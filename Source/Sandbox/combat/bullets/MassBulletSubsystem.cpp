@@ -47,6 +47,8 @@ void UMassBulletSubsystem::on_archetypes_ready() {
 bool UMassBulletSubsystem::initialise_asset_data() {
     constexpr auto logger{NestedLogger<"initialise_asset_data">()};
 
+    return false;
+
     INIT_PTR_OR_RETURN_VALUE(world, GetWorld(), false);
     INIT_PTR_OR_RETURN_VALUE(
         archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>(), false);

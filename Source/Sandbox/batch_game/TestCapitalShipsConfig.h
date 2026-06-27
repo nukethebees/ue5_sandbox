@@ -14,6 +14,7 @@ class UStaticMesh;
 class UNiagaraSystem;
 
 class AShipLaser;
+class UTestTeamVisualData;
 
 UENUM()
 enum class ETestCapitalShipsMainExplosionDelayMode : uint8 {
@@ -33,33 +34,36 @@ class UTestCapitalShipsConfig : public UDataAsset {
 #endif
 
     // Visuals
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     UNiagaraSystem* small_death_explosion{nullptr};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     int32 n_small_explosions{6};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     float time_between_explosions{0.1f};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     FVector3f min_small_explosion_range{FVector3f::ZeroVector};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     FVector3f max_small_explosion_range{FVector3f::OneVector};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     UNiagaraSystem* main_death_explosion{nullptr};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     ETestCapitalShipsMainExplosionDelayMode main_explosion_delay_mode{
         ETestCapitalShipsMainExplosionDelayMode::AfterSmallExplosions};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     float large_explosion_delay{0.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Visuals")
+    TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Collision
     UPROPERTY(EditAnywhere)

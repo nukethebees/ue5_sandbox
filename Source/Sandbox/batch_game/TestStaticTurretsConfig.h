@@ -10,6 +10,8 @@
 class UStaticMesh;
 class UNiagaraSystem;
 
+class UTestTeamVisualData;
+
 UCLASS(BlueprintType)
 class UTestStaticTurretsConfig : public UDataAsset {
     GENERATED_BODY()
@@ -28,6 +30,9 @@ class UTestStaticTurretsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     float death_effect_scale{1.f};
+
+    UPROPERTY(EditAnywhere, Category = "Visuals")
+    TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Misc
     UPROPERTY(EditAnywhere)
