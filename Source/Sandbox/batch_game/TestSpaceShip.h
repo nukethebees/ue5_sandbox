@@ -173,7 +173,7 @@ class ATestSpaceShip : public APawn {
     // Config
     /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<UTestSpaceShipData> ship_config{nullptr};
+    TObjectPtr<UTestSpaceShipData> actor_config{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
