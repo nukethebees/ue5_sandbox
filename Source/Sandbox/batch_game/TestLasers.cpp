@@ -139,6 +139,8 @@ void ATestLasers::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
     TRACE_COUNTER_SET(SandboxTestLaserCount, get_num_instances());
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
+
+    validate_array_sizes();
 }
 
 // Accessors
@@ -350,8 +352,13 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);
-        ml::remove_at_swap_many_sorted_desc(
-            indices, locations, rotations, velocities, lifetimes_remaining, instigator_handles);
+        ml::remove_at_swap_many_sorted_desc(indices,
+                                            locations,
+                                            rotations,
+                                            velocities,
+                                            damages,
+                                            lifetimes_remaining,
+                                            instigator_handles);
     }
 
     validate_array_sizes();
@@ -369,6 +376,7 @@ void ATestLasers::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(velocities),
+        SANDBOX_NAMED_NUM(damages),
         SANDBOX_NAMED_NUM(lifetimes_remaining),
         SANDBOX_NAMED_NUM(instigator_handles),
     });
