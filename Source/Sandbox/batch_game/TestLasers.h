@@ -5,6 +5,7 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -21,19 +22,13 @@ class UActorComponent;
 class UTestLasersConfig;
 class ATestEntityRegistry;
 
-struct FTestLasersSpawnRequests {
+struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
     FVectors3f locations;
     FRotatorsf rotations;
     TArray<int32> damages;
     TArray<float> speeds;
     TArray<float> max_distances;
     TArray<FRegistryEntityHandle> instigator_handles;
-
-    void validate_array_sizes() const;
-    void reset();
-    auto num() const noexcept -> int32;
-    void reserve(int32 const count);
-    void add_uninitialised(int32 const count);
 
     void set_damages(int32 const value);
     void set_speeds(float const value);
@@ -52,14 +47,8 @@ struct FTestLasersSpawnRequests {
     }
 };
 
-struct FTestLasersHitDetails {
+struct FTestLasersHitDetails : public ml::FSoAArrayMixin {
     FVectors3f locations;
-
-    void validate_array_sizes() const;
-    void reset();
-    auto num() const noexcept -> int32;
-    void reserve(int32 const count);
-    void add_uninitialised(int32 const count);
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {

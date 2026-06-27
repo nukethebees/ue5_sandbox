@@ -30,22 +30,6 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
-void FTestLasersSpawnRequests::validate_array_sizes() const {
-    apply_arrays([](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
-}
-void FTestLasersSpawnRequests::reset() {
-    apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
-}
-auto FTestLasersSpawnRequests::num() const noexcept -> int32 {
-    return apply_arrays([](auto& first, auto&...) { return ml::num(first); });
-}
-void FTestLasersSpawnRequests::reserve(int32 const count) {
-    apply_arrays([count](auto&... arrays) { ml::reserve(count, arrays...); });
-}
-void FTestLasersSpawnRequests::add_uninitialised(int32 const count) {
-    apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
-}
-
 void FTestLasersSpawnRequests::set_damages(int32 const value) {
     ml::fill(damages, value);
 }
@@ -67,22 +51,6 @@ void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other
     speeds.Append(other.speeds);
     max_distances.Append(other.max_distances);
     instigator_handles.Append(other.instigator_handles);
-}
-
-void FTestLasersHitDetails::validate_array_sizes() const {
-    apply_arrays([](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
-}
-void FTestLasersHitDetails::reset() {
-    apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
-}
-auto FTestLasersHitDetails::num() const noexcept -> int32 {
-    return apply_arrays([](auto& first, auto&...) { return ml::num(first); });
-}
-void FTestLasersHitDetails::reserve(int32 const count) {
-    apply_arrays([count](auto&... arrays) { ml::reserve(count, arrays...); });
-}
-void FTestLasersHitDetails::add_uninitialised(int32 const count) {
-    apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
 }
 
 ATestLasers::ATestLasers()
