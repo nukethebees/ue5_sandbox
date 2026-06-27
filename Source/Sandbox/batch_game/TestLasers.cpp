@@ -19,6 +19,7 @@
 #include <SandboxCore/transforms.h>
 #include <SandboxCore/uobject_utils.h>
 
+#include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/HitResult.h>
@@ -260,6 +261,8 @@ void ATestLasers::handle_collisions(float const dt) {
     remove_instances(to_remove);
 }
 
+#define USE_TRANSFORM 0
+
 // Visuals
 void ATestLasers::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
@@ -281,10 +284,15 @@ void ATestLasers::update_ismc() {
 
     update_ismc_transforms();
 
-    constexpr bool mark_render_dirty{true};
-    constexpr bool teleport{true};
-    instances->BatchUpdateInstancesTransforms(
-        0, ismc_transforms, is_world_space, mark_render_dirty, teleport);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc::batch_update_component);
+
+        constexpr bool mark_render_dirty{true};
+        constexpr bool teleport{true};
+
+        instances->BatchUpdateInstancesData(
+            0, ismc_data.Num(), ismc_data.GetData(), mark_render_dirty, teleport);
+    }
 }
 void ATestLasers::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc_transforms);
@@ -292,24 +300,41 @@ void ATestLasers::update_ismc_transforms() {
     auto const n_ismc_instances{instances->GetNumInstances()};
     auto const n_laser_instances{get_num_instances()};
 
-    auto const n_transforms{ismc_transforms.Num()};
+    auto const n_transforms{ismc_data.Num()};
     auto const n_transforms_to_add(n_ismc_instances - n_transforms);
 
-    if (n_transforms_to_add > 0) { ismc_transforms.AddDefaulted(n_transforms_to_add); }
+    if (!n_ismc_instances && !n_laser_instances) { return; }
 
-    for (int32 i{0}; i < n_laser_instances; ++i) {
-        auto& transform{ismc_transforms[i]};
+    ismc_data.Reset();
+    ismc_data.AddUninitialized(n_ismc_instances);
 
-        auto const rotation{ml::get_rotator3d(rotations, i)};
+    auto const n_jobs{8};
+    auto const updates_per_slice{FMath::DivideAndRoundUp(n_laser_instances, n_jobs)};
 
-        transform.SetLocation(ml::get_vector3d(locations, i));
-        transform.SetRotation(rotation.Quaternion());
-        transform.SetScale3D(FVector::OneVector);
-    }
+    auto const fill_array{[this, updates_per_slice, n_laser_instances, n_jobs, n_ismc_instances](
+                              int32 const job_index) {
+        if (job_index == n_jobs) {
+            for (int32 i{n_laser_instances}; i < n_ismc_instances; ++i) {
+                ismc_data[i] = FMatrix::Identity;
+            }
+        } else {
+            auto const begin{job_index * updates_per_slice};
+            auto const end{FMath::Min(begin + updates_per_slice, n_laser_instances)};
 
-    for (int32 i{n_laser_instances}; i < n_ismc_instances; ++i) {
-        ismc_transforms[i].SetScale3D(FVector::ZeroVector);
-    }
+            for (int32 i{begin}; i < end; ++i) {
+                auto const rotation{ml::get_rotator3d(rotations, i)};
+
+                ismc_data[i] =
+                    FTransform{
+                        rotation.Quaternion(),
+                        ml::get_vector3d(locations, i),
+                    }
+                        .ToMatrixWithScale();
+            }
+        }
+    }};
+
+    ParallelFor(n_jobs + 1, fill_array);
 }
 
 // Lifetimes
@@ -334,7 +359,7 @@ void ATestLasers::collect_old_instance_indices() {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(ismc_transforms,
+    ml::reset(ismc_data,
               locations,
               rotations,
               velocities,

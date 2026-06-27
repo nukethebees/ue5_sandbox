@@ -8,8 +8,9 @@
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include <Components/InstancedStaticMeshComponent.h>
+#include <CoreMinimal.h>
+#include <GameFramework/Actor.h>
 
 #include "TestLasers.generated.h"
 
@@ -27,7 +28,7 @@ struct FTestLasersSpawnRequests {
     TArray<float> speeds;
     TArray<float> max_distances;
     TArray<FRegistryEntityHandle> instigator_handles;
-    
+
     void validate_array_sizes() const;
     void reset();
     auto num() const noexcept -> int32;
@@ -104,32 +105,23 @@ class ATestLasers : public AActor {
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY()
-    TArray<FTransform> ismc_transforms;
+    TArray<FInstancedStaticMeshInstanceData> ismc_data;
 
     // Transform
-    UPROPERTY()
     FVectors3f locations;
-    UPROPERTY()
     FRotatorsf rotations;
-    UPROPERTY()
     FVectors3f velocities;
 
-    UPROPERTY()
     TArray<int32> damages;
 
     // Lifetime
-    UPROPERTY()
     TArray<float> lifetimes_remaining;
-
-    UPROPERTY()
     TArray<FRegistryEntityHandle> instigator_handles;
 
     // Spawning
     FTestLasersSpawnRequests pending_spawns;
 
     // Removal
-    UPROPERTY()
     TArray<int32> to_remove;
 
     // Damage transaction
