@@ -261,8 +261,6 @@ void ATestLasers::handle_collisions(float const dt) {
     remove_instances(to_remove);
 }
 
-#define USE_TRANSFORM 0
-
 // Visuals
 void ATestLasers::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
