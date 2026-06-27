@@ -306,6 +306,8 @@ void ATestCapitalShips::configure_ismc() {
     instances->SetStaticMesh(actor_config->mesh);
     instances->SetCanEverAffectNavigation(false);
 
+    instances->SetRemoveSwap();
+
     // Collision
     ml::apply_collision_settings(*instances, actor_config->collision_settings);
 }

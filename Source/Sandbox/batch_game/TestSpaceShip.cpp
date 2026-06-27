@@ -483,6 +483,7 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
     new_lasers.set_damages(ship_config->laser_damage);
     new_lasers.set_speeds(ship_config->laser_speed);
     new_lasers.set_max_distances(ship_config->laser_max_distance);
+    new_lasers.set_colours(FLinearColor::Green);
     ml::fill(new_lasers.instigator_handles, registry_handle);
 
     laser_actor->spawn_lasers(new_lasers);

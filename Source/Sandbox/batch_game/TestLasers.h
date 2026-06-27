@@ -12,6 +12,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
+#include <Math/Color.h>
 
 #include "TestLasers.generated.h"
 
@@ -29,10 +30,12 @@ struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
     TArray<float> speeds;
     TArray<float> max_distances;
     TArray<FRegistryEntityHandle> instigator_handles;
+    TArray<FLinearColor> colours;
 
     void set_damages(int32 const value);
     void set_speeds(float const value);
     void set_max_distances(float const value);
+    void set_colours(FLinearColor const value);
 
     void append_from(FTestLasersSpawnRequests const& other);
 
@@ -43,7 +46,8 @@ struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
                                          self.damages,
                                          self.speeds,
                                          self.max_distances,
-                                         self.instigator_handles);
+                                         self.instigator_handles,
+                                         self.colours);
     }
 };
 
@@ -96,7 +100,7 @@ class ATestLasers : public AActor {
 
     // Visuals
     void configure_ismc();
-    void update_ismc_transforms();
+    void prepare_ismc_transforms();
     void update_ismc();
     void spawn_hit_effects();
 

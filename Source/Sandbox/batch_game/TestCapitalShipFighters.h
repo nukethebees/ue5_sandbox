@@ -69,14 +69,16 @@ class ATestCapitalShipFighters : public AActor {
 
     // Visuals
     void configure_ismc();
-    void update_ismc_transforms();
+    void prepare_ismc_transforms();
     void draw_debug_shapes();
+    void update_ismc();
 
     // Entity data
     auto get_entity_data() const -> FTestEntityRegistryEntityData;
 
     // Misc
     void clear_tick_buffers();
+    void remove_dead_entities();
 
     // Visuals
     UPROPERTY(EditDefaultsOnly)

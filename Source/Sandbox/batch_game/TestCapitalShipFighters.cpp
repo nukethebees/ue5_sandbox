@@ -15,6 +15,7 @@
 #include <SandboxCore/transforms.h>
 #include <SandboxCore/uobject_utils.h>
 
+#include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
@@ -99,57 +100,13 @@ void ATestCapitalShipFighters::update_entity_registry() {
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
 
-    auto const dead_entities{entity_registry->get_dead_entities_this_frame()};
-
-    ml::collect_valid_indices_by_key(entity_handles, dead_entities, local_indices_to_remove);
-    local_indices_to_remove.Sort(TGreater<int32>{});
-
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        ismc_transforms,
-                                        entity_handles,
-                                        locations,
-                                        directions,
-                                        speeds,
-                                        teams,
-                                        healths,
-                                        laser_cooldowns.remaining_times,
-                                        target_indices,
-                                        target_locations,
-                                        target_directions);
-
-    // Update health and the target entity index
-    auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{entity_handles[i]};
-        healths[i] = entity_registry->get_health(entity_index);
-
-        auto const target_entity_index{target_indices[i]};
-        if (target_entity_index.is_valid()) {
-            if (entity_registry->is_stale(target_entity_index)) {
-                target_indices[i] = FRegistryEntityHandle{};
-            } else {
-                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
-            }
-        }
-    }
-
-    // Remove ISMC instances
-    if (local_indices_to_remove.Num()) {
-        constexpr bool is_reverse_sorted{true};
-        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
-    }
-
-    validate_array_sizes();
+    remove_dead_entities();
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
 
-    update_ismc_transforms();
-
-    constexpr bool mark_render_state_dirty{true};
-    constexpr bool teleport{true};
-    instances->BatchUpdateInstancesTransforms(
-        0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
+    prepare_ismc_transforms();
+    update_ismc();
 
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) { draw_debug_shapes(); }
 }
@@ -180,19 +137,40 @@ void ATestCapitalShipFighters::configure_ismc() {
 
     instances->SetGenerateOverlapEvents(false);
     instances->SetReceivesDecals(false);
+
+    instances->SetRemoveSwap();
 }
-void ATestCapitalShipFighters::update_ismc_transforms() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc_transforms);
+void ATestCapitalShipFighters::prepare_ismc_transforms() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::prepare_ismc_transforms);
 
     auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
 
-        auto const dir{ml::get_vector3d(directions, i)};
-        auto const quat{FQuat::FindBetweenNormals(FVector::ForwardVector, dir)};
+    auto const n_jobs{8};
+    auto const updates_per_slice{FMath::DivideAndRoundUp(n, n_jobs)};
 
-        ismc_transforms[i].SetRotation(quat);
-    }
+    auto const update_transforms{[this, updates_per_slice, n, n_jobs](int32 const job_index) {
+        auto const begin{job_index * updates_per_slice};
+        auto const end{FMath::Min(begin + updates_per_slice, n)};
+
+        for (int32 i{begin}; i < end; ++i) {
+            ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
+
+            auto const dir{ml::get_vector3d(directions, i)};
+            auto const quat{FQuat::FindBetweenNormals(FVector::ForwardVector, dir)};
+
+            ismc_transforms[i].SetRotation(quat);
+        }
+    }};
+
+    ParallelFor(n_jobs, update_transforms);
+}
+void ATestCapitalShipFighters::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc);
+
+    constexpr bool mark_render_state_dirty{true};
+    constexpr bool teleport{true};
+    instances->BatchUpdateInstancesTransforms(
+        0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 void ATestCapitalShipFighters::draw_debug_shapes() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::draw_debug_shapes);
@@ -345,17 +323,12 @@ void ATestCapitalShipFighters::handle_firing() {
         ++write_index;
     }
 
-    new_lasers.locations.set_num(write_index, EAllowShrinking::No);
-    new_lasers.rotations.set_num(write_index, EAllowShrinking::No);
-    new_lasers.instigator_handles.SetNumUninitialized(write_index, EAllowShrinking::No);
-
-    new_lasers.damages.SetNumUninitialized(write_index);
-    new_lasers.speeds.SetNumUninitialized(write_index);
-    new_lasers.max_distances.SetNumUninitialized(write_index);
+    if (write_index != n_ships) { ml::set_num(new_lasers, write_index, EAllowShrinking::No); }
 
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
+    new_lasers.set_colours(FLinearColor::Blue);
 
     laser_actor->spawn_lasers(new_lasers);
 }
@@ -379,6 +352,47 @@ void ATestCapitalShipFighters::clear_runtime_state() {
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
     ml::reset(local_indices_to_remove, new_lasers, entity_death_info);
+}
+void ATestCapitalShipFighters::remove_dead_entities() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::remove_dead_entities);
+
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        ismc_transforms,
+                                        entity_handles,
+                                        locations,
+                                        directions,
+                                        speeds,
+                                        teams,
+                                        healths,
+                                        laser_cooldowns.remaining_times,
+                                        target_indices,
+                                        target_locations,
+                                        target_directions);
+
+    // Update target entity index
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_index{entity_handles[i]};
+
+        auto const target_entity_index{target_indices[i]};
+        if (target_entity_index.is_valid()) {
+            if (entity_registry->is_stale(target_entity_index)) {
+                target_indices[i] = FRegistryEntityHandle{};
+            } else {
+                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
+            }
+        }
+    }
+
+    // Remove ISMC instances
+    if (local_indices_to_remove.Num()) {
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    }
+
+    validate_array_sizes();
 }
 
 // Checks

@@ -134,6 +134,8 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     instances->SetStaticMesh(actor_config->mesh);
+
+    instances->SetRemoveSwap();
 }
 
 // Entity data
@@ -270,6 +272,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.speeds.Add(laser_speed);
         new_lasers.max_distances.Add(laser_max_distance);
         new_lasers.instigator_handles.Add(entity_handles[i]);
+        new_lasers.colours.Add(FLinearColor::Red);
 
         laser_cooldowns[i] = cooldown;
     }

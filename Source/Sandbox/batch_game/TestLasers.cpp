@@ -39,6 +39,9 @@ void FTestLasersSpawnRequests::set_speeds(float const value) {
 void FTestLasersSpawnRequests::set_max_distances(float const value) {
     ml::fill(max_distances, value);
 }
+void FTestLasersSpawnRequests::set_colours(FLinearColor const value) {
+    ml::fill(colours, value);
+}
 
 void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestLasersSpawnRequests::append_from);
@@ -51,6 +54,7 @@ void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other
     speeds.Append(other.speeds);
     max_distances.Append(other.max_distances);
     instigator_handles.Append(other.instigator_handles);
+    colours.Append(other.colours);
 }
 
 ATestLasers::ATestLasers()
@@ -79,8 +83,8 @@ void ATestLasers::begin_play() {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("actor_config is not ready."));
     }
 
-    preallocate_instances();
     configure_ismc();
+    preallocate_instances();
 
 #if WITH_EDITOR
     debug_drawer.world = GetWorld();
@@ -111,7 +115,9 @@ void ATestLasers::simulate(float const dt) {
 void ATestLasers::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visuals);
 
+    prepare_ismc_transforms();
     update_ismc();
+
     spawn_hit_effects();
 }
 void ATestLasers::end_tick() {
@@ -131,6 +137,7 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 void ATestLasers::spawn_lasers(FTestLasersSpawnRequests const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
 
+    spawn_data.validate_array_sizes();
     pending_spawns.append_from(spawn_data);
 }
 void ATestLasers::preallocate_instances() {
@@ -163,6 +170,17 @@ void ATestLasers::process_pending_spawns() {
         constexpr bool update_navigation{false};
         instances->AddInstances(
             dummy_transforms, return_indices, is_world_space, update_navigation);
+
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::ATestLasers::process_pending_spawns::set_custom_data);
+            for (int32 i{}; i < n_ismc_instances_to_add; ++i) {
+                auto const& colour{pending_spawns.colours[i]};
+                TStaticArray<float, 3> rgb{colour.R, colour.G, colour.B};
+
+                instances->SetCustomData(offset + i, rgb, false);
+            }
+        }
     }
 
     ml::append_from(locations, pending_spawns.locations);
@@ -256,24 +274,22 @@ void ATestLasers::configure_ismc() {
     instances->SetReceivesDecals(false);
 
     instances->SetCullDistances(actor_config->min_cull_distance, actor_config->max_cull_distance);
+
+    instances->SetNumCustomDataFloats(3); // RGB
+
+    instances->SetRemoveSwap();
 }
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
 
-    update_ismc_transforms();
+    constexpr bool mark_render_dirty{true};
+    constexpr bool teleport{true};
 
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc::batch_update_component);
-
-        constexpr bool mark_render_dirty{true};
-        constexpr bool teleport{true};
-
-        instances->BatchUpdateInstancesData(
-            0, ismc_data.Num(), ismc_data.GetData(), mark_render_dirty, teleport);
-    }
+    instances->BatchUpdateInstancesData(
+        0, ismc_data.Num(), ismc_data.GetData(), mark_render_dirty, teleport);
 }
-void ATestLasers::update_ismc_transforms() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc_transforms);
+void ATestLasers::prepare_ismc_transforms() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prepare_ismc_transforms);
 
     auto const n_ismc_instances{instances->GetNumInstances()};
     auto const n_laser_instances{get_num_instances()};
@@ -380,7 +396,7 @@ void ATestLasers::clear_runtime_state() {
               damage_events);
     clear_spawn_buffers();
 }
-void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
+void ATestLasers::remove_instances(TConstArrayView<int32> const indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
 
     auto const n{indices.Num()};
@@ -395,6 +411,13 @@ void ATestLasers::remove_instances(TConstArrayView<int32> indices) {
                                             damages,
                                             lifetimes_remaining,
                                             instigator_handles);
+    }
+
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::ismc);
+
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances({indices.GetData(), n}, is_reverse_sorted);
     }
 
     validate_array_sizes();
