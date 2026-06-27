@@ -24,6 +24,7 @@
 #include <Components/SceneComponent.h>
 #include <Engine/HitResult.h>
 #include <Engine/World.h>
+#include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
@@ -74,6 +75,22 @@ void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other
     speeds.Append(other.speeds);
     max_distances.Append(other.max_distances);
     instigator_handles.Append(other.instigator_handles);
+}
+
+void FTestLasersHitDetails::validate_array_sizes() const {
+    apply_arrays([](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
+}
+void FTestLasersHitDetails::reset() {
+    apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
+}
+auto FTestLasersHitDetails::num() const noexcept -> int32 {
+    return locations.num();
+}
+void FTestLasersHitDetails::reserve(int32 const count) {
+    apply_arrays([count](auto&... arrays) { ml::reserve(count, arrays...); });
+}
+void FTestLasersHitDetails::add_uninitialised(int32 const count) {
+    apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
 }
 
 ATestLasers::ATestLasers()
@@ -135,6 +152,7 @@ void ATestLasers::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visuals);
 
     update_ismc();
+    spawn_hit_effects();
 }
 void ATestLasers::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick);
@@ -230,7 +248,7 @@ void ATestLasers::handle_collisions(float const dt) {
     FCollisionQueryParams params{};
     params.AddIgnoredActor(this);
 
-    ml::reset(to_remove, damage_events);
+    ml::reset(to_remove, damage_events, hit_details);
 
     for (int32 i{n - 1}; i >= 0; --i) {
         auto const start{ml::get_vector3d(locations, i)};
@@ -254,6 +272,8 @@ void ATestLasers::handle_collisions(float const dt) {
         damage_events.actor_components.Add(hit_component);
         damage_events.hit_items.Add(hit.Item);
         damage_events.instigators.Add(instigator_handles[i]);
+
+        ml::append(hit_details.locations, hit.Location);
     }
 
     entity_registry->queue_damage_events(damage_events);
@@ -334,6 +354,40 @@ void ATestLasers::update_ismc_transforms() {
 
     ParallelFor(n_jobs + 1, fill_array);
 }
+void ATestLasers::spawn_hit_effects() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_hit_effects);
+
+    auto hit_effect{actor_config->hit_effect};
+    if (!IsValid(hit_effect)) {
+        if (!have_warned_hit_effect) {
+            UE_LOG(
+                LogSandbox, Warning, TEXT("ATestLasers::spawn_hit_effects: hit_effect is nullptr"));
+            have_warned_hit_effect = true;
+        }
+
+        return;
+    }
+
+    auto const n{ml::num(hit_details)};
+    if (n < 1) { return; }
+
+    FVector const scale{FVector::OneVector};
+
+    auto* world{GetWorld()};
+    for (int32 i{0}; i < n; ++i) {
+        constexpr bool auto_destroy{true};
+        constexpr bool auto_activate{true};
+
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+                                                       hit_effect,
+                                                       ml::get_vector3d(hit_details.locations, i),
+                                                       FRotator::ZeroRotator,
+                                                       scale,
+                                                       auto_destroy,
+                                                       auto_activate,
+                                                       ENCPoolMethod::AutoRelease);
+    }
+}
 
 // Lifetimes
 void ATestLasers::tick_lifetimes(float const dt) {
@@ -389,7 +443,7 @@ void ATestLasers::clear_spawn_buffers() {
     ml::reset(pending_spawns, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
-    ml::reset(damage_events);
+    ml::reset(damage_events, hit_details);
 }
 
 // Checks

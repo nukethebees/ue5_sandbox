@@ -9,6 +9,7 @@
 
 class UStaticMesh;
 class UMaterialInterface;
+class UNiagaraSystem;
 
 UCLASS()
 class UTestLasersConfig : public UDataAsset {
@@ -16,6 +17,7 @@ class UTestLasersConfig : public UDataAsset {
   public:
     auto is_ready() const noexcept -> bool;
 
+    // Visuals
     UPROPERTY(EditAnywhere)
     TObjectPtr<UStaticMesh> mesh;
 
@@ -27,6 +29,10 @@ class UTestLasersConfig : public UDataAsset {
     UPROPERTY(EditAnywhere)
     float max_cull_distance{50000.0f};
 
+    UPROPERTY(EditAnywhere)
+    TObjectPtr<UNiagaraSystem> hit_effect{nullptr};
+
+    // Collision
     UPROPERTY(EditAnywhere)
     TEnumAsByte<ECollisionChannel> collision_channel{ECC_Visibility};
 };

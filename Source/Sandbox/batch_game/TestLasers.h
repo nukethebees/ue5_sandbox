@@ -42,6 +42,21 @@ struct FTestLasersSpawnRequests {
     void append_from(FTestLasersSpawnRequests const& other);
 };
 
+struct FTestLasersHitDetails {
+    FVectors3f locations;
+
+    void validate_array_sizes() const;
+    void reset();
+    auto num() const noexcept -> int32;
+    void reserve(int32 const count);
+    void add_uninitialised(int32 const count);
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& Self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(Self.locations);
+    }
+};
+
 UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
@@ -84,6 +99,7 @@ class ATestLasers : public AActor {
     void configure_ismc();
     void update_ismc_transforms();
     void update_ismc();
+    void spawn_hit_effects();
 
     // Lifetimes
     void tick_lifetimes(float const dt);
@@ -106,6 +122,7 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
+    FTestLasersHitDetails hit_details;
 
     // Transform
     FVectors3f locations;
@@ -127,8 +144,10 @@ class ATestLasers : public AActor {
     // Damage transaction
     UnresolvedDamageEvents damage_events;
 
-#if WITH_EDITORONLY_DATA
     // Debugging
+    bool have_warned_hit_effect{false};
+
+#if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Lasers")
     FDrawDebugConfig debug_drawer;
 
