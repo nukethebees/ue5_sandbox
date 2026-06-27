@@ -131,6 +131,9 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
         ETestTeam const team,
         float const radius,
         TArrayView<FRegistryEntityHandle> const out_entities) const -> int32;
+    void are_entities_within_dist_sq(float const dist_sq,
+                                     FVectors3f const& locations,
+                                     TArrayView<bool> results);
 
     // Checks
     void validate_array_sizes() const;

@@ -333,6 +333,19 @@ auto ATestEntityRegistry::get_dead_entities_this_frame() const
     return dead_entities_this_frame;
 }
 
+auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
+    return entity_data.get_num();
+}
+auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
+    int32 total{0};
+
+    for (auto const& alive : entity_data.alive) {
+        if (alive) { ++total; }
+    }
+
+    return total;
+}
+
 // Total queries
 auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
@@ -425,17 +438,35 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
 
     return count;
 }
-auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
-    return entity_data.get_num();
-}
-auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
-    int32 total{0};
+void ATestEntityRegistry::are_entities_within_dist_sq(float const dist_sq_threshold,
+                                                      FVectors3f const& locations,
+                                                      TArrayView<bool> results) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::are_entities_within_dist_sq);
 
-    for (auto const& alive : entity_data.alive) {
-        if (alive) { ++total; }
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(results),
+    });
+    ml::fill(results, false);
+
+    auto const n_inputs{ml::num(locations)};
+    auto const n_entities{ml::num(entity_data.locations)};
+
+    for (int32 input_i{0}; input_i < n_inputs; ++input_i) {
+        float x{locations.xs[input_i]};
+        float y{locations.zs[input_i]};
+        float z{locations.ys[input_i]};
+
+        for (int32 entity_i{0}; entity_i < n_entities; ++entity_i) {
+            if (!entity_data.alive[entity_i]) { continue; }
+
+            float const dist_sq{ml::dist_sq(entity_data.locations, entity_i, x, y, x)};
+            if (dist_sq <= dist_sq_threshold) {
+                results[input_i] = true;
+                break;
+            }
+        }
     }
-
-    return total;
 }
 
 // Checks
