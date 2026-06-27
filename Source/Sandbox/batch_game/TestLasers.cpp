@@ -26,6 +26,7 @@
 #include <Engine/World.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
+#include <Templates/Greater.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
@@ -217,27 +218,60 @@ void ATestLasers::handle_collisions(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::handle_collisions);
 
     auto const n{get_num_instances()};
-
     if (n < 1) { return; }
 
-    auto* world{GetWorld()};
+    auto& data{thread_local_collision_data};
+    if (data.Num() < collision_jobs) { data.SetNum(collision_jobs); }
+
+    auto const updates_per_slice{FMath::DivideAndRoundUp(n, collision_jobs)};
+
+    ParallelFor(collision_jobs, [=, this](int32 const job_index) {
+        check_collision_thread(
+            job_index, updates_per_slice, dt, thread_local_collision_data[job_index], *this);
+    });
+
+    // Move data out of thread buffers
+    ml::reset(to_remove, hit_details);
+    for (int32 i{0}; i < collision_jobs; ++i) {
+        entity_registry->queue_damage_events(data[i].damage_events);
+        to_remove.Append(data[i].to_remove);
+
+        ml::append_from(hit_details.locations, data[i].hit_details.locations);
+    }
+
+    to_remove.Sort(TGreater<int32>{});
+    remove_instances(to_remove);
+}
+void ATestLasers::check_collision_thread(int32 const job_index,
+                                         int32 const updates_per_slice,
+                                         float const dt,
+                                         ThreadLocalCollisionData& data,
+                                         ATestLasers const& lasers) {
+    auto const n{lasers.get_num_instances()};
+    auto const* world{lasers.GetWorld()};
+
+    ml::reset(data.damage_events, data.to_remove, data.hit_details);
 
     FHitResult hit{};
 
     FCollisionQueryParams params{};
-    params.AddIgnoredActor(this);
+    params.AddIgnoredActor(&lasers);
 
-    ml::reset(to_remove, damage_events, hit_details);
+    auto const i_start{job_index * updates_per_slice};
+    auto const i_end{FMath::Min(i_start + updates_per_slice, n)};
 
-    for (int32 i{n - 1}; i >= 0; --i) {
-        auto const start{ml::get_vector3d(locations, i)};
-        auto const end{start + dt * FVector{velocities.xs[i], velocities.ys[i], velocities.zs[i]}};
+    for (int32 i{i_start}; i < i_end; ++i) {
+        auto const start{ml::get_vector3d(lasers.locations, i)};
+        auto const end{start + dt * FVector{lasers.velocities.xs[i],
+                                            lasers.velocities.ys[i],
+                                            lasers.velocities.zs[i]}};
 
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
 
         if (!did_hit) { continue; }
-        to_remove.Add(i);
+
+        data.to_remove.Add(i);
 
         // Identify who we hit
         auto* hit_actor{hit.GetActor()};
@@ -246,18 +280,14 @@ void ATestLasers::handle_collisions(float const dt) {
         auto* hit_component{hit.GetComponent()};
         if (!IsValid(hit_component)) { continue; }
 
-        damage_events.damage_amounts.Add(damages[i]);
-        damage_events.damaged_actors.Add(hit_actor);
-        damage_events.actor_components.Add(hit_component);
-        damage_events.hit_items.Add(hit.Item);
-        damage_events.instigators.Add(instigator_handles[i]);
+        data.damage_events.damage_amounts.Add(lasers.damages[i]);
+        data.damage_events.damaged_actors.Add(hit_actor);
+        data.damage_events.actor_components.Add(hit_component);
+        data.damage_events.hit_items.Add(hit.Item);
+        data.damage_events.instigators.Add(lasers.instigator_handles[i]);
 
-        ml::append(hit_details.locations, hit.Location);
+        ml::append(data.hit_details.locations, hit.Location);
     }
-
-    entity_registry->queue_damage_events(damage_events);
-
-    remove_instances(to_remove);
 }
 
 // Visuals
@@ -388,13 +418,7 @@ void ATestLasers::collect_old_instance_indices() {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(ismc_data,
-              locations,
-              rotations,
-              velocities,
-              lifetimes_remaining,
-              instigator_handles,
-              damage_events);
+    ml::reset(ismc_data, locations, rotations, velocities, lifetimes_remaining, instigator_handles);
     clear_spawn_buffers();
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> const indices) {
@@ -427,7 +451,7 @@ void ATestLasers::clear_spawn_buffers() {
     ml::reset(pending_spawns, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
-    ml::reset(damage_events, hit_details);
+    ml::reset(hit_details);
 }
 
 // Checks

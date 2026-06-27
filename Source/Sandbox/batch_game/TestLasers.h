@@ -19,6 +19,7 @@
 class USceneComponent;
 class UInstancedStaticMeshComponent;
 class UActorComponent;
+class UWorld;
 
 class UTestLasersConfig;
 class ATestEntityRegistry;
@@ -64,6 +65,12 @@ UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
+    struct ThreadLocalCollisionData {
+        UnresolvedDamageEvents damage_events;
+        TArray<int32> to_remove;
+        FTestLasersHitDetails hit_details;
+    };
+
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{4}; // RGB, lifetime
 
@@ -94,7 +101,7 @@ class ATestLasers : public AActor {
     // Spawning / Configuration
     void preallocate_instances();
     void process_pending_spawns();
-    
+
     // Movement
     void update_locations(float const dt);
     void handle_collisions(float const dt);
@@ -108,6 +115,13 @@ class ATestLasers : public AActor {
     // Lifetimes
     void tick_lifetimes(float const dt);
     void collect_old_instance_indices();
+
+    // Collision
+    static void check_collision_thread(int32 const job_index,
+                                       int32 const updates_per_slice,
+                                       float const dt,
+                                       ThreadLocalCollisionData& data,
+                                       ATestLasers const& lasers);
 
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
@@ -148,7 +162,9 @@ class ATestLasers : public AActor {
     TArray<int32> to_remove;
 
     // Damage transaction
-    UnresolvedDamageEvents damage_events;
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    int32 collision_jobs{8};
+    TArray<ThreadLocalCollisionData> thread_local_collision_data;
 
     // Debugging
     bool have_warned_hit_effect{false};
