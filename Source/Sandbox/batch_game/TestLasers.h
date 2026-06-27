@@ -72,7 +72,7 @@ class ATestLasers : public AActor {
     };
 
     static constexpr bool is_world_space{false};
-    static constexpr int32 n_custom_ismc_floats{4}; // RGB, lifetime
+    static constexpr int32 n_custom_ismc_floats{5}; // RGB[3], lifetime, spawn time
 
     ATestLasers();
 

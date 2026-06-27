@@ -172,6 +172,7 @@ void ATestLasers::process_pending_spawns() {
 
     ml::add_uninitialised(n_to_add, velocities, lifetimes_remaining);
 
+    auto const time{GetWorld()->GetTimeSeconds()};
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const speed{pending_spawns.speeds[i]};
         auto const max_distance{pending_spawns.max_distances[i]};
@@ -192,6 +193,7 @@ void ATestLasers::process_pending_spawns() {
         custom_data_spawn_buffer[base + 1] = colour.G;
         custom_data_spawn_buffer[base + 2] = colour.B;
         custom_data_spawn_buffer[base + 3] = lifetime;
+        custom_data_spawn_buffer[base + 4] = time;
     }
 
     /* ---------------------------------------------- */
