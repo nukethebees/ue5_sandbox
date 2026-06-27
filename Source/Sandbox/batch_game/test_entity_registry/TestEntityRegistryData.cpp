@@ -43,7 +43,7 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     ml::fill(slice.locations, 0.f);
     ml::fill(slice.velocities, 0.f);
     ml::fill(slice.healths, 0);
-    ml::fill(slice.teams, ETestTeam::neutral);
+    ml::fill(slice.teams, ETestTeam::White);
     ml::fill(slice.alive, uint8{0u});
 }
 void FTestEntityRegistryEntityData::add(ConstView const view) {

@@ -6,9 +6,11 @@
 
 UENUM()
 enum class ETestTeam : uint8 {
-    neutral,
-    foo,
-    bar,
-    baz,
+    White, // Neutral
+    Red,
+    Green,
+    Blue,
+    Orange,
+    Yellow,
     COUNT UMETA(DisplayName = "Count", Hidden),
 };

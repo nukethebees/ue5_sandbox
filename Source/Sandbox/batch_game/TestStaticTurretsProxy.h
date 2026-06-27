@@ -52,5 +52,5 @@ class ATestStaticTurretsProxy : public AActor {
     TObjectPtr<UArrowComponent> fire_point{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
-    ETestTeam team{ETestTeam::neutral};
+    ETestTeam team{ETestTeam::White};
 };

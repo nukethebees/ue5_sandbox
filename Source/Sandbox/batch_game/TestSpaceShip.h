@@ -187,7 +187,7 @@ class ATestSpaceShip : public APawn {
     FRegistryEntityHandle registry_handle{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    ETestTeam team{ETestTeam::neutral};
+    ETestTeam team{ETestTeam::White};
 
     /* ------------------------------------------------------------------------------------------ */
     // Visuals
