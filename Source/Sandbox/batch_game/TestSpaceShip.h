@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/BarrelRoll.h>
@@ -264,6 +265,8 @@ class ATestSpaceShip : public APawn {
     AActor* lock_on_target{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    ETestShipFireRate laser_firing_rate{ETestShipFireRate::Burst3};
 
     // Combat - Bombs
     UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb")
