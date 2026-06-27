@@ -40,6 +40,16 @@ struct FTestLasersSpawnRequests {
     void set_max_distances(float const value);
 
     void append_from(FTestLasersSpawnRequests const& other);
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.locations,
+                                         self.rotations,
+                                         self.damages,
+                                         self.speeds,
+                                         self.max_distances,
+                                         self.instigator_handles);
+    }
 };
 
 struct FTestLasersHitDetails {
@@ -52,8 +62,8 @@ struct FTestLasersHitDetails {
     void add_uninitialised(int32 const count);
 
     template <typename TFunc>
-    auto apply_arrays(this auto&& Self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(Self.locations);
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.locations);
     }
 };
 
