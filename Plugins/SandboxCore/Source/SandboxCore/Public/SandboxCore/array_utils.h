@@ -138,6 +138,15 @@ auto add_uninitialised(int32 count, Containers&... containers) -> void {
     (AddUninitialisedTraits<Containers>::add_uninitialised(containers, count), ...);
 }
 
+template <SupportsAddDefaulted Array>
+auto add_defaulted(Array& array, int32 count) -> void {
+    AddDefaultedTraits<Array>::add_defaulted(array, count);
+}
+template <SupportsAddDefaulted... Containers>
+auto add_defaulted(int32 count, Containers&... containers) -> void {
+    (AddDefaultedTraits<Containers>::add_defaulted(containers, count), ...);
+}
+
 template <typename Container, typename T>
     requires requires(Container& container) {
         { container.GetData() } -> std::same_as<T*>;

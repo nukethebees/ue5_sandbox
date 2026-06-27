@@ -8,7 +8,9 @@
 class UInstancedStaticMeshComponent;
 
 namespace ml {
+/* -------------------------------------------------------------------------- */
 // Num
+/* -------------------------------------------------------------------------- */
 template <typename T>
 struct NumTraits;
 
@@ -38,7 +40,9 @@ struct NumTraits<int32> {
     static auto num(int32 const value) noexcept -> int32 { return value; }
 };
 
+/* -------------------------------------------------------------------------- */
 // Reset
+/* -------------------------------------------------------------------------- */
 template <typename T>
 struct ResetTraits;
 
@@ -58,7 +62,9 @@ struct ResetTraits<T> {
     static auto reset(T& value) -> void { return value.reset(); }
 };
 
+/* -------------------------------------------------------------------------- */
 // Reserve
+/* -------------------------------------------------------------------------- */
 template <typename T>
 struct ReserveTraits;
 
@@ -78,7 +84,9 @@ struct ReserveTraits<T> {
     static auto reserve(T& value, int32 count) -> void { value.reserve(count); }
 };
 
+/* -------------------------------------------------------------------------- */
 // AddUninitialized
+/* -------------------------------------------------------------------------- */
 template <typename T>
 struct AddUninitialisedTraits;
 
@@ -98,7 +106,31 @@ struct AddUninitialisedTraits<T> {
     static auto add_uninitialised(T& value, int32 count) -> void { value.add_uninitialised(count); }
 };
 
+/* -------------------------------------------------------------------------- */
+// AddDefaulted
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct AddDefaultedTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { t.AddDefaulted(0) } -> std::convertible_to<int32>;
+    }
+struct AddDefaultedTraits<T> {
+    static auto add_defaulted(T& value, int32 count) -> void { value.AddDefaulted(count); }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        { t.add_defaulted(0) } -> std::convertible_to<void>;
+    }
+struct AddDefaultedTraits<T> {
+    static auto add_defaulted(T& value, int32 count) -> void { value.add_defaulted(count); }
+};
+
+/* -------------------------------------------------------------------------- */
 // RemoveAtSwap
+/* -------------------------------------------------------------------------- */
 template <typename T>
 struct RemoveAtSwapTraits;
 

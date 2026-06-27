@@ -29,6 +29,10 @@ struct FSoAArrayMixin {
         self.apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
     }
 
+    void add_defaulted(this auto& self, int32 const count) {
+        self.apply_arrays([count](auto&... arrays) { ml::add_defaulted(count, arrays...); });
+    }
+
     void remove_at_swap(this auto& self,
                         int32 const index,
                         int32 const count,
