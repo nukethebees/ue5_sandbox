@@ -39,7 +39,13 @@ concept SupportsAddDefaulted = requires(T& value, int32 count) {
 
 // remove_at_swap
 template <typename T>
-concept SupportsRemoveAtSwap = requires(T& value, int32 index, int32 count, EAllowShrinking as) {
+concept SupportsRemoveAtSwap = requires(T& value, int32 index, int32 count, EAllowShrinking const as) {
     { RemoveAtSwapTraits<T>::remove_at_swap(value, index, count, as) } -> std::same_as<void>;
+};
+
+// set_nu,
+template <typename T>
+concept SupportsSetNum = requires(T& value, int32 count, EAllowShrinking const as) {
+    { SetNumTraits<T>::set_num(value, count, as) } -> std::same_as<void>;
 };
 }

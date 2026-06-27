@@ -41,5 +41,11 @@ struct FSoAArrayMixin {
             ml::remove_at_swap(index, count, allow_shrinking, arrays...);
         });
     }
+
+    void set_num(this auto& self, int32 const count, EAllowShrinking const allow_shrinking) {
+        self.apply_arrays([count, allow_shrinking](auto&... arrays) {
+            ml::set_num(count, allow_shrinking, arrays...);
+        });
+    }
 };
 }

@@ -126,7 +126,7 @@ auto reserve(Array& array, int32 count) -> void {
 
 template <SupportsReserve... Containers>
 auto reserve(int32 count, Containers&... containers) -> void {
-    (ReserveTraits<Containers>::reserve(containers, count), ...);
+    (reserve(containers, count), ...);
 }
 
 template <SupportsAddUninitialised Array>
@@ -135,7 +135,7 @@ auto add_uninitialised(Array& array, int32 count) -> void {
 }
 template <SupportsAddUninitialised... Containers>
 auto add_uninitialised(int32 count, Containers&... containers) -> void {
-    (AddUninitialisedTraits<Containers>::add_uninitialised(containers, count), ...);
+    (add_uninitialised(containers, count), ...);
 }
 
 template <SupportsAddDefaulted Array>
@@ -144,7 +144,17 @@ auto add_defaulted(Array& array, int32 count) -> void {
 }
 template <SupportsAddDefaulted... Containers>
 auto add_defaulted(int32 count, Containers&... containers) -> void {
-    (AddDefaultedTraits<Containers>::add_defaulted(containers, count), ...);
+    (add_defaulted(containers, count), ...);
+}
+
+template <SupportsSetNum Array>
+auto set_num(Array& array, int32 count, EAllowShrinking const allow_shrinking) -> void {
+    SetNumTraits<Array>::set_num(array, count, allow_shrinking);
+}
+template <SupportsSetNum... Containers>
+auto set_num(int32 count, EAllowShrinking const allow_shrinking, Containers&... containers)
+    -> void {
+    (set_num(containers, count, allow_shrinking), ...);
 }
 
 template <typename Container, typename T>

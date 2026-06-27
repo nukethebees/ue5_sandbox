@@ -153,4 +153,30 @@ struct RemoveAtSwapTraits<T> {
         value.remove_at_swap(index, count, as);
     }
 };
+
+/* -------------------------------------------------------------------------- */
+// SetNum
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct SetNumTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { t.SetNum(0, EAllowShrinking::No) } -> std::convertible_to<void>;
+    }
+struct SetNumTraits<T> {
+    static auto set_num(T& value, int32 count, EAllowShrinking const allow_shrinking) -> void {
+        value.SetNum(count, allow_shrinking);
+    }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        { t.set_num(0, EAllowShrinking::No) } -> std::convertible_to<void>;
+    }
+struct SetNumTraits<T> {
+    static auto set_num(T& value, int32 count, EAllowShrinking const allow_shrinking) -> void {
+        value.set_num(count, allow_shrinking);
+    }
+};
 }
