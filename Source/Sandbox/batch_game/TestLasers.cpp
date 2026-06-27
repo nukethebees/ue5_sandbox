@@ -179,7 +179,11 @@ void ATestLasers::process_pending_spawns() {
     if (n_ismc_instances_to_add > 0) {
         TArray<FTransform> dummy_transforms;
         dummy_transforms.AddDefaulted(n_ismc_instances_to_add);
-        instances->AddInstances(dummy_transforms, false, is_world_space, false);
+
+        constexpr bool return_indices{false};
+        constexpr bool update_navigation{false};
+        instances->AddInstances(
+            dummy_transforms, return_indices, is_world_space, update_navigation);
     }
 
     ml::append_from(locations, pending_spawns.locations);
@@ -276,40 +280,35 @@ void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
 
     update_ismc_transforms();
-    instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, false, false);
 
-    auto const n_instances{get_num_instances()};
-    auto const n_ismcs{instances->GetNumInstances()};
-    auto const n_to_hide{n_ismcs - n_instances};
-    if (n_to_hide > 0) {
-        auto hidden_transform{FTransform::Identity};
-        hidden_transform.SetScale3D(FVector{0.0});
-        TArray<FTransform> hidden_transforms;
-        hidden_transforms.Reserve(n_to_hide);
-        for (int32 i{0}; i < n_to_hide; ++i) {
-            hidden_transforms.Add(hidden_transform);
-        }
-        instances->BatchUpdateInstancesTransforms(
-            n_instances, hidden_transforms, is_world_space, false, false);
-    }
-
-    instances->MarkRenderStateDirty();
+    constexpr bool mark_render_dirty{true};
+    constexpr bool teleport{true};
+    instances->BatchUpdateInstancesTransforms(
+        0, ismc_transforms, is_world_space, mark_render_dirty, teleport);
 }
 void ATestLasers::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc_transforms);
 
-    auto const n{get_num_instances()};
-    ismc_transforms.Reset();
+    auto const n_ismc_instances{instances->GetNumInstances()};
+    auto const n_laser_instances{get_num_instances()};
 
     auto const n_transforms{ismc_transforms.Num()};
-    auto const n_to_add(n - n_transforms);
-    if (n_to_add > 0) { ismc_transforms.AddDefaulted(n_to_add); }
+    auto const n_transforms_to_add(n_ismc_instances - n_transforms);
 
-    for (int32 i{0}; i < n; ++i) {
-        ismc_transforms[i].SetLocation(ml::get_vector3d(locations, i));
+    if (n_transforms_to_add > 0) { ismc_transforms.AddDefaulted(n_transforms_to_add); }
+
+    for (int32 i{0}; i < n_laser_instances; ++i) {
+        auto& transform{ismc_transforms[i]};
 
         auto const rotation{ml::get_rotator3d(rotations, i)};
-        ismc_transforms[i].SetRotation(rotation.Quaternion());
+
+        transform.SetLocation(ml::get_vector3d(locations, i));
+        transform.SetRotation(rotation.Quaternion());
+        transform.SetScale3D(FVector::OneVector);
+    }
+
+    for (int32 i{n_laser_instances}; i < n_ismc_instances; ++i) {
+        ismc_transforms[i].SetScale3D(FVector::ZeroVector);
     }
 }
 
