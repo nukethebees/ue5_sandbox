@@ -20,4 +20,5 @@ struct NamedNum {
     }
 
 void SANDBOXCORE_API fatal_if_nums_not_equal(std::initializer_list<NamedNum> const values);
+void SANDBOXCORE_API fatal_if_nums_not_equal(std::initializer_list<int32> const values);
 }
