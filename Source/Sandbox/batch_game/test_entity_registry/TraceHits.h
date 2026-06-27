@@ -4,18 +4,18 @@
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
 
+#include <SandboxCore/soa_array_mixin.h>
+
 class AActor;
 class UActorComponent;
 
-struct TraceHits {
+struct TraceHits : public ml::FSoAArrayMixin {
     TArray<AActor*> actors;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;
 
-    void reset();
-    auto num() const -> int32;
-    void
-        remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking);
-
-    void validate_array_sizes() const;
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.actors, self.actor_components, self.hit_items);
+    }
 };

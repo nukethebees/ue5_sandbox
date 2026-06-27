@@ -4,10 +4,12 @@
 #include <Sandbox/batch_game/test_entity_registry/TestDeathReason.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 
+#include <SandboxCore/soa_array_mixin.h>
+
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
 
-struct SANDBOX_API TestEntityUniqueEntityData {
+struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
     using kills_type = uint32;
 
     TArray<FRegistryEntityHandle> registry_handles;
@@ -16,9 +18,9 @@ struct SANDBOX_API TestEntityUniqueEntityData {
     TArray<TestEntityUniqueId> killed_by;
     TArray<ETestDeathReason> death_reason;
 
-    auto num() const -> int32;
-    void reset();
-    void add_defaulted(int32 const count);
-
-    void validate_array_sizes() const;
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.registry_handles, self.kills, self.alive, self.killed_by, self.death_reason);
+    }
 };
