@@ -156,27 +156,13 @@ void ATestLasers::process_pending_spawns() {
     if (n_to_add <= 0) { return; }
 
     auto const offset{get_num_instances()};
+    auto const new_total{offset + n_to_add};
 
-    auto const cur_total{get_num_instances()};
-    auto const new_total{cur_total + n_to_add};
-
-    TArray<FTransform> dummy_transforms;
-    dummy_transforms.AddDefaulted(n_to_add);
-
-    constexpr bool return_indices{false};
-    constexpr bool update_navigation{false};
-    instances->AddInstances(dummy_transforms, return_indices, is_world_space, update_navigation);
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestLasers::process_pending_spawns::set_custom_data);
-        for (int32 i{}; i < n_to_add; ++i) {
-            auto const& colour{pending_spawns.colours[i]};
-            TStaticArray<float, 3> rgb{colour.R, colour.G, colour.B};
-
-            instances->SetCustomData(offset + i, rgb, false);
-        }
-    }
+    /* ---------------------------------------------- */
+    // Instance data
+    /* ---------------------------------------------- */
+    custom_data_spawn_buffer.SetNumUninitialized(n_to_add * n_custom_ismc_floats,
+                                                 EAllowShrinking::No);
 
     ml::append_from(locations, pending_spawns.locations);
     ml::append_from(rotations, pending_spawns.rotations);
@@ -196,7 +182,27 @@ void ATestLasers::process_pending_spawns() {
 
         ml::assign(velocities, index, velocity);
         lifetimes_remaining[index] = lifetime;
+
+        // Per-instance custom data
+        auto const base{i * n_custom_ismc_floats};
+        auto const& colour{pending_spawns.colours[i]};
+
+        custom_data_spawn_buffer[base + 0] = colour.R;
+        custom_data_spawn_buffer[base + 1] = colour.G;
+        custom_data_spawn_buffer[base + 2] = colour.B;
+        custom_data_spawn_buffer[base + 3] = lifetime;
     }
+
+    /* ---------------------------------------------- */
+    // ISMC data
+    /* ---------------------------------------------- */
+    dummy_transforms_spawn_buffer.SetNum(n_to_add, EAllowShrinking::No);
+
+    constexpr bool return_indices{false};
+    constexpr bool update_navigation{false};
+    instances->AddInstances(
+        dummy_transforms_spawn_buffer, return_indices, is_world_space, update_navigation);
+    instances->SetCustomData(offset, offset + n_to_add - 1, custom_data_spawn_buffer, false);
 
     validate_array_sizes();
     clear_spawn_buffers();
@@ -270,7 +276,7 @@ void ATestLasers::configure_ismc() {
 
     instances->SetCullDistances(actor_config->min_cull_distance, actor_config->max_cull_distance);
 
-    instances->SetNumCustomDataFloats(3); // RGB
+    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
 
     instances->SetRemoveSwap();
 }

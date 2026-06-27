@@ -65,6 +65,7 @@ class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
     static constexpr bool is_world_space{false};
+    static constexpr int32 n_custom_ismc_floats{4}; // RGB, lifetime
 
     ATestLasers();
 
@@ -93,7 +94,7 @@ class ATestLasers : public AActor {
     // Spawning / Configuration
     void preallocate_instances();
     void process_pending_spawns();
-
+    
     // Movement
     void update_locations(float const dt);
     void handle_collisions(float const dt);
@@ -140,6 +141,8 @@ class ATestLasers : public AActor {
 
     // Spawning
     FTestLasersSpawnRequests pending_spawns;
+    TArray<float> custom_data_spawn_buffer;
+    TArray<FTransform> dummy_transforms_spawn_buffer;
 
     // Removal
     TArray<int32> to_remove;
