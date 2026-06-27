@@ -122,7 +122,6 @@ class ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     FCountdownTimers laser_cooldowns;
-    TArray<int32> indices_ready_to_fire_buffer;
     FTestLasersSpawnRequests new_lasers;
 
     // Debugging

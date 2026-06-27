@@ -375,11 +375,10 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               target_locations,
               target_directions,
               laser_cooldowns,
-              indices_ready_to_fire_buffer,
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove, indices_ready_to_fire_buffer, new_lasers, entity_death_info);
+    ml::reset(local_indices_to_remove, new_lasers, entity_death_info);
 }
 
 // Checks
