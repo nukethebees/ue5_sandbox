@@ -185,7 +185,7 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
         if (enable_ship_location_debug_drawing) { debug_drawer.draw_sphere(ship_location); }
 
         if (enable_target_debug_drawing) {
-            if (!target_indices[i].is_valid()) { continue; }
+            if (!target_handles[i].is_valid()) { continue; }
 
             auto const target_location{ml::get_vector3d(target_locations, i)};
             debug_drawer.draw_line(ship_location, target_location);
@@ -244,9 +244,10 @@ void ATestCapitalShipFighters::spawn_instances(
     ml::append_n(speeds, speed, n_new);
     teams.Append(new_teams);
     ml::append_n(healths, actor_config->health, n_new);
-    target_indices.Append(new_targets);
+    target_handles.Append(new_targets);
     ml::add_zeroed(target_locations, n_new);
     ml::add_zeroed(target_directions, n_new);
+    target_distance_sq.AddZeroed(n_new);
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
@@ -291,6 +292,8 @@ void ATestCapitalShipFighters::spawn_instances(
 void ATestCapitalShipFighters::handle_firing() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
 
+    ml::dist_sq(target_distance_sq, locations, target_locations);
+
     auto const n_ships{get_num_instances()};
     auto const cooldown{actor_config->fire_cooldown};
     auto const fire_point_offset{actor_config->fire_point_offset};
@@ -299,6 +302,7 @@ void ATestCapitalShipFighters::handle_firing() {
     auto const laser_damage{actor_config->laser_damage};
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -308,9 +312,9 @@ void ATestCapitalShipFighters::handle_firing() {
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
+        if (target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
         if (laser_cooldowns.remaining_times[ship_index] > 0.f) { continue; }
-
-        if (!target_indices[ship_index].is_valid()) { continue; }
+        if (!target_handles[ship_index].is_valid()) { continue; }
 
         auto const ship_location{ml::get_vector3f(locations, ship_index)};
         auto const target_direction{ml::get_vector3f(target_directions, ship_index)};
@@ -351,9 +355,10 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               speeds,
               teams,
               healths,
-              target_indices,
+              target_handles,
               target_locations,
               target_directions,
+              target_distance_sq,
               laser_cooldowns,
               new_lasers);
 }
@@ -374,19 +379,20 @@ void ATestCapitalShipFighters::remove_dead_entities() {
                                         teams,
                                         healths,
                                         laser_cooldowns.remaining_times,
-                                        target_indices,
+                                        target_handles,
                                         target_locations,
-                                        target_directions);
+                                        target_directions,
+                                        target_distance_sq);
 
     // Update target entity index
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
         auto const entity_index{entity_handles[i]};
 
-        auto const target_entity_index{target_indices[i]};
+        auto const target_entity_index{target_handles[i]};
         if (target_entity_index.is_valid()) {
             if (entity_registry->is_stale(target_entity_index)) {
-                target_indices[i] = FRegistryEntityHandle{};
+                target_handles[i] = FRegistryEntityHandle{};
             } else {
                 ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
             }
@@ -412,9 +418,10 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(target_indices),
+        SANDBOX_NAMED_NUM(target_handles),
         SANDBOX_NAMED_NUM(target_locations),
         SANDBOX_NAMED_NUM(target_directions),
+        SANDBOX_NAMED_NUM(target_distance_sq),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

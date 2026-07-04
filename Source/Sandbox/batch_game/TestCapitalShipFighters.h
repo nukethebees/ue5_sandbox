@@ -114,9 +114,10 @@ class ATestCapitalShipFighters : public AActor {
     TArray<int32> healths;
 
     // Targets
-    TArray<FRegistryEntityHandle> target_indices;
+    TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
     FVectors3f target_directions;
+    TArray<float> target_distance_sq;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     float fire_dot_product_threshold{0.95f};
 

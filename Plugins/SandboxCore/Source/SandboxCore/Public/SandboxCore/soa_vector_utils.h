@@ -264,6 +264,17 @@ inline auto
 
     return ml::size_sq(dx, dy, dz);
 }
+inline void dist_sq(TArrayView<float> const out, FVectors3f const& as, FVectors3f const& bs) {
+    ml::kernel::dist_sq_vector(out.GetData(),
+                               as.xs.GetData(),
+                               as.ys.GetData(),
+                               as.zs.GetData(),
+                               bs.xs.GetData(),
+                               bs.ys.GetData(),
+                               bs.zs.GetData(),
+                               out.Num());
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 // Size
 /* ---------------------------------------------------------------------------------------------- */
