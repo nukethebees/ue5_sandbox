@@ -80,7 +80,8 @@ void ATestCapitalShipFighters::make_decisions() {
     }
 
     for (int32 const i : indices_without_targets_buffer) {
-        target_handles[i] = entity_registry->get_any_non_team_entity(teams[i]);
+        target_handles[i] =
+            entity_registry->get_any_non_team_entity(teams[i], ETestEntityType::CapitalShip);
     }
 }
 void ATestCapitalShipFighters::move(float const dt) {

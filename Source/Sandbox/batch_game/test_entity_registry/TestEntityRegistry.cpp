@@ -515,6 +515,21 @@ auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team) const
 
     return {};
 }
+auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team,
+                                                  ETestEntityType const entity_type) const
+    -> FRegistryEntityHandle {
+    auto const n{get_num_elements()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) { continue; }
+        if (entity_data.teams[i] == team) { continue; }
+        if (entity_data.entity_types[i] != entity_type) { continue; }
+
+        return {i, generations[i]};
+    }
+
+    return {};
+}
 
 // Checks
 void ATestEntityRegistry::validate_array_sizes() const {
