@@ -88,6 +88,9 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto is_valid_handle(FRegistryEntityHandle const index) const -> bool;
     auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
+    // Handle updates
+    void refresh_handles(TArrayView<FRegistryEntityHandle> handles) const;
+
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
     auto get_num_alive_active_entities() const noexcept -> int32;

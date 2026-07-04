@@ -273,6 +273,15 @@ auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> b
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }
 
+// Handle updates
+void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
+    for (auto& handle : handles) {
+        auto const handle_state{analyse_handle(handle)};
+        check(handle_state != ERegistryHandleState::Invalid);
+        if (handle_state == ERegistryHandleState::Stale) { handle.reset(); }
+    }
+}
+
 // Unique id queries
 auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());
