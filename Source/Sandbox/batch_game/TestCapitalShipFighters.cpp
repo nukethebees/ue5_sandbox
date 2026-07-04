@@ -71,18 +71,11 @@ void ATestCapitalShipFighters::update_timers(float const dt) {
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
 
-    indices_without_targets_buffer.Reset();
-    entity_registry->refresh_handles(target_handles);
-
-    auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        if (target_handles[i].is_null()) { indices_without_targets_buffer.Add(i); }
-    }
-
-    for (int32 const i : indices_without_targets_buffer) {
-        target_handles[i] =
-            entity_registry->get_any_non_team_entity(teams[i], ETestEntityType::CapitalShip);
-    }
+    ml::batch::refresh_targets(*entity_registry,
+                               target_handles,
+                               indices_without_targets_buffer,
+                               teams,
+                               ETestEntityType::CapitalShip);
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);

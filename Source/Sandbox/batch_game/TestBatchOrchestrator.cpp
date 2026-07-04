@@ -143,6 +143,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
         turrets->make_decisions();
+        capital_ships->make_decisions();
         capital_ship_fighters->make_decisions();
     }
 

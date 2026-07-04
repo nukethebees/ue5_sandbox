@@ -76,6 +76,15 @@ void ATestCapitalShips::update_timers(float const dt) {
 
     spawn_timers.tick(dt);
 }
+void ATestCapitalShips::make_decisions() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::make_decisions);
+
+    ml::batch::refresh_targets(*entity_registry,
+                               target_handles,
+                               indices_without_targets_buffer,
+                               teams,
+                               ETestEntityType::CapitalShip);
+}
 void ATestCapitalShips::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);
 
@@ -203,7 +212,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         new_targets[i] = target_index;
     }
 
-    target_entity_indices = MoveTemp(new_targets);
+    target_handles = MoveTemp(new_targets);
 
     ml::destroy_all_actors(proxies);
 }
@@ -228,7 +237,7 @@ void ATestCapitalShips::spawn_ships(
 
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
-    target_entity_indices.Append(new_target_indices);
+    target_handles.Append(new_target_indices);
     spawn_timers.AddZeroed(n_to_add);
     teams.Append(new_teams);
 
@@ -295,7 +304,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
     ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams, new_fighter_targets);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
-        auto const target_index{target_entity_indices[i]};
+        auto const target_index{target_handles[i]};
         auto const base_location{ml::get_vector3f(locations, i)};
         auto const base_rotation{ml::get_rotator3f(rotations, i)};
 
@@ -432,7 +441,7 @@ void ATestCapitalShips::handle_dead_entities() {
                                         spawn_timers.remaining_times,
                                         teams,
                                         healths,
-                                        target_entity_indices);
+                                        target_handles);
 }
 
 // Misc
@@ -449,7 +458,7 @@ void ATestCapitalShips::clear_runtime_state() {
               new_fighter_rotations,
               teams,
               healths,
-              target_entity_indices);
+              target_handles);
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
@@ -472,7 +481,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
         auto const ship_location{ml::get_vector3d(locations, i)};
 
         // Draw target
-        auto const target_index{target_entity_indices[i]};
+        auto const target_index{target_handles[i]};
         if (entity_registry->is_valid_handle(target_index)) {
             FVector3d const target_location{entity_registry->get_location(target_index)};
             drawer.draw_arrow(ship_location, target_location);
@@ -497,7 +506,7 @@ void ATestCapitalShips::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(spawn_timers),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
-        SANDBOX_NAMED_NUM(target_entity_indices),
+        SANDBOX_NAMED_NUM(target_handles),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

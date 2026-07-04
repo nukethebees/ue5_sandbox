@@ -45,6 +45,7 @@ class ATestCapitalShips : public AActor {
     void begin_tick();
     void commit_spawns();
     void update_timers(float const dt);
+    void make_decisions();
     void resolve_hit_events();
     void update_entity_registry();
     void sync_from_registry();
@@ -143,7 +144,8 @@ class ATestCapitalShips : public AActor {
     TArray<int32> healths{};
 
     // Targets
-    TArray<FRegistryEntityHandle> target_entity_indices;
+    TArray<FRegistryEntityHandle> target_handles;
+    TArray<int32> indices_without_targets_buffer;
 
     // Debugging
     UPROPERTY(EditAnywhere, Category = "Sandbox")

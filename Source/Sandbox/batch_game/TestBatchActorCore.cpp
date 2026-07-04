@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestEntityType.h>
 
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
@@ -27,6 +28,24 @@ void resolve_hit_events(ATestEntityRegistry const& registry,
             entity_death_info.add(
                 ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
         }
+    }
+}
+
+void refresh_targets(ATestEntityRegistry const& registry,
+                     TArray<FRegistryEntityHandle>& target_handles,
+                     TArray<int32>& indices_without_targets,
+                     TConstArrayView<ETestTeam> const teams,
+                     ETestEntityType const target_type) {
+    indices_without_targets.Reset();
+    registry.refresh_handles(target_handles);
+
+    auto const n{target_handles.Num()};
+    for (int32 i{0}; i < n; ++i) {
+        if (target_handles[i].is_null()) { indices_without_targets.Add(i); }
+    }
+
+    for (int32 const i : indices_without_targets) {
+        target_handles[i] = registry.get_any_non_team_entity(teams[i], target_type);
     }
 }
 }
