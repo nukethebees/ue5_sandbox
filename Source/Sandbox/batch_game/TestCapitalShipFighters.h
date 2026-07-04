@@ -35,7 +35,7 @@ class ATestCapitalShipFighters : public AActor {
     void begin_play();
 
     void begin_tick();
-    void tick(float const dt);
+    void update_timers(float const dt);
     void move(float const dt);
     void queue_commands();
     void resolve_hit_events();

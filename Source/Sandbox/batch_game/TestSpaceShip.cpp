@@ -93,8 +93,8 @@ void ATestSpaceShip::begin_play() {
 void ATestSpaceShip::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);
 }
-void ATestSpaceShip::tick(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::tick);
+void ATestSpaceShip::update_timers(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_timers);
 
     log_config.tick(dt);
 

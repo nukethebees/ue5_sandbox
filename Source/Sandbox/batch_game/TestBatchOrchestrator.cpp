@@ -127,17 +127,22 @@ void ATestBatchOrchestrator::tick(float const dt) {
     // ---------------------------------------------------------------------------------------------
     // Actor decision phase
     // ---------------------------------------------------------------------------------------------
+    // Query target data from registry
+    // Queue projectile spawns
+
     {
-        // Query target data from registry
-        // Queue projectile spawns
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::tick);
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
-        if (player_ship) { player_ship->tick(dt); }
+        if (player_ship) { player_ship->update_timers(dt); }
+        capital_ship_fighters->update_timers(dt);
+        capital_ships->update_timers(dt);
+        turrets->update_timers(dt);
+        spinners->update_timers(dt);
+    }
 
-        capital_ships->tick(dt);
-        capital_ship_fighters->tick(dt);
-        turrets->tick(dt);
-        spinners->tick(dt);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
+        turrets->make_decisions();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -150,6 +155,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         if (player_ship) { player_ship->move(dt); }
 
         capital_ship_fighters->move(dt);
+        spinners->move(dt);
     }
 
     {
@@ -161,6 +167,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
         capital_ship_fighters->queue_commands();
         turrets->queue_commands();
+        spinners->queue_commands();
     }
 
     {

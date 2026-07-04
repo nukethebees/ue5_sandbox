@@ -60,11 +60,19 @@ void ATestTubeSpinners::begin_play() {
 void ATestTubeSpinners::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_tick);
 }
-void ATestTubeSpinners::tick(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::tick);
+void ATestTubeSpinners::update_timers(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_timers);
 
     laser_cooldowns.tick(dt);
+}
+void ATestTubeSpinners::move(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::move);
+
     rotate_instances(dt);
+}
+void ATestTubeSpinners::queue_commands() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::queue_commands);
+
     fire_lasers();
 }
 void ATestTubeSpinners::update_entity_registry() {

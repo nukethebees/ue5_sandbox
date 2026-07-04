@@ -71,8 +71,8 @@ void ATestCapitalShips::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
     handle_fighter_spawning();
 }
-void ATestCapitalShips::tick(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::tick);
+void ATestCapitalShips::update_timers(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
 
     spawn_timers.tick(dt);
 }

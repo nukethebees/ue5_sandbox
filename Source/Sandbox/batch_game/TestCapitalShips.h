@@ -44,7 +44,7 @@ class ATestCapitalShips : public AActor {
 
     void begin_tick();
     void commit_spawns();
-    void tick(float const dt);
+    void update_timers(float const dt);
     void resolve_hit_events();
     void update_entity_registry();
     void sync_from_registry();

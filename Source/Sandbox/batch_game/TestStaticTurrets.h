@@ -40,7 +40,8 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     void begin_play();
 
     void begin_tick();
-    void tick(float const dt);
+    void update_timers(float const dt);
+    void make_decisions();
     void queue_commands();
     void resolve_hit_events();
     void update_entity_registry();

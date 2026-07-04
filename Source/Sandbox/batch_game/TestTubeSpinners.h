@@ -35,7 +35,9 @@ class ATestTubeSpinners : public AActor {
     void begin_play();
 
     void begin_tick();
-    void tick(float const dt);
+    void update_timers(float const dt);
+    void move(float const dt);
+    void queue_commands();
     void update_entity_registry();
     void update_visuals();
     void end_tick();

@@ -69,12 +69,14 @@ void ATestStaticTurrets::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
     clear_tick_buffers();
 }
-void ATestStaticTurrets::tick(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::tick);
+void ATestStaticTurrets::update_timers(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_timers);
 
     laser_cooldowns.tick(dt);
     log_config.tick(dt);
-
+}
+void ATestStaticTurrets::make_decisions() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::make_decisions);
     perform_search();
 }
 void ATestStaticTurrets::queue_commands() {

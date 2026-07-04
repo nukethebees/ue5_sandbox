@@ -63,8 +63,8 @@ void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
 }
-void ATestCapitalShipFighters::tick(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tick);
+void ATestCapitalShipFighters::update_timers(float const dt) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
     laser_cooldowns.tick(dt);
 }
