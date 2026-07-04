@@ -239,7 +239,7 @@ void ATestCapitalShips::spawn_ships(
 // Entity data
 void ATestCapitalShips::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::prepare_entity_update_data);
-    check(entity_update_data.get_num() == 0);
+    check(entity_update_data.num() == 0);
 
     auto const n{get_num_instances()};
 
@@ -249,6 +249,7 @@ void ATestCapitalShips::prepare_entity_update_data() {
     ml::fill(entity_update_data.velocities, 0.f);
     entity_update_data.healths = healths;
     entity_update_data.teams = teams;
+    entity_update_data.set_all_entity_types(ETestEntityType::CapitalShip);
 
     for (int32 i{0}; i < n; ++i) {
         entity_update_data.alive[i] = healths[i] > 0;

@@ -4,36 +4,29 @@
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_vector_utils.h>
 
-auto FTestEntityRegistryEntityData::get_num() const -> int32 {
-    return ml::num(locations);
-}
 auto FTestEntityRegistryEntityData::get_view() -> View {
     return {
+        {},
         locations.get_view(),
         velocities.get_view(),
         healths,
         teams,
+        entity_types,
         alive,
     };
 }
 auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
     return {
+        {},
         locations.get_view(),
         velocities.get_view(),
         healths,
         teams,
+        entity_types,
         alive,
     };
 }
 
-void FTestEntityRegistryEntityData::add_uninitialised(int32 const count) {
-    ml::invoke_on_all([count](auto& a) { ml::add_uninitialised(a, count); },
-                      locations,
-                      velocities,
-                      healths,
-                      teams,
-                      alive);
-}
 void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     add_uninitialised(count);
 
@@ -44,6 +37,7 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     ml::fill(slice.velocities, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::White);
+    ml::fill(slice.entity_types, ETestEntityType::COUNT);
     ml::fill(slice.alive, uint8{0u});
 }
 void FTestEntityRegistryEntityData::add(ConstView const view) {
@@ -52,11 +46,8 @@ void FTestEntityRegistryEntityData::add(ConstView const view) {
 
     healths.Append(view.healths);
     teams.Append(view.teams);
+    entity_types.Append(view.entity_types);
     alive.Append(view.alive);
-}
-
-void FTestEntityRegistryEntityData::reset() {
-    ml::reset(locations, velocities, healths, teams, alive);
 }
 
 void FTestEntityRegistryEntityData::set_all_alive() {
@@ -64,4 +55,7 @@ void FTestEntityRegistryEntityData::set_all_alive() {
 }
 void FTestEntityRegistryEntityData::set_all_velocities(float const v) {
     ml::fill(velocities, v);
+}
+void FTestEntityRegistryEntityData::set_all_entity_types(ETestEntityType const v) {
+    ml::fill(entity_types, v);
 }

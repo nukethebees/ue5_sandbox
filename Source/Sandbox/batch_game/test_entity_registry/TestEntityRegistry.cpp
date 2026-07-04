@@ -70,7 +70,9 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     -> NewEntities {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
 
-    auto const count{view.get_num()};
+    view.validate_array_sizes();
+
+    auto const count{view.num()};
 
     NewEntities new_entities;
     new_entities.first_id = {
@@ -90,9 +92,12 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
         new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
 
-        unique_entities.registry_handles[unique_id.id] =
+        auto const i{unique_id.id};
+
+        unique_entities.registry_handles[i] =
             FRegistryEntityHandle{entity_index, generations[entity_index]};
-        unique_entities.alive[unique_id.id] = view.alive[view_index];
+        unique_entities.alive[i] = view.alive[view_index];
+        unique_entities.entity_types[i] = view.entity_types[view_index];
 
         new_entity_index++;
     }};
@@ -106,6 +111,7 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
         entity_data.healths[entity_index] = view.healths[i];
         entity_data.teams[entity_index] = view.teams[i];
         entity_data.alive[entity_index] = view.alive[i];
+        entity_data.entity_types[entity_index] = view.entity_types[i];
 
         ++generations[entity_index];
 
@@ -186,7 +192,7 @@ void ATestEntityRegistry::set_death_infos(EntityDeathInfo const& death_info) {
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
 
-    auto const n{queued_entity_data.get_num()};
+    auto const n{queued_entity_data.num()};
 
     for (int32 i{0}; i < n; ++i) {
         auto const entity_handle{queued_entity_update_handles[i]};
@@ -208,7 +214,7 @@ void ATestEntityRegistry::commit_death_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
 
     dead_entities_this_frame.Reset();
-    auto const n{entity_data.get_num()};
+    auto const n{entity_data.num()};
     for (int32 i{0}; i < n; ++i) {
         if (entity_data.alive[i] == 0u) { dead_entities_this_frame.Emplace(i, generations[i]); }
     }
@@ -227,7 +233,7 @@ void ATestEntityRegistry::refresh_free_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::refresh_free_indices);
 
     free_indices.Reset();
-    auto const n{entity_data.get_num()};
+    auto const n{entity_data.num()};
     for (int32 i{0}; i < n; ++i) {
         if (entity_data.alive[i] == 0u) { free_indices.Add(i); }
     }
@@ -334,7 +340,7 @@ auto ATestEntityRegistry::get_dead_entities_this_frame() const
 }
 
 auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
-    return entity_data.get_num();
+    return entity_data.num();
 }
 auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
     int32 total{0};
@@ -481,6 +487,8 @@ void ATestEntityRegistry::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(entity_owners),
         SANDBOX_NAMED_NUM(queued_damage_events),
     });
+
+    entity_data.validate_array_sizes();
 
     auto const num_ids_issued{static_cast<int32>(get_num_unique_ids_issued())};
     if (unique_entities.num() != num_ids_issued) {

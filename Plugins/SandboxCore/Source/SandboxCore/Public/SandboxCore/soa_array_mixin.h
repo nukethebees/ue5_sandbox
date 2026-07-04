@@ -7,18 +7,20 @@
 #include <HAL/Platform.h>
 
 namespace ml {
-struct FSoAArrayMixin {
+struct FSoACommonMixin {
     void validate_array_sizes(this auto const& self) {
         self.apply_arrays(
             [](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
     }
 
-    void reset(this auto& self) {
-        self.apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
-    }
-
     auto num(this auto const& self) noexcept -> int32 {
         return self.apply_arrays([](auto const& first, auto const&...) { return ml::num(first); });
+    }
+};
+
+struct FSoAArrayMixin : public FSoACommonMixin {
+    void reset(this auto& self) {
+        self.apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
     }
 
     void reserve(this auto& self, int32 const count) {
@@ -48,4 +50,6 @@ struct FSoAArrayMixin {
         });
     }
 };
+
+struct FSoAViewMixin : public FSoACommonMixin {};
 }

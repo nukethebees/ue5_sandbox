@@ -9,7 +9,9 @@
 class AActor;
 class UActorComponent;
 
-struct TraceHits : public ml::FSoAArrayMixin {
+struct TraceHits
+    : public ml::FSoAViewMixin
+    , ml::FSoAArrayMixin {
     TArray<AActor*> actors;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;

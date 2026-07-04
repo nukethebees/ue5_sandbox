@@ -264,6 +264,7 @@ void ATestCapitalShipFighters::spawn_instances(
         entity_data.teams[i] = teams[index];
         entity_data.alive[i] = true;
     }
+    entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
 
     // Velocities
     TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};

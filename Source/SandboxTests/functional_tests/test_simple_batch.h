@@ -18,7 +18,7 @@ class ATestSimpleBatch : public AFunctionalTest {
   protected:
     void check_alive_matches_kills();
     void update_kills();
-    
+
     void handle_kill_count_reached();
     void handle_fail();
 

@@ -153,6 +153,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     ml::fill(entity_data.velocities, 0.f);
     ml::fill(entity_data.healths, 1000000);
     ml::fill(entity_data.teams, ETestTeam::White);
+    entity_data.set_all_entity_types(ETestEntityType::TubeSpinner);
     entity_data.set_all_alive();
 
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};

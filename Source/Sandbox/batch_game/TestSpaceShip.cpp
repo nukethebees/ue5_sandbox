@@ -174,6 +174,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntity
     entity_data.healths.Add(health.health);
     entity_data.teams.Add(team);
     entity_data.alive.Add(1);
+    entity_data.entity_types.Add(ETestEntityType::PlayerShip);
 
     return entity_data;
 }
