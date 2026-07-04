@@ -36,6 +36,7 @@ class ATestCapitalShipFighters : public AActor {
 
     void begin_tick();
     void update_timers(float const dt);
+    void make_decisions();
     void move(float const dt);
     void queue_commands();
     void resolve_hit_events();
@@ -118,6 +119,8 @@ class ATestCapitalShipFighters : public AActor {
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
+    TArray<int32> indices_without_targets_buffer;
+
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     float fire_dot_product_threshold{0.95f};
 
