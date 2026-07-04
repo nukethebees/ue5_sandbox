@@ -13,7 +13,8 @@
 struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
     using kills_type = uint32;
 
-    TArray<FRegistryEntityHandle> registry_handles;
+    TArray<FRegistryEntityHandle::index_type> registry_indices;
+    TArray<FRegistryEntityHandle::generation_type> registry_generations;
     TArray<ETestEntityType> entity_types;
     TArray<kills_type> kills;
     TArray<uint8> alive;
@@ -22,7 +23,8 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.registry_handles,
+        return std::forward<TFunc>(func)(self.registry_indices,
+                                         self.registry_generations,
                                          self.entity_types,
                                          self.kills,
                                          self.alive,

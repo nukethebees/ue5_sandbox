@@ -2,16 +2,14 @@
 
 #include "CoreMinimal.h"
 
-#include "RegistryEntityHandle.generated.h"
-
-USTRUCT()
 struct SANDBOX_API FRegistryEntityHandle {
-    GENERATED_BODY()
+    using index_type = int32;
+    using generation_type = int32;
 
-    static constexpr int32 INDEX_NONE{-1};
+    static constexpr index_type INDEX_NONE{-1};
 
     FRegistryEntityHandle() = default;
-    FRegistryEntityHandle(int32 index, int32 generation)
+    FRegistryEntityHandle(index_type index, generation_type generation)
         : index(index)
         , generation(generation) {}
 
@@ -22,11 +20,8 @@ struct SANDBOX_API FRegistryEntityHandle {
     auto to_string() const -> FString;
     void reset();
 
-    UPROPERTY(VisibleAnywhere)
-    int32 index{INDEX_NONE};
-
-    UPROPERTY(VisibleAnywhere)
-    int32 generation{INDEX_NONE};
+    index_type index{INDEX_NONE};
+    generation_type generation{INDEX_NONE};
 };
 
 inline void FRegistryEntityHandle::reset() {

@@ -94,8 +94,8 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
 
         auto const i{unique_id.id};
 
-        unique_entities.registry_handles[i] =
-            FRegistryEntityHandle{entity_index, generations[entity_index]};
+        unique_entities.registry_indices[i] = entity_index;
+        unique_entities.registry_generations[i] = generations[entity_index];
         unique_entities.alive[i] = view.alive[view_index];
         unique_entities.entity_types[i] = view.entity_types[view_index];
 
@@ -300,7 +300,10 @@ auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
     auto const n_unique{unique_entities.num()};
 
     for (int32 i{0}; i < n_unique; ++i) {
-        if (unique_entities.registry_handles[i] == handle) { return {.id = i}; }
+        if ((unique_entities.registry_indices[i] == handle.index) &&
+            (unique_entities.registry_generations[i] == handle.generation)) {
+            return {.id = i};
+        }
     }
 
     checkf(false, TEXT("A missing unique ID should be impossible here."));
@@ -521,7 +524,10 @@ void ATestEntityRegistry::validate_unique_entity_data() const {
     auto const n{unique_entities.num()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const handle{unique_entities.registry_handles[i]};
+        FRegistryEntityHandle const handle{
+            unique_entities.registry_indices[i],
+            unique_entities.registry_generations[i],
+        };
         auto const handle_status{analyse_handle(handle)};
         check(handle_status != ERegistryHandleState::Invalid);
 

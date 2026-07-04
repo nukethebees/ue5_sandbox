@@ -127,7 +127,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     FTestLasersSpawnRequests new_lasers;
 
     // Enemies
-    UPROPERTY()
     TArray<FRegistryEntityHandle> target_handles{};
 
     // Health

@@ -109,7 +109,6 @@ class ATestCapitalShips : public AActor {
 
     // Entity data
     TestEntityOwnerId owner_id{};
-    UPROPERTY()
     TArray<FRegistryEntityHandle> entity_handles;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
@@ -144,7 +143,6 @@ class ATestCapitalShips : public AActor {
     TArray<int32> healths{};
 
     // Targets
-    UPROPERTY()
     TArray<FRegistryEntityHandle> target_entity_indices;
 
     // Debugging

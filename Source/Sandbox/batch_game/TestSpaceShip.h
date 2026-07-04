@@ -207,7 +207,6 @@ class ATestSpaceShip : public APawn {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FRegistryEntityHandle registry_handle{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
