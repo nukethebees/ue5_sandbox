@@ -261,11 +261,11 @@ void ATestEntityRegistry::end_tick() {
 // Handle queries
 auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
     -> ERegistryHandleState {
+    if (handle.is_null()) { return ERegistryHandleState::Null; }
     if (!generations.IsValidIndex(handle.index)) { return ERegistryHandleState::Invalid; }
     auto const current_generation{generations[handle.index]};
     if (current_generation == handle.generation) { return ERegistryHandleState::Active; }
     if (current_generation > handle.generation) { return ERegistryHandleState::Stale; }
-    if (handle.is_null()) { return ERegistryHandleState::Null; }
 
     return ERegistryHandleState::Invalid;
 }
