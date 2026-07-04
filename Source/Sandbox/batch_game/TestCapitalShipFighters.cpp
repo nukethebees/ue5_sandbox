@@ -89,6 +89,15 @@ void ATestCapitalShipFighters::resolve_hit_events() {
                                   local_indices_to_remove,
                                   entity_death_info);
 
+    auto const view{entity_registry->get_damage_queue_view(owner_id)};
+    auto const n{view.num()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const ismc_index_hit{view.hit_items[i]};
+        auto const instigator{view.instigators[i]};
+
+        target_handles[ismc_index_hit] = instigator;
+    }
+
     validate_array_sizes();
 }
 void ATestCapitalShipFighters::update_entity_registry() {
