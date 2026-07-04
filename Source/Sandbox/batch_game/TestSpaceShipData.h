@@ -94,9 +94,6 @@ class UTestSpaceShipData : public UDataAsset {
     float laser_firing_period{0.15f};
 
     UPROPERTY(EditAnywhere, Category = "Laser")
-    int32 lasers_per_burst{3};
-
-    UPROPERTY(EditAnywhere, Category = "Laser")
     float laser_lock_on_transition_delay{1.f};
     UPROPERTY(EditAnywhere, Category = "Laser")
     float laser_lock_on_distance{10000.f};

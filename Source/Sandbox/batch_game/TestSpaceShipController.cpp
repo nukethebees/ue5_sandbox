@@ -49,6 +49,9 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(input.fire_laser, Started, &ThisClass::start_fire_laser);
     bind(input.fire_laser, Completed, &ThisClass::stop_fire_laser);
     bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
+
+    bind(input.cycle_prev_fire_rate, Started, &ThisClass::cycle_prev_fire_rate);
+    bind(input.cycle_next_fire_rate, Started, &ThisClass::cycle_next_fire_rate);
 }
 
 // Life cycle
@@ -135,16 +138,24 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     auto& health_delegate{ship->on_health_changed};
     health_delegate.BindUObject(hud_widget, &UShipHudWidget::set_health);
     hud_widget->set_health(ship->get_health_info());
+
     ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
     hud_widget->set_speed(ship->get_speed());
+
     ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
     hud_widget->set_energy(1.f);
+
     ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
     hud_widget->set_bombs(ship->get_bombs());
+
     ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
     on_laser_firing_mode_changed(ELaserFiringMode::idle);
+
     ship->on_lock_on_acquired.BindUObject(this, &ThisClass::on_lock_on_acquired);
     on_lock_on_acquired(nullptr);
+
+    ship->on_ship_fire_rate_changed.BindUObject(this, &ThisClass::on_ship_fire_rate_changed);
+    on_ship_fire_rate_changed(ship->get_laser_fire_rate());
 
 #if WITH_EDITOR
     ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
@@ -252,6 +263,39 @@ void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship)
 
     hud_widget->set_lock_on_widget_position(screen_pos);
 }
+void ATestSpaceShipController::on_ship_fire_rate_changed(ETestShipFireRate const value) {
+    check(hud_widget);
+    hud_widget->set_fire_rate(*ml::to_string_without_type_prefix(value));
+}
+void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
+    check(hud_widget);
+
+    switch (mode) {
+        case ELaserFiringMode::lock_on_searching: {
+            hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
+            break;
+        }
+        case ELaserFiringMode::lock_on_acquired: {
+            break;
+        }
+        default: {
+            UE_LOG(LogSandboxController, Warning, TEXT("Unhandled laser firing mode."));
+            [[fallthrough]];
+        }
+        case ELaserFiringMode::idle:
+            [[fallthrough]];
+        case ELaserFiringMode::lock_on_transition:
+            [[fallthrough]];
+        case ELaserFiringMode::burst: {
+            hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
+            break;
+        }
+    }
+}
+void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
+    check(hud_widget);
+    hud_widget->set_lock_on_widget_visibility(target != nullptr);
+}
 
 // Movement
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
@@ -330,34 +374,11 @@ void ATestSpaceShipController::stop_fire_laser() {
     get_pawn().stop_fire_laser();
 }
 
-void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
-    check(hud_widget);
-
-    switch (mode) {
-        case ELaserFiringMode::lock_on_searching: {
-            hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
-            break;
-        }
-        case ELaserFiringMode::lock_on_acquired: {
-            break;
-        }
-        default: {
-            UE_LOG(LogSandboxController, Warning, TEXT("Unhandled laser firing mode."));
-            [[fallthrough]];
-        }
-        case ELaserFiringMode::idle:
-            [[fallthrough]];
-        case ELaserFiringMode::lock_on_transition:
-            [[fallthrough]];
-        case ELaserFiringMode::burst: {
-            hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
-            break;
-        }
-    }
+void ATestSpaceShipController::cycle_prev_fire_rate() {
+    get_pawn().select_previous_laser_fire_rate();
 }
-void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
-    check(hud_widget);
-    hud_widget->set_lock_on_widget_visibility(target != nullptr);
+void ATestSpaceShipController::cycle_next_fire_rate() {
+    get_pawn().select_next_laser_fire_rate();
 }
 
 // Bomb

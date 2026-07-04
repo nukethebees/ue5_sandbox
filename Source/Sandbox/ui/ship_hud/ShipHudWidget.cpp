@@ -102,12 +102,20 @@ void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_
     set_widget_visibility_checked(stopwatch_widget, new_visibility);
 }
 
-void UShipHudWidget::set_mission_status(FStringView const mission_status) {
+void UShipHudWidget::set_mission_status(FStringView const value) {
     check(IsValid(stopwatch_widget));
-    mission_status_widget->update(mission_status);
+    mission_status_widget->update(value);
 }
 void UShipHudWidget::set_mission_status_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(mission_status_widget, new_visibility);
+}
+
+void UShipHudWidget::set_fire_rate(FStringView const value) {
+    check(IsValid(fire_rate_widget));
+    fire_rate_widget->update(value);
+}
+void UShipHudWidget::set_fire_rate_visibility(ESlateVisibility const new_visibility) {
+    set_widget_visibility_checked(fire_rate_widget, new_visibility);
 }
 
 void UShipHudWidget::set_lives(int32 value) {

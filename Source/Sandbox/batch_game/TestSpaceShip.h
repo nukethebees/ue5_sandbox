@@ -62,14 +62,18 @@ class ATestSpaceShip : public APawn {
     void update_visuals();
     void end_tick();
 
+    /* ------------------------------------------------------------------------------------------ */
     // Entity data
+    /* ------------------------------------------------------------------------------------------ */
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
 
+    /* ------------------------------------------------------------------------------------------ */
     // Movement
+    /* ------------------------------------------------------------------------------------------ */
     void turn(FVector2D direction);
     void start_boost();
     void stop_boost();
@@ -83,12 +87,21 @@ class ATestSpaceShip : public APawn {
     // Energy
     bool energy_is_full() const;
 
+    /* ------------------------------------------------------------------------------------------ */
     // Combat
+    /* ------------------------------------------------------------------------------------------ */
     auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
+
     // Combat - laser
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();
+
+    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate { return laser_fire_rate; }
+    void select_next_laser_fire_rate() noexcept;
+    void select_previous_laser_fire_rate() noexcept;
+    void set_laser_fire_rate(ETestShipFireRate const value) noexcept;
+
     // Combat - bomb
     void fire_bomb();
     void add_bomb();
@@ -119,31 +132,41 @@ class ATestSpaceShip : public APawn {
     FOnShipBombsChanged on_bombs_changed;
     FOnLaserModeChanged on_laser_mode_changed;
     FOnLockOnAcquired on_lock_on_acquired;
+    FOnShipFireRateChanged on_ship_fire_rate_changed;
 
 #if WITH_EDITORONLY_DATA
     FOnSpeedSampled on_speed_sampled;
 #endif
   protected:
+    /* ------------------------------------------------------------------------------------------ */
     // Entity data
+    /* ------------------------------------------------------------------------------------------ */
     void register_with_entity_registry();
     auto get_entity_update_data() const -> FTestEntityRegistryEntityData;
 
+    /* ------------------------------------------------------------------------------------------ */
     // Movement
+    /* ------------------------------------------------------------------------------------------ */
     void update_barrel_roll_timers(float const dt);
     auto GetVelocity() const -> FVector override;
     void set(EBoostBrakeState s);
     void update_boost_brake(this ATestSpaceShip& self, float const dt);
     void integrate_velocity(this ATestSpaceShip& self, float const dt);
 
+    /* ------------------------------------------------------------------------------------------ */
     // Combat
+    /* ------------------------------------------------------------------------------------------ */
     void set_lock_on_target(AActor* target);
+
     // Combat - laser
     void set_laser_mode(ELaserFiringMode laser_mode);
     void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
+
     // Combat - bomb
     void subtract_bomb();
+
     // Combat - homing laser
     void fire_homing_laser();
 
@@ -260,13 +283,14 @@ class ATestSpaceShip : public APawn {
     float laser_shot_cooldown{0.f};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     int32 lasers_fired_this_burst{0};
+    int32 lasers_per_burst{3};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     AActor* lock_on_target{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
-    ETestShipFireRate laser_firing_rate{ETestShipFireRate::Burst3};
+    ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
 
     // Combat - Bombs
     UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb")

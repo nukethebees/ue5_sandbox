@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/input/EnhancedInputMixin.hpp>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/logging/LogMsgMixin.hpp>
@@ -72,11 +73,18 @@ class ATestSpaceShipController
     UFUNCTION()
     void fire_bomb(FInputActionValue const& value);
 
+    UFUNCTION()
+    void cycle_prev_fire_rate();
+    UFUNCTION()
+    void cycle_next_fire_rate();
+
     // UI
     UFUNCTION()
     void on_laser_firing_mode_changed(ELaserFiringMode mode);
     UFUNCTION()
     void on_lock_on_acquired(AActor* target);
+    UFUNCTION()
+    void on_ship_fire_rate_changed(ETestShipFireRate const value);
 
     // Mission
     void on_mission_manager_ready(ATestMissionManager const& manager);

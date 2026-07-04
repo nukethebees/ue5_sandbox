@@ -82,8 +82,6 @@ void ATestCapitalShips::resolve_hit_events() {
                                   healths,
                                   local_indices_to_remove,
                                   entity_death_info);
-
-    validate_array_sizes();
 }
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);
@@ -112,6 +110,8 @@ void ATestCapitalShips::update_visuals() {
 void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
+
+    validate_array_sizes();
 }
 
 // Accessors
@@ -408,8 +408,6 @@ void ATestCapitalShips::handle_dead_entities() {
                                         teams,
                                         healths,
                                         target_entity_indices);
-
-    validate_array_sizes();
 }
 
 // Misc

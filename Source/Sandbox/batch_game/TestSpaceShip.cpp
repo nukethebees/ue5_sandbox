@@ -11,6 +11,7 @@
 #include <Sandbox/constants/collision_channels.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -24,6 +25,8 @@
 #include <Engine/World.h>
 #include <NiagaraComponent.h>
 #include <TimerManager.h>
+
+#include <limits>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -72,6 +75,7 @@ void ATestSpaceShip::begin_play() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
 
     set_laser_mode(ELaserFiringMode::idle);
+    set_laser_fire_rate(laser_fire_rate);
 
     configure_speed_sampling();
 
@@ -377,7 +381,7 @@ void ATestSpaceShip::update_laser_firing() {
                 fire_laser();
                 laser_shot_cooldown = actor_config->laser_firing_period;
 
-                if (lasers_fired_this_burst >= actor_config->lasers_per_burst) {
+                if (lasers_fired_this_burst >= lasers_per_burst) {
                     laser_shot_cooldown = actor_config->laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringMode::lock_on_transition);
                 }
@@ -501,6 +505,33 @@ void ATestSpaceShip::upgrade_laser() {
     } else if (laser_mode == EShipLaserMode::Double) {
         laser_mode = EShipLaserMode::Hyper;
     }
+}
+
+void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
+    set_laser_fire_rate(ml::get_next(laser_fire_rate));
+}
+void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
+    set_laser_fire_rate(ml::get_previous(laser_fire_rate));
+}
+void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
+    laser_fire_rate = value;
+
+    switch (laser_fire_rate) {
+        case ETestShipFireRate::Single: {
+            lasers_per_burst = 1;
+            break;
+        }
+        case ETestShipFireRate::Burst3: {
+            lasers_per_burst = 3;
+            break;
+        }
+        case ETestShipFireRate::FullAuto: {
+            lasers_per_burst = std::numeric_limits<decltype(lasers_per_burst)>::max();
+            break;
+        }
+    }
+
+    on_ship_fire_rate_changed.ExecuteIfBound(laser_fire_rate);
 }
 
 // Combat - bomb
