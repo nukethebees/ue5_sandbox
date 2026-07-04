@@ -462,12 +462,11 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
     auto const oz{origin.Z};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
-
-        if (dist_sq > radius_squared) { continue; }
-
+        if (!entity_data.alive[i]) { continue; }
         if (entity_data.teams[i] == team) { continue; }
 
+        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
+        if (dist_sq > radius_squared) { continue; }
         out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
 
         if (count >= n_out_limit) { break; }
@@ -504,6 +503,17 @@ void ATestEntityRegistry::are_entities_within_dist_sq(float const dist_sq_thresh
             }
         }
     }
+}
+auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team) const
+    -> FRegistryEntityHandle {
+    auto const n{get_num_elements()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) { continue; }
+        if (entity_data.teams[i] != team) { return {i, generations[i]}; }
+    }
+
+    return {};
 }
 
 // Checks
