@@ -25,6 +25,7 @@ class ATestCapitalShipProxy;
 class ATestCapitalShipFighters;
 class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
+class UTestTeamVisualData;
 
 UCLASS()
 class ATestCapitalShips : public AActor {
@@ -32,6 +33,7 @@ class ATestCapitalShips : public AActor {
     GENERATED_BODY()
 
     static constexpr bool is_world_space{false};
+    static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
 
     using Proxy = ATestCapitalShipProxy;
 

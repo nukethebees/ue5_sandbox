@@ -12,6 +12,7 @@
 
 class UStaticMesh;
 class UNiagaraSystem;
+class UMaterialInterface;
 
 class AShipLaser;
 class UTestTeamVisualData;
@@ -36,6 +37,9 @@ class UTestCapitalShipsConfig : public UDataAsset {
     // Visuals
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
+
+    UPROPERTY(EditAnywhere)
+    TObjectPtr<UMaterialInterface> material;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     UNiagaraSystem* small_death_explosion{nullptr};
