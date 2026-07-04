@@ -277,8 +277,24 @@ auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> b
 void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
     for (auto& handle : handles) {
         auto const handle_state{analyse_handle(handle)};
-        check(handle_state != ERegistryHandleState::Invalid);
-        if (handle_state == ERegistryHandleState::Stale) { handle.reset(); }
+
+        switch (handle_state) {
+            case ERegistryHandleState::Invalid: {
+                check(false);
+                break;
+            }
+            case ERegistryHandleState::Null: {
+                break;
+            }
+            case ERegistryHandleState::Stale: {
+                handle.reset();
+                break;
+            }
+            case ERegistryHandleState::Active: {
+                if (!entity_data.alive[handle.index]) { handle.reset(); }
+                break;
+            }
+        }
     }
 }
 
