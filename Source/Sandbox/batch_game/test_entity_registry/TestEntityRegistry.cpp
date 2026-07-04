@@ -258,13 +258,14 @@ void ATestEntityRegistry::end_tick() {
     validate_unique_entity_data();
 }
 
-// Index queries
+// Handle queries
 auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
     -> ERegistryHandleState {
     if (!generations.IsValidIndex(handle.index)) { return ERegistryHandleState::Invalid; }
     auto const current_generation{generations[handle.index]};
     if (current_generation == handle.generation) { return ERegistryHandleState::Active; }
     if (current_generation > handle.generation) { return ERegistryHandleState::Stale; }
+    if (handle.is_null()) { return ERegistryHandleState::Null; }
 
     return ERegistryHandleState::Invalid;
 }
@@ -281,6 +282,8 @@ auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
     auto const handle_state{analyse_handle(handle)};
 
     switch (handle_state) {
+        case ERegistryHandleState::Null:
+            [[fallthrough]];
         case ERegistryHandleState::Invalid: {
             check(false);
             return {};
@@ -530,6 +533,7 @@ void ATestEntityRegistry::validate_unique_entity_data() const {
         };
         auto const handle_status{analyse_handle(handle)};
         check(handle_status != ERegistryHandleState::Invalid);
+        check(handle_status != ERegistryHandleState::Null);
 
         if (unique_entities.alive[i]) { continue; }
         check(unique_entities.death_reason[i] != ETestDeathReason::Unset);

@@ -6,4 +6,5 @@ enum class ERegistryHandleState : uint8 {
     Active,
     Stale,
     Invalid,
+    Null,
 };
