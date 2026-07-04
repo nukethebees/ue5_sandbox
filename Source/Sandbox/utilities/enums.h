@@ -1,24 +1,34 @@
 #pragma once
 
-#include <type_traits>
-#include <utility>
-
 #include "CoreMinimal.h"
 #include "UObject/Class.h"
+
+#include <type_traits>
+#include <utility>
 
 #include "Sandbox/utilities/string.h"
 
 namespace ml {
+template <typename T>
+struct EnumCountTrait {
+    static constexpr T count{T::COUNT};
+    static constexpr auto count_value{std::to_underlying(count)};
+};
+
 template <typename Enum>
-concept HasMaxEnumValue = requires { Enum::MAX; };
-
-template <typename Enum, auto MAX_VALUE = Enum::MAX>
 auto get_next(Enum current) -> Enum {
-    auto const next{std::to_underlying(current) + 1};
-    static constexpr auto MAX{std::to_underlying(MAX_VALUE)};
-
     using Underlying = std::underlying_type_t<Enum>;
-    return (next >= MAX) ? static_cast<Enum>(Underlying{0}) : static_cast<Enum>(next);
+    auto const next{std::to_underlying(current) + 1};
+
+    return (next >= EnumCountTrait<Enum>::count_value) ? static_cast<Enum>(Underlying{0})
+                                                       : static_cast<Enum>(next);
+}
+
+template <typename Enum>
+auto get_previous(Enum current) -> Enum {
+    return (current == static_cast<Enum>(0))
+             ? static_cast<Enum>(EnumCountTrait<Enum>::count_value - 1)
+             : static_cast<Enum>(std::to_underlying(current) - 1);
 }
 
 template <typename Enum>

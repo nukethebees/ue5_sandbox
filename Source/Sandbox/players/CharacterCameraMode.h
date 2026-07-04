@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Sandbox/utilities/enums.h>
+
 #include "CoreMinimal.h"
 
 #include "CharacterCameraMode.generated.h"
@@ -10,3 +12,11 @@ enum class ECharacterCameraMode : uint8 {
     ThirdPerson UMETA(DisplayName = "Third Person"),
     MAX UMETA(Hidden)
 };
+
+namespace ml {
+template <>
+struct EnumCountTrait<ECharacterCameraMode> {
+    static constexpr ECharacterCameraMode count{ECharacterCameraMode::MAX};
+    static constexpr auto count_value{std::to_underlying(count)};
+};
+}
