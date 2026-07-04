@@ -167,6 +167,7 @@ void ATestCapitalShipFighters::configure_ismc() {
     instances->SetReceivesDecals(false);
 
     instances->SetRemoveSwap();
+    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
 }
 void ATestCapitalShipFighters::prepare_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::prepare_ismc_transforms);
@@ -307,8 +308,26 @@ void ATestCapitalShipFighters::spawn_instances(
         auto const idx{n_cur + i};
         ismc_transforms[idx].SetLocation(ml::get_vector3d(locations, idx));
     }
+
+    auto const colour_cache{
+        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+    TArray<float> custom_data_spawn_buffer;
+    custom_data_spawn_buffer.SetNumUninitialized(n_new * n_custom_ismc_floats, EAllowShrinking::No);
+
+    for (int32 new_i{0}; new_i < n_new; ++new_i) {
+        auto const team{new_teams[new_i]};
+
+        // Custom ISMC data
+        auto const base{new_i * n_custom_ismc_floats};
+        auto const& colour{colour_cache[team]};
+        custom_data_spawn_buffer[base + 0] = colour.R;
+        custom_data_spawn_buffer[base + 1] = colour.G;
+        custom_data_spawn_buffer[base + 2] = colour.B;
+    }
+
     instances->AddInstances(
         TArray<FTransform>{ismc_transforms.GetData() + n_cur, n_new}, is_world_space, false);
+    instances->SetCustomData(n_cur, n_cur + n_new - 1, custom_data_spawn_buffer, false);
 
     validate_array_sizes();
 }
