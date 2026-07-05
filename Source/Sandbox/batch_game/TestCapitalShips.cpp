@@ -303,6 +303,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
         auto const target_handle{target_handles[i]};
+        if (target_handle.is_null()) { continue; }
         auto const base_location{ml::get_vector3f(locations, i)};
         auto const base_rotation{ml::get_rotator3f(rotations, i)};
 
