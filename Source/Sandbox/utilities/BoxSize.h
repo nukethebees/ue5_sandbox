@@ -11,5 +11,5 @@ struct FBoxSize {
     FBoxSize() = default;
 
     UPROPERTY(EditAnywhere)
-    FVector box_size;
+    FVector box_size{FVector::ZeroVector};
 };

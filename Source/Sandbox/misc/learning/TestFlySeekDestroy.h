@@ -39,7 +39,7 @@ struct FTestFlySeekDestroySearchState {
 
     // Search
     UPROPERTY(VisibleAnywhere)
-    FVector destination;
+    FVector destination{FVector::ZeroVector};
     UPROPERTY(EditAnywhere)
     TObjectPtr<ATestVolume> search_volume{nullptr};
     UPROPERTY(EditAnywhere)

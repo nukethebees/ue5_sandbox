@@ -33,14 +33,14 @@ struct FMyPlayerControllerHud {
 
     // Widget classes
     UPROPERTY(EditDefaultsOnly, Category = "UI")
-    TSubclassOf<UMainHUDWidget> main_widget_class;
+    TSubclassOf<UMainHUDWidget> main_widget_class{nullptr};
 
     UPROPERTY(EditDefaultsOnly, Category = "UI")
-    TSubclassOf<UInGamePlayerMenu> umg_player_menu_class;
+    TSubclassOf<UInGamePlayerMenu> umg_player_menu_class{nullptr};
 
     // Widget instances
     UPROPERTY(VisibleAnywhere, Category = "UI")
-    UMainHUDWidget* main_widget;
+    UMainHUDWidget* main_widget{nullptr};
 
     UPROPERTY(VisibleAnywhere, Category = "UI")
     UInGamePlayerMenu* umg_player_menu{nullptr};
