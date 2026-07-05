@@ -1,7 +1,6 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
-#include <SandboxTests/functional_tests/test_simple_batch.h>
 
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
@@ -11,7 +10,6 @@ TEST_CLASS(BatchGameFunctionalTests, "Sandbox.FunctionalTests")
 {
     // static inline TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ATestSimpleBatch* scenario{nullptr};
     ATestBatchOrchestrator* orchestrator{nullptr};
     ATestEntityRegistry* registry{nullptr};
     ATestStaticTurrets* turrets{nullptr};
@@ -34,12 +32,19 @@ TEST_CLASS(BatchGameFunctionalTests, "Sandbox.FunctionalTests")
 
         auto const kills{registry->count_kills()};
         auto const n_alive{registry->count_alive()};
-        auto const expected_kills{scenario->get_expected_kills()};
+        auto const expected_kills{1};
         auto const kill_count_reached{(kills == expected_kills)};
 
         auto const too_many_kills{kills > expected_kills};
         if (too_many_kills) {
             Assert.Fail(TEXT("too_many_kills"));
+            return true;
+        }
+
+        auto const n_unique{registry->get_num_unique_ids_issued()};
+        auto const n_alive_expected{n_unique - kills};
+        if (n_alive != n_alive_expected) {
+            Assert.Fail(TEXT("n_alive != n_alive_expected"));
             return true;
         }
 
@@ -54,17 +59,11 @@ TEST_CLASS(BatchGameFunctionalTests, "Sandbox.FunctionalTests")
             .Then([this] {
                 auto& world{spawner->GetWorld()};
 
-                for (TActorIterator<ATestSimpleBatch> it(&world); it; ++it) {
-                    scenario = *it;
-                    break;
-                }
-                ASSERT_THAT(IsNotNull(scenario));
-
                 for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
                     orchestrator = *it;
                     break;
                 }
-                ASSERT_THAT(IsNotNull(scenario));
+                ASSERT_THAT(IsNotNull(orchestrator));
 
                 registry = orchestrator->get_entity_registry();
                 ASSERT_THAT(IsNotNull(registry));
