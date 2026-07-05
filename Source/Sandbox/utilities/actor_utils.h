@@ -1,11 +1,15 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "Math/Box.h"
-#include "Math/Vector.h"
-
 #include "Sandbox/utilities/ActorCorners.h"
+
+#include <CoreMinimal.h>
+#include <Engine/World.h>
+#include <EngineUtils.h>
+#include <GameFramework/Actor.h>
+#include <Math/Box.h>
+#include <Math/Vector.h>
+
+#include <concepts>
 
 class AActor;
 
@@ -41,5 +45,16 @@ void destroy_all_actors(T& actors) {
     for (auto* a : actors) {
         if (IsValid(a)) { a->Destroy(); }
     }
+}
+
+template <typename T>
+    requires std::derived_from<T, AActor>
+void ensure_actor_exists(UWorld& world) {
+    for (TActorIterator<T> it{&world}; it; ++it) {
+        return;
+    }
+
+    world.SpawnActor<T>();
+    UE_LOG(LogTemp, Display, TEXT("Spawned missing %s"), *T::StaticClass()->GetName());
 }
 } // namespace ml
