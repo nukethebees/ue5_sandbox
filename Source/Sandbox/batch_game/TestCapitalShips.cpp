@@ -330,6 +330,8 @@ void ATestCapitalShips::handle_fighter_spawning() {
                                     fighter_queue.rotations.get_const_view(),
                                     fighter_queue.teams,
                                     fighter_queue.targets);
+
+    fighters_spawned += fighter_queue.targets.Num();
 }
 
 // Visuals

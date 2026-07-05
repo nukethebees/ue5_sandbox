@@ -80,6 +80,8 @@ class ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
+    auto get_fighters_spawned() const noexcept { return fighters_spawned; }
+
     // Checks
     void validate_array_sizes() const;
   protected:
@@ -139,6 +141,7 @@ class ATestCapitalShips : public AActor {
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
+
     FCountdownTimers fighter_spawn_timers;
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
@@ -146,6 +149,8 @@ class ATestCapitalShips : public AActor {
     TArray<FIndexSpan> capital_fighter_handle_spans;
     TArray<FRegistryEntityHandle> fighter_handles;
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
+
+    int32 fighters_spawned{0};
 
     // Teams
     UPROPERTY()
