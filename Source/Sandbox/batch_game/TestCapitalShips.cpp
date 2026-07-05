@@ -100,8 +100,8 @@ void ATestCapitalShips::update_entity_registry() {
 
     prepare_entity_update_data();
 
-    entity_registry->queue_entity_updates({entity_handles, entity_update_data.get_const_view()});
-    entity_registry->set_death_infos(entity_death_info);
+    entity_registry->queue_entity_updates({entity_handles, entity_update_data.get_const_view()},
+                                          entity_death_info);
 }
 void ATestCapitalShips::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::sync_from_registry);

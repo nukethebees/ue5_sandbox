@@ -114,9 +114,7 @@ void ATestCapitalShipFighters::update_entity_registry() {
 
     auto const data{get_entity_data()};
     ATestEntityRegistry::ConstView view{entity_handles, data.get_const_view()};
-    entity_registry->queue_entity_updates(view);
-
-    entity_registry->set_death_infos(entity_death_info);
+    entity_registry->queue_entity_updates(view, entity_death_info);
 }
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);

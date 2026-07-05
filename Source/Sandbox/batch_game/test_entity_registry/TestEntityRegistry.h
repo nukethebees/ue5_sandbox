@@ -2,6 +2,7 @@
 
 #include "TestEntityRegistryData.h"
 
+#include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryHandleState.h>
 #include <Sandbox/batch_game/test_entity_registry/TestDeathReason.h>
@@ -21,7 +22,6 @@ class UActorComponent;
 
 struct DamageEvents;
 struct UnresolvedDamageEvents;
-struct EntityDeathInfo;
 
 struct NewEntities {
     TArray<FRegistryEntityHandle> registry_handles;
@@ -76,8 +76,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
 
     // General entity updates
-    void queue_entity_updates(ConstView const view);
-    void set_death_infos(EntityDeathInfo const& death_info);
+    void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 
     // Frame events
     void commit_updates();
@@ -161,6 +160,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Queued updates
     FTestEntityRegistryEntityData queued_entity_data;
     TArray<FRegistryEntityHandle> queued_entity_update_handles;
+    EntityDeathInfo queued_death_infos;
 
     // Queued damage events
     TArray<DamageEvents> queued_damage_events;

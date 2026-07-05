@@ -161,33 +161,17 @@ auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) cons
 }
 
 // Entity updates
-void ATestEntityRegistry::queue_entity_updates(ConstView const view) {
+void ATestEntityRegistry::queue_entity_updates(ConstView const view,
+                                               EntityDeathInfo const& death_info) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::queue_entity_updates);
 
     queued_entity_data.add(view.data);
     queued_entity_update_handles.Append(view.indices);
-}
-void ATestEntityRegistry::set_death_infos(EntityDeathInfo const& death_info) {
+
     death_info.validate_array_sizes();
-
-    auto const n{death_info.num()};
-    if (n < 1) { return; }
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const victim_handle{death_info.victims[i]};
-        auto const victim_id{find_unique_id(victim_handle)};
-
-        unique_entities.alive[victim_id.id] = 0;
-        unique_entities.death_reason[victim_id.id] = death_info.reasons[i];
-
-        auto const killer_handle{death_info.killers[i]};
-
-        if (killer_handle.is_valid()) {
-            auto const killer_id{find_unique_id(killer_handle)};
-            unique_entities.killed_by[victim_id.id] = killer_id;
-            unique_entities.kills[killer_id.id] += 1;
-        }
-    }
+    queued_death_infos.reasons.Append(death_info.reasons);
+    queued_death_infos.victims.Append(death_info.victims);
+    queued_death_infos.killers.Append(death_info.killers);
 }
 void ATestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
@@ -212,6 +196,24 @@ void ATestEntityRegistry::commit_entity_updates() {
 }
 void ATestEntityRegistry::commit_death_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
+
+    queued_death_infos.validate_array_sizes();
+    auto const n_deaths{queued_death_infos.num()};
+    for (int32 i{0}; i < n_deaths; ++i) {
+        auto const victim_handle{queued_death_infos.victims[i]};
+        auto const victim_id{find_unique_id(victim_handle)};
+
+        unique_entities.alive[victim_id.id] = 0;
+        unique_entities.death_reason[victim_id.id] = queued_death_infos.reasons[i];
+
+        auto const killer_handle{queued_death_infos.killers[i]};
+
+        if (killer_handle.is_valid()) {
+            auto const killer_id{find_unique_id(killer_handle)};
+            unique_entities.killed_by[victim_id.id] = killer_id;
+            unique_entities.kills[killer_id.id] += 1;
+        }
+    }
 
     dead_entities_this_frame.Reset();
     auto const n{entity_data.num()};
@@ -246,6 +248,7 @@ void ATestEntityRegistry::end_tick() {
     ml::reset(queued_entity_data,
               queued_entity_update_handles,
               queued_entity_update_handles,
+              queued_death_infos,
               dead_entities_this_frame);
 
     auto const n_owners{entity_owners.Num()};
