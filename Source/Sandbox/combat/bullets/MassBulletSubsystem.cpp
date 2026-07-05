@@ -43,7 +43,7 @@ void UMassBulletSubsystem::Deinitialize() {
 void UMassBulletSubsystem::on_archetypes_ready() {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UMassBulletSubsystem::on_archetypes_ready"))
     constexpr auto logger{NestedLogger<"on_archetypes_ready">()};
-    RETURN_IF_FALSE(initialise_asset_data());
+    if (!initialise_asset_data()) { return; }
     FCoreDelegates::OnEndFrame.AddUObject(this, &UMassBulletSubsystem::on_end_frame);
     logger.log_display(TEXT("Ready."));
 }
