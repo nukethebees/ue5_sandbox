@@ -74,7 +74,7 @@ void ATestCapitalShips::commit_spawns() {
 void ATestCapitalShips::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
 
-    spawn_timers.tick(dt);
+    fighter_spawn_timers.tick(dt);
 }
 void ATestCapitalShips::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::make_decisions);
@@ -236,7 +236,7 @@ void ATestCapitalShips::spawn_ships(
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
     target_handles.Append(new_target_indices);
-    spawn_timers.AddZeroed(n_to_add);
+    fighter_spawn_timers.AddZeroed(n_to_add);
     teams.Append(new_teams);
 
     ml::append_n(healths, actor_config->max_health, n_to_add);
@@ -293,7 +293,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
     auto const cooldown{actor_config->spawn_delay};
 
     auto const ships_ready_to_spawn_fighters_indices{
-        ml::collect_indices_less_equal(TConstArrayView<float>{spawn_timers.remaining_times},
+        ml::collect_indices_less_equal(TConstArrayView<float>{fighter_spawn_timers.remaining_times},
                                        0.f,
                                        ships_ready_to_spawn_fighters_buffer)};
 
@@ -322,7 +322,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
             new_fighter_targets.Add(target_handle);
         }
 
-        spawn_timers.remaining_times[i] = cooldown;
+        fighter_spawn_timers.remaining_times[i] = cooldown;
     }
 
     fighters_actor->spawn_instances(new_fighter_locations.get_const_view(),
@@ -437,7 +437,7 @@ void ATestCapitalShips::handle_dead_entities() {
                                         entity_handles,
                                         locations,
                                         rotations,
-                                        spawn_timers.remaining_times,
+                                        fighter_spawn_timers.remaining_times,
                                         teams,
                                         healths,
                                         target_handles);
@@ -451,7 +451,7 @@ void ATestCapitalShips::clear_runtime_state() {
               local_indices_to_remove,
               locations,
               rotations,
-              spawn_timers,
+              fighter_spawn_timers,
               ships_ready_to_spawn_fighters_buffer,
               new_fighter_locations,
               new_fighter_rotations,
@@ -502,7 +502,7 @@ void ATestCapitalShips::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
-        SANDBOX_NAMED_NUM(spawn_timers),
+        SANDBOX_NAMED_NUM(fighter_spawn_timers),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(target_handles),

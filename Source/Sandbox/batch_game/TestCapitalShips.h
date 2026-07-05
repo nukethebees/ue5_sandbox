@@ -125,9 +125,7 @@ class ATestCapitalShips : public AActor {
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
-    UPROPERTY()
-    FCountdownTimers spawn_timers;
-    UPROPERTY()
+    FCountdownTimers fighter_spawn_timers;
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
     FVectors3f new_fighter_locations;
