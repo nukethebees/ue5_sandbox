@@ -237,6 +237,7 @@ void ATestCapitalShips::spawn_ships(
     ml::append_from(rotations, new_rotations);
     target_handles.Append(new_target_indices);
     fighter_spawn_timers.AddZeroed(n_to_add);
+    capital_fighter_handle_spans.AddZeroed(n_to_add);
     teams.Append(new_teams);
 
     ml::append_n(healths, actor_config->max_health, n_to_add);
@@ -456,7 +457,8 @@ void ATestCapitalShips::clear_runtime_state() {
               fighter_queue,
               teams,
               healths,
-              target_handles);
+              target_handles,
+              capital_fighter_handle_spans);
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
@@ -503,6 +505,7 @@ void ATestCapitalShips::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(target_handles),
+        SANDBOX_NAMED_NUM(capital_fighter_handle_spans),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

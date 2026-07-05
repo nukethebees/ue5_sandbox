@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
+#include <Sandbox/utilities/IndexSpan.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
@@ -142,6 +143,9 @@ class ATestCapitalShips : public AActor {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
     TestCapitalShipFighterSpawnQueue fighter_queue;
+    TArray<FIndexSpan> capital_fighter_handle_spans;
+    TArray<FRegistryEntityHandle> fighter_handles;
+    TArray<FRegistryEntityHandle> fighter_handles_scratch;
 
     // Teams
     UPROPERTY()
