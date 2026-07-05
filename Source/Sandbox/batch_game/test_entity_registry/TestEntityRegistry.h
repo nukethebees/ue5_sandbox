@@ -76,7 +76,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
 
     // General entity updates
-    void update_entities(ConstView const view);
+    void queue_entity_updates(ConstView const view);
     void set_death_infos(EntityDeathInfo const& death_info);
 
     // Frame events

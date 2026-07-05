@@ -114,7 +114,7 @@ void ATestCapitalShipFighters::update_entity_registry() {
 
     auto const data{get_entity_data()};
     ATestEntityRegistry::ConstView view{entity_handles, data.get_const_view()};
-    entity_registry->update_entities(view);
+    entity_registry->queue_entity_updates(view);
 
     entity_registry->set_death_infos(entity_death_info);
 }

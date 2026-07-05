@@ -129,7 +129,7 @@ void ATestSpaceShip::resolve_hit_events() {
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
 
-    entity_registry->update_entities(ATestEntityRegistry::ConstView{
+    entity_registry->queue_entity_updates(ATestEntityRegistry::ConstView{
         {&registry_handle, 1},
         get_entity_update_data().get_const_view(),
     });

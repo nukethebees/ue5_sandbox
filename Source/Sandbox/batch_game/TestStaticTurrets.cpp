@@ -100,7 +100,7 @@ void ATestStaticTurrets::update_entity_registry() {
 
     prepare_entity_update_data();
 
-    entity_registry->update_entities({
+    entity_registry->queue_entity_updates({
         .indices = entity_handles,
         .data = entity_update_data.get_const_view(),
     });

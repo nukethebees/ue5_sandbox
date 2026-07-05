@@ -161,8 +161,8 @@ auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) cons
 }
 
 // Entity updates
-void ATestEntityRegistry::update_entities(ConstView const view) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::update_entities);
+void ATestEntityRegistry::queue_entity_updates(ConstView const view) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::queue_entity_updates);
 
     queued_entity_data.add(view.data);
     queued_entity_update_handles.Append(view.indices);
