@@ -283,13 +283,23 @@ void ATestBatchOrchestrator::route_actor_references() {
 void ATestBatchOrchestrator::spawn_missing_actors() {
     auto* world{GetWorld()};
 
-    ml::ensure_actor_exists<ATestLasers>(*world);
-    ml::ensure_actor_exists<ATestCapitalShips>(*world);
-    ml::ensure_actor_exists<ATestCapitalShipFighters>(*world);
-    ml::ensure_actor_exists<ATestStaticTurrets>(*world);
-    ml::ensure_actor_exists<ATestTubeSpinners>(*world);
+    auto spawn{[&](auto c) {
+        if (!IsValid(c)) {
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("ATestBatchOrchestrator::spawn_missing_actors: Null actor class"));
+            return;
+        }
+        ml::ensure_actor_exists(*world, c);
+    }};
 
-    ml::ensure_actor_exists<ATestEntityRegistry>(*world);
-    ml::ensure_actor_exists<ATestMissionManager>(*world);
-    ml::ensure_actor_exists<ADelayedNiagaraSpawner>(*world);
+    spawn(lasers_class);
+    spawn(capital_ships_class);
+    spawn(capital_ship_fighters_class);
+    spawn(turrets_class);
+    spawn(spinners_class);
+
+    spawn(entity_registry_class);
+    spawn(mission_manager_class);
+    spawn(niagara_spawner_class);
 }

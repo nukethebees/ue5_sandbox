@@ -25,7 +25,11 @@ class ATestBatchOrchestrator : public AActor {
     void Tick(float dt) override;
     void tick(float const dt);
 
-    auto get_turrets() const { return turrets; }
+    auto get_lasers() const -> auto const* { return lasers.Get(); }
+    auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
+    auto get_capital_ship_fighters() const -> auto const* { return capital_ship_fighters.Get(); }
+    auto get_turrets() const -> auto const* { return turrets.Get(); }
+    auto get_spinners() const -> auto const* { return spinners.Get(); }
 
     auto get_entity_registry() const { return entity_registry; }
   protected:
@@ -60,4 +64,26 @@ class ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(Transient)
     uint64 tick_counter{0};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestSpaceShip> player_ship_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestLasers> lasers_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestCapitalShips> capital_ships_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestCapitalShipFighters> capital_ship_fighters_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestStaticTurrets> turrets_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestTubeSpinners> spinners_class{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestEntityRegistry> entity_registry_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ATestMissionManager> mission_manager_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TSubclassOf<ADelayedNiagaraSpawner> niagara_spawner_class{nullptr};
+#endif
 };
