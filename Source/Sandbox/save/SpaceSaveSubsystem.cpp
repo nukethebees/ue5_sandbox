@@ -1,5 +1,6 @@
 #include "SpaceSaveSubsystem.h"
 
+#include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/save/SpaceSaveGame.h>
 #include <Sandbox/utilities/enums.h>
@@ -116,6 +117,11 @@ void USpaceSaveSubsystem::log_save_data() const {
                TEXT("USpaceSaveSubsystem::log_save_data: No save to print."));
         return;
     }
+
+#if WITH_EDITOR
+    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
+    if (!settings->print_save_data) { return; }
+#endif
 
     auto const dump_name{slot_name()};
 
