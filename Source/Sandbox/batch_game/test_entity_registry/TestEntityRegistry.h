@@ -23,7 +23,7 @@ class UActorComponent;
 struct DamageEvents;
 struct UnresolvedDamageEvents;
 
-struct NewEntities {
+struct SpawnedEntityHandles {
     TArray<FRegistryEntityHandle> registry_handles;
     TestEntityUniqueId first_id;
 
@@ -69,7 +69,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
 
     // Entity creation
-    auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> NewEntities;
+    auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> SpawnedEntityHandles;
 
     // Damage updates
     void queue_damage_events(UnresolvedDamageEvents const& damage_events);

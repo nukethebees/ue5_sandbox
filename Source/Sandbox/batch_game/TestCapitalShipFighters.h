@@ -3,6 +3,7 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
@@ -63,6 +64,9 @@ class ATestCapitalShipFighters : public AActor {
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
 
+    auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
+    auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
+
     // Checks
     void validate_array_sizes() const;
   protected:
@@ -76,7 +80,7 @@ class ATestCapitalShipFighters : public AActor {
     void update_ismc();
 
     // Entity data
-    auto get_entity_data() const -> FTestEntityRegistryEntityData;
+    void prepare_entity_update_data();
 
     // Misc
     void clear_tick_buffers();
@@ -99,8 +103,13 @@ class ATestCapitalShipFighters : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     TArray<FRegistryEntityHandle> entity_handles;
+    FTestEntityRegistryEntityData registry_update_data;
+
+    // Spawning / destruction
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
+    FTestEntityRegistryEntityData new_spawn_entity_data;
+    SpawnedEntityHandles new_spawn_entity_handles;
 
     // Transform
     FVectors3f locations;

@@ -112,8 +112,8 @@ void ATestCapitalShipFighters::resolve_hit_events() {
 void ATestCapitalShipFighters::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
 
-    auto const data{get_entity_data()};
-    ATestEntityRegistry::ConstView view{entity_handles, data.get_const_view()};
+    prepare_entity_update_data();
+    ATestEntityRegistry::ConstView view{entity_handles, registry_update_data.get_const_view()};
     entity_registry->queue_entity_updates(view, entity_death_info);
 }
 void ATestCapitalShipFighters::sync_from_registry() {
@@ -211,27 +211,25 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
 }
 
 // Entity data
-auto ATestCapitalShipFighters::get_entity_data() const -> FTestEntityRegistryEntityData {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::get_entity_data);
+void ATestCapitalShipFighters::prepare_entity_update_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::prepare_entity_update_data);
 
     auto const n{get_num_instances()};
 
-    FTestEntityRegistryEntityData entity_data;
-    entity_data.locations = locations;
+    registry_update_data.reset();
+    registry_update_data.locations = locations;
 
-    ml::add_uninitialised(entity_data.velocities, n);
-    entity_data.velocities = directions;
-    ml::multiply_in_place(entity_data.velocities, speeds);
+    ml::add_uninitialised(registry_update_data.velocities, n);
+    registry_update_data.velocities = directions;
+    ml::multiply_in_place(registry_update_data.velocities, speeds);
 
-    entity_data.healths = healths;
-    entity_data.teams = teams;
+    registry_update_data.healths = healths;
+    registry_update_data.teams = teams;
 
-    ml::add_uninitialised(entity_data.alive, n);
+    ml::add_uninitialised(registry_update_data.alive, n);
     for (int32 i{0}; i < n; ++i) {
-        entity_data.alive[i] = static_cast<uint8>(healths[i] > 0);
+        registry_update_data.alive[i] = static_cast<uint8>(healths[i] > 0);
     }
-
-    return entity_data;
 }
 
 // Spawning
@@ -268,8 +266,8 @@ void ATestCapitalShipFighters::spawn_instances(
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
-    FTestEntityRegistryEntityData entity_data;
-    entity_data.add_uninitialised(n_new);
+    ml::reset(new_spawn_entity_data);
+    new_spawn_entity_data.add_uninitialised(n_new);
 
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
@@ -277,21 +275,22 @@ void ATestCapitalShipFighters::spawn_instances(
         auto const direction{ml::get_vector3f(new_rotations, i)};
 
         ml::assign(directions, index, direction);
-        ml::assign_from(entity_data.locations, i, locations, index);
-        entity_data.healths[i] = healths[index];
-        entity_data.teams[i] = teams[index];
-        entity_data.alive[i] = true;
+        ml::assign_from(new_spawn_entity_data.locations, i, locations, index);
+        new_spawn_entity_data.healths[i] = healths[index];
+        new_spawn_entity_data.teams[i] = teams[index];
+        new_spawn_entity_data.alive[i] = true;
     }
-    entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
+    new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
 
     // Velocities
     TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};
     ml::assign_from_scaled(
-        entity_data.velocities, directions.get_const_view().right(n_new), new_speeds);
+        new_spawn_entity_data.velocities, directions.get_const_view().right(n_new), new_speeds);
 
-    // Entity indices
-    auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-    entity_handles.Append(MoveTemp(new_entities.registry_handles));
+    // Entity handles
+    new_spawn_entity_handles =
+        entity_registry->add_entities(new_spawn_entity_data.get_const_view());
+    entity_handles.Append(new_spawn_entity_handles.registry_handles);
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);

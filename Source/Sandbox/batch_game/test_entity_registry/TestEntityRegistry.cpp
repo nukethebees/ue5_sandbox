@@ -13,16 +13,16 @@
 /* ------------------------------------------------------------------------------------------ */
 // NewEntities
 /* ------------------------------------------------------------------------------------------ */
-auto NewEntities::num() const -> int32 {
+auto SpawnedEntityHandles::num() const -> int32 {
     return registry_handles.Num();
 }
-void NewEntities::reset() {
+void SpawnedEntityHandles::reset() {
     ml::reset(registry_handles);
 }
-void NewEntities::add_defaulted(int32 const count) {
+void SpawnedEntityHandles::add_defaulted(int32 const count) {
     registry_handles.AddDefaulted(count);
 }
-void NewEntities::add_uninitialised(int32 const count) {
+void SpawnedEntityHandles::add_uninitialised(int32 const count) {
     registry_handles.AddUninitialized(count);
 }
 
@@ -67,13 +67,13 @@ auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwne
 
 // Entity creation
 auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
-    -> NewEntities {
+    -> SpawnedEntityHandles {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
 
     view.validate_array_sizes();
 
     auto const count{view.num()};
-    NewEntities new_entities;
+    SpawnedEntityHandles new_entities;
 
     if (count < 1) { return new_entities; }
 
