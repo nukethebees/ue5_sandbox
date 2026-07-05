@@ -42,7 +42,7 @@ struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
 };
 
 UCLASS()
-class ATestCapitalShips : public AActor {
+class SANDBOX_API ATestCapitalShips : public AActor {
   public:
     GENERATED_BODY()
 
@@ -80,7 +80,12 @@ class ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
-    auto get_fighters_spawned() const noexcept { return fighters_spawned; }
+    auto get_fighter_spawn_slots() const noexcept -> int32;
+    auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
+    auto get_fighter_handles() const noexcept -> auto const& { return fighter_handles; }
+    auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
+        return capital_fighter_handle_spans;
+    }
 
     // Checks
     void validate_array_sizes() const;

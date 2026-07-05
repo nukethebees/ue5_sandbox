@@ -286,6 +286,9 @@ void ATestCapitalShips::prepare_entity_update_data() {
 }
 
 // Fighter spawning
+auto ATestCapitalShips::get_fighter_spawn_slots() const noexcept -> int32 {
+    return actor_config->fighter_spawn_slots;
+}
 void ATestCapitalShips::handle_fighter_spawning() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
