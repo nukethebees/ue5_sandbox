@@ -52,6 +52,7 @@ void AWeaponPickup::BeginPlay() {
     spawned_weapon->set_pickup_collision(false);
 }
 void AWeaponPickup::spawn_weapon(UWorld& world) {
+    check(weapon_class);
     spawned_weapon = world.SpawnActor<AWeaponBase>(weapon_class, FTransform{}, spawn_parameters);
     RETURN_IF_NULLPTR(spawned_weapon);
     attach_weapon();
