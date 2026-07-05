@@ -6,13 +6,13 @@
 #include <CQTest.h>
 #include <EngineUtils.h>
 
-TEST_CLASS(BatchGameFunctionalTests, "Sandbox.FunctionalTests")
+TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
 {
-    // static inline TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ATestBatchOrchestrator* orchestrator{nullptr};
-    ATestEntityRegistry* registry{nullptr};
-    ATestStaticTurrets* turrets{nullptr};
+
+    ATestBatchOrchestrator const* orchestrator{nullptr};
+    ATestEntityRegistry const* registry{nullptr};
+    ATestStaticTurrets const* turrets{nullptr};
 
     BEFORE_EACH()
     {
