@@ -201,15 +201,13 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     // Assign the entity targets
     for (int32 i{0}; i < n_to_add; ++i) {
-        FRegistryEntityHandle target_handle{};
-
         if (auto const found{proxy_to_index.Find(proxies[i]->target_ship)}) {
-            target_handle = *found;
+            new_targets[i] = *found;
+        } else if (!IsValid(proxies[i]->target_ship)) {
+            new_targets[i].reset();
         } else {
             UE_LOG(LogSandboxLearning, Fatal, TEXT("Lookup failed"));
         }
-
-        new_targets[i] = target_handle;
     }
 
     target_handles = MoveTemp(new_targets);
