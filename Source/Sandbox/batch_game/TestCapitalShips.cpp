@@ -299,7 +299,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
-    ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams, new_fighter_targets);
+    ml::reset(fighter_queue);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
         auto const target_handle{target_handles[i]};
@@ -316,19 +316,19 @@ void ATestCapitalShips::handle_fighter_spawning() {
         for (auto const& rt : relative_transforms) {
             auto const new_transform{rt * base_transform};
 
-            ml::append(new_fighter_locations, new_transform.GetLocation());
-            ml::append(new_fighter_rotations, new_transform.Rotator());
-            new_fighter_teams.Add(teams[i]);
-            new_fighter_targets.Add(target_handle);
+            ml::append(fighter_queue.locations, new_transform.GetLocation());
+            ml::append(fighter_queue.rotations, new_transform.Rotator());
+            fighter_queue.teams.Add(teams[i]);
+            fighter_queue.targets.Add(target_handle);
         }
 
         fighter_spawn_timers.remaining_times[i] = cooldown;
     }
 
-    fighters_actor->spawn_instances(new_fighter_locations.get_const_view(),
-                                    new_fighter_rotations.get_const_view(),
-                                    TConstArrayView<ETestTeam>(new_fighter_teams),
-                                    TConstArrayView<FRegistryEntityHandle>(new_fighter_targets));
+    fighters_actor->spawn_instances(fighter_queue.locations.get_const_view(),
+                                    fighter_queue.rotations.get_const_view(),
+                                    fighter_queue.teams,
+                                    fighter_queue.targets);
 }
 
 // Visuals
@@ -453,8 +453,7 @@ void ATestCapitalShips::clear_runtime_state() {
               rotations,
               fighter_spawn_timers,
               ships_ready_to_spawn_fighters_buffer,
-              new_fighter_locations,
-              new_fighter_rotations,
+              fighter_queue,
               teams,
               healths,
               target_handles);
@@ -462,9 +461,7 @@ void ATestCapitalShips::clear_runtime_state() {
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
               ships_ready_to_spawn_fighters_buffer,
-              new_fighter_locations,
-              new_fighter_rotations,
-              new_fighter_targets,
+              fighter_queue,
               entity_update_data);
 }
 

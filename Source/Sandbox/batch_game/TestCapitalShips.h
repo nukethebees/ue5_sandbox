@@ -9,6 +9,7 @@
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -26,6 +27,18 @@ class ATestCapitalShipFighters;
 class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
+
+struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+    TArray<FRegistryEntityHandle> targets;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.locations, self.rotations, self.teams, self.targets);
+    }
+};
 
 UCLASS()
 class ATestCapitalShips : public AActor {
@@ -128,10 +141,7 @@ class ATestCapitalShips : public AActor {
     FCountdownTimers fighter_spawn_timers;
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
-    FVectors3f new_fighter_locations;
-    FRotatorsf new_fighter_rotations;
-    TArray<ETestTeam> new_fighter_teams;
-    TArray<FRegistryEntityHandle> new_fighter_targets;
+    TestCapitalShipFighterSpawnQueue fighter_queue;
 
     // Teams
     UPROPERTY()
