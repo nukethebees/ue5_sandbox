@@ -201,15 +201,15 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     // Assign the entity targets
     for (int32 i{0}; i < n_to_add; ++i) {
-        FRegistryEntityHandle target_index{};
+        FRegistryEntityHandle target_handle{};
 
         if (auto const found{proxy_to_index.Find(proxies[i]->target_ship)}) {
-            target_index = *found;
+            target_handle = *found;
         } else {
             UE_LOG(LogSandboxLearning, Fatal, TEXT("Lookup failed"));
         }
 
-        new_targets[i] = target_index;
+        new_targets[i] = target_handle;
     }
 
     target_handles = MoveTemp(new_targets);
@@ -304,7 +304,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
     ml::reset(new_fighter_locations, new_fighter_rotations, new_fighter_teams, new_fighter_targets);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
-        auto const target_index{target_handles[i]};
+        auto const target_handle{target_handles[i]};
         auto const base_location{ml::get_vector3f(locations, i)};
         auto const base_rotation{ml::get_rotator3f(rotations, i)};
 
@@ -320,7 +320,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
             ml::append(new_fighter_locations, new_transform.GetLocation());
             ml::append(new_fighter_rotations, new_transform.Rotator());
             new_fighter_teams.Add(teams[i]);
-            new_fighter_targets.Add(target_index);
+            new_fighter_targets.Add(target_handle);
         }
 
         spawn_timers.remaining_times[i] = cooldown;
@@ -481,9 +481,9 @@ void ATestCapitalShips::draw_debugging_shapes() const {
         auto const ship_location{ml::get_vector3d(locations, i)};
 
         // Draw target
-        auto const target_index{target_handles[i]};
-        if (entity_registry->is_valid_handle(target_index)) {
-            FVector3d const target_location{entity_registry->get_location(target_index)};
+        auto const target_handle{target_handles[i]};
+        if (entity_registry->is_valid_handle(target_handle)) {
+            FVector3d const target_location{entity_registry->get_location(target_handle)};
             drawer.draw_arrow(ship_location, target_location);
         }
 
