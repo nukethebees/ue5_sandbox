@@ -14,6 +14,8 @@ class ATestSimpleBatch : public AFunctionalTest {
     ATestSimpleBatch();
 
     void Tick(float dt) override;
+
+    auto get_expected_kills() const noexcept { return expected_kills; }
   protected:
     void BeginPlay() override;
     void PrepareTest() override;

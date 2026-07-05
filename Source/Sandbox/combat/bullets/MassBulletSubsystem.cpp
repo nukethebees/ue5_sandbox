@@ -25,8 +25,11 @@ void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
     (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
 
-    TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(archetype_subsystem, world->GetSubsystem<UMassArchetypeSubsystem>());
+    auto world{GetWorld()};
+    if (!world) { return; }
+
+    auto archetype_subsystem{world->GetSubsystem<UMassArchetypeSubsystem>()};
+    if (!archetype_subsystem) { return; }
     archetype_subsystem->on_mass_archetype_subsystem_ready.AddUObject(
         this, &UMassBulletSubsystem::on_archetypes_ready);
 

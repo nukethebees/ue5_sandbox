@@ -109,4 +109,16 @@ SpacesInAngles: false
 SpacesInContainerLiterals: false
 SpacesInParens: Never
 
-StatementMacros: ['UPROPERTY', 'UCLASS', 'USTRUCT', 'GENERATED_BODY', 'UENUM']
+StatementMacros: [
+    'UPROPERTY', 
+    'UCLASS', 
+    'USTRUCT', 
+    'GENERATED_BODY', 
+    'UENUM', 
+    'TEST_CLASS', 
+    'TEST_METHOD', 
+    'BEFORE_ALL', 
+    'BEFORE_EACH',
+    'AFTER_EACH',
+    'AFTER_ALL',
+]

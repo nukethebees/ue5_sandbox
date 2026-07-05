@@ -500,6 +500,14 @@
 				"Linux",
 				"Mac"
 			]
+		},
+		{
+			"Name": "CQTest",
+			"Enabled": true
+		},
+		{
+			"Name": "CQTestEnhancedInput",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

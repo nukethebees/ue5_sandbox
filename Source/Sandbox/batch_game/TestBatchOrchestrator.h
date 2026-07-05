@@ -24,6 +24,10 @@ class ATestBatchOrchestrator : public AActor {
 
     void Tick(float dt) override;
     void tick(float const dt);
+
+    auto get_turrets() const { return turrets; }
+
+    auto get_entity_registry() const { return entity_registry; }
   protected:
     void BeginPlay() override;
 

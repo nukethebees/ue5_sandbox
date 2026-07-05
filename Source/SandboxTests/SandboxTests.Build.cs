@@ -32,14 +32,7 @@ public class SandboxTests : ModuleRules
             "RenderCore",
             "FunctionalTesting",
             "UnrealEd",
+            "CQTest",
         });
-
-        if (Target.bBuildEditor)
-        {
-            // Scoped transaction
-            PrivateDependencyModuleNames.AddRange(new string[] {
-                "UnrealEd",
-            });
-        }
     }
 }
