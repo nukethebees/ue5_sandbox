@@ -197,11 +197,15 @@ void ATestEntityRegistry::commit_entity_updates() {
 void ATestEntityRegistry::commit_death_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
 
+    dead_entities_this_frame.Reset();
     queued_death_infos.validate_array_sizes();
+
     auto const n_deaths{queued_death_infos.num()};
     for (int32 i{0}; i < n_deaths; ++i) {
         auto const victim_handle{queued_death_infos.victims[i]};
         auto const victim_id{find_unique_id(victim_handle)};
+
+        dead_entities_this_frame.Add(victim_handle);
 
         unique_entities.alive[victim_id.id] = 0;
         unique_entities.death_reason[victim_id.id] = queued_death_infos.reasons[i];
@@ -213,12 +217,6 @@ void ATestEntityRegistry::commit_death_updates() {
             unique_entities.killed_by[victim_id.id] = killer_id;
             unique_entities.kills[killer_id.id] += 1;
         }
-    }
-
-    dead_entities_this_frame.Reset();
-    auto const n{entity_data.num()};
-    for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] == 0u) { dead_entities_this_frame.Emplace(i, generations[i]); }
     }
 }
 
