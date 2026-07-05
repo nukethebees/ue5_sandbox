@@ -280,3 +280,16 @@ void ATestBatchOrchestrator::route_actor_references() {
                       turrets,
                       spinners);
 }
+void ATestBatchOrchestrator::spawn_missing_actors() {
+    auto* world{GetWorld()};
+
+    ml::ensure_actor_exists<ATestLasers>(*world);
+    ml::ensure_actor_exists<ATestCapitalShips>(*world);
+    ml::ensure_actor_exists<ATestCapitalShipFighters>(*world);
+    ml::ensure_actor_exists<ATestStaticTurrets>(*world);
+    ml::ensure_actor_exists<ATestTubeSpinners>(*world);
+
+    ml::ensure_actor_exists<ATestEntityRegistry>(*world);
+    ml::ensure_actor_exists<ATestMissionManager>(*world);
+    ml::ensure_actor_exists<ADelayedNiagaraSpawner>(*world);
+}

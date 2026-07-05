@@ -15,9 +15,7 @@ void for_each_instance(TActor& actor, F&& fn) {
 
     for (auto it{TActorIterator<TActor>{world}}; it; ++it) {
         auto* instance{*it};
-        if (!IsValid(instance)) {
-            continue;
-        }
+        if (!IsValid(instance)) { continue; }
 
         fn(*instance);
     }

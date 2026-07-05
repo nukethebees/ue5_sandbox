@@ -26,6 +26,11 @@ class ATestBatchOrchestrator : public AActor {
     void tick(float const dt);
   protected:
     void BeginPlay() override;
+
+#if WITH_EDITOR
+    UFUNCTION(CallInEditor, Category = "Sandbox")
+    void spawn_missing_actors();
+#endif
   private:
     void route_actor_references();
 

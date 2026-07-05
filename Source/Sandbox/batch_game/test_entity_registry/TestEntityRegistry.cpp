@@ -73,8 +73,10 @@ auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView 
     view.validate_array_sizes();
 
     auto const count{view.num()};
-
     NewEntities new_entities;
+
+    if (count < 1) { return new_entities; }
+
     new_entities.first_id = {
         .id = unique_entities.num(),
     };

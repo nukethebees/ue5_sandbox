@@ -29,15 +29,16 @@ public class SandboxTests : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
-            "RenderCore"
+            "RenderCore",
+            "FunctionalTesting",
+            "UnrealEd",
         });
 
         if (Target.bBuildEditor)
         {
             // Scoped transaction
-            PrivateDependencyModuleNames.AddRange(new string[] { 
-                "UnrealEd", 
-                "FunctionalTesting", 
+            PrivateDependencyModuleNames.AddRange(new string[] {
+                "UnrealEd",
             });
         }
     }

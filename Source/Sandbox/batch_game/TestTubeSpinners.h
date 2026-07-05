@@ -75,7 +75,7 @@ class ATestTubeSpinners : public AActor {
     void fire_lasers();
 
     // Config
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
 
     // Entity data
@@ -98,7 +98,7 @@ class ATestTubeSpinners : public AActor {
     TArray<float> yaws{};
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     FCountdownTimers laser_cooldowns;
     TArray<int32> next_fire_point_indices;
@@ -106,6 +106,6 @@ class ATestTubeSpinners : public AActor {
     FTestLasersSpawnRequests new_lasers;
 
     // Debugging / logging
-    UPROPERTY(EditAnywhere, Category = "Turrets")
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FActorLoggingConfig log_config{1.f};
 };

@@ -9,25 +9,33 @@ ATestSimpleBatch::ATestSimpleBatch() {
     PrimaryActorTick.TickGroup = ETickingGroup::TG_PostUpdateWork;
 }
 
+void ATestSimpleBatch::BeginPlay() {
+    Super::BeginPlay();
+    StartTest();
+}
+void ATestSimpleBatch::PrepareTest() {
+    Super::PrepareTest();
+
+    pre_check();
+}
 void ATestSimpleBatch::StartTest() {
     Super::StartTest();
 
+    pre_check();
+
     all_passed = true;
 
-    if (!IsValid(entity_registry)) {
-        FinishTest(EFunctionalTestResult::Failed, TEXT("Entity registry was not assigned"));
-        return;
-    }
-
-    if (!IsValid(turrets)) {
-        FinishTest(EFunctionalTestResult::Failed, TEXT("turrets was not assigned"));
-        return;
-    }
-
     update_kills();
+
+    auto const unique_ids{entity_registry->get_active_unique_ids()};
+    all_passed &= AssertFalse(unique_ids.IsEmpty(), TEXT("No unique ids"));
+
+    if (!all_passed) { handle_fail(); }
 }
 void ATestSimpleBatch::Tick(float dt) {
     Super::Tick(dt);
+
+    if (!IsRunning()) { return; }
 
     update_kills();
     check_alive_matches_kills();
@@ -37,6 +45,34 @@ void ATestSimpleBatch::Tick(float dt) {
     all_passed &= AssertTrue(kills <= expected_kills, TEXT("Too many kills"));
 
     if (!all_passed) { handle_fail(); }
+}
+void ATestSimpleBatch::OnTimeout() {
+    Super::OnTimeout();
+}
+void ATestSimpleBatch::FinishTest(EFunctionalTestResult TestResult, FString const& Message) {
+    switch (TestResult) {
+        case EFunctionalTestResult::Failed: {
+            LogMessage(get_fail_message());
+        }
+        case EFunctionalTestResult::Succeeded: {
+            LogMessage(get_fail_message());
+        }
+        default: {
+            break;
+        }
+    }
+
+    Super::FinishTest(TestResult, Message);
+}
+
+void ATestSimpleBatch::pre_check() {
+    if (!IsValid(entity_registry)) {
+        FinishTest(EFunctionalTestResult::Failed, TEXT("Entity registry was not assigned"));
+    }
+
+    if (!IsValid(turrets)) {
+        FinishTest(EFunctionalTestResult::Failed, TEXT("turrets was not assigned"));
+    }
 }
 
 void ATestSimpleBatch::check_alive_matches_kills() {
@@ -51,11 +87,20 @@ void ATestSimpleBatch::update_kills() {
     kills = entity_registry->count_kills();
 }
 
-void ATestSimpleBatch::handle_fail() {
+auto ATestSimpleBatch::get_fail_message() const -> FString {
     FString msg{};
+    msg += TEXT(R"(#
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Test Fail
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+)");
 
     auto const& unique_entities{entity_registry->get_unique_entities()};
     auto const n{unique_entities.num()};
+
+    msg += TEXT("\nTest data:");
+    msg += FString::Printf(TEXT("\n    Expected kills: %d"), expected_kills);
+    msg += FString::Printf(TEXT("\n    Kills: %d"), kills);
 
     msg += FString::Printf(TEXT("\nUnique entities: %d"), n);
 
@@ -96,7 +141,10 @@ void ATestSimpleBatch::handle_fail() {
         msg += FString::Printf(TEXT("\n    %s"), *handle.to_string());
     }
 
-    FinishTest(EFunctionalTestResult::Failed, msg);
+    return msg;
+}
+void ATestSimpleBatch::handle_fail() {
+    FinishTest(EFunctionalTestResult::Failed, TEXT("Got fail"));
 }
 
 void ATestSimpleBatch::handle_kill_count_reached() {
