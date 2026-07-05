@@ -9,6 +9,8 @@ UCLASS(Config = Game, DefaultConfig)
 class USandboxDeveloperSettings : public UDeveloperSettings {
     GENERATED_BODY()
   public:
+    USandboxDeveloperSettings();
+
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
     bool visualise_ai_vision_cones{false};
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
@@ -22,5 +24,9 @@ class USandboxDeveloperSettings : public UDeveloperSettings {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool pause_pie_on_start{false};
 
-    USandboxDeveloperSettings();
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool print_save_data{false};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool log_successful_assertions{false};
 };
