@@ -7,4 +7,5 @@ struct FIndexSpan {
     int32 count{0};
 
     bool is_empty() const noexcept { return count == 0; }
+    auto end() const noexcept { return offset + count; }
 };
