@@ -25,7 +25,7 @@ class ATestLasers;
 class ATestEntityRegistry;
 
 UCLASS()
-class ATestCapitalShipFighters : public AActor {
+class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
     static constexpr bool is_world_space{false};
