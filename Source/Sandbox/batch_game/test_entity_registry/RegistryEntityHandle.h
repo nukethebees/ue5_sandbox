@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include <compare>
 struct SANDBOX_API FRegistryEntityHandle {
     using index_type = int32;
     using generation_type = int32;
@@ -13,7 +14,7 @@ struct SANDBOX_API FRegistryEntityHandle {
         : index(index)
         , generation(generation) {}
 
-    bool operator==(FRegistryEntityHandle const&) const noexcept = default;
+    auto operator<=>(FRegistryEntityHandle const&) const noexcept = default;
 
     [[nodiscard]] auto is_valid() const noexcept -> bool;
     [[nodiscard]] auto is_null() const noexcept -> bool;
