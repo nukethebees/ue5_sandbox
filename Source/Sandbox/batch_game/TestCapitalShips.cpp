@@ -10,6 +10,7 @@
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
+#include <Sandbox/utilities/IndexSpan.h>
 
 #include <NiagaraFunctionLibrary.h>
 #include <SandboxCore/actor_utils.h>
@@ -59,6 +60,8 @@ void ATestCapitalShips::begin_play() {
     debug_drawer.world = world;
 
     ensureAlways(IsValid(actor_config->team_visual_data));
+    ensureAlways(actor_config->fighter_spawn_slots ==
+                 actor_config->fighter_spawn_slots_relative_transforms.Num());
 
     configure_ismc();
     register_all_proxies_in_level();
@@ -70,6 +73,7 @@ void ATestCapitalShips::begin_tick() {
 void ATestCapitalShips::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
     handle_fighter_spawning();
+    refresh_fighter_handles();
 }
 void ATestCapitalShips::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
@@ -292,14 +296,32 @@ auto ATestCapitalShips::get_fighter_spawn_slots() const noexcept -> int32 {
 void ATestCapitalShips::handle_fighter_spawning() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
-    auto const n_ships{get_num_instances()};
-    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_ships, EAllowShrinking::No);
+    auto const n_capital_ships{get_num_instances()};
+    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships, EAllowShrinking::No);
     auto const cooldown{actor_config->spawn_delay};
 
-    auto const ships_ready_to_spawn_fighters_indices{
+    auto ships_ready_to_spawn_fighters_indices{
         ml::collect_indices_less_equal(TConstArrayView<float>{fighter_spawn_timers.remaining_times},
                                        0.f,
                                        ships_ready_to_spawn_fighters_buffer)};
+
+    // Resize based on how many actually need to spawn
+    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(
+        ships_ready_to_spawn_fighters_indices.Num(), EAllowShrinking::No);
+
+    {
+        auto const n_ready_to_spawn{ships_ready_to_spawn_fighters_indices.Num()};
+
+        for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
+            if (target_handles[i].is_null()) {
+                ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
+            }
+        }
+
+        ships_ready_to_spawn_fighters_indices = ships_ready_to_spawn_fighters_buffer;
+    }
+
+    if (ships_ready_to_spawn_fighters_indices.IsEmpty()) { return; }
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
@@ -307,7 +329,6 @@ void ATestCapitalShips::handle_fighter_spawning() {
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
         auto const target_handle{target_handles[i]};
-        if (target_handle.is_null()) { continue; }
         auto const base_location{ml::get_vector3f(locations, i)};
         auto const base_rotation{ml::get_rotator3f(rotations, i)};
 
@@ -335,6 +356,66 @@ void ATestCapitalShips::handle_fighter_spawning() {
                                     fighter_queue.targets);
 
     fighters_spawned += fighter_queue.targets.Num();
+}
+void ATestCapitalShips::refresh_fighter_handles() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
+
+    entity_registry->refresh_handles(fighter_handles);
+
+    auto const n_capitals{get_num_instances()};
+    auto const& spawn_data{fighters_actor->get_new_spawn_entity_data()};
+    auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
+    auto const n_spawned_per_capital{get_fighter_spawn_slots()};
+
+    ensure(spawn_data.num() == (n_capitals * n_spawned_per_capital));
+
+    int32 spawning_capital_idx{0};
+    int32 spawned_fighter_idx{0};
+
+    for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
+        FIndexSpan new_span{
+            .offset = fighter_handles_scratch.Num(),
+            .count = 0,
+        };
+
+        // Add existing non-null fighters
+        auto const old_span{capital_fighter_handle_spans[capital_idx]};
+        auto const loop_end{old_span.end()};
+        for (int32 fighter_index{old_span.offset}; fighter_index < loop_end; ++fighter_index) {
+            auto const fighter_handle{fighter_handles[fighter_index]};
+
+            if (!fighter_handle.is_null()) {
+                fighter_handles_scratch.Add(fighter_handle);
+                ++new_span.count;
+            }
+        }
+
+        // Add newly spawned fighters
+        if (ships_ready_to_spawn_fighters_buffer.IsValidIndex(spawning_capital_idx) &&
+            ships_ready_to_spawn_fighters_buffer[spawning_capital_idx] == capital_idx) {
+
+            auto const end{spawned_fighter_idx + n_spawned_per_capital};
+            for (; spawned_fighter_idx < end; ++spawned_fighter_idx, ++new_span.count) {
+                fighter_handles_scratch.Add(spawn_handles.registry_handles[spawned_fighter_idx]);
+            }
+
+            ++spawning_capital_idx;
+        }
+
+        capital_fighter_handle_spans[capital_idx] = new_span;
+    }
+
+    Swap(fighter_handles, fighter_handles_scratch);
+    fighter_handles_scratch.Reset();
+
+#if WITH_EDITOR
+    auto const n_fighters{fighters_actor->get_num_instances()};
+    auto const n_fighter_handles{fighter_handles.Num()};
+    ensureMsgf(n_fighters == n_fighter_handles,
+               TEXT("Fighters: %d, Handles: %d"),
+               n_fighters,
+               n_fighter_handles);
+#endif
 }
 
 // Visuals
@@ -469,7 +550,8 @@ void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
               ships_ready_to_spawn_fighters_buffer,
               fighter_queue,
-              entity_update_data);
+              entity_update_data,
+              fighter_handles_scratch);
 }
 
 // Debugging

@@ -103,6 +103,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Fighter spawning
     void handle_fighter_spawning();
+    void refresh_fighter_handles();
 
     // Visuals
     void configure_ismc();
