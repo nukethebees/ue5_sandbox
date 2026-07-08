@@ -4,10 +4,13 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
+#include <SandboxTests/cqtests/TestSimulationDriver.h>
+
 #include <Components/MapTestSpawner.h>
 #include <Containers/Set.h>
 #include <CQTest.h>
 #include <EngineUtils.h>
+#include <Misc/Optional.h>
 
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
@@ -17,6 +20,10 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     ATestEntityRegistry const* registry{nullptr};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
+
+    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
+
+    uint64 tick_threshold{0};
 
     bool all_passed{true};
     bool log_successful_assertions{false};
@@ -92,6 +99,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         fighters = orchestrator->get_capital_ship_fighters();
         ASSERT_THAT(IsNotNull(fighters));
+
+        test_driver = ml::TestSimulationDriver{*orchestrator->get_entity_registry(), world};
     }
     bool wait_for_fighters_to_spawn() {
         auto const n_fighters{capitals->get_fighters_spawned()};
@@ -99,7 +108,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         return false;
     }
-    void run_checks() {
+    void run_spawn_capital_handle_checks() {
         auto const n_capitals_exp{2};
         auto const n_capitals{capitals->get_num_instances()};
 
@@ -181,6 +190,17 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         ASSERT_THAT(IsTrue(all_passed, TEXT("all_passed")));
     }
 
+    void kill_fighters() {
+        auto const fighter_handles{capitals->get_fighter_handles()};
+
+        for (auto const handle : fighter_handles) {
+            test_driver->queue_damage(handle, 100000, {});
+        }
+
+        tick_threshold = orchestrator->get_tick_count() + 5;
+    }
+    void check_handles_after_kills() {}
+
     TEST_METHOD(MainTest)
     {
 
@@ -188,6 +208,10 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
             .Then([this] { initial_setup(); })
             .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, timeout)
-            .Then([this] { run_checks(); });
+            .Then([this] { run_spawn_capital_handle_checks(); })
+            .Then([this] { kill_fighters(); })
+            .Until([this]() -> bool { return orchestrator->get_tick_count() >= tick_threshold; },
+                   timeout)
+            .Then([this] { check_handles_after_kills(); });
     }
 };
