@@ -82,7 +82,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     auto get_fighter_spawn_slots() const noexcept -> int32;
     auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
-    auto get_fighter_handles() const noexcept -> auto const& { return fighter_handles; }
+    auto get_fighter_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
+        return fighter_handles;
+    }
     auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
         return capital_fighter_handle_spans;
     }
