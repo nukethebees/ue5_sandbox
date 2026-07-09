@@ -28,6 +28,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     bool all_passed{true};
     bool log_successful_assertions{false};
 
+    TArray<FRegistryEntityHandle> destroyed;
+    TArray<FRegistryEntityHandle> kept;
+
+    static constexpr int32 cycles_to_wait{5};
+
     BEFORE_EACH()
     {
         spawner = MakeUnique<FMapTestSpawner>(
@@ -192,14 +197,45 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
     void kill_fighters() {
         auto const fighter_handles{capitals->get_fighter_handles()};
+        auto const fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
 
-        for (auto const handle : fighter_handles) {
-            test_driver->queue_damage(handle, 100000, {});
+        destroyed.Reset();
+        kept.Reset();
+
+        for (auto const span : fighter_handle_spans) {
+            auto const end{span.end()};
+            for (int32 i{span.offset}; i < end; ++i) {
+                auto const handle{fighter_handles[i]};
+                if (i % 2 == 0) {
+                    test_driver->queue_damage(handle, 100000, {});
+                    destroyed.Add(handle);
+                } else {
+                    kept.Add(handle);
+                }
+            }
         }
 
-        tick_threshold = orchestrator->get_tick_count() + 5;
+        tick_threshold = orchestrator->get_tick_count() + cycles_to_wait;
     }
-    void check_handles_after_kills() {}
+    void check_handles_after_kills() {
+        auto const fighter_handles{capitals->get_fighter_handles()};
+        auto const fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
+
+        int32 total_left{0};
+        for (auto const span : fighter_handle_spans) {
+            auto const count{span.count};
+            total_left += count;
+
+            auto const end{span.end()};
+            for (int32 i{span.offset}; i < end; ++i) {
+                auto const handle{fighter_handles[i]};
+                is_true(kept.Contains(handle), TEXT("Is kept"));
+                is_true(!destroyed.Contains(handle), TEXT("Is not destroyed"));
+            }
+        }
+
+        are_equal(kept.Num(), total_left, TEXT("Expected left"));
+    }
 
     TEST_METHOD(MainTest)
     {
