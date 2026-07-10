@@ -184,7 +184,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         auto const& proxy_transform{proxies[i]->GetActorTransform()};
         ml::assign(new_locations, i, proxy_transform.GetLocation());
         ml::assign(new_rotations, i, proxy_transform.Rotator());
-        new_teams[i] = proxies[i]->team;
+        new_teams[i] = proxies[i]->get_team();
     }
 
     spawn_ships(entity_handles,
@@ -205,9 +205,9 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     // Assign the entity targets
     for (int32 i{0}; i < n_to_add; ++i) {
-        if (auto const found{proxy_to_index.Find(proxies[i]->target_ship)}) {
+        if (auto const found{proxy_to_index.Find(proxies[i]->get_target_ship())}) {
             new_targets[i] = *found;
-        } else if (!IsValid(proxies[i]->target_ship)) {
+        } else if (!IsValid(proxies[i]->get_target_ship())) {
             new_targets[i].reset();
         } else {
             UE_LOG(LogSandboxLearning, Fatal, TEXT("Lookup failed"));

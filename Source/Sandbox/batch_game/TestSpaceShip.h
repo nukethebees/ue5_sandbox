@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
@@ -38,7 +39,9 @@ class ATestLasers;
 class UTestSpaceShipData;
 
 UCLASS()
-class ATestSpaceShip : public APawn {
+class ATestSpaceShip
+    : public APawn
+    , public ITestEntity {
     GENERATED_BODY()
   public:
     struct Sockets {
@@ -48,6 +51,11 @@ class ATestSpaceShip : public APawn {
     };
 
     ATestSpaceShip();
+
+    // ITestEntity
+    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
+        return registry_handle;
+    }
 
     // Life cycle
     void begin_play();

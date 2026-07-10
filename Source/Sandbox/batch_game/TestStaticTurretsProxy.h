@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TestEntity.h"
 #include "TestTeam.h"
 
 #include "CoreMinimal.h"
@@ -17,13 +18,20 @@ class UTestStaticTurretsConfig;
 class ATestStaticTurrets;
 
 UCLASS()
-class ATestStaticTurretsProxy : public AActor {
+class ATestStaticTurretsProxy
+    : public AActor
+    , public ITestEntity {
   public:
     GENERATED_BODY()
 
     ATestStaticTurretsProxy();
 
     auto get_team() const { return team; }
+
+    // ITestEntity
+    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
+        return entity_handle;
+    }
   protected:
     void configure_component(UPrimitiveComponent& component);
 
@@ -53,4 +61,6 @@ class ATestStaticTurretsProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     ETestTeam team{ETestTeam::White};
+
+    FRegistryEntityHandle entity_handle;
 };

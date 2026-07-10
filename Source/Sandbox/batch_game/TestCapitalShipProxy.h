@@ -1,8 +1,7 @@
 #pragma once
 
+#include "TestEntity.h"
 #include "TestTeam.h"
-
-#include <SandboxCore/generation_index.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -15,7 +14,9 @@ class UArrowComponent;
 class UTestCapitalShipsConfig;
 
 UCLASS()
-class ATestCapitalShipProxy : public AActor {
+class ATestCapitalShipProxy
+    : public AActor
+    , public ITestEntity {
     GENERATED_BODY()
   public:
     ATestCapitalShipProxy();
@@ -29,8 +30,16 @@ class ATestCapitalShipProxy : public AActor {
     void apply_asset_configuration_to_all_instances();
     UFUNCTION(CallInEditor, Category = "Ship")
     void save_configuration_to_asset();
-#endif
 
+    auto get_team() const noexcept { return team; }
+    auto get_target_ship() const noexcept { return target_ship; }
+
+    // ITestEntity
+    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
+        return entity_handle;
+    }
+#endif
+  protected:
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UTestCapitalShipsConfig> ship_config{nullptr};
 
@@ -45,4 +54,6 @@ class ATestCapitalShipProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     ETestTeam team{ETestTeam::White};
+
+    FRegistryEntityHandle entity_handle;
 };

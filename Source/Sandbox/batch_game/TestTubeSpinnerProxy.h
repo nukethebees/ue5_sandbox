@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TestEntity.h"
 #include "TestTeam.h"
 
 #include "CoreMinimal.h"
@@ -17,13 +18,20 @@ class UTestTubeSpinnersConfig;
 class ATestStaticTurrets;
 
 UCLASS()
-class ATestTubeSpinnerProxy : public AActor {
+class ATestTubeSpinnerProxy
+    : public AActor
+    , public ITestEntity {
   public:
     GENERATED_BODY()
 
     ATestTubeSpinnerProxy();
 
     auto get_initial_active_fire_point() const { return initial_active_fire_point; }
+
+    // ITestEntity
+    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
+        return entity_handle;
+    }
   private:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy|Add Points")
@@ -62,4 +70,6 @@ class ATestTubeSpinnerProxy : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     int32 initial_active_fire_point{0};
+
+    FRegistryEntityHandle entity_handle;
 };

@@ -3,16 +3,17 @@
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
+#include <UObject/Interface.h>
 
 #include "TestEntity.generated.h"
 
-UCLASS()
-class SANDBOX_API ATestEntity : public AActor {
+UINTERFACE()
+class UTestEntity : public UInterface {
+    GENERATED_BODY()
+};
+
+class ITestEntity {
     GENERATED_BODY()
   public:
-    auto get_entity_handle() const noexcept { return entity_handle; }
-    void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
-  private:
-    FRegistryEntityHandle entity_handle{};
+    virtual auto get_entity_handle() const noexcept -> FRegistryEntityHandle = 0;
 };
