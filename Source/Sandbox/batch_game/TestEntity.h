@@ -5,10 +5,10 @@
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
-#include "TestEntityProxy.generated.h"
+#include "TestEntity.generated.h"
 
 UCLASS()
-class SANDBOX_API ATestEntityProxy : public AActor {
+class SANDBOX_API ATestEntity : public AActor {
     GENERATED_BODY()
   public:
     auto get_entity_handle() const noexcept { return entity_handle; }
