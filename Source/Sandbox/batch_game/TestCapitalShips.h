@@ -89,6 +89,18 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
         return capital_fighter_handle_spans;
     }
+    auto get_capital_fighter_handle_span(int32 const i) const noexcept -> FIndexSpan {
+        return capital_fighter_handle_spans[i];
+    }
+    auto get_fighter_handles(int32 const i) const noexcept
+        -> TConstArrayView<FRegistryEntityHandle> {
+        auto const span{capital_fighter_handle_spans[i]};
+        return TConstArrayView<FRegistryEntityHandle>{fighter_handles}.Slice(span.offset,
+                                                                             span.count);
+    }
+    auto get_target_handle(int32 const i) const noexcept -> FRegistryEntityHandle {
+        return target_handles[i];
+    }
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return target_handles;
     }
