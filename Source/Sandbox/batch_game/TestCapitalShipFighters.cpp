@@ -71,12 +71,6 @@ void ATestCapitalShipFighters::update_timers(float const dt) {
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
-
-    ml::batch::refresh_targets(*entity_registry,
-                               target_handles,
-                               indices_without_targets_buffer,
-                               teams,
-                               ETestEntityType::CapitalShip);
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
