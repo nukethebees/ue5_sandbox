@@ -17,11 +17,10 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
+    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
-
-    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
@@ -195,11 +194,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, timeout)
             .Then([this] { run_spawn_capital_handle_checks(); })
             .Then([this] { kill_fighters(); })
-            .Until(
-                [this]() -> bool {
-                    return test_driver->orchestrator.get_tick_count() >= test_driver->tick_wait_end;
-                },
-                timeout)
+            .Until([this] { return test_driver->wait_is_over(); }, timeout)
             .Then([this] { check_handles_after_kills(); });
     }
 };
