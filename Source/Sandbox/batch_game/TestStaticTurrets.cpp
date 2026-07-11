@@ -65,6 +65,11 @@ void ATestStaticTurrets::begin_play() {
     configure_ismc();
     register_all_proxies_in_level();
 }
+void ATestStaticTurrets::resolve_initial_targets() {
+    auto const proxies{ml::get_actors<Proxy>(*GetWorld())};
+    ml::destroy_all_actors(proxies);
+}
+
 void ATestStaticTurrets::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
     clear_tick_buffers();
@@ -300,23 +305,24 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     auto* world{GetWorld()};
     auto const proxies{ml::get_actors<Proxy>(*world)};
-    auto const n{proxies.Num()};
-    if (n == 0) { return; }
+    auto const n_to_add{proxies.Num()};
+    if (n_to_add == 0) { return; }
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
     TArray<float> custom_data_spawn_buffer;
-    custom_data_spawn_buffer.SetNumUninitialized(n * n_custom_ismc_floats, EAllowShrinking::No);
+    custom_data_spawn_buffer.SetNumUninitialized(n_to_add * n_custom_ismc_floats,
+                                                 EAllowShrinking::No);
 
     // Set entity data
-    ml::add_uninitialised(n, ismc_transforms, locations, teams, healths);
+    ml::add_uninitialised(n_to_add, ismc_transforms, locations, teams, healths);
 
     ml::fill(healths, actor_config->max_health);
-    target_handles.AddDefaulted(n);
-    laser_cooldowns.remaining_times.AddZeroed(n);
+    target_handles.AddDefaulted(n_to_add);
+    laser_cooldowns.remaining_times.AddZeroed(n_to_add);
 
-    for (int32 i{0}; i < n; ++i) {
+    for (int32 i{0}; i < n_to_add; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
 
         ismc_transforms[i] = transform;
@@ -334,13 +340,18 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     }
 
     instances->AddInstances(ismc_transforms, false);
-    instances->SetCustomData(0, n - 1, custom_data_spawn_buffer, false);
+    instances->SetCustomData(0, n_to_add - 1, custom_data_spawn_buffer, false);
 
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
     entity_handles = MoveTemp(new_entities.registry_handles);
 
-    ml::destroy_all_actors(proxies);
+    // Map the proxies to the new handles
+    for (int32 i{0}; i < n_to_add; ++i) {
+        proxies[i]->set_entity_handle(entity_handles[i]);
+        target_handles[i].reset();
+    }
+
     validate_array_sizes();
 }
 
@@ -427,6 +438,9 @@ void ATestStaticTurrets::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
+}
+void ATestStaticTurrets::validate_proxy_handles() const {
+    entity_registry->validate_handles(entity_handles);
 }
 
 // Debugging

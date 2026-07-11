@@ -38,6 +38,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    void resolve_initial_targets();
 
     void begin_tick();
     void update_timers(float const dt);
@@ -65,6 +66,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     // Checks
     void validate_array_sizes() const;
+    void validate_proxy_handles() const;
   protected:
     // Spawning
     void register_all_proxies_in_level();
