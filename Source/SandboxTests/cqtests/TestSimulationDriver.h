@@ -24,8 +24,12 @@ struct TestSimulationDriver {
                       int32 const damage,
                       FRegistryEntityHandle const instigator);
 
+    void set_wait_until_tick_from_now(uint64 wait_cycles);
+
     UWorld& world;
     ATestEntityRegistry& registry;
     ATestBatchOrchestrator& orchestrator;
+
+    uint64 tick_wait_end{0};
 };
 }

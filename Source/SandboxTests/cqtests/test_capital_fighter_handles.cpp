@@ -23,8 +23,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
-    uint64 tick_threshold{0};
-
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
 
@@ -166,7 +164,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             }
         }
 
-        tick_threshold = test_driver->orchestrator.get_tick_count() + cycles_to_wait;
+        test_driver->set_wait_until_tick_from_now(cycles_to_wait);
     }
     void check_handles_after_kills() {
         auto const fighter_handles{capitals->get_fighter_handles()};
@@ -199,7 +197,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             .Then([this] { kill_fighters(); })
             .Until(
                 [this]() -> bool {
-                    return test_driver->orchestrator.get_tick_count() >= tick_threshold;
+                    return test_driver->orchestrator.get_tick_count() >= test_driver->tick_wait_end;
                 },
                 timeout)
             .Then([this] { check_handles_after_kills(); });

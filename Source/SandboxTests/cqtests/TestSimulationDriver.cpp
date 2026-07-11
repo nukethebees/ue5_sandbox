@@ -59,4 +59,8 @@ void TestSimulationDriver::queue_damage(FRegistryEntityHandle const target,
 
     registry.queue_damage_events(damage_events);
 }
+
+void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
+    tick_wait_end = orchestrator.get_tick_count() + wait_cycles;
+}
 }
