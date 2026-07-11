@@ -67,6 +67,13 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
 
+    auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
+        return target_handles;
+    }
+    auto set_target_handle(int32 const fighter_idx, FRegistryEntityHandle const new_target) noexcept {
+        target_handles[fighter_idx] = new_target;
+    }
+
     // Checks
     void validate_array_sizes() const;
   protected:
