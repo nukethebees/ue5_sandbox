@@ -18,8 +18,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
 
-    ATestBatchOrchestrator const* orchestrator{nullptr};
-    ATestEntityRegistry const* registry{nullptr};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
 
@@ -49,23 +47,13 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
   private:
     void initial_setup() {
         auto& world{spawner->GetWorld()};
+        test_driver = ml::TestSimulationDriver::from_world(world);
 
-        for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
-            orchestrator = *it;
-            break;
-        }
-        ASSERT_THAT(IsNotNull(orchestrator));
-
-        registry = orchestrator->get_entity_registry();
-        ASSERT_THAT(IsNotNull(registry));
-
-        capitals = orchestrator->get_capital_ships();
+        capitals = test_driver->orchestrator.get_capital_ships();
         ASSERT_THAT(IsNotNull(capitals));
 
-        fighters = orchestrator->get_capital_ship_fighters();
+        fighters = test_driver->orchestrator.get_capital_ship_fighters();
         ASSERT_THAT(IsNotNull(fighters));
-
-        test_driver = ml::TestSimulationDriver{*orchestrator->get_entity_registry(), world};
     }
     bool wait_for_fighters_to_spawn() {
         auto const n_fighters{capitals->get_fighters_spawned()};
@@ -128,7 +116,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         if (!checks.all_passed) {
             FString msg;
-            msg += FString::Printf(TEXT("Failed on tick: %llu"), orchestrator->get_tick_count());
+            msg += FString::Printf(TEXT("Failed on tick: %llu"),
+                                   test_driver->orchestrator.get_tick_count());
 
             msg += TEXT("\nCapital ship fighter handles:");
             for (auto const& handle : capital_fighter_handles) {
@@ -177,7 +166,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             }
         }
 
-        tick_threshold = orchestrator->get_tick_count() + cycles_to_wait;
+        tick_threshold = test_driver->orchestrator.get_tick_count() + cycles_to_wait;
     }
     void check_handles_after_kills() {
         auto const fighter_handles{capitals->get_fighter_handles()};
@@ -208,8 +197,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, timeout)
             .Then([this] { run_spawn_capital_handle_checks(); })
             .Then([this] { kill_fighters(); })
-            .Until([this]() -> bool { return orchestrator->get_tick_count() >= tick_threshold; },
-                   timeout)
+            .Until(
+                [this]() -> bool {
+                    return test_driver->orchestrator.get_tick_count() >= tick_threshold;
+                },
+                timeout)
             .Then([this] { check_handles_after_kills(); });
     }
 };

@@ -1,14 +1,34 @@
 #include "TestSimulationDriver.h"
 
+#include <SandboxTests/SandboxTestLogCategories.h>
+
 #include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/constants/collision_channels.h>
 
 #include <Components/PrimitiveComponent.h>
 #include <Engine/HitResult.h>
 #include <Engine/World.h>
+#include <EngineUtils.h>
 
 namespace ml {
+auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
+    ATestBatchOrchestrator* orchestrator{nullptr};
+    ATestEntityRegistry* registry{nullptr};
+
+    for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
+        orchestrator = *it;
+        break;
+    }
+    if (!IsValid(orchestrator)) { UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr")); }
+
+    registry = orchestrator->get_entity_registry();
+    if (!IsValid(registry)) { UE_LOG(LogSandboxTest, Fatal, TEXT("registry is nullptr")); }
+
+    return TestSimulationDriver{world, *registry, *orchestrator};
+}
+
 void TestSimulationDriver::queue_damage(FRegistryEntityHandle const target,
                                         int32 const damage,
                                         FRegistryEntityHandle const instigator) {

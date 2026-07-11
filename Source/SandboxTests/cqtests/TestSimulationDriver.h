@@ -7,19 +7,25 @@
 class UWorld;
 
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
 
 namespace ml {
 struct TestSimulationDriver {
+    explicit TestSimulationDriver(UWorld& world,
+                                  ATestEntityRegistry& registry,
+                                  ATestBatchOrchestrator& orchestrator)
+        : world{world}
+        , registry{registry}
+        , orchestrator{orchestrator} {}
 
-    explicit TestSimulationDriver(ATestEntityRegistry& registry, UWorld& world)
-        : registry{registry}
-        , world{world} {}
+    static auto from_world(UWorld& world) -> TestSimulationDriver;
 
     void queue_damage(FRegistryEntityHandle const target,
                       int32 const damage,
                       FRegistryEntityHandle const instigator);
 
-    ATestEntityRegistry& registry;
     UWorld& world;
+    ATestEntityRegistry& registry;
+    ATestBatchOrchestrator& orchestrator;
 };
 }
