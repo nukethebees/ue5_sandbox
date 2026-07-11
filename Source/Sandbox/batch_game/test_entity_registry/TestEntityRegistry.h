@@ -142,6 +142,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
 
     // Checks
     void validate_array_sizes() const;
+    void validate_handles(TConstArrayView<FRegistryEntityHandle> const handles);
   private:
     void commit_entity_updates();
     void commit_death_updates();

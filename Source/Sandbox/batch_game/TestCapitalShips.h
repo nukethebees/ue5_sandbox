@@ -95,6 +95,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Checks
     void validate_array_sizes() const;
+    void validate_proxy_handles() const;
   protected:
     // Ship spawning
     void register_all_proxies_in_level();

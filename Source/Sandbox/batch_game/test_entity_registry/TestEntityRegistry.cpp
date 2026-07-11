@@ -592,3 +592,8 @@ void ATestEntityRegistry::validate_unique_entity_data() const {
         check(unique_entities.death_reason[i] != ETestDeathReason::Unset);
     }
 }
+void ATestEntityRegistry::validate_handles(TConstArrayView<FRegistryEntityHandle> const handles) {
+    for (auto const handle : handles) {
+        if (!is_valid_handle(handle)) { UE_LOG(LogSandbox, Fatal, TEXT("Handle is invalid")); }
+    }
+}

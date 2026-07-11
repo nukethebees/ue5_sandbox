@@ -42,7 +42,7 @@ class ATestBatchOrchestrator : public AActor {
     void spawn_missing_actors();
 #endif
   private:
-    void check_proxy_handles();
+    void validate_proxy_handles();
     void route_actor_references();
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")

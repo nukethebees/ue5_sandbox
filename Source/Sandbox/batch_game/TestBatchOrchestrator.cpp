@@ -79,8 +79,9 @@ void ATestBatchOrchestrator::BeginPlay() {
                       spinners,
                       lasers);
 
-    check_proxy_handles();
-    ml::invoke_on_all([this](auto actor) { actor->resolve_initial_targets(); }, capital_ships);
+    validate_proxy_handles();
+    ml::invoke_on_all(
+        [this](auto actor) { actor->resolve_initial_targets(); }, capital_ships, turrets);
 
     if (player_ship) {
         mission_manager->update_player_handles();
@@ -92,7 +93,15 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     if (player_ship) { mission_manager->begin_play(); }
 }
-void ATestBatchOrchestrator::check_proxy_handles() {}
+void ATestBatchOrchestrator::validate_proxy_handles() {
+    if (player_ship) {
+        if (!entity_registry->is_valid_handle(player_ship->get_entity_registry_handle())) {
+            UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
+        }
+    }
+    ml::invoke_on_all(
+        [this](auto actor) { actor->validate_proxy_handles(); }, capital_ships, turrets);
+}
 
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
@@ -270,8 +279,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
 void ATestBatchOrchestrator::route_actor_references() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
 
-    if (player_ship) { 
-        mission_manager->set_player_ship(*player_ship); 
+    if (player_ship) {
+        mission_manager->set_player_ship(*player_ship);
 
         player_ship->set_entity_registry(entity_registry);
         player_ship->set_laser_actor(lasers);

@@ -633,3 +633,6 @@ void ATestCapitalShips::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
+void ATestCapitalShips::validate_proxy_handles() const {
+    entity_registry->validate_handles(entity_handles);
+}
