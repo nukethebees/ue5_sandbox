@@ -103,8 +103,10 @@ void ATestCapitalShips::resolve_initial_targets() {
             UE_LOG(LogSandbox,
                    Fatal,
                    TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] target has an "
-                        "invalid handle"),
-                   i);
+                        "invalid handle (proxy: %s, target: %s)"),
+                   i,
+                   *ml::get_best_display_name(proxy),
+                   *ml::get_best_display_name(*target));
         }
 
         target_handles[entity_index] = target_handle;
