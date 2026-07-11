@@ -76,4 +76,7 @@ void TestSimulationDriver::queue_kill(FRegistryEntityHandle const target,
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
     tick_wait_end = orchestrator.get_tick_count() + wait_cycles;
 }
+bool TestSimulationDriver::wait_is_over() const {
+    return orchestrator.get_tick_count() >= tick_wait_end;
+}
 }

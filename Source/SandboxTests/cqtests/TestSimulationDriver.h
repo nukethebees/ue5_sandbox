@@ -36,6 +36,8 @@ struct TestSimulationDriver {
 
     void set_wait_until_tick_from_now(uint64 wait_cycles);
 
+    bool wait_is_over() const;
+
     UWorld& world;
     ATestEntityRegistry& registry;
     ATestBatchOrchestrator& orchestrator;
