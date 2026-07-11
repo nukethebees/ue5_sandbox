@@ -63,6 +63,7 @@ void ATestCapitalShipFighters::begin_play() {
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
+    entity_registry->refresh_handles(target_handles);
 }
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
