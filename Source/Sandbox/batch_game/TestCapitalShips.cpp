@@ -566,6 +566,7 @@ void ATestCapitalShips::handle_dead_entities() {
     if (local_indices_to_remove.IsEmpty()) { return; }
 
     trigger_death_effects();
+    reassign_dying_capital_fighter_handles();
 
     local_indices_to_remove.Sort(TGreater<int32>{});
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
@@ -575,8 +576,10 @@ void ATestCapitalShips::handle_dead_entities() {
                                         fighter_spawn_timers.remaining_times,
                                         teams,
                                         healths,
-                                        target_handles);
+                                        target_handles,
+                                        capital_fighter_handle_spans);
 }
+void ATestCapitalShips::reassign_dying_capital_fighter_handles() {}
 
 // Misc
 void ATestCapitalShips::clear_runtime_state() {

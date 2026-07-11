@@ -129,6 +129,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Death handling
     void handle_dead_entities();
+    void reassign_dying_capital_fighter_handles();
     void trigger_death_effects();
 
     // Debugging
