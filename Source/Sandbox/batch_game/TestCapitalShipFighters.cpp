@@ -59,6 +59,7 @@ void ATestCapitalShipFighters::begin_play() {
 
     turn_speed_radians = FMath::DegreesToRadians(actor_config->turn_speed_degrees);
 }
+
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
@@ -266,7 +267,6 @@ void ATestCapitalShipFighters::spawn_instances(
     laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
-    ml::reset(new_spawn_entity_data);
     new_spawn_entity_data.add_uninitialised(n_new);
 
     for (int32 i{0}; i < n_new; ++i) {
@@ -397,7 +397,7 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove, new_lasers, entity_death_info);
+    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data);
 }
 void ATestCapitalShipFighters::remove_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::remove_dead_entities);
