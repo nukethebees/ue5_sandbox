@@ -9,6 +9,12 @@ class UWorld;
 class ATestEntityRegistry;
 class ATestBatchOrchestrator;
 
+class ATestSpaceShip;
+class ATestLasers;
+class ATestCapitalShips;
+class ATestCapitalShipFighters;
+class ATestStaticTurrets;
+
 namespace ml {
 struct TestSimulationDriver {
     explicit TestSimulationDriver(UWorld& world,
@@ -19,6 +25,9 @@ struct TestSimulationDriver {
         , orchestrator{orchestrator} {}
 
     static auto from_world(UWorld& world) -> TestSimulationDriver;
+
+    auto get_capital_ships() const -> ATestCapitalShips const&;
+    auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
 
     void queue_damage(FRegistryEntityHandle const target,
                       int32 const damage,

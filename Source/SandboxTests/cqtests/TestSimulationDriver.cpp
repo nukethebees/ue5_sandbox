@@ -29,6 +29,13 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     return TestSimulationDriver{world, *registry, *orchestrator};
 }
 
+auto TestSimulationDriver::get_capital_ships() const -> ATestCapitalShips const& {
+    return *orchestrator.get_capital_ships();
+}
+auto TestSimulationDriver::get_capital_ship_fighters() const -> ATestCapitalShipFighters const& {
+    return *orchestrator.get_capital_ship_fighters();
+}
+
 void TestSimulationDriver::queue_damage(FRegistryEntityHandle const target,
                                         int32 const damage,
                                         FRegistryEntityHandle const instigator) {
