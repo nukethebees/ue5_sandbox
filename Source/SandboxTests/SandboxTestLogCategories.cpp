@@ -2,4 +2,3 @@
 
 // Systems
 DEFINE_LOG_CATEGORY(LogSandboxTest);
-

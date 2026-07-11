@@ -72,7 +72,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return target_handles;
     }
-    auto set_target_handle(int32 const fighter_idx, FRegistryEntityHandle const new_target) noexcept {
+    auto set_target_handle(int32 const fighter_idx,
+                           FRegistryEntityHandle const new_target) noexcept {
         target_handles[fighter_idx] = new_target;
     }
 

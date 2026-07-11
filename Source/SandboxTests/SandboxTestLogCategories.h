@@ -4,4 +4,3 @@
 
 // Systems
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxTest, Log, All);
-
