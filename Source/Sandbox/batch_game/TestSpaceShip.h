@@ -73,11 +73,21 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
+    void set_owner_id(TestEntityOwnerId const new_owner_id);
+
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
+
+    auto get_entity_registry() const { return entity_registry; }
+    void set_entity_registry(ATestEntityRegistry* er) { entity_registry = er; }
+
+    auto get_laser_actor() const { return laser_actor; }
+    void set_laser_actor(ATestLasers* actor) { laser_actor = actor; }
+
+    auto get_actor_config() const { return actor_config; }
+    void set_actor_config(UTestSpaceShipData* data) { actor_config = data; }
 
     /* ------------------------------------------------------------------------------------------ */
     // Movement
