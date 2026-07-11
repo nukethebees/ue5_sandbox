@@ -137,6 +137,17 @@ void ATestCapitalShips::make_decisions() {
                                indices_without_targets_buffer,
                                teams,
                                ETestEntityType::CapitalShip);
+
+    auto const fighter_target_handles{fighters_actor->get_target_handles()};
+    for (auto const span : capital_fighter_handle_spans) {
+        auto const end{span.end()};
+        for (int32 i{span.start()}; i < end; ++i) {
+            auto const fighter_target_handle{fighter_target_handles[i]};
+            if (fighter_target_handle.is_null()) {
+                fighters_actor->set_target_handle(i, target_handles[i]);
+            }
+        }
+    }
 }
 void ATestCapitalShips::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);
