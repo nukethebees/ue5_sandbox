@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/actor_utils.h>
@@ -19,6 +20,7 @@
 TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks;
 
     ATestBatchOrchestrator const* orchestrator{nullptr};
     ATestEntityRegistry const* registry{nullptr};
@@ -36,47 +38,10 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
             TEXT("FuncT_proxy_base"));
         spawner->AddWaitUntilLoadedCommand(TestRunner);
 
-        all_passed = true;
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
     }
   private:
-    inline static auto to_string(bool b) -> TCHAR const* {
-        return b ? TEXT("true") : TEXT("false");
-    }
-
-    void display_result(bool const passed, FString const& msg) {
-        if (!passed) {
-            TestRunner->AddError(msg);
-        } else if (log_successful_assertions) {
-            TestRunner->AddInfo(msg);
-        }
-    }
-    void store_result(bool const result) noexcept {
-        all_passed &= result;
-    }
-
-    template <typename T>
-    bool are_equal(T const& exp, T const& got, FString const description) {
-        auto const result{exp == got};
-        store_result(result);
-
-        auto const exp_str{LexToString(exp)};
-        auto const got_str{LexToString(got)};
-        auto msg{FString::Printf(TEXT("%s (Exp %s, Got %s)"), *description, *exp_str, *got_str)};
-
-        display_result(result, msg);
-
-        return result;
-    }
-    bool is_true(bool result, FString const description) {
-        store_result(result);
-
-        auto msg{FString::Printf(TEXT("%s (%s)"), *description, to_string(result))};
-
-        display_result(result, msg);
-
-        return result;
-    }
-
     void initial_setup() {
         auto& world{spawner->GetWorld()};
 
@@ -96,16 +61,18 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     void main_checks() {
         check_no_proxies_alive();
         check_capital_targets();
+
+        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
     void check_no_proxies_alive() {
         auto& world{spawner->GetWorld()};
-        are_equal(0,
-                  ml::get_actors<ATestCapitalShipProxy>(world).Num(),
-                  TEXT("ATestCapitalShipProxy check"));
-        are_equal(0,
-                  ml::get_actors<ATestStaticTurretsProxy>(world).Num(),
-                  TEXT("ATestStaticTurretsProxy check"));
+        checks.are_equal(0,
+                         ml::get_actors<ATestCapitalShipProxy>(world).Num(),
+                         TEXT("ATestCapitalShipProxy check"));
+        checks.are_equal(0,
+                         ml::get_actors<ATestStaticTurretsProxy>(world).Num(),
+                         TEXT("ATestStaticTurretsProxy check"));
     }
     void check_capital_targets() {
         auto const target_handles{capitals->get_target_handles()};
@@ -113,7 +80,8 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 
         for (int32 i{0}; i < n_target_handles; ++i) {
             auto const handle{target_handles[i]};
-            is_true(registry->is_valid_alive(handle), FString::Printf(TEXT("Target check: %d"), i));
+            checks.is_true(registry->is_valid_alive(handle),
+                           FString::Printf(TEXT("Target check: %d"), i));
         }
     }
 

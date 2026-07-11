@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <Components/MapTestSpawner.h>
@@ -15,6 +16,7 @@
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
 
     ATestBatchOrchestrator const* orchestrator{nullptr};
     ATestEntityRegistry const* registry{nullptr};
@@ -24,9 +26,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     uint64 tick_threshold{0};
-
-    bool all_passed{true};
-    bool log_successful_assertions{false};
 
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
@@ -40,52 +39,14 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             TEXT("FuncT_capital_fighter_handles"));
         spawner->AddWaitUntilLoadedCommand(TestRunner);
 
-        all_passed = true;
-
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
 #if WITH_EDITOR
         auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-        log_successful_assertions = settings->log_successful_assertions;
+        checks.log_successful_assertions = settings->log_successful_assertions;
 #endif
     }
   private:
-    inline static auto to_string(bool b) -> TCHAR const* {
-        return b ? TEXT("true") : TEXT("false");
-    }
-
-    void display_result(bool const passed, FString const& msg) {
-        if (!passed) {
-            TestRunner->AddError(msg);
-        } else if (log_successful_assertions) {
-            TestRunner->AddInfo(msg);
-        }
-    }
-    void store_result(bool const result) noexcept {
-        all_passed &= result;
-    }
-
-    template <typename T>
-    bool are_equal(T const& exp, T const& got, FString const description) {
-        auto const result{exp == got};
-        store_result(result);
-
-        auto const exp_str{LexToString(exp)};
-        auto const got_str{LexToString(got)};
-        auto msg{FString::Printf(TEXT("%s (Exp %s, Got %s)"), *description, *exp_str, *got_str)};
-
-        display_result(result, msg);
-
-        return result;
-    }
-    bool is_true(bool result, FString const description) {
-        store_result(result);
-
-        auto msg{FString::Printf(TEXT("%s (%s)"), *description, to_string(result))};
-
-        display_result(result, msg);
-
-        return result;
-    }
-
     void initial_setup() {
         auto& world{spawner->GetWorld()};
 
@@ -116,32 +77,33 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         auto const n_capitals_exp{2};
         auto const n_capitals{capitals->get_num_instances()};
 
-        are_equal(n_capitals_exp, n_capitals, TEXT("Number of capitals."));
+        checks.are_equal(n_capitals_exp, n_capitals, TEXT("Number of capitals."));
 
         auto const capital_fighters_spawn_slots{capitals->get_fighter_spawn_slots()};
 
         auto const n_fighters_spawned_exp{n_capitals * capital_fighters_spawn_slots};
         auto const n_fighters_spawned{capitals->get_fighters_spawned()};
 
-        are_equal(n_fighters_spawned_exp,
-                  n_fighters_spawned,
-                  TEXT("Number of fighters (according to capitals)"));
+        checks.are_equal(n_fighters_spawned_exp,
+                         n_fighters_spawned,
+                         TEXT("Number of fighters (according to capitals)"));
 
         auto const n_fighters_exp{n_fighters_spawned};
         auto const n_fighters{fighters->get_num_instances()};
 
-        are_equal(n_fighters_exp, n_fighters, TEXT("Number of fighters."));
+        checks.are_equal(n_fighters_exp, n_fighters, TEXT("Number of fighters."));
 
         auto const& capital_fighter_handles{capitals->get_fighter_handles()};
         auto const& capital_fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
 
         auto const n_fighter_handles_exp{n_capitals * capital_fighters_spawn_slots};
         auto const n_fighter_handles{capital_fighter_handles.Num()};
-        are_equal(n_fighter_handles_exp, n_fighter_handles, TEXT("Number of fighter handles"));
+        checks.are_equal(
+            n_fighter_handles_exp, n_fighter_handles, TEXT("Number of fighter handles"));
 
         auto const n_fighter_spans_exp{n_capitals};
         auto const n_fighter_spans{capital_fighter_handle_spans.Num()};
-        are_equal(n_fighter_spans_exp, n_fighter_spans, TEXT("Fighter handle spans"));
+        checks.are_equal(n_fighter_spans_exp, n_fighter_spans, TEXT("Fighter handle spans"));
 
         for (int32 i{0}; i < n_capitals; ++i) {
             auto const span{capital_fighter_handle_spans[i]};
@@ -149,7 +111,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             auto const span_count_exp{capital_fighters_spawn_slots};
             auto const span_count{span.count};
 
-            are_equal(span_count_exp, span_count, FString::Printf(TEXT("Span count (%d)"), i));
+            checks.are_equal(
+                span_count_exp, span_count, FString::Printf(TEXT("Span count (%d)"), i));
         }
 
         // Check handle uniqueness
@@ -158,12 +121,12 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             auto const& handle{capital_fighter_handles[i]};
 
             auto const is_unique{
-                is_true(!unique_handles.Contains(handle),
-                        FString::Printf(TEXT("Unique capital fighter handle (%d)"), i))};
+                checks.is_true(!unique_handles.Contains(handle),
+                               FString::Printf(TEXT("Unique capital fighter handle (%d)"), i))};
             if (is_unique) { unique_handles.Add(handle); }
         }
 
-        if (!all_passed) {
+        if (!checks.all_passed) {
             FString msg;
             msg += FString::Printf(TEXT("Failed on tick: %llu"), orchestrator->get_tick_count());
 
@@ -191,7 +154,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             TestRunner->AddInfo(msg);
         }
 
-        ASSERT_THAT(IsTrue(all_passed, TEXT("all_passed")));
+        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
     void kill_fighters() {
@@ -228,12 +191,12 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             auto const end{span.end()};
             for (int32 i{span.offset}; i < end; ++i) {
                 auto const handle{fighter_handles[i]};
-                is_true(kept.Contains(handle), TEXT("Is kept"));
-                is_true(!destroyed.Contains(handle), TEXT("Is not destroyed"));
+                checks.is_true(kept.Contains(handle), TEXT("Is kept"));
+                checks.is_true(!destroyed.Contains(handle), TEXT("Is not destroyed"));
             }
         }
 
-        are_equal(kept.Num(), total_left, TEXT("Expected left"));
+        checks.are_equal(kept.Num(), total_left, TEXT("Expected left"));
     }
 
     TEST_METHOD(MainTest)
