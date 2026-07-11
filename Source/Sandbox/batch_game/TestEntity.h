@@ -7,7 +7,7 @@
 
 #include "TestEntity.generated.h"
 
-UINTERFACE()
+UINTERFACE(MinimalAPI)
 class UTestEntity : public UInterface {
     GENERATED_BODY()
 };
