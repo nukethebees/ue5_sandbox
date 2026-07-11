@@ -52,6 +52,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
                          TConstArrayView<ETestTeam> const new_teams,
                          TConstArrayView<FRegistryEntityHandle> const new_targets);
 
+    void self_destruct_fighter(FRegistryEntityHandle handle);
+
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 

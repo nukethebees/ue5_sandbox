@@ -317,6 +317,14 @@ void ATestCapitalShipFighters::spawn_instances(
     validate_array_sizes();
 }
 
+void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const handle) {
+    auto const index{entity_handles.Find(handle)};
+    check(index != INDEX_NONE);
+
+    healths[index] = 0;
+    local_indices_to_remove.Add(index);
+}
+
 // Combat
 void ATestCapitalShipFighters::handle_firing() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
