@@ -11,5 +11,6 @@ struct FIndexSpan {
     auto operator<=>(FIndexSpan const&) const noexcept = default;
 
     bool is_empty() const noexcept { return count == 0; }
+    auto start() const noexcept { return offset; }
     auto end() const noexcept { return offset + count; }
 };
