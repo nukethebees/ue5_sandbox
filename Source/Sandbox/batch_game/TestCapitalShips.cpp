@@ -29,6 +29,9 @@
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
+#include <array>
+#include <limits>
+
 TRACE_DECLARE_INT_COUNTER(SandboxTestCapitalShipCount, TEXT("Sandbox/TestLaserCount"));
 
 ATestCapitalShips::ATestCapitalShips()
@@ -123,6 +126,8 @@ void ATestCapitalShips::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
     handle_fighter_spawning();
     refresh_fighter_handles();
+
+    fighter_reassignment_queue.reset();
 }
 void ATestCapitalShips::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
@@ -139,12 +144,17 @@ void ATestCapitalShips::make_decisions() {
                                ETestEntityType::CapitalShip);
 
     auto const fighter_target_handles{fighters_actor->get_target_handles()};
-    for (auto const span : capital_fighter_handle_spans) {
+
+    auto const n_capitals{get_num_instances()};
+
+    for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
+        auto const span{capital_fighter_handle_spans[capital_idx]};
+
         auto const end{span.end()};
-        for (int32 i{span.start()}; i < end; ++i) {
-            auto const fighter_target_handle{fighter_target_handles[i]};
+        for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
+            auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
             if (fighter_target_handle.is_null()) {
-                fighters_actor->set_target_handle(i, target_handles[i]);
+                fighters_actor->set_target_handle(fighter_idx, target_handles[capital_idx]);
             }
         }
     }
@@ -450,6 +460,24 @@ void ATestCapitalShips::refresh_fighter_handles() {
             ++spawning_capital_idx;
         }
 
+        auto const n_reassigned{fighter_reassignment_queue.num()};
+        if (n_reassigned > 0) {
+            for (int32 i_reassigned{n_reassigned - 1}; i_reassigned >= 0; --i_reassigned) {
+                auto const reassigned_handle{
+                    fighter_reassignment_queue.capital_handles[i_reassigned]};
+                auto const reassigned_idx{entity_handles.Find(reassigned_handle)};
+                check(reassigned_idx != INDEX_NONE);
+
+                if (capital_idx == reassigned_idx) {
+                    fighter_handles_scratch.Add(
+                        fighter_reassignment_queue.fighter_handles[i_reassigned]);
+                    fighter_reassignment_queue.fighter_handles.RemoveAtSwap(i_reassigned,
+                                                                            EAllowShrinking::No);
+                    ++new_span.count;
+                }
+            }
+        }
+
         capital_fighter_handle_spans[capital_idx] = new_span;
     }
 
@@ -579,7 +607,47 @@ void ATestCapitalShips::handle_dead_entities() {
                                         target_handles,
                                         capital_fighter_handle_spans);
 }
-void ATestCapitalShips::reassign_dying_capital_fighter_handles() {}
+void ATestCapitalShips::reassign_dying_capital_fighter_handles() {
+    std::array<int32, static_cast<std::size_t>(ETestTeam::COUNT)> replacements{};
+    replacements.fill(-1);
+
+    TArray<ETestTeam, TInlineAllocator<static_cast<uint32>(ETestTeam::COUNT)>> teams_to_replace;
+    for (auto const capital_idx : local_indices_to_remove) {
+        auto const team{teams[capital_idx]};
+        if (!teams_to_replace.Contains(team)) { teams_to_replace.Add(team); }
+    }
+
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const team{teams[i]};
+        if (teams_to_replace.Contains(team) && !local_indices_to_remove.Contains(i)) {
+            replacements[std::to_underlying(team)] = i;
+            teams_to_replace.RemoveSwap(team, EAllowShrinking::No);
+        }
+
+        if (teams_to_replace.IsEmpty()) { break; }
+    }
+
+    for (auto const capital_idx : local_indices_to_remove) {
+        auto const team{teams[capital_idx]};
+        auto const replacement_idx{replacements[std::to_underlying(team)]};
+        auto const fighter_span{capital_fighter_handle_spans[capital_idx]};
+        auto const span_end{fighter_span.end()};
+
+        if (replacement_idx < 0) {
+            // No replacement found. Destroy them all.
+            for (int32 i{fighter_span.offset}; i < span_end; ++i) {
+                fighters_actor->self_destruct_fighter(fighter_handles[i]);
+            }
+        } else {
+            // Reassign to someone else on the team
+            for (int32 i{fighter_span.offset}; i < span_end; ++i) {
+                fighter_reassignment_queue.capital_handles.Add(entity_handles[replacement_idx]);
+                fighter_reassignment_queue.fighter_handles.Add(fighter_handles[i]);
+            }
+        }
+    }
+}
 
 // Misc
 void ATestCapitalShips::clear_runtime_state() {

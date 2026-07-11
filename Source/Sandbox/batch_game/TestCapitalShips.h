@@ -41,6 +41,16 @@ struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
     }
 };
 
+struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> capital_handles;
+    TArray<FRegistryEntityHandle> fighter_handles;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.capital_handles, self.fighter_handles);
+    }
+};
+
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
   public:
@@ -175,6 +185,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     TArray<FIndexSpan> capital_fighter_handle_spans;
     TArray<FRegistryEntityHandle> fighter_handles;
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
+    TestCapitalShipFighterReassignment fighter_reassignment_queue;
 
     int32 fighters_spawned{0};
 
