@@ -45,6 +45,11 @@ struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> capital_handles;
     TArray<FRegistryEntityHandle> fighter_handles;
 
+    void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
+        capital_handles.Add(ch);
+        fighter_handles.Add(fh);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.capital_handles, self.fighter_handles);

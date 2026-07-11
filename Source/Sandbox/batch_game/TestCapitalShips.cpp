@@ -642,8 +642,7 @@ void ATestCapitalShips::reassign_dying_capital_fighter_handles() {
         } else {
             // Reassign to someone else on the team
             for (int32 i{fighter_span.offset}; i < span_end; ++i) {
-                fighter_reassignment_queue.capital_handles.Add(entity_handles[replacement_idx]);
-                fighter_reassignment_queue.fighter_handles.Add(fighter_handles[i]);
+                fighter_reassignment_queue.add(entity_handles[replacement_idx], fighter_handles[i]);
             }
         }
     }
