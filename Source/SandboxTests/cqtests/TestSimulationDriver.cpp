@@ -12,6 +12,8 @@
 #include <Engine/World.h>
 #include <EngineUtils.h>
 
+#include <limits>
+
 namespace ml {
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     ATestBatchOrchestrator* orchestrator{nullptr};
@@ -65,6 +67,10 @@ void TestSimulationDriver::queue_damage(FRegistryEntityHandle const target,
     damage_events.instigators[0] = instigator;
 
     registry.queue_damage_events(damage_events);
+}
+void TestSimulationDriver::queue_kill(FRegistryEntityHandle const target,
+                                      FRegistryEntityHandle const instigator) {
+    queue_damage(target, std::numeric_limits<int32>::max(), instigator);
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {

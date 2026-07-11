@@ -32,6 +32,7 @@ struct TestSimulationDriver {
     void queue_damage(FRegistryEntityHandle const target,
                       int32 const damage,
                       FRegistryEntityHandle const instigator);
+    void queue_kill(FRegistryEntityHandle const target, FRegistryEntityHandle const instigator);
 
     void set_wait_until_tick_from_now(uint64 wait_cycles);
 
