@@ -270,7 +270,12 @@ void ATestBatchOrchestrator::tick(float const dt) {
 void ATestBatchOrchestrator::route_actor_references() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
 
-    if (player_ship) { mission_manager->set_player_ship(*player_ship); }
+    if (player_ship) { 
+        mission_manager->set_player_ship(*player_ship); 
+
+        player_ship->set_entity_registry(entity_registry);
+        player_ship->set_laser_actor(lasers);
+    }
 
     ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(*entity_registry); },
                       lasers,
