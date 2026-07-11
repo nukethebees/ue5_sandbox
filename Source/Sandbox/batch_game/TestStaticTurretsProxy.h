@@ -32,6 +32,7 @@ class ATestStaticTurretsProxy
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return entity_handle;
     }
+    void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
   protected:
     void configure_component(UPrimitiveComponent& component);
 
