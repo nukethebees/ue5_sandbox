@@ -55,6 +55,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    void resolve_initial_targets();
 
     void begin_tick();
     void commit_spawns();
@@ -87,6 +88,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     }
     auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
         return capital_fighter_handle_spans;
+    }
+    auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
+        return target_handles;
     }
 
     // Checks

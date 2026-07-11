@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "UObject/ScriptInterface.h"
 
 #include "TestCapitalShipProxy.generated.h"
 
@@ -38,6 +39,7 @@ class ATestCapitalShipProxy
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return entity_handle;
     }
+    void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
 #endif
   protected:
     UPROPERTY(EditAnywhere, Category = "Ship")
@@ -50,7 +52,7 @@ class ATestCapitalShipProxy
     TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
 
     UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<ATestCapitalShipProxy> target_ship{nullptr};
+    TObjectPtr<AActor> target_ship{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     ETestTeam team{ETestTeam::White};

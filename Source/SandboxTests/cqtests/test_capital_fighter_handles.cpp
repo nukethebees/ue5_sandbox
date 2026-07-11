@@ -47,7 +47,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         log_successful_assertions = settings->log_successful_assertions;
 #endif
     }
-  protected:
+  private:
     inline static auto to_string(bool b) -> TCHAR const* {
         return b ? TEXT("true") : TEXT("false");
     }
@@ -59,7 +59,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             TestRunner->AddInfo(msg);
         }
     }
-
     void store_result(bool const result) noexcept {
         all_passed &= result;
     }

@@ -79,6 +79,9 @@ void ATestBatchOrchestrator::BeginPlay() {
                       spinners,
                       lasers);
 
+    check_proxy_handles();
+    ml::invoke_on_all([this](auto actor) { actor->resolve_initial_targets(); }, capital_ships);
+
     if (player_ship) {
         mission_manager->update_player_handles();
         check(entity_registry->is_valid_unique_id(mission_manager->get_player_id()));
@@ -89,6 +92,8 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     if (player_ship) { mission_manager->begin_play(); }
 }
+void ATestBatchOrchestrator::check_proxy_handles() {}
+
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
 

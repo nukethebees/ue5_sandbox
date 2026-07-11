@@ -66,6 +66,53 @@ void ATestCapitalShips::begin_play() {
     configure_ismc();
     register_all_proxies_in_level();
 }
+void ATestCapitalShips::resolve_initial_targets() {
+    auto world{GetWorld()};
+    auto const proxies{ml::get_actors<Proxy>(*world)};
+    auto const n{proxies.Num()};
+
+    // Assign the entity targets
+    for (int32 i{0}; i < n; ++i) {
+        auto& proxy{*proxies[i]};
+        auto const handle{proxy.get_entity_handle()};
+
+        if (!entity_registry->is_valid_handle(handle)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] has invalid handle"),
+                   i);
+        }
+
+        auto const entity_index{entity_handles.Find(handle)};
+        if (entity_index == INDEX_NONE) {
+            UE_LOG(
+                LogSandbox,
+                Fatal,
+                TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] has no entity index"),
+                i);
+        }
+
+        auto const target{proxy.get_target_ship()};
+
+        if (!target) { continue; }
+
+        auto const* const target_entity_interface{CastChecked<ITestEntity>(target)};
+
+        auto const target_handle{target_entity_interface->get_entity_handle()};
+        if (!entity_registry->is_valid_handle(target_handle)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] target has an "
+                        "invalid handle"),
+                   i);
+        }
+
+        target_handles[entity_index] = target_handle;
+    }
+
+    ml::destroy_all_actors(proxies);
+}
+
 void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
     clear_tick_buffers();
@@ -198,25 +245,10 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     entity_handles = MoveTemp(new_entities.registry_handles);
 
     // Map the proxies to the new handles
-    TMap<Proxy const*, FRegistryEntityHandle> proxy_to_index{};
     for (int32 i{0}; i < n_to_add; ++i) {
-        proxy_to_index.Add(proxies[i], entity_handles[i]);
+        proxies[i]->set_entity_handle(entity_handles[i]);
+        target_handles[i].reset();
     }
-
-    // Assign the entity targets
-    for (int32 i{0}; i < n_to_add; ++i) {
-        if (auto const found{proxy_to_index.Find(proxies[i]->get_target_ship())}) {
-            new_targets[i] = *found;
-        } else if (!IsValid(proxies[i]->get_target_ship())) {
-            new_targets[i].reset();
-        } else {
-            UE_LOG(LogSandboxLearning, Fatal, TEXT("Lookup failed"));
-        }
-    }
-
-    target_handles = MoveTemp(new_targets);
-
-    ml::destroy_all_actors(proxies);
 }
 void ATestCapitalShips::spawn_ships(
     TConstArrayView<FRegistryEntityHandle> const new_indices,
@@ -367,7 +399,10 @@ void ATestCapitalShips::refresh_fighter_handles() {
     auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
     auto const n_spawned_per_capital{get_fighter_spawn_slots()};
 
-    ensure(spawn_data.num() == (n_capitals * n_spawned_per_capital));
+    auto const n_capitals_spawned{ships_ready_to_spawn_fighters_buffer.Num()};
+
+    spawn_data.validate_array_sizes();
+    ensure(spawn_data.num() == (n_capitals_spawned * n_spawned_per_capital));
 
     int32 spawning_capital_idx{0};
     int32 spawned_fighter_idx{0};
