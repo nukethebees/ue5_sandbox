@@ -43,3 +43,7 @@ inline void FRegistryEntityHandle::reset() {
 inline auto FRegistryEntityHandle::is_null() const noexcept -> bool {
     return (index == INDEX_NONE) && (generation == INDEX_NONE);
 }
+
+inline auto LexToString(FRegistryEntityHandle const& handle) -> FString {
+    return FString::Printf(TEXT("{ Index: %d, Generation: %d }"), handle.index, handle.generation);
+}
