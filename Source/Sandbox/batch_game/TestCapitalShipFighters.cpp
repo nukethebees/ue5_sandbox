@@ -79,8 +79,8 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto& data{entity_buffers.current()};
 
     ml::direction(target_directions, data.locations, target_locations);
-    ml::lerp_in_place(directions, target_directions, turn_speed_unitless * dt);
-    ml::add_scaled_in_place(data.locations, directions, speeds, dt);
+    ml::lerp_in_place(data.directions, target_directions, turn_speed_unitless * dt);
+    ml::add_scaled_in_place(data.locations, data.directions, data.speeds, dt);
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
@@ -175,7 +175,7 @@ void ATestCapitalShipFighters::prepare_ismc_transforms() {
         for (int32 i{begin}; i < end; ++i) {
             ismc_transforms[i].SetLocation(ml::get_vector3d(data.locations, i));
 
-            auto const dir{ml::get_vector3d(directions, i)};
+            auto const dir{ml::get_vector3d(data.directions, i)};
             auto const quat{FQuat::FindBetweenNormals(FVector::ForwardVector, dir)};
 
             ismc_transforms[i].SetRotation(quat);
@@ -251,8 +251,8 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     registry_update_data.locations = data.locations;
 
     ml::add_uninitialised(registry_update_data.velocities, n);
-    registry_update_data.velocities = directions;
-    ml::multiply_in_place(registry_update_data.velocities, speeds);
+    registry_update_data.velocities = data.directions;
+    ml::multiply_in_place(registry_update_data.velocities, data.speeds);
 
     registry_update_data.healths = healths;
     registry_update_data.teams = teams;
@@ -287,8 +287,8 @@ void ATestCapitalShipFighters::spawn_instances(
 
     // Add new data
     ml::append_from(data.locations, new_locations);
-    ml::add_uninitialised(directions, n_new);
-    ml::append_n(speeds, speed, n_new);
+    ml::add_uninitialised(data.directions, n_new);
+    ml::append_n(data.speeds, speed, n_new);
     teams.Append(new_teams);
     ml::append_n(healths, actor_config->health, n_new);
     target_handles.Append(new_targets);
@@ -305,7 +305,7 @@ void ATestCapitalShipFighters::spawn_instances(
 
         auto const direction{ml::get_vector3f(new_rotations, i)};
 
-        ml::assign(directions, index, direction);
+        ml::assign(data.directions, index, direction);
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
         new_spawn_entity_data.healths[i] = healths[index];
         new_spawn_entity_data.teams[i] = teams[index];
@@ -314,9 +314,10 @@ void ATestCapitalShipFighters::spawn_instances(
     new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
 
     // Velocities
-    TConstArrayView<float> const new_speeds{speeds.GetData() + n_cur, n_new};
-    ml::assign_from_scaled(
-        new_spawn_entity_data.velocities, directions.get_const_view().right(n_new), new_speeds);
+    TConstArrayView<float> const new_speeds{data.speeds.GetData() + n_cur, n_new};
+    ml::assign_from_scaled(new_spawn_entity_data.velocities,
+                           data.directions.get_const_view().right(n_new),
+                           new_speeds);
 
     // Entity handles
     new_spawn_entity_handles =
@@ -376,7 +377,7 @@ void ATestCapitalShipFighters::handle_firing() {
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const target_direction{ml::get_vector3f(target_directions, ship_index)};
-        auto const direction{ml::get_vector3f(directions, ship_index)};
+        auto const direction{ml::get_vector3f(data.directions, ship_index)};
 
         auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
         if (dot_product < aim_threshold) { continue; }
@@ -410,8 +411,6 @@ void ATestCapitalShipFighters::clear_runtime_state() {
     ml::reset(entity_handles,
               local_indices_to_remove,
               data,
-              directions,
-              speeds,
               teams,
               healths,
               target_handles,
@@ -434,8 +433,6 @@ void ATestCapitalShipFighters::remove_dead_entities() {
                                         ismc_transforms,
                                         entity_handles,
                                         data,
-                                        directions,
-                                        speeds,
                                         teams,
                                         healths,
                                         laser_cooldowns,
@@ -475,8 +472,6 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(data),
-        SANDBOX_NAMED_NUM(directions),
-        SANDBOX_NAMED_NUM(speeds),
         SANDBOX_NAMED_NUM(teams),
         SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),

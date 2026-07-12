@@ -28,10 +28,12 @@ class ATestEntityRegistry;
 
 struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     FVectors3f locations;
+    FVectors3f directions;
+    TArray<float> speeds;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations);
+        return std::forward<TFunc>(func)(self.locations, self.directions, self.speeds);
     }
 };
 
@@ -138,8 +140,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TArray<float> custom_data_buffer;
 
     // Transform
-    FVectors3f directions;
-    TArray<float> speeds;
     float turn_speed_radians{0.f};
     float turn_speed_unitless{0.5f};
 
