@@ -459,6 +459,7 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(target_locations),
         SANDBOX_NAMED_NUM(target_directions),
         SANDBOX_NAMED_NUM(target_distance_sq),
+        SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
