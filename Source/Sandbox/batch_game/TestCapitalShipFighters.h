@@ -88,6 +88,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void prepare_ismc_transforms();
     void draw_debug_shapes();
     void update_ismc();
+    void write_ismc_custom_data(int32 offset, int32 count);
+    void write_ismc_custom_data();
 
     // Entity data
     void prepare_entity_update_data();
@@ -119,6 +121,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     EntityDeathInfo entity_death_info;
     FTestEntityRegistryEntityData new_spawn_entity_data;
     SpawnedEntityHandles new_spawn_entity_handles;
+    TArray<float> custom_data_buffer;
 
     // Transform
     FVectors3f locations;
