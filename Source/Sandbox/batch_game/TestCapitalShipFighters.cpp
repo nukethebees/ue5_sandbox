@@ -89,10 +89,12 @@ void ATestCapitalShipFighters::queue_commands() {
 void ATestCapitalShipFighters::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
 
+    auto& data{entity_buffers.current()};
+
     ml::batch::resolve_hit_events(*entity_registry,
                                   owner_id,
                                   entity_handles,
-                                  healths,
+                                  data.healths,
                                   local_indices_to_remove,
                                   entity_death_info);
 
@@ -217,11 +219,13 @@ void ATestCapitalShipFighters::write_ismc_custom_data(int32 const offset, int32 
     check(count >= 0);
     if (count == 0) { return; }
 
+    auto const& data{entity_buffers.current()};
+
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     custom_data_buffer.SetNumUninitialized(count * n_custom_ismc_floats, EAllowShrinking::No);
 
-    auto const teams_slice{TConstArrayView<ETestTeam>{teams}.Slice(offset, count)};
+    auto const teams_slice{TConstArrayView<ETestTeam>{data.teams}.Slice(offset, count)};
     for (int32 i{0}; i < count; ++i) {
         auto const team{teams_slice[i]};
 
@@ -254,12 +258,12 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     registry_update_data.velocities = data.directions;
     ml::multiply_in_place(registry_update_data.velocities, data.speeds);
 
-    registry_update_data.healths = healths;
-    registry_update_data.teams = teams;
+    registry_update_data.healths = data.healths;
+    registry_update_data.teams = data.teams;
 
     ml::add_uninitialised(registry_update_data.alive, n);
     for (int32 i{0}; i < n; ++i) {
-        registry_update_data.alive[i] = static_cast<uint8>(healths[i] > 0);
+        registry_update_data.alive[i] = static_cast<uint8>(data.healths[i] > 0);
     }
 }
 
@@ -289,8 +293,8 @@ void ATestCapitalShipFighters::spawn_instances(
     ml::append_from(data.locations, new_locations);
     ml::add_uninitialised(data.directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
-    teams.Append(new_teams);
-    ml::append_n(healths, actor_config->health, n_new);
+    data.teams.Append(new_teams);
+    ml::append_n(data.healths, actor_config->health, n_new);
     target_handles.Append(new_targets);
     ml::add_zeroed(target_locations, n_new);
     ml::add_zeroed(target_directions, n_new);
@@ -307,8 +311,8 @@ void ATestCapitalShipFighters::spawn_instances(
 
         ml::assign(data.directions, index, direction);
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
-        new_spawn_entity_data.healths[i] = healths[index];
-        new_spawn_entity_data.teams[i] = teams[index];
+        new_spawn_entity_data.healths[i] = data.healths[index];
+        new_spawn_entity_data.teams[i] = data.teams[index];
         new_spawn_entity_data.alive[i] = true;
     }
     new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
@@ -342,7 +346,7 @@ void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const
     auto const index{entity_handles.Find(handle)};
     check(index != INDEX_NONE);
 
-    healths[index] = 0;
+    entity_buffers.current().healths[index] = 0;
     local_indices_to_remove.Add(index);
 }
 
@@ -388,7 +392,7 @@ void ATestCapitalShipFighters::handle_firing() {
         ml::assign(new_lasers.locations, write_index, laser_location);
         ml::assign(new_lasers.rotations, write_index, direction.ToOrientationRotator());
         new_lasers.instigator_handles[write_index] = entity_handles[ship_index];
-        new_lasers.colours[write_index] = colour_cache[teams[ship_index]];
+        new_lasers.colours[write_index] = colour_cache[data.teams[ship_index]];
 
         laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
@@ -411,8 +415,6 @@ void ATestCapitalShipFighters::clear_runtime_state() {
     ml::reset(entity_handles,
               local_indices_to_remove,
               data,
-              teams,
-              healths,
               target_handles,
               target_locations,
               target_directions,
@@ -433,8 +435,6 @@ void ATestCapitalShipFighters::remove_dead_entities() {
                                         ismc_transforms,
                                         entity_handles,
                                         data,
-                                        teams,
-                                        healths,
                                         laser_cooldowns,
                                         target_handles,
                                         target_locations,
@@ -472,8 +472,6 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(data),
-        SANDBOX_NAMED_NUM(teams),
-        SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(laser_cooldowns),
         SANDBOX_NAMED_NUM(target_handles),
         SANDBOX_NAMED_NUM(target_locations),
