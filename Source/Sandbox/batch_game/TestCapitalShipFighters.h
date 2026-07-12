@@ -27,6 +27,8 @@ class ATestLasers;
 class ATestEntityRegistry;
 
 struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> entity_handles;
+
     FVectors3f locations;
     FVectors3f directions;
     TArray<float> speeds;
@@ -34,10 +36,20 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
 
+    TArray<FRegistryEntityHandle> target_handles;
+
+    FCountdownTimers laser_cooldowns;
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.locations, self.directions, self.speeds, self.teams, self.healths);
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.locations,
+                                         self.directions,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.target_handles,
+                                         self.laser_cooldowns);
     }
 };
 
@@ -89,11 +101,11 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
 
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
-        return target_handles;
+        return entity_buffers.current().target_handles;
     }
     auto set_target_handle(int32 const fighter_idx,
                            FRegistryEntityHandle const new_target) noexcept {
-        target_handles[fighter_idx] = new_target;
+        entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
 
     // Checks
@@ -132,8 +144,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-
-    TArray<FRegistryEntityHandle> entity_handles;
     FTestEntityRegistryEntityData registry_update_data;
 
     // Spawning / destruction
@@ -148,7 +158,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     float turn_speed_unitless{0.5f};
 
     // Targets
-    TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
@@ -159,7 +168,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Laser
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    FCountdownTimers laser_cooldowns;
     FTestLasersSpawnRequests new_lasers;
 
     // Debugging

@@ -63,12 +63,12 @@ void ATestCapitalShipFighters::begin_play() {
 void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
-    entity_registry->refresh_handles(target_handles);
+    entity_registry->refresh_handles(entity_buffers.current().target_handles);
 }
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
-    laser_cooldowns.tick(dt);
+    entity_buffers.current().laser_cooldowns.tick(dt);
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
@@ -93,7 +93,7 @@ void ATestCapitalShipFighters::resolve_hit_events() {
 
     ml::batch::resolve_hit_events(*entity_registry,
                                   owner_id,
-                                  entity_handles,
+                                  data.entity_handles,
                                   data.healths,
                                   local_indices_to_remove,
                                   entity_death_info);
@@ -104,7 +104,7 @@ void ATestCapitalShipFighters::resolve_hit_events() {
         auto const ismc_index_hit{view.hit_items[i]};
         auto const instigator{view.instigators[i]};
 
-        target_handles[ismc_index_hit] = instigator;
+        data.target_handles[ismc_index_hit] = instigator;
     }
 
     validate_array_sizes();
@@ -113,7 +113,8 @@ void ATestCapitalShipFighters::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
 
     prepare_entity_update_data();
-    ATestEntityRegistry::ConstView view{entity_handles, registry_update_data.get_const_view()};
+    ATestEntityRegistry::ConstView view{entity_buffers.current().entity_handles,
+                                        registry_update_data.get_const_view()};
     entity_registry->queue_entity_updates(view, entity_death_info);
 }
 void ATestCapitalShipFighters::sync_from_registry() {
@@ -206,7 +207,7 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
         if (enable_ship_location_debug_drawing) { debug_drawer.draw_sphere(ship_location); }
 
         if (enable_target_debug_drawing) {
-            if (!target_handles[i].is_valid()) { continue; }
+            if (!data.target_handles[i].is_valid()) { continue; }
 
             auto const target_location{ml::get_vector3d(target_locations, i)};
             debug_drawer.draw_line(ship_location, target_location);
@@ -295,11 +296,11 @@ void ATestCapitalShipFighters::spawn_instances(
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
     ml::append_n(data.healths, actor_config->health, n_new);
-    target_handles.Append(new_targets);
+    data.target_handles.Append(new_targets);
     ml::add_zeroed(target_locations, n_new);
     ml::add_zeroed(target_directions, n_new);
     target_distance_sq.AddZeroed(n_new);
-    laser_cooldowns.remaining_times.AddZeroed(n_new);
+    data.laser_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
     new_spawn_entity_data.add_uninitialised(n_new);
@@ -326,7 +327,7 @@ void ATestCapitalShipFighters::spawn_instances(
     // Entity handles
     new_spawn_entity_handles =
         entity_registry->add_entities(new_spawn_entity_data.get_const_view());
-    entity_handles.Append(new_spawn_entity_handles.registry_handles);
+    data.entity_handles.Append(new_spawn_entity_handles.registry_handles);
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);
@@ -343,17 +344,19 @@ void ATestCapitalShipFighters::spawn_instances(
 }
 
 void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const handle) {
-    auto const index{entity_handles.Find(handle)};
+    auto& data{entity_buffers.current()};
+
+    auto const index{data.entity_handles.Find(handle)};
     check(index != INDEX_NONE);
 
-    entity_buffers.current().healths[index] = 0;
+    data.healths[index] = 0;
     local_indices_to_remove.Add(index);
 }
 
 // Combat
 void ATestCapitalShipFighters::handle_firing() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
-    auto const& data{entity_buffers.current()};
+    auto& data{entity_buffers.current()};
 
     ml::dist_sq(target_distance_sq, data.locations, target_locations);
 
@@ -376,8 +379,8 @@ void ATestCapitalShipFighters::handle_firing() {
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
-        if (laser_cooldowns.remaining_times[ship_index] > 0.f) { continue; }
-        if (!target_handles[ship_index].is_valid()) { continue; }
+        if (data.laser_cooldowns.remaining_times[ship_index] > 0.f) { continue; }
+        if (!data.target_handles[ship_index].is_valid()) { continue; }
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const target_direction{ml::get_vector3f(target_directions, ship_index)};
@@ -391,10 +394,10 @@ void ATestCapitalShipFighters::handle_firing() {
 
         ml::assign(new_lasers.locations, write_index, laser_location);
         ml::assign(new_lasers.rotations, write_index, direction.ToOrientationRotator());
-        new_lasers.instigator_handles[write_index] = entity_handles[ship_index];
+        new_lasers.instigator_handles[write_index] = data.entity_handles[ship_index];
         new_lasers.colours[write_index] = colour_cache[data.teams[ship_index]];
 
-        laser_cooldowns.remaining_times[ship_index] = cooldown;
+        data.laser_cooldowns.remaining_times[ship_index] = cooldown;
         ++write_index;
     }
 
@@ -412,14 +415,11 @@ void ATestCapitalShipFighters::clear_runtime_state() {
     auto& data{entity_buffers.current()};
     instances->ClearInstances();
 
-    ml::reset(entity_handles,
-              local_indices_to_remove,
+    ml::reset(local_indices_to_remove,
               data,
-              target_handles,
               target_locations,
               target_directions,
               target_distance_sq,
-              laser_cooldowns,
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
@@ -433,10 +433,7 @@ void ATestCapitalShipFighters::remove_dead_entities() {
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
                                         ismc_transforms,
-                                        entity_handles,
                                         data,
-                                        laser_cooldowns,
-                                        target_handles,
                                         target_locations,
                                         target_directions,
                                         target_distance_sq);
@@ -444,12 +441,12 @@ void ATestCapitalShipFighters::remove_dead_entities() {
     // Update target entity index
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{entity_handles[i]};
+        auto const entity_index{data.entity_handles[i]};
 
-        auto const target_entity_index{target_handles[i]};
+        auto const target_entity_index{data.target_handles[i]};
         if (target_entity_index.is_valid()) {
             if (entity_registry->is_stale(target_entity_index)) {
-                target_handles[i] = FRegistryEntityHandle{};
+                data.target_handles[i] = FRegistryEntityHandle{};
             } else {
                 ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
             }
@@ -470,10 +467,7 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
     auto const& data{entity_buffers.current()};
 
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_handles),
         SANDBOX_NAMED_NUM(data),
-        SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(target_handles),
         SANDBOX_NAMED_NUM(target_locations),
         SANDBOX_NAMED_NUM(target_directions),
         SANDBOX_NAMED_NUM(target_distance_sq),
