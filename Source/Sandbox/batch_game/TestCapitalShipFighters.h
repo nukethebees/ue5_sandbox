@@ -99,7 +99,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Visuals
     UPROPERTY(EditDefaultsOnly)
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY()
     TArray<FTransform> ismc_transforms;
 
     // Config data
