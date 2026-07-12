@@ -139,7 +139,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
-    TArray<int32> indices_without_targets_buffer;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     float fire_dot_product_threshold{0.95f};
