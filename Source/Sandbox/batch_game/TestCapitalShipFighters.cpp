@@ -415,7 +415,7 @@ void ATestCapitalShipFighters::remove_dead_entities() {
                                         speeds,
                                         teams,
                                         healths,
-                                        laser_cooldowns.remaining_times,
+                                        laser_cooldowns,
                                         target_handles,
                                         target_locations,
                                         target_directions,

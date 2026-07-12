@@ -18,6 +18,9 @@ struct SANDBOXCORE_API FCountdownTimers {
     void Add(float const t, int32 const count);
     void AddZeroed(int32 const count);
     void Reset() { remaining_times.Reset(); }
+    void RemoveAtSwap(int32 const index, int32 const count, EAllowShrinking const as) {
+        remaining_times.RemoveAtSwap(index, count, as);
+    }
 
     UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;
