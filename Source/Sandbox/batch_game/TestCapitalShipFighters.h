@@ -10,6 +10,8 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/multi_buffer.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -24,10 +26,21 @@ class UTestCapitalShipFightersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 
+struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
+    FVectors3f locations;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.locations);
+    }
+};
+
 UCLASS()
 class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
+    using EntityBuffers = ml::MultiBuffer<FTestCapitalShipFightersEntityData, 2>;
+
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
 
@@ -109,6 +122,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     // Entity data
     TestEntityOwnerId owner_id{};
+    EntityBuffers entity_buffers{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
@@ -124,7 +138,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TArray<float> custom_data_buffer;
 
     // Transform
-    FVectors3f locations;
     FVectors3f directions;
     TArray<float> speeds;
     float turn_speed_radians{0.f};
