@@ -2,7 +2,9 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
@@ -28,6 +30,9 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     FRegistryEntityHandle capital_first_target;
     FRegistryEntityHandle capital_second_target;
 
+    ETestTeam team_kept_alive;
+    static constexpr int32 test_capital_idx{0};
+
     BEFORE_EACH()
     {
         spawner = MakeUnique<FMapTestSpawner>(
@@ -50,9 +55,25 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         capitals = &test_driver->get_capital_ships();
         fighters = &test_driver->get_capital_ship_fighters();
 
-        capital_first_target = capitals->get_target_handles()[0];
+        capital_first_target = capitals->get_target_handle(test_capital_idx);
 
         test_driver->set_wait_until_tick_from_now(wait_after_setup);
+
+        team_kept_alive = capitals->get_team(test_capital_idx);
+    }
+
+    template <auto EnumValue>
+    void check_fighter_tasks_are() {
+        auto const tasks{fighters->get_tasks()};
+        auto const n{tasks.Num()};
+
+        for (int32 i{0}; i < n; ++i) {
+            checks.are_equal(EnumValue,
+                             tasks[i],
+                             FString::Printf(TEXT("Check fighter %d is in %s"),
+                                             i,
+                                             *ml::to_string_without_type_prefix(EnumValue)));
+        }
     }
 
     void check_target_handles(FRegistryEntityHandle const capital_target) {
@@ -69,25 +90,15 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                              FString::Printf(TEXT("Fighter target handles [%d]"), i));
         }
     }
-    void check_fighter_tasks() {
-        auto const tasks{fighters->get_tasks()};
-        auto const n{tasks.Num()};
-
-        for (int32 i{0}; i < n; ++i) {
-            checks.are_equal(ATestCapitalShipFighters::Tasks::Attack,
-                             tasks[i],
-                             FString::Printf(TEXT("Fighter task %d"), i));
-        }
-    }
 
     void run_spawn_capital_handle_checks() {
         check_target_handles(capital_first_target);
-        check_fighter_tasks();
+        check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Attack>();
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
     void kill_initial_targets() {
-        test_driver->queue_kill(capitals->get_target_handles()[0], {});
+        test_driver->queue_kill(capitals->get_target_handle(test_capital_idx), {});
 
         test_driver->set_wait_until_tick_from_now(wait_after_kills);
     }
@@ -101,6 +112,18 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
+    void kill_all_not_on_main_team() {
+        auto const handles{test_driver->registry.get_handles_not_in_team(team_kept_alive)};
+        for (auto const handle : handles) {
+            test_driver->queue_kill(handle, {});
+        }
+
+        test_driver->set_wait_until_tick_from_now(wait_after_kills);
+    }
+    void check_fighters_after_main_enemies_killed() {
+        check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Idle>();
+    }
+
     TEST_METHOD(MainTest)
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
@@ -109,6 +132,9 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
             .Then([this] { run_spawn_capital_handle_checks(); })
             .Then([this] { kill_initial_targets(); })
             .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
-            .Then([this] { check_targets_after_kills(); });
+            .Then([this] { check_targets_after_kills(); })
+            .Then([this] { kill_all_not_on_main_team(); })
+            .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
+            .Then([this] { check_fighters_after_main_enemies_killed(); });
     }
 };
