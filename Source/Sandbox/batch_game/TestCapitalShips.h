@@ -120,6 +120,10 @@ class SANDBOX_API ATestCapitalShips : public AActor {
         return target_handles;
     }
 
+    auto get_team(int32 const i) const noexcept -> ETestTeam {
+        return teams[i];
+    }
+
     // Checks
     void validate_array_sizes() const;
     void validate_proxy_handles() const;
