@@ -69,9 +69,20 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                              FString::Printf(TEXT("Fighter target handles [%d]"), i));
         }
     }
+    void check_fighter_tasks() {
+        auto const tasks{fighters->get_tasks()};
+        auto const n{tasks.Num()};
+
+        for (int32 i{0}; i < n; ++i) {
+            checks.are_equal(ATestCapitalShipFighters::Tasks::Attack,
+                             tasks[i],
+                             FString::Printf(TEXT("Fighter task %d"), i));
+        }
+    }
 
     void run_spawn_capital_handle_checks() {
         check_target_handles(capital_first_target);
+        check_fighter_tasks();
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 

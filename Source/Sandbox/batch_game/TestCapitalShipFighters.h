@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/multi_buffer.h>
@@ -26,8 +27,21 @@ class UTestCapitalShipFightersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 
+UENUM()
+enum class ETestCapitalShipFightersTask : uint8 {
+    MoveToDestination,
+    Attack,
+    Idle,
+};
+
+inline auto LexToString(ETestCapitalShipFightersTask const task) -> FString {
+    return ml::to_string_without_type_prefix(task);
+}
+
 struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> entity_handles;
+
+    TArray<ETestCapitalShipFightersTask> tasks;
 
     FVectors3f locations;
     FVectors3f directions;
@@ -43,6 +57,7 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.tasks,
                                          self.locations,
                                          self.directions,
                                          self.speeds,
@@ -58,6 +73,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
     using EntityBuffers = ml::MultiBuffer<FTestCapitalShipFightersEntityData, 2>;
+    using Tasks = ETestCapitalShipFightersTask;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -107,6 +123,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
                            FRegistryEntityHandle const new_target) noexcept {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
+
+    auto get_tasks() const -> TConstArrayView<Tasks> { return entity_buffers.current().tasks; }
 
     // Checks
     void validate_array_sizes() const;

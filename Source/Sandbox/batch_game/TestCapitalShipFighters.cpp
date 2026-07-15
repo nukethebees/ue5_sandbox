@@ -291,6 +291,7 @@ void ATestCapitalShipFighters::spawn_instances(
     auto const speed{actor_config->speed};
 
     // Add new data
+    ml::append_n(data.tasks, Tasks::Attack, n_new);
     ml::append_from(data.locations, new_locations);
     ml::add_uninitialised(data.directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
