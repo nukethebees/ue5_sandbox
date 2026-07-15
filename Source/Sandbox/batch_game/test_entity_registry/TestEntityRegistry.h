@@ -111,6 +111,9 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
 
     auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
 
+    auto get_handles_not_in_team(ETestTeam const team) const -> TArray<FRegistryEntityHandle>;
+    void get_handles_not_in_team(ETestTeam const team, TArray<FRegistryEntityHandle>& out) const;
+
     // Total queries
     auto count_kills() const noexcept -> int32;
     auto count_alive() const noexcept -> int32;

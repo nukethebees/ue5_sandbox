@@ -386,6 +386,25 @@ auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int3
     return total;
 }
 
+auto ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
+    -> TArray<FRegistryEntityHandle> {
+    TArray<FRegistryEntityHandle> out;
+    get_handles_not_in_team(team, out);
+    return out;
+}
+void ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
+                                                  TArray<FRegistryEntityHandle>& out) const {
+    out.Reset();
+
+    auto const n{get_num_elements()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.teams[i] == team) { continue; }
+        if (entity_data.alive[i] <= 0) { continue; }
+
+        out.Emplace(i, generations[i]);
+    }
+}
+
 // Total queries
 auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
