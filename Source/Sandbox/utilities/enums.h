@@ -41,6 +41,7 @@ auto make_unhandled_enum_case_warning(Enum value) -> FString {
 template <typename Enum>
     requires std::is_scoped_enum_v<Enum>
 auto to_string_without_type_prefix(Enum value) -> FString {
-    return ml::without_class_prefix(UEnum::GetValueAsString(value));
+    auto const* const enum_ptr{StaticEnum<Enum>()};
+    return enum_ptr->GetNameStringByValue(static_cast<int64>(value));
 }
 }
