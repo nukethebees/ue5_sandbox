@@ -108,9 +108,11 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
     auto const n{indices.Num()};
     if (n < 1) { return; }
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const index{indices[i]};
+    int32 last_handled{INDEX_NONE};
+    for (auto const index : indices) {
+        if (index == last_handled) { continue; }
         ((RemoveAtSwapTraits<TArrays>::remove_at_swap(arrays, index, 1, EAllowShrinking::No)), ...);
+        last_handled = index;
     }
 }
 
