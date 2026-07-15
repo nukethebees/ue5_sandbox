@@ -58,8 +58,9 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         capital_first_target = capitals->get_target_handle(test_capital_idx);
 
         test_driver->set_wait_until_tick_from_now(wait_after_setup);
-
-        team_kept_alive = capitals->get_team(test_capital_idx);
+    }
+    void set_wait_after_kills() {
+        test_driver->set_wait_until_tick_from_now(wait_after_kills);
     }
 
     template <auto EnumValue>
@@ -99,8 +100,6 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
 
     void kill_initial_targets() {
         test_driver->queue_kill(capitals->get_target_handle(test_capital_idx), {});
-
-        test_driver->set_wait_until_tick_from_now(wait_after_kills);
     }
     void check_targets_after_kills() {
         capital_second_target = capitals->get_target_handles()[0];
@@ -117,24 +116,28 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         for (auto const handle : handles) {
             test_driver->queue_kill(handle, {});
         }
-
-        test_driver->set_wait_until_tick_from_now(wait_after_kills);
-    }
-    void check_fighters_after_main_enemies_killed() {
-        check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Idle>();
     }
 
     TEST_METHOD(MainTest)
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup(); })
+            .Then([this] {
+                initial_setup();
+                set_wait_after_kills();
+            })
             .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
             .Then([this] { run_spawn_capital_handle_checks(); })
-            .Then([this] { kill_initial_targets(); })
+            .Then([this] {
+                kill_initial_targets();
+                set_wait_after_kills();
+            })
             .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
             .Then([this] { check_targets_after_kills(); })
-            .Then([this] { kill_all_not_on_main_team(); })
+            .Then([this] {
+                kill_all_not_on_main_team();
+                set_wait_after_kills();
+            })
             .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
-            .Then([this] { check_fighters_after_main_enemies_killed(); });
+            .Then([this] { check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Idle>(); });
     }
 };
