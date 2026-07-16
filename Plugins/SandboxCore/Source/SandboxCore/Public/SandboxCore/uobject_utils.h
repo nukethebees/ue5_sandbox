@@ -13,6 +13,8 @@ struct SANDBOXCORE_API NamedUObjectPtr {
 };
 
 SANDBOXCORE_API void fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs);
+SANDBOXCORE_API auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs)
+    -> FString;
 
 #define SANDBOX_NAMED_UOBJECT_PTR(ptr) \
     ml::NamedUObjectPtr {              \
