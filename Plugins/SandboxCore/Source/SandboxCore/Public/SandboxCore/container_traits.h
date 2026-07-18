@@ -4,6 +4,7 @@
 #include "HAL/Platform.h"
 
 #include <concepts>
+#include <type_traits>
 
 class UInstancedStaticMeshComponent;
 
@@ -177,6 +178,23 @@ template <typename T>
 struct SetNumTraits<T> {
     static auto set_num(T& value, int32 count, EAllowShrinking const allow_shrinking) -> void {
         value.set_num(count, allow_shrinking);
+    }
+};
+
+/* -------------------------------------------------------------------------- */
+// copy_element
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct CopyElementTraits;
+
+template <typename T>
+    requires requires(T& t0, T const& t1) {
+        { t0[0] } -> std::same_as<typename std::remove_cvref_t<T>::ElementType&>;
+        { t1[0] } -> std::same_as<typename std::remove_cvref_t<T>::ElementType const&>;
+    }
+struct CopyElementTraits<T> {
+    static void copy_element(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
+        dst[src_i] = src[src_i];
     }
 };
 }

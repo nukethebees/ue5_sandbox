@@ -159,6 +159,20 @@ auto set_num(int32 count, EAllowShrinking const allow_shrinking, Containers&... 
     (set_num(containers, count, allow_shrinking), ...);
 }
 
+template <SupportsCopyElement Container>
+void copy_element(Container& dst, int32 const dst_i, Container const& src, int32 const src_i) {
+    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
+}
+
+template <typename Container, typename... Rest>
+    requires (sizeof...(Rest) % 2 == 0) && SupportsCopyElement<std::remove_cvref_t<Container>>
+void copy_element(
+    int32 const dst_i, int32 const src_i, Container& dst, Container const& src, Rest&&... rest) {
+    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
+
+    if constexpr (sizeof...(rest)) { copy_element(dst_i, src_i, rest...); }
+}
+
 template <typename Container, typename T>
     requires requires(Container& container) {
         { container.GetData() } -> std::same_as<T*>;

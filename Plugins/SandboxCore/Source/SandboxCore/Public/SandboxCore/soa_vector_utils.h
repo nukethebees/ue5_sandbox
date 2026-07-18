@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/container_traits.h>
 #include <SandboxCore/detail/interpolation.tpp>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
@@ -383,6 +384,24 @@ inline auto to_rotatorsf(Vec3f const& vectors) -> FRotatorsf {
 
     return rotators;
 }
+
+/* ---------------------------------------------------------------------------------------------- */
+// Copying
+/* ---------------------------------------------------------------------------------------------- */
+inline void
+    copy_element(FVectors3f& dst, int32 const dst_i, FVectors3f const& src, int32 const src_i) {
+    dst.xs[dst_i] = src.xs[src_i];
+    dst.ys[dst_i] = src.ys[src_i];
+    dst.zs[dst_i] = src.zs[src_i];
+}
+
+template <>
+struct CopyElementTraits<FVectors3f> {
+    static void
+        copy_element(FVectors3f& dst, int32 const dst_i, FVectors3f const& src, int32 const src_i) {
+        ::ml::copy_element(dst, dst_i, src, src_i);
+    }
+};
 }
 
 /* ---------------------------------------------------------------------------------------------- */

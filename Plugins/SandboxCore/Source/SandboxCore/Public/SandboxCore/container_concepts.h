@@ -39,13 +39,34 @@ concept SupportsAddDefaulted = requires(T& value, int32 count) {
 
 // remove_at_swap
 template <typename T>
-concept SupportsRemoveAtSwap = requires(T& value, int32 index, int32 count, EAllowShrinking const as) {
-    { RemoveAtSwapTraits<T>::remove_at_swap(value, index, count, as) } -> std::same_as<void>;
-};
+concept SupportsRemoveAtSwap =
+    requires(T& value, int32 index, int32 count, EAllowShrinking const as) {
+        { RemoveAtSwapTraits<T>::remove_at_swap(value, index, count, as) } -> std::same_as<void>;
+    };
 
-// set_nu,
+// set_num
 template <typename T>
 concept SupportsSetNum = requires(T& value, int32 count, EAllowShrinking const as) {
     { SetNumTraits<T>::set_num(value, count, as) } -> std::same_as<void>;
 };
+
+// copy_element
+template <typename T>
+concept SupportsCopyElement = requires(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
+    {
+        CopyElementTraits<std::remove_cvref_t<T>>::copy_element(dst, dst_i, src, src_i)
+    } -> std::same_as<void>;
+};
+
+template <typename T>
+consteval bool diagnose_supports_copy_element() {
+    if constexpr (!SupportsCopyElement<std::remove_cvref_t<T>>) {
+        static_assert(!sizeof(T), "Pack element doesn't satisfy SupportsCopyElement");
+    }
+
+    return true;
+}
+
+template <typename... T>
+concept AllSupportCopyElement = (diagnose_supports_copy_element<std::remove_cvref_t<T>>() && ...);
 }
