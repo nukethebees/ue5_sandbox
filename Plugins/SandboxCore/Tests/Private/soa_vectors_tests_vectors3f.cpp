@@ -83,6 +83,23 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.SetNum") {
     CHECK_FALSE(vectors.is_empty());
 }
 
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.CopyElement") {
+    auto dst{ml::make_vectors3f({1.0f, 2.0f, 3.0f},
+                                {4.0f, 5.0f, 6.0f},
+                                {7.0f, 8.0f, 9.0f})};
+    auto const src{ml::make_vectors3f({10.0f, 20.0f, 30.0f},
+                                      {40.0f, 50.0f, 60.0f},
+                                      {70.0f, 80.0f, 90.0f})};
+
+    dst.copy_element(1, src, 2);
+
+    auto const expected{ml::make_vectors3f({1.0f, 30.0f, 3.0f},
+                                            {4.0f, 60.0f, 6.0f},
+                                            {7.0f, 90.0f, 9.0f})};
+
+    CHECK(ml::almost_equal(dst, expected));
+}
+
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reserve") {
     FVectors3f vectors;
 
