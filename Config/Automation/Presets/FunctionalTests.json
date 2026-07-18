@@ -5,6 +5,7 @@
 		"Sandbox.FunctionalTests.CapitalCommandFighters.MainTest",
 		"Sandbox.FunctionalTests.CapitalFighterHandles.MainTest",
 		"Sandbox.FunctionalTests.EntityInterfaceTest.MainTest",
-		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch"
+		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
+		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest"
 	]
 }

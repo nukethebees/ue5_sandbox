@@ -4,6 +4,8 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
+#include <SandboxCore/soa_vector_utils.h>
+
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
@@ -12,6 +14,12 @@
 #include <CQTest.h>
 #include <EngineUtils.h>
 #include <Misc/Optional.h>
+
+namespace {
+auto LexToString(FVector3f const& vec) -> FString {
+    return vec.ToCompactString();
+}
+}
 
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
@@ -25,7 +33,12 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
 
+    TArray<FRegistryEntityHandle> original_fighter_target_handles;
+    TArray<FVector3f> original_fighter_target_locations;
+
     static constexpr int32 cycles_to_wait{5};
+    static constexpr int32 n_capitals_exp{3};
+    static constexpr int32 main_capital_index{0};
 
     BEFORE_EACH()
     {
@@ -59,7 +72,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         return false;
     }
     void run_spawn_capital_handle_checks() {
-        auto const n_capitals_exp{2};
         auto const n_capitals{capitals->get_num_instances()};
 
         checks.are_equal(n_capitals_exp, n_capitals, TEXT("Number of capitals."));
@@ -139,8 +151,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
             TestRunner->AddInfo(msg);
         }
-
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
     void kill_fighters() {
@@ -185,6 +195,80 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         checks.are_equal(kept.Num(), total_left, TEXT("Expected left"));
     }
 
+    void fill_fighter_target_info(TArray<FRegistryEntityHandle> & handles,
+                                  TArray<FVector3f> & vecs) {
+        auto const main_fighters_span{
+            capitals->get_capital_fighter_handle_span(main_capital_index)};
+        auto const fighter_target_handles{fighters->get_target_handles()};
+        auto const fighter_target_locations{fighters->get_target_locations()};
+
+        handles = fighter_target_handles;
+
+        auto const span_end{main_fighters_span.end()};
+        for (int32 i{main_fighters_span.start()}; i < span_end; ++i) {
+            vecs.Add(ml::get_vector3f(fighter_target_locations, i));
+        }
+    }
+
+    void kill_capital_opponent() {
+        auto const target{capitals->get_target_handle(main_capital_index)};
+        checks.is_true(test_driver->registry.is_valid_alive(target),
+                       TEXT("Check target alive before kill"));
+        test_driver->queue_kill(target, {});
+
+        fill_fighter_target_info(original_fighter_target_handles,
+                                 original_fighter_target_locations);
+    }
+    void check_fighters_target_location_changed() {
+        TArray<FRegistryEntityHandle> new_fighter_target_handles;
+        TArray<FVector3f> new_fighter_target_locations;
+
+        fill_fighter_target_info(new_fighter_target_handles, new_fighter_target_locations);
+
+        auto const n_original_locations{original_fighter_target_locations.Num()};
+        auto const n_new_locations{new_fighter_target_locations.Num()};
+
+        auto const same_num_locations{n_original_locations == n_new_locations};
+
+        checks.is_true(same_num_locations,
+                       FString::Printf(TEXT("Locations num the same: (old=%d, new=%d)"),
+                                       n_original_locations,
+                                       n_new_locations));
+
+        if (!same_num_locations) { return; }
+
+        checks.are_equal(n_original_locations,
+                         original_fighter_target_handles.Num(),
+                         TEXT("Original handle num check"));
+        checks.are_equal(
+            n_new_locations, new_fighter_target_handles.Num(), TEXT("New handle num check"));
+
+        for (int32 i{0}; i < n_new_locations; ++i) {
+            auto const old_loc{original_fighter_target_locations[i]};
+            auto const new_loc{new_fighter_target_locations[i]};
+
+            auto const old_handle{original_fighter_target_handles[i]};
+            auto const new_handle{new_fighter_target_handles[i]};
+
+            auto const locs_equal{old_loc == new_loc};
+            auto const handles_equal{old_loc == new_loc};
+
+            checks.is_true(
+                !locs_equal,
+                FString::Printf(TEXT("Check locations not the same [%d]: Old: %s, New: %s"),
+                                i,
+                                *old_loc.ToCompactString(),
+                                *new_loc.ToCompactString()));
+
+            checks.is_true(
+                !handles_equal,
+                FString::Printf(TEXT("Check handles not the same [%d]: Old: %s, New: %s"),
+                                i,
+                                *old_handle.to_string(),
+                                *new_handle.to_string()));
+        }
+    }
+
     TEST_METHOD(MainTest)
     {
 
@@ -192,9 +276,24 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
             .Then([this] { initial_setup(); })
             .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, timeout)
-            .Then([this] { run_spawn_capital_handle_checks(); })
+            .Then([this] {
+                run_spawn_capital_handle_checks();
+                ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+            })
             .Then([this] { kill_fighters(); })
             .Until([this] { return test_driver->wait_is_over(); }, timeout)
-            .Then([this] { check_handles_after_kills(); });
+            .Then([this] {
+                check_handles_after_kills();
+                ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+            })
+            .Then([this] {
+                kill_capital_opponent();
+                test_driver->set_wait_until_tick_from_now(10);
+            })
+            .Until([this] { return test_driver->wait_is_over(); }, timeout)
+            .Then([this] {
+                check_fighters_target_location_changed();
+                ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+            });
     }
 };

@@ -58,16 +58,16 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     FCountdownTimers laser_cooldowns;
 
     // clang-format off
-#define SANDBOX_PACK(STAMPER)  \
+#define SANDBOX_PACK(STAMPER, END_SYMBOL)  \
     STAMPER(entity_handles)    \
-    , STAMPER(tasks)           \
-    , STAMPER(locations)       \
-    , STAMPER(directions)      \
-    , STAMPER(speeds)          \
-    , STAMPER(teams)           \
-    , STAMPER(healths)         \
-    , STAMPER(target_handles)  \
-    , STAMPER(laser_cooldowns)
+    END_SYMBOL STAMPER(tasks)           \
+    END_SYMBOL STAMPER(locations)       \
+    END_SYMBOL STAMPER(directions)      \
+    END_SYMBOL STAMPER(speeds)          \
+    END_SYMBOL STAMPER(teams)           \
+    END_SYMBOL STAMPER(healths)         \
+    END_SYMBOL STAMPER(target_handles)  \
+    END_SYMBOL STAMPER(laser_cooldowns)
     // clang-format on
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
@@ -133,6 +133,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
 
+    auto get_target_locations() const { return target_locations.get_view(); }
+
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
     void set_task(int32 const i, Task const task) noexcept {
         entity_buffers.current().tasks[i] = task;
@@ -140,6 +142,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     // It is an error to call this when spans are invalid
     auto get_task_spans() const -> TaskSpans;
+    auto get_task_span(Task const task) const -> FIndexSpan {
+        return task_spans[std::to_underlying(task)];
+    }
     auto get_task_counts() const -> TaskCounts;
 
 // Checks
@@ -151,6 +156,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void check_fighter_tasks() const {}
 #endif
   protected:
+    // Movement
+    void move(float const dt, FIndexSpan task_span);
+
     // Combat
     void handle_firing();
 

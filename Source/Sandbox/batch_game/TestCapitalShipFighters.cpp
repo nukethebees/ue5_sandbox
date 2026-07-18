@@ -26,6 +26,15 @@
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
+namespace {
+inline auto get_span(FVectors3f& vec, FIndexSpan const span) {
+    return vec.get_view().slice(span.offset, span.count);
+}
+inline auto get_span(FVectors3f const& vec, FIndexSpan const span) {
+    return vec.get_view().slice(span.offset, span.count);
+}
+}
+
 ATestCapitalShipFighters::ATestCapitalShipFighters()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -74,6 +83,8 @@ void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
 
     if (!tasks_are_contiguous()) { refresh_layout(); }
+    auto& data{entity_buffers.current()};
+    entity_registry->refresh_locations(data.entity_handles, target_locations);
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
@@ -83,6 +94,11 @@ void ATestCapitalShipFighters::move(float const dt) {
     ml::direction(target_directions, data.locations, target_locations);
     ml::lerp_in_place(data.directions, target_directions, turn_speed_unitless * dt);
     ml::add_scaled_in_place(data.locations, data.directions, data.speeds, dt);
+
+    // for (auto const task : tasks) {
+    //     auto const span{get_task_span(task)};
+    //     move(dt, span);
+    // }
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
@@ -136,6 +152,20 @@ void ATestCapitalShipFighters::update_visuals() {
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
+}
+
+// Movement
+void ATestCapitalShipFighters::move(float const dt, FIndexSpan task_span) {
+    auto& data{entity_buffers.current()};
+
+    auto target_locations_slice{get_span(target_locations, task_span)};
+    auto target_directions_slice{get_span(target_directions, task_span)};
+    auto locations_slice{get_span(data.locations, task_span)};
+    auto directions_slice{get_span(data.directions, task_span)};
+
+    ml::direction(target_directions_slice, locations_slice, target_locations_slice);
+    ml::lerp_in_place(directions_slice, target_directions_slice, turn_speed_unitless * dt);
+    ml::add_scaled_in_place(locations_slice, directions_slice, data.speeds, dt);
 }
 
 // Accessors
@@ -596,9 +626,15 @@ void ATestCapitalShipFighters::check_fighter_tasks() const {
 
     // Set offset for any remaining tasks
     auto const n_fighters{get_num_instances()};
-    for (int32 i{std::to_underlying(current_task_group) + 1}; i < n_task_types; ++i) {
-        checked_task_spans[i].offset = n_fighters;
-        checked_task_spans[i].count = 0;
+    for (int32 i{1}; i < n_task_types; ++i) {
+        auto const last_span{checked_task_spans[i - 1]};
+        auto const last_end{last_span.end()};
+        auto& cur_span{checked_task_spans[i]};
+
+        if (cur_span.offset < last_end) {
+            cur_span.offset = last_end;
+            check(cur_span.count == 0);
+        }
     }
 
     if (checked_task_spans != task_spans) {
