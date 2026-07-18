@@ -80,6 +80,17 @@ auto collect_values_not_equal(T const* RESTRICT values,
 
     return static_cast<int32>(out_values - original);
 }
+
+template <typename T>
+auto sum(T const* RESTRICT values, int32 const count) noexcept -> T {
+    T out{};
+
+    for (int32 i{0}; i < count; ++i) {
+        out += values[i];
+    }
+
+    return out;
+}
 }
 
 namespace ml {
@@ -145,5 +156,10 @@ auto collect_values_not_equal(TConstArrayView<T> const values,
         values.GetData(), values.Num(), reference_value, out_values.GetData())};
 
     return TConstArrayView<int32>{out_values.Left(count)};
+}
+
+template <typename T>
+auto sum(TConstArrayView<T> const values) -> T {
+    return ml::kernel::sum(values.GetData(), values.Num());
 }
 }
