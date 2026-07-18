@@ -17,6 +17,8 @@
 
 TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
 {
+    using Task = ATestCapitalShipFighters::Task;
+
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
@@ -55,9 +57,8 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         capitals = &test_driver->get_capital_ships();
         fighters = &test_driver->get_capital_ship_fighters();
 
+        team_kept_alive = capitals->get_team(test_capital_idx);
         capital_first_target = capitals->get_target_handle(test_capital_idx);
-
-        test_driver->set_wait_until_tick_from_now(wait_after_setup);
     }
     void set_wait_after_kills() {
         test_driver->set_wait_until_tick_from_now(wait_after_kills);
@@ -94,8 +95,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
 
     void run_spawn_capital_handle_checks() {
         check_target_handles(capital_first_target);
-        check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Attack>();
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        check_fighter_tasks_are<Task::Attack>();
     }
 
     void kill_initial_targets() {
@@ -138,6 +138,20 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                 set_wait_after_kills();
             })
             .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
-            .Then([this] { check_fighter_tasks_are<ATestCapitalShipFighters::Tasks::Idle>(); });
+            .Then([this] {
+                check_fighter_tasks_are<Task::Standby>();
+
+                auto const n_capitals{capitals->get_num_instances()};
+                checks.is_true(n_capitals > 0, TEXT("At least one capital left"));
+
+                if (!checks.all_passed) {
+                    auto const msg{
+                        FString::Printf(TEXT("Hero team: %s"),
+                                        *ml::to_string_without_type_prefix(team_kept_alive))};
+                    TestRunner->AddInfo(msg);
+                }
+
+                ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+            });
     }
 };
