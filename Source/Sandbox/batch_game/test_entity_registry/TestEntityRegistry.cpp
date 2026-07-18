@@ -417,11 +417,22 @@ auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
     return total;
 }
 auto ATestEntityRegistry::count_alive() const noexcept -> int32 {
-    int32 n{get_num_unique_ids_issued()};
-
     int32 total{0};
     for (auto const& alive : unique_entities.alive) {
         if (alive) { ++total; }
+    }
+
+    return total;
+}
+auto ATestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (int32 i{0}; i < n; ++i) {
+        auto const alive{unique_entities.alive[i]};
+        auto const entity_type{unique_entities.entity_types[i]};
+
+        if (alive && (entity_type == type)) { ++total; }
     }
 
     return total;
