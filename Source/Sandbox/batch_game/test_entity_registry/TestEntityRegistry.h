@@ -39,7 +39,7 @@ UCLASS()
 class SANDBOX_API ATestEntityRegistry : public AActor {
     GENERATED_BODY()
   public:
-    using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestEntityType>::count_value>;
+    using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }

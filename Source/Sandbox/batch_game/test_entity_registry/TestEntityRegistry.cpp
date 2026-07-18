@@ -446,10 +446,7 @@ auto ATestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 
     int32 total{0};
     for (int32 i{0}; i < n; ++i) {
-        auto const alive{unique_entities.alive[i]};
-        auto const entity_type{unique_entities.entity_types[i]};
-
-        if (alive) { out[std::to_underlying(entity_type)] += 1; }
+        if (entity_data.alive[i]) { out[std::to_underlying(entity_data.teams[i])] += 1; }
     }
 
     return out;
