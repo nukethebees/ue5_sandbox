@@ -344,6 +344,7 @@ void ATestCapitalShipFighters::spawn_instances(
     validate_array_sizes();
 }
 
+// Destruction
 void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const handle) {
     auto& data{entity_buffers.current()};
 
@@ -352,6 +353,42 @@ void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const
 
     data.healths[index] = 0;
     local_indices_to_remove.Add(index);
+}
+void ATestCapitalShipFighters::remove_dead_entities() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::remove_dead_entities);
+    auto& data{entity_buffers.current()};
+
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
+                                        ismc_transforms,
+                                        data,
+                                        target_locations,
+                                        target_directions,
+                                        target_distance_sq);
+
+    // Update target entity index
+    auto const n{get_num_instances()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_index{data.entity_handles[i]};
+
+        auto const target_entity_index{data.target_handles[i]};
+        if (target_entity_index.is_valid()) {
+            if (entity_registry->is_stale(target_entity_index)) {
+                data.target_handles[i] = FRegistryEntityHandle{};
+            } else {
+                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
+            }
+        }
+    }
+
+    // Remove ISMC instances
+    if (local_indices_to_remove.Num()) {
+        constexpr bool is_reverse_sorted{true};
+        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    }
+
+    validate_array_sizes();
 }
 
 // Combat
@@ -426,23 +463,6 @@ void ATestCapitalShipFighters::clear_runtime_state() {
 void ATestCapitalShipFighters::clear_tick_buffers() {
     ml::reset(local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data);
 }
-void ATestCapitalShipFighters::remove_dead_entities() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::remove_dead_entities);
-    auto& data{entity_buffers.current()};
-
-    local_indices_to_remove.Sort(TGreater<int32>{});
-
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        ismc_transforms,
-                                        data,
-                                        target_locations,
-                                        target_directions,
-                                        target_distance_sq);
-
-    // Update target entity index
-    auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{data.entity_handles[i]};
 
         auto const target_entity_index{data.target_handles[i]};
         if (target_entity_index.is_valid()) {
@@ -453,15 +473,6 @@ void ATestCapitalShipFighters::remove_dead_entities() {
             }
         }
     }
-
-    // Remove ISMC instances
-    if (local_indices_to_remove.Num()) {
-        constexpr bool is_reverse_sorted{true};
-        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
-    }
-
-    validate_array_sizes();
-}
 
 // Checks
 void ATestCapitalShipFighters::validate_array_sizes() const {
