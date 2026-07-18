@@ -73,14 +73,29 @@ struct FRotatorsf
         return View{pitches, yaws, rolls};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{pitches, yaws, rolls};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{pitches, yaws, rolls};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -185,14 +200,29 @@ struct FRotatorsd
         return View{pitches, yaws, rolls};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{pitches, yaws, rolls};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{pitches, yaws, rolls};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>

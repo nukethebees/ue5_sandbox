@@ -111,14 +111,29 @@ struct FVectors2f
         return View{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -213,14 +228,29 @@ struct FVectors2d
         return View{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -315,14 +345,29 @@ struct FVectors2i32
         return View{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -417,14 +462,29 @@ struct FVectors2u32
         return View{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -521,14 +581,29 @@ struct FVectors3f
         return View{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -633,14 +708,29 @@ struct FVectors3d
         return View{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -745,14 +835,29 @@ struct FVectors3i32
         return View{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>
@@ -857,14 +962,29 @@ struct FVectors3u32
         return View{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
     }
 
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
     auto get_const_view() const -> ConstView
     {
         return ConstView{xs, ys, zs};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
     }
 
     template <typename TFunc>

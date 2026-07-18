@@ -224,12 +224,20 @@ def generate_view_return(
     layout: LayoutSpec, return_type: str, function_name: str
 ) -> list[str]:
     components = join_args(layout.components)
+    is_const = return_type == "ConstView"
+    const_qualifier = " const" if is_const else ""
     return [
         f"    auto {function_name}() const -> {return_type}"
-        if return_type == "ConstView"
+        if is_const
         else f"    auto {function_name}() -> {return_type}",
         "    {",
         f"        return {return_type}{{{components}}};",
+        "    }",
+        "",
+        f"    auto {function_name}(size_type const offset, size_type const count)"
+        f"{const_qualifier} -> {return_type}",
+        "    {",
+        f"        return {function_name}().slice(offset, count);",
         "    }",
     ]
 
