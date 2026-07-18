@@ -60,8 +60,12 @@ struct FSoAArrayMixin : public FSoACommonMixin {
     }
 };
 
-#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS(FOO) self.FOO
-#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS(FOO) self.FOO, other.FOO
+#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS(MEMBER_NAME) self.MEMBER_NAME
+#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS(MEMBER_NAME) self.MEMBER_NAME, other.MEMBER_NAME
+
+#define SANDBOX_SOA_MIXIN_MEMBER_TYPE_ALIAS(MEMBER_NAME) \
+    using member_type_##MEMBER_NAME = decltype(MEMBER_NAME);
+#define SANDBOX_SOA_MIXIN_VIEW_MEMBER(MEMBER_NAME) member_type_##MEMBER_NAME MEMBER_NAME;
 
 /* SANDBOX_SOA_MEMBERS is a macro in the form
 
@@ -72,16 +76,20 @@ struct FSoAArrayMixin : public FSoACommonMixin {
 
 */
 
-#define SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_SOA_MEMBERS)                                        \
-    template <typename TFunc>                                                                  \
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {                      \
-        return std::forward<TFunc>(func)(SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS)); \
-    }                                                                                          \
-    template <typename Self, typename Other, typename TFunc>                                   \
-        requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>         \
-    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {  \
-        return std::forward<TFunc>(func)(                                                      \
-            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS));                        \
+#define SANDBOX_COMMA ,
+#define SANDBOX_SEMICOLON ;
+#define SANDBOX_EMPTY
+#define SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_SOA_MEMBERS)                                       \
+    template <typename TFunc>                                                                 \
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {                     \
+        return std::forward<TFunc>(func)(                                                     \
+            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS, SANDBOX_COMMA));              \
+    }                                                                                         \
+    template <typename Self, typename Other, typename TFunc>                                  \
+        requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>        \
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) { \
+        return std::forward<TFunc>(func)(                                                     \
+            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS, SANDBOX_COMMA));        \
     }
 
 struct FSoAViewMixin : public FSoACommonMixin {};

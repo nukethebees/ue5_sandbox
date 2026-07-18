@@ -207,4 +207,49 @@ struct CopyElementTraits<T> {
         dst.copy_element(dst_i, src, src_i);
     }
 };
+
+/* -------------------------------------------------------------------------- */
+// get_view
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct GetViewTraits;
+
+template <typename T>
+    requires requires(T& t) {
+        { TArrayView<std::remove_cvref_t<decltype(t[0])>>{t} };
+    }
+struct GetViewTraits<T> {
+    using Container = std::remove_cvref_t<T>;
+    using Element = std::remove_cvref_t<decltype(std::declval<Container>()[0])>;
+
+    static auto get_view(Container& container, int32 const offset, int32 const count) {
+        return TArrayView<Element>{container};
+    }
+    static auto get_view(Container const& container, int32 const offset, int32 const count) {
+        return TConstArrayView<Element>{container};
+    }
+    static auto get_const_view(Container const& container, int32 const offset, int32 const count) {
+        return TConstArrayView<Element>{container};
+    }
+};
+
+template <typename T>
+    requires requires(T& t) {
+        { t.get_view() };
+        { t.get_const_view() };
+    }
+struct GetViewTraits<T> {
+    using Container = std::remove_cvref_t<T>;
+    using Element = std::remove_cvref_t<decltype(std::declval<Container>()[0])>;
+
+    static auto get_view(Container& container, int32 const offset, int32 const count) {
+        return container.get_view(offset, count);
+    }
+    static auto get_view(Container const& container, int32 const offset, int32 const count) {
+        return container.get_view(offset, count);
+    }
+    static auto get_const_view(Container const& container, int32 const offset, int32 const count) {
+        return container.get_const_view(offset, count);
+    }
+};
 }

@@ -3,9 +3,6 @@
 #include "container_concepts.h"
 #include "container_traits.h"
 
-#include "Containers/Array.h"
-#include "Containers/ArrayView.h"
-
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 #include <Math/UnrealMathUtility.h>
@@ -175,6 +172,15 @@ void copy_element(
     CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
 
     if constexpr (sizeof...(rest)) { copy_element(dst_i, src_i, rest...); }
+}
+
+template <SupportsGetView... Containers>
+auto get_view(int32 const offset, int32 const count, Containers&... containers) {
+    (GetViewTraits<Containers>::get_view(containers, offset, count), ...);
+}
+template <SupportsGetView... Containers>
+auto get_const_view(int32 const offset, int32 const count, Containers&... containers) {
+    (GetViewTraits<Containers>::get_const_view(containers, offset, count), ...);
 }
 
 template <typename Container, typename T>

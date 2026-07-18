@@ -39,6 +39,42 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
     CHECK(view.zs[1] == 6.0f);
 }
 
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetViewWithOffsetAndCount") {
+    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
+                                    {5.0f, 6.0f, 7.0f, 8.0f},
+                                    {9.0f, 10.0f, 11.0f, 12.0f})};
+
+    auto view{vectors.get_view(1, 2)};
+    view.xs[0] = 20.0f;
+    view.ys[1] = 70.0f;
+    view.zs[0] = 100.0f;
+
+    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f},
+                                            {5.0f, 6.0f, 70.0f, 8.0f},
+                                            {9.0f, 100.0f, 11.0f, 12.0f})};
+
+    CHECK(view.num() == 2);
+    CHECK(ml::almost_equal(vectors, expected));
+}
+
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstViewsWithOffsetAndCount") {
+    auto const vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
+                                          {5.0f, 6.0f, 7.0f, 8.0f},
+                                          {9.0f, 10.0f, 11.0f, 12.0f})};
+
+    auto view{vectors.get_view(1, 2)};
+    auto const_view{vectors.get_const_view(1, 2)};
+
+    CHECK(view.num() == 2);
+    CHECK(view.xs[0] == 2.0f);
+    CHECK(view.ys[1] == 7.0f);
+    CHECK(view.zs[1] == 11.0f);
+    CHECK(const_view.num() == 2);
+    CHECK(const_view.xs[0] == 2.0f);
+    CHECK(const_view.ys[1] == 7.0f);
+    CHECK(const_view.zs[1] == 11.0f);
+}
+
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Slice") {
     auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f}, {9.0f, 10.0f, 11.0f, 12.0f})};
 

@@ -16,13 +16,9 @@
 
 namespace ml {
 template <typename T>
-concept is_vec3f = requires(T const& vecs) {
-    { vecs.xs[0] } -> std::convertible_to<float>;
-    { vecs.xs[0] } -> std::convertible_to<float>;
-    { vecs.ys[0] } -> std::convertible_to<float>;
-    { vecs.zs[0] } -> std::convertible_to<float>;
-    { vecs.num() } -> std::convertible_to<int32>;
-};
+concept is_vec3f = std::same_as<std::remove_cvref_t<T>, FVectors3f> ||
+                   std::same_as<std::remove_cvref_t<T>, TVectors3View<float>> ||
+                   std::same_as<std::remove_cvref_t<T>, TVectors3View<float const>>;
 
 /* ---------------------------------------------------------------------------------------------- */
 // Checks
