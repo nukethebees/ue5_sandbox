@@ -105,6 +105,14 @@ struct FRotatorsf
         return num() == 0;
     }
 
+    auto copy_element(size_type const dst_i,
+                      FRotatorsf const& src, size_type const src_i) -> void
+    {
+        pitches[dst_i] = src.pitches[src_i];
+        yaws[dst_i] = src.yaws[src_i];
+        rolls[dst_i] = src.rolls[src_i];
+    }
+
     auto reset() -> void
     {
         pitches.Reset();
@@ -207,6 +215,14 @@ struct FRotatorsd
     auto is_empty() const -> bool
     {
         return num() == 0;
+    }
+
+    auto copy_element(size_type const dst_i,
+                      FRotatorsd const& src, size_type const src_i) -> void
+    {
+        pitches[dst_i] = src.pitches[src_i];
+        yaws[dst_i] = src.yaws[src_i];
+        rolls[dst_i] = src.rolls[src_i];
     }
 
     auto reset() -> void

@@ -208,6 +208,18 @@ def generate_array_function(layout: LayoutSpec, fn: FnSpec) -> list[str]:
     return lines
 
 
+def generate_copy_element(layout: LayoutSpec, storage_type: str) -> list[str]:
+    lines = [
+        "    auto copy_element(size_type const dst_i,",
+        f"                      {storage_type} const& src, size_type const src_i) -> void",
+        "    {",
+    ]
+    for component in layout.components:
+        lines.append(f"        {component}[dst_i] = src.{component}[src_i];")
+    lines.append("    }")
+    return lines
+
+
 def generate_view_return(
     layout: LayoutSpec, return_type: str, function_name: str
 ) -> list[str]:
@@ -255,6 +267,8 @@ def generate_storage_struct(layout: LayoutSpec, value_type: str) -> str:
         "    {",
         "        return num() == 0;",
         "    }",
+        "",
+        *generate_copy_element(layout, name),
     ]
 
     for fn in layout.functions:

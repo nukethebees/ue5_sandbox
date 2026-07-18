@@ -143,6 +143,13 @@ struct FVectors2f
         return num() == 0;
     }
 
+    auto copy_element(size_type const dst_i,
+                      FVectors2f const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -236,6 +243,13 @@ struct FVectors2d
     auto is_empty() const -> bool
     {
         return num() == 0;
+    }
+
+    auto copy_element(size_type const dst_i,
+                      FVectors2d const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
     }
 
     auto reset() -> void
@@ -333,6 +347,13 @@ struct FVectors2i32
         return num() == 0;
     }
 
+    auto copy_element(size_type const dst_i,
+                      FVectors2i32 const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -426,6 +447,13 @@ struct FVectors2u32
     auto is_empty() const -> bool
     {
         return num() == 0;
+    }
+
+    auto copy_element(size_type const dst_i,
+                      FVectors2u32 const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
     }
 
     auto reset() -> void
@@ -523,6 +551,14 @@ struct FVectors3f
     auto is_empty() const -> bool
     {
         return num() == 0;
+    }
+
+    auto copy_element(size_type const dst_i,
+                      FVectors3f const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+        zs[dst_i] = src.zs[src_i];
     }
 
     auto reset() -> void
@@ -629,6 +665,14 @@ struct FVectors3d
         return num() == 0;
     }
 
+    auto copy_element(size_type const dst_i,
+                      FVectors3d const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+        zs[dst_i] = src.zs[src_i];
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -733,6 +777,14 @@ struct FVectors3i32
         return num() == 0;
     }
 
+    auto copy_element(size_type const dst_i,
+                      FVectors3i32 const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+        zs[dst_i] = src.zs[src_i];
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -835,6 +887,14 @@ struct FVectors3u32
     auto is_empty() const -> bool
     {
         return num() == 0;
+    }
+
+    auto copy_element(size_type const dst_i,
+                      FVectors3u32 const& src, size_type const src_i) -> void
+    {
+        xs[dst_i] = src.xs[src_i];
+        ys[dst_i] = src.ys[src_i];
+        zs[dst_i] = src.zs[src_i];
     }
 
     auto reset() -> void

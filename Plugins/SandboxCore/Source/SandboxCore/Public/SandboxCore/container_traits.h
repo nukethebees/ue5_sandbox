@@ -194,7 +194,17 @@ template <typename T>
     }
 struct CopyElementTraits<T> {
     static void copy_element(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
-        dst[src_i] = src[src_i];
+        dst[dst_i] = src[src_i];
+    }
+};
+
+template <typename T>
+    requires requires(T& t0, T const& t1) {
+        { t0.copy_element(0, t1, 0) } -> std::same_as<void>;
+    }
+struct CopyElementTraits<T> {
+    static void copy_element(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
+        dst.copy_element(dst_i, src, src_i);
     }
 };
 }
