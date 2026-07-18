@@ -29,9 +29,9 @@ class ATestEntityRegistry;
 
 UENUM()
 enum class ETestCapitalShipFightersTask : uint8 {
+    Standby,
     MoveToDestination,
     Attack,
-    Idle,
 };
 
 inline auto LexToString(ETestCapitalShipFightersTask const task) -> FString {
@@ -73,7 +73,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
     using EntityBuffers = ml::MultiBuffer<FTestCapitalShipFightersEntityData, 2>;
-    using Tasks = ETestCapitalShipFightersTask;
+    using Task = ETestCapitalShipFightersTask;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -124,7 +124,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
 
-    auto get_tasks() const -> TConstArrayView<Tasks> { return entity_buffers.current().tasks; }
+    auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
+    void set_task(int32 const i, Task const task) noexcept {
+        entity_buffers.current().tasks[i] = task;
+    }
 
     // Checks
     void validate_array_sizes() const;

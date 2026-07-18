@@ -148,13 +148,21 @@ void ATestCapitalShips::make_decisions() {
     auto const n_capitals{get_num_instances()};
 
     for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
+        auto const capital_target{target_handles[capital_idx]};
         auto const span{capital_fighter_handle_spans[capital_idx]};
-
         auto const end{span.end()};
-        for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
-            auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
-            if (fighter_target_handle.is_null()) {
-                fighters_actor->set_target_handle(fighter_idx, target_handles[capital_idx]);
+
+        if (capital_target.is_null()) {
+            for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
+                fighters_actor->set_target_handle(fighter_idx, capital_target);
+                fighters_actor->set_task(fighter_idx, ETestCapitalShipFightersTask::Standby);
+            }
+        } else {
+            for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
+                auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
+                if (fighter_target_handle.is_null()) {
+                    fighters_actor->set_target_handle(fighter_idx, capital_target);
+                }
             }
         }
     }
