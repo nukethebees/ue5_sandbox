@@ -207,10 +207,24 @@ void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
                                          FVectors3f const& a,
                                          FVectors3f const& b,
                                          float const c);
-void SANDBOXCORE_API add_scaled_in_place(FVectors3f& dst,
-                                         FVectors3f const& a,
-                                         TConstArrayView<float> const b,
-                                         float const c);
+template <is_vec3f Dst, is_vec3f Src>
+void add_scaled_in_place(Dst& dst, Src const& a, TConstArrayView<float> const b, float const c) {
+    auto const n{ml::num(dst)};
+    check(ml::num(a) == n);
+    check(ml::num(b) == n);
+
+    check(&dst != &a);
+
+    return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
+                                                  dst.ys.GetData(),
+                                                  dst.zs.GetData(),
+                                                  a.xs.GetData(),
+                                                  a.ys.GetData(),
+                                                  a.zs.GetData(),
+                                                  b.GetData(),
+                                                  c,
+                                                  n);
+}
 
 /* ---------------------------------------------------------------------------------------------- */
 // Interpolation
@@ -226,7 +240,8 @@ inline void
                          TConstArrayView<float>{alpha.GetData(), alpha.Num()});
 }
 
-inline void lerp_in_place(FVectors3f& current, FVectors3f const& target, float const alpha) {
+template <is_vec3f Current, is_vec3f Target>
+inline void lerp_in_place(Current& current, Target const& target, float const alpha) {
     ml::lerp_3d_in_place(TArrayView<float>{current.xs},
                          TArrayView<float>{current.ys},
                          TArrayView<float>{current.zs},
