@@ -10,10 +10,12 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueEntityData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestTeam.h>
+#include <Sandbox/utilities/enums.h>
 
 #include <SandboxCore/array_utils.h>
 
 #include "CoreMinimal.h"
+#include "Containers/StaticArray.h"
 #include "GameFramework/Actor.h"
 
 #include "TestEntityRegistry.generated.h"
@@ -35,8 +37,9 @@ struct SpawnedEntityHandles {
 
 UCLASS()
 class SANDBOX_API ATestEntityRegistry : public AActor {
-  public:
     GENERATED_BODY()
+  public:
+    using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestEntityType>::count_value>;
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }
@@ -118,6 +121,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto count_kills() const noexcept -> int32;
     auto count_alive() const noexcept -> int32;
     auto count_alive(ETestEntityType type) const noexcept -> int32;
+    auto count_alive_per_team() const noexcept -> TeamCounts;
     auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
 
     // Unique id queries

@@ -10,6 +10,8 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
+#include <utility>
+
 /* ------------------------------------------------------------------------------------------ */
 // NewEntities
 /* ------------------------------------------------------------------------------------------ */
@@ -436,6 +438,21 @@ auto ATestEntityRegistry::count_alive(ETestEntityType const type) const noexcept
     }
 
     return total;
+}
+auto ATestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
+    TeamCounts out{};
+
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (int32 i{0}; i < n; ++i) {
+        auto const alive{unique_entities.alive[i]};
+        auto const entity_type{unique_entities.entity_types[i]};
+
+        if (alive) { out[std::to_underlying(entity_type)] += 1; }
+    }
+
+    return out;
 }
 auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
     auto const n{get_num_elements()};
