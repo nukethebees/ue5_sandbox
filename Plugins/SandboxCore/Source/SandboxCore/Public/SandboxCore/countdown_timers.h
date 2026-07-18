@@ -21,6 +21,9 @@ struct SANDBOXCORE_API FCountdownTimers {
     void RemoveAtSwap(int32 const index, int32 const count, EAllowShrinking const as) {
         remaining_times.RemoveAtSwap(index, count, as);
     }
+    auto AddUninitialized(int32 const count) -> int32 {
+        return remaining_times.AddUninitialized(count);
+    }
 
     UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;
