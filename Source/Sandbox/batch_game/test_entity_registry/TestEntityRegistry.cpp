@@ -303,6 +303,29 @@ void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> cons
     }
 }
 
+// Entity data updates
+void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
+                                            FVectors3f& locations) {
+    auto const n{handles.Num()};
+    check(ml::num(locations) == n);
+
+    for (int32 i{}; i < n; ++i) {
+        auto const handle{handles[i]};
+        if (handle.is_null()) {
+            locations.xs[i] = 0.f;
+            locations.ys[i] = 0.f;
+            locations.zs[i] = 0.f;
+        } else {
+            check(generations.IsValidIndex(handle.index));
+            check(handle.generation == generations[handle.index]);
+
+            locations.xs[i] = entity_data.locations.xs[handle.index];
+            locations.ys[i] = entity_data.locations.ys[handle.index];
+            locations.zs[i] = entity_data.locations.zs[handle.index];
+        }
+    }
+}
+
 // Unique id queries
 auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());

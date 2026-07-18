@@ -93,6 +93,9 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Handle updates
     void refresh_handles(TArrayView<FRegistryEntityHandle> handles) const;
 
+    // Entity data updates
+    void refresh_locations(TConstArrayView<FRegistryEntityHandle> handles, FVectors3f& locations);
+
     // Entity queries
     auto get_num_elements() const noexcept -> int32;
     auto get_num_alive_active_entities() const noexcept -> int32;
