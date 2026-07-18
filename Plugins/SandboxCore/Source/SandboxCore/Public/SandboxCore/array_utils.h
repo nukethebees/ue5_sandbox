@@ -9,8 +9,12 @@
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 #include <Math/UnrealMathUtility.h>
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
+#include "Containers/StaticArray.h"
 
 #include <concepts>
+#include <type_traits>
 
 namespace ml::kernel {
 // -------------------------------------------------------------------------------------------------
@@ -213,5 +217,14 @@ void collect_valid_indices_by_key(KeysType const& keys,
     }
 
     out_indices.SetNum(n, EAllowShrinking::No);
+}
+
+template <typename T, typename... Ts>
+    requires (std::convertible_to<Ts, std::remove_cvref_t<T>> && ...)
+constexpr auto to_static_array(T&& first, Ts&&... rest) {
+    using Element = std::remove_cvref_t<T>;
+
+    return TStaticArray<Element, 1 + sizeof...(Ts)>{
+        std::forward<T>(first), static_cast<Element>(std::forward<Ts>(rest))...};
 }
 }
