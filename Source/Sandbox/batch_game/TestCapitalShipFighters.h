@@ -9,6 +9,7 @@
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 #include <Sandbox/utilities/enums.h>
+#include <Sandbox/utilities/IndexSpan.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/multi_buffer.h>
@@ -17,6 +18,7 @@
 #include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
+#include "Containers/StaticArray.h"
 #include "GameFramework/Actor.h"
 
 #include "TestCapitalShipFighters.generated.h"
@@ -32,6 +34,7 @@ enum class ETestCapitalShipFightersTask : uint8 {
     Standby,
     MoveToDestination,
     Attack,
+    COUNT UMETA(DisplayName = "Count", Hidden),
 };
 
 inline auto LexToString(ETestCapitalShipFightersTask const task) -> FString {
@@ -54,18 +57,21 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
 
     FCountdownTimers laser_cooldowns;
 
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         self.tasks,
-                                         self.locations,
-                                         self.directions,
-                                         self.speeds,
-                                         self.teams,
-                                         self.healths,
-                                         self.target_handles,
-                                         self.laser_cooldowns);
-    }
+    // clang-format off
+#define SANDBOX_PACK(STAMPER)  \
+    STAMPER(entity_handles)    \
+    , STAMPER(tasks)           \
+    , STAMPER(locations)       \
+    , STAMPER(directions)      \
+    , STAMPER(speeds)          \
+    , STAMPER(teams)           \
+    , STAMPER(healths)         \
+    , STAMPER(target_handles)  \
+    , STAMPER(laser_cooldowns)
+    // clang-format on
+
+    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
+#undef SANDBOX_PACK
 };
 
 UCLASS()
@@ -74,6 +80,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
   public:
     using EntityBuffers = ml::MultiBuffer<FTestCapitalShipFightersEntityData, 2>;
     using Task = ETestCapitalShipFightersTask;
+    static constexpr auto n_task_types{ml::EnumCountTrait<Task>::count_value};
+    using TaskSpans = TStaticArray<FIndexSpan, n_task_types>;
+    using TaskCounts = TStaticArray<int32, n_task_types>;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -129,8 +138,18 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         entity_buffers.current().tasks[i] = task;
     }
 
-    // Checks
+    // It is an error to call this when spans are invalid
+    auto get_task_spans() const -> TaskSpans;
+    auto get_task_counts() const -> TaskCounts;
+
+// Checks
+#if DO_CHECK
     void validate_array_sizes() const;
+    void check_fighter_tasks() const;
+#else
+    void validate_array_sizes() const {}
+    void check_fighter_tasks() const {}
+#endif
   protected:
     // Combat
     void handle_firing();
@@ -145,6 +164,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     // Entity data
     void prepare_entity_update_data();
+    bool tasks_are_contiguous() const noexcept;
+    void refresh_layout();
 
     // Misc
     void clear_tick_buffers();
@@ -177,6 +198,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Transform
     float turn_speed_radians{0.f};
     float turn_speed_unitless{0.5f};
+
+    // Taks
+    TaskSpans task_spans{};
 
     // Targets
     FVectors3f target_locations;

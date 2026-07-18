@@ -72,6 +72,8 @@ void ATestCapitalShipFighters::update_timers(float const dt) {
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
+
+    if (!tasks_are_contiguous()) { refresh_layout(); }
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
@@ -120,6 +122,7 @@ void ATestCapitalShipFighters::update_entity_registry() {
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
 
+    tasks_are_contiguous(); // This should be true before pruning
     remove_dead_entities();
 }
 void ATestCapitalShipFighters::update_visuals() {
@@ -145,6 +148,23 @@ void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id
 }
 auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
     return owner_id;
+}
+
+auto ATestCapitalShipFighters::get_task_spans() const -> TaskSpans {
+    check_fighter_tasks();
+    return task_spans;
+}
+auto ATestCapitalShipFighters::get_task_counts() const -> TaskCounts {
+    TaskCounts counts{};
+
+    auto const& data{entity_buffers.current()};
+    auto const n_tasks{data.tasks.Num()};
+
+    for (int32 i{}; i < n_tasks; ++i) {
+        ++counts[std::to_underlying(data.tasks[i])];
+    }
+
+    return counts;
 }
 
 // Visuals
@@ -266,6 +286,73 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     for (int32 i{0}; i < n; ++i) {
         registry_update_data.alive[i] = static_cast<uint8>(data.healths[i] > 0);
     }
+}
+bool ATestCapitalShipFighters::tasks_are_contiguous() const noexcept {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tasks_are_contiguous);
+
+    auto current_task_group{Task::Standby};
+    TaskSpans checked_task_spans{};
+
+    auto const& data{entity_buffers.current()};
+    auto const n_tasks{data.tasks.Num()};
+
+    for (int32 i{}; i < n_tasks; ++i) {
+        auto const task{data.tasks[i]};
+
+        if (task > current_task_group) {
+            current_task_group = task;
+        } else if (task < current_task_group) {
+            return false;
+        }
+    }
+
+    return false;
+}
+void ATestCapitalShipFighters::refresh_layout() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::refresh_layout);
+
+    auto const task_counts{get_task_counts()};
+    auto const n_fighters{get_num_instances()};
+
+    TaskCounts write_indexes{};
+
+    {
+        int32 offset{0};
+
+        for (int32 i{0}; i < n_task_types; ++i) {
+            auto const count{task_counts[i]};
+
+            write_indexes[i] = offset;
+
+            task_spans[i].offset = offset;
+            task_spans[i].count = count;
+
+            offset += count;
+        }
+
+        check(offset == n_fighters);
+    }
+
+    entity_buffers.cycle();
+    auto const& old_data{entity_buffers.previous()};
+    auto& new_data{entity_buffers.current()};
+    new_data.reset();
+    new_data.add_uninitialised(n_fighters);
+
+    check(old_data.num() == new_data.num());
+
+    for (int32 i{0}; i < n_fighters; i++) {
+        auto const task{old_data.tasks[i]};
+        auto const task_value{std::to_underlying(task)};
+
+        auto const write_index{write_indexes[task_value]++};
+
+        static_assert(ml::SupportsCopyElement<TArray<ETestCapitalShipFightersTask>>, "Copy");
+
+        new_data.copy_element(write_index, old_data, i);
+    }
+
+    check_fighter_tasks();
 }
 
 // Spawning
@@ -464,17 +551,8 @@ void ATestCapitalShipFighters::clear_tick_buffers() {
     ml::reset(local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data);
 }
 
-        auto const target_entity_index{data.target_handles[i]};
-        if (target_entity_index.is_valid()) {
-            if (entity_registry->is_stale(target_entity_index)) {
-                data.target_handles[i] = FRegistryEntityHandle{};
-            } else {
-                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
-            }
-        }
-    }
-
 // Checks
+#if DO_CHECK
 void ATestCapitalShipFighters::validate_array_sizes() const {
     auto const& data{entity_buffers.current()};
 
@@ -487,3 +565,52 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
+void ATestCapitalShipFighters::check_fighter_tasks() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::check_fighter_tasks);
+
+    auto current_task_group{Task::Standby};
+    TaskSpans checked_task_spans{};
+
+    auto const& data{entity_buffers.current()};
+    auto const n_tasks{data.tasks.Num()};
+
+    for (int32 i{}; i < n_tasks; ++i) {
+        auto const task{data.tasks[i]};
+        auto const task_value{std::to_underlying(task)};
+
+        if (task == current_task_group) {
+            ++checked_task_spans[task_value].count;
+            continue;
+        } else if (task > current_task_group) {
+            current_task_group = task;
+            checked_task_spans[task_value].offset = i;
+            checked_task_spans[task_value].count = 1;
+        } else {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("Found task %s when current group was %s"),
+                   *ml::to_string_without_type_prefix(task),
+                   *ml::to_string_without_type_prefix(current_task_group));
+        }
+    }
+
+    // Set offset for any remaining tasks
+    auto const n_fighters{get_num_instances()};
+    for (int32 i{std::to_underlying(current_task_group) + 1}; i < n_task_types; ++i) {
+        checked_task_spans[i].offset = n_fighters;
+        checked_task_spans[i].count = 0;
+    }
+
+    if (checked_task_spans != task_spans) {
+        FString msg{"Incorrect task spans."};
+        for (int32 i{0}; i < n_task_types; ++i) {
+            msg += FString::Printf(TEXT("\n    %s: Exp: %s, Got: %s"),
+                                   *ml::to_string_without_type_prefix(static_cast<Task>(i)),
+                                   *task_spans[i].to_compact_string(),
+                                   *checked_task_spans[i].to_compact_string());
+        }
+
+        UE_LOG(LogSandbox, Fatal, TEXT("%s"), *msg);
+    }
+}
+#endif
