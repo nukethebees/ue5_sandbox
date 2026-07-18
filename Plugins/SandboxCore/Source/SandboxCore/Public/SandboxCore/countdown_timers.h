@@ -24,6 +24,9 @@ struct SANDBOXCORE_API FCountdownTimers {
     auto AddUninitialized(int32 const count) -> int32 {
         return remaining_times.AddUninitialized(count);
     }
+    void copy_element(int32 const dst_i, FCountdownTimers const& src, int32 const src_i) {
+        remaining_times[dst_i] = src.remaining_times[src_i];
+    }
 
     UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;
