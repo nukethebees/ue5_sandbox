@@ -6,6 +6,8 @@
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 
+#include <type_traits>
+
 namespace ml {
 struct FSoACommonMixin {
     void validate_array_sizes(this auto const& self) {
@@ -49,7 +51,38 @@ struct FSoAArrayMixin : public FSoACommonMixin {
             ml::set_num(count, allow_shrinking, arrays...);
         });
     }
+
+    template <typename Self>
+    void copy_element(this Self& self, int32 const dst_i, Self const& other, int32 const src_i) {
+        self.apply_array_pairs(other, [dst_i, src_i](auto&&... arrays) -> void {
+            ml::copy_element(dst_i, src_i, arrays...);
+        });
+    }
 };
+
+#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS(FOO) self.FOO
+#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS(FOO) self.FOO, other.FOO
+
+/* SANDBOX_SOA_MEMBERS is a macro in the form
+
+#define SANDBOX_PACK(STAMPER)  \
+    STAMPER(entity_handles)    \
+    , STAMPER(tasks)           \
+    , ...
+
+*/
+
+#define SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_SOA_MEMBERS)                                        \
+    template <typename TFunc>                                                                  \
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {                      \
+        return std::forward<TFunc>(func)(SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS)); \
+    }                                                                                          \
+    template <typename Self, typename Other, typename TFunc>                                   \
+        requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>         \
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {  \
+        return std::forward<TFunc>(func)(                                                      \
+            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS));                        \
+    }
 
 struct FSoAViewMixin : public FSoACommonMixin {};
 }
