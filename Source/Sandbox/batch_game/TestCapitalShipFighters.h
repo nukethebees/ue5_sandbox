@@ -138,14 +138,14 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         return entity_buffers.current().target_handles[find_index(fighter_handle)];
     }
 
-    auto set_target_handle(int32 const fighter_idx,
-                           FRegistryEntityHandle const new_target) noexcept {
+    auto set_target_handle_unchecked(int32 const fighter_idx,
+                                     FRegistryEntityHandle const new_target) noexcept {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
     auto set_target_handle(FRegistryEntityHandle const fighter_handle,
                            FRegistryEntityHandle const new_target) noexcept {
         auto const idx{find_index(fighter_handle)};
-        set_target_handle(idx, new_target);
+        set_target_handle_unchecked(idx, new_target);
     }
 
     auto get_target_locations() const { return target_locations.get_view(); }
@@ -154,8 +154,11 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     }
 
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
-    void set_task(int32 const i, Task const task) noexcept {
+    void set_task_unchecked(int32 const i, Task const task) noexcept {
         entity_buffers.current().tasks[i] = task;
+    }
+    void set_task(FRegistryEntityHandle const handle, Task const task) noexcept {
+        set_task_unchecked(find_index(handle), task);
     }
 
     auto find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {

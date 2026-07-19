@@ -153,17 +153,20 @@ void ATestCapitalShips::make_decisions() {
         auto const end{span.end()};
 
         if (capital_target.is_null()) {
-            for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
-                fighters_actor->set_target_handle(fighter_idx, capital_target);
-                fighters_actor->set_task(fighter_idx, ETestCapitalShipFightersTask::Standby);
+            for (int32 fighter_span_idx{span.start()}; fighter_span_idx < end; ++fighter_span_idx) {
+                auto const fighter_handle{fighter_handles[fighter_span_idx]};
+
+                fighters_actor->set_target_handle(fighter_handle, capital_target);
+                fighters_actor->set_task(fighter_handle, ETestCapitalShipFightersTask::Standby);
             }
         } else {
             for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
                 auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
+                auto const fighter_handle{fighter_handles[fighter_idx]};
 
                 if (fighter_target_handle.is_null() ||
                     entity_registry->is_valid_dead(fighter_target_handle)) {
-                    fighters_actor->set_target_handle(fighter_handles[fighter_idx], capital_target);
+                    fighters_actor->set_target_handle(fighter_handle, capital_target);
                 }
             }
         }
