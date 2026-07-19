@@ -125,6 +125,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
 
+    auto get_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
+        return entity_buffers.current().entity_handles;
+    }
+
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return entity_buffers.current().target_handles;
     }
@@ -132,12 +136,20 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
                            FRegistryEntityHandle const new_target) noexcept {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
+    auto set_target_handle(FRegistryEntityHandle const fighter_handle,
+                           FRegistryEntityHandle const new_target) noexcept {
+        entity_buffers.current().target_handles[find_idx(fighter_handle)] = new_target;
+    }
 
     auto get_target_locations() const { return target_locations.get_view(); }
 
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
     void set_task(int32 const i, Task const task) noexcept {
         entity_buffers.current().tasks[i] = task;
+    }
+
+    auto find_idx(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
+        return entity_buffers.current().entity_handles.Find(fighter_handle);
     }
 
     // It is an error to call this when spans are invalid
