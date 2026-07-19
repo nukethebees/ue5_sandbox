@@ -59,8 +59,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Sampling
     /* ------------------------------------------------------------------------------------------ */
-    void fill_fighter_target_info(TArray<FRegistryEntityHandle> & handles,
-                                  TArray<FVector3f> & vecs) {
+    void fill_fighter_target_info(FighterSample & sample) {
         TestRunner->AddInfo(TEXT("fn: fill_fighter_target_info"));
 
         auto const main_fighters_span{
@@ -70,8 +69,9 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         auto const span_end{main_fighters_span.end()};
         for (int32 i{main_fighters_span.start()}; i < span_end; ++i) {
-            vecs.Add(ml::get_vector3f(fighter_target_locations, i));
-            handles.Add(fighter_target_handles[i]);
+            auto const handle{sample.handles[i]};
+            sample.target_locations.Add(fighters->get_target_location(handle));
+            sample.target_handles.Add(fighters->get_target_handle(handle));
         }
     }
 
@@ -89,7 +89,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         TestRunner->AddInfo(TEXT("fn: sample_fighter_data"));
 
         save_fighter_handles(sample.handles);
-        fill_fighter_target_info(sample.target_handles, sample.target_locations);
+        fill_fighter_target_info(sample);
     }
 
     /* ------------------------------------------------------------------------------------------ */
