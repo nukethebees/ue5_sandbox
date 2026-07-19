@@ -45,5 +45,5 @@ inline auto FRegistryEntityHandle::is_null() const noexcept -> bool {
 }
 
 inline auto LexToString(FRegistryEntityHandle const& handle) -> FString {
-    return FString::Printf(TEXT("{ Index: %d, Generation: %d }"), handle.index, handle.generation);
+    return handle.to_string();
 }
