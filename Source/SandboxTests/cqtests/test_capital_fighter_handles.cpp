@@ -57,11 +57,21 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     }
   private:
     /* ------------------------------------------------------------------------------------------ */
+    // Sampling
+    /* ------------------------------------------------------------------------------------------ */
+    void sample_fighter_data(FighterSample & sample) {
+        TestRunner->AddInfo(TEXT("fn: sample_fighter_data"));
+
+        save_fighter_handles(sample.handles);
+        fill_fighter_target_info(sample.target_handles, sample.target_locations);
+    }
+
+    /* ------------------------------------------------------------------------------------------ */
     // Start
     /* ------------------------------------------------------------------------------------------ */
     int32 main_capital_index{0};
     FRegistryEntityHandle main_capital_handle;
-    FighterSample initial_main_fighters;
+    FighterSample pre_fighter_kill_main_fighters;
 
     void initial_setup() {
         TestRunner->AddInfo(TEXT("fn: initial_setup"));
@@ -192,14 +202,14 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     void initial_sampling_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_sampling_stage"));
 
-        sample_fighter_data(initial_main_fighters);
+        sample_fighter_data(pre_fighter_kill_main_fighters);
     }
     void initial_checks_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_checks_stage"));
 
         check_capitals_not_targeting_self();
-        check_main_capital_fighters_not_targeting_parent(initial_main_fighters.target_handles,
-                                                         TEXT("initial"));
+        check_main_capital_fighters_not_targeting_parent(
+            pre_fighter_kill_main_fighters.target_handles, TEXT("Initial"));
     }
     void initial_setup_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_setup_stage"));
@@ -214,6 +224,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
+    FighterSample post_fighter_kill_main_fighters;
 
     void kill_fighters() {
         TestRunner->AddInfo(TEXT("fn: kill_fighters"));
@@ -239,8 +250,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         test_driver->set_wait_until_tick_from_now(cycles_to_wait);
     }
-    void check_handles_after_kills() {
-        TestRunner->AddInfo(TEXT("fn: check_handles_after_kills"));
+    void check_handles_after_fighter_kills() {
+        TestRunner->AddInfo(TEXT("fn: check_handles_after_fighter_kills"));
 
         auto const fighter_handles{capitals->get_fighter_handles()};
         auto const fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
@@ -284,10 +295,20 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         run_spawn_capital_handle_checks();
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
+    void post_fighter_kill_sample_stage() {
+        TestRunner->AddInfo(TEXT("fn: post_fighter_kill_sample_stage"));
+
+        sample_fighter_data(post_fighter_kill_main_fighters);
+    }
     void post_fighter_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: post_fighter_kill_stage"));
 
-        check_handles_after_kills();
+        post_fighter_kill_sample_stage();
+
+        check_handles_after_fighter_kills();
+        check_main_capital_fighters_not_targeting_parent(
+            post_fighter_kill_main_fighters.target_handles, TEXT("Post-kill fighters"));
+
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
@@ -297,15 +318,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     int32 n_fighters_before_capital_kill{0};
     int32 n_main_capital_fighters_before_capital_kill{0};
 
-    FighterSample pre_kill_main_fighters;
-    FighterSample post_kill_main_fighters;
-
-    void sample_fighter_data(FighterSample & sample) {
-        TestRunner->AddInfo(TEXT("fn: sample_fighter_data"));
-
-        save_fighter_handles(sample.handles);
-        fill_fighter_target_info(sample.target_handles, sample.target_locations);
-    }
+    FighterSample pre_capital_kill_main_fighters;
+    FighterSample post_capital_kill_main_fighters;
 
     void save_fighter_handles(TArray<FRegistryEntityHandle> & handles) {
         auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
@@ -325,8 +339,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
         n_main_capital_fighters_before_capital_kill = main_span.count;
 
-        sample_fighter_data(pre_kill_main_fighters);
+        sample_fighter_data(pre_capital_kill_main_fighters);
     }
+
+    void check_main_fighters_after_event(
+        FighterSample const& before, FighterSample const& after, FString const info) {}
 
     void check_main_capital_fighters_not_targeting_parent(
         TArray<FRegistryEntityHandle> const& target_handles, FString const info) {
@@ -377,29 +394,29 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
                          n_fighters,
                          TEXT("Check number of fighters is unchanged."));
     }
-    void check_capital_fighter_handles_after_kill() {
-        TestRunner->AddInfo(TEXT("fn: check_capital_fighter_handles_after_kill"));
+    void check_capital_fighter_handles_unchanged(FighterSample const& before,
+                                                 FighterSample const& after) {
+        TestRunner->AddInfo(TEXT("fn: check_capital_fighter_handles_unchanged"));
 
-        auto const n_original{pre_kill_main_fighters.handles.Num()};
+        auto const n_original{before.handles.Num()};
 
         if (!checks.are_equal(n_original,
-                              post_kill_main_fighters.handles.Num(),
+                              after.handles.Num(),
                               TEXT("Check num main capital fighter handles unchanged"))) {
             return;
         }
 
-        checks.all_equal(post_kill_main_fighters.handles,
-                         post_kill_main_fighters.handles,
-                         TEXT("Check main cap fighter handle is unchanged"));
+        checks.all_equal(
+            after.handles, after.handles, TEXT("Check main cap fighter handle is unchanged"));
     }
     void check_fighters_target_location_changed() {
         TestRunner->AddInfo(TEXT("fn: check_fighters_target_location_changed"));
 
-        auto const n_original_locations{pre_kill_main_fighters.target_locations.Num()};
-        auto const n_new_locations{post_kill_main_fighters.target_locations.Num()};
+        auto const n_original_locations{pre_capital_kill_main_fighters.target_locations.Num()};
+        auto const n_new_locations{post_capital_kill_main_fighters.target_locations.Num()};
 
-        auto const n_original_handles{pre_kill_main_fighters.target_handles.Num()};
-        auto const n_new_handles{post_kill_main_fighters.target_handles.Num()};
+        auto const n_original_handles{pre_capital_kill_main_fighters.target_handles.Num()};
+        auto const n_new_handles{post_capital_kill_main_fighters.target_handles.Num()};
 
         auto const n_exp{n_main_capital_fighters_before_capital_kill};
         checks.are_equal(n_exp,
@@ -415,11 +432,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         if (!checks.all_passed) { return; }
 
         for (int32 i{0}; i < n_new_locations; ++i) {
-            auto const old_loc{pre_kill_main_fighters.target_locations[i]};
-            auto const new_loc{post_kill_main_fighters.target_locations[i]};
+            auto const old_loc{pre_capital_kill_main_fighters.target_locations[i]};
+            auto const new_loc{post_capital_kill_main_fighters.target_locations[i]};
 
-            auto const old_handle{pre_kill_main_fighters.target_handles[i]};
-            auto const new_handle{post_kill_main_fighters.target_handles[i]};
+            auto const old_handle{pre_capital_kill_main_fighters.target_handles[i]};
+            auto const new_handle{post_capital_kill_main_fighters.target_handles[i]};
 
             auto const locs_equal{old_loc == new_loc};
             auto const handles_equal{old_loc == new_loc};
@@ -438,8 +455,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         save_data_before_capital_kill();
 
-        check_main_capital_fighters_not_targeting_parent(pre_kill_main_fighters.target_handles,
-                                                         TEXT("original"));
+        check_main_capital_fighters_not_targeting_parent(
+            pre_capital_kill_main_fighters.target_handles, TEXT("Pre-kill capital"));
     }
     void kill_capital_opponent() {
         TestRunner->AddInfo(TEXT("fn: kill_capital_opponent"));
@@ -458,7 +475,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     void save_data_after_capital_kill() {
         TestRunner->AddInfo(TEXT("fn: save_data_after_capital_kill"));
 
-        sample_fighter_data(post_kill_main_fighters);
+        sample_fighter_data(post_capital_kill_main_fighters);
     }
     void capital_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: capital_kill_stage"));
@@ -473,13 +490,14 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         save_data_after_capital_kill();
 
-        check_main_capital_fighters_not_targeting_parent(post_kill_main_fighters.target_handles,
-                                                         TEXT("new"));
+        check_main_capital_fighters_not_targeting_parent(
+            post_capital_kill_main_fighters.target_handles, TEXT("Post-kill capital"));
         check_num_fighters_after_kill();
         check_capitals_not_targeting_self();
         check_capital_state_after_kill();
         check_fighter_tasks_after_kill();
-        check_capital_fighter_handles_after_kill();
+        check_capital_fighter_handles_unchanged(pre_capital_kill_main_fighters,
+                                                post_capital_kill_main_fighters);
         check_fighters_target_location_changed();
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
