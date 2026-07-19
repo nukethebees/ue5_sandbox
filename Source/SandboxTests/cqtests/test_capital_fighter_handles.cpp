@@ -75,6 +75,16 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         }
     }
 
+    void save_fighter_handles(TArray<FRegistryEntityHandle> & handles) {
+        auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
+        auto const fighter_handles{capitals->get_fighter_handles()};
+
+        for (int32 i{main_span.start()}; i < main_span.end(); ++i) {
+            handles.Add(fighter_handles[i]);
+        }
+
+        handles.Sort();
+    }
     void sample_fighter_data(FighterSample & sample) {
         TestRunner->AddInfo(TEXT("fn: sample_fighter_data"));
 
@@ -100,11 +110,31 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     }
 
     /* ------------------------------------------------------------------------------------------ */
+    // Logging
+    /* ------------------------------------------------------------------------------------------ */
+    void log_capital_fighter_info(FighterSample const& sample, FString const info) {
+        auto msg{FString::Printf(TEXT("Capital fighters (%s):"), *info)};
+
+        msg += TEXT("\n    Handles, Targets, Target locs");
+
+        auto const n{sample.handles.Num()};
+        for (int32 i{0}; i < n; ++i) {
+            msg += FString::Printf(TEXT("\n    [%d] %s, %s, %s"),
+                                   i,
+                                   *sample.handles[i].to_string(),
+                                   *sample.target_handles[i].to_string(),
+                                   *sample.target_locations[i].ToCompactString());
+        }
+
+        TestRunner->AddInfo(msg);
+    }
+
+    /* ------------------------------------------------------------------------------------------ */
     // Start
     /* ------------------------------------------------------------------------------------------ */
     int32 main_capital_index{0};
     FRegistryEntityHandle main_capital_handle;
-    FighterSample pre_fighter_kill_main_fighters;
+    FighterSample initial_main_fighters;
 
     void initial_setup() {
         TestRunner->AddInfo(TEXT("fn: initial_setup"));
@@ -139,14 +169,15 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     void initial_sampling_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_sampling_stage"));
 
-        sample_fighter_data(pre_fighter_kill_main_fighters);
+        sample_fighter_data(initial_main_fighters);
     }
     void initial_checks_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_checks_stage"));
 
         check_capitals_not_targeting_self();
-        check_main_capital_fighters_not_targeting_parent(
-            pre_fighter_kill_main_fighters.target_handles, TEXT("Initial"));
+        check_main_capital_fighters_not_targeting_parent(initial_main_fighters, TEXT("Initial"));
+
+        log_capital_fighter_info(initial_main_fighters, TEXT("Initial"));
     }
     void initial_setup_stage() {
         TestRunner->AddInfo(TEXT("fn: initial_setup_stage"));
@@ -213,7 +244,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
             auto const is_unique{
                 checks.is_true(!unique_handles.Contains(handle),
-                               FString::Printf(TEXT("Unique capital fighter handle (%d)"), i))};
+                               FString::Printf(TEXT("[%d] Unique capital fighter handle"), i))};
             if (is_unique) { unique_handles.Add(handle); }
         }
 
@@ -285,7 +316,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         sample_fighter_data(post_fighter_kill_main_fighters);
     }
-    void check_handles_after_fighter_kills() {
+    void check_fighter_handles_after_fighter_kills() {
         TestRunner->AddInfo(TEXT("fn: check_handles_after_fighter_kills"));
 
         auto const fighter_handles{capitals->get_fighter_handles()};
@@ -300,22 +331,53 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             for (int32 i{span.offset}; i < end; ++i) {
                 auto const handle{fighter_handles[i]};
                 checks.is_true(kept.Contains(handle),
-                               FString::Printf(TEXT("Fighter handle[%d] is kept"), i));
+                               FString::Printf(TEXT("[%d] Fighter handle is kept"), i));
                 checks.is_true(!destroyed.Contains(handle),
-                               FString::Printf(TEXT("Fighter[%d] not destroyed"), i));
+                               FString::Printf(TEXT("[%d] Fighter handle not destroyed"), i));
             }
         }
 
+        // Look directly at kept/destroyed
+        for (int32 i{0}; i < kept.Num(); ++i) {
+            checks.is_true(
+                test_driver->registry.is_valid_alive(kept[i]), TEXT("Kept is valid alive"), i);
+        }
+        for (int32 i{0}; i < kept.Num(); ++i) {
+            checks.is_true(test_driver->registry.is_valid_dead(destroyed[i]),
+                           TEXT("Destroyed is valid dead"),
+                           i);
+        }
+
         checks.are_equal(kept.Num(), total_left, TEXT("Expected left"));
+    }
+    void check_remaining_main_capital_fighters_unchanged() {
+        auto const n_post{post_fighter_kill_main_fighters.handles.Num()};
+
+        for (int32 i{}; i < n_post; ++i) {
+            auto const handle{post_fighter_kill_main_fighters.handles[i]};
+            checks.is_true(
+                initial_main_fighters.handles.Contains(handle),
+                FString::Printf(
+                    TEXT("Post-kill main fighter[%d] (%s) was parented by main before kill"),
+                    i,
+                    *handle.to_string()));
+        }
+    }
+    void post_fighter_kill_check_stage() {
+        TestRunner->AddInfo(TEXT("fn: post_fighter_kill_check_stage"));
+
+        check_fighter_handles_after_fighter_kills();
+        check_main_capital_fighters_not_targeting_parent(post_fighter_kill_main_fighters,
+                                                         TEXT("Post-kill fighters"));
+
+        check_remaining_main_capital_fighters_unchanged();
     }
     void post_fighter_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: post_fighter_kill_stage"));
 
         post_fighter_kill_sample_stage();
-
-        check_handles_after_fighter_kills();
-        check_main_capital_fighters_not_targeting_parent(
-            post_fighter_kill_main_fighters.target_handles, TEXT("Post-kill fighters"));
+        log_capital_fighter_info(post_fighter_kill_main_fighters, TEXT("Post fighter kill"));
+        post_fighter_kill_check_stage();
 
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
@@ -329,16 +391,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     FighterSample pre_capital_kill_main_fighters;
     FighterSample post_capital_kill_main_fighters;
 
-    void save_fighter_handles(TArray<FRegistryEntityHandle> & handles) {
-        auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
-        auto const fighter_handles{capitals->get_fighter_handles()};
-
-        for (int32 i{main_span.start()}; i < main_span.end(); ++i) {
-            handles.Add(fighter_handles[i]);
-        }
-
-        handles.Sort();
-    }
     void save_data_before_capital_kill() {
         TestRunner->AddInfo(TEXT("fn: save_fighter_info_before_capital_kill"));
 
@@ -353,17 +405,19 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     void check_main_fighters_after_event(
         FighterSample const& before, FighterSample const& after, FString const info) {}
 
-    void check_main_capital_fighters_not_targeting_parent(
-        TArray<FRegistryEntityHandle> const& target_handles, FString const info) {
+    void check_main_capital_fighters_not_targeting_parent(FighterSample const& sample,
+                                                          FString const info) {
         TestRunner->AddInfo(TEXT("fn: check_main_capital_fighters_not_targeting_parent"));
 
-        auto const n{target_handles.Num()};
+        auto const n{sample.target_handles.Num()};
 
         for (int32 i{0}; i < n; ++i) {
-            checks.not_equal(
-                main_capital_handle,
-                target_handles[i],
-                FString::Printf(TEXT("(%s) Fighter[%d] not targeting parent"), *info, i));
+            checks.not_equal(main_capital_handle,
+                             sample.target_handles[i],
+                             FString::Printf(TEXT("(%s) Fighter (%s) not targeting parent"),
+                                             *info,
+                                             *sample.handles[i].to_string()),
+                             i);
         }
     }
     void check_capital_state_after_kill() {
@@ -458,14 +512,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         }
     }
 
-    void pre_capital_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: pre_capital_kill_stage"));
-
-        save_data_before_capital_kill();
-
-        check_main_capital_fighters_not_targeting_parent(
-            pre_capital_kill_main_fighters.target_handles, TEXT("Pre-kill capital"));
-    }
     void kill_capital_opponent() {
         TestRunner->AddInfo(TEXT("fn: kill_capital_opponent"));
 
@@ -485,6 +531,15 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         sample_fighter_data(post_capital_kill_main_fighters);
     }
+
+    void pre_capital_kill_stage() {
+        TestRunner->AddInfo(TEXT("fn: pre_capital_kill_stage"));
+
+        save_data_before_capital_kill();
+
+        check_main_capital_fighters_not_targeting_parent(pre_capital_kill_main_fighters,
+                                                         TEXT("Pre-kill capital"));
+    }
     void capital_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: capital_kill_stage"));
 
@@ -496,8 +551,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         save_data_after_capital_kill();
 
-        check_main_capital_fighters_not_targeting_parent(
-            post_capital_kill_main_fighters.target_handles, TEXT("Post-kill capital"));
+        check_main_capital_fighters_not_targeting_parent(post_capital_kill_main_fighters,
+                                                         TEXT("Post-kill capital"));
         check_num_fighters_after_kill();
         check_capitals_not_targeting_self();
         check_capital_state_after_kill();
