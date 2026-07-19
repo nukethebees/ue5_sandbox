@@ -116,6 +116,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
 
     auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
+    auto is_valid_dead(FRegistryEntityHandle const handle) const -> bool;
 
     auto get_handles_not_in_team(ETestTeam const team) const -> TArray<FRegistryEntityHandle>;
     void get_handles_not_in_team(ETestTeam const team, TArray<FRegistryEntityHandle>& out) const;
@@ -189,4 +190,7 @@ inline auto ATestEntityRegistry::is_valid_handle(FRegistryEntityHandle const ind
 
 inline auto ATestEntityRegistry::is_valid_alive(FRegistryEntityHandle const handle) const -> bool {
     return is_valid_handle(handle) && (entity_data.alive[handle.index] > 0);
+}
+inline auto ATestEntityRegistry::is_valid_dead(FRegistryEntityHandle const handle) const -> bool {
+    return is_valid_handle(handle) && (entity_data.alive[handle.index] == 0);
 }
