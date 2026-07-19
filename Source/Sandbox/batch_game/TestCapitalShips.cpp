@@ -239,6 +239,28 @@ void ATestCapitalShips::set_niagara_spawner(ADelayedNiagaraSpawner& spawner) {
     niagara_spawner = &spawner;
 }
 
+auto ATestCapitalShips::get_team(FRegistryEntityHandle handle) const noexcept -> ETestTeam {
+    auto const n{get_num_instances()};
+
+    for (int32 i{}; i < n; ++i) {
+        if (handle == entity_handles[i]) { return teams[i]; }
+    }
+
+    UE_LOG(LogSandbox, Fatal, TEXT("Invalid handle passed"));
+    return ETestTeam::White;
+}
+
+auto ATestCapitalShips::find_first_index_on_team(ETestTeam team) const noexcept
+    -> std::optional<int32> {
+    auto const n{get_num_instances()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (teams[i] == team) { return i; }
+    }
+
+    return {};
+}
+
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
@@ -602,7 +624,7 @@ void ATestCapitalShips::handle_dead_entities() {
     if (local_indices_to_remove.IsEmpty()) { return; }
 
     trigger_death_effects();
-    reassign_dying_capital_fighter_handles();
+    reassign_fighter_handles_of_dying_capital();
 
     local_indices_to_remove.Sort(TGreater<int32>{});
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
@@ -615,11 +637,12 @@ void ATestCapitalShips::handle_dead_entities() {
                                         target_handles,
                                         capital_fighter_handle_spans);
 }
-void ATestCapitalShips::reassign_dying_capital_fighter_handles() {
+void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
     std::array<int32, static_cast<std::size_t>(ETestTeam::COUNT)> replacements{};
     replacements.fill(-1);
 
-    TArray<ETestTeam, TInlineAllocator<static_cast<uint32>(ETestTeam::COUNT)>> teams_to_replace;
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    TArray<ETestTeam, TInlineAllocator<team_count>> teams_to_replace;
     for (auto const capital_idx : local_indices_to_remove) {
         auto const team{teams[capital_idx]};
         if (!teams_to_replace.Contains(team)) { teams_to_replace.Add(team); }

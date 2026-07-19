@@ -17,6 +17,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include <optional>
+
 #include "TestCapitalShips.generated.h"
 
 class UInstancedStaticMeshComponent;
@@ -96,6 +98,8 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
+    auto get_handle(int32 i) const -> FRegistryEntityHandle { return entity_handles[i]; }
+
     auto get_fighter_spawn_slots() const noexcept -> int32;
     auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
     auto get_fighter_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
@@ -121,6 +125,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     }
 
     auto get_team(int32 const i) const noexcept -> ETestTeam { return teams[i]; }
+    auto get_team(FRegistryEntityHandle handle) const noexcept -> ETestTeam;
+
+    auto find_first_index_on_team(ETestTeam team) const noexcept -> std::optional<int32>;
 
     // Checks
     void validate_array_sizes() const;
@@ -146,7 +153,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Death handling
     void handle_dead_entities();
-    void reassign_dying_capital_fighter_handles();
+    void reassign_fighter_handles_of_dying_capital();
     void trigger_death_effects();
 
     // Debugging
