@@ -160,8 +160,10 @@ void ATestCapitalShips::make_decisions() {
         } else {
             for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
                 auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
-                if (fighter_target_handle.is_null()) {
-                    fighters_actor->set_target_handle(fighter_idx, capital_target);
+
+                if (fighter_target_handle.is_null() ||
+                    entity_registry->is_valid_dead(fighter_target_handle)) {
+                    fighters_actor->set_target_handle(fighter_handles[fighter_idx], capital_target);
                 }
             }
         }
