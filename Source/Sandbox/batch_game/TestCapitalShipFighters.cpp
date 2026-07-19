@@ -73,7 +73,7 @@ void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
     entity_registry->refresh_handles(entity_buffers.current().target_handles);
-}
+    }
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
@@ -152,7 +152,7 @@ void ATestCapitalShipFighters::update_visuals() {
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
-}
+    }
 
 // Movement
 void ATestCapitalShipFighters::move(float const dt, FIndexSpan task_span) {
@@ -484,17 +484,15 @@ void ATestCapitalShipFighters::remove_dead_entities() {
                                         target_directions,
                                         target_distance_sq);
 
-    // Update target entity index
+    // Update target handle
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{data.entity_handles[i]};
-
-        auto const target_entity_index{data.target_handles[i]};
-        if (target_entity_index.is_valid()) {
-            if (entity_registry->is_stale(target_entity_index)) {
+        auto const target_handle{data.target_handles[i]};
+        if (target_handle.is_valid()) {
+            if (entity_registry->is_stale(target_handle)) {
                 data.target_handles[i] = FRegistryEntityHandle{};
             } else {
-                ml::assign(target_locations, i, entity_registry->get_location(target_entity_index));
+                ml::assign(target_locations, i, entity_registry->get_location(target_handle));
             }
         }
     }

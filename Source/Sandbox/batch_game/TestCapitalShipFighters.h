@@ -15,6 +15,7 @@
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
@@ -132,23 +133,32 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return entity_buffers.current().target_handles;
     }
+    auto get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept
+        -> FRegistryEntityHandle {
+        return entity_buffers.current().target_handles[find_index(fighter_handle)];
+    }
+
     auto set_target_handle(int32 const fighter_idx,
                            FRegistryEntityHandle const new_target) noexcept {
         entity_buffers.current().target_handles[fighter_idx] = new_target;
     }
     auto set_target_handle(FRegistryEntityHandle const fighter_handle,
                            FRegistryEntityHandle const new_target) noexcept {
-        entity_buffers.current().target_handles[find_idx(fighter_handle)] = new_target;
+        auto const idx{find_index(fighter_handle)};
+        set_target_handle(idx, new_target);
     }
 
     auto get_target_locations() const { return target_locations.get_view(); }
+    auto get_target_location(FRegistryEntityHandle const fighter_handle) const {
+        return ml::get_vector3f(target_locations, find_index(fighter_handle));
+    }
 
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
     void set_task(int32 const i, Task const task) noexcept {
         entity_buffers.current().tasks[i] = task;
     }
 
-    auto find_idx(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
+    auto find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
         return entity_buffers.current().entity_handles.Find(fighter_handle);
     }
 
