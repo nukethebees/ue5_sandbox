@@ -210,6 +210,7 @@ void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 
+    fighters_spawned += ml::num(fighter_queue);
     validate_array_sizes();
 }
 
@@ -441,8 +442,6 @@ void ATestCapitalShips::queue_fighter_spawns() {
     }
 
     fighters_actor->queue_spawns(fighter_queue);
-
-    fighters_spawned += fighter_queue.targets.Num();
 }
 void ATestCapitalShips::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
