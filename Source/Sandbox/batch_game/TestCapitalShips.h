@@ -78,7 +78,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void resolve_initial_targets();
 
     void begin_tick();
-    void queue_spawns();
     void update_timers(float const dt);
     void make_decisions();
     void resolve_hit_events();

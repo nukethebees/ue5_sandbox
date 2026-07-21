@@ -120,15 +120,10 @@ void ATestCapitalShips::resolve_initial_targets() {
 
 void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
-    entity_buffers.cycle();
-    clear_tick_buffers();
-}
-void ATestCapitalShips::queue_spawns() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
-    queue_fighter_spawns();
-    refresh_fighter_handles();
 
-    fighter_reassignment_queue.reset();
+    entity_buffers.cycle();
+
+    clear_tick_buffers();
 }
 void ATestCapitalShips::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
@@ -137,6 +132,11 @@ void ATestCapitalShips::update_timers(float const dt) {
 }
 void ATestCapitalShips::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::make_decisions);
+
+    queue_fighter_spawns();
+    refresh_fighter_handles();
+
+    fighter_reassignment_queue.reset();
 
     ml::batch::refresh_targets(*entity_registry,
                                target_handles,

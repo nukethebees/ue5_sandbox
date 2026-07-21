@@ -137,13 +137,6 @@ void ATestBatchOrchestrator::tick(float const dt) {
         lasers->commit_spawns();
     }
 
-    {
-        // Queue spawns for tick end
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_spawns);
-
-        capital_ships->queue_spawns();
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Actor decision phase
     // ---------------------------------------------------------------------------------------------
