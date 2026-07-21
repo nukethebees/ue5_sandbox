@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 #include <Sandbox/utilities/IndexSpan.h>
@@ -30,18 +31,6 @@ class ATestCapitalShipFighters;
 class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
-
-struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
-    FVectors3f locations;
-    FRotatorsf rotations;
-    TArray<ETestTeam> teams;
-    TArray<FRegistryEntityHandle> targets;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations, self.rotations, self.teams, self.targets);
-    }
-};
 
 struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> capital_handles;
