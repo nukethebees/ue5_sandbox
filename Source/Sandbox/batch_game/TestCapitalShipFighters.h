@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -104,10 +105,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void update_visuals();
     void end_tick();
 
-    void spawn_instances(FVectors3f::ConstView const new_locations,
-                         FRotatorsf::ConstView const new_rotations,
-                         TConstArrayView<ETestTeam> const new_teams,
-                         TConstArrayView<FRegistryEntityHandle> const new_targets);
+    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
 
     void self_destruct_fighter(FRegistryEntityHandle handle);
 
@@ -187,6 +185,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Combat
     void handle_firing();
 
+    // Spawning
+    void commit_spawns();
+
     // Visuals
     void configure_ismc();
     void prepare_ismc_transforms();
@@ -221,12 +222,15 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     FTestEntityRegistryEntityData registry_update_data;
 
-    // Spawning / destruction
-    TArray<int32> local_indices_to_remove;
-    EntityDeathInfo entity_death_info;
+    // Spawning
+    TestCapitalShipFighterSpawnQueue spawn_queue;
     FTestEntityRegistryEntityData new_spawn_entity_data;
     SpawnedEntityHandles new_spawn_entity_handles;
     TArray<float> custom_data_buffer;
+
+    // Destruction
+    TArray<int32> local_indices_to_remove;
+    EntityDeathInfo entity_death_info;
 
     // Transform
     float turn_speed_radians{0.f};

@@ -440,10 +440,7 @@ void ATestCapitalShips::handle_fighter_spawning() {
         fighter_spawn_timers.remaining_times[i] = cooldown;
     }
 
-    fighters_actor->spawn_instances(fighter_queue.locations.get_const_view(),
-                                    fighter_queue.rotations.get_const_view(),
-                                    fighter_queue.teams,
-                                    fighter_queue.targets);
+    fighters_actor->queue_spawns(fighter_queue);
 
     fighters_spawned += fighter_queue.targets.Num();
 }

@@ -73,7 +73,7 @@ void ATestCapitalShipFighters::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_tick);
     clear_tick_buffers();
     entity_registry->refresh_handles(entity_buffers.current().target_handles);
-    }
+}
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
@@ -140,6 +140,7 @@ void ATestCapitalShipFighters::sync_from_registry() {
 
     tasks_are_contiguous(); // This should be true before pruning
     remove_dead_entities();
+    commit_spawns();
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
@@ -152,7 +153,7 @@ void ATestCapitalShipFighters::update_visuals() {
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
-    }
+}
 
 // Movement
 void ATestCapitalShipFighters::move(float const dt, FIndexSpan task_span) {
@@ -386,12 +387,23 @@ void ATestCapitalShipFighters::refresh_layout() {
 }
 
 // Spawning
-void ATestCapitalShipFighters::spawn_instances(
-    FVectors3f::ConstView const new_locations,
-    FRotatorsf::ConstView const new_rotations,
-    TConstArrayView<ETestTeam> const new_teams,
-    TConstArrayView<FRegistryEntityHandle> const new_targets) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::spawn_instances);
+void ATestCapitalShipFighters::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_spawns);
+
+    ml::append_from(spawn_queue.locations, new_spawns.locations);
+    ml::append_from(spawn_queue.rotations, new_spawns.rotations);
+    spawn_queue.teams.Append(new_spawns.teams);
+    spawn_queue.targets.Append(new_spawns.targets);
+}
+
+void ATestCapitalShipFighters::commit_spawns() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_spawns);
+
+    auto const& new_locations{spawn_queue.locations};
+    auto const& new_rotations{spawn_queue.rotations};
+    auto const& new_teams{spawn_queue.teams};
+    auto const& new_targets{spawn_queue.targets};
+
     auto& data{entity_buffers.current()};
 
     auto const n_cur{get_num_instances()};
@@ -576,7 +588,8 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data);
+    ml::reset(
+        local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data, spawn_queue);
 }
 
 // Checks
