@@ -11,6 +11,7 @@
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
+#include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
@@ -32,6 +33,18 @@ class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
 
+struct FTestCapitalShipsEntityData : public ml::FSoAArrayMixin {
+    TArray<int32> ships_ready_to_spawn_fighters_buffer;
+
+    // clang-format off
+#define SANDBOX_PACK(STAMPER, END_SYMBOL)  \
+    STAMPER(ships_ready_to_spawn_fighters_buffer)
+    // clang-format on
+
+    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
+#undef SANDBOX_PACK
+};
+
 struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> capital_handles;
     TArray<FRegistryEntityHandle> fighter_handles;
@@ -49,8 +62,9 @@ struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
 
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
-  public:
     GENERATED_BODY()
+  public:
+    using EntityBuffers = ml::MultiBuffer<FTestCapitalShipsEntityData, 2>;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -168,6 +182,8 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Entity data
     TestEntityOwnerId owner_id{};
+    EntityBuffers entity_buffers{};
+
     TArray<FRegistryEntityHandle> entity_handles;
     UPROPERTY()
     TArray<int32> local_indices_to_remove;
@@ -185,7 +201,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
 
     FCountdownTimers fighter_spawn_timers;
-    TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
     TestCapitalShipFighterSpawnQueue fighter_queue;
     TArray<FIndexSpan> capital_fighter_handle_spans;

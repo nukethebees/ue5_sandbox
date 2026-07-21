@@ -120,6 +120,7 @@ void ATestCapitalShips::resolve_initial_targets() {
 
 void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
+    entity_buffers.cycle();
     clear_tick_buffers();
 }
 void ATestCapitalShips::queue_spawns() {
@@ -387,17 +388,20 @@ auto ATestCapitalShips::get_fighter_spawn_slots() const noexcept -> int32 {
 void ATestCapitalShips::queue_fighter_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
+    auto& data{entity_buffers.current()};
+
     auto const n_capital_ships{get_num_instances()};
-    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships, EAllowShrinking::No);
+    data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
+                                                                  EAllowShrinking::No);
     auto const cooldown{actor_config->spawn_delay};
 
     auto ships_ready_to_spawn_fighters_indices{
         ml::collect_indices_less_equal(TConstArrayView<float>{fighter_spawn_timers.remaining_times},
                                        0.f,
-                                       ships_ready_to_spawn_fighters_buffer)};
+                                       data.ships_ready_to_spawn_fighters_buffer)};
 
     // Resize based on how many actually need to spawn
-    ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(
+    data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(
         ships_ready_to_spawn_fighters_indices.Num(), EAllowShrinking::No);
 
     {
@@ -405,11 +409,11 @@ void ATestCapitalShips::queue_fighter_spawns() {
 
         for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
             if (target_handles[i].is_null()) {
-                ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
+                data.ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
             }
         }
 
-        ships_ready_to_spawn_fighters_indices = ships_ready_to_spawn_fighters_buffer;
+        ships_ready_to_spawn_fighters_indices = data.ships_ready_to_spawn_fighters_buffer;
     }
 
     if (ships_ready_to_spawn_fighters_indices.IsEmpty()) { return; }
@@ -446,6 +450,8 @@ void ATestCapitalShips::queue_fighter_spawns() {
 void ATestCapitalShips::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
 
+    auto const& prev{entity_buffers.previous()};
+
     entity_registry->refresh_handles(fighter_handles);
 
     auto const n_capitals{get_num_instances()};
@@ -453,7 +459,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
     auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
     auto const n_spawned_per_capital{get_fighter_spawn_slots()};
 
-    auto const n_capitals_spawned{ships_ready_to_spawn_fighters_buffer.Num()};
+    auto const n_capitals_spawned{prev.ships_ready_to_spawn_fighters_buffer.Num()};
 
     spawn_data.validate_array_sizes();
     ensure(spawn_data.num() == (n_capitals_spawned * n_spawned_per_capital));
@@ -480,8 +486,8 @@ void ATestCapitalShips::refresh_fighter_handles() {
         }
 
         // Add newly spawned fighters
-        if (ships_ready_to_spawn_fighters_buffer.IsValidIndex(spawning_capital_idx) &&
-            ships_ready_to_spawn_fighters_buffer[spawning_capital_idx] == capital_idx) {
+        if (prev.ships_ready_to_spawn_fighters_buffer.IsValidIndex(spawning_capital_idx) &&
+            prev.ships_ready_to_spawn_fighters_buffer[spawning_capital_idx] == capital_idx) {
 
             auto const end{spawned_fighter_idx + n_spawned_per_capital};
             for (; spawned_fighter_idx < end; ++spawned_fighter_idx, ++new_span.count) {
@@ -689,7 +695,8 @@ void ATestCapitalShips::clear_runtime_state() {
               locations,
               rotations,
               fighter_spawn_timers,
-              ships_ready_to_spawn_fighters_buffer,
+              entity_buffers.current(),
+              entity_buffers.previous(),
               fighter_queue,
               teams,
               healths,
@@ -698,7 +705,7 @@ void ATestCapitalShips::clear_runtime_state() {
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
-              ships_ready_to_spawn_fighters_buffer,
+              entity_buffers.current(),
               fighter_queue,
               entity_update_data,
               fighter_handles_scratch);
