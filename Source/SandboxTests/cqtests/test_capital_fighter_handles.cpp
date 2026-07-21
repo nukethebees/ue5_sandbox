@@ -4,8 +4,6 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
-#include <SandboxCore/soa_vector_utils.h>
-
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
@@ -20,6 +18,11 @@ auto LexToString(FVector3f const& vec) -> FString {
     return vec.ToCompactString();
 }
 }
+
+/*
+This test relies on a long spawn delay to ensure more fighters aren't spawned.
+The assumption is that there is one wave of fighters total.
+*/
 
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
