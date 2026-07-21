@@ -135,7 +135,13 @@ void ATestBatchOrchestrator::tick(float const dt) {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_spawns);
 
         lasers->commit_spawns();
-        capital_ships->commit_spawns();
+    }
+
+    {
+        // Queue spawns for tick end
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_spawns);
+
+        capital_ships->queue_spawns();
     }
 
     // ---------------------------------------------------------------------------------------------

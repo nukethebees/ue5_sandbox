@@ -64,7 +64,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void resolve_initial_targets();
 
     void begin_tick();
-    void commit_spawns();
+    void queue_spawns();
     void update_timers(float const dt);
     void make_decisions();
     void resolve_hit_events();
@@ -137,7 +137,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void prepare_entity_update_data();
 
     // Fighter spawning
-    void handle_fighter_spawning();
+    void queue_fighter_spawns();
     void refresh_fighter_handles();
 
     // Visuals

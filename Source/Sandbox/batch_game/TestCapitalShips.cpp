@@ -122,9 +122,9 @@ void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
     clear_tick_buffers();
 }
-void ATestCapitalShips::commit_spawns() {
+void ATestCapitalShips::queue_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_spawns);
-    handle_fighter_spawning();
+    queue_fighter_spawns();
     refresh_fighter_handles();
 
     fighter_reassignment_queue.reset();
@@ -383,7 +383,7 @@ void ATestCapitalShips::prepare_entity_update_data() {
 auto ATestCapitalShips::get_fighter_spawn_slots() const noexcept -> int32 {
     return actor_config->fighter_spawn_slots;
 }
-void ATestCapitalShips::handle_fighter_spawning() {
+void ATestCapitalShips::queue_fighter_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
     auto const n_capital_ships{get_num_instances()};
