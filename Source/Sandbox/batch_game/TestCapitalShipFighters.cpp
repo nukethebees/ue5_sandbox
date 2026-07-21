@@ -399,6 +399,8 @@ void ATestCapitalShipFighters::queue_spawns(TestCapitalShipFighterSpawnQueue con
 void ATestCapitalShipFighters::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_spawns);
 
+    new_spawn_entity_data.reset();
+
     auto const& new_locations{spawn_queue.locations};
     auto const& new_rotations{spawn_queue.rotations};
     auto const& new_teams{spawn_queue.teams};
@@ -588,8 +590,7 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(
-        local_indices_to_remove, new_lasers, entity_death_info, new_spawn_entity_data, spawn_queue);
+    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, spawn_queue);
 }
 
 // Checks
