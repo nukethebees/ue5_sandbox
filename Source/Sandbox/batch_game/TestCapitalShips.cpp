@@ -454,19 +454,18 @@ void ATestCapitalShips::refresh_fighter_handles() {
 
     entity_registry->refresh_handles(fighter_handles);
 
-    auto const n_capitals{get_num_instances()};
-    auto const& spawn_data{fighters_actor->get_new_spawn_entity_data()};
-    auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
     auto const n_spawned_per_capital{get_fighter_spawn_slots()};
-
     auto const n_capitals_spawned{prev.ships_ready_to_spawn_fighters_buffer.Num()};
 
+    auto const& spawn_data{fighters_actor->get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
     ensure(spawn_data.num() == (n_capitals_spawned * n_spawned_per_capital));
 
     int32 spawning_capital_idx{0};
     int32 spawned_fighter_idx{0};
 
+    auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
+    auto const n_capitals{get_num_instances()};
     for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
         FIndexSpan new_span{
             .offset = fighter_handles_scratch.Num(),
