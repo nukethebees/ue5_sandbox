@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -220,6 +221,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Targets
     TArray<FRegistryEntityHandle> target_handles;
     TArray<int32> indices_without_targets_buffer;
+
+    // Fighter orders
+    TestCapitalShipFighterOrderQueue fighter_order_queue{};
 
     // Debugging
     UPROPERTY(EditAnywhere, Category = "Sandbox")

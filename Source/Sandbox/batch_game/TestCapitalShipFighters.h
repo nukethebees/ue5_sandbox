@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
 #include <Sandbox/batch_game/TestLasers.h>
@@ -190,6 +191,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     bool tasks_are_contiguous() const noexcept;
     void refresh_layout();
 
+    // Orders
+    void commit_orders();
+
     // Misc
     void clear_tick_buffers();
     void remove_dead_entities();
@@ -227,6 +231,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     // Taks
     TaskSpans task_spans{};
+    TestCapitalShipFighterOrderQueue order_queue{};
 
     // Targets
     FVectors3f target_locations;

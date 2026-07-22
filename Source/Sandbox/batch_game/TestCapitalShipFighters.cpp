@@ -141,6 +141,7 @@ void ATestCapitalShipFighters::sync_from_registry() {
     tasks_are_contiguous(); // This should be true before pruning
     remove_dead_entities();
     commit_spawns();
+    commit_orders();
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
@@ -576,6 +577,9 @@ void ATestCapitalShipFighters::handle_firing() {
 
     laser_actor->spawn_lasers(new_lasers);
 }
+
+// Orders
+void ATestCapitalShipFighters::commit_orders() {}
 
 // Misc
 void ATestCapitalShipFighters::clear_runtime_state() {
