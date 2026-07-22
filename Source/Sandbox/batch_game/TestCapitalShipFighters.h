@@ -38,11 +38,12 @@ class ATestEntityRegistry;
 
 template <bool is_const>
 struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
+    using View = TTestCapitalShipFightersEntityDataView<false>;
+    using ConstView = TTestCapitalShipFightersEntityDataView<true>;
+
     template <typename T>
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
-    using VectorsView =
-        std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
-    using ThisClass = TTestCapitalShipFightersEntityDataView<is_const>;
+    using VectorsView = std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
 
     TView<FRegistryEntityHandle> entity_handles;
     TView<ETestCapitalShipFightersTask> tasks;
@@ -53,21 +54,6 @@ struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
     TView<int32> healths;
     TView<FRegistryEntityHandle> target_handles;
     TView<float> laser_cooldowns;
-
-    auto get_slice(int32 const offset, int32 const width) const -> ThisClass {
-        return {
-            {},
-            entity_handles.Slice(offset, width),
-            tasks.Slice(offset, width),
-            locations.slice(offset, width),
-            directions.slice(offset, width),
-            speeds.Slice(offset, width),
-            teams.Slice(offset, width),
-            healths.Slice(offset, width),
-            target_handles.Slice(offset, width),
-            laser_cooldowns.Slice(offset, width),
-        };
-    }
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -86,36 +72,6 @@ struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
 struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     using View = TTestCapitalShipFightersEntityDataView<false>;
     using ConstView = TTestCapitalShipFightersEntityDataView<true>;
-
-    auto get_view() -> View {
-        return {
-            {},
-            entity_handles,
-            tasks,
-            locations.get_view(),
-            directions.get_view(),
-            speeds,
-            teams,
-            healths,
-            target_handles,
-            laser_cooldowns.remaining_times,
-        };
-    }
-
-    auto get_const_view() const -> ConstView {
-        return {
-            {},
-            entity_handles,
-            tasks,
-            locations.get_const_view(),
-            directions.get_const_view(),
-            speeds,
-            teams,
-            healths,
-            target_handles,
-            laser_cooldowns.remaining_times,
-        };
-    }
 
     TArray<FRegistryEntityHandle> entity_handles;
 
@@ -200,11 +156,11 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     auto get_view(int32 const offset, int32 const width)
         -> FTestCapitalShipFightersEntityData::View {
-        return entity_buffers.current().get_view().get_slice(offset, width);
+        return entity_buffers.current().get_view(offset, width);
     }
     auto get_const_view(int32 const offset, int32 const width) const
         -> FTestCapitalShipFightersEntityData::ConstView {
-        return entity_buffers.current().get_const_view().get_slice(offset, width);
+        return entity_buffers.current().get_const_view(offset, width);
     }
 
     auto get_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
