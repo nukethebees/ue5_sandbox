@@ -582,6 +582,8 @@ void ATestCapitalShipFighters::commit_orders() {
     auto& data{entity_buffers.current()};
 
     auto const n_orders{ml::num(order_queue)};
+    if (n_orders < 1) { return; }
+
     index_buffer.SetNumUninitialized(n_orders, EAllowShrinking::No);
 
     for (int32 i{0}; i < n_orders; ++i) {

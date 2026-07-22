@@ -144,8 +144,6 @@ void ATestCapitalShips::make_decisions() {
                                teams,
                                ETestEntityType::CapitalShip);
 
-    auto const fighter_target_handles{fighters_actor->get_target_handles()};
-
     auto const n_capitals{get_num_instances()};
 
     fighter_order_queue.reset();
@@ -166,12 +164,13 @@ void ATestCapitalShips::make_decisions() {
                                         capital_target);
             }
         } else {
-            for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
-                auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
+            for (int32 fighter_span_idx{span.start()}; fighter_span_idx < end; ++fighter_span_idx) {
+                auto const fighter_handle{fighter_handles[fighter_span_idx]};
+                auto const fighter_target_handle{fighters_actor->get_target_handle(fighter_handle)};
 
                 if (fighter_target_handle.is_null() ||
                     entity_registry->is_valid_dead(fighter_target_handle)) {
-                    fighter_order_queue.add(fighter_handles[fighter_idx],
+                    fighter_order_queue.add(fighter_handle,
                                             TestCapitalShipFighterOrderQueue::Order{
                                                 .task = 0,
                                                 .target = 1,
@@ -183,7 +182,7 @@ void ATestCapitalShips::make_decisions() {
         }
     }
 
-    fighters_actor->queue_orders(fighter_order_queue);
+    if (fighter_order_queue.num() > 0) { fighters_actor->queue_orders(fighter_order_queue); }
 }
 void ATestCapitalShips::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);
