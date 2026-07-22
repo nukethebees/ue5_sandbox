@@ -148,6 +148,8 @@ void ATestCapitalShips::make_decisions() {
 
     auto const n_capitals{get_num_instances()};
 
+    fighter_order_queue.reset();
+
     for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
         auto const capital_target{target_handles[capital_idx]};
         auto const span{capital_fighter_handle_spans[capital_idx]};
@@ -155,23 +157,33 @@ void ATestCapitalShips::make_decisions() {
 
         if (capital_target.is_null()) {
             for (int32 fighter_span_idx{span.start()}; fighter_span_idx < end; ++fighter_span_idx) {
-                auto const fighter_handle{fighter_handles[fighter_span_idx]};
-
-                fighters_actor->set_target_handle(fighter_handle, capital_target);
-                fighters_actor->set_task(fighter_handle, ETestCapitalShipFightersTask::Standby);
+                fighter_order_queue.add(fighter_handles[fighter_span_idx],
+                                        TestCapitalShipFighterOrderQueue::Order{
+                                            .task = 1,
+                                            .target = 1,
+                                        },
+                                        ETestCapitalShipFightersTask::Standby,
+                                        capital_target);
             }
         } else {
             for (int32 fighter_idx{span.start()}; fighter_idx < end; ++fighter_idx) {
                 auto const fighter_target_handle{fighter_target_handles[fighter_idx]};
-                auto const fighter_handle{fighter_handles[fighter_idx]};
 
                 if (fighter_target_handle.is_null() ||
                     entity_registry->is_valid_dead(fighter_target_handle)) {
-                    fighters_actor->set_target_handle(fighter_handle, capital_target);
+                    fighter_order_queue.add(fighter_handles[fighter_idx],
+                                            TestCapitalShipFighterOrderQueue::Order{
+                                                .task = 0,
+                                                .target = 1,
+                                            },
+                                            {},
+                                            capital_target);
                 }
             }
         }
     }
+
+    fighters_actor->queue_orders(fighter_order_queue);
 }
 void ATestCapitalShips::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);

@@ -82,7 +82,6 @@ void ATestCapitalShipFighters::update_timers(float const dt) {
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
 
-    if (!tasks_are_contiguous()) { refresh_layout(); }
     auto& data{entity_buffers.current()};
     entity_registry->refresh_locations(data.entity_handles, target_locations);
 }
@@ -139,9 +138,12 @@ void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
 
     tasks_are_contiguous(); // This should be true before pruning
+
     remove_dead_entities();
     commit_spawns();
     commit_orders();
+
+    if (!tasks_are_contiguous()) { refresh_layout(); }
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
@@ -391,12 +393,8 @@ void ATestCapitalShipFighters::refresh_layout() {
 void ATestCapitalShipFighters::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_spawns);
 
-    ml::append_from(spawn_queue.locations, new_spawns.locations);
-    ml::append_from(spawn_queue.rotations, new_spawns.rotations);
-    spawn_queue.teams.Append(new_spawns.teams);
-    spawn_queue.targets.Append(new_spawns.targets);
+    spawn_queue.append_from(new_spawns);
 }
-
 void ATestCapitalShipFighters::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_spawns);
 
@@ -579,7 +577,32 @@ void ATestCapitalShipFighters::handle_firing() {
 }
 
 // Orders
-void ATestCapitalShipFighters::commit_orders() {}
+void ATestCapitalShipFighters::queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_orders);
+
+    order_queue.append_from(queue);
+}
+void ATestCapitalShipFighters::commit_orders() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_orders);
+
+    auto& data{entity_buffers.current()};
+
+    auto const n_orders{ml::num(order_queue)};
+    index_buffer.SetNumUninitialized(n_orders, EAllowShrinking::No);
+
+    for (int32 i{0}; i < n_orders; ++i) {
+        index_buffer[i] = data.entity_handles.Find(order_queue.handles[i]);
+    }
+
+    for (int32 i{0}; i < n_orders; ++i) {
+        auto const fighter_index{index_buffer[i]};
+        if (fighter_index == INDEX_NONE) { continue; }
+
+        auto const order{order_queue.orders[i]};
+        if (order.task) { data.tasks[fighter_index] = order_queue.tasks[i]; }
+        if (order.target) { data.target_handles[fighter_index] = order_queue.targets[i]; }
+    }
+}
 
 // Misc
 void ATestCapitalShipFighters::clear_runtime_state() {
@@ -594,7 +617,7 @@ void ATestCapitalShipFighters::clear_runtime_state() {
               new_lasers);
 }
 void ATestCapitalShipFighters::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, spawn_queue);
+    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, spawn_queue, order_queue);
 }
 
 // Checks

@@ -96,6 +96,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void end_tick();
 
     void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
+    void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
 
     void self_destruct_fighter(FRegistryEntityHandle handle);
 
@@ -245,6 +246,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     FTestLasersSpawnRequests new_lasers;
+
+    // Misc buffers
+    TArray<int32> index_buffer;
 
     // Debugging
     UPROPERTY(EditAnywhere)
