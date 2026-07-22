@@ -189,6 +189,12 @@ inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
                             to_append.zs.GetData(),
                             n_to_append);
 }
+
+template <>
+struct AppendFromTraits<FVectors3f> {
+    static void append_from(FVectors3f& dst, FVectors3f const& src) { ml::append_from(dst, src); }
+};
+
 template <is_vec3f Vec3f>
 inline void append_element_from(FVectors3f& vector, Vec3f const& to_append, int32 const i) {
     vector.xs.Add(to_append.xs[i]);

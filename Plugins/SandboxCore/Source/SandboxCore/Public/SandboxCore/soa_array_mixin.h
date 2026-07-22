@@ -58,6 +58,11 @@ struct FSoAArrayMixin : public FSoACommonMixin {
             ml::copy_element(dst_i, src_i, arrays...);
         });
     }
+
+    template <typename Self>
+    void append_from(this Self& self, Self const& other) {
+        self.apply_array_pairs(other, [](auto&&... arrays) -> void { ml::append_from(arrays...); });
+    }
 };
 
 #define SANDBOX_SOA_MIXIN_APPLY_ARRAYS(MEMBER_NAME) self.MEMBER_NAME

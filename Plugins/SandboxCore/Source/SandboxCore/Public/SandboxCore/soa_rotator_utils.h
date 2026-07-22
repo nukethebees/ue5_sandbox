@@ -18,26 +18,26 @@ concept is_rot3f = requires(T const& vecs) {
     { vecs.num() } -> std::convertible_to<int32>;
 };
 
+/* ---------------------------------------------------------------------------------------------- */
 // Comparison
+/* ---------------------------------------------------------------------------------------------- */
 [[nodiscard]]
 inline auto SANDBOXCORE_API almost_equal(FRotatorsf const& a,
                                          FRotatorsf const& b,
                                          float const tolerance = KINDA_SMALL_NUMBER) -> bool {
     auto const n{a.num()};
-    if (n != b.num()) {
-        return false;
-    }
+    if (n != b.num()) { return false; }
 
-    if (n == 0) {
-        return true;
-    }
+    if (n == 0) { return true; }
 
     return ml::kernel::almost_equal(a.pitches.GetData(), b.pitches.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.yaws.GetData(), b.yaws.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.rolls.GetData(), b.rolls.GetData(), n, tolerance);
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Construction
+/* ---------------------------------------------------------------------------------------------- */
 [[nodiscard]]
 inline auto SANDBOXCORE_API make_rotatorsf(std::initializer_list<float> const pitches,
                                            std::initializer_list<float> const yaws,
@@ -67,7 +67,9 @@ inline auto SANDBOXCORE_API make_rotatorsf(TArray<float> pitches,
     };
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Assignment
+/* ---------------------------------------------------------------------------------------------- */
 inline void
     assign(FRotatorsf& r, int32 const i, float const pitch, float const yaw, float const roll) {
     r.pitches[i] = pitch;
@@ -107,7 +109,31 @@ inline void append(FRotatorsf& rotators, FVector3f const& direction_vector) {
     append(rotators, direction_vector.Rotation());
 }
 
+inline void append_from(FRotatorsf& vector, FRotatorsf const& to_append) {
+    check(&vector != &to_append);
+
+    auto const n_base{vector.num()};
+    auto const n_to_append{to_append.num()};
+
+    ml::add_uninitialised(vector, n_to_append);
+
+    ml::kernel::assign_from(vector.pitches.GetData() + n_base,
+                            vector.yaws.GetData() + n_base,
+                            vector.rolls.GetData() + n_base,
+                            to_append.pitches.GetData(),
+                            to_append.yaws.GetData(),
+                            to_append.rolls.GetData(),
+                            n_to_append);
+}
+
+template <>
+struct AppendFromTraits<FRotatorsf> {
+    static void append_from(FRotatorsf& dst, FRotatorsf const& src) { ml::append_from(dst, src); }
+};
+
+/* ---------------------------------------------------------------------------------------------- */
 // Extension
+/* ---------------------------------------------------------------------------------------------- */
 template <is_rot3f Rot3f>
 inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
     auto const n_base{rotators.num()};
@@ -123,7 +149,9 @@ inline void append_from(FRotatorsf& rotators, Rot3f const& to_append) {
                             n_to_append);
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Filling
+/* ---------------------------------------------------------------------------------------------- */
 inline void fill(FRotatorsf& vector, float const value) {
     ml::kernel::fill(vector.pitches.GetData(),
                      vector.yaws.GetData(),
@@ -139,7 +167,9 @@ inline void fill(FRotatorsf::View vector, float const value) {
                      vector.num());
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Conversion
+/* ---------------------------------------------------------------------------------------------- */
 inline auto get_rotator3f(FRotatorsf const& rotator, int32 const i) -> FRotator3f {
     return {rotator.pitches[i], rotator.yaws[i], rotator.rolls[i]};
 }
