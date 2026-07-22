@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
 #include "HAL/Platform.h"
 
 #include <concepts>
@@ -216,31 +217,32 @@ struct GetViewTraits;
 
 template <typename T>
     requires requires(T& t) {
-        { TArrayView<std::remove_cvref_t<decltype(t[0])>>{t} };
+        { TArrayView<std::remove_reference_t<decltype(t[0])>>{t} };
     }
 struct GetViewTraits<T> {
     using Container = std::remove_cvref_t<T>;
-    using Element = std::remove_cvref_t<decltype(std::declval<Container>()[0])>;
+    using Element = std::remove_reference_t<decltype(std::declval<Container>()[0])>;
+    using ConstElement = std::add_const_t<std::remove_const_t<Element>>;
 
     static auto get_view(Container& container, int32 const offset, int32 const count) {
-        return TArrayView<Element>{container};
+        return TArrayView<Element>{container}.Slice(offset, count);
     }
     static auto get_view(Container const& container, int32 const offset, int32 const count) {
-        return TConstArrayView<Element>{container};
+        return TArrayView<ConstElement>{container}.Slice(offset, count);
     }
     static auto get_const_view(Container const& container, int32 const offset, int32 const count) {
-        return TConstArrayView<Element>{container};
+        return TArrayView<ConstElement>{container}.Slice(offset, count);
     }
 };
 
 template <typename T>
-    requires requires(T& t) {
-        { t.get_view() };
-        { t.get_const_view() };
+    requires requires(T& t, T const& const_t, int32 const offset, int32 const count) {
+        { t.get_view(offset, count) };
+        { const_t.get_view(offset, count) };
+        { const_t.get_const_view(offset, count) };
     }
 struct GetViewTraits<T> {
     using Container = std::remove_cvref_t<T>;
-    using Element = std::remove_cvref_t<decltype(std::declval<Container>()[0])>;
 
     static auto get_view(Container& container, int32 const offset, int32 const count) {
         return container.get_view(offset, count);
