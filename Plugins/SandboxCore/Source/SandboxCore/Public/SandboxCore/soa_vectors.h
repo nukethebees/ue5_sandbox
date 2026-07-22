@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <type_traits>
 #include <utility>
 
 #include "soa_vectors.generated.h"
@@ -13,9 +14,42 @@ template <typename T>
 struct TVectors2View
 {
     using size_type = TArrayView<T>::SizeType;
+    using value_type = std::remove_const_t<T>;
+    using View = TVectors2View<T>;
+    using ConstView = TVectors2View<value_type const>;
 
     TArrayView<T> xs;
     TArrayView<T> ys;
+
+    auto get_view() -> View
+    {
+        return View{xs, ys};
+    }
+
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_view() const -> ConstView
+    {
+        return ConstView{xs, ys};
+    }
+
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_const_view() const -> ConstView
+    {
+        return ConstView{xs, ys};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
+    }
 
     template <typename TFunc>
     auto apply_arrays(TFunc&& func) -> decltype(auto)
@@ -53,10 +87,43 @@ template <typename T>
 struct TVectors3View
 {
     using size_type = TArrayView<T>::SizeType;
+    using value_type = std::remove_const_t<T>;
+    using View = TVectors3View<T>;
+    using ConstView = TVectors3View<value_type const>;
 
     TArrayView<T> xs;
     TArrayView<T> ys;
     TArrayView<T> zs;
+
+    auto get_view() -> View
+    {
+        return View{xs, ys, zs};
+    }
+
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_view() const -> ConstView
+    {
+        return ConstView{xs, ys, zs};
+    }
+
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_const_view() const -> ConstView
+    {
+        return ConstView{xs, ys, zs};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
+    }
 
     template <typename TFunc>
     auto apply_arrays(TFunc&& func) -> decltype(auto)

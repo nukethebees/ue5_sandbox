@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <type_traits>
 #include <utility>
 
 #include "soa_rotators.generated.h"
@@ -13,10 +14,43 @@ template <typename T>
 struct TRotatorsView
 {
     using size_type = TArrayView<T>::SizeType;
+    using value_type = std::remove_const_t<T>;
+    using View = TRotatorsView<T>;
+    using ConstView = TRotatorsView<value_type const>;
 
     TArrayView<T> pitches;
     TArrayView<T> yaws;
     TArrayView<T> rolls;
+
+    auto get_view() -> View
+    {
+        return View{pitches, yaws, rolls};
+    }
+
+    auto get_view(size_type const offset, size_type const count) -> View
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_view() const -> ConstView
+    {
+        return ConstView{pitches, yaws, rolls};
+    }
+
+    auto get_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_view().slice(offset, count);
+    }
+
+    auto get_const_view() const -> ConstView
+    {
+        return ConstView{pitches, yaws, rolls};
+    }
+
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView
+    {
+        return get_const_view().slice(offset, count);
+    }
 
     template <typename TFunc>
     auto apply_arrays(TFunc&& func) -> decltype(auto)

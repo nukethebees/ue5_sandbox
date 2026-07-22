@@ -116,12 +116,21 @@ def generate_view(layout: LayoutSpec) -> str:
         f"struct {view_name(layout)}",
         "{",
         "    using size_type = TArrayView<T>::SizeType;",
+        "    using value_type = std::remove_const_t<T>;",
+        f"    using View = {view_name(layout)}<T>;",
+        f"    using ConstView = {view_name(layout)}<value_type const>;",
         "",
     ]
     for component in layout.components:
         lines.append(f"    TArrayView<T> {component};")
     lines.extend(
         [
+            "",
+            *generate_view_return(layout, "View", "get_view"),
+            "",
+            *generate_view_return(layout, "ConstView", "get_view"),
+            "",
+            *generate_view_return(layout, "ConstView", "get_const_view"),
             "",
             *generate_apply_arrays(layout),
             "",
@@ -301,6 +310,7 @@ def generate_header(header_filename: str, spec: HeaderSpec) -> str:
         "#pragma once",
         "",
         '#include "CoreMinimal.h"',
+        "#include <type_traits>",
         "#include <utility>",
         "",
         f'#include "{generated_include}"',
