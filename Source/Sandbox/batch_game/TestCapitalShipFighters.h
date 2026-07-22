@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -30,18 +31,6 @@ class UInstancedStaticMeshComponent;
 class UTestCapitalShipFightersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
-
-UENUM()
-enum class ETestCapitalShipFightersTask : uint8 {
-    Standby,
-    MoveToDestination,
-    Attack,
-    COUNT UMETA(DisplayName = "Count", Hidden),
-};
-
-inline auto LexToString(ETestCapitalShipFightersTask const task) -> FString {
-    return ml::to_string_without_type_prefix(task);
-}
 
 struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> entity_handles;
