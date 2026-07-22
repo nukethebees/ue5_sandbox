@@ -10,6 +10,47 @@
 
 namespace ml {
 struct FSoACommonMixin {
+    template <typename T>
+    auto construct_object(this auto&& self, int32 const offset, int32 const count) -> T {
+        return self.apply_arrays([offset, count](auto&... arrays) -> T {
+            return T{
+                {},
+                GetViewTraits<std::remove_cvref_t<decltype(arrays)>>::get_view(
+                    arrays, offset, count)...,
+            };
+        });
+    }
+
+    auto get_view(this auto& self) {
+        using View = typename std::remove_cvref_t<decltype(self)>::View;
+        return self.template construct_object<View>(0, self.num());
+    }
+
+    auto get_view(this auto& self, int32 const offset, int32 const count) {
+        using View = typename std::remove_cvref_t<decltype(self)>::View;
+        return self.template construct_object<View>(offset, count);
+    }
+
+    auto get_view(this auto const& self) {
+        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return self.template construct_object<ConstView>(0, self.num());
+    }
+
+    auto get_view(this auto const& self, int32 const offset, int32 const count) {
+        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return self.template construct_object<ConstView>(offset, count);
+    }
+
+    auto get_const_view(this auto const& self) {
+        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return self.template construct_object<ConstView>(0, self.num());
+    }
+
+    auto get_const_view(this auto const& self, int32 const offset, int32 const count) {
+        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return self.template construct_object<ConstView>(offset, count);
+    }
+
     void validate_array_sizes(this auto const& self) {
         self.apply_arrays(
             [](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
