@@ -15,8 +15,14 @@ struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
     TArray<ETestTeam> teams;
     TArray<FRegistryEntityHandle> targets;
 
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations, self.rotations, self.teams, self.targets);
-    }
+    // clang-format off
+#define SANDBOX_PACK(STAMPER, END_SYMBOL)   \
+    STAMPER(locations)                      \
+    END_SYMBOL STAMPER(rotations)           \
+    END_SYMBOL STAMPER(teams)               \
+    END_SYMBOL STAMPER(targets)
+    // clang-format on
+
+    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
+#undef SANDBOX_PACK
 };
