@@ -38,7 +38,35 @@ struct FConstructObjectTestData : public ml::FSoAArrayMixin {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.values, self.vectors, self.timers);
     }
+
+    template <typename Self, typename Other, typename TFunc>
+        requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.values,
+                                         other.values,
+                                         self.vectors,
+                                         other.vectors,
+                                         self.timers,
+                                         other.timers);
+    }
 };
+
+struct FNoApplyArrays {};
+
+struct FApplyArraysOnly {
+    template <typename TFunc>
+    auto apply_arrays(this auto&&, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)();
+    }
+};
+
+static_assert(ml::SupportsApplyArrays<FConstructObjectTestData>);
+static_assert(ml::SupportsApplyArrays<TConstructObjectTestView<false>>);
+static_assert(ml::SupportsApplyArrays<TConstructObjectTestView<true>>);
+static_assert(!ml::SupportsApplyArrays<FNoApplyArrays>);
+static_assert(ml::SupportsApplyArrayPairs<FConstructObjectTestData>);
+static_assert(!ml::SupportsApplyArrayPairs<FApplyArraysOnly>);
+static_assert(!ml::SupportsApplyArrayPairs<FNoApplyArrays>);
 
 auto make_test_data() -> FConstructObjectTestData {
     FConstructObjectTestData data;

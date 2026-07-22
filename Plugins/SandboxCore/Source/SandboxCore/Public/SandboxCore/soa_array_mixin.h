@@ -9,9 +9,32 @@
 #include <type_traits>
 
 namespace ml {
+struct FApplyArraysProbe {
+    template <typename... T>
+    void operator()(T&&...) const {}
+};
+
+struct FApplyArrayPairsProbe {
+    template <typename... T>
+    void operator()(T&&...) const {}
+};
+
+template <typename T>
+concept SupportsApplyArrays =
+    requires(std::remove_cvref_t<T>& value, std::remove_cvref_t<T> const& const_value) {
+        value.apply_arrays(FApplyArraysProbe{});
+        const_value.apply_arrays(FApplyArraysProbe{});
+    };
+
+template <typename T>
+concept SupportsApplyArrayPairs =
+    requires(std::remove_cvref_t<T>& value, std::remove_cvref_t<T> const& const_value) {
+        value.apply_array_pairs(const_value, FApplyArrayPairsProbe{});
+    };
+
 struct FSoACommonMixin {
-    template <typename T>
-    auto construct_object(this auto&& self, int32 const offset, int32 const count) -> T {
+    template <typename T, SupportsApplyArrays Self>
+    auto construct_object(this Self&& self, int32 const offset, int32 const count) -> T {
         return self.apply_arrays([offset, count](auto&... arrays) -> T {
             return T{
                 {},
@@ -21,64 +44,77 @@ struct FSoACommonMixin {
         });
     }
 
-    auto get_view(this auto& self) {
-        using View = typename std::remove_cvref_t<decltype(self)>::View;
+    template <SupportsApplyArrays Self>
+    auto get_view(this Self& self) {
+        using View = typename Self::View;
         return self.template construct_object<View>(0, self.num());
     }
 
-    auto get_view(this auto& self, int32 const offset, int32 const count) {
-        using View = typename std::remove_cvref_t<decltype(self)>::View;
+    template <SupportsApplyArrays Self>
+    auto get_view(this Self& self, int32 const offset, int32 const count) {
+        using View = typename Self::View;
         return self.template construct_object<View>(offset, count);
     }
 
-    auto get_view(this auto const& self) {
-        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+    template <SupportsApplyArrays Self>
+    auto get_view(this Self const& self) {
+        using ConstView = typename Self::ConstView;
         return self.template construct_object<ConstView>(0, self.num());
     }
 
-    auto get_view(this auto const& self, int32 const offset, int32 const count) {
-        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+    template <SupportsApplyArrays Self>
+    auto get_view(this Self const& self, int32 const offset, int32 const count) {
+        using ConstView = typename Self::ConstView;
         return self.template construct_object<ConstView>(offset, count);
     }
 
-    auto get_const_view(this auto const& self) {
-        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+    template <SupportsApplyArrays Self>
+    auto get_const_view(this Self const& self) {
+        using ConstView = typename Self::ConstView;
         return self.template construct_object<ConstView>(0, self.num());
     }
 
-    auto get_const_view(this auto const& self, int32 const offset, int32 const count) {
-        using ConstView = typename std::remove_cvref_t<decltype(self)>::ConstView;
+    template <SupportsApplyArrays Self>
+    auto get_const_view(this Self const& self, int32 const offset, int32 const count) {
+        using ConstView = typename Self::ConstView;
         return self.template construct_object<ConstView>(offset, count);
     }
 
-    void validate_array_sizes(this auto const& self) {
+    template <SupportsApplyArrays Self>
+    void validate_array_sizes(this Self const& self) {
         self.apply_arrays(
             [](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
     }
 
-    auto num(this auto const& self) noexcept -> int32 {
+    template <SupportsApplyArrays Self>
+    auto num(this Self const& self) noexcept -> int32 {
         return self.apply_arrays([](auto const& first, auto const&...) { return ml::num(first); });
     }
 };
 
 struct FSoAArrayMixin : public FSoACommonMixin {
-    void reset(this auto& self) {
+    template <SupportsApplyArrays Self>
+    void reset(this Self& self) {
         self.apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
     }
 
-    void reserve(this auto& self, int32 const count) {
+    template <SupportsApplyArrays Self>
+    void reserve(this Self& self, int32 const count) {
         self.apply_arrays([count](auto&... arrays) { ml::reserve(count, arrays...); });
     }
 
-    void add_uninitialised(this auto& self, int32 const count) {
+    template <SupportsApplyArrays Self>
+    void add_uninitialised(this Self& self, int32 const count) {
         self.apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
     }
 
-    void add_defaulted(this auto& self, int32 const count) {
+    template <SupportsApplyArrays Self>
+    void add_defaulted(this Self& self, int32 const count) {
         self.apply_arrays([count](auto&... arrays) { ml::add_defaulted(count, arrays...); });
     }
 
-    void remove_at_swap(this auto& self,
+    template <SupportsApplyArrays Self>
+    void remove_at_swap(this Self& self,
                         int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
@@ -87,20 +123,21 @@ struct FSoAArrayMixin : public FSoACommonMixin {
         });
     }
 
-    void set_num(this auto& self, int32 const count, EAllowShrinking const allow_shrinking) {
+    template <SupportsApplyArrays Self>
+    void set_num(this Self& self, int32 const count, EAllowShrinking const allow_shrinking) {
         self.apply_arrays([count, allow_shrinking](auto&... arrays) {
             ml::set_num(count, allow_shrinking, arrays...);
         });
     }
 
-    template <typename Self>
+    template <SupportsApplyArrayPairs Self>
     void copy_element(this Self& self, int32 const dst_i, Self const& other, int32 const src_i) {
         self.apply_array_pairs(other, [dst_i, src_i](auto&&... arrays) -> void {
             ml::copy_element(dst_i, src_i, arrays...);
         });
     }
 
-    template <typename Self>
+    template <SupportsApplyArrayPairs Self>
     void append_from(this Self& self, Self const& other) {
         self.apply_array_pairs(other, [](auto&&... arrays) -> void { ml::append_from(arrays...); });
     }
