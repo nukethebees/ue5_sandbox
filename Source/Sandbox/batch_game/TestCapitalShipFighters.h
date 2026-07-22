@@ -53,6 +53,9 @@ struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
     TView<ETestTeam> teams;
     TView<int32> healths;
     TView<FRegistryEntityHandle> target_handles;
+    VectorsView target_locations;
+    VectorsView target_directions;
+    TView<float> target_distance_sq;
     TView<float> laser_cooldowns;
 
     template <typename TFunc>
@@ -65,6 +68,9 @@ struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
                                          self.teams,
                                          self.healths,
                                          self.target_handles,
+                                         self.target_locations,
+                                         self.target_directions,
+                                         self.target_distance_sq,
                                          self.laser_cooldowns);
     }
 };
@@ -74,18 +80,16 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     using ConstView = TTestCapitalShipFightersEntityDataView<true>;
 
     TArray<FRegistryEntityHandle> entity_handles;
-
     TArray<ETestCapitalShipFightersTask> tasks;
-
     FVectors3f locations;
     FVectors3f directions;
     TArray<float> speeds;
-
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
-
     TArray<FRegistryEntityHandle> target_handles;
-
+    FVectors3f target_locations;
+    FVectors3f target_directions;
+    TArray<float> target_distance_sq;
     FCountdownTimers laser_cooldowns;
 
     // clang-format off
@@ -98,6 +102,9 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     END_SYMBOL STAMPER(teams)           \
     END_SYMBOL STAMPER(healths)         \
     END_SYMBOL STAMPER(target_handles)  \
+    END_SYMBOL STAMPER(target_locations)  \
+    END_SYMBOL STAMPER(target_directions)  \
+    END_SYMBOL STAMPER(target_distance_sq)  \
     END_SYMBOL STAMPER(laser_cooldowns)
     // clang-format on
 
@@ -114,6 +121,12 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     static constexpr auto n_task_types{ml::EnumCountTrait<Task>::count_value};
     using TaskSpans = TStaticArray<FIndexSpan, n_task_types>;
     using TaskCounts = TStaticArray<int32, n_task_types>;
+
+    using TaskView = TTestCapitalShipFightersEntityDataView<false>;
+    using ConstTaskView = TTestCapitalShipFightersEntityDataView<true>;
+
+    using TaskViews = TStaticArray<TaskView, n_task_types>;
+    using ConstTaskViews = TStaticArray<ConstTaskView, n_task_types>;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -185,9 +198,12 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         set_target_handle_unchecked(idx, new_target);
     }
 
-    auto get_target_locations() const { return target_locations.get_view(); }
+    auto get_target_locations() const {
+        return entity_buffers.current().target_locations.get_view();
+    }
     auto get_target_location(FRegistryEntityHandle const fighter_handle) const {
-        return ml::get_vector3f(target_locations, find_index(fighter_handle));
+        return ml::get_vector3f(entity_buffers.current().target_locations,
+                                find_index(fighter_handle));
     }
 
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
@@ -219,7 +235,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 #endif
   protected:
     // Movement
-    void move(float const dt, FIndexSpan task_span);
+    void move(float const dt, TaskView& task_span);
 
     // Combat
     void handle_firing();
@@ -241,7 +257,12 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void refresh_layout();
 
     // Orders
+    void refresh_task_views();
     void commit_orders();
+
+    // Targets
+    void refresh_target_handles();
+    void refresh_target_locations();
 
     // Misc
     void clear_tick_buffers();
@@ -278,15 +299,13 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     float turn_speed_radians{0.f};
     float turn_speed_unitless{0.5f};
 
-    // Taks
+    // Tasks
     TaskSpans task_spans{};
+    TaskViews task_views{};
+    ConstTaskViews const_task_views{};
     TestCapitalShipFighterOrderQueue order_queue{};
 
     // Targets
-    FVectors3f target_locations;
-    FVectors3f target_directions;
-    TArray<float> target_distance_sq;
-
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     float fire_dot_product_threshold{0.95f};
 
