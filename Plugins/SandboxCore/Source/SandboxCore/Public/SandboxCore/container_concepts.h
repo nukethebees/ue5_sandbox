@@ -76,4 +76,10 @@ concept SupportsGetView = requires(T& container, int32 const offset, int32 const
     { GetViewTraits<T>::get_view(container, offset, count) };
     { GetViewTraits<T>::get_const_view(container, offset, count) };
 };
+
+// append_from
+template <typename T>
+concept SupportsAppendFrom = requires(T& dst, T const& src) {
+    { AppendFromTraits<std::remove_cvref_t<T>>::append_from(dst, src) } -> std::same_as<void>;
+};
 }

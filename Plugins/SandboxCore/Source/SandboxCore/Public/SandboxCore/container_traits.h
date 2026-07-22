@@ -252,4 +252,18 @@ struct GetViewTraits<T> {
         return container.get_const_view(offset, count);
     }
 };
+
+/* -------------------------------------------------------------------------- */
+// append_from
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct AppendFromTraits;
+
+template <typename T>
+    requires requires(T& t0, T const& t1) {
+        { t0.Append(t1) } -> std::same_as<void>;
+    }
+struct AppendFromTraits<T> {
+    static void append_from(T& dst, T const& src) { dst.Append(src); }
+};
 }
