@@ -374,6 +374,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
                                                          TEXT("Post-kill fighters"));
 
         check_remaining_main_capital_fighters_unchanged();
+        check_fighter_targets_all_not_null();
     }
     void post_fighter_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: post_fighter_kill_stage"));
@@ -514,6 +515,17 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
                              FString::Printf(TEXT("Check handles not the same [%d]"), i));
         }
     }
+    void check_fighter_targets_all_not_null() {
+        TestRunner->AddInfo(TEXT("fn: check_fighter_targets_all_not_null"));
+
+        auto const fighter_target_handles{fighters->get_target_handles()};
+        auto const n{fighter_target_handles.Num()};
+
+        for (int32 i{0}; i < n; ++i) {
+            auto const handle{fighter_target_handles[i]};
+            checks.is_true(!handle.is_null(), TEXT("Fighter handles not null"), i);
+        }
+    }
 
     void kill_capital_opponent() {
         TestRunner->AddInfo(TEXT("fn: kill_capital_opponent"));
@@ -563,6 +575,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         check_capital_fighter_handles_unchanged(pre_capital_kill_main_fighters,
                                                 post_capital_kill_main_fighters);
         check_fighters_target_location_changed();
+        check_fighter_targets_all_not_null();
+
         ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
     }
 
