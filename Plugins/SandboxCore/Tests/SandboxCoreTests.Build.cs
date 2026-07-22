@@ -16,7 +16,8 @@ public class SandboxCoreTests : TestModuleRules
 
 	public SandboxCoreTests(ReadOnlyTargetRules Target) : base(Target, true)
 	{
-		bAllowUETypesInNamespaces = true;
+        CppStandard = CppStandardVersion.Latest;
+        bAllowUETypesInNamespaces = true;
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
