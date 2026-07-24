@@ -10,7 +10,7 @@
 #include "Sandbox/ui/in_game_menu/InventoryGridWidget.h"
 #include "Sandbox/ui/in_game_menu/ItemDetailsWidget.h"
 #include "Sandbox/ui/ui.h"
-#include "Sandbox/utilities/string.h"
+#include <SandboxCore/string.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

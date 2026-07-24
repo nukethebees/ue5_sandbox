@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "Sandbox/utilities/string.h"
+#include <SandboxCore/string.h>
 
 namespace ml {
 template <typename T>

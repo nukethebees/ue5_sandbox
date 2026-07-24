@@ -1,4 +1,4 @@
-#include "Sandbox/utilities/string.h"
+#include <SandboxCore/string.h>
 
 #include "Misc/AutomationTest.h"
 

@@ -1,4 +1,4 @@
-#include "Sandbox/utilities/string.h"
+#include <SandboxCore/string.h>
 
 namespace ml {
 auto without_class_prefix(FString const& input) -> FString {
