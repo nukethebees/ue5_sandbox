@@ -19,7 +19,7 @@ auto get_norm_vector_to_actor(AActor& actor, FVector point) -> FVector;
 auto get_angle_to_actor(AActor& actor, FVector point) -> double;
 
 // 2 segments = 3 lines
-auto subdivide_arc_into_segments(float starting_angle_deg, float arc_deg, int32 segments)
+auto SANDBOX_API subdivide_arc_into_segments(float starting_angle_deg, float arc_deg, int32 segments)
     -> TArray<float>;
 
 inline auto get_box_corners(FVector origin, FVector box_extent) -> FActorCorners {
