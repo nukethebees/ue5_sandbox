@@ -84,9 +84,13 @@ auto TestSimulationDriver::get_time() const -> time_type {
     return world.GetTimeSeconds();
 }
 void TestSimulationDriver::set_delta_time_wait(time_type dt) {
+    check(dt > time_type{0});
+
     time_wait_end = get_time() + dt;
 }
 void TestSimulationDriver::set_time_wait(time_type wait_end) {
+    check(wait_end > get_time());
+
     time_wait_end = wait_end;
 }
 bool TestSimulationDriver::time_wait_completed() const {
