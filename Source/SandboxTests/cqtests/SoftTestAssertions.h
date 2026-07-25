@@ -7,6 +7,8 @@
 #include <CoreMinimal.h>
 #include <Misc/AutomationTest.h>
 
+class AActor;
+
 namespace ml {
 struct FSoftTestAssertions {
     static constexpr auto to_string(bool b) -> TCHAR const* {
@@ -54,6 +56,7 @@ struct FSoftTestAssertions {
 
         return result;
     }
+
     bool is_true(bool result, FString const description, int32 const i = INDEX_NONE) {
         store_result(result);
 
@@ -64,6 +67,7 @@ struct FSoftTestAssertions {
 
         return result;
     }
+
     template <typename T>
     bool all_equal(T const& exp, T const& got, FString const description) {
         auto const n_exp{ml::num(exp)};
@@ -78,8 +82,16 @@ struct FSoftTestAssertions {
         return true;
     }
 
+    bool not_nullptr(void* ptr, FString const description);
+    bool is_valid(AActor* ptr, FString const description);
+
     FAutomationTestBase* test_runner{nullptr};
     bool log_successful_assertions{false};
     bool all_passed{true};
 };
+
+#define SANDBOX_TESTS_ASSERT_ALL_PASSED(CHECKS_INSTANCE)                     \
+    do {                                                                     \
+        ASSERT_THAT(IsTrue(CHECKS_INSTANCE.all_passed, TEXT("all_passed"))); \
+    } while (0)
 }
