@@ -1,5 +1,7 @@
 #pragma once
 
+#include "lex_to_string.h"
+
 #include <CoreMinimal.h>
 
 namespace ml {
@@ -23,13 +25,6 @@ struct FSoftTestAssertions {
         }
     static auto to_string(T const& value) -> FString {
         return LexToString(value);
-    }
-    template <typename T>
-        requires requires(T const& t) {
-            { t.ToCompactString() } -> std::convertible_to<FString>;
-        }
-    static auto to_string(T const& value) -> FString {
-        return value.ToCompactString();
     }
 
     auto start_msg(int32 const i = INDEX_NONE) const -> FString {

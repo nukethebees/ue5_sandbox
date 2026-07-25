@@ -1,3 +1,5 @@
+#include "lex_to_string.h"
+
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
@@ -12,12 +14,6 @@
 #include <CQTest.h>
 #include <EngineUtils.h>
 #include <Misc/Optional.h>
-
-namespace {
-auto LexToString(FVector3f const& vec) -> FString {
-    return vec.ToCompactString();
-}
-}
 
 /*
 This test relies on a long spawn delay to ensure more fighters aren't spawned.
