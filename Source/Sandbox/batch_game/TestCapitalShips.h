@@ -196,6 +196,12 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_team(FRegistryEntityHandle handle) const noexcept -> ETestTeam;
 
     auto find_first_index_on_team(ETestTeam team) const noexcept -> std::optional<int32>;
+    auto find_first_handle_on_team(ETestTeam team) const noexcept
+        -> std::optional<FRegistryEntityHandle> {
+        auto const result{find_first_index_on_team(team)};
+        if (result) { return entities.handles[*result]; }
+        return std::nullopt;
+    }
 
     // Checks
     void validate_array_sizes() const;
