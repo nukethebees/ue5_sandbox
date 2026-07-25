@@ -2,6 +2,8 @@
 
 #include "lex_to_string.h"
 
+#include <SandboxCore/array_utils.h>
+
 #include <CoreMinimal.h>
 #include <Misc/AutomationTest.h>
 
