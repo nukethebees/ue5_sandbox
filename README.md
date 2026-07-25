@@ -1,6 +1,10 @@
 # Sandbox Unreal Engine Project
 
 This repository is a Sandbox for me to learn UE5.
+It contains two games mashed into the one repo:
+
+* An abandoned attempt at an immersive sim style shooter
+* A Starfox/X-Wing style flight shooter
 
 ## Custom Plugins
 
@@ -16,3 +20,13 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 | Inner Wall | - | 300 | 20 |
 | Floor | - | - | 20 |
 | Door | 100 | 220 | -
+
+## Modules
+
+| Name | Purpose |
+| --- | --- | 
+| Sandbox | Main game code |
+| SandboxEditor | Editor code |
+| SandboxNative | Editor/engine independent code |
+| SandboxNativeTests | Tests for `SandboxNative` |
+| SandboxTests | Tests for `Sandbox` |
