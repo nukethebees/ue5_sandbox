@@ -13,8 +13,8 @@
 #include "Sandbox/players/TestEnemy.h"
 #include "Sandbox/players/TestEnemyBlackboardConstants.h"
 #include "Sandbox/utilities/actor_utils.h"
-#include "Sandbox/utilities/array.h"
 #include "Sandbox/utilities/geometry.h"
+#include "SandboxNative/array.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

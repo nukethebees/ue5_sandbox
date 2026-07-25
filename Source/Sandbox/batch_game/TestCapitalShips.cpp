@@ -86,7 +86,7 @@ void ATestCapitalShips::resolve_initial_targets() {
                    i);
         }
 
-        auto const entity_index{entity_handles.Find(handle)};
+        auto const entity_index{entities.handles.Find(handle)};
         if (entity_index == INDEX_NONE) {
             UE_LOG(
                 LogSandbox,
@@ -112,7 +112,7 @@ void ATestCapitalShips::resolve_initial_targets() {
                    *ml::get_best_display_name(*target));
         }
 
-        target_handles[entity_index] = target_handle;
+        entities.target_handles[entity_index] = target_handle;
     }
 
     ml::destroy_all_actors(proxies);
@@ -121,14 +121,14 @@ void ATestCapitalShips::resolve_initial_targets() {
 void ATestCapitalShips::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_tick);
 
-    entity_buffers.cycle();
+    tick_buffers.cycle();
 
     clear_tick_buffers();
 }
 void ATestCapitalShips::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_timers);
 
-    fighter_spawn_timers.tick(dt);
+    entities.fighter_spawn_timers.tick(dt);
 }
 void ATestCapitalShips::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::make_decisions);
@@ -139,9 +139,9 @@ void ATestCapitalShips::make_decisions() {
     fighter_reassignment_queue.reset();
 
     ml::batch::refresh_targets(*entity_registry,
-                               target_handles,
+                               entities.target_handles,
                                indices_without_targets_buffer,
-                               teams,
+                               entities.teams,
                                ETestEntityType::CapitalShip);
 
     auto const n_capitals{get_num_instances()};
@@ -149,8 +149,8 @@ void ATestCapitalShips::make_decisions() {
     fighter_order_queue.reset();
 
     for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
-        auto const capital_target{target_handles[capital_idx]};
-        auto const span{capital_fighter_handle_spans[capital_idx]};
+        auto const capital_target{entities.target_handles[capital_idx]};
+        auto const span{entities.capital_fighter_handle_spans[capital_idx]};
         auto const end{span.end()};
 
         if (capital_target.is_null()) {
@@ -189,8 +189,8 @@ void ATestCapitalShips::resolve_hit_events() {
 
     ml::batch::resolve_hit_events(*entity_registry,
                                   owner_id,
-                                  entity_handles,
-                                  healths,
+                                  entities.handles,
+                                  entities.healths,
                                   local_indices_to_remove,
                                   entity_death_info);
 }
@@ -199,7 +199,7 @@ void ATestCapitalShips::update_entity_registry() {
 
     prepare_entity_update_data();
 
-    entity_registry->queue_entity_updates({entity_handles, entity_update_data.get_const_view()},
+    entity_registry->queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
                                           entity_death_info);
 }
 void ATestCapitalShips::sync_from_registry() {
@@ -228,19 +228,19 @@ void ATestCapitalShips::end_tick() {
 
 // Accessors
 auto ATestCapitalShips::get_num_instances() const -> int32 {
-    return entity_handles.Num();
+    return entities.handles.Num();
 }
 auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> bool {
     if (!index.is_valid()) { return false; }
 
-    if (!locations.xs.IsValidIndex(index.index)) { return false; }
+    if (!entities.locations.xs.IsValidIndex(index.index)) { return false; }
 
     return true;
 }
 auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const
     -> FRegistryEntityHandle {
-    return entity_handles.IsValidIndex(hit_slot) ? entity_handles[hit_slot]
-                                                 : FRegistryEntityHandle{};
+    return entities.handles.IsValidIndex(hit_slot) ? entities.handles[hit_slot]
+                                                   : FRegistryEntityHandle{};
 }
 
 void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -261,7 +261,7 @@ auto ATestCapitalShips::get_team(FRegistryEntityHandle handle) const noexcept ->
     auto const n{get_num_instances()};
 
     for (int32 i{}; i < n; ++i) {
-        if (handle == entity_handles[i]) { return teams[i]; }
+        if (handle == entities.handles[i]) { return entities.teams[i]; }
     }
 
     UE_LOG(LogSandbox, Fatal, TEXT("Invalid handle passed"));
@@ -273,7 +273,7 @@ auto ATestCapitalShips::find_first_index_on_team(ETestTeam team) const noexcept
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
-        if (teams[i] == team) { return i; }
+        if (entities.teams[i] == team) { return i; }
     }
 
     return {};
@@ -283,7 +283,7 @@ auto ATestCapitalShips::find_first_index_on_team(ETestTeam team) const noexcept
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
 
-    check(entity_handles.IsEmpty());
+    check(entities.handles.IsEmpty());
     auto* world{GetWorld()};
     check(world);
 
@@ -296,7 +296,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
     TArray<ETestTeam> new_teams;
 
     ml::add_uninitialised(
-        n_to_add, entity_handles, new_targets, new_locations, new_rotations, new_teams);
+        n_to_add, entities.handles, new_targets, new_locations, new_rotations, new_teams);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const& proxy_transform{proxies[i]->GetActorTransform()};
@@ -305,7 +305,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         new_teams[i] = proxies[i]->get_team();
     }
 
-    spawn_ships(entity_handles,
+    spawn_ships(entities.handles,
                 new_locations.get_const_view(),
                 new_rotations.get_const_view(),
                 new_teams,
@@ -313,12 +313,12 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entity_handles = MoveTemp(new_entities.registry_handles);
+    entities.handles = MoveTemp(new_entities.registry_handles);
 
     // Map the proxies to the new handles
     for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(entity_handles[i]);
-        target_handles[i].reset();
+        proxies[i]->set_entity_handle(entities.handles[i]);
+        entities.target_handles[i].reset();
     }
 }
 void ATestCapitalShips::spawn_ships(
@@ -340,14 +340,14 @@ void ATestCapitalShips::spawn_ships(
         SANDBOX_NAMED_NUM(new_target_handles),
     });
 
-    ml::append_from(locations, new_locations);
-    ml::append_from(rotations, new_rotations);
-    target_handles.Append(new_target_handles);
-    fighter_spawn_timers.AddZeroed(n_to_add);
-    capital_fighter_handle_spans.AddZeroed(n_to_add);
-    teams.Append(new_teams);
+    ml::append_from(entities.locations, new_locations);
+    ml::append_from(entities.rotations, new_rotations);
+    entities.target_handles.Append(new_target_handles);
+    entities.fighter_spawn_timers.AddZeroed(n_to_add);
+    entities.capital_fighter_handle_spans.AddZeroed(n_to_add);
+    entities.teams.Append(new_teams);
 
-    ml::append_n(healths, actor_config->max_health, n_to_add);
+    ml::append_n(entities.healths, actor_config->max_health, n_to_add);
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -381,14 +381,14 @@ void ATestCapitalShips::prepare_entity_update_data() {
 
     entity_update_data.add_uninitialised(n);
 
-    entity_update_data.locations = locations;
+    entity_update_data.locations = entities.locations;
     ml::fill(entity_update_data.velocities, 0.f);
-    entity_update_data.healths = healths;
-    entity_update_data.teams = teams;
+    entity_update_data.healths = entities.healths;
+    entity_update_data.teams = entities.teams;
     entity_update_data.set_all_entity_types(ETestEntityType::CapitalShip);
 
     for (int32 i{0}; i < n; ++i) {
-        entity_update_data.alive[i] = healths[i] > 0;
+        entity_update_data.alive[i] = entities.healths[i] > 0;
     }
 }
 
@@ -399,7 +399,7 @@ auto ATestCapitalShips::get_fighter_spawn_slots() const noexcept -> int32 {
 void ATestCapitalShips::queue_fighter_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_fighter_spawning);
 
-    auto& data{entity_buffers.current()};
+    auto& data{tick_buffers.current()};
 
     auto const n_capital_ships{get_num_instances()};
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
@@ -407,7 +407,7 @@ void ATestCapitalShips::queue_fighter_spawns() {
     auto const cooldown{actor_config->spawn_delay};
 
     auto ships_ready_to_spawn_fighters_indices{
-        ml::collect_indices_less_equal(TConstArrayView<float>{fighter_spawn_timers.remaining_times},
+        ml::collect_indices_less_equal(entities.fighter_spawn_timers.get_const_view(),
                                        0.f,
                                        data.ships_ready_to_spawn_fighters_buffer)};
 
@@ -419,7 +419,7 @@ void ATestCapitalShips::queue_fighter_spawns() {
         auto const n_ready_to_spawn{ships_ready_to_spawn_fighters_indices.Num()};
 
         for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
-            if (target_handles[i].is_null()) {
+            if (entities.target_handles[i].is_null()) {
                 data.ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
             }
         }
@@ -434,9 +434,9 @@ void ATestCapitalShips::queue_fighter_spawns() {
     ml::reset(fighter_queue);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
-        auto const target_handle{target_handles[i]};
-        auto const base_location{ml::get_vector3f(locations, i)};
-        auto const base_rotation{ml::get_rotator3f(rotations, i)};
+        auto const target_handle{entities.target_handles[i]};
+        auto const base_location{ml::get_vector3f(entities.locations, i)};
+        auto const base_rotation{ml::get_rotator3f(entities.rotations, i)};
 
         FTransform const base_transform{
             FRotator{base_rotation},
@@ -449,11 +449,11 @@ void ATestCapitalShips::queue_fighter_spawns() {
 
             ml::append(fighter_queue.locations, new_transform.GetLocation());
             ml::append(fighter_queue.rotations, new_transform.Rotator());
-            fighter_queue.teams.Add(teams[i]);
+            fighter_queue.teams.Add(entities.teams[i]);
             fighter_queue.targets.Add(target_handle);
         }
 
-        fighter_spawn_timers.remaining_times[i] = cooldown;
+        entities.fighter_spawn_timers.remaining_times[i] = cooldown;
     }
 
     fighters_actor->queue_spawns(fighter_queue);
@@ -461,7 +461,7 @@ void ATestCapitalShips::queue_fighter_spawns() {
 void ATestCapitalShips::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
 
-    auto const& prev{entity_buffers.previous()};
+    auto const& prev{tick_buffers.previous()};
 
     entity_registry->refresh_handles(fighter_handles);
 
@@ -484,7 +484,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
         };
 
         // Add existing non-null fighters
-        auto const old_span{capital_fighter_handle_spans[capital_idx]};
+        auto const old_span{entities.capital_fighter_handle_spans[capital_idx]};
         auto const loop_end{old_span.end()};
         for (int32 fighter_index{old_span.offset}; fighter_index < loop_end; ++fighter_index) {
             auto const fighter_handle{fighter_handles[fighter_index]};
@@ -512,7 +512,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
             for (int32 i_reassigned{n_reassigned - 1}; i_reassigned >= 0; --i_reassigned) {
                 auto const reassigned_handle{
                     fighter_reassignment_queue.capital_handles[i_reassigned]};
-                auto const reassigned_idx{entity_handles.Find(reassigned_handle)};
+                auto const reassigned_idx{entities.handles.Find(reassigned_handle)};
                 check(reassigned_idx != INDEX_NONE);
 
                 if (capital_idx == reassigned_idx) {
@@ -525,7 +525,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
             }
         }
 
-        capital_fighter_handle_spans[capital_idx] = new_span;
+        entities.capital_fighter_handle_spans[capital_idx] = new_span;
     }
 
     Swap(fighter_handles, fighter_handles_scratch);
@@ -612,7 +612,7 @@ void ATestCapitalShips::trigger_death_effects() {
     for (int32 entity_remove_i{0}; entity_remove_i < n; ++entity_remove_i) {
         auto const entity_index{local_indices_to_remove[entity_remove_i]};
 
-        auto const base_location{ml::get_vector3d(locations, entity_index)};
+        auto const base_location{ml::get_vector3d(entities.locations, entity_index)};
 
         for (int32 explosion_i{0}; explosion_i < n_small_burst_explosions; ++explosion_i) {
             if (explosion_i > 0) { current_delay += time_between_explosions; }
@@ -629,7 +629,7 @@ void ATestCapitalShips::trigger_death_effects() {
         }
 
         spawn_systems.Add(main_death_explosion);
-        spawn_locations.Add(ml::get_vector3d(locations, entity_index));
+        spawn_locations.Add(ml::get_vector3d(entities.locations, entity_index));
         spawn_delays.Add(main_explosion_delay);
     }
 
@@ -644,15 +644,7 @@ void ATestCapitalShips::handle_dead_entities() {
     reassign_fighter_handles_of_dying_capital();
 
     local_indices_to_remove.Sort(TGreater<int32>{});
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        entity_handles,
-                                        locations,
-                                        rotations,
-                                        fighter_spawn_timers.remaining_times,
-                                        teams,
-                                        healths,
-                                        target_handles,
-                                        capital_fighter_handle_spans);
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, entities);
 }
 void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
     std::array<int32, static_cast<std::size_t>(ETestTeam::COUNT)> replacements{};
@@ -661,13 +653,13 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
     constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
     TArray<ETestTeam, TInlineAllocator<team_count>> teams_to_replace;
     for (auto const capital_idx : local_indices_to_remove) {
-        auto const team{teams[capital_idx]};
+        auto const team{entities.teams[capital_idx]};
         if (!teams_to_replace.Contains(team)) { teams_to_replace.Add(team); }
     }
 
     auto const n{get_num_instances()};
     for (int32 i{0}; i < n; ++i) {
-        auto const team{teams[i]};
+        auto const team{entities.teams[i]};
         if (teams_to_replace.Contains(team) && !local_indices_to_remove.Contains(i)) {
             replacements[std::to_underlying(team)] = i;
             teams_to_replace.RemoveSwap(team, EAllowShrinking::No);
@@ -677,9 +669,9 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
     }
 
     for (auto const capital_idx : local_indices_to_remove) {
-        auto const team{teams[capital_idx]};
+        auto const team{entities.teams[capital_idx]};
         auto const replacement_idx{replacements[std::to_underlying(team)]};
-        auto const fighter_span{capital_fighter_handle_spans[capital_idx]};
+        auto const fighter_span{entities.capital_fighter_handle_spans[capital_idx]};
         auto const span_end{fighter_span.end()};
 
         if (replacement_idx < 0) {
@@ -690,7 +682,8 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
         } else {
             // Reassign to someone else on the team
             for (int32 i{fighter_span.offset}; i < span_end; ++i) {
-                fighter_reassignment_queue.add(entity_handles[replacement_idx], fighter_handles[i]);
+                fighter_reassignment_queue.add(entities.handles[replacement_idx],
+                                               fighter_handles[i]);
             }
         }
     }
@@ -700,22 +693,15 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset(entity_handles,
+    ml::reset(entities,
               local_indices_to_remove,
-              locations,
-              rotations,
-              fighter_spawn_timers,
-              entity_buffers.current(),
-              entity_buffers.previous(),
-              fighter_queue,
-              teams,
-              healths,
-              target_handles,
-              capital_fighter_handle_spans);
+              tick_buffers.current(),
+              tick_buffers.previous(),
+              fighter_queue);
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
-              entity_buffers.current(),
+              tick_buffers.current(),
               fighter_queue,
               entity_update_data,
               fighter_handles_scratch);
@@ -730,20 +716,20 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
-        auto const ship_location{ml::get_vector3d(locations, i)};
+        auto const ship_location{ml::get_vector3d(entities.locations, i)};
 
         // Draw target
-        auto const target_handle{target_handles[i]};
+        auto const target_handle{entities.target_handles[i]};
         if (entity_registry->is_valid_handle(target_handle)) {
             FVector3d const target_location{entity_registry->get_location(target_handle)};
             drawer.draw_arrow(ship_location, target_location);
         }
 
         // Draw HP
-        auto const ship_index{entity_handles[i]};
+        auto const ship_index{entities.handles[i]};
 
         auto const msg{FString::Printf(
-            TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, healths[i])};
+            TEXT("[%d, %d] HP=%d"), ship_index.index, ship_index.generation, entities.healths[i])};
         auto const msg_location{ship_location + text_offset};
         drawer.draw_string(msg_location, msg);
     }
@@ -752,17 +738,10 @@ void ATestCapitalShips::draw_debugging_shapes() const {
 // Checks
 void ATestCapitalShips::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_handles),
-        SANDBOX_NAMED_NUM(locations),
-        SANDBOX_NAMED_NUM(rotations),
-        SANDBOX_NAMED_NUM(fighter_spawn_timers),
-        SANDBOX_NAMED_NUM(teams),
-        SANDBOX_NAMED_NUM(healths),
-        SANDBOX_NAMED_NUM(target_handles),
-        SANDBOX_NAMED_NUM(capital_fighter_handle_spans),
+        SANDBOX_NAMED_NUM(entities),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }
 void ATestCapitalShips::validate_proxy_handles() const {
-    entity_registry->validate_handles(entity_handles);
+    entity_registry->validate_handles(entities.handles);
 }

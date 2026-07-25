@@ -34,7 +34,10 @@ class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
 
-struct FTestCapitalShipsEntityData : public ml::FSoAArrayMixin {
+namespace ml::test_capital_ships {
+
+// Cycled each tick via double buffering
+struct EntityTickData : public ml::FSoAArrayMixin {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
     // clang-format off
@@ -46,7 +49,41 @@ struct FTestCapitalShipsEntityData : public ml::FSoAArrayMixin {
 #undef SANDBOX_PACK
 };
 
-struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
+struct EntityData : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> handles;
+
+    // Transform
+    FVectors3f locations;
+    FRotatorsf rotations;
+
+    FCountdownTimers fighter_spawn_timers;
+
+    // Teams
+    TArray<ETestTeam> teams{};
+
+    // Health
+    TArray<int32> healths{};
+
+    // Fighters
+    TArray<FIndexSpan> capital_fighter_handle_spans;
+
+    // Targets
+    TArray<FRegistryEntityHandle> target_handles;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.handles,
+                                         self.locations,
+                                         self.rotations,
+                                         self.fighter_spawn_timers,
+                                         self.teams,
+                                         self.healths,
+                                         self.capital_fighter_handle_spans,
+                                         self.target_handles);
+    }
+};
+
+struct FighterReassignment : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> capital_handles;
     TArray<FRegistryEntityHandle> fighter_handles;
 
@@ -60,17 +97,20 @@ struct TestCapitalShipFighterReassignment : public ml::FSoAArrayMixin {
         return std::forward<TFunc>(func)(self.capital_handles, self.fighter_handles);
     }
 };
+}
 
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
   public:
-    using EntityBuffers = ml::MultiBuffer<FTestCapitalShipsEntityData, 2>;
+    using EntityTickData = ml::test_capital_ships::EntityTickData;
+    using EntityData = ml::test_capital_ships::EntityData;
+    using FighterReassignment = ml::test_capital_ships::FighterReassignment;
+    using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
+    using Proxy = ATestCapitalShipProxy;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
-
-    using Proxy = ATestCapitalShipProxy;
 
     ATestCapitalShips();
 
@@ -101,7 +141,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
-    auto get_handle(int32 i) const -> FRegistryEntityHandle { return entity_handles[i]; }
+    auto get_handle(int32 i) const -> FRegistryEntityHandle {
+        return entities.handles[i];
+    }
 
     auto get_fighter_spawn_slots() const noexcept -> int32;
     auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
@@ -109,14 +151,14 @@ class SANDBOX_API ATestCapitalShips : public AActor {
         return fighter_handles;
     }
     auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
-        return capital_fighter_handle_spans;
+        return entities.capital_fighter_handle_spans;
     }
     auto get_capital_fighter_handle_span(int32 const i) const noexcept -> FIndexSpan {
-        return capital_fighter_handle_spans[i];
+        return entities.capital_fighter_handle_spans[i];
     }
     auto get_fighter_handles(int32 const i) const noexcept
         -> TConstArrayView<FRegistryEntityHandle> {
-        return get_fighter_handles(capital_fighter_handle_spans[i]);
+        return get_fighter_handles(entities.capital_fighter_handle_spans[i]);
     }
     auto get_fighter_handles(FIndexSpan const span) const noexcept
         -> TConstArrayView<FRegistryEntityHandle> {
@@ -124,13 +166,13 @@ class SANDBOX_API ATestCapitalShips : public AActor {
                                                                              span.count);
     }
     auto get_target_handle(int32 const i) const noexcept -> FRegistryEntityHandle {
-        return target_handles[i];
+        return entities.target_handles[i];
     }
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
-        return target_handles;
+        return entities.target_handles;
     }
 
-    auto get_team(int32 const i) const noexcept -> ETestTeam { return teams[i]; }
+    auto get_team(int32 const i) const noexcept -> ETestTeam { return entities.teams[i]; }
     auto get_team(FRegistryEntityHandle handle) const noexcept -> ETestTeam;
 
     auto find_first_index_on_team(ETestTeam team) const noexcept -> std::optional<int32>;
@@ -182,44 +224,25 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     // Entity data
     TestEntityOwnerId owner_id{};
-    EntityBuffers entity_buffers{};
+    EntityData entities{};
+    EntityBuffers tick_buffers{};
 
-    TArray<FRegistryEntityHandle> entity_handles;
-    UPROPERTY()
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     FTestEntityRegistryEntityData entity_update_data;
-
-    // Transform
-    UPROPERTY()
-    FVectors3f locations;
-    UPROPERTY()
-    FRotatorsf rotations;
 
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
 
-    FCountdownTimers fighter_spawn_timers;
-
     TestCapitalShipFighterSpawnQueue fighter_queue;
-    TArray<FIndexSpan> capital_fighter_handle_spans;
     TArray<FRegistryEntityHandle> fighter_handles;
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
-    TestCapitalShipFighterReassignment fighter_reassignment_queue;
+    FighterReassignment fighter_reassignment_queue;
 
     int32 fighters_spawned{0};
 
-    // Teams
-    UPROPERTY()
-    TArray<ETestTeam> teams{};
-
-    // Health
-    UPROPERTY()
-    TArray<int32> healths{};
-
     // Targets
-    TArray<FRegistryEntityHandle> target_handles;
     TArray<int32> indices_without_targets_buffer;
 
     // Fighter orders

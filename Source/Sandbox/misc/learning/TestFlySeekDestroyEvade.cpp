@@ -6,8 +6,8 @@
 #include "Sandbox/utilities/actor_utils.h"
 #include "Sandbox/utilities/enums.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
-#include "Sandbox/utilities/spatial.h"
 #include "Sandbox/utilities/vision_maths.h"
+#include "SandboxNative/spatial.h"
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
