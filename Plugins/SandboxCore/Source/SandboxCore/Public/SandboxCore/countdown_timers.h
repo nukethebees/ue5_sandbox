@@ -44,6 +44,8 @@ struct SANDBOXCORE_API FCountdownTimers {
         remaining_times[dst_i] = src.remaining_times[src_i];
     }
 
+    void Append(ConstView const new_values) { remaining_times.Append(new_values); }
+
     UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;
 };
