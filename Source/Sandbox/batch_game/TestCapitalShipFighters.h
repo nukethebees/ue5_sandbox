@@ -237,11 +237,15 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void check_fighter_tasks() const {}
 #endif
   protected:
+    // Accessors
+    auto get_task_view(Task task) noexcept -> TaskView const&;
+    auto get_const_task_view(Task task) const noexcept -> ConstTaskView const&;
+
     // Movement
-    void move(float const dt, TaskView& task_span);
+    void move(float const dt, TaskView const& task_span);
 
     // Combat
-    void handle_firing();
+    void handle_firing(TaskView const& data);
 
     // Spawning
     void commit_spawns();

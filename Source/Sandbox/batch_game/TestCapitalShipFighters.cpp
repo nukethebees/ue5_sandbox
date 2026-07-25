@@ -92,12 +92,13 @@ void ATestCapitalShipFighters::move(float const dt) {
 
     auto& data{entity_buffers.current()};
 
-    move(dt, task_views[std::to_underlying(Task::MoveToDestination)]);
-    move(dt, task_views[std::to_underlying(Task::Attack)]);
+    move(dt, get_task_view(Task::MoveToDestination));
+    move(dt, get_task_view(Task::Attack));
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
-    handle_firing();
+
+    handle_firing(get_task_view(Task::Attack));
 }
 void ATestCapitalShipFighters::resolve_hit_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
@@ -155,7 +156,7 @@ void ATestCapitalShipFighters::end_tick() {
 }
 
 // Movement
-void ATestCapitalShipFighters::move(float const dt, TaskView& fighters) {
+void ATestCapitalShipFighters::move(float const dt, TaskView const& fighters) {
     ml::direction(fighters.target_directions, fighters.locations, fighters.target_locations);
     ml::lerp_in_place(fighters.directions, fighters.target_directions, turn_speed_unitless * dt);
     ml::add_scaled_in_place(fighters.locations, fighters.directions, fighters.speeds, dt);
@@ -188,6 +189,14 @@ auto ATestCapitalShipFighters::get_task_counts() const -> TaskCounts {
     }
 
     return counts;
+}
+
+auto ATestCapitalShipFighters::get_task_view(Task task) noexcept -> TaskView const& {
+    return task_views[std::to_underlying(task)];
+}
+auto ATestCapitalShipFighters::get_const_task_view(Task task) const noexcept
+    -> ConstTaskView const& {
+    return const_task_views[std::to_underlying(task)];
 }
 
 // Visuals
@@ -504,10 +513,8 @@ void ATestCapitalShipFighters::remove_dead_entities() {
 }
 
 // Combat
-void ATestCapitalShipFighters::handle_firing() {
+void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
-    auto& data{entity_buffers.current()};
-
     ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
 
     auto const n_ships{get_num_instances()};
@@ -529,7 +536,7 @@ void ATestCapitalShipFighters::handle_firing() {
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
-        if (data.laser_cooldowns.remaining_times[ship_index] > 0.f) { continue; }
+        if (data.laser_cooldowns[ship_index] > 0.f) { continue; }
         if (!data.target_handles[ship_index].is_valid()) { continue; }
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
@@ -547,7 +554,7 @@ void ATestCapitalShipFighters::handle_firing() {
         new_lasers.instigator_handles[write_index] = data.entity_handles[ship_index];
         new_lasers.colours[write_index] = colour_cache[data.teams[ship_index]];
 
-        data.laser_cooldowns.remaining_times[ship_index] = cooldown;
+        data.laser_cooldowns[ship_index] = cooldown;
         ++write_index;
     }
 
