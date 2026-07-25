@@ -342,12 +342,14 @@ void ATestCapitalShips::spawn_ships(
 
     ml::append_from(entities.locations, new_locations);
     ml::append_from(entities.rotations, new_rotations);
-    entities.target_handles.Append(new_target_handles);
+    
     entities.fighter_spawn_timers.AddZeroed(n_to_add);
-    entities.capital_fighter_handle_spans.AddZeroed(n_to_add);
+    ml::append_n(entities.fighter_spawn_cooldowns, actor_config->spawn_delay, n_to_add);
+    
     entities.teams.Append(new_teams);
-
     ml::append_n(entities.healths, actor_config->max_health, n_to_add);
+    entities.capital_fighter_handle_spans.AddZeroed(n_to_add);
+    entities.target_handles.Append(new_target_handles);    
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -404,8 +406,6 @@ void ATestCapitalShips::queue_fighter_spawns() {
     auto const n_capital_ships{get_num_instances()};
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
                                                                   EAllowShrinking::No);
-    auto const cooldown{actor_config->spawn_delay};
-
     auto ships_ready_to_spawn_fighters_indices{
         ml::collect_indices_less_equal(entities.fighter_spawn_timers.get_const_view(),
                                        0.f,
@@ -453,7 +453,7 @@ void ATestCapitalShips::queue_fighter_spawns() {
             fighter_queue.targets.Add(target_handle);
         }
 
-        entities.fighter_spawn_timers.remaining_times[i] = cooldown;
+        entities.fighter_spawn_timers.remaining_times[i] = entities.fighter_spawn_cooldowns[i];
     }
 
     fighters_actor->queue_spawns(fighter_queue);

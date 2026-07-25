@@ -57,6 +57,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     FRotatorsf rotations;
 
     FCountdownTimers fighter_spawn_timers;
+    TArray<float> fighter_spawn_cooldowns;
 
     // Teams
     TArray<ETestTeam> teams{};
