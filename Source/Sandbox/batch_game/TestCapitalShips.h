@@ -36,6 +36,26 @@ class UTestTeamVisualData;
 
 namespace ml::test_capital_ships {
 
+struct SpawnData : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> target_handles;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+
+    TArray<float> initial_spawn_delays;
+    TArray<float> spawn_cooldowns;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.target_handles,
+                                         self.locations,
+                                         self.rotations,
+                                         self.teams,
+                                         self.initial_spawn_delays,
+                                         self.spawn_cooldowns);
+    }
+};
+
 // Cycled each tick via double buffering
 struct EntityTickData : public ml::FSoAArrayMixin {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
@@ -104,6 +124,7 @@ UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
   public:
+    using SpawnData = ml::test_capital_ships::SpawnData;
     using EntityTickData = ml::test_capital_ships::EntityTickData;
     using EntityData = ml::test_capital_ships::EntityData;
     using FighterReassignment = ml::test_capital_ships::FighterReassignment;
@@ -142,9 +163,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
-    auto get_handle(int32 i) const -> FRegistryEntityHandle {
-        return entities.handles[i];
-    }
+    auto get_handle(int32 i) const -> FRegistryEntityHandle { return entities.handles[i]; }
 
     auto get_fighter_spawn_slots() const noexcept -> int32;
     auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
@@ -184,11 +203,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
   protected:
     // Ship spawning
     void register_all_proxies_in_level();
-    void spawn_ships(TConstArrayView<FRegistryEntityHandle> const new_indices,
-                     FVectors3f::ConstView const new_locations,
-                     FRotatorsf::ConstView const new_rotations,
-                     TConstArrayView<ETestTeam> const new_teams,
-                     TConstArrayView<FRegistryEntityHandle> const new_target_handles);
+    void spawn_ships(SpawnData const& spawn_data);
 
     // Entity data
     void prepare_entity_update_data();
