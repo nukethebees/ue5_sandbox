@@ -55,7 +55,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
         check_no_proxies_alive();
         check_capital_targets();
 
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     void check_no_proxies_alive() {

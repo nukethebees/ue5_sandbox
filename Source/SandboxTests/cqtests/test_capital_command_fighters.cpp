@@ -97,7 +97,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                        TEXT("Capital handles should be different"));
 
         check_target_handles(capital_second_target);
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     void kill_all_not_on_main_team() {
@@ -140,7 +140,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                     TestRunner->AddInfo(msg);
                 }
 
-                ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             });
     }
 };

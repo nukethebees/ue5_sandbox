@@ -54,7 +54,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
     void run_checks() {
         count_teams();
 
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     auto get_expected_team_counts_msg() const -> FString {

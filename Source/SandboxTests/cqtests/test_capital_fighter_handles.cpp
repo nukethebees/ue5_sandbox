@@ -268,7 +268,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         TestRunner->AddInfo(TEXT("fn: pre_fighter_kill_stage"));
 
         run_spawn_capital_handle_checks();
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     void kill_fighters() {
@@ -367,7 +367,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         log_capital_fighter_info(post_fighter_kill_main_fighters, TEXT("Post fighter kill"));
         post_fighter_kill_check_stage();
 
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     /* ------------------------------------------------------------------------------------------ */
@@ -561,7 +561,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         check_fighters_target_location_changed();
         check_fighter_targets_all_not_null();
 
-        ASSERT_THAT(IsTrue(checks.all_passed, TEXT("all_passed")));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     inline static FTimespan const default_timeout{0, 0, 3};
