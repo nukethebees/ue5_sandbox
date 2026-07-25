@@ -19,7 +19,10 @@ class ATestFighterAttackDriver : public AActor {
 
     auto get_hero_team() const { return hero_team; }
     auto get_enemy_team() const { return enemy_team; }
+
+    auto get_setup_error() const { return setup_error; }
   protected:
+    void PostInitializeComponents() override;
     void BeginPlay() override;
 
     UPROPERTY(EditAnywhere, Category = "Test")
@@ -31,4 +34,5 @@ class ATestFighterAttackDriver : public AActor {
     TObjectPtr<ATestCapitalShipProxy> enemy{nullptr};
 
     ETestTeam enemy_team;
+    FString setup_error{};
 };
