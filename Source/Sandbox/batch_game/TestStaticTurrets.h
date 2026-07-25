@@ -30,6 +30,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
   public:
     using Proxy = ATestStaticTurretsProxy;
+    using RegistryEntityData = ml::entity_registry::EntityData;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -104,7 +105,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     TestEntityOwnerId owner_id{};
     TArray<FRegistryEntityHandle> entity_handles{};
     EntityDeathInfo entity_death_info;
-    FTestEntityRegistryEntityData entity_update_data;
+    RegistryEntityData entity_update_data;
 
     // Location
     FVectors3f locations;

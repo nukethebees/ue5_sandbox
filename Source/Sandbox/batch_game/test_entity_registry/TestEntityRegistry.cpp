@@ -68,8 +68,7 @@ auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwne
 }
 
 // Entity creation
-auto ATestEntityRegistry::add_entities(FTestEntityRegistryEntityData::ConstView const view)
-    -> SpawnedEntityHandles {
+auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
 
     view.validate_array_sizes();

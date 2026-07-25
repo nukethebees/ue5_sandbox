@@ -155,7 +155,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
                             is_world_space,
                             false);
 
-    FTestEntityRegistryEntityData entity_data;
+    ml::entity_registry::EntityData entity_data;
     entity_data.add_uninitialised(n);
     entity_data.locations = locations;
     ml::fill(entity_data.velocities, 0.f);

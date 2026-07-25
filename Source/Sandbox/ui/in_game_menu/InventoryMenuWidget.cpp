@@ -5,12 +5,12 @@
 #include "Components/GridSlot.h"
 #include "Components/TextBlock.h"
 
+#include <SandboxCore/string.h>
 #include "Sandbox/combat/ammo/AmmoType.h"
 #include "Sandbox/inventory/InventoryComponent.h"
 #include "Sandbox/ui/in_game_menu/InventoryGridWidget.h"
 #include "Sandbox/ui/in_game_menu/ItemDetailsWidget.h"
 #include "Sandbox/ui/ui.h"
-#include <SandboxCore/string.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

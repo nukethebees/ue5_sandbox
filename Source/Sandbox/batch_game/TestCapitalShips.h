@@ -124,6 +124,8 @@ UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
   public:
+    using RegistryEntityData = ml::entity_registry::EntityData;
+
     using SpawnData = ml::test_capital_ships::SpawnData;
     using EntityTickData = ml::test_capital_ships::EntityTickData;
     using EntityData = ml::test_capital_ships::EntityData;
@@ -253,7 +255,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
-    FTestEntityRegistryEntityData entity_update_data;
+    RegistryEntityData entity_update_data;
 
     // Fighter spawning
     UPROPERTY(EditAnywhere, Category = "Sandbox")

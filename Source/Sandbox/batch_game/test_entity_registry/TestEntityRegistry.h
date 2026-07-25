@@ -39,19 +39,20 @@ UCLASS()
 class SANDBOX_API ATestEntityRegistry : public AActor {
     GENERATED_BODY()
   public:
+    using EntityData = ml::entity_registry::EntityData;
     using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }
 
         TConstArrayView<FRegistryEntityHandle> indices;
-        FTestEntityRegistryEntityData::ConstView data;
+        EntityData::ConstView data;
     };
     struct View {
         auto get_num() const { return indices.Num(); }
 
         TConstArrayView<FRegistryEntityHandle> indices;
-        FTestEntityRegistryEntityData::View data;
+        EntityData::View data;
     };
 
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
@@ -72,7 +73,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
 
     // Entity creation
-    auto add_entities(FTestEntityRegistryEntityData::ConstView const view) -> SpawnedEntityHandles;
+    auto add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles;
 
     // Damage updates
     void queue_damage_events(UnresolvedDamageEvents const& damage_events);
@@ -100,9 +101,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto get_num_elements() const noexcept -> int32;
     auto get_num_alive_active_entities() const noexcept -> int32;
 
-    auto get_entity_data() const noexcept -> FTestEntityRegistryEntityData const& {
-        return entity_data;
-    }
+    auto get_entity_data() const noexcept -> EntityData const& { return entity_data; }
     auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
         return unique_ids;
     }
@@ -163,7 +162,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     void validate_unique_ids() const;
     void validate_unique_entity_data() const;
 
-    FTestEntityRegistryEntityData entity_data;
+    EntityData entity_data;
     TArray<int32> generations;
     TArray<TestEntityUniqueId> unique_ids;
     TArray<AActor const*> entity_owners;
@@ -171,7 +170,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     TestEntityUniqueEntityData unique_entities;
 
     // Queued updates
-    FTestEntityRegistryEntityData queued_entity_data;
+    EntityData queued_entity_data;
     TArray<FRegistryEntityHandle> queued_entity_update_handles;
     EntityDeathInfo queued_death_infos;
 

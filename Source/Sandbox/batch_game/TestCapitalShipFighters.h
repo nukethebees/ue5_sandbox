@@ -119,6 +119,8 @@ UCLASS()
 class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
+    using RegistryEntityData = ml::entity_registry::EntityData;
+
     using EntityData = ml::test_capital_ship_fighters::EntityData;
     using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
     using Task = ETestCapitalShipFightersTask;
@@ -290,11 +292,11 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
-    FTestEntityRegistryEntityData registry_update_data;
+    RegistryEntityData registry_update_data;
 
     // Spawning
     TestCapitalShipFighterSpawnQueue spawn_queue;
-    FTestEntityRegistryEntityData new_spawn_entity_data;
+    RegistryEntityData new_spawn_entity_data;
     SpawnedEntityHandles new_spawn_entity_handles;
     TArray<float> custom_data_buffer;
 

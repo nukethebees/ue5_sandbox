@@ -13,14 +13,16 @@
 
 #include <type_traits>
 
+namespace ml::entity_registry {
+
 template <bool is_const>
-struct TTestEntityDataView : public ml::FSoAViewMixin {
+struct EntityDataView : public ml::FSoAViewMixin {
     template <typename T>
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
     template <typename T>
     using TSoaView = std::conditional_t<is_const, TVectors3View<T const>, TVectors3View<T>>;
 
-    using ThisClass = TTestEntityDataView<is_const>;
+    using ThisClass = EntityDataView<is_const>;
 
     TSoaView<float> locations;
     TSoaView<float> velocities;
@@ -63,9 +65,9 @@ struct TTestEntityDataView : public ml::FSoAViewMixin {
     }
 };
 
-struct FTestEntityRegistryEntityData : public ml::FSoAArrayMixin {
-    using View = TTestEntityDataView<false>;
-    using ConstView = TTestEntityDataView<true>;
+struct EntityData : public ml::FSoAArrayMixin {
+    using View = EntityDataView<false>;
+    using ConstView = EntityDataView<true>;
 
     auto get_view() -> View;
     auto get_const_view() const -> ConstView;
@@ -96,3 +98,4 @@ struct FTestEntityRegistryEntityData : public ml::FSoAArrayMixin {
     TArray<ETestEntityType> entity_types;
     TArray<uint8> alive;
 };
+}

@@ -4,7 +4,8 @@
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_vector_utils.h>
 
-auto FTestEntityRegistryEntityData::get_view() -> View {
+namespace ml::entity_registry {
+auto EntityData::get_view() -> View {
     return {
         {},
         locations.get_view(),
@@ -15,7 +16,7 @@ auto FTestEntityRegistryEntityData::get_view() -> View {
         alive,
     };
 }
-auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
+auto EntityData::get_const_view() const -> ConstView {
     return {
         {},
         locations.get_view(),
@@ -27,7 +28,7 @@ auto FTestEntityRegistryEntityData::get_const_view() const -> ConstView {
     };
 }
 
-void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
+void EntityData::add_disabled(int32 const count) {
     add_uninitialised(count);
 
     auto view{get_view()};
@@ -40,7 +41,7 @@ void FTestEntityRegistryEntityData::add_disabled(int32 const count) {
     ml::fill(slice.entity_types, ETestEntityType::COUNT);
     ml::fill(slice.alive, uint8{0u});
 }
-void FTestEntityRegistryEntityData::add(ConstView const view) {
+void EntityData::add(ConstView const view) {
     ml::append_from(locations, view.locations);
     ml::append_from(velocities, view.velocities);
 
@@ -50,12 +51,13 @@ void FTestEntityRegistryEntityData::add(ConstView const view) {
     alive.Append(view.alive);
 }
 
-void FTestEntityRegistryEntityData::set_all_alive() {
+void EntityData::set_all_alive() {
     ml::fill(alive, uint8{1});
 }
-void FTestEntityRegistryEntityData::set_all_velocities(float const v) {
+void EntityData::set_all_velocities(float const v) {
     ml::fill(velocities, v);
 }
-void FTestEntityRegistryEntityData::set_all_entity_types(ETestEntityType const v) {
+void EntityData::set_all_entity_types(ETestEntityType const v) {
     ml::fill(entity_types, v);
+}
 }

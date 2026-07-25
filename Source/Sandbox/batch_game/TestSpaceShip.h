@@ -38,12 +38,18 @@ class ATestEntityRegistry;
 class ATestLasers;
 class UTestSpaceShipData;
 
+namespace ml::entity_registry {
+struct EntityData;
+}
+
 UCLASS()
 class ATestSpaceShip
     : public APawn
     , public ITestEntity {
     GENERATED_BODY()
   public:
+    using RegistryEntityData = ml::entity_registry::EntityData;
+
     struct Sockets {
         inline static FName const left{"Left"};
         inline static FName const right{"Right"};
@@ -160,7 +166,7 @@ class ATestSpaceShip
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
     void register_with_entity_registry();
-    auto get_entity_update_data() const -> FTestEntityRegistryEntityData;
+    auto get_entity_update_data() const -> RegistryEntityData;
 
     /* ------------------------------------------------------------------------------------------ */
     // Movement

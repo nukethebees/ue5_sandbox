@@ -165,8 +165,8 @@ void ATestSpaceShip::register_with_entity_registry() {
 
     update_entity_registry();
 }
-auto ATestSpaceShip::get_entity_update_data() const -> FTestEntityRegistryEntityData {
-    FTestEntityRegistryEntityData entity_data;
+auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
+    RegistryEntityData entity_data;
     ml::append(entity_data.locations, GetActorLocation());
 
     entity_data.velocities.xs.Add(velocity.X);
