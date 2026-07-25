@@ -145,7 +145,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
                      FVectors3f::ConstView const new_locations,
                      FRotatorsf::ConstView const new_rotations,
                      TConstArrayView<ETestTeam> const new_teams,
-                     TConstArrayView<FRegistryEntityHandle> const new_target_indices);
+                     TConstArrayView<FRegistryEntityHandle> const new_target_handles);
 
     // Entity data
     void prepare_entity_update_data();

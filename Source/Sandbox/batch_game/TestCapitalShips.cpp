@@ -326,7 +326,7 @@ void ATestCapitalShips::spawn_ships(
     FVectors3f::ConstView const new_locations,
     FRotatorsf::ConstView const new_rotations,
     TConstArrayView<ETestTeam> const new_teams,
-    TConstArrayView<FRegistryEntityHandle> const new_target_indices) {
+    TConstArrayView<FRegistryEntityHandle> const new_target_handles) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::spawn_ships);
 
     auto const n_existing{get_num_instances()};
@@ -337,12 +337,12 @@ void ATestCapitalShips::spawn_ships(
         SANDBOX_NAMED_NUM(new_locations),
         SANDBOX_NAMED_NUM(new_rotations),
         SANDBOX_NAMED_NUM(new_teams),
-        SANDBOX_NAMED_NUM(new_target_indices),
+        SANDBOX_NAMED_NUM(new_target_handles),
     });
 
     ml::append_from(locations, new_locations);
     ml::append_from(rotations, new_rotations);
-    target_handles.Append(new_target_indices);
+    target_handles.Append(new_target_handles);
     fighter_spawn_timers.AddZeroed(n_to_add);
     capital_fighter_handle_spans.AddZeroed(n_to_add);
     teams.Append(new_teams);
