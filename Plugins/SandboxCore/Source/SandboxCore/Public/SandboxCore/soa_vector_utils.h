@@ -278,6 +278,13 @@ void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, float const value);
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values);
 
 /* ---------------------------------------------------------------------------------------------- */
+// Size
+/* ---------------------------------------------------------------------------------------------- */
+inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
+    return ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 // Distance
 /* ---------------------------------------------------------------------------------------------- */
 template <is_readable_vec3f T>
@@ -307,29 +314,6 @@ void dist_sq(TArrayView<float> const out, U&& as, V&& bs) {
                                bs.ys.GetData(),
                                bs.zs.GetData(),
                                out.Num());
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Size
-/* ---------------------------------------------------------------------------------------------- */
-inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
-    return ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Normalisation
-/* ---------------------------------------------------------------------------------------------- */
-inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
-    auto const n{vecs.num()};
-    check(vecs.ys.Num() == n);
-    check(vecs.zs.Num() == n);
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const size_sq{ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i])};
-        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) { return false; }
-    }
-
-    return true;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -418,6 +402,42 @@ inline auto to_rotatorsf(Vec3f const& vectors) -> FRotatorsf {
 
     return rotators;
 }
+
+/* ---------------------------------------------------------------------------------------------- */
+// Normalisation
+/* ---------------------------------------------------------------------------------------------- */
+inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
+    auto const n{vecs.num()};
+    check(vecs.ys.Num() == n);
+    check(vecs.zs.Num() == n);
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const size_sq{ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i])};
+        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) { return false; }
+    }
+
+    return true;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+// Dot product
+/* ---------------------------------------------------------------------------------------------- */
+template <is_readable_vec3f T, is_readable_vec3f U>
+void dot_product(TArrayView<float> out, T&& as, U&& bs) noexcept {
+    auto const n{ml::num(out)};
+    check(ml::num(as) == n);
+    check(ml::num(bs) == n);
+
+    ml::kernel::dot_product(out.GetData(),
+                            as.xs.GetData(),
+                            as.ys.GetData(),
+                            as.zs.GetData(),
+                            bs.xs.GetData(),
+                            bs.ys.GetData(),
+                            bs.zs.GetData(),
+                            n);
+}
+
 }
 
 /* ---------------------------------------------------------------------------------------------- */
