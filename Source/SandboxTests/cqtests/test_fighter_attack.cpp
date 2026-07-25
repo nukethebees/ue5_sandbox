@@ -95,7 +95,11 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     FPreFight pre_fight;
     FPostFight post_fight;
 
-    void pre_fight_samples() {}
+    void pre_fight_samples() {
+        auto const& capitals{test_driver->get_capital_ships()};
+
+        pre_fight.enemy_health = capitals.get_health(enemy);
+    }
     void check_fighters_team() {
         auto const& fighters{test_driver->get_capital_ship_fighters()};
         auto const teams{fighters.get_teams()};
@@ -116,8 +120,16 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     }
 
     // Post fight
-    void post_fight_samples() {}
-    void post_fight_checks() {}
+    void post_fight_samples() {
+        auto const& capitals{test_driver->get_capital_ships()};
+
+        post_fight.enemy_health = capitals.get_health(enemy);
+    }
+    void post_fight_checks() {
+        checks.is_true(post_fight.enemy_health < pre_fight.enemy_health, TEXT("Enemy lost health"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    }
     void post_fight_phase() {
         post_fight_samples();
         post_fight_checks();
