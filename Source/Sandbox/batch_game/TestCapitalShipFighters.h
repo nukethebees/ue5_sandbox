@@ -225,6 +225,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     }
     auto get_task_counts() const -> TaskCounts;
 
+    auto get_teams() const -> TConstArrayView<ETestTeam> { return entity_buffers.current().teams; }
+
 // Checks
 #if DO_CHECK
     void validate_array_sizes() const;
