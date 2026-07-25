@@ -6,7 +6,7 @@
 
 namespace ml {
 template <typename T>
-T* get_first_actor(UWorld& world) {
+auto get_first_actor(UWorld& world) -> T* {
     for (auto it{TActorIterator<T>(&world)}; it; ++it) {
         return *it;
     }
@@ -21,7 +21,7 @@ void get_first_actor(UWorld& world, T*& ptr) {
 }
 
 template <typename T>
-T* get_or_create_actor_singleton(UWorld& world) {
+auto get_or_create_actor_singleton(UWorld& world) -> T* {
     if (auto* actor{ml::get_first_actor<T>(world)}) { return actor; }
 
     FActorSpawnParameters spawn_params{};
