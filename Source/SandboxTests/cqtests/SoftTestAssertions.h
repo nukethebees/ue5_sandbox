@@ -9,17 +9,11 @@
 
 namespace ml {
 struct FSoftTestAssertions {
-    inline static auto to_string(bool b) -> TCHAR const* {
+    static constexpr auto to_string(bool b) -> TCHAR const* {
         return b ? TEXT("true") : TEXT("false");
     }
 
-    void display_result(bool const passed, FString const& msg) {
-        if (!passed) {
-            test_runner->AddError(msg);
-        } else if (log_successful_assertions) {
-            test_runner->AddInfo(msg);
-        }
-    }
+    void display_result(bool const passed, FString const& msg);
 
     template <typename T>
         requires requires(T const& t) {
@@ -29,12 +23,8 @@ struct FSoftTestAssertions {
         return LexToString(value);
     }
 
-    auto start_msg(int32 const i = INDEX_NONE) const -> FString {
-        if (i != INDEX_NONE) { return FString::Printf(TEXT("[%d] "), i); }
-        return {};
-    }
-
-    void store_result(bool const result) noexcept { all_passed &= result; }
+    auto start_msg(int32 i = INDEX_NONE) const -> FString;
+    void store_result(bool result) noexcept;
 
     template <typename T>
     bool are_equal(T const& exp, T const& got, FString const description) {
