@@ -532,12 +532,13 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
-    ml::reset(new_lasers, aiming_dot_product_buffer);
+    auto& can_fire{scratch_int_buffer};
+
+    ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
     ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
 
     ml::dot_product(aiming_dot_product_buffer, data.directions, data.target_directions);
 
-    int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
 
@@ -548,7 +549,14 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             continue;
         }
 
-        
+        can_fire.Add(ship_index);
+    }
+
+    auto const n_can_fire{can_fire.Num()};
+    ml::set_num(new_lasers, n_can_fire, EAllowShrinking::No);
+    int32 write_index{0};
+    for (int32 i{0}; i < n_can_fire; ++i) {
+        auto const ship_index{can_fire[i]};
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.directions, ship_index)};
@@ -556,16 +564,13 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         auto const laser_offset{fire_point_offset * direction};
         auto const laser_location{ship_location + laser_offset};
 
-        ml::assign(new_lasers.locations, write_index, laser_location);
-        ml::assign(new_lasers.rotations, write_index, direction.ToOrientationRotator());
-        new_lasers.instigator_handles[write_index] = data.entity_handles[ship_index];
-        new_lasers.colours[write_index] = colour_cache[data.teams[ship_index]];
+        ml::assign(new_lasers.locations, i, laser_location);
+        ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());
+        new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
+        new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
 
         data.attack_cooldowns[ship_index] = cooldown;
-        ++write_index;
     }
-
-    if (write_index != n_ships) { ml::set_num(new_lasers, write_index, EAllowShrinking::No); }
 
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
@@ -598,6 +603,8 @@ void ATestCapitalShipFighters::commit_orders() {
     auto const n_orders{ml::num(order_queue)};
     if (n_orders < 1) { return; }
 
+    auto& index_buffer{scratch_int_buffer};
+    index_buffer.Reset();
     index_buffer.SetNumUninitialized(n_orders, EAllowShrinking::No);
 
     for (int32 i{0}; i < n_orders; ++i) {

@@ -323,7 +323,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TArray<float> aiming_dot_product_buffer;
 
     // Misc buffers
-    TArray<int32> index_buffer;
+    TArray<int32> scratch_int_buffer;
 
     // Debugging
     UPROPERTY(EditAnywhere)
