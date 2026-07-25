@@ -23,22 +23,27 @@ struct FSoftTestAssertions {
         requires supports_lex_to_string<T> || is_uenum<T>
     static auto to_string(T const& value) -> FString {
         if constexpr (supports_lex_to_string<T>) {
-        return LexToString(value);
+            return LexToString(value);
         } else {
             return ml::to_string_without_type_prefix(value);
-    }
+        }
     }
 
     auto start_msg(int32 i = INDEX_NONE) const -> FString;
     void store_result(bool result) noexcept;
 
     template <typename T>
-    bool are_equal(T const& exp, T const& got, FString const description) {
+    bool are_equal(T const& exp,
+                   T const& got,
+                   FString const description,
+                   int32 const i = INDEX_NONE) {
         auto const result{exp == got};
         store_result(result);
 
-        auto msg{FString::Printf(
-            TEXT("%s (Exp %s, Got %s)"), *description, *to_string(exp), *to_string(got))};
+        FString msg{start_msg(i)};
+
+        msg += FString::Printf(
+            TEXT("%s (Exp %s, Got %s)"), *description, *to_string(exp), *to_string(got));
 
         display_result(result, msg);
 
