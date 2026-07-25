@@ -2,6 +2,8 @@
 
 #include "lex_to_string.h"
 
+#include <Sandbox/utilities/enums.h>
+
 #include <SandboxCore/array_utils.h>
 
 #include <CoreMinimal.h>
@@ -18,11 +20,13 @@ struct FSoftTestAssertions {
     void display_result(bool const passed, FString const& msg);
 
     template <typename T>
-        requires requires(T const& t) {
-            { LexToString(t) } -> std::convertible_to<FString>;
-        }
+        requires supports_lex_to_string<T> || is_uenum<T>
     static auto to_string(T const& value) -> FString {
+        if constexpr (supports_lex_to_string<T>) {
         return LexToString(value);
+        } else {
+            return ml::to_string_without_type_prefix(value);
+    }
     }
 
     auto start_msg(int32 i = INDEX_NONE) const -> FString;
