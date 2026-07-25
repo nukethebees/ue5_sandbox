@@ -298,6 +298,7 @@ void ATestBatchOrchestrator::route_actor_references() {
                       turrets,
                       spinners);
 }
+#if WITH_EDITOR
 void ATestBatchOrchestrator::spawn_missing_actors() {
     auto* world{GetWorld()};
 
@@ -321,3 +322,4 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
     spawn(mission_manager_class);
     spawn(niagara_spawner_class);
 }
+#endif
