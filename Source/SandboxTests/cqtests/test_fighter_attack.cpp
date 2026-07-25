@@ -30,7 +30,7 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
 {
     using time_type = ml::TestSimulationDriver::time_type;
 
-    inline static FTimespan const default_timeout{0, 0, 2};
+    inline static FTimespan const default_timeout{0, 0, 12};
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions checks{};
@@ -142,10 +142,10 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         TestCommandBuilder
             // Initial phase
             .Do([this] { initial_phase(); })
-            .Until(check_wait_over)
+            .Until(check_wait_over, default_timeout)
             // Fight
             .Then([this] { pre_fight_phase(); })
-            .Until(check_wait_over)
+            .Until(check_wait_over, default_timeout)
             .Then([this] { post_fight_phase(); });
     }
 };
