@@ -3,9 +3,9 @@
 #include "lex_to_string.h"
 
 #include <CoreMinimal.h>
+#include <Misc/AutomationTest.h>
 
 namespace ml {
-template <typename TestRunnerType>
 struct FSoftTestAssertions {
     inline static auto to_string(bool b) -> TCHAR const* {
         return b ? TEXT("true") : TEXT("false");
@@ -86,7 +86,7 @@ struct FSoftTestAssertions {
         return true;
     }
 
-    TestRunnerType* test_runner{nullptr};
+    FAutomationTestBase* test_runner{nullptr};
     bool log_successful_assertions{false};
     bool all_passed{true};
 };

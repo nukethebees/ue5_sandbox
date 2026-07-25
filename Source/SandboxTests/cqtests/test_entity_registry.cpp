@@ -21,7 +21,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
-    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
+    ml::FSoftTestAssertions checks{};
 
     TMap<ETestTeam, int32> expected_teams{
         {ETestTeam::White, 0},

@@ -23,7 +23,7 @@ The assumption is that there is one wave of fighters total.
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
+    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     ATestCapitalShips const* capitals{nullptr};

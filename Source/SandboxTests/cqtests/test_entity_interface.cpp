@@ -20,7 +20,7 @@
 TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks;
+    ml::FSoftTestAssertions checks;
 
     ATestBatchOrchestrator const* orchestrator{nullptr};
     ATestEntityRegistry const* registry{nullptr};

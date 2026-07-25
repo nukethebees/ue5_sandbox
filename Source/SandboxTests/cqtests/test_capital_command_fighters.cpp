@@ -21,7 +21,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
-    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
+    ml::FSoftTestAssertions checks{};
 
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};

@@ -17,7 +17,7 @@
 TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ml::FSoftTestAssertions<std::remove_cvref_t<decltype(*TestRunner)>> checks{};
+    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ATestFighterAttackDriver* local_driver{nullptr};
 
