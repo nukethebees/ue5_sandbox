@@ -36,10 +36,12 @@ class UTestCapitalShipFightersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 
+namespace ml::test_capital_ship_fighters {
+
 template <bool is_const>
-struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
-    using View = TTestCapitalShipFightersEntityDataView<false>;
-    using ConstView = TTestCapitalShipFightersEntityDataView<true>;
+struct EntityDataView : public ml::FSoAViewMixin {
+    using View = EntityDataView<false>;
+    using ConstView = EntityDataView<true>;
 
     template <typename T>
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
@@ -75,9 +77,9 @@ struct TTestCapitalShipFightersEntityDataView : public ml::FSoAViewMixin {
     }
 };
 
-struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
-    using View = TTestCapitalShipFightersEntityDataView<false>;
-    using ConstView = TTestCapitalShipFightersEntityDataView<true>;
+struct EntityData : public ml::FSoAArrayMixin {
+    using View = EntityDataView<false>;
+    using ConstView = EntityDataView<true>;
 
     TArray<FRegistryEntityHandle> entity_handles;
     TArray<ETestCapitalShipFightersTask> tasks;
@@ -111,20 +113,21 @@ struct FTestCapitalShipFightersEntityData : public ml::FSoAArrayMixin {
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK
 };
+}
 
 UCLASS()
 class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
   public:
-    using EntityBuffers = ml::MultiBuffer<FTestCapitalShipFightersEntityData, 2>;
+    using EntityData = ml::test_capital_ship_fighters::EntityData;
+    using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
     using Task = ETestCapitalShipFightersTask;
     static constexpr auto n_task_types{ml::EnumCountTrait<Task>::count_value};
     using TaskSpans = TStaticArray<FIndexSpan, n_task_types>;
     using TaskCounts = TStaticArray<int32, n_task_types>;
 
-    using TaskView = TTestCapitalShipFightersEntityDataView<false>;
-    using ConstTaskView = TTestCapitalShipFightersEntityDataView<true>;
-
+    using TaskView = EntityData::View;
+    using ConstTaskView = EntityData::ConstView;
     using TaskViews = TStaticArray<TaskView, n_task_types>;
     using ConstTaskViews = TStaticArray<ConstTaskView, n_task_types>;
 
@@ -167,12 +170,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
 
-    auto get_view(int32 const offset, int32 const width)
-        -> FTestCapitalShipFightersEntityData::View {
+    auto get_view(int32 const offset, int32 const width) -> EntityData::View {
         return entity_buffers.current().get_view(offset, width);
     }
-    auto get_const_view(int32 const offset, int32 const width) const
-        -> FTestCapitalShipFightersEntityData::ConstView {
+    auto get_const_view(int32 const offset, int32 const width) const -> EntityData::ConstView {
         return entity_buffers.current().get_const_view(offset, width);
     }
 
