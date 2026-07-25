@@ -82,7 +82,7 @@ void ATestCapitalShipFighters::begin_tick() {
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
-    entity_buffers.current().laser_cooldowns.tick(dt);
+    entity_buffers.current().attack_cooldowns.tick(dt);
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
@@ -429,7 +429,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     ml::add_zeroed(data.target_locations, n_new);
     ml::add_zeroed(data.target_directions, n_new);
     data.target_distance_sq.AddZeroed(n_new);
-    data.laser_cooldowns.remaining_times.AddZeroed(n_new);
+    data.attack_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
     new_spawn_entity_data.add_uninitialised(n_new);
@@ -538,7 +538,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
-        if (data.laser_cooldowns[ship_index] > 0.f) { continue; }
+        if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
         if (!data.target_handles[ship_index].is_valid()) { continue; }
         if (aiming_dot_product_buffer[ship_index] < aim_threshold) { continue; }
 
@@ -553,7 +553,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         new_lasers.instigator_handles[write_index] = data.entity_handles[ship_index];
         new_lasers.colours[write_index] = colour_cache[data.teams[ship_index]];
 
-        data.laser_cooldowns[ship_index] = cooldown;
+        data.attack_cooldowns[ship_index] = cooldown;
         ++write_index;
     }
 

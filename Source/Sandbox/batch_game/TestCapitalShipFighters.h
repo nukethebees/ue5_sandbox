@@ -58,7 +58,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     VectorsView target_locations;
     VectorsView target_directions;
     TView<float> target_distance_sq;
-    TView<float> laser_cooldowns;
+    TView<float> attack_cooldowns;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -73,7 +73,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
                                          self.target_locations,
                                          self.target_directions,
                                          self.target_distance_sq,
-                                         self.laser_cooldowns);
+                                         self.attack_cooldowns);
     }
 };
 
@@ -92,22 +92,22 @@ struct EntityData : public ml::FSoAArrayMixin {
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
-    FCountdownTimers laser_cooldowns;
+    FCountdownTimers attack_cooldowns;
 
     // clang-format off
-#define SANDBOX_PACK(STAMPER, END_SYMBOL)  \
-    STAMPER(entity_handles)    \
-    END_SYMBOL STAMPER(tasks)           \
-    END_SYMBOL STAMPER(locations)       \
-    END_SYMBOL STAMPER(directions)      \
-    END_SYMBOL STAMPER(speeds)          \
-    END_SYMBOL STAMPER(teams)           \
-    END_SYMBOL STAMPER(healths)         \
-    END_SYMBOL STAMPER(target_handles)  \
-    END_SYMBOL STAMPER(target_locations)  \
-    END_SYMBOL STAMPER(target_directions)  \
-    END_SYMBOL STAMPER(target_distance_sq)  \
-    END_SYMBOL STAMPER(laser_cooldowns)
+#define SANDBOX_PACK(STAMPER, END_SYMBOL)    \
+    STAMPER(entity_handles)                  \
+    END_SYMBOL STAMPER(tasks)                \
+    END_SYMBOL STAMPER(locations)            \
+    END_SYMBOL STAMPER(directions)           \
+    END_SYMBOL STAMPER(speeds)               \
+    END_SYMBOL STAMPER(teams)                \
+    END_SYMBOL STAMPER(healths)              \
+    END_SYMBOL STAMPER(target_handles)       \
+    END_SYMBOL STAMPER(target_locations)     \
+    END_SYMBOL STAMPER(target_directions)    \
+    END_SYMBOL STAMPER(target_distance_sq)   \
+    END_SYMBOL STAMPER(attack_cooldowns)
     // clang-format on
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
