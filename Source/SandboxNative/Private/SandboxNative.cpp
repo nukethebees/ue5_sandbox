@@ -1,4 +1,4 @@
-#include "Sandbox/SandboxNative.h"
+#include "SandboxNative/SandboxNative.h"
 
 void FSandboxNativeModule::StartupModule() {}
 void FSandboxNativeModule::ShutdownModule() {}
