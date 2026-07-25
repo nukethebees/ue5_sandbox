@@ -527,6 +527,8 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const laser_max_distance{actor_config->laser_max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
 
+    auto const attack_retry_cooldown{actor_config->attack_retry_cooldown};
+
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
@@ -537,10 +539,16 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
-        if (data.target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
         if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
-        if (!data.target_handles[ship_index].is_valid()) { continue; }
-        if (aiming_dot_product_buffer[ship_index] < aim_threshold) { continue; }
+
+        if ((data.target_distance_sq[ship_index] > laser_max_distance_sq) ||
+            (!data.target_handles[ship_index].is_valid()) ||
+            (aiming_dot_product_buffer[ship_index] < aim_threshold)) {
+            data.attack_cooldowns[ship_index] += attack_retry_cooldown;
+            continue;
+        }
+
+        
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.directions, ship_index)};
