@@ -1,12 +1,12 @@
-#include "lex_to_string.h"
-
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
+#include <SandboxTests/cqtests/lex_to_string.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <Components/MapTestSpawner.h>
@@ -41,19 +41,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     };
 
     BEFORE_EACH()
-    {
-        spawner = MakeUnique<FMapTestSpawner>(
-            TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-            TEXT("FuncT_capital_fighter_handles"));
-        spawner->AddWaitUntilLoadedCommand(TestRunner);
-
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-#if WITH_EDITOR
-        auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-        checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-    }
+    { spawner = ml::level_test_setup(TEXT("FuncT_capital_fighter_handles"), TestRunner, checks); }
   private:
     /* ------------------------------------------------------------------------------------------ */
     // Sampling

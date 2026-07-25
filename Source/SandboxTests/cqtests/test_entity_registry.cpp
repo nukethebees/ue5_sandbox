@@ -7,6 +7,7 @@
 #include <Sandbox/utilities/enums.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/array_math.h>
@@ -33,19 +34,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
     };
 
     BEFORE_EACH()
-    {
-        spawner = MakeUnique<FMapTestSpawner>(
-            TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-            TEXT("FuncT_entity_registry"));
-        spawner->AddWaitUntilLoadedCommand(TestRunner);
-
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-#if WITH_EDITOR
-        auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-        checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-    }
+    { spawner = ml::level_test_setup(TEXT("FuncT_entity_registry"), TestRunner, checks); }
   private:
     void initial_setup() {
         auto& world{spawner->GetWorld()};

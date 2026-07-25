@@ -7,6 +7,7 @@
 #include <Sandbox/utilities/enums.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <Components/MapTestSpawner.h>
@@ -36,19 +37,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     static constexpr int32 test_capital_idx{0};
 
     BEFORE_EACH()
-    {
-        spawner = MakeUnique<FMapTestSpawner>(
-            TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-            TEXT("FuncT_capital_command_fighters"));
-        spawner->AddWaitUntilLoadedCommand(TestRunner);
-
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-#if WITH_EDITOR
-        auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-        checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-    }
+    { spawner = ml::level_test_setup(TEXT("FuncT_capital_command_fighters"), TestRunner, checks); }
   private:
     void initial_setup() {
         auto& world{spawner->GetWorld()};

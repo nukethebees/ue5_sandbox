@@ -7,6 +7,7 @@
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/actor_utils.h>
@@ -32,15 +33,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     bool all_passed{true};
 
     BEFORE_EACH()
-    {
-        spawner = MakeUnique<FMapTestSpawner>(
-            TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-            TEXT("FuncT_proxy_base"));
-        spawner->AddWaitUntilLoadedCommand(TestRunner);
-
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-    }
+    { spawner = ml::level_test_setup(TEXT("FuncT_proxy_base"), TestRunner, checks); }
   private:
     void initial_setup() {
         auto& world{spawner->GetWorld()};
