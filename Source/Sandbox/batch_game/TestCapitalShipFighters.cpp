@@ -517,7 +517,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
     ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
 
-    auto const n_ships{get_num_instances()};
+    auto const n_ships{ml::num(data)};
     auto const cooldown{actor_config->fire_cooldown};
     auto const fire_point_offset{actor_config->fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
@@ -530,21 +530,20 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
-    ml::reset(new_lasers);
-    ml::add_uninitialised(n_ships, new_lasers);
+    ml::reset(new_lasers, aiming_dot_product_buffer);
+    ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
+
+    ml::dot_product(aiming_dot_product_buffer, data.directions, data.target_directions);
 
     int32 write_index{0};
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.target_distance_sq[ship_index] > laser_max_distance_sq) { continue; }
         if (data.laser_cooldowns[ship_index] > 0.f) { continue; }
         if (!data.target_handles[ship_index].is_valid()) { continue; }
+        if (aiming_dot_product_buffer[ship_index] < aim_threshold) { continue; }
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
-        auto const target_direction{ml::get_vector3f(data.target_directions, ship_index)};
         auto const direction{ml::get_vector3f(data.directions, ship_index)};
-
-        auto const dot_product{FVector3f::DotProduct(direction, target_direction)};
-        if (dot_product < aim_threshold) { continue; }
 
         auto const laser_offset{fire_point_offset * direction};
         auto const laser_location{ship_location + laser_offset};
