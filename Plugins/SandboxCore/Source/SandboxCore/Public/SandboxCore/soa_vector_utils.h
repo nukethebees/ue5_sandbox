@@ -20,6 +20,20 @@ concept is_vec3f = std::same_as<std::remove_cvref_t<T>, FVectors3f> ||
                    std::same_as<std::remove_cvref_t<T>, TVectors3View<float>> ||
                    std::same_as<std::remove_cvref_t<T>, TVectors3View<float const>>;
 
+template <typename T>
+concept is_mutable_vec3f = is_vec3f<T> && std::is_lvalue_reference_v<T&&> && requires(T&& value) {
+    { value.xs.GetData() } -> std::convertible_to<float*>;
+    { value.ys.GetData() } -> std::convertible_to<float*>;
+    { value.zs.GetData() } -> std::convertible_to<float*>;
+};
+
+template <typename T>
+concept is_readable_vec3f = is_vec3f<T> && requires(T const& value) {
+    { value.xs.GetData() } -> std::convertible_to<float const*>;
+    { value.ys.GetData() } -> std::convertible_to<float const*>;
+    { value.zs.GetData() } -> std::convertible_to<float const*>;
+};
+
 /* ---------------------------------------------------------------------------------------------- */
 // Checks
 /* ---------------------------------------------------------------------------------------------- */
@@ -266,7 +280,8 @@ void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> c
 /* ---------------------------------------------------------------------------------------------- */
 // Distance
 /* ---------------------------------------------------------------------------------------------- */
-inline auto dist_sq(FVectors3f const& vecs, int32 const i, FVector3f const& other) -> float {
+template <is_readable_vec3f T>
+auto dist_sq(T&& vecs, int32 const i, FVector3f const& other) -> float {
     auto const dx{vecs.xs[i] - other.X};
     auto const dy{vecs.ys[i] - other.Y};
     auto const dz{vecs.zs[i] - other.Z};
@@ -282,7 +297,8 @@ inline auto
 
     return ml::size_sq(dx, dy, dz);
 }
-inline void dist_sq(TArrayView<float> const out, FVectors3f const& as, FVectors3f const& bs) {
+template <is_readable_vec3f U, is_readable_vec3f V>
+void dist_sq(TArrayView<float> const out, U&& as, V&& bs) {
     ml::kernel::dist_sq_vector(out.GetData(),
                                as.xs.GetData(),
                                as.ys.GetData(),
@@ -319,8 +335,8 @@ inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
 /* ---------------------------------------------------------------------------------------------- */
 // Direction
 /* ---------------------------------------------------------------------------------------------- */
-template <is_vec3f T>
-inline void direction(T& out, T const& from, T const& to) {
+template <is_mutable_vec3f OutType, is_readable_vec3f FromType, is_readable_vec3f ToType>
+inline void direction(OutType&& out, FromType&& from, ToType&& to) {
     auto const n{ml::num(from)};
     check(ml::num(to) == n);
     check(ml::num(out) >= n);
