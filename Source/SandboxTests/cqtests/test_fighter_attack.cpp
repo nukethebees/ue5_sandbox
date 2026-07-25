@@ -16,16 +16,41 @@
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
+namespace {
+struct FPreFight {
+    int32 enemy_health;
+};
+
+struct FPostFight {
+    int32 enemy_health;
+};
+}
+
 TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
 {
+    using time_type = ml::TestSimulationDriver::time_type;
+
+    inline static FTimespan const default_timeout{0, 0, 2};
+
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ATestFighterAttackDriver* local_driver{nullptr};
 
+    FRegistryEntityHandle hero;
+    ETestTeam hero_team;
+
+    FRegistryEntityHandle enemy;
+    ETestTeam enemy_team;
+
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_fighter_attack"), TestRunner, checks); }
   private:
+    /* ---------------------------------------------------------------------------- */
+    // Initial phase
+    /* ---------------------------------------------------------------------------- */
+    static constexpr time_type initial_wait{1.0};
+
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
@@ -34,15 +59,81 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     void initial_checks() {
         checks.is_valid(local_driver, TEXT("Local driver is valid."));
 
+        auto const setup_error{local_driver->get_setup_error()};
+        checks.is_true(setup_error.IsEmpty(), TEXT("Checking local driver setup"));
+
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
+    void initial_samples() {
+        auto const& capitals{test_driver->get_capital_ships()};
 
-    inline static FTimespan const default_timeout{0, 0, 2};
+        hero_team = local_driver->get_hero_team();
+        enemy_team = local_driver->get_enemy_team();
+
+        auto const maybe_hero{capitals.find_first_handle_on_team(hero_team)};
+        auto const maybe_enemy{capitals.find_first_handle_on_team(enemy_team)};
+
+        checks.is_true(maybe_hero.has_value(), TEXT("Read hero handle"));
+        checks.is_true(maybe_enemy.has_value(), TEXT("Read enemy handle"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        hero = *maybe_hero;
+        enemy = *maybe_enemy;
+    }
+    void initial_phase() {
+        initial_setup();
+        initial_samples();
+        initial_checks();
+
+        test_driver->set_delta_time_wait(initial_wait);
+    }
+
+    /* ---------------------------------------------------------------------------- */
+    // Fight phase
+    /* ---------------------------------------------------------------------------- */
+    FPreFight pre_fight;
+    FPostFight post_fight;
+
+    void pre_fight_samples() {}
+    void check_fighters_team() {
+        auto const& fighters{test_driver->get_capital_ship_fighters()};
+        auto const teams{fighters.get_teams()};
+
+        auto const n{teams.Num()};
+        for (int32 i{0}; i < n; ++i) {
+            checks.are_equal(hero_team, teams[i], TEXT("Fighters are on hero team."));
+        }
+    }
+    void pre_fight_checks() {
+        check_fighters_team();
+    }
+    void pre_fight_phase() {
+        pre_fight_samples();
+        pre_fight_checks();
+
+        test_driver->set_delta_time_wait(local_driver->get_fight_duration());
+    }
+
+    // Post fight
+    void post_fight_samples() {}
+    void post_fight_checks() {}
+    void post_fight_phase() {
+        post_fight_samples();
+        post_fight_checks();
+    }
+
     TEST_METHOD(Main)
     {
-        TestCommandBuilder.Do([this] {
-            initial_setup();
-            initial_checks();
-        });
+        auto check_wait_over{[this] { return test_driver->time_wait_completed(); }};
+
+        TestCommandBuilder
+            // Initial phase
+            .Do([this] { initial_phase(); })
+            .Until(check_wait_over)
+            // Fight
+            .Then([this] { pre_fight_phase(); })
+            .Until(check_wait_over)
+            .Then([this] { post_fight_phase(); });
     }
 };
