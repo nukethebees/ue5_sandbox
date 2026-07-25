@@ -114,19 +114,19 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                 initial_setup();
                 set_wait_after_kills();
             })
-            .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
+            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
             .Then([this] { run_spawn_capital_handle_checks(); })
             .Then([this] {
                 kill_initial_targets();
                 set_wait_after_kills();
             })
-            .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
+            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
             .Then([this] { check_targets_after_kills(); })
             .Then([this] {
                 kill_all_not_on_main_team();
                 set_wait_after_kills();
             })
-            .Until([this] { return test_driver->wait_is_over(); }, FTimespan{0, 0, 1})
+            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
             .Then([this] {
                 check_fighter_tasks_are<Task::Standby>();
 

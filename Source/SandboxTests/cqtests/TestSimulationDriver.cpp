@@ -76,7 +76,20 @@ void TestSimulationDriver::queue_kill(FRegistryEntityHandle const target,
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
     tick_wait_end = orchestrator.get_tick_count() + wait_cycles;
 }
-bool TestSimulationDriver::wait_is_over() const {
+bool TestSimulationDriver::tick_wait_completed() const {
     return orchestrator.get_tick_count() >= tick_wait_end;
+}
+
+auto TestSimulationDriver::get_time() const -> time_type {
+    return world.GetTimeSeconds();
+}
+void TestSimulationDriver::set_delta_time_wait(time_type dt) {
+    time_wait_end = get_time() + dt;
+}
+void TestSimulationDriver::set_time_wait(time_type wait_end) {
+    time_wait_end = wait_end;
+}
+bool TestSimulationDriver::time_wait_completed() const {
+    return get_time() >= time_wait_end;
 }
 }

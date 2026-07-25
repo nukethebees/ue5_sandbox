@@ -574,7 +574,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             // Fighter kill
             .Then([this] { pre_fighter_kill_stage(); })
             .Then([this] { kill_fighters_stage(); })
-            .Until([this] { return test_driver->wait_is_over(); }, default_timeout)
+            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
             .Then([this] { post_fighter_kill_stage(); });
     }
     TEST_METHOD(KillCapital)
@@ -585,7 +585,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             // Capital kill
             .Then([this] { pre_capital_kill_stage(); })
             .Then([this] { capital_kill_stage(); })
-            .Until([this] { return test_driver->wait_is_over(); }, default_timeout)
+            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
             .Then([this] { post_capital_kill_stage(); });
     }
     TEST_METHOD(All)
@@ -596,12 +596,12 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             .Then([this] { pre_fighter_kill_stage(); })
             // Fighter kill
             .Then([this] { kill_fighters_stage(); })
-            .Until([this] { return test_driver->wait_is_over(); }, default_timeout)
+            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
             .Then([this] { post_fighter_kill_stage(); })
             // Capital kill
             .Then([this] { pre_capital_kill_stage(); })
             .Then([this] { capital_kill_stage(); })
-            .Until([this] { return test_driver->wait_is_over(); }, default_timeout)
+            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
             .Then([this] { post_capital_kill_stage(); });
     }
 };

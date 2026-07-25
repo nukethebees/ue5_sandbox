@@ -17,6 +17,8 @@ class ATestStaticTurrets;
 
 namespace ml {
 struct TestSimulationDriver {
+    using time_type = double;
+
     explicit TestSimulationDriver(UWorld& world,
                                   ATestEntityRegistry& registry,
                                   ATestBatchOrchestrator& orchestrator)
@@ -35,13 +37,18 @@ struct TestSimulationDriver {
     void queue_kill(FRegistryEntityHandle const target, FRegistryEntityHandle const instigator);
 
     void set_wait_until_tick_from_now(uint64 wait_cycles);
+    bool tick_wait_completed() const;
 
-    bool wait_is_over() const;
+    auto get_time() const -> time_type;
+    void set_delta_time_wait(time_type dt);
+    void set_time_wait(time_type dt);
+    bool time_wait_completed() const;
 
     UWorld& world;
     ATestEntityRegistry& registry;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};
+    time_type time_wait_end{0.f};
 };
 }
