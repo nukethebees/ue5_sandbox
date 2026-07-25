@@ -279,6 +279,12 @@ auto ATestCapitalShips::find_first_index_on_team(ETestTeam team) const noexcept
     return {};
 }
 
+auto ATestCapitalShips::get_health(FRegistryEntityHandle handle) const noexcept -> int32 {
+    auto const idx{entities.handles.Find(handle)};
+    check(idx != INDEX_NONE);
+    return entities.healths[idx];
+}
+
 // Ship spawning
 void ATestCapitalShips::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);

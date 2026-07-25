@@ -195,6 +195,8 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_team(int32 const i) const noexcept -> ETestTeam { return entities.teams[i]; }
     auto get_team(FRegistryEntityHandle handle) const noexcept -> ETestTeam;
 
+    auto get_health(FRegistryEntityHandle handle) const noexcept -> int32;
+
     auto find_first_index_on_team(ETestTeam team) const noexcept -> std::optional<int32>;
     auto find_first_handle_on_team(ETestTeam team) const noexcept
         -> std::optional<FRegistryEntityHandle> {
