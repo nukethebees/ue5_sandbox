@@ -333,7 +333,21 @@ def write_header(header_filename: str, spec: HeaderSpec) -> Path:
 
 
 def vector_spec() -> HeaderSpec:
-    functions = default_functions()
+    functions = [
+        *default_functions(),
+        FnSpec(
+            name="add_zeroed",
+            array_fn="AddZeroed",
+            args=["size_type const count"],
+            pass_args=["count"],
+        ),
+        FnSpec(
+            name="add_defaulted",
+            array_fn="AddDefaulted",
+            args=["size_type const count"],
+            pass_args=["count"],
+        ),
+    ]
     return HeaderSpec(
         layouts=[
             LayoutSpec(
