@@ -5,31 +5,6 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 namespace ml::entity_registry {
-auto EntityData::get_view() -> View {
-    return {
-        {},
-        locations.get_view(),
-        velocities.get_view(),
-        radii,
-        healths,
-        teams,
-        entity_types,
-        alive,
-    };
-}
-auto EntityData::get_const_view() const -> ConstView {
-    return {
-        {},
-        locations.get_view(),
-        velocities.get_view(),
-        radii,
-        healths,
-        teams,
-        entity_types,
-        alive,
-    };
-}
-
 void EntityData::add_disabled(int32 const count) {
     add_uninitialised(count);
 

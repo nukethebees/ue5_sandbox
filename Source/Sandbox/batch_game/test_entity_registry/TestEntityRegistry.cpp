@@ -127,7 +127,7 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
     generations.AddZeroed(indices_left_to_reserve);
     unique_ids.AddDefaulted(indices_left_to_reserve);
 
-    entity_data.add(view.get_slice(ml::num(new_entities), indices_left_to_reserve));
+    entity_data.add(view.get_view(ml::num(new_entities), indices_left_to_reserve));
 
     for (int32 i{0}; i < indices_left_to_reserve; ++i) {
         auto const entity_index{start_index + i};

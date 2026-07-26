@@ -17,6 +17,9 @@ namespace ml::entity_registry {
 
 template <bool is_const>
 struct EntityDataView : public ml::FSoAViewMixin {
+    using View = EntityDataView<false>;
+    using ConstView = EntityDataView<true>;
+
     template <typename T>
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
     template <typename T>
@@ -31,31 +34,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
     TView<ETestTeam> teams;
     TView<ETestEntityType> entity_types;
     TView<uint8> alive;
-
-    auto get_slice(int32 const offset, int32 const count) const {
-        return ThisClass{
-            {},
-            locations.slice(offset, count),
-            velocities.slice(offset, count),
-            radii.Slice(offset, count),
-            healths.Slice(offset, count),
-            teams.Slice(offset, count),
-            entity_types.Slice(offset, count),
-            alive.Slice(offset, count),
-        };
-    }
-    auto right(int32 const count) const {
-        return ThisClass{
-            {},
-            locations.right(count),
-            velocities.right(count),
-            radii.Right(count),
-            healths.Right(count),
-            teams.Right(count),
-            entity_types.Right(count),
-            alive.Right(count),
-        };
-    }
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -73,17 +51,12 @@ struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView<false>;
     using ConstView = EntityDataView<true>;
 
-    auto get_view() -> View;
-    auto get_const_view() const -> ConstView;
-
     void add_disabled(int32 const count);
     void add(ConstView const view);
 
     void set_all_alive();
     void set_all_velocities(float const v);
     void set_all_entity_types(ETestEntityType const v);
-
-    auto take_right(int32 const count);
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
