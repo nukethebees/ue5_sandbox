@@ -91,11 +91,14 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto is_valid_handle(FRegistryEntityHandle const index) const -> bool;
     auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
-    // Handle updates
-    void refresh_handles(TArrayView<FRegistryEntityHandle> handles) const;
-
     // Entity data updates
-    void refresh_locations(TConstArrayView<FRegistryEntityHandle> handles, FVectors3f& locations);
+    void refresh_handles(TArrayView<FRegistryEntityHandle> handles) const;
+    void refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
+                           FVectors3f::View const& locations);
+    // Empty views are considered to be unused parameters
+    void refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
+                             FVectors3f::View const& locations,
+                             TArrayView<float> radii);
 
     // Entity queries
     auto get_num_elements() const noexcept -> int32;

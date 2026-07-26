@@ -305,7 +305,7 @@ void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> cons
 
 // Entity data updates
 void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
-                                            FVectors3f& locations) {
+                                            FVectors3f::View const& locations) {
     auto const n{handles.Num()};
     check(ml::num(locations) == n);
 
@@ -322,6 +322,38 @@ void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandl
             locations.xs[i] = entity_data.locations.xs[handle.index];
             locations.ys[i] = entity_data.locations.ys[handle.index];
             locations.zs[i] = entity_data.locations.zs[handle.index];
+        }
+    }
+}
+void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
+                                              FVectors3f::View const& locations,
+                                              TArrayView<float> const radii) {
+    auto const n_handles{ml::num(handles)};
+    if (n_handles == 0) { return; }
+
+    auto should_update_view{[n_handles](auto const& view) -> bool {
+        auto const n_view{ml::num(view)};
+        auto const should_update{n_view == n_handles};
+
+        if (!((n_view == 0) || should_update)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("View has %d elements but got %d handles"),
+                   n_view,
+                   n_handles);
+        }
+
+        return should_update;
+    }};
+
+    refresh_handles(handles);
+
+    if (should_update_view(locations)) { refresh_locations(handles, locations); }
+
+    if (should_update_view(radii)) {
+        for (int32 i{}; i < n_handles; ++i) {
+            auto const handle{handles[i]};
+            radii[i] = handle.is_null() ? 0.f : entity_data.radii[handle.index];
         }
     }
 }
