@@ -76,9 +76,6 @@ void ATestCapitalShipFighters::begin_tick() {
     auto& data{entity_buffers.current()};
 
     clear_tick_buffers();
-    refresh_target_handles();
-    refresh_task_views();
-    refresh_target_locations();
 }
 void ATestCapitalShipFighters::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
@@ -135,13 +132,19 @@ void ATestCapitalShipFighters::update_entity_registry() {
 void ATestCapitalShipFighters::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::sync_from_registry);
 
-    tasks_are_contiguous(); // This should be true before pruning
+    tasks_are_contiguous(); // Should be true before pruning
 
+    // Prune
     remove_dead_entities();
-    commit_spawns();
-    commit_orders();
 
+    // Spawn
+    commit_spawns();
+
+    // Update
+    commit_orders();
+    refresh_target_data();
     if (!tasks_are_contiguous()) { refresh_layout(); }
+    refresh_task_views();
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
@@ -417,17 +420,20 @@ void ATestCapitalShipFighters::commit_spawns() {
 
     auto const speed{actor_config->speed};
 
-    // Add new data
+    // entity_handles handles later
     ml::append_n(data.tasks, Task::Attack, n_new);
     ml::append_from(data.locations, new_locations);
     ml::add_uninitialised(data.directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
     ml::append_n(data.healths, actor_config->health, n_new);
+
     data.target_handles.Append(new_targets);
     ml::add_zeroed(data.target_locations, n_new);
     ml::add_zeroed(data.target_directions, n_new);
     data.target_distance_sq.AddZeroed(n_new);
+    data.target_radii.AddZeroed(n_new);
+
     data.attack_cooldowns.remaining_times.AddZeroed(n_new);
 
     // Fill entity data and set directions
@@ -490,19 +496,6 @@ void ATestCapitalShipFighters::remove_dead_entities() {
     local_indices_to_remove.Sort(TGreater<int32>{});
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, ismc_transforms, data);
-
-    // Update target handle
-    auto const n{get_num_instances()};
-    for (int32 i{0}; i < n; ++i) {
-        auto const target_handle{data.target_handles[i]};
-        if (target_handle.is_valid()) {
-            if (entity_registry->is_stale(target_handle)) {
-                data.target_handles[i] = FRegistryEntityHandle{};
-            } else {
-                ml::assign(data.target_locations, i, entity_registry->get_location(target_handle));
-            }
-        }
-    }
 
     // Remove ISMC instances
     if (local_indices_to_remove.Num()) {
@@ -623,12 +616,11 @@ void ATestCapitalShipFighters::commit_orders() {
 }
 
 // Targets
-void ATestCapitalShipFighters::refresh_target_handles() {
-    entity_registry->refresh_handles(entity_buffers.current().target_handles);
-}
-void ATestCapitalShipFighters::refresh_target_locations() {
+void ATestCapitalShipFighters::refresh_target_data() {
     auto& data{entity_buffers.current()};
-    entity_registry->refresh_locations(data.target_handles, data.target_locations);
+
+    entity_registry->refresh_entity_data(
+        data.target_handles, data.target_locations.get_view(), data.target_radii);
 }
 
 // Misc

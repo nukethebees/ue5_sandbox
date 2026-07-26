@@ -58,6 +58,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     VectorsView target_locations;
     VectorsView target_directions;
     TView<float> target_distance_sq;
+    TView<float> target_radii;
     TView<float> attack_cooldowns;
 
     template <typename TFunc>
@@ -73,6 +74,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
                                          self.target_locations,
                                          self.target_directions,
                                          self.target_distance_sq,
+                                         self.target_radii,
                                          self.attack_cooldowns);
     }
 };
@@ -88,10 +90,12 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
+
     TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
+    TArray<float> target_radii;
     FCountdownTimers attack_cooldowns;
 
     // clang-format off
@@ -107,6 +111,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     END_SYMBOL STAMPER(target_locations)     \
     END_SYMBOL STAMPER(target_directions)    \
     END_SYMBOL STAMPER(target_distance_sq)   \
+    END_SYMBOL STAMPER(target_radii)   \
     END_SYMBOL STAMPER(attack_cooldowns)
     // clang-format on
 
@@ -270,8 +275,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void commit_orders();
 
     // Targets
-    void refresh_target_handles();
-    void refresh_target_locations();
+    void refresh_target_data();
 
     // Misc
     void clear_tick_buffers();
