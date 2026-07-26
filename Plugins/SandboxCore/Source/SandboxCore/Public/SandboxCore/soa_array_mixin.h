@@ -155,20 +155,18 @@ struct FSoAArrayMixin : public FSoACommonMixin {
 
 */
 
-#define SANDBOX_COMMA ,
-#define SANDBOX_SEMICOLON ;
-#define SANDBOX_EMPTY
+#define SANDBOX_EXPAND_COMMA(INPUT) INPUT,
 #define SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_SOA_MEMBERS)                                       \
     template <typename TFunc>                                                                 \
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {                     \
         return std::forward<TFunc>(func)(                                                     \
-            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS, SANDBOX_COMMA));              \
+            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS, SANDBOX_EXPAND_COMMA));       \
     }                                                                                         \
     template <typename Self, typename Other, typename TFunc>                                  \
         requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>        \
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) { \
         return std::forward<TFunc>(func)(                                                     \
-            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS, SANDBOX_COMMA));        \
+            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS, SANDBOX_EXPAND_COMMA)); \
     }
 
 struct FSoAViewMixin : public FSoACommonMixin {};

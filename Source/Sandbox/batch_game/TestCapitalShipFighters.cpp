@@ -88,10 +88,43 @@ void ATestCapitalShipFighters::make_decisions() {
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
+    auto const d_turn{turn_speed_unitless * dt};
+
     auto& data{entity_buffers.current()};
 
-    move(dt, get_task_view(Task::MoveToDestination));
-    move(dt, get_task_view(Task::Attack));
+    if (data.num() < 1) { return; }
+
+    auto const& move_view{get_task_view(Task::MoveToDestination)};
+    auto const& attack_view{get_task_view(Task::Attack)};
+
+    auto const do_move{move_view.num() > 0};
+    auto const do_attack{attack_view.num() > 0};
+
+    if (do_attack) {
+        // [Attack] Update move destination to enemy location
+        ml::assign_from(attack_view.move_target_locations, attack_view.target_locations);
+
+        // [Attack] Update direction to target
+        ml::direction(
+            attack_view.target_directions, attack_view.locations, attack_view.target_locations);
+    }
+
+    // [All] Update movement direction
+    ml::direction(data.movement_directions, data.locations, data.move_target_locations);
+
+    // Look phase
+    if (do_move) {
+        // [Move] Look at movement destination
+        ml::lerp_in_place(move_view.aim_directions, move_view.movement_directions, d_turn);
+    }
+    if (do_attack) {
+        // [Attack] Look at enemy
+        ml::lerp_in_place(attack_view.aim_directions, attack_view.target_directions, d_turn);
+    }
+
+    // Move phase
+    move(dt, move_view);
+    move(dt, attack_view);
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
@@ -145,6 +178,8 @@ void ATestCapitalShipFighters::sync_from_registry() {
     refresh_target_data();
     if (!tasks_are_contiguous()) { refresh_layout(); }
     refresh_task_views();
+
+    checkCode(entity_buffers.current().validate_array_sizes());
 }
 void ATestCapitalShipFighters::update_visuals() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
@@ -161,9 +196,7 @@ void ATestCapitalShipFighters::end_tick() {
 
 // Movement
 void ATestCapitalShipFighters::move(float const dt, TaskView const& fighters) {
-    ml::direction(fighters.target_directions, fighters.locations, fighters.target_locations);
-    ml::lerp_in_place(fighters.aim_directions, fighters.target_directions, turn_speed_unitless * dt);
-    ml::add_scaled_in_place(fighters.locations, fighters.aim_directions, fighters.speeds, dt);
+    ml::add_scaled_in_place(fighters.locations, fighters.movement_directions, fighters.speeds, dt);
 }
 
 // Accessors
@@ -423,14 +456,16 @@ void ATestCapitalShipFighters::commit_spawns() {
     // entity_handles handles later
     ml::append_n(data.tasks, Task::Attack, n_new);
     ml::append_from(data.locations, new_locations);
+    data.move_target_locations.add_zeroed(n_new);
+    data.movement_directions.add_zeroed(n_new);
     ml::add_uninitialised(data.aim_directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
     ml::append_n(data.healths, actor_config->health, n_new);
 
     data.target_handles.Append(new_targets);
-    ml::add_zeroed(data.target_locations, n_new);
-    ml::add_zeroed(data.target_directions, n_new);
+    data.target_locations.add_zeroed(n_new);
+    data.target_directions.add_zeroed(n_new);
     data.target_distance_sq.AddZeroed(n_new);
     data.target_radii.AddZeroed(n_new);
 
@@ -678,6 +713,8 @@ void ATestCapitalShipFighters::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
+
+    data.validate_array_sizes();
 }
 void ATestCapitalShipFighters::check_fighter_tasks() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::check_fighter_tasks);

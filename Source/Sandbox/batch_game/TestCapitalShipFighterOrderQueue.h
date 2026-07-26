@@ -32,13 +32,11 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     TArray<ETestCapitalShipFightersTask> tasks;
     TArray<FRegistryEntityHandle> targets;
 
-    // clang-format off
-#define SANDBOX_PACK(STAMPER, END_SYMBOL)  \
-    STAMPER(handles)    \
-    END_SYMBOL STAMPER(orders)           \
-    END_SYMBOL STAMPER(tasks)       \
-    END_SYMBOL STAMPER(targets)
-    // clang-format on
+#define SANDBOX_PACK(STAMPER, NON_FINAL) \
+    NON_FINAL(STAMPER(handles))         \
+    NON_FINAL(STAMPER(orders))          \
+    NON_FINAL(STAMPER(tasks))           \
+    STAMPER(targets)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK

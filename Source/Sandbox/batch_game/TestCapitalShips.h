@@ -60,10 +60,7 @@ struct SpawnData : public ml::FSoAArrayMixin {
 struct EntityTickData : public ml::FSoAArrayMixin {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
 
-    // clang-format off
-#define SANDBOX_PACK(STAMPER, END_SYMBOL)  \
-    STAMPER(ships_ready_to_spawn_fighters_buffer)
-    // clang-format on
+#define SANDBOX_PACK(STAMPER, NON_FINAL) STAMPER(ships_ready_to_spawn_fighters_buffer)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK

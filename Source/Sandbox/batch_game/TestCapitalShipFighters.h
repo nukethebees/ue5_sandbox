@@ -47,36 +47,40 @@ struct EntityDataView : public ml::FSoAViewMixin {
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
     using VectorsView = std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
 
-    TView<FRegistryEntityHandle> entity_handles;
-    TView<ETestCapitalShipFightersTask> tasks;
-    VectorsView locations;
-    VectorsView aim_directions;
-    TView<float> speeds;
-    TView<ETestTeam> teams;
-    TView<int32> healths;
-    TView<FRegistryEntityHandle> target_handles;
-    VectorsView target_locations;
-    VectorsView target_directions;
-    TView<float> target_distance_sq;
-    TView<float> target_radii;
-    TView<float> attack_cooldowns;
+#define EXPAND(X) X
+#define EXPAND_WITH_COMMA(X) X,
+#define MEMBER_DECL(TYPE, NAME) TYPE NAME;
+#define FN_ARG(TYPE, NAME) self.NAME
+
+#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                    \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles)) \
+    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))   \
+    NON_FINAL(X(VectorsView, locations))                       \
+    NON_FINAL(X(VectorsView, aim_directions))                  \
+    NON_FINAL(X(VectorsView, move_target_locations))           \
+    NON_FINAL(X(VectorsView, movement_directions))             \
+    NON_FINAL(X(TView<float>, speeds))                         \
+    NON_FINAL(X(TView<ETestTeam>, teams))                      \
+    NON_FINAL(X(TView<int32>, healths))                        \
+    NON_FINAL(X(TView<float>, attack_cooldowns))               \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles)) \
+    NON_FINAL(X(VectorsView, target_locations))                \
+    NON_FINAL(X(VectorsView, target_directions))               \
+    NON_FINAL(X(TView<float>, target_distance_sq))             \
+    X(TView<float>, target_radii)
+
+    SANDBOX_CLASS_MEMBERS(MEMBER_DECL, EXPAND)
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         self.tasks,
-                                         self.locations,
-                                         self.aim_directions,
-                                         self.speeds,
-                                         self.teams,
-                                         self.healths,
-                                         self.target_handles,
-                                         self.target_locations,
-                                         self.target_directions,
-                                         self.target_distance_sq,
-                                         self.target_radii,
-                                         self.attack_cooldowns);
+        return std::forward<TFunc>(func)(SANDBOX_CLASS_MEMBERS(FN_ARG, EXPAND_WITH_COMMA));
     }
+
+#undef EXPAND
+#undef EXPAND_WITH_COMMA
+#undef MEMBER_DECL
+#undef FN_ARG
+#undef SANDBOX_CLASS_MEMBERS
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
@@ -87,33 +91,35 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<ETestCapitalShipFightersTask> tasks;
     FVectors3f locations;
     FVectors3f aim_directions;
+    FVectors3f move_target_locations;
+    FVectors3f movement_directions;
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
+    FCountdownTimers attack_cooldowns;
 
     TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
     FVectors3f target_directions;
     TArray<float> target_distance_sq;
     TArray<float> target_radii;
-    FCountdownTimers attack_cooldowns;
 
-    // clang-format off
-#define SANDBOX_PACK(STAMPER, END_SYMBOL)    \
-    STAMPER(entity_handles)                  \
-    END_SYMBOL STAMPER(tasks)                \
-    END_SYMBOL STAMPER(locations)            \
-    END_SYMBOL STAMPER(aim_directions)           \
-    END_SYMBOL STAMPER(speeds)               \
-    END_SYMBOL STAMPER(teams)                \
-    END_SYMBOL STAMPER(healths)              \
-    END_SYMBOL STAMPER(target_handles)       \
-    END_SYMBOL STAMPER(target_locations)     \
-    END_SYMBOL STAMPER(target_directions)    \
-    END_SYMBOL STAMPER(target_distance_sq)   \
-    END_SYMBOL STAMPER(target_radii)   \
-    END_SYMBOL STAMPER(attack_cooldowns)
-    // clang-format on
+#define SANDBOX_PACK(STAMPER, NON_FINAL)       \
+    NON_FINAL(STAMPER(entity_handles))        \
+    NON_FINAL(STAMPER(tasks))                 \
+    NON_FINAL(STAMPER(locations))             \
+    NON_FINAL(STAMPER(aim_directions))        \
+    NON_FINAL(STAMPER(move_target_locations)) \
+    NON_FINAL(STAMPER(movement_directions))   \
+    NON_FINAL(STAMPER(speeds))                \
+    NON_FINAL(STAMPER(teams))                 \
+    NON_FINAL(STAMPER(healths))               \
+    NON_FINAL(STAMPER(attack_cooldowns))      \
+    NON_FINAL(STAMPER(target_handles))        \
+    NON_FINAL(STAMPER(target_locations))      \
+    NON_FINAL(STAMPER(target_directions))     \
+    NON_FINAL(STAMPER(target_distance_sq))    \
+    STAMPER(target_radii)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK

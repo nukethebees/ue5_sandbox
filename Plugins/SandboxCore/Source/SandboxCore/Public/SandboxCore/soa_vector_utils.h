@@ -199,12 +199,6 @@ inline void append_n(FVectors3f& vector, int32 const count, float const value) {
     }
 }
 
-inline void add_zeroed(FVectors3f& vector, int32 const count) {
-    vector.xs.AddZeroed(count);
-    vector.ys.AddZeroed(count);
-    vector.zs.AddZeroed(count);
-}
-
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
     if constexpr (std::is_same_v<Vec3f, FVectors3f>) { check(&vector != &to_append); }
