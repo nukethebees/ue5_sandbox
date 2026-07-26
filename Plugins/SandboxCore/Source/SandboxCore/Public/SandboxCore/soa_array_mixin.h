@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SandboxCore/array_checks.h>
-#include <SandboxCore/array_utils.h>
+#include <SandboxCore/container_ops.h>
 
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>

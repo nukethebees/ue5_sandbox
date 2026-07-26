@@ -1,6 +1,6 @@
 #include <SandboxCore/transforms.h>
 
-#include <SandboxCore/array_utils.h>
+#include <SandboxCore/container_ops.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vector_utils.h>

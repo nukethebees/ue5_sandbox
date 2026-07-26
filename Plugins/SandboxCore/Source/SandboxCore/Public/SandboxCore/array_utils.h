@@ -1,7 +1,6 @@
 #pragma once
 
-#include "container_concepts.h"
-#include "container_traits.h"
+#include "container_ops.h"
 
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
@@ -68,11 +67,6 @@ auto almost_equal(T const* const lhs,
 }
 
 namespace ml {
-template <SupportsNum T>
-auto num(T const& value) noexcept -> int32 {
-    return NumTraits<T>::num(value);
-}
-
 template <SupportsNum... Arrays>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((num(arrays) == count) && ...);
@@ -83,21 +77,6 @@ template <typename Array, typename Other, typename... Rest>
     requires (SupportsNum<Array> && SupportsNum<Other> && (SupportsNum<Rest> && ...))
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
     return all_num_equal_to(ml::num(array), other, rest...);
-}
-
-template <SupportsRemoveAtSwap T>
-void remove_at_swap(T& array,
-                    int32 const index,
-                    int32 const count,
-                    EAllowShrinking const allow_shrinking) noexcept {
-    RemoveAtSwapTraits<T>::remove_at_swap(array, index, count, allow_shrinking);
-}
-template <SupportsRemoveAtSwap... T>
-void remove_at_swap(int32 const index,
-                    int32 const count,
-                    EAllowShrinking const allow_shrinking,
-                    T&... arrays) noexcept {
-    (remove_at_swap(arrays, index, count, allow_shrinking), ...);
 }
 
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
@@ -115,80 +94,6 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
         ((RemoveAtSwapTraits<TArrays>::remove_at_swap(arrays, index, 1, EAllowShrinking::No)), ...);
         last_handled = index;
     }
-}
-
-template <SupportsReset... Arrays>
-auto reset(Arrays&... arrays) -> void {
-    return (ResetTraits<Arrays>::reset(arrays), ...);
-}
-
-template <SupportsReserve Array>
-auto reserve(Array& array, int32 count) -> void {
-    ReserveTraits<Array>::reserve(array, count);
-}
-
-template <SupportsReserve... Containers>
-auto reserve(int32 count, Containers&... containers) -> void {
-    (reserve(containers, count), ...);
-}
-
-template <SupportsAddUninitialised Array>
-auto add_uninitialised(Array& array, int32 count) -> void {
-    AddUninitialisedTraits<Array>::add_uninitialised(array, count);
-}
-template <SupportsAddUninitialised... Containers>
-auto add_uninitialised(int32 count, Containers&... containers) -> void {
-    (add_uninitialised(containers, count), ...);
-}
-
-template <SupportsAddDefaulted Array>
-auto add_defaulted(Array& array, int32 count) -> void {
-    AddDefaultedTraits<Array>::add_defaulted(array, count);
-}
-template <SupportsAddDefaulted... Containers>
-auto add_defaulted(int32 count, Containers&... containers) -> void {
-    (add_defaulted(containers, count), ...);
-}
-
-template <SupportsSetNum Array>
-auto set_num(Array& array, int32 count, EAllowShrinking const allow_shrinking) -> void {
-    SetNumTraits<Array>::set_num(array, count, allow_shrinking);
-}
-template <SupportsSetNum... Containers>
-auto set_num(int32 count, EAllowShrinking const allow_shrinking, Containers&... containers)
-    -> void {
-    (set_num(containers, count, allow_shrinking), ...);
-}
-
-template <SupportsCopyElement Container>
-void copy_element(Container& dst, int32 const dst_i, Container const& src, int32 const src_i) {
-    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
-}
-
-template <typename Container, typename... Rest>
-    requires (sizeof...(Rest) % 2 == 0) && SupportsCopyElement<std::remove_cvref_t<Container>>
-void copy_element(
-    int32 const dst_i, int32 const src_i, Container& dst, Container const& src, Rest&&... rest) {
-    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
-
-    if constexpr (sizeof...(rest)) { copy_element(dst_i, src_i, rest...); }
-}
-
-template <SupportsGetView... Containers>
-auto get_view(int32 const offset, int32 const count, Containers&... containers) {
-    (GetViewTraits<Containers>::get_view(containers, offset, count), ...);
-}
-template <SupportsGetView... Containers>
-auto get_const_view(int32 const offset, int32 const count, Containers&... containers) {
-    (GetViewTraits<Containers>::get_const_view(containers, offset, count), ...);
-}
-
-template <typename Container, typename... Rest>
-    requires (sizeof...(Rest) % 2 == 0) && SupportsAppendFrom<std::remove_cvref_t<Container>>
-void append_from(Container& dst, Container const& src, Rest&&... rest) {
-    AppendFromTraits<Container>::append_from(dst, src);
-
-    if constexpr (sizeof...(rest)) { append_from(rest...); }
 }
 
 template <typename Container, typename T>
