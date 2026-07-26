@@ -737,6 +737,9 @@ void ATestCapitalShips::validate_array_sizes() const {
         SANDBOX_NAMED_NUM(entities),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
+
+    entities.validate_array_sizes();
+    tick_buffers.current().validate_array_sizes();
 }
 void ATestCapitalShips::validate_proxy_handles() const {
     entity_registry->validate_handles(entities.handles);
