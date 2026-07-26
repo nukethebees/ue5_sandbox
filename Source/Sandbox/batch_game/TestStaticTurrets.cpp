@@ -10,6 +10,7 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
+#include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>
@@ -162,7 +163,7 @@ void ATestStaticTurrets::prepare_entity_update_data() {
 
     entity_update_data.locations = locations;
     ml::fill(entity_update_data.velocities, 0.f);
-    ml::fill(entity_update_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
+    ml::fill(entity_update_data.radii, ml::get_mesh_sphere_bounds(*instances));
     entity_update_data.healths = healths;
     entity_update_data.teams = teams;
     entity_update_data.set_all_entity_types(ETestEntityType::Turret);

@@ -11,6 +11,7 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 #include <Sandbox/utilities/IndexSpan.h>
+#include <Sandbox/utilities/mesh.h>
 
 #include <NiagaraFunctionLibrary.h>
 #include <SandboxCore/actor_utils.h>
@@ -26,6 +27,7 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/StaticMesh.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
@@ -378,7 +380,7 @@ void ATestCapitalShips::prepare_entity_update_data() {
 
     entity_update_data.locations = entities.locations;
     ml::fill(entity_update_data.velocities, 0.f);
-    ml::fill(entity_update_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
+    ml::fill(entity_update_data.radii, ml::get_mesh_sphere_bounds(*instances));
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     entity_update_data.set_all_entity_types(ETestEntityType::CapitalShip);

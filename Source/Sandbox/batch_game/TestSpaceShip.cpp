@@ -12,6 +12,7 @@
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/enums.h>
+#include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -22,6 +23,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
 #include <Engine/HitResult.h>
+#include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <NiagaraComponent.h>
 #include <TimerManager.h>
@@ -173,8 +175,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
     entity_data.velocities.ys.Add(velocity.Y);
     entity_data.velocities.zs.Add(velocity.Z);
 
-    entity_data.radii.Add(ship_mesh->Bounds.SphereRadius);
-
+    entity_data.radii.Add(ml::get_mesh_sphere_bounds(*ship_mesh));
     entity_data.healths.Add(health.health);
     entity_data.teams.Add(team);
     entity_data.alive.Add(1);

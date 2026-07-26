@@ -7,6 +7,7 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
+#include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -432,7 +433,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     // Fill entity data and set directions
     new_spawn_entity_data.add_uninitialised(n_new);
 
-    ml::fill(new_spawn_entity_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
+    ml::fill(new_spawn_entity_data.radii, ml::get_mesh_sphere_bounds(*instances));
     ml::fill(new_spawn_entity_data.alive, uint8{1});
 
     for (int32 i{0}; i < n_new; ++i) {

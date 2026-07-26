@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
+#include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>
@@ -159,7 +160,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     entity_data.add_uninitialised(n);
     entity_data.locations = locations;
     ml::fill(entity_data.velocities, 0.f);
-    ml::fill(entity_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
+    ml::fill(entity_data.radii, ml::get_mesh_sphere_bounds(*instances));
     ml::fill(entity_data.healths, 1000000);
     ml::fill(entity_data.teams, ETestTeam::White);
     entity_data.set_all_entity_types(ETestEntityType::TubeSpinner);
