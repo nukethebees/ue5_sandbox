@@ -1,5 +1,6 @@
 #include "TestCapitalShipFighters.h"
 
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
@@ -142,6 +143,11 @@ void ATestCapitalShipFighters::resolve_hit_events() {
                                   data.healths,
                                   local_indices_to_remove,
                                   entity_death_info);
+    ml::batch::resolve_direct_damage_events(*entity_registry,
+                                           data.entity_handles,
+                                           data.healths,
+                                           local_indices_to_remove,
+                                           entity_death_info);
 
     auto const view{entity_registry->get_damage_queue_view(owner_id)};
     auto const n{view.num()};
@@ -150,6 +156,15 @@ void ATestCapitalShipFighters::resolve_hit_events() {
         auto const instigator{view.instigators[i]};
 
         data.target_handles[ismc_index_hit] = instigator;
+    }
+
+    auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
+    auto const n_direct_damage{direct_damage.num()};
+    for (int32 i{0}; i < n_direct_damage; ++i) {
+        auto const local_index{data.entity_handles.Find(direct_damage.damaged_entities[i])};
+        if (local_index == INDEX_NONE) { continue; }
+
+        data.target_handles[local_index] = direct_damage.instigators[i];
     }
 
     validate_array_sizes();

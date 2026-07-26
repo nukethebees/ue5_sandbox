@@ -2,6 +2,7 @@
 
 #include "TestEntityRegistryData.h"
 
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryHandleState.h>
@@ -78,6 +79,11 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Damage updates
     void queue_damage_events(UnresolvedDamageEvents const& damage_events);
     auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
+    void queue_direct_damage(FRegistryEntityHandle damaged_entity,
+                             int32 damage_amount,
+                             FRegistryEntityHandle instigator = {});
+    void queue_direct_damage_events(DirectDamageEvents const& damage_events);
+    auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 
     // General entity updates
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
@@ -179,6 +185,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
 
     // Queued damage events
     TArray<DamageEvents> queued_damage_events;
+    DirectDamageEvents queued_direct_damage_events;
     TArray<int32> damage_events_to_filter_buffer;
 
     // Dead entities

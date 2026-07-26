@@ -1,6 +1,7 @@
 #include "TestBatchActorCore.h"
 
 #include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -10,6 +11,25 @@
 #include <HAL/Platform.h>
 
 namespace ml::batch {
+namespace {
+void apply_damage(int32 const local_index,
+                  int32 const damage_amount,
+                  FRegistryEntityHandle const instigator,
+                  TArray<FRegistryEntityHandle>& entity_handles,
+                  TArray<int32>& healths,
+                  TArray<int32>& local_indices_to_remove,
+                  EntityDeathInfo& entity_death_info) {
+    healths[local_index] -= damage_amount;
+    if ((healths[local_index] > 0) || local_indices_to_remove.Contains(local_index)) { return; }
+
+    local_indices_to_remove.Add(local_index);
+
+    ETestDeathReason const reason{instigator.is_null() ? ETestDeathReason::Unknown
+                                                       : ETestDeathReason::Combat};
+    entity_death_info.add(reason, entity_handles[local_index], instigator);
+}
+}
+
 void resolve_hit_events(ATestEntityRegistry const& registry,
                         TestEntityOwnerId const owner_id,
                         TArray<FRegistryEntityHandle>& entity_handles,
@@ -21,17 +41,35 @@ void resolve_hit_events(ATestEntityRegistry const& registry,
 
     for (int32 i{0}; i < n; ++i) {
         auto const ismc_index_hit{view.hit_items[i]};
+        apply_damage(ismc_index_hit,
+                     view.damage_amounts[i],
+                     view.instigators[i],
+                     entity_handles,
+                     healths,
+                     local_indices_to_remove,
+                     entity_death_info);
+    }
+}
 
-        healths[ismc_index_hit] -= view.damage_amounts[i];
-        if ((healths[ismc_index_hit] <= 0) && !local_indices_to_remove.Contains(ismc_index_hit)) {
-            local_indices_to_remove.Add(ismc_index_hit);
+void resolve_direct_damage_events(ATestEntityRegistry const& registry,
+                                  TArray<FRegistryEntityHandle>& entity_handles,
+                                  TArray<int32>& healths,
+                                  TArray<int32>& local_indices_to_remove,
+                                  EntityDeathInfo& entity_death_info) {
+    auto const& view{registry.get_direct_damage_queue_view()};
+    auto const n{view.num()};
 
-            auto const instigator{view.instigators[i]};
-            ETestDeathReason const reason{instigator.is_null() ? ETestDeathReason::Unknown
-                                                               : ETestDeathReason::Combat};
+    for (int32 i{0}; i < n; ++i) {
+        auto const local_index{entity_handles.Find(view.damaged_entities[i])};
+        if (local_index == INDEX_NONE) { continue; }
 
-            entity_death_info.add(reason, entity_handles[ismc_index_hit], instigator);
-        }
+        apply_damage(local_index,
+                     view.damage_amounts[i],
+                     view.instigators[i],
+                     entity_handles,
+                     healths,
+                     local_indices_to_remove,
+                     entity_death_info);
     }
 }
 

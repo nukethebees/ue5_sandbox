@@ -99,6 +99,11 @@ void ATestStaticTurrets::resolve_hit_events() {
                                   healths,
                                   local_indices_to_remove,
                                   entity_death_info);
+    ml::batch::resolve_direct_damage_events(*entity_registry,
+                                           entity_handles,
+                                           healths,
+                                           local_indices_to_remove,
+                                           entity_death_info);
     validate_array_sizes();
 }
 void ATestStaticTurrets::update_entity_registry() {

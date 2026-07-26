@@ -195,6 +195,11 @@ void ATestCapitalShips::resolve_hit_events() {
                                   entities.healths,
                                   local_indices_to_remove,
                                   entity_death_info);
+    ml::batch::resolve_direct_damage_events(*entity_registry,
+                                           entities.handles,
+                                           entities.healths,
+                                           local_indices_to_remove,
+                                           entity_death_info);
 }
 void ATestCapitalShips::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_entity_registry);

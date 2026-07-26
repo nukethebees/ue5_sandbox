@@ -19,6 +19,12 @@ void resolve_hit_events(ATestEntityRegistry const& registry,
                         TArray<int32>& local_indices_to_remove,
                         EntityDeathInfo& entity_death_info);
 
+void resolve_direct_damage_events(ATestEntityRegistry const& registry,
+                                  TArray<FRegistryEntityHandle>& entity_handles,
+                                  TArray<int32>& healths,
+                                  TArray<int32>& local_indices_to_remove,
+                                  EntityDeathInfo& entity_death_info);
+
 void refresh_targets(ATestEntityRegistry const& registry,
                      TArray<FRegistryEntityHandle>& target_handles,
                      TArray<int32>& indices_without_targets,

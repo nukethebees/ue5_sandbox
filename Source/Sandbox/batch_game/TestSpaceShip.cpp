@@ -1,5 +1,6 @@
 #include "TestSpaceShip.h"
 
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
@@ -124,6 +125,14 @@ void ATestSpaceShip::resolve_hit_events() {
     for (int32 i{0}; i < n; ++i) {
         auto const ismc_index_hit{view.hit_items[i]};
         health.health -= view.damage_amounts[i];
+    }
+
+    auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
+    auto const n_direct_damage{direct_damage.num()};
+    for (int32 i{0}; i < n_direct_damage; ++i) {
+        if (direct_damage.damaged_entities[i] != registry_handle) { continue; }
+
+        health.health -= direct_damage.damage_amounts[i];
     }
 
     if (health.health != original_health) { on_health_changed.ExecuteIfBound(health); }
