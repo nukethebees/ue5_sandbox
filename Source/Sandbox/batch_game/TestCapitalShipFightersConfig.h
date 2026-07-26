@@ -53,6 +53,9 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float attack_retry_cooldown{0.15f};
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float los_check_buffer{100.f};
+
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
