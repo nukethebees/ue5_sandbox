@@ -546,6 +546,40 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         can_fire.Add(ship_index);
     }
 
+    if (can_fire.IsEmpty()) { return; }
+
+    // Perform LOS checks to see if we can fire
+    [&] {
+        auto const n_can_fire{can_fire.Num()};
+        FHitResult hit{};
+        FCollisionQueryParams params{};
+
+        auto* world{GetWorld()};
+        auto const los_check_buffer{actor_config->los_check_buffer};
+
+        for (int32 i{n_can_fire - 1}; i >= 0; --i) {
+            auto const ship_index{can_fire[i]};
+
+            auto const ship_location{ml::get_vector3d(data.locations, ship_index)};
+            auto const direction{ml::get_vector3d(data.directions, ship_index)};
+
+            auto const laser_offset{fire_point_offset * direction};
+            auto const start{ship_location + laser_offset};
+
+            // Trace to near the outside of the enemy
+            auto const end_offset{direction * (los_check_buffer + data.target_radii[ship_index])};
+            auto const end{ml::get_vector3d(data.target_locations, ship_index) - end_offset};
+
+            auto const did_hit{
+                world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
+
+            if (did_hit) {
+                can_fire.RemoveAtSwap(i, EAllowShrinking::No);
+                data.attack_cooldowns[ship_index] += attack_retry_cooldown;
+            }
+        }
+    }();
+
     auto const n_can_fire{can_fire.Num()};
     ml::set_num(new_lasers, n_can_fire, EAllowShrinking::No);
     int32 write_index{0};
