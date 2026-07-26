@@ -354,21 +354,16 @@ inline void direction(OutType&& out, FromType&& from, ToType&& to) {
 /* ---------------------------------------------------------------------------------------------- */
 // Conversion
 /* ---------------------------------------------------------------------------------------------- */
-inline auto get_vector3d(FVectors3f const& src, int32 i) -> FVector {
+template <is_readable_vec3f Vec>
+auto get_vector3d(Vec const& src, int32 i) -> FVector {
     return {
         static_cast<double>(src.xs[i]),
         static_cast<double>(src.ys[i]),
         static_cast<double>(src.zs[i]),
     };
 }
-inline auto get_vector3d(FVectors3f::ConstView const& src, int32 i) -> FVector {
-    return {
-        static_cast<double>(src.xs[i]),
-        static_cast<double>(src.ys[i]),
-        static_cast<double>(src.zs[i]),
-    };
-}
-template <is_vec3f T>
+
+template <is_readable_vec3f T>
 inline auto get_vector3f(T const& src, int32 i) -> FVector3f {
     return {src.xs[i], src.ys[i], src.zs[i]};
 }
