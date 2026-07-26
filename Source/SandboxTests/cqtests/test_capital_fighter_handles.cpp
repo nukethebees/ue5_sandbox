@@ -8,6 +8,7 @@
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/SandboxTestLogCategories.h>
 
 #include <Components/MapTestSpawner.h>
 #include <Containers/Set.h>
@@ -285,13 +286,18 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             for (int32 i{span.offset}; i < end; ++i) {
                 auto const handle{fighter_handles[i]};
                 if (i % 2 == 0) {
-                    test_driver->queue_damage(handle, 100000, {});
                     destroyed.Add(handle);
                 } else {
                     kept.Add(handle);
                 }
             }
         }
+
+        for (auto const& handle : destroyed) {
+            UE_LOG(LogSandboxTest, Display, TEXT("Test: Destroying %s"), *handle.to_string());
+        }
+
+        test_driver->queue_kills(test_driver->get_capital_ship_fighters(), destroyed);
     }
     void kill_fighters_stage() {
         kill_fighters();
@@ -523,7 +529,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         checks.is_true(test_driver->registry.is_valid_alive(target),
                        TEXT("Check target alive before kill"));
-        test_driver->queue_kill(target, {});
+        test_driver->queue_kills(*capitals, TArray{target});
     }
     void save_data_after_capital_kill() {
         TestRunner->AddInfo(TEXT("fn: save_data_after_capital_kill"));

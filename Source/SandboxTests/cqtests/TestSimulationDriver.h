@@ -5,6 +5,7 @@
 #include <HAL/Platform.h>
 
 class UWorld;
+class AActor;
 
 class ATestEntityRegistry;
 class ATestBatchOrchestrator;
@@ -31,10 +32,8 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> ATestCapitalShips const&;
     auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
 
-    void queue_damage(FRegistryEntityHandle const target,
-                      int32 const damage,
-                      FRegistryEntityHandle const instigator);
-    void queue_kill(FRegistryEntityHandle const target, FRegistryEntityHandle const instigator);
+    void queue_kills(AActor const& expected_hit,
+                     TConstArrayView<FRegistryEntityHandle> const targets);
 
     void set_wait_until_tick_from_now(uint64 wait_cycles);
     bool tick_wait_completed() const;

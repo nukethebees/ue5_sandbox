@@ -88,7 +88,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     }
 
     void kill_initial_targets() {
-        test_driver->queue_kill(capitals->get_target_handle(test_capital_idx), {});
+        test_driver->queue_kills(*capitals, TArray{capitals->get_target_handle(test_capital_idx)});
     }
     void check_targets_after_kills() {
         capital_second_target = capitals->get_target_handles()[0];
@@ -102,9 +102,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
 
     void kill_all_not_on_main_team() {
         auto const handles{test_driver->registry.get_handles_not_in_team(team_kept_alive)};
-        for (auto const handle : handles) {
-            test_driver->queue_kill(handle, {});
-        }
+        test_driver->queue_kills(test_driver->get_capital_ship_fighters(), handles);
     }
 
     TEST_METHOD(MainTest)
