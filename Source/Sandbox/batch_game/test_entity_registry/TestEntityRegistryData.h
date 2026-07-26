@@ -26,6 +26,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
 
     TSoaView<float> locations;
     TSoaView<float> velocities;
+    TView<float> radii;
     TView<int32> healths;
     TView<ETestTeam> teams;
     TView<ETestEntityType> entity_types;
@@ -36,6 +37,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
             {},
             locations.slice(offset, count),
             velocities.slice(offset, count),
+            radii.Slice(offset, count),
             healths.Slice(offset, count),
             teams.Slice(offset, count),
             entity_types.Slice(offset, count),
@@ -47,6 +49,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
             {},
             locations.right(count),
             velocities.right(count),
+            radii.Right(count),
             healths.Right(count),
             teams.Right(count),
             entity_types.Right(count),
@@ -58,6 +61,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.locations,
                                          self.velocities,
+                                         self.radii,
                                          self.healths,
                                          self.teams,
                                          self.entity_types,
@@ -85,6 +89,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.locations,
                                          self.velocities,
+                                         self.radii,
                                          self.healths,
                                          self.teams,
                                          self.entity_types,
@@ -93,6 +98,7 @@ struct EntityData : public ml::FSoAArrayMixin {
 
     FVectors3f locations;
     FVectors3f velocities;
+    TArray<float> radii;
     TArray<int32> healths;
     TArray<ETestTeam> teams;
     TArray<ETestEntityType> entity_types;

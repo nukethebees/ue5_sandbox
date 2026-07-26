@@ -10,6 +10,7 @@ auto EntityData::get_view() -> View {
         {},
         locations.get_view(),
         velocities.get_view(),
+        radii,
         healths,
         teams,
         entity_types,
@@ -21,6 +22,7 @@ auto EntityData::get_const_view() const -> ConstView {
         {},
         locations.get_view(),
         velocities.get_view(),
+        radii,
         healths,
         teams,
         entity_types,
@@ -36,6 +38,7 @@ void EntityData::add_disabled(int32 const count) {
 
     ml::fill(slice.locations, 0.f);
     ml::fill(slice.velocities, 0.f);
+    ml::fill(slice.radii, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::White);
     ml::fill(slice.entity_types, ETestEntityType::COUNT);
@@ -45,6 +48,7 @@ void EntityData::add(ConstView const view) {
     ml::append_from(locations, view.locations);
     ml::append_from(velocities, view.velocities);
 
+    radii.Append(view.radii);
     healths.Append(view.healths);
     teams.Append(view.teams);
     entity_types.Append(view.entity_types);
