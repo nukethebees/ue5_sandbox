@@ -8,6 +8,7 @@
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/world.h>
 
+#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
@@ -111,6 +112,7 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     }
     void pre_fight_checks() {
         check_fighters_team();
+        ml::check_radii(*test_driver, checks, 0.05f);
     }
     void pre_fight_phase() {
         pre_fight_samples();
