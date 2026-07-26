@@ -23,6 +23,7 @@ struct FDrawDebugConfig {
     auto get_segments() const -> int32;
     auto get_segments(TOptional<int32> t) const -> int32;
 
+    void draw_line(FVector const& start, FVector const& end, FColor draw_colour) const;
     void draw_line(FVector const& start, FVector const& end) const;
     void draw_line(FVector const& start, FRotator const& fwd) const;
 

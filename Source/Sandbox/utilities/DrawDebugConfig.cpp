@@ -34,17 +34,20 @@ auto FDrawDebugConfig::get_segments(TOptional<int32> t) const -> int32 {
     return get_optional(t, segments);
 }
 
-void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end) const {
+void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end, FColor const draw_colour) const {
     if (!check_world_valid()) { return; }
 
     DrawDebugLine(world.Get(),
                   start,
                   end,
-                  get_colour(line_colour),
+                  draw_colour,
                   persistent,
                   lifetime,
                   depth_priority,
                   get_thickness(line_thickness));
+}
+void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end) const {
+    return draw_line(start, end, get_colour(line_colour));
 }
 void FDrawDebugConfig::draw_line(FVector const& start, FRotator const& fwd) const {
     auto const end{start + fwd.Vector() * line_length};
