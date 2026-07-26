@@ -25,8 +25,12 @@ void resolve_hit_events(ATestEntityRegistry const& registry,
         healths[ismc_index_hit] -= view.damage_amounts[i];
         if ((healths[ismc_index_hit] <= 0) && !local_indices_to_remove.Contains(ismc_index_hit)) {
             local_indices_to_remove.Add(ismc_index_hit);
-            entity_death_info.add(
-                ETestDeathReason::Combat, entity_handles[ismc_index_hit], view.instigators[i]);
+
+            auto const instigator{view.instigators[i]};
+            ETestDeathReason const reason{instigator.is_null() ? ETestDeathReason::Unknown
+                                                               : ETestDeathReason::Combat};
+
+            entity_death_info.add(reason, entity_handles[ismc_index_hit], instigator);
         }
     }
 }
