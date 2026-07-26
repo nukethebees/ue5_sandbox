@@ -12,18 +12,12 @@ struct FRegistryEntityHandle;
 struct EntityDeathInfo;
 
 namespace ml::batch {
-void resolve_collision_damage_events(ATestEntityRegistry const& registry,
-                                     TestEntityOwnerId const owner_id,
-                                     TArray<FRegistryEntityHandle>& entity_handles,
-                                     TArray<int32>& healths,
-                                     TArray<int32>& local_indices_to_remove,
-                                     EntityDeathInfo& entity_death_info);
-
-void resolve_direct_damage_events(ATestEntityRegistry const& registry,
-                                  TArray<FRegistryEntityHandle>& entity_handles,
-                                  TArray<int32>& healths,
-                                  TArray<int32>& local_indices_to_remove,
-                                  EntityDeathInfo& entity_death_info);
+void resolve_damage_events(ATestEntityRegistry const& registry,
+                           TestEntityOwnerId const owner_id,
+                           TArray<FRegistryEntityHandle>& entity_handles,
+                           TArray<int32>& healths,
+                           TArray<int32>& local_indices_to_remove,
+                           EntityDeathInfo& entity_death_info);
 
 void refresh_targets(ATestEntityRegistry const& registry,
                      TArray<FRegistryEntityHandle>& target_handles,

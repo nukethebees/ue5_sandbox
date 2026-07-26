@@ -30,42 +30,36 @@ void apply_damage(int32 const local_index,
 }
 }
 
-void resolve_collision_damage_events(ATestEntityRegistry const& registry,
-                                     TestEntityOwnerId const owner_id,
-                                     TArray<FRegistryEntityHandle>& entity_handles,
-                                     TArray<int32>& healths,
-                                     TArray<int32>& local_indices_to_remove,
-                                     EntityDeathInfo& entity_death_info) {
-    auto const view{registry.get_collision_damage_queue_view(owner_id)};
-    auto const n{view.num()};
+void resolve_damage_events(ATestEntityRegistry const& registry,
+                           TestEntityOwnerId const owner_id,
+                           TArray<FRegistryEntityHandle>& entity_handles,
+                           TArray<int32>& healths,
+                           TArray<int32>& local_indices_to_remove,
+                           EntityDeathInfo& entity_death_info) {
+    auto const& collision_view{registry.get_collision_damage_queue_view(owner_id)};
+    auto const n_collision_events{collision_view.num()};
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const ismc_index_hit{view.hit_items[i]};
+    for (int32 i{0}; i < n_collision_events; ++i) {
+        auto const ismc_index_hit{collision_view.hit_items[i]};
         apply_damage(ismc_index_hit,
-                     view.damage_amounts[i],
-                     view.instigators[i],
+                     collision_view.damage_amounts[i],
+                     collision_view.instigators[i],
                      entity_handles,
                      healths,
                      local_indices_to_remove,
                      entity_death_info);
     }
-}
 
-void resolve_direct_damage_events(ATestEntityRegistry const& registry,
-                                  TArray<FRegistryEntityHandle>& entity_handles,
-                                  TArray<int32>& healths,
-                                  TArray<int32>& local_indices_to_remove,
-                                  EntityDeathInfo& entity_death_info) {
-    auto const& view{registry.get_direct_damage_queue_view()};
-    auto const n{view.num()};
+    auto const& direct_view{registry.get_direct_damage_queue_view()};
+    auto const n_direct_events{direct_view.num()};
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const local_index{entity_handles.Find(view.damaged_entities[i])};
+    for (int32 i{0}; i < n_direct_events; ++i) {
+        auto const local_index{entity_handles.Find(direct_view.damaged_entities[i])};
         if (local_index == INDEX_NONE) { continue; }
 
         apply_damage(local_index,
-                     view.damage_amounts[i],
-                     view.instigators[i],
+                     direct_view.damage_amounts[i],
+                     direct_view.instigators[i],
                      entity_handles,
                      healths,
                      local_indices_to_remove,
