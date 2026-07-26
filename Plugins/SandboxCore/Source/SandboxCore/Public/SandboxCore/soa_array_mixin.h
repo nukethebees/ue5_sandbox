@@ -33,6 +33,11 @@ concept SupportsApplyArrayPairs =
     };
 
 struct FSoACommonMixin {
+    template <typename T>
+    using ViewFor = std::conditional_t<std::is_const_v<T>,
+                                       typename std::remove_cv_t<T>::ConstView,
+                                       typename std::remove_cv_t<T>::View>;
+
     template <typename T, SupportsApplyArrays Self>
     auto construct_object(this Self&& self, int32 const offset, int32 const count) -> T {
         return self.apply_arrays([offset, count](auto&... arrays) -> T {
@@ -46,38 +51,22 @@ struct FSoACommonMixin {
 
     template <SupportsApplyArrays Self>
     auto get_view(this Self& self) {
-        using View = typename Self::View;
-        return self.template construct_object<View>(0, self.num());
+        return self.template construct_object<ViewFor<Self>>(0, self.num());
     }
 
     template <SupportsApplyArrays Self>
     auto get_view(this Self& self, int32 const offset, int32 const count) {
-        using View = typename Self::View;
-        return self.template construct_object<View>(offset, count);
-    }
-
-    template <SupportsApplyArrays Self>
-    auto get_view(this Self const& self) {
-        using ConstView = typename Self::ConstView;
-        return self.template construct_object<ConstView>(0, self.num());
-    }
-
-    template <SupportsApplyArrays Self>
-    auto get_view(this Self const& self, int32 const offset, int32 const count) {
-        using ConstView = typename Self::ConstView;
-        return self.template construct_object<ConstView>(offset, count);
+        return self.template construct_object<ViewFor<Self>>(offset, count);
     }
 
     template <SupportsApplyArrays Self>
     auto get_const_view(this Self const& self) {
-        using ConstView = typename Self::ConstView;
-        return self.template construct_object<ConstView>(0, self.num());
+        return self.template construct_object<typename Self::ConstView>(0, self.num());
     }
 
     template <SupportsApplyArrays Self>
     auto get_const_view(this Self const& self, int32 const offset, int32 const count) {
-        using ConstView = typename Self::ConstView;
-        return self.template construct_object<ConstView>(offset, count);
+        return self.template construct_object<typename Self::ConstView>(offset, count);
     }
 
     template <SupportsApplyArrays Self>
