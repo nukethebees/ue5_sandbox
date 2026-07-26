@@ -457,6 +457,8 @@ void ATestCapitalShips::queue_fighter_spawns() {
 void ATestCapitalShips::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
 
+    fighter_handles_scratch.Reset();
+
     auto const& prev{tick_buffers.previous()};
 
     entity_registry->refresh_handles(fighter_handles);
@@ -525,7 +527,6 @@ void ATestCapitalShips::refresh_fighter_handles() {
     }
 
     Swap(fighter_handles, fighter_handles_scratch);
-    fighter_handles_scratch.Reset();
 
 #if WITH_EDITOR
     auto const n_fighters{fighters_actor->get_num_instances()};
