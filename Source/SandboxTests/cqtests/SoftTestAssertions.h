@@ -66,6 +66,24 @@ struct FSoftTestAssertions {
         return result;
     }
 
+    template <typename T>
+    bool is_greater_than(T const& lhs,
+                         T const& rhs,
+                         FString const description,
+                         int32 const i = INDEX_NONE) {
+        auto const result{lhs > rhs};
+        store_result(result);
+
+        FString msg{start_msg(i)};
+
+        msg += FString::Printf(
+            TEXT("%s (Expect: %s > %s)"), *description, *to_string(lhs), *to_string(rhs));
+
+        display_result(result, msg);
+
+        return result;
+    }
+
     bool is_true(bool result, FString const description, int32 const i = INDEX_NONE) {
         store_result(result);
 
