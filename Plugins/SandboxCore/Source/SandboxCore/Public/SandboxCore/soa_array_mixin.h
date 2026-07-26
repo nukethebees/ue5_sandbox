@@ -79,6 +79,13 @@ struct FSoACommonMixin {
     auto num(this Self const& self) noexcept -> int32 {
         return self.apply_arrays([](auto const& first, auto const&...) { return ml::num(first); });
     }
+
+    template <SupportsApplyArrays Self>
+    auto right(this Self& self, int32 const n_right) noexcept {
+        auto const n_total{self.num()};
+        auto const offset{n_total - n_right};
+        return self.template construct_object<ViewFor<Self>>(offset, n_right);
+    }
 };
 
 struct FSoAArrayMixin : public FSoACommonMixin {
