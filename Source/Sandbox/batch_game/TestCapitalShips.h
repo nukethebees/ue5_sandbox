@@ -94,6 +94,7 @@ struct EntityData : public ml::FSoAArrayMixin {
                                          self.locations,
                                          self.rotations,
                                          self.fighter_spawn_timers,
+                                         self.fighter_spawn_cooldowns,
                                          self.teams,
                                          self.healths,
                                          self.capital_fighter_handle_spans,
