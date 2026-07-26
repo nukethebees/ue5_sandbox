@@ -10,7 +10,7 @@
 class AActor;
 class UActorComponent;
 
-struct UnresolvedDamageEvents : public ml::FSoAArrayMixin {
+struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     TArray<AActor*> damaged_actors;
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
@@ -27,7 +27,7 @@ struct UnresolvedDamageEvents : public ml::FSoAArrayMixin {
     }
 };
 
-struct DamageEvents : public ml::FSoAArrayMixin {
+struct CollisionDamageEvents : public ml::FSoAArrayMixin {
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;

@@ -90,15 +90,15 @@ void ATestStaticTurrets::queue_commands() {
 
     fire_at_enemies();
 }
-void ATestStaticTurrets::resolve_hit_events() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_hit_events);
+void ATestStaticTurrets::resolve_damage_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_damage_events);
 
-    ml::batch::resolve_hit_events(*entity_registry,
-                                  owner_id,
-                                  entity_handles,
-                                  healths,
-                                  local_indices_to_remove,
-                                  entity_death_info);
+    ml::batch::resolve_collision_damage_events(*entity_registry,
+                                               owner_id,
+                                               entity_handles,
+                                               healths,
+                                               local_indices_to_remove,
+                                               entity_death_info);
     ml::batch::resolve_direct_damage_events(*entity_registry,
                                            entity_handles,
                                            healths,

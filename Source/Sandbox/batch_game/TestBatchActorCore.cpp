@@ -1,6 +1,6 @@
 #include "TestBatchActorCore.h"
 
-#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
@@ -30,13 +30,13 @@ void apply_damage(int32 const local_index,
 }
 }
 
-void resolve_hit_events(ATestEntityRegistry const& registry,
-                        TestEntityOwnerId const owner_id,
-                        TArray<FRegistryEntityHandle>& entity_handles,
-                        TArray<int32>& healths,
-                        TArray<int32>& local_indices_to_remove,
-                        EntityDeathInfo& entity_death_info) {
-    auto const view{registry.get_damage_queue_view(owner_id)};
+void resolve_collision_damage_events(ATestEntityRegistry const& registry,
+                                     TestEntityOwnerId const owner_id,
+                                     TArray<FRegistryEntityHandle>& entity_handles,
+                                     TArray<int32>& healths,
+                                     TArray<int32>& local_indices_to_remove,
+                                     EntityDeathInfo& entity_death_info) {
+    auto const view{registry.get_collision_damage_queue_view(owner_id)};
     auto const n{view.num()};
 
     for (int32 i{0}; i < n; ++i) {

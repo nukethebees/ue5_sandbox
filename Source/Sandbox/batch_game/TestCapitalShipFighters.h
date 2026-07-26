@@ -157,7 +157,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void make_decisions();
     void move(float const dt);
     void queue_commands();
-    void resolve_hit_events();
+    void resolve_damage_events();
     void update_entity_registry();
     void sync_from_registry();
     void update_visuals();

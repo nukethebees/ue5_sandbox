@@ -69,7 +69,7 @@ class ATestSpaceShip
     void update_timers(float const dt);
     void move(float const dt);
     void queue_commands();
-    void resolve_hit_events();
+    void resolve_damage_events();
     void update_entity_registry();
     void resolve_damage_targets();
     void sync_from_registry();

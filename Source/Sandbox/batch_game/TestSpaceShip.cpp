@@ -114,10 +114,10 @@ void ATestSpaceShip::move(float const dt) {
 void ATestSpaceShip::queue_commands() {
     update_laser_firing();
 }
-void ATestSpaceShip::resolve_hit_events() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_hit_events);
+void ATestSpaceShip::resolve_damage_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_events);
 
-    auto const view{entity_registry->get_damage_queue_view(owner_id)};
+    auto const view{entity_registry->get_collision_damage_queue_view(owner_id)};
     auto const n{view.num()};
 
     auto const original_health{health.health};

@@ -23,8 +23,8 @@
 
 class UActorComponent;
 
-struct DamageEvents;
-struct UnresolvedDamageEvents;
+struct CollisionDamageEvents;
+struct UnresolvedCollisionDamageEvents;
 
 struct SpawnedEntityHandles {
     TArray<FRegistryEntityHandle> registry_handles;
@@ -77,8 +77,10 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles;
 
     // Damage updates
-    void queue_damage_events(UnresolvedDamageEvents const& damage_events);
-    auto get_damage_queue_view(TestEntityOwnerId const id) const -> DamageEvents const&;
+    void queue_collision_damage_events(
+        UnresolvedCollisionDamageEvents const& collision_damage_events);
+    auto get_collision_damage_queue_view(TestEntityOwnerId const id) const
+        -> CollisionDamageEvents const&;
     void queue_direct_damage_events(DirectDamageEvents const& damage_events);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 
@@ -181,9 +183,9 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     EntityDeathInfo queued_death_infos;
 
     // Queued damage events
-    TArray<DamageEvents> queued_damage_events;
+    TArray<CollisionDamageEvents> queued_collision_damage_events;
     DirectDamageEvents queued_direct_damage_events;
-    TArray<int32> damage_events_to_filter_buffer;
+    TArray<int32> collision_damage_events_to_filter_buffer;
 
     // Dead entities
     TArray<FRegistryEntityHandle> dead_entities_this_frame;

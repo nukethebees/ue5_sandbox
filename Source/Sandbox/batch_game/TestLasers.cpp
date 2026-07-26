@@ -235,7 +235,7 @@ void ATestLasers::handle_collisions(float const dt) {
     // Move data out of thread buffers
     ml::reset(to_remove, hit_details);
     for (int32 i{0}; i < collision_jobs; ++i) {
-        entity_registry->queue_damage_events(data[i].damage_events);
+        entity_registry->queue_collision_damage_events(data[i].collision_damage_events);
         to_remove.Append(data[i].to_remove);
 
         ml::append_from(hit_details.locations, data[i].hit_details.locations);
@@ -252,7 +252,7 @@ void ATestLasers::check_collision_thread(int32 const job_index,
     auto const n{lasers.get_num_instances()};
     auto const* world{lasers.GetWorld()};
 
-    ml::reset(data.damage_events, data.to_remove, data.hit_details);
+    ml::reset(data.collision_damage_events, data.to_remove, data.hit_details);
 
     FHitResult hit{};
 
@@ -282,11 +282,11 @@ void ATestLasers::check_collision_thread(int32 const job_index,
         auto* hit_component{hit.GetComponent()};
         if (!IsValid(hit_component)) { continue; }
 
-        data.damage_events.damage_amounts.Add(lasers.damages[i]);
-        data.damage_events.damaged_actors.Add(hit_actor);
-        data.damage_events.actor_components.Add(hit_component);
-        data.damage_events.hit_items.Add(hit.Item);
-        data.damage_events.instigators.Add(lasers.instigator_handles[i]);
+        data.collision_damage_events.damage_amounts.Add(lasers.damages[i]);
+        data.collision_damage_events.damaged_actors.Add(hit_actor);
+        data.collision_damage_events.actor_components.Add(hit_component);
+        data.collision_damage_events.hit_items.Add(hit.Item);
+        data.collision_damage_events.instigators.Add(lasers.instigator_handles[i]);
 
         ml::append(data.hit_details.locations, hit.Location);
     }

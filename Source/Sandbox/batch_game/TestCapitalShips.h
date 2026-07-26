@@ -143,7 +143,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void begin_tick();
     void update_timers(float const dt);
     void make_decisions();
-    void resolve_hit_events();
+    void resolve_damage_events();
     void update_entity_registry();
     void sync_from_registry();
     void update_visuals();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -66,7 +66,7 @@ class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
     struct ThreadLocalCollisionData {
-        UnresolvedDamageEvents damage_events;
+        UnresolvedCollisionDamageEvents collision_damage_events;
         TArray<int32> to_remove;
         FTestLasersHitDetails hit_details;
     };

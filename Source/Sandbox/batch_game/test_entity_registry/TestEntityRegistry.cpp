@@ -1,6 +1,6 @@
 #include "TestEntityRegistry.h"
 
-#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
@@ -44,7 +44,7 @@ void ATestEntityRegistry::reset() {
 
     ml::reset(generations,
               queued_entity_update_handles,
-              queued_damage_events,
+              queued_collision_damage_events,
               queued_direct_damage_events,
               dead_entities_this_frame,
               free_indices);
@@ -54,7 +54,7 @@ void ATestEntityRegistry::reset() {
 auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Add(&actor)};
 
-    queued_damage_events.AddDefaulted();
+    queued_collision_damage_events.AddDefaulted();
 
     return {static_cast<uint8>(index)};
 }
@@ -144,26 +144,29 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
 }
 
 // Damage updates
-void ATestEntityRegistry::queue_damage_events(UnresolvedDamageEvents const& damage_events) {
-    damage_events.validate_array_sizes();
+void ATestEntityRegistry::queue_collision_damage_events(
+    UnresolvedCollisionDamageEvents const& collision_damage_events) {
+    collision_damage_events.validate_array_sizes();
 
-    auto const n{ml::num(damage_events)};
+    auto const n{ml::num(collision_damage_events)};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const id{get_owner(damage_events.damaged_actors[i])};
+        auto const id{get_owner(collision_damage_events.damaged_actors[i])};
         if (!id.is_valid()) { continue; }
 
-        auto& actor_damage_events{queued_damage_events[id.id]};
-        actor_damage_events.damage_amounts.Add(damage_events.damage_amounts[i]);
-        actor_damage_events.actor_components.Add(damage_events.actor_components[i]);
-        actor_damage_events.hit_items.Add(damage_events.hit_items[i]);
-        actor_damage_events.instigators.Add(damage_events.instigators[i]);
+        auto& actor_collision_damage_events{queued_collision_damage_events[id.id]};
+        actor_collision_damage_events.damage_amounts.Add(
+            collision_damage_events.damage_amounts[i]);
+        actor_collision_damage_events.actor_components.Add(
+            collision_damage_events.actor_components[i]);
+        actor_collision_damage_events.hit_items.Add(collision_damage_events.hit_items[i]);
+        actor_collision_damage_events.instigators.Add(collision_damage_events.instigators[i]);
     }
 }
-auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) const
-    -> DamageEvents const& {
+auto ATestEntityRegistry::get_collision_damage_queue_view(TestEntityOwnerId const id) const
+    -> CollisionDamageEvents const& {
     check(is_valid_owner(id));
-    return queued_damage_events[id.id];
+    return queued_collision_damage_events[id.id];
 }
 void ATestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
     damage_events.validate_array_sizes();
@@ -266,7 +269,7 @@ void ATestEntityRegistry::end_tick() {
 
     auto const n_owners{entity_owners.Num()};
     for (int32 i{0}; i < n_owners; ++i) {
-        ml::reset(queued_damage_events[i]);
+        ml::reset(queued_collision_damage_events[i]);
     }
 
     validate_array_sizes();
@@ -654,7 +657,7 @@ void ATestEntityRegistry::validate_array_sizes() const {
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_owners),
-        SANDBOX_NAMED_NUM(queued_damage_events),
+        SANDBOX_NAMED_NUM(queued_collision_damage_events),
     });
 
     entity_data.validate_array_sizes();

@@ -1,6 +1,6 @@
 #include "TestCapitalShips.h"
 
-#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
@@ -186,15 +186,15 @@ void ATestCapitalShips::make_decisions() {
 
     if (fighter_order_queue.num() > 0) { fighters_actor->queue_orders(fighter_order_queue); }
 }
-void ATestCapitalShips::resolve_hit_events() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_hit_events);
+void ATestCapitalShips::resolve_damage_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_damage_events);
 
-    ml::batch::resolve_hit_events(*entity_registry,
-                                  owner_id,
-                                  entities.handles,
-                                  entities.healths,
-                                  local_indices_to_remove,
-                                  entity_death_info);
+    ml::batch::resolve_collision_damage_events(*entity_registry,
+                                               owner_id,
+                                               entities.handles,
+                                               entities.healths,
+                                               local_indices_to_remove,
+                                               entity_death_info);
     ml::batch::resolve_direct_damage_events(*entity_registry,
                                            entities.handles,
                                            entities.healths,

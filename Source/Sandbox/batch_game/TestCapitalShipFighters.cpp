@@ -132,24 +132,24 @@ void ATestCapitalShipFighters::queue_commands() {
 
     handle_firing(get_task_view(Task::Attack));
 }
-void ATestCapitalShipFighters::resolve_hit_events() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_hit_events);
+void ATestCapitalShipFighters::resolve_damage_events() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::resolve_damage_events);
 
     auto& data{entity_buffers.current()};
 
-    ml::batch::resolve_hit_events(*entity_registry,
-                                  owner_id,
-                                  data.entity_handles,
-                                  data.healths,
-                                  local_indices_to_remove,
-                                  entity_death_info);
+    ml::batch::resolve_collision_damage_events(*entity_registry,
+                                               owner_id,
+                                               data.entity_handles,
+                                               data.healths,
+                                               local_indices_to_remove,
+                                               entity_death_info);
     ml::batch::resolve_direct_damage_events(*entity_registry,
                                            data.entity_handles,
                                            data.healths,
                                            local_indices_to_remove,
                                            entity_death_info);
 
-    auto const view{entity_registry->get_damage_queue_view(owner_id)};
+    auto const view{entity_registry->get_collision_damage_queue_view(owner_id)};
     auto const n{view.num()};
     for (int32 i{0}; i < n; ++i) {
         auto const ismc_index_hit{view.hit_items[i]};

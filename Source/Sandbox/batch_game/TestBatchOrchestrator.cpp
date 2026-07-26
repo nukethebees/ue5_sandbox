@@ -218,13 +218,13 @@ void ATestBatchOrchestrator::tick(float const dt) {
     // ---------------------------------------------------------------------------------------------
     {
         // Resolve hit events
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_hit_events);
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
 
-        if (player_ship) { player_ship->resolve_hit_events(); }
+        if (player_ship) { player_ship->resolve_damage_events(); }
 
-        capital_ships->resolve_hit_events();
-        capital_ship_fighters->resolve_hit_events();
-        turrets->resolve_hit_events();
+        capital_ships->resolve_damage_events();
+        capital_ship_fighters->resolve_damage_events();
+        turrets->resolve_damage_events();
     }
 
     {
