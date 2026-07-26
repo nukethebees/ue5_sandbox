@@ -226,7 +226,7 @@ void ATestCapitalShips::end_tick() {
 
     fighters_spawned += ml::num(fighter_queue);
     validate_array_sizes();
-}
+    }
 
 // Accessors
 auto ATestCapitalShips::get_num_instances() const -> int32 {
@@ -463,12 +463,14 @@ void ATestCapitalShips::refresh_fighter_handles() {
 
     entity_registry->refresh_handles(fighter_handles);
 
-    auto const n_spawned_per_capital{get_fighter_spawn_slots()};
-    auto const n_capitals_spawned{prev.ships_ready_to_spawn_fighters_buffer.Num()};
-
     auto const& spawn_data{fighters_actor->get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
-    ensure(spawn_data.num() == (n_capitals_spawned * n_spawned_per_capital));
+
+    auto const n_spawned_per_capital{get_fighter_spawn_slots()};
+    auto const n_capitals_spawned_fighters{prev.ships_ready_to_spawn_fighters_buffer.Num()};
+    auto const n_fighters_spawned_expected{n_capitals_spawned_fighters * n_spawned_per_capital};
+    auto const n_fighters_spawned{spawn_data.num()};
+    ensure(n_fighters_spawned_expected == n_fighters_spawned);
 
     int32 spawning_capital_idx{0};
     int32 spawned_fighter_idx{0};
@@ -484,8 +486,9 @@ void ATestCapitalShips::refresh_fighter_handles() {
         // Add existing non-null fighters
         auto const old_span{entities.capital_fighter_handle_spans[capital_idx]};
         auto const loop_end{old_span.end()};
-        for (int32 fighter_index{old_span.offset}; fighter_index < loop_end; ++fighter_index) {
-            auto const fighter_handle{fighter_handles[fighter_index]};
+        for (int32 local_fighter_index{old_span.offset}; local_fighter_index < loop_end;
+             ++local_fighter_index) {
+            auto const fighter_handle{fighter_handles[local_fighter_index]};
 
             if (!fighter_handle.is_null()) {
                 fighter_handles_scratch.Add(fighter_handle);
@@ -505,15 +508,15 @@ void ATestCapitalShips::refresh_fighter_handles() {
             ++spawning_capital_idx;
         }
 
-        auto const n_reassigned{fighter_reassignment_queue.num()};
-        if (n_reassigned > 0) {
-            for (int32 i_reassigned{n_reassigned - 1}; i_reassigned >= 0; --i_reassigned) {
-                auto const reassigned_handle{
+        auto const n_fighters_reassigned{fighter_reassignment_queue.num()};
+        if (n_fighters_reassigned > 0) {
+            for (int32 i_reassigned{n_fighters_reassigned - 1}; i_reassigned >= 0; --i_reassigned) {
+                auto const new_owning_capital_handle{
                     fighter_reassignment_queue.capital_handles[i_reassigned]};
-                auto const reassigned_idx{entities.handles.Find(reassigned_handle)};
-                check(reassigned_idx != INDEX_NONE);
+                auto const new_owning_capital_idx{entities.handles.Find(new_owning_capital_handle)};
+                check(new_owning_capital_idx != INDEX_NONE);
 
-                if (capital_idx == reassigned_idx) {
+                if (capital_idx == new_owning_capital_idx) {
                     fighter_handles_scratch.Add(
                         fighter_reassignment_queue.fighter_handles[i_reassigned]);
                     fighter_reassignment_queue.fighter_handles.RemoveAtSwap(i_reassigned,
@@ -526,6 +529,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
         entities.capital_fighter_handle_spans[capital_idx] = new_span;
     }
 
+    check(fighter_handles_scratch.Num() >= n_fighters_spawned);
     Swap(fighter_handles, fighter_handles_scratch);
 
 #if WITH_EDITOR
