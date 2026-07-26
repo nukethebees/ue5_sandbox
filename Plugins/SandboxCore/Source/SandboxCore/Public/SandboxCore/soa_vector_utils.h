@@ -126,6 +126,25 @@ inline void assign(FVectors3f& vector, int32 const i, FVector3f const& value) {
     vector.zs[i] = value.Z;
 }
 
+template <is_mutable_vec3f DstT, is_readable_vec3f SrcT>
+void assign_from(DstT&& dst, SrcT&& src) {
+    auto const n_dst{dst.num()};
+    auto const n_src{src.num()};
+
+    check(n_dst == n_src);
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::assign_from(dst.xs.GetData(),
+                            dst.ys.GetData(),
+                            dst.zs.GetData(),
+                            src.xs.GetData(),
+                            src.ys.GetData(),
+                            src.zs.GetData(),
+                            n_dst);
+}
+
 inline void fill(FVectors3f& vector, float const value) {
     ml::kernel::fill(
         vector.xs.GetData(), vector.ys.GetData(), vector.zs.GetData(), value, vector.num());
