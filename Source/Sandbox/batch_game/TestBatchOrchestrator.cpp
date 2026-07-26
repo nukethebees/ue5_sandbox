@@ -30,6 +30,11 @@ void ATestBatchOrchestrator::BeginPlay() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 
     tick_counter = 0;
+#if WITH_EDITOR
+    if (log_ticks) {
+        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
+    }
+#endif
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(lasers),
@@ -92,6 +97,12 @@ void ATestBatchOrchestrator::BeginPlay() {
     entity_registry->end_tick();
 
     if (player_ship) { mission_manager->begin_play(); }
+
+#if WITH_EDITOR
+    if (log_ticks) {
+        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
+    }
+#endif
 }
 void ATestBatchOrchestrator::validate_proxy_handles() {
     if (player_ship) {
@@ -112,6 +123,11 @@ void ATestBatchOrchestrator::tick(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
 
     ++tick_counter;
+#if WITH_EDITOR
+    if (log_ticks) {
+        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d start"), tick_counter);
+    }
+#endif
 
     // ---------------------------------------------------------------------------------------------
     // Setup phase
@@ -273,6 +289,12 @@ void ATestBatchOrchestrator::tick(float const dt) {
         lasers->end_tick();
         entity_registry->end_tick();
     }
+
+#if WITH_EDITOR
+    if (log_ticks) {
+        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d end"), tick_counter);
+    }
+#endif
 }
 
 void ATestBatchOrchestrator::route_actor_references() {

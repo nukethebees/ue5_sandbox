@@ -88,5 +88,8 @@ class ATestBatchOrchestrator : public AActor {
     TSubclassOf<ATestMissionManager> mission_manager_class{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TSubclassOf<ADelayedNiagaraSpawner> niagara_spawner_class{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool log_ticks{false};
 #endif
 };
