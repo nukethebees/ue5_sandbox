@@ -165,24 +165,10 @@ auto ATestEntityRegistry::get_damage_queue_view(TestEntityOwnerId const id) cons
     check(is_valid_owner(id));
     return queued_damage_events[id.id];
 }
-void ATestEntityRegistry::queue_direct_damage(FRegistryEntityHandle const damaged_entity,
-                                              int32 const damage_amount,
-                                              FRegistryEntityHandle const instigator) {
-    if (!is_valid_alive(damaged_entity)) { return; }
-
-    queued_direct_damage_events.damaged_entities.Add(damaged_entity);
-    queued_direct_damage_events.damage_amounts.Add(damage_amount);
-    queued_direct_damage_events.instigators.Add(instigator);
-}
 void ATestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
     damage_events.validate_array_sizes();
 
-    auto const n{damage_events.num()};
-    for (int32 i{0}; i < n; ++i) {
-        queue_direct_damage(damage_events.damaged_entities[i],
-                            damage_events.damage_amounts[i],
-                            damage_events.instigators[i]);
-    }
+    queued_direct_damage_events.append_from(damage_events);
 }
 auto ATestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
     return queued_direct_damage_events;
