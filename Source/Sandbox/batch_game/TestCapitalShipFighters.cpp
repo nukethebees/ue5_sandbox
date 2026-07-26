@@ -431,7 +431,7 @@ void ATestCapitalShipFighters::queue_spawns(TestCapitalShipFighterSpawnQueue con
 void ATestCapitalShipFighters::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_spawns);
 
-    new_spawn_entity_data.reset();
+    ml::reset(new_spawn_entity_handles, new_spawn_entity_data);
 
     auto const& new_locations{spawn_queue.locations};
     auto const& new_rotations{spawn_queue.rotations};
