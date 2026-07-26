@@ -162,8 +162,8 @@ void ATestCapitalShipFighters::end_tick() {
 // Movement
 void ATestCapitalShipFighters::move(float const dt, TaskView const& fighters) {
     ml::direction(fighters.target_directions, fighters.locations, fighters.target_locations);
-    ml::lerp_in_place(fighters.directions, fighters.target_directions, turn_speed_unitless * dt);
-    ml::add_scaled_in_place(fighters.locations, fighters.directions, fighters.speeds, dt);
+    ml::lerp_in_place(fighters.aim_directions, fighters.target_directions, turn_speed_unitless * dt);
+    ml::add_scaled_in_place(fighters.locations, fighters.aim_directions, fighters.speeds, dt);
 }
 
 // Accessors
@@ -234,7 +234,7 @@ void ATestCapitalShipFighters::prepare_ismc_transforms() {
         for (int32 i{begin}; i < end; ++i) {
             ismc_transforms[i].SetLocation(ml::get_vector3d(data.locations, i));
 
-            auto const dir{ml::get_vector3d(data.directions, i)};
+            auto const dir{ml::get_vector3d(data.aim_directions, i)};
             auto const quat{FQuat::FindBetweenNormals(FVector::ForwardVector, dir)};
 
             ismc_transforms[i].SetRotation(quat);
@@ -312,7 +312,7 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     ml::add_uninitialised(registry_update_data, n);
 
     registry_update_data.locations = data.locations;
-    registry_update_data.velocities = data.directions;
+    registry_update_data.velocities = data.aim_directions;
     registry_update_data.healths = data.healths;
     registry_update_data.teams = data.teams;
     for (int32 i{0}; i < n; ++i) {
@@ -423,7 +423,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     // entity_handles handles later
     ml::append_n(data.tasks, Task::Attack, n_new);
     ml::append_from(data.locations, new_locations);
-    ml::add_uninitialised(data.directions, n_new);
+    ml::add_uninitialised(data.aim_directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
     ml::append_n(data.healths, actor_config->health, n_new);
@@ -436,7 +436,7 @@ void ATestCapitalShipFighters::commit_spawns() {
 
     data.attack_cooldowns.remaining_times.AddZeroed(n_new);
 
-    // Fill entity data and set directions
+    // Fill entity data and set aim_directions
     new_spawn_entity_data.add_uninitialised(n_new);
 
     ml::fill(new_spawn_entity_data.radii, ml::get_mesh_sphere_bounds(*instances));
@@ -447,7 +447,7 @@ void ATestCapitalShipFighters::commit_spawns() {
 
         auto const direction{ml::get_vector3f(new_rotations, i)};
 
-        ml::assign(data.directions, index, direction);
+        ml::assign(data.aim_directions, index, direction);
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
         new_spawn_entity_data.healths[i] = data.healths[index];
         new_spawn_entity_data.teams[i] = data.teams[index];
@@ -457,7 +457,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     // Velocities
     TConstArrayView<float> const new_speeds{data.speeds.GetData() + n_cur, n_new};
     ml::assign_from_scaled(new_spawn_entity_data.velocities,
-                           data.directions.get_const_view().right(n_new),
+                           data.aim_directions.get_const_view().right(n_new),
                            new_speeds);
 
     // Entity handles
@@ -531,7 +531,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
     ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
 
-    ml::dot_product(aiming_dot_product_buffer, data.directions, data.target_directions);
+    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.target_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
@@ -561,7 +561,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             auto const ship_index{can_fire[i]};
 
             auto const ship_location{ml::get_vector3d(data.locations, ship_index)};
-            auto const direction{ml::get_vector3d(data.directions, ship_index)};
+            auto const direction{ml::get_vector3d(data.aim_directions, ship_index)};
 
             auto const laser_offset{fire_point_offset * direction};
             auto const start{ship_location + laser_offset};
@@ -587,7 +587,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         auto const ship_index{can_fire[i]};
 
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
-        auto const direction{ml::get_vector3f(data.directions, ship_index)};
+        auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
 
         auto const laser_offset{fire_point_offset * direction};
         auto const laser_location{ship_location + laser_offset};

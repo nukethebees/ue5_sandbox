@@ -50,7 +50,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     TView<FRegistryEntityHandle> entity_handles;
     TView<ETestCapitalShipFightersTask> tasks;
     VectorsView locations;
-    VectorsView directions;
+    VectorsView aim_directions;
     TView<float> speeds;
     TView<ETestTeam> teams;
     TView<int32> healths;
@@ -66,7 +66,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
         return std::forward<TFunc>(func)(self.entity_handles,
                                          self.tasks,
                                          self.locations,
-                                         self.directions,
+                                         self.aim_directions,
                                          self.speeds,
                                          self.teams,
                                          self.healths,
@@ -86,7 +86,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> entity_handles;
     TArray<ETestCapitalShipFightersTask> tasks;
     FVectors3f locations;
-    FVectors3f directions;
+    FVectors3f aim_directions;
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
@@ -103,7 +103,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     STAMPER(entity_handles)                  \
     END_SYMBOL STAMPER(tasks)                \
     END_SYMBOL STAMPER(locations)            \
-    END_SYMBOL STAMPER(directions)           \
+    END_SYMBOL STAMPER(aim_directions)           \
     END_SYMBOL STAMPER(speeds)               \
     END_SYMBOL STAMPER(teams)                \
     END_SYMBOL STAMPER(healths)              \
