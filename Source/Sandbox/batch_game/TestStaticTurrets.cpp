@@ -162,6 +162,7 @@ void ATestStaticTurrets::prepare_entity_update_data() {
 
     entity_update_data.locations = locations;
     ml::fill(entity_update_data.velocities, 0.f);
+    ml::fill(entity_update_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
     entity_update_data.healths = healths;
     entity_update_data.teams = teams;
     entity_update_data.set_all_entity_types(ETestEntityType::Turret);

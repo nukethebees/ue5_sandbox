@@ -295,11 +295,10 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     auto const proxies{ml::get_actors<Proxy>(*world)};
     auto const n_to_add{proxies.Num()};
+    auto const default_spawn_cooldown{actor_config->spawn_delay};
 
     SpawnData spawn_data;
-
     ml::add_uninitialised(n_to_add, entities.handles, spawn_data);
-    auto const default_spawn_cooldown{actor_config->spawn_delay};
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const& proxy_transform{proxies[i]->GetActorTransform()};
@@ -379,6 +378,7 @@ void ATestCapitalShips::prepare_entity_update_data() {
 
     entity_update_data.locations = entities.locations;
     ml::fill(entity_update_data.velocities, 0.f);
+    ml::fill(entity_update_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     entity_update_data.set_all_entity_types(ETestEntityType::CapitalShip);

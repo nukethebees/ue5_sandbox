@@ -305,19 +305,17 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     auto const n{get_num_instances()};
 
     registry_update_data.reset();
+    ml::add_uninitialised(registry_update_data, n);
+
     registry_update_data.locations = data.locations;
-
-    ml::add_uninitialised(registry_update_data.velocities, n);
     registry_update_data.velocities = data.directions;
-    ml::multiply_in_place(registry_update_data.velocities, data.speeds);
-
     registry_update_data.healths = data.healths;
     registry_update_data.teams = data.teams;
-
-    ml::add_uninitialised(registry_update_data.alive, n);
     for (int32 i{0}; i < n; ++i) {
         registry_update_data.alive[i] = static_cast<uint8>(data.healths[i] > 0);
     }
+
+    registry_update_data.validate_array_sizes();
 }
 bool ATestCapitalShipFighters::tasks_are_contiguous() const noexcept {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::tasks_are_contiguous);
@@ -434,6 +432,9 @@ void ATestCapitalShipFighters::commit_spawns() {
     // Fill entity data and set directions
     new_spawn_entity_data.add_uninitialised(n_new);
 
+    ml::fill(new_spawn_entity_data.radii, static_cast<float>(instances->Bounds.SphereRadius));
+    ml::fill(new_spawn_entity_data.alive, uint8{1});
+
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
 
@@ -443,7 +444,6 @@ void ATestCapitalShipFighters::commit_spawns() {
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
         new_spawn_entity_data.healths[i] = data.healths[index];
         new_spawn_entity_data.teams[i] = data.teams[index];
-        new_spawn_entity_data.alive[i] = true;
     }
     new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
 
