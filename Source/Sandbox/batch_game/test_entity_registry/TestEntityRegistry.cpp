@@ -111,6 +111,7 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         ml::assign_from(entity_data.locations, entity_index, view.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, view.velocities, i);
 
+        entity_data.radii[entity_index] = view.radii[i];
         entity_data.healths[entity_index] = view.healths[i];
         entity_data.teams[entity_index] = view.teams[i];
         entity_data.alive[entity_index] = view.alive[i];
