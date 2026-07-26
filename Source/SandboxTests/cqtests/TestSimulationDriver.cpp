@@ -2,7 +2,7 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
-#include <Sandbox/batch_game/test_entity_registry/DamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/constants/collision_channels.h>
@@ -39,64 +39,18 @@ auto TestSimulationDriver::get_capital_ship_fighters() const -> ATestCapitalShip
     return *orchestrator.get_capital_ship_fighters();
 }
 
-void TestSimulationDriver::queue_kills(AActor const& expected_hit,
-                                       TConstArrayView<FRegistryEntityHandle> const targets) {
-    // To avoid creating new code paths, we need to do a "collision" to do damage
+void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets) {
     auto const damage{std::numeric_limits<int32>::max()};
     auto const n{targets.Num()};
 
-    UnresolvedDamageEvents damage_events;
+    DirectDamageEvents damage_events;
     damage_events.add_uninitialised(n);
 
-    TArray<AActor const*> hit_actors;
-    TMap<int32, int32> hit_items;
+    damage_events.damaged_entities = targets;
+    ml::fill(damage_events.damage_amounts, damage);
+    ml::fill(damage_events.instigators, FRegistryEntityHandle{});
 
-    for (int32 i{0}; i < n; ++i) {
-        check(registry.is_valid_alive(targets[i]));
-        FVector location{registry.get_location(targets[i])};
-        FVector const half_trace{0.0, 0.0, 1.0};
-
-        FHitResult hit;
-        auto const did_hit{world.LineTraceSingleByChannel(
-            hit,
-            location - half_trace,
-            location + half_trace,
-            ml::collision::projectile,
-            FCollisionQueryParams{SCENE_QUERY_STAT(TestDamageInjector), false})};
-
-        check(did_hit);
-        hit_actors.Add(hit.GetActor());
-
-        damage_events.damaged_actors[i] = hit.GetActor();
-        damage_events.damage_amounts[i] = damage;
-        damage_events.actor_components[i] = hit.GetComponent();
-        damage_events.hit_items[i] = hit.Item;
-        damage_events.instigators[i] = {};
-
-        if (hit_items.Contains(hit.Item)) {
-            hit_items[hit.Item] += 1;
-        } else {
-            hit_items.Add(hit.Item, 1);
-        }
-    }
-
-    FString err_msg;
-
-    for (auto const* actor : hit_actors) {
-        if (&expected_hit != actor) {
-            err_msg += FString::Printf(TEXT("\nShould have hit %s (hit %s)"),
-                                       *ml::get_best_display_name(expected_hit),
-                                       *ml::get_best_display_name(*actor));
-        }
-    }
-
-    for (auto [k, v] : hit_items) {
-        if (v != 1) { err_msg += FString::Printf(TEXT("\nHit item %d hit %d times"), k, v); }
-    }
-
-    checkf(err_msg.IsEmpty(), TEXT("%s"), *err_msg);
-
-    registry.queue_damage_events(damage_events);
+    registry.queue_direct_damage_events(damage_events);
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {

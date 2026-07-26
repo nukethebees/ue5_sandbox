@@ -297,7 +297,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             UE_LOG(LogSandboxTest, Display, TEXT("Test: Destroying %s"), *handle.to_string());
         }
 
-        test_driver->queue_kills(test_driver->get_capital_ship_fighters(), destroyed);
+        test_driver->queue_kills(destroyed);
     }
     void kill_fighters_stage() {
         kill_fighters();
@@ -529,7 +529,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         checks.is_true(test_driver->registry.is_valid_alive(target),
                        TEXT("Check target alive before kill"));
-        test_driver->queue_kills(*capitals, TArray{target});
+        test_driver->queue_kills(TArray{target});
     }
     void save_data_after_capital_kill() {
         TestRunner->AddInfo(TEXT("fn: save_data_after_capital_kill"));
