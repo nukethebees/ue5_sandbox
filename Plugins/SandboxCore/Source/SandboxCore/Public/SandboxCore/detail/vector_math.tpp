@@ -190,14 +190,14 @@ void multiply_in_place(T* RESTRICT a_x,
 }
 
 template <ml::Numeric T>
-void scale_vector3(T* RESTRICT dst_x,
-                   T* RESTRICT dst_y,
-                   T* RESTRICT dst_z,
-                   T const* RESTRICT lhs_x,
-                   T const* RESTRICT lhs_y,
-                   T const* RESTRICT lhs_z,
-                   T const* RESTRICT scale_factor,
-                   int32 const count) noexcept {
+void multiply(T* RESTRICT dst_x,
+              T* RESTRICT dst_y,
+              T* RESTRICT dst_z,
+              T const* RESTRICT lhs_x,
+              T const* RESTRICT lhs_y,
+              T const* RESTRICT lhs_z,
+              T const* RESTRICT scale_factor,
+              int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         dst_x[i] = lhs_x[i] * scale_factor[i];
         dst_y[i] = lhs_y[i] * scale_factor[i];
@@ -205,14 +205,14 @@ void scale_vector3(T* RESTRICT dst_x,
     }
 }
 template <ml::Numeric T>
-void scale_vector3(T* RESTRICT dst_x,
-                   T* RESTRICT dst_y,
-                   T* RESTRICT dst_z,
-                   T const* RESTRICT lhs_x,
-                   T const* RESTRICT lhs_y,
-                   T const* RESTRICT lhs_z,
-                   T const scale_factor,
-                   int32 const count) noexcept {
+void multiply(T* RESTRICT dst_x,
+              T* RESTRICT dst_y,
+              T* RESTRICT dst_z,
+              T const* RESTRICT lhs_x,
+              T const* RESTRICT lhs_y,
+              T const* RESTRICT lhs_z,
+              T const scale_factor,
+              int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
         dst_x[i] = lhs_x[i] * scale_factor;
         dst_y[i] = lhs_y[i] * scale_factor;

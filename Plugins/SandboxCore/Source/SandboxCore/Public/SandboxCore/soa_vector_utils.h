@@ -93,7 +93,7 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, T
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
 
 template <is_mutable_vec3f Dst, is_readable_vec3f Src>
-void assign_from_scaled(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) {
+void multiply(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) {
     auto const n{ml::num(dst)};
     check(n == ml::num(src));
     check(n == ml::num(scale_factors));
@@ -102,17 +102,17 @@ void assign_from_scaled(Dst&& dst, Src&& src, TConstArrayView<float> const scale
     check(dst.ys.GetData() != src.ys.GetData());
     check(dst.zs.GetData() != src.zs.GetData());
 
-    ml::kernel::scale_vector3<float>(dst.xs.GetData(),
-                                     dst.ys.GetData(),
-                                     dst.zs.GetData(),
-                                     src.xs.GetData(),
-                                     src.ys.GetData(),
-                                     src.zs.GetData(),
-                                     scale_factors.GetData(),
-                                     n);
+    ml::kernel::multiply<float>(dst.xs.GetData(),
+                                dst.ys.GetData(),
+                                dst.zs.GetData(),
+                                src.xs.GetData(),
+                                src.ys.GetData(),
+                                src.zs.GetData(),
+                                scale_factors.GetData(),
+                                n);
 }
 template <is_mutable_vec3f Dst, is_readable_vec3f Src>
-void assign_from_scaled(Dst&& dst, Src&& src, float const scale_factor) {
+void multiply(Dst&& dst, Src&& src, float const scale_factor) {
     auto const n{ml::num(dst)};
     check(n == ml::num(src));
 
@@ -120,14 +120,14 @@ void assign_from_scaled(Dst&& dst, Src&& src, float const scale_factor) {
     check(dst.ys.GetData() != src.ys.GetData());
     check(dst.zs.GetData() != src.zs.GetData());
 
-    ml::kernel::scale_vector3<float>(dst.xs.GetData(),
-                                     dst.ys.GetData(),
-                                     dst.zs.GetData(),
-                                     src.xs.GetData(),
-                                     src.ys.GetData(),
-                                     src.zs.GetData(),
-                                     scale_factor,
-                                     n);
+    ml::kernel::multiply<float>(dst.xs.GetData(),
+                                dst.ys.GetData(),
+                                dst.zs.GetData(),
+                                src.xs.GetData(),
+                                src.ys.GetData(),
+                                src.zs.GetData(),
+                                scale_factor,
+                                n);
 }
 
 template <is_vec3f Vec3f>
