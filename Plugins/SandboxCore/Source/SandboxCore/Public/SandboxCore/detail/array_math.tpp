@@ -5,7 +5,9 @@
 #include "CoreMinimal.h"
 
 namespace ml::kernel {
+/* ---------------------------------------------------------------------------------------------- */
 // Addition
+/* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
 void add_in_place(T* const data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
@@ -13,7 +15,9 @@ void add_in_place(T* const data, T const value, int32 const count) noexcept {
     }
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Subtraction
+/* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
 void subtract_in_place(T* const data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
@@ -21,7 +25,16 @@ void subtract_in_place(T* const data, T const value, int32 const count) noexcept
     }
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Multiplication
+/* ---------------------------------------------------------------------------------------------- */
+template <ml::Numeric T>
+void multiply(T* const out, T const* const a, T const b, int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        out[i] = a[i] * b;
+    }
+}
+
 template <ml::Numeric T>
 void multiply_in_place(T* const data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
@@ -38,7 +51,9 @@ void multiply_in_place(T* const RESTRICT data,
     }
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Division
+/* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
 void divide_in_place(T* data, T const value, int32 const count) noexcept {
     for (int32 i{0}; i < count; ++i) {
@@ -46,7 +61,9 @@ void divide_in_place(T* data, T const value, int32 const count) noexcept {
     }
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // Querying
+/* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
 auto collect_indices_less_equal(T const* RESTRICT values,
                                 int32 const count,
@@ -81,6 +98,9 @@ auto collect_values_not_equal(T const* RESTRICT values,
     return static_cast<int32>(out_values - original);
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+// Summation
+/* ---------------------------------------------------------------------------------------------- */
 template <typename T>
 auto sum(T const* RESTRICT values, int32 const count) noexcept -> T {
     T out{};
