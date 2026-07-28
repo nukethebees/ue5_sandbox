@@ -1,4 +1,5 @@
 #include <SandboxCore/soa_vector_utils.h>
+#include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
@@ -26,7 +27,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.append_n.Value") {
 TEST_CASE("SandboxCore.SoaVectorUtils.add_zeroed.Two") {
     auto vectors{ml::make_vectors3f({1.0f}, {2.0f}, {3.0f})};
 
-    ml::add_zeroed(vectors, 2);
+    vectors.add_zeroed(2);
 
     auto const expected{ml::make_vectors3f({1.0f, 0.0f, 0.0f}, {2.0f, 0.0f, 0.0f}, {3.0f, 0.0f, 0.0f})};
 
