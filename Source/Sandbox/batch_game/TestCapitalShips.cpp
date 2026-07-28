@@ -226,7 +226,7 @@ void ATestCapitalShips::end_tick() {
 
     fighters_spawned += ml::num(fighter_queue);
     validate_array_sizes();
-    }
+}
 
 // Accessors
 auto ATestCapitalShips::get_num_instances() const -> int32 {

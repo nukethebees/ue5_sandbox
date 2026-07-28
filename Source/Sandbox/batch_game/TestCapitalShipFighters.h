@@ -104,7 +104,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> target_distance_sq;
     TArray<float> target_radii;
 
-#define SANDBOX_PACK(STAMPER, NON_FINAL)       \
+#define SANDBOX_PACK(STAMPER, NON_FINAL)      \
     NON_FINAL(STAMPER(entity_handles))        \
     NON_FINAL(STAMPER(tasks))                 \
     NON_FINAL(STAMPER(locations))             \

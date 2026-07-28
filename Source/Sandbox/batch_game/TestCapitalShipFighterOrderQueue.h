@@ -33,9 +33,9 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> targets;
 
 #define SANDBOX_PACK(STAMPER, NON_FINAL) \
-    NON_FINAL(STAMPER(handles))         \
-    NON_FINAL(STAMPER(orders))          \
-    NON_FINAL(STAMPER(tasks))           \
+    NON_FINAL(STAMPER(handles))          \
+    NON_FINAL(STAMPER(orders))           \
+    NON_FINAL(STAMPER(tasks))            \
     STAMPER(targets)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)

@@ -155,8 +155,7 @@ void ATestEntityRegistry::queue_collision_damage_events(
         if (!id.is_valid()) { continue; }
 
         auto& actor_collision_damage_events{queued_collision_damage_events[id.id]};
-        actor_collision_damage_events.damage_amounts.Add(
-            collision_damage_events.damage_amounts[i]);
+        actor_collision_damage_events.damage_amounts.Add(collision_damage_events.damage_amounts[i]);
         actor_collision_damage_events.actor_components.Add(
             collision_damage_events.actor_components[i]);
         actor_collision_damage_events.hit_items.Add(collision_damage_events.hit_items[i]);

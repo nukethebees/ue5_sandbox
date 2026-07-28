@@ -34,7 +34,9 @@ auto FDrawDebugConfig::get_segments(TOptional<int32> t) const -> int32 {
     return get_optional(t, segments);
 }
 
-void FDrawDebugConfig::draw_line(FVector const& start, FVector const& end, FColor const draw_colour) const {
+void FDrawDebugConfig::draw_line(FVector const& start,
+                                 FVector const& end,
+                                 FColor const draw_colour) const {
     if (!check_world_valid()) { return; }
 
     DrawDebugLine(world.Get(),
