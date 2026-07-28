@@ -152,6 +152,44 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
 // Multiplication
 /* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
+void multiply_in_place(
+    T* RESTRICT a_x, T* RESTRICT a_y, T* RESTRICT a_z, T const b, int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        a_x[i] *= b;
+        a_y[i] *= b;
+        a_z[i] *= b;
+    }
+}
+
+template <ml::Numeric T>
+void multiply_in_place(T* RESTRICT a_x,
+                       T* RESTRICT a_y,
+                       T* RESTRICT a_z,
+                       T const* RESTRICT b,
+                       int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        a_x[i] *= b[i];
+        a_y[i] *= b[i];
+        a_z[i] *= b[i];
+    }
+}
+
+template <ml::Numeric T>
+void multiply_in_place(T* RESTRICT a_x,
+                       T* RESTRICT a_y,
+                       T* RESTRICT a_z,
+                       T const* RESTRICT b_x,
+                       T const* RESTRICT b_y,
+                       T const* RESTRICT b_z,
+                       int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        a_x[i] *= b_x[i];
+        a_y[i] *= b_y[i];
+        a_z[i] *= b_z[i];
+    }
+}
+
+template <ml::Numeric T>
 void scale_vector3(T* RESTRICT dst_x,
                    T* RESTRICT dst_y,
                    T* RESTRICT dst_z,
@@ -164,6 +202,21 @@ void scale_vector3(T* RESTRICT dst_x,
         dst_x[i] = lhs_x[i] * scale_factor[i];
         dst_y[i] = lhs_y[i] * scale_factor[i];
         dst_z[i] = lhs_z[i] * scale_factor[i];
+    }
+}
+template <ml::Numeric T>
+void scale_vector3(T* RESTRICT dst_x,
+                   T* RESTRICT dst_y,
+                   T* RESTRICT dst_z,
+                   T const* RESTRICT lhs_x,
+                   T const* RESTRICT lhs_y,
+                   T const* RESTRICT lhs_z,
+                   T const scale_factor,
+                   int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        dst_x[i] = lhs_x[i] * scale_factor;
+        dst_y[i] = lhs_y[i] * scale_factor;
+        dst_z[i] = lhs_z[i] * scale_factor;
     }
 }
 

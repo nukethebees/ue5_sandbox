@@ -91,12 +91,44 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, T
 // Assignment
 /* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
-void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
-                                        FVectors3f const& src,
-                                        TConstArrayView<float> const scale_factors);
-void SANDBOXCORE_API assign_from_scaled(FVectors3f& dst,
-                                        FVectors3f::ConstView const src,
-                                        TConstArrayView<float> const scale_factors);
+
+template <is_mutable_vec3f Dst, is_readable_vec3f Src>
+void assign_from_scaled(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) {
+    auto const n{ml::num(dst)};
+    check(n == ml::num(src));
+    check(n == ml::num(scale_factors));
+
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::scale_vector3<float>(dst.xs.GetData(),
+                                     dst.ys.GetData(),
+                                     dst.zs.GetData(),
+                                     src.xs.GetData(),
+                                     src.ys.GetData(),
+                                     src.zs.GetData(),
+                                     scale_factors.GetData(),
+                                     n);
+}
+template <is_mutable_vec3f Dst, is_readable_vec3f Src>
+void assign_from_scaled(Dst&& dst, Src&& src, float const scale_factor) {
+    auto const n{ml::num(dst)};
+    check(n == ml::num(src));
+
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::scale_vector3<float>(dst.xs.GetData(),
+                                     dst.ys.GetData(),
+                                     dst.zs.GetData(),
+                                     src.xs.GetData(),
+                                     src.ys.GetData(),
+                                     src.zs.GetData(),
+                                     scale_factor,
+                                     n);
+}
 
 template <is_vec3f Vec3f>
 inline void assign_from(FVectors3f& dst, int32 const dst_i, Vec3f const& src, int32 const src_i) {

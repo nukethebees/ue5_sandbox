@@ -1,4 +1,4 @@
-#include <SandboxCore/vector_math.h>
+#include <SandboxCore/soa_vector_utils.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
@@ -55,6 +55,27 @@ TEST_CASE("SandboxCore.Math.scale_vector3.MixedFactors") {
     REQUIRE(dst_x == TArray<float>{1.0f, 4.0f, -3.0f});
     REQUIRE(dst_y == TArray<float>{4.0f, 10.0f, -6.0f});
     REQUIRE(dst_z == TArray<float>{7.0f, 16.0f, -9.0f});
+}
+
+TEST_CASE("SandboxCore.Math.scale_vector3.Scalar") {
+    auto const lhs{
+        ml::make_vectors3f({1.0f, -2.0f, 3.0f}, {4.0f, 0.0f, -6.0f}, {-7.0f, 8.0f, 9.0f})};
+    FVectors3f dst;
+    dst.set_num_uninitialised(lhs.num());
+
+    ml::kernel::scale_vector3(dst.xs.GetData(),
+                              dst.ys.GetData(),
+                              dst.zs.GetData(),
+                              lhs.xs.GetData(),
+                              lhs.ys.GetData(),
+                              lhs.zs.GetData(),
+                              -2.0f,
+                              lhs.num());
+
+    auto const expected{ml::make_vectors3f(
+        {-2.0f, 4.0f, -6.0f}, {-8.0f, 0.0f, 12.0f}, {14.0f, -16.0f, -18.0f})};
+
+    CHECK(ml::almost_equal(dst, expected));
 }
 
 TEST_CASE("SandboxCore.Math.scale_vector3.Empty") {
