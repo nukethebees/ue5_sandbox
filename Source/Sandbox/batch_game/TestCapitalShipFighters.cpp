@@ -99,15 +99,21 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto const& attack_view{get_task_view(Task::Attack)};
 
     auto const do_move{move_view.num() > 0};
-    auto const do_attack{attack_view.num() > 0};
+
+    auto const n_attack{attack_view.num()};
+    auto const do_attack{n_attack > 0};
+
+    auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_half_distance{laser_max_distance / 2.f};
 
     if (do_attack) {
-        // [Attack] Update move destination to enemy location
-        ml::assign_from(attack_view.move_target_locations, attack_view.target_locations);
-
         // [Attack] Update direction to target
         ml::direction(
             attack_view.target_directions, attack_view.locations, attack_view.target_locations);
+
+        // [Attack] Update move destination to attack position
+        ml::assign_from_scaled(
+            attack_view.move_target_locations, attack_view.target_directions, laser_half_distance);
     }
 
     // [All] Update movement direction
