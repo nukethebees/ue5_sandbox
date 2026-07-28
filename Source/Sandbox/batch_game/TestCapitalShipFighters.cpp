@@ -112,7 +112,7 @@ void ATestCapitalShipFighters::move(float const dt) {
             attack_view.target_directions, attack_view.locations, attack_view.target_locations);
 
         // [Attack] Update move destination to attack position
-        ml::assign_from_scaled(
+        ml::multiply(
             attack_view.move_target_locations, attack_view.target_directions, laser_half_distance);
     }
 
@@ -507,9 +507,9 @@ void ATestCapitalShipFighters::commit_spawns() {
 
     // Velocities
     TConstArrayView<float> const new_speeds{data.speeds.GetData() + n_cur, n_new};
-    ml::assign_from_scaled(new_spawn_entity_data.velocities,
-                           data.aim_directions.get_const_view().right(n_new),
-                           new_speeds);
+    ml::multiply(new_spawn_entity_data.velocities,
+                 data.aim_directions.get_const_view().right(n_new),
+                 new_speeds);
 
     // Entity handles
     new_spawn_entity_handles =
