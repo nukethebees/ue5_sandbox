@@ -220,6 +220,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void queue_fighter_spawns();
     void refresh_fighter_handles();
 
+    // Orders
+    void queue_fighter_orders();
+
     // Visuals
     void configure_ismc();
 

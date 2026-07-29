@@ -36,6 +36,8 @@ void resolve_damage_events(ATestEntityRegistry const& registry,
                            TArray<int32>& healths,
                            TArray<int32>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ml::batch::resolve_damage_events);
+
     auto const& collision_view{registry.get_collision_damage_queue_view(owner_id)};
     auto const n_collision_events{collision_view.num()};
 
@@ -72,6 +74,8 @@ void refresh_targets(ATestEntityRegistry const& registry,
                      TArray<int32>& indices_without_targets,
                      TConstArrayView<ETestTeam> const teams,
                      ETestEntityType const target_type) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ml::batch::refresh_targets);
+
     indices_without_targets.Reset();
     registry.refresh_handles(target_handles);
 
