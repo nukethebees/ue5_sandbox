@@ -27,6 +27,7 @@ class ATestBatchOrchestrator : public AActor {
 
     auto get_tick_count() const noexcept { return tick_counter; }
 
+    auto get_player_ship() const -> auto const* { return player_ship.Get(); }
     auto get_lasers() const -> auto const* { return lasers.Get(); }
     auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
     auto get_capital_ship_fighters() const -> auto const* { return capital_ship_fighters.Get(); }

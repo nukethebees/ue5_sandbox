@@ -5,6 +5,9 @@
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
+#include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/constants/collision_channels.h>
 #include <Sandbox/utilities/actor_utils.h>
 
@@ -32,11 +35,20 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     return TestSimulationDriver{world, *registry, *orchestrator};
 }
 
+auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
+    auto const actor{orchestrator.get_player_ship()};
+    check(IsValid(actor));
+    return *actor;
+}
 auto TestSimulationDriver::get_capital_ships() const -> ATestCapitalShips const& {
-    return *orchestrator.get_capital_ships();
+    auto const actor{orchestrator.get_capital_ships()};
+    check(IsValid(actor));
+    return *actor;
 }
 auto TestSimulationDriver::get_capital_ship_fighters() const -> ATestCapitalShipFighters const& {
-    return *orchestrator.get_capital_ship_fighters();
+    auto const actor{orchestrator.get_capital_ship_fighters()};
+    check(IsValid(actor));
+    return *actor;
 }
 
 void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets) {
