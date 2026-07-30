@@ -21,11 +21,22 @@ void FSoftTestAssertions::store_result(bool const result) noexcept {
     all_passed &= result;
 }
 
-bool FSoftTestAssertions::not_nullptr(void* ptr, FString const description) {
+bool FSoftTestAssertions::is_true(bool result, FString const& description, int32 const i) {
+    store_result(result);
+
+    FString msg{start_msg(i)};
+    msg += FString::Printf(TEXT("%s (%s)"), *description, to_string(result));
+
+    display_result(result, msg);
+
+    return result;
+}
+
+bool FSoftTestAssertions::not_nullptr(void* ptr, FString const& description) {
     return is_true(ptr != nullptr, description);
 }
 
-bool FSoftTestAssertions::is_valid(AActor* ptr, FString const description) {
+bool FSoftTestAssertions::is_valid(AActor* ptr, FString const& description) {
     return is_true(IsValid(ptr), description);
 }
 }
