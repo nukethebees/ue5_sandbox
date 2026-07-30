@@ -91,44 +91,7 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, T
 // Assignment
 /* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
-
-template <is_mutable_vec3f Dst, is_readable_vec3f Src>
-void multiply(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) {
-    auto const n{ml::num(dst)};
-    check(n == ml::num(src));
-    check(n == ml::num(scale_factors));
-
-    check(dst.xs.GetData() != src.xs.GetData());
-    check(dst.ys.GetData() != src.ys.GetData());
-    check(dst.zs.GetData() != src.zs.GetData());
-
-    ml::kernel::multiply<float>(dst.xs.GetData(),
-                                dst.ys.GetData(),
-                                dst.zs.GetData(),
-                                src.xs.GetData(),
-                                src.ys.GetData(),
-                                src.zs.GetData(),
-                                scale_factors.GetData(),
-                                n);
-}
-template <is_mutable_vec3f Dst, is_readable_vec3f Src>
-void multiply(Dst&& dst, Src&& src, float const scale_factor) {
-    auto const n{ml::num(dst)};
-    check(n == ml::num(src));
-
-    check(dst.xs.GetData() != src.xs.GetData());
-    check(dst.ys.GetData() != src.ys.GetData());
-    check(dst.zs.GetData() != src.zs.GetData());
-
-    ml::kernel::multiply<float>(dst.xs.GetData(),
-                                dst.ys.GetData(),
-                                dst.zs.GetData(),
-                                src.xs.GetData(),
-                                src.ys.GetData(),
-                                src.zs.GetData(),
-                                scale_factor,
-                                n);
-}
+void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f::ConstView src);
 
 template <is_vec3f Vec3f>
 inline void assign_from(FVectors3f& dst, int32 const dst_i, Vec3f const& src, int32 const src_i) {
@@ -319,6 +282,44 @@ inline void lerp_in_place(Current& current, Target const& target, float const al
 /* ---------------------------------------------------------------------------------------------- */
 // Multiplication
 /* ---------------------------------------------------------------------------------------------- */
+template <is_mutable_vec3f Dst, is_readable_vec3f Src>
+void multiply(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) {
+    auto const n{ml::num(dst)};
+    check(n == ml::num(src));
+    check(n == ml::num(scale_factors));
+
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::multiply<float>(dst.xs.GetData(),
+                                dst.ys.GetData(),
+                                dst.zs.GetData(),
+                                src.xs.GetData(),
+                                src.ys.GetData(),
+                                src.zs.GetData(),
+                                scale_factors.GetData(),
+                                n);
+}
+template <is_mutable_vec3f Dst, is_readable_vec3f Src>
+void multiply(Dst&& dst, Src&& src, float const scale_factor) {
+    auto const n{ml::num(dst)};
+    check(n == ml::num(src));
+
+    check(dst.xs.GetData() != src.xs.GetData());
+    check(dst.ys.GetData() != src.ys.GetData());
+    check(dst.zs.GetData() != src.zs.GetData());
+
+    ml::kernel::multiply<float>(dst.xs.GetData(),
+                                dst.ys.GetData(),
+                                dst.zs.GetData(),
+                                src.xs.GetData(),
+                                src.ys.GetData(),
+                                src.zs.GetData(),
+                                scale_factor,
+                                n);
+}
+
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, float const value);
 void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values);
 

@@ -29,6 +29,11 @@ void assign_from(FVectors3f& dst, FVectors3f const& src) {
     dst.ys = src.ys;
     dst.zs = src.zs;
 }
+void assign_from(FVectors3f& dst, FVectors3f::ConstView const src) {
+    dst.xs = src.xs;
+    dst.ys = src.ys;
+    dst.zs = src.zs;
+}
 
 /* ---------------------------------------------------------------------------------------------- */
 // Multiplication
