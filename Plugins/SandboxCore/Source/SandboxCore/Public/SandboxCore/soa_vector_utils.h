@@ -444,6 +444,20 @@ inline auto to_rotatorsf(Vec3f const& vectors) -> FRotatorsf {
     return rotators;
 }
 
+template <is_readable_vec3f T>
+inline auto to_vector3f_array(T const& src) -> TArray<FVector3f> {
+    TArray<FVector3f> out;
+
+    auto const n{ml::num(src)};
+    out.Reserve(n);
+
+    for (int32 i{0}; i < n; ++i) {
+        out.Emplace(src.xs[i], src.ys[i], src.zs[i]);
+    }
+
+    return out;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 // Normalisation
 /* ---------------------------------------------------------------------------------------------- */
