@@ -7,6 +7,8 @@
 		"Sandbox.FunctionalTests.CapitalFighterHandles.KillCapital",
 		"Sandbox.FunctionalTests.CapitalFighterHandles.KillFightersOnly",
 		"Sandbox.FunctionalTests.EntityInterfaceTest.MainTest",
+		"Sandbox.FunctionalTests.FighterCapitalAttack.Main",
+		"Sandbox.FunctionalTests.PlayerShipVsCapital.Main",
 		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
 		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest"
 	]
