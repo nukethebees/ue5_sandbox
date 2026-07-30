@@ -34,10 +34,13 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     /* ---------------------------------------------------------------------------- */
     // Initial phase
     /* ---------------------------------------------------------------------------- */
-    static constexpr time_type initial_wait{0.5};
+    static constexpr time_type initial_wait{0.1};
 
-    FVector player_ship_initial_location;
-    FVector player_ship_initial_registry_location;
+    struct InitialPhaseData {
+        FVector player_ship_location;
+        FVector player_ship_registry_location;
+    };
+    InitialPhaseData initial_phase_data{};
 
     void initial_setup() {
         auto& world{spawner->GetWorld()};
@@ -50,13 +53,13 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     void initial_samples() {
         player_ship_handle = player_ship->get_entity_handle();
 
-        player_ship_initial_location = player_ship->GetActorLocation();
-        player_ship_initial_registry_location =
+        initial_phase_data.player_ship_location = player_ship->GetActorLocation();
+        initial_phase_data.player_ship_registry_location =
             FVector{test_driver->registry.get_location(player_ship_handle)};
     }
     void initial_checks() {
-        checks.dist_zero(player_ship_initial_location,
-                         player_ship_initial_registry_location,
+        checks.dist_zero(initial_phase_data.player_ship_location,
+                         initial_phase_data.player_ship_registry_location,
                          1.0,
                          TEXT("Registry and ship locations same at start."));
 
@@ -73,30 +76,78 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     /* ---------------------------------------------------------------------------- */
     // Post settling phase
     /* ---------------------------------------------------------------------------- */
-    FVector player_ship_next_location;
-    FVector player_ship_next_registry_location;
+    struct PostSettlingPhaseData {
+        FVector player_ship_location;
+        FVector player_ship_registry_location;
+        TArray<FVector3f> fighter_target_locations;
+    };
+    PostSettlingPhaseData post_settling_phase_data{};
 
     void post_settling_samples() {
-        player_ship_next_location = player_ship->GetActorLocation();
-        player_ship_next_registry_location =
+        post_settling_phase_data.player_ship_location = player_ship->GetActorLocation();
+        post_settling_phase_data.player_ship_registry_location =
             FVector{test_driver->registry.get_location(player_ship_handle)};
+
+        post_settling_phase_data.fighter_target_locations =
+            ml::to_vector3f_array(fighters->get_target_locations());
     }
     void post_settling_checks() {
-        checks.dist_zero(player_ship_next_location,
-                         player_ship_next_registry_location,
+        checks.dist_zero(post_settling_phase_data.player_ship_location,
+                         post_settling_phase_data.player_ship_registry_location,
                          1.0,
                          TEXT("Registry and ship locations same after some time."));
 
-        checks.not_dist_zero(
-            player_ship_initial_location, player_ship_next_location, 1.0, TEXT("Ship moves"));
+        checks.not_dist_zero(initial_phase_data.player_ship_location,
+                             post_settling_phase_data.player_ship_location,
+                             1.0,
+                             TEXT("Ship moves"));
+
+        checks.is_greater_than(ml::num(post_settling_phase_data.fighter_target_locations),
+                               int32{0},
+                               FString{TEXT("Non-zero target locations")});
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
     void post_settling_phase() {
         post_settling_samples();
         post_settling_checks();
+    }
 
-        test_driver->set_delta_time_wait(initial_wait);
+    /* ---------------------------------------------------------------------------- */
+    // Let fighters track
+    /* ---------------------------------------------------------------------------- */
+    static constexpr time_type track_time{0.5};
+
+    struct FighterTrackingPhaseData {
+        TArray<FVector3f> fighter_target_locations;
+    };
+    FighterTrackingPhaseData fighter_tracking_phase_data{};
+
+    void fighter_track_samples() {
+        fighter_tracking_phase_data.fighter_target_locations =
+            ml::to_vector3f_array(fighters->get_target_locations());
+    }
+    void fighter_track_checks() {
+        auto const n_locs{ml::num(post_settling_phase_data.fighter_target_locations)};
+        checks.are_equal(n_locs,
+                         ml::num(fighter_tracking_phase_data.fighter_target_locations),
+                         TEXT("Check num locations equal"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        for (int32 i{0}; i < n_locs; ++i) {
+            checks.not_dist_zero(post_settling_phase_data.fighter_target_locations[i],
+                                 fighter_tracking_phase_data.fighter_target_locations[i],
+                                 1.0,
+                                 TEXT("Check fighter target location updates"),
+                                 i);
+        }
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    }
+    void fighter_track_phase() {
+        fighter_track_samples();
+        fighter_track_checks();
     }
 
     TEST_METHOD(Main)
@@ -107,6 +158,9 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
             // Initial phase
             .Do([this] { initial_phase(); })
             .Until(check_wait_over, default_timeout)
-            .Do([this] { post_settling_phase(); });
+            .Do([this] { post_settling_phase(); })
+            .Do([this] { test_driver->set_delta_time_wait(track_time); })
+            .Until(check_wait_over, default_timeout)
+            .Do([this] { fighter_track_phase(); });
     }
 };
