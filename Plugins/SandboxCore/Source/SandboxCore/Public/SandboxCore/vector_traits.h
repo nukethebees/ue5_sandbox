@@ -1,32 +1,17 @@
 #pragma once
 
-#include "CoreMinimal.h"
+#include "SandboxCore/vector_concepts.h"
+
+#include <type_traits>
+#include <utility>
 
 namespace ml {
 
-template <typename T>
-struct VectorTraits;
-
-template <>
-struct VectorTraits<FVector> {
-    using Element = double;
-};
-
-template <>
-struct VectorTraits<FVector3f> {
-    using Element = float;
-};
-
-template <>
-struct VectorTraits<FVector2D> {
-    using Element = double;
-};
-
-template <>
-struct VectorTraits<FVector2f> {
-    using Element = float;
+template <IsUnrealVector T>
+struct VectorTraits {
+    using Element = std::remove_cvref_t<decltype(std::declval<T>().X)>;
 };
 
 template <typename T>
-using VectorElementT = typename VectorTraits<T>::Element;
+using VectorElementT = typename VectorTraits<std::remove_cvref_t<T>>::Element;
 }
