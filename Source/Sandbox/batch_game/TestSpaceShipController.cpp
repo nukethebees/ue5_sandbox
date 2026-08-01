@@ -35,6 +35,8 @@ void ATestSpaceShipController::SetupInputComponent() {
     using enum ETriggerEvent;
 
     // Movement
+    bind(input.move, Triggered, &ThisClass::set_move_input);
+    bind(input.move, Completed, &ThisClass::set_move_input);
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.roll, Started, &ThisClass::start_roll);
@@ -52,6 +54,7 @@ void ATestSpaceShipController::SetupInputComponent() {
 
     bind(input.cycle_prev_fire_rate, Started, &ThisClass::cycle_prev_fire_rate);
     bind(input.cycle_next_fire_rate, Started, &ThisClass::cycle_next_fire_rate);
+    bind(input.cycle_input_mapping_context, Started, &ThisClass::cycle_input_mapping_context);
 }
 
 // Life cycle
@@ -124,7 +127,8 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
-    subsystem->AddMappingContext(input.base_context, 0);
+    check(input.mapping_contexts.Num() > 0);
+    subsystem->AddMappingContext(input.mapping_contexts[input_mapping_context_index], 0);
 
     initialise_hud();
 
@@ -298,6 +302,9 @@ void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
 }
 
 // Movement
+void ATestSpaceShipController::set_move_input(FInputActionValue const& value) {
+    get_pawn().set_move_input(value.Get<FVector2D>());
+}
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
     get_pawn().turn(value.Get<FVector2D>());
 }
@@ -364,6 +371,18 @@ void ATestSpaceShipController::start_brake(FInputActionValue const& value) {
 }
 void ATestSpaceShipController::stop_brake(FInputActionValue const& value) {
     get_pawn().stop_brake();
+}
+void ATestSpaceShipController::cycle_input_mapping_context() {
+    TRY_INIT_PTR(local_player, GetLocalPlayer());
+    TRY_INIT_PTR(subsystem,
+                 ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
+
+    subsystem->RemoveMappingContext(input.mapping_contexts[input_mapping_context_index]);
+
+    auto const n_contexts{input.mapping_contexts.Num()};
+    input_mapping_context_index = (input_mapping_context_index + 1) % n_contexts;
+
+    subsystem->AddMappingContext(input.mapping_contexts[input_mapping_context_index], 0);
 }
 
 // Laser

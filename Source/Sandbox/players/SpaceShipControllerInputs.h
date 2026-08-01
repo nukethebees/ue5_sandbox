@@ -12,8 +12,10 @@ struct FSpaceShipControllerInputs {
     GENERATED_BODY()
 
     UPROPERTY(EditDefaultsOnly, Category = "Input")
-    UInputMappingContext* base_context{nullptr};
+    TArray<UInputMappingContext*> mapping_contexts;
 
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* move{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* turn{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
@@ -33,4 +35,6 @@ struct FSpaceShipControllerInputs {
     UInputAction* cycle_next_fire_rate{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* cycle_prev_fire_rate{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* cycle_input_mapping_context{nullptr};
 };

@@ -69,7 +69,7 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
-    subsystem->AddMappingContext(input.base_context, 0);
+    subsystem->AddMappingContext(input.mapping_contexts[0], 0);
 
     initialise_hud();
 

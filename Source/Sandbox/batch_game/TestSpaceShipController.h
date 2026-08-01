@@ -45,6 +45,8 @@ class ATestSpaceShipController
 
     // Movement
     UFUNCTION()
+    void set_move_input(FInputActionValue const& value);
+    UFUNCTION()
     void turn(FInputActionValue const& value);
     UFUNCTION()
     void turn_completed(FInputActionValue const& value);
@@ -64,6 +66,8 @@ class ATestSpaceShipController
     void start_brake(FInputActionValue const& value);
     UFUNCTION()
     void stop_brake(FInputActionValue const& value);
+    UFUNCTION()
+    void cycle_input_mapping_context();
 
     // Combat
     UFUNCTION()
@@ -108,6 +112,8 @@ class ATestSpaceShipController
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
+
+    int32 input_mapping_context_index{0};
 
     // Mission state
     UPROPERTY(EditAnywhere, Category = "Sandbox|Mission")
