@@ -229,6 +229,27 @@ def generate_copy_element(layout: LayoutSpec, storage_type: str) -> list[str]:
     return lines
 
 
+def generate_data_aggregate(layout: LayoutSpec, name: str, pointer_type: str) -> list[str]:
+    lines = [f"    struct {name}", "    {"]
+    for component in layout.components:
+        lines.append(f"        {pointer_type} {component};")
+    lines.append("    };")
+    return lines
+
+
+def generate_get_data(layout: LayoutSpec, return_type: str, is_const: bool) -> list[str]:
+    const_qualifier = " const" if is_const else ""
+    data_pointers = join_args(
+        [f"{component}.GetData()" for component in layout.components]
+    )
+    return [
+        f"    auto get_data(){const_qualifier} -> {return_type}",
+        "    {",
+        f"        return {return_type}{{{data_pointers}}};",
+        "    }",
+    ]
+
+
 def generate_add_functions(layout: LayoutSpec, aos_type: str | None) -> list[str]:
     if aos_type is None:
         return []
@@ -299,7 +320,15 @@ def generate_storage_struct(layout: LayoutSpec, value_type: str) -> str:
         f"    using View = {view_name(layout)}<value_type>;",
         f"    using ConstView = {view_name(layout)}<value_type const>;",
         "",
+        *generate_data_aggregate(layout, "Data", "value_type*"),
+        "",
+        *generate_data_aggregate(layout, "ConstData", "value_type const*"),
+        "",
         *generate_member_arrays(layout, value_type),
+        "",
+        *generate_get_data(layout, "Data", False),
+        "",
+        *generate_get_data(layout, "ConstData", True),
         "",
         *generate_view_return(layout, "View", "get_view"),
         "",

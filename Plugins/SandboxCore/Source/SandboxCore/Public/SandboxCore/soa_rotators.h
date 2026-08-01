@@ -91,9 +91,33 @@ struct FRotatorsf
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
 
+    struct Data
+    {
+        value_type* pitches;
+        value_type* yaws;
+        value_type* rolls;
+    };
+
+    struct ConstData
+    {
+        value_type const* pitches;
+        value_type const* yaws;
+        value_type const* rolls;
+    };
+
     TArray<float> pitches;
     TArray<float> yaws;
     TArray<float> rolls;
+
+    auto get_data() -> Data
+    {
+        return Data{pitches.GetData(), yaws.GetData(), rolls.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{pitches.GetData(), yaws.GetData(), rolls.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -214,9 +238,33 @@ struct FRotatorsd
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
 
+    struct Data
+    {
+        value_type* pitches;
+        value_type* yaws;
+        value_type* rolls;
+    };
+
+    struct ConstData
+    {
+        value_type const* pitches;
+        value_type const* yaws;
+        value_type const* rolls;
+    };
+
     TArray<double> pitches;
     TArray<double> yaws;
     TArray<double> rolls;
+
+    auto get_data() -> Data
+    {
+        return Data{pitches.GetData(), yaws.GetData(), rolls.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{pitches.GetData(), yaws.GetData(), rolls.GetData()};
+    }
 
     auto get_view() -> View
     {

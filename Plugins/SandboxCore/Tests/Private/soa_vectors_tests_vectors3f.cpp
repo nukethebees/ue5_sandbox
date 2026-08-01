@@ -4,8 +4,21 @@
 #include "TestHarness.h"
 
 #include <type_traits>
+#include <utility>
 
 static_assert(std::is_same_v<FVectors3f::aos_type, FVector3f>);
+static_assert(std::is_aggregate_v<FVectors3f::Data>);
+static_assert(std::is_aggregate_v<FVectors3f::ConstData>);
+static_assert(std::is_same_v<decltype(FVectors3f::Data::xs), float*>);
+static_assert(std::is_same_v<decltype(FVectors3f::Data::ys), float*>);
+static_assert(std::is_same_v<decltype(FVectors3f::Data::zs), float*>);
+static_assert(std::is_same_v<decltype(FVectors3f::ConstData::xs), float const*>);
+static_assert(std::is_same_v<decltype(FVectors3f::ConstData::ys), float const*>);
+static_assert(std::is_same_v<decltype(FVectors3f::ConstData::zs), float const*>);
+static_assert(std::is_same_v<decltype(std::declval<FVectors3f&>().get_data()),
+                             FVectors3f::Data>);
+static_assert(std::is_same_v<decltype(std::declval<FVectors3f const&>().get_data()),
+                             FVectors3f::ConstData>);
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
     FVectors3f vectors;
@@ -41,6 +54,33 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddAosValue") {
     CHECK(first_index == 0);
     CHECK(second_index == 1);
     CHECK(ml::almost_equal(vectors, expected));
+}
+
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetData") {
+    auto vectors{ml::make_vectors3f(
+        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+
+    auto [xs, ys, zs] = vectors.get_data();
+
+    CHECK(xs == vectors.xs.GetData());
+    CHECK(ys == vectors.ys.GetData());
+    CHECK(zs == vectors.zs.GetData());
+    xs[1] = 40.0f;
+    CHECK(vectors.xs[1] == 40.0f);
+}
+
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetDataConst") {
+    auto const vectors{ml::make_vectors3f(
+        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+
+    auto [xs, ys, zs] = vectors.get_data();
+
+    static_assert(std::is_same_v<decltype(xs), float const*>);
+    static_assert(std::is_same_v<decltype(ys), float const*>);
+    static_assert(std::is_same_v<decltype(zs), float const*>);
+    CHECK(xs == vectors.xs.GetData());
+    CHECK(ys == vectors.ys.GetData());
+    CHECK(zs == vectors.zs.GetData());
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetView") {

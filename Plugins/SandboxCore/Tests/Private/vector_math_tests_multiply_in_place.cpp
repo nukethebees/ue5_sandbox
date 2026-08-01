@@ -5,10 +5,11 @@
 
 TEST_CASE("SandboxCore.Math.multiply_in_place.Scalar") {
     auto vectors{ml::make_vectors3f(TArray<FVector3f>{{-2.0f, 4.0f, 0.0f}, {3.0f, -5.0f, 6.0f}})};
+    auto [xs, ys, zs] = vectors.get_data();
 
-    ml::kernel::multiply_in_place(vectors.xs.GetData(),
-                                  vectors.ys.GetData(),
-                                  vectors.zs.GetData(),
+    ml::kernel::multiply_in_place(xs,
+                                  ys,
+                                  zs,
                                   -2.0f,
                                   vectors.num());
 
@@ -22,10 +23,11 @@ TEST_CASE("SandboxCore.Math.multiply_in_place.SharedFactors") {
     auto vectors{
         ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
     TArray<float> const factors{0.0f, -1.0f, 2.0f};
+    auto [xs, ys, zs] = vectors.get_data();
 
-    ml::kernel::multiply_in_place(vectors.xs.GetData(),
-                                  vectors.ys.GetData(),
-                                  vectors.zs.GetData(),
+    ml::kernel::multiply_in_place(xs,
+                                  ys,
+                                  zs,
                                   factors.GetData(),
                                   vectors.num());
 
@@ -38,13 +40,15 @@ TEST_CASE("SandboxCore.Math.multiply_in_place.SharedFactors") {
 TEST_CASE("SandboxCore.Math.multiply_in_place.ComponentFactors") {
     auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 3.0f, 5.0f}, {2.0f, 4.0f, 6.0f}})};
     auto const factors{ml::make_vectors3f(TArray<FVector3f>{{2.0f, -1.0f, 0.5f}, {3.0f, 0.0f, -2.0f}})};
+    auto [xs, ys, zs] = vectors.get_data();
+    auto [factor_xs, factor_ys, factor_zs] = factors.get_data();
 
-    ml::kernel::multiply_in_place(vectors.xs.GetData(),
-                                  vectors.ys.GetData(),
-                                  vectors.zs.GetData(),
-                                  factors.xs.GetData(),
-                                  factors.ys.GetData(),
-                                  factors.zs.GetData(),
+    ml::kernel::multiply_in_place(xs,
+                                  ys,
+                                  zs,
+                                  factor_xs,
+                                  factor_ys,
+                                  factor_zs,
                                   vectors.num());
 
     auto const expected{
@@ -55,10 +59,11 @@ TEST_CASE("SandboxCore.Math.multiply_in_place.ComponentFactors") {
 
 TEST_CASE("SandboxCore.Math.multiply_in_place.Empty") {
     FVectors3f vectors;
+    auto [xs, ys, zs] = vectors.get_data();
 
-    ml::kernel::multiply_in_place(vectors.xs.GetData(),
-                                  vectors.ys.GetData(),
-                                  vectors.zs.GetData(),
+    ml::kernel::multiply_in_place(xs,
+                                  ys,
+                                  zs,
                                   2.0f,
                                   vectors.num());
 

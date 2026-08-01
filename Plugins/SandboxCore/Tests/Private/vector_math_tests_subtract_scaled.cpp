@@ -11,16 +11,19 @@ TEST_CASE("SandboxCore.Math.subtract_scaled.Zero") {
         TArray<FVector3f>{{10.0f, 40.0f, 70.0f}, {20.0f, 50.0f, 80.0f}, {30.0f, 60.0f, 90.0f}})};
     auto const b{ml::make_vectors3f(
         TArray<FVector3f>{{2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}, {4.0f, 7.0f, 10.0f}})};
+    auto [out_xs, out_ys, out_zs] = out.get_data();
+    auto [a_xs, a_ys, a_zs] = a.get_data();
+    auto [b_xs, b_ys, b_zs] = b.get_data();
 
-    ml::kernel::subtract_scaled(out.xs.GetData(),
-                                out.ys.GetData(),
-                                out.zs.GetData(),
-                                a.xs.GetData(),
-                                a.ys.GetData(),
-                                a.zs.GetData(),
-                                b.xs.GetData(),
-                                b.ys.GetData(),
-                                b.zs.GetData(),
+    ml::kernel::subtract_scaled(out_xs,
+                                out_ys,
+                                out_zs,
+                                a_xs,
+                                a_ys,
+                                a_zs,
+                                b_xs,
+                                b_ys,
+                                b_zs,
                                 0.0f,
                                 out.num());
 
@@ -34,16 +37,19 @@ TEST_CASE("SandboxCore.Math.subtract_scaled.Half") {
         TArray<FVector3f>{{10.0f, 40.0f, 70.0f}, {20.0f, 50.0f, 80.0f}, {30.0f, 60.0f, 90.0f}})};
     auto const b{ml::make_vectors3f(
         TArray<FVector3f>{{2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}, {4.0f, 7.0f, 10.0f}})};
+    auto [out_xs, out_ys, out_zs] = out.get_data();
+    auto [a_xs, a_ys, a_zs] = a.get_data();
+    auto [b_xs, b_ys, b_zs] = b.get_data();
 
-    ml::kernel::subtract_scaled(out.xs.GetData(),
-                                out.ys.GetData(),
-                                out.zs.GetData(),
-                                a.xs.GetData(),
-                                a.ys.GetData(),
-                                a.zs.GetData(),
-                                b.xs.GetData(),
-                                b.ys.GetData(),
-                                b.zs.GetData(),
+    ml::kernel::subtract_scaled(out_xs,
+                                out_ys,
+                                out_zs,
+                                a_xs,
+                                a_ys,
+                                a_zs,
+                                b_xs,
+                                b_ys,
+                                b_zs,
                                 0.5f,
                                 out.num());
 
@@ -56,16 +62,19 @@ TEST_CASE("SandboxCore.Math.subtract_scaled.Empty") {
     FVectors3f out;
     FVectors3f const a;
     FVectors3f const b;
+    auto [out_xs, out_ys, out_zs] = out.get_data();
+    auto [a_xs, a_ys, a_zs] = a.get_data();
+    auto [b_xs, b_ys, b_zs] = b.get_data();
 
-    ml::kernel::subtract_scaled(out.xs.GetData(),
-                                out.ys.GetData(),
-                                out.zs.GetData(),
-                                a.xs.GetData(),
-                                a.ys.GetData(),
-                                a.zs.GetData(),
-                                b.xs.GetData(),
-                                b.ys.GetData(),
-                                b.zs.GetData(),
+    ml::kernel::subtract_scaled(out_xs,
+                                out_ys,
+                                out_zs,
+                                a_xs,
+                                a_ys,
+                                a_zs,
+                                b_xs,
+                                b_ys,
+                                b_zs,
                                 2.0f,
                                 out.num());
 

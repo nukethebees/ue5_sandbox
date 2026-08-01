@@ -164,8 +164,30 @@ struct FVectors2f
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+    };
+
     TArray<float> xs;
     TArray<float> ys;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -301,8 +323,30 @@ struct FVectors2d
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+    };
+
     TArray<double> xs;
     TArray<double> ys;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -438,8 +482,30 @@ struct FVectors2i32
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+    };
+
     TArray<int32> xs;
     TArray<int32> ys;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -575,8 +641,30 @@ struct FVectors2u32
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+    };
+
     TArray<uint32> xs;
     TArray<uint32> ys;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -712,9 +800,33 @@ struct FVectors3f
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+        value_type* zs;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+        value_type const* zs;
+    };
+
     TArray<float> xs;
     TArray<float> ys;
     TArray<float> zs;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -861,9 +973,33 @@ struct FVectors3d
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+        value_type* zs;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+        value_type const* zs;
+    };
+
     TArray<double> xs;
     TArray<double> ys;
     TArray<double> zs;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -1010,9 +1146,33 @@ struct FVectors3i32
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+        value_type* zs;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+        value_type const* zs;
+    };
+
     TArray<int32> xs;
     TArray<int32> ys;
     TArray<int32> zs;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
 
     auto get_view() -> View
     {
@@ -1159,9 +1319,33 @@ struct FVectors3u32
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
+    struct Data
+    {
+        value_type* xs;
+        value_type* ys;
+        value_type* zs;
+    };
+
+    struct ConstData
+    {
+        value_type const* xs;
+        value_type const* ys;
+        value_type const* zs;
+    };
+
     TArray<uint32> xs;
     TArray<uint32> ys;
     TArray<uint32> zs;
+
+    auto get_data() -> Data
+    {
+        return Data{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
+
+    auto get_data() const -> ConstData
+    {
+        return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
+    }
 
     auto get_view() -> View
     {

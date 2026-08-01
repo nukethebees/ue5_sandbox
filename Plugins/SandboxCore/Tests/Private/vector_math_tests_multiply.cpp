@@ -10,13 +10,15 @@ TEST_CASE("SandboxCore.Math.multiply.Zero") {
 
     FVectors3f dst;
     dst.set_num_uninitialised(lhs.num());
+    auto [dst_xs, dst_ys, dst_zs] = dst.get_data();
+    auto [lhs_xs, lhs_ys, lhs_zs] = lhs.get_data();
 
-    ml::kernel::multiply(dst.xs.GetData(),
-                         dst.ys.GetData(),
-                         dst.zs.GetData(),
-                         lhs.xs.GetData(),
-                         lhs.ys.GetData(),
-                         lhs.zs.GetData(),
+    ml::kernel::multiply(dst_xs,
+                         dst_ys,
+                         dst_zs,
+                         lhs_xs,
+                         lhs_ys,
+                         lhs_zs,
                          scale_factors.GetData(),
                          lhs.num());
 
@@ -33,13 +35,15 @@ TEST_CASE("SandboxCore.Math.multiply.MixedFactors") {
 
     FVectors3f dst;
     dst.set_num_uninitialised(lhs.num());
+    auto [dst_xs, dst_ys, dst_zs] = dst.get_data();
+    auto [lhs_xs, lhs_ys, lhs_zs] = lhs.get_data();
 
-    ml::kernel::multiply(dst.xs.GetData(),
-                         dst.ys.GetData(),
-                         dst.zs.GetData(),
-                         lhs.xs.GetData(),
-                         lhs.ys.GetData(),
-                         lhs.zs.GetData(),
+    ml::kernel::multiply(dst_xs,
+                         dst_ys,
+                         dst_zs,
+                         lhs_xs,
+                         lhs_ys,
+                         lhs_zs,
                          scale_factors.GetData(),
                          lhs.num());
 
@@ -54,13 +58,15 @@ TEST_CASE("SandboxCore.Math.multiply.Scalar") {
         ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, -7.0f}, {-2.0f, 0.0f, 8.0f}, {3.0f, -6.0f, 9.0f}})};
     FVectors3f dst;
     dst.set_num_uninitialised(lhs.num());
+    auto [dst_xs, dst_ys, dst_zs] = dst.get_data();
+    auto [lhs_xs, lhs_ys, lhs_zs] = lhs.get_data();
 
-    ml::kernel::multiply(dst.xs.GetData(),
-                         dst.ys.GetData(),
-                         dst.zs.GetData(),
-                         lhs.xs.GetData(),
-                         lhs.ys.GetData(),
-                         lhs.zs.GetData(),
+    ml::kernel::multiply(dst_xs,
+                         dst_ys,
+                         dst_zs,
+                         lhs_xs,
+                         lhs_ys,
+                         lhs_zs,
                          -2.0f,
                          lhs.num());
 
@@ -74,13 +80,15 @@ TEST_CASE("SandboxCore.Math.multiply.Empty") {
     TArray<float> const scale_factors{};
 
     FVectors3f dst;
+    auto [dst_xs, dst_ys, dst_zs] = dst.get_data();
+    auto [lhs_xs, lhs_ys, lhs_zs] = lhs.get_data();
 
-    ml::kernel::multiply(dst.xs.GetData(),
-                         dst.ys.GetData(),
-                         dst.zs.GetData(),
-                         lhs.xs.GetData(),
-                         lhs.ys.GetData(),
-                         lhs.zs.GetData(),
+    ml::kernel::multiply(dst_xs,
+                         dst_ys,
+                         dst_zs,
+                         lhs_xs,
+                         lhs_ys,
+                         lhs_zs,
                          scale_factors.GetData(),
                          lhs.num());
 
