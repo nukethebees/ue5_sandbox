@@ -57,4 +57,34 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
 
     return best_t;
 }
+
+void solve_intercept_times(TArrayView<float> const out_intercept_times,
+                           FVectors3f::ConstView const shooter_positions,
+                           FVectors3f::ConstView const target_positions,
+                           FVectors3f::ConstView const target_velocities,
+                           float const projectile_speed) {
+    auto const count{out_intercept_times.Num()};
+
+    check(shooter_positions.num() == count);
+    check(target_positions.num() == count);
+    check(target_velocities.num() == count);
+    check(shooter_positions.ys.Num() == count);
+    check(shooter_positions.zs.Num() == count);
+    check(target_positions.ys.Num() == count);
+    check(target_positions.zs.Num() == count);
+    check(target_velocities.ys.Num() == count);
+    check(target_velocities.zs.Num() == count);
+
+    for (int32 i{0}; i < count; ++i) {
+        auto const shooter_pos{
+            FVector3f{shooter_positions.xs[i], shooter_positions.ys[i], shooter_positions.zs[i]}};
+        auto const target_pos{
+            FVector3f{target_positions.xs[i], target_positions.ys[i], target_positions.zs[i]}};
+        auto const target_vel{
+            FVector3f{target_velocities.xs[i], target_velocities.ys[i], target_velocities.zs[i]}};
+
+        out_intercept_times[i] =
+            solve_intercept_time(shooter_pos, target_pos, target_vel, projectile_speed);
+    }
+}
 }

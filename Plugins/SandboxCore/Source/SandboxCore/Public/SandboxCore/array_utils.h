@@ -67,6 +67,22 @@ auto almost_equal(T const* const lhs,
 }
 
 namespace ml {
+template <std::floating_point T>
+[[nodiscard]]
+auto almost_equal(TConstArrayView<T> const lhs,
+                  TConstArrayView<T> const rhs,
+                  T const tolerance = static_cast<T>(KINDA_SMALL_NUMBER)) -> bool {
+    if (lhs.Num() != rhs.Num()) {
+        return false;
+    }
+
+    if (lhs.IsEmpty()) {
+        return true;
+    }
+
+    return ml::kernel::almost_equal(lhs.GetData(), rhs.GetData(), lhs.Num(), tolerance);
+}
+
 template <SupportsNum... Arrays>
 auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
     return ((num(arrays) == count) && ...);
