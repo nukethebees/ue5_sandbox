@@ -295,6 +295,8 @@ void ATestBatchOrchestrator::tick(float const dt) {
         UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d end"), tick_counter);
     }
 #endif
+
+    end_tick_test_hook.ExecuteIfBound(*this);
 }
 
 void ATestBatchOrchestrator::route_actor_references() {
@@ -320,6 +322,14 @@ void ATestBatchOrchestrator::route_actor_references() {
                       turrets,
                       spinners);
 }
+
+void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {
+    end_tick_test_hook = MoveTemp(hook);
+}
+void ATestBatchOrchestrator::clear_end_tick_test_hook() {
+    end_tick_test_hook.Unbind();
+}
+
 #if WITH_EDITOR
 void ATestBatchOrchestrator::spawn_missing_actors() {
     auto* world{GetWorld()};

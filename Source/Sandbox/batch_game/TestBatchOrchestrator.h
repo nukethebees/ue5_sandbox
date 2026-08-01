@@ -16,8 +16,12 @@ class ATestEntityRegistry;
 class ATestMissionManager;
 class ADelayedNiagaraSpawner;
 
+class ATestBatchOrchestrator;
+
+DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&);
+
 UCLASS()
-class ATestBatchOrchestrator : public AActor {
+class SANDBOX_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
   public:
     ATestBatchOrchestrator();
@@ -35,6 +39,9 @@ class ATestBatchOrchestrator : public AActor {
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
     auto get_entity_registry() const { return entity_registry; }
+
+    void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
+    void clear_end_tick_test_hook();
   protected:
     void BeginPlay() override;
 
@@ -45,6 +52,8 @@ class ATestBatchOrchestrator : public AActor {
   private:
     void validate_proxy_handles();
     void route_actor_references();
+
+    FOrchestratorEndTickTestHook end_tick_test_hook;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
