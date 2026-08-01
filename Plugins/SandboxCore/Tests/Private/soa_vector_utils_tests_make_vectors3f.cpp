@@ -5,8 +5,8 @@
 
 using Values = TArray<float>;
 
-TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.InitializerLists") {
-    auto const vectors{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
+TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.InlineArrayOfVectors") {
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 3.0f, 5.0f}, {2.0f, 4.0f, 6.0f}})};
 
     Values const expected_xs{1.0f, 2.0f};
     Values const expected_ys{3.0f, 4.0f};
@@ -17,12 +17,10 @@ TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.InitializerLists") {
     CHECK(vectors.zs == expected_zs);
 }
 
-TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.Arrays") {
-    Values xs{1.0f, 2.0f};
-    Values ys{3.0f, 4.0f};
-    Values zs{5.0f, 6.0f};
+TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.NamedArrayOfVectors") {
+    TArray<FVector3f> const input{{1.0f, 3.0f, 5.0f}, {2.0f, 4.0f, 6.0f}};
 
-    auto const vectors{ml::make_vectors3f(MoveTemp(xs), MoveTemp(ys), MoveTemp(zs))};
+    auto const vectors{ml::make_vectors3f(input)};
 
     Values const expected_xs{1.0f, 2.0f};
     Values const expected_ys{3.0f, 4.0f};
@@ -56,9 +54,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.EmptyArrayOfVectors") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.Empty") {
-    auto const vectors{ml::make_vectors3f(std::initializer_list<float>{},
-                                          std::initializer_list<float>{},
-                                          std::initializer_list<float>{})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{})};
 
     CHECK(vectors.num() == 0);
     CHECK(vectors.is_empty());

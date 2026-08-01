@@ -26,9 +26,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamEmpty") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.Vectors") {
-    auto const vectors{ml::make_vectors3f({1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 1.0f},
-                                          {0.0f, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f},
-                                          {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 1.0f}})};
 
     auto const result{ml::to_rotatorsf(vectors)};
     auto const expected{ml::make_rotatorsf({0.0f, 0.0f, 90.0f, 0.0f, 0.0f, 0.0f, 45.0f},
@@ -39,9 +37,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.Vectors") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamVectors") {
-    auto const vectors{ml::make_vectors3f({1.0f, 0.0f, 0.0f},
-                                          {0.0f, 1.0f, -1.0f},
-                                          {0.0f, 0.0f, 0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}})};
     auto result{ml::make_rotatorsf({9.0f}, {9.0f}, {9.0f})};
 
     ml::to_rotatorsf(result, vectors);
@@ -54,9 +50,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamVectors") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.View") {
-    auto const vectors{ml::make_vectors3f({9.0f, 1.0f, 0.0f},
-                                          {9.0f, 0.0f, 1.0f},
-                                          {9.0f, 0.0f, 0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}})};
 
     auto const result{ml::to_rotatorsf(vectors.get_const_view().right(2))};
     auto const expected{ml::make_rotatorsf({0.0f, 0.0f}, {0.0f, 90.0f}, {0.0f, 0.0f})};
@@ -65,9 +59,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.View") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamView") {
-    auto const vectors{ml::make_vectors3f({9.0f, 1.0f, 0.0f},
-                                          {9.0f, 0.0f, 1.0f},
-                                          {9.0f, 0.0f, 0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}})};
     FRotatorsf result;
 
     ml::to_rotatorsf(result, vectors.get_const_view().right(2));

@@ -44,21 +44,21 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddAosValue") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetView") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
 
     auto view{vectors.get_view()};
     view.xs[1] = 20.0f;
     view.ys[1] = 50.0f;
     view.zs[1] = 80.0f;
 
-    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f}, {4.0f, 50.0f, 6.0f}, {7.0f, 80.0f, 9.0f})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {20.0f, 50.0f, 80.0f}, {3.0f, 6.0f, 9.0f}})};
 
     CHECK(view.num() == 3);
     CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
-    auto const vectors{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 3.0f, 5.0f}, {2.0f, 4.0f, 6.0f}})};
 
     auto const& const_vectors{vectors};
     auto view{const_vectors.get_const_view()};
@@ -70,27 +70,21 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstView") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetViewWithOffsetAndCount") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
-                                    {5.0f, 6.0f, 7.0f, 8.0f},
-                                    {9.0f, 10.0f, 11.0f, 12.0f})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {2.0f, 6.0f, 10.0f}, {3.0f, 7.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     auto view{vectors.get_view(1, 2)};
     view.xs[0] = 20.0f;
     view.ys[1] = 70.0f;
     view.zs[0] = 100.0f;
 
-    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f},
-                                            {5.0f, 6.0f, 70.0f, 8.0f},
-                                            {9.0f, 100.0f, 11.0f, 12.0f})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     CHECK(view.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstViewsWithOffsetAndCount") {
-    auto const vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f},
-                                          {5.0f, 6.0f, 7.0f, 8.0f},
-                                          {9.0f, 10.0f, 11.0f, 12.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {2.0f, 6.0f, 10.0f}, {3.0f, 7.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     auto view{vectors.get_view(1, 2)};
     auto const_view{vectors.get_const_view(1, 2)};
@@ -106,21 +100,21 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstViewsWithOffsetAndCount") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Slice") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f}, {9.0f, 10.0f, 11.0f, 12.0f})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {2.0f, 6.0f, 10.0f}, {3.0f, 7.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     auto slice{vectors.get_view().slice(1, 2)};
     slice.xs[0] = 20.0f;
     slice.ys[1] = 70.0f;
     slice.zs[0] = 100.0f;
 
-    auto const expected{ml::make_vectors3f({1.0f, 20.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 70.0f, 8.0f}, {9.0f, 100.0f, 11.0f, 12.0f})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     CHECK(slice.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.LeftAndRight") {
-    auto const vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
 
     auto view{vectors.get_const_view()};
     auto left{view.left(2)};
@@ -150,18 +144,12 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.SetNum") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.CopyElement") {
-    auto dst{ml::make_vectors3f({1.0f, 2.0f, 3.0f},
-                                {4.0f, 5.0f, 6.0f},
-                                {7.0f, 8.0f, 9.0f})};
-    auto const src{ml::make_vectors3f({10.0f, 20.0f, 30.0f},
-                                      {40.0f, 50.0f, 60.0f},
-                                      {70.0f, 80.0f, 90.0f})};
+    auto dst{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
+    auto const src{ml::make_vectors3f(TArray<FVector3f>{{10.0f, 40.0f, 70.0f}, {20.0f, 50.0f, 80.0f}, {30.0f, 60.0f, 90.0f}})};
 
     dst.copy_element(1, src, 2);
 
-    auto const expected{ml::make_vectors3f({1.0f, 30.0f, 3.0f},
-                                            {4.0f, 60.0f, 6.0f},
-                                            {7.0f, 90.0f, 9.0f})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {30.0f, 60.0f, 90.0f}, {3.0f, 6.0f, 9.0f}})};
 
     CHECK(ml::almost_equal(dst, expected));
 }
@@ -189,7 +177,7 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddUninitialized") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reset") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 3.0f, 5.0f}, {2.0f, 4.0f, 6.0f}})};
 
     vectors.reset();
 
@@ -201,11 +189,11 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reset") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.RemoveAtSwap") {
-    auto vectors{ml::make_vectors3f({1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
 
     vectors.remove_at_swap(1, 1, EAllowShrinking::No);
 
-    auto const expected{ml::make_vectors3f({1.0f, 3.0f}, {4.0f, 6.0f}, {7.0f, 9.0f})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {3.0f, 6.0f, 9.0f}})};
 
     CHECK(vectors.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));

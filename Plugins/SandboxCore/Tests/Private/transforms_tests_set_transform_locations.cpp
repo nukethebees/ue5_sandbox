@@ -27,7 +27,7 @@ TEST_CASE("SandboxCore.Transforms.set_transform_locations.PreservesRotationAndSc
         transforms.Emplace(rotations[i], locations[i], scales[i]);
     }
 
-    auto const new_locations{ml::make_vectors3f({7.0f, 10.0f}, {8.0f, 11.0f}, {9.0f, 12.0f})};
+    auto const new_locations{ml::make_vectors3f(TArray<FVector3f>{{7.0f, 8.0f, 9.0f}, {10.0f, 11.0f, 12.0f}})};
 
     ml::set_transform_locations(TArrayView<FTransform>{transforms}, new_locations);
 

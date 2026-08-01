@@ -10,27 +10,25 @@ TEST_CASE("SandboxCore.SoaVectorUtils.all_normalised.Empty") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.all_normalised.UnitAxes") {
-    auto const vectors{ml::make_vectors3f({1.0f, 0.0f, 0.0f},
-                                          {0.0f, 1.0f, 0.0f},
-                                          {0.0f, 0.0f, 1.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}})};
 
     CHECK(ml::all_normalised(vectors.get_const_view()));
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.all_normalised.UnitDiagonal") {
-    auto const vectors{ml::make_vectors3f({0.6f}, {0.8f}, {0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{0.6f, 0.8f, 0.0f}})};
 
     CHECK(ml::all_normalised(vectors.get_const_view()));
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.all_normalised.ZeroIsNotNormalised") {
-    auto const vectors{ml::make_vectors3f({0.0f}, {0.0f}, {0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}})};
 
     CHECK(!ml::all_normalised(vectors.get_const_view()));
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.all_normalised.LargerVectorIsNotNormalised") {
-    auto const vectors{ml::make_vectors3f({2.0f}, {0.0f}, {0.0f})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{2.0f, 0.0f, 0.0f}})};
 
     CHECK(!ml::all_normalised(vectors.get_const_view()));
 }
