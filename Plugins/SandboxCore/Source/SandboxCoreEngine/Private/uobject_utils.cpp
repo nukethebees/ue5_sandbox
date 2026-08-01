@@ -1,8 +1,9 @@
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <SandboxCore/log_categories.h>
 
 #include "Containers/UnrealString.h"
+#include "UObject/UObjectGlobals.h"
 
 namespace ml {
 void fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs) {

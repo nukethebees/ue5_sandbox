@@ -7,15 +7,15 @@ public class SandboxCoreTestsTarget : TestTargetRules
 {
     public SandboxCoreTestsTarget(TargetInfo Target) : base(Target)
     {
-        bNeverCompileAgainstEngine = false;
-        bNeverCompileAgainstCoreUObject = false;
+        bNeverCompileAgainstEngine = true;
+        bNeverCompileAgainstCoreUObject = true;
 
         bTestsRequireEditor = false;
-        bTestsRequireEngine = true;
-        bTestsRequireCoreUObject = true;
+        bTestsRequireEngine = false;
+        bTestsRequireCoreUObject = false;
 
-        bCompileAgainstEngine = true;
-        bCompileAgainstCoreUObject = true;
+        bCompileAgainstEngine = false;
+        bCompileAgainstCoreUObject = false;
 
         bMockEngineDefaults = true;
         bUsePlatformFileStub = true;

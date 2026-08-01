@@ -1,4 +1,4 @@
-#include <SandboxCore/collision_settings.h>
+#include <SandboxCoreEngine/collision_settings.h>
 
 #include <Components/PrimitiveComponent.h>
 #include "CoreMinimal.h"

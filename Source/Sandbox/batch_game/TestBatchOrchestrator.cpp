@@ -13,7 +13,7 @@
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <DrawDebugHelpers.h>
 

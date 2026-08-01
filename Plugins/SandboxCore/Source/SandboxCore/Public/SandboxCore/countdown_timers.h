@@ -2,11 +2,8 @@
 
 #include "CoreMinimal.h"
 
-#include "countdown_timers.generated.h"
 
-USTRUCT()
 struct SANDBOXCORE_API FCountdownTimers {
-    GENERATED_BODY()
 
     using View = TArrayView<float>;
     using ConstView = TConstArrayView<float>;
@@ -46,6 +43,5 @@ struct SANDBOXCORE_API FCountdownTimers {
 
     void Append(ConstView const new_values) { remaining_times.Append(new_values); }
 
-    UPROPERTY(VisibleAnywhere)
     TArray<float> remaining_times;
 };

@@ -92,7 +92,6 @@ class ATestTubeSpinners : public AActor {
     TArray<FTransform> ismc_transforms;
 
     // Movement / position
-    UPROPERTY()
     FVectors3f locations;
     UPROPERTY()
     TArray<float> yaws{};

@@ -7,7 +7,7 @@
 #include <Sandbox/save/SpaceSaveSubsystem.h>
 #include <Sandbox/utilities/enums.h>
 
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>

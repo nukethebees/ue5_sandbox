@@ -6,12 +6,12 @@
 #include "Sandbox/utilities/vision_maths.h"
 #include "TestTurretsConfig.h"
 
-#include <SandboxCore/actor_components.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/interpolation.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/rotation.h>
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/actor_components.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include "CollisionShape.h"
 #include "Components/ArrowComponent.h"

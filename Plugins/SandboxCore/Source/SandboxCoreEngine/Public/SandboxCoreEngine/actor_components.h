@@ -1,10 +1,10 @@
 #pragma once
 
+#include "Components/SceneComponent.h"
 #include "Containers/Array.h"
+#include "GameFramework/Actor.h"
 #include "UObject/NameTypes.h"
-
-class AActor;
-class USceneComponent;
+#include "UObject/UObjectGlobals.h"
 
 namespace ml {
 template <typename T>

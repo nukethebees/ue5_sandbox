@@ -23,6 +23,7 @@ public class Sandbox : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[] {
             "SandboxNative",
             "SandboxCore",
+            "SandboxCoreEngine",
             "Core",
             "CoreUObject",
             "Engine",

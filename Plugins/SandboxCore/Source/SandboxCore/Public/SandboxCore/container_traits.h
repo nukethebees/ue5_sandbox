@@ -9,8 +9,6 @@
 #include <concepts>
 #include <type_traits>
 
-class UInstancedStaticMeshComponent;
-
 namespace ml {
 /* -------------------------------------------------------------------------- */
 // Num
@@ -26,11 +24,6 @@ struct NumTraits<T> {
 template <details::HasNum T>
 struct NumTraits<T> {
     static auto num(T const& value) noexcept -> int32 { return value.num(); }
-};
-
-template <>
-struct SANDBOXCORE_API NumTraits<UInstancedStaticMeshComponent> {
-    static auto num(UInstancedStaticMeshComponent const& value) -> int32;
 };
 
 template <>

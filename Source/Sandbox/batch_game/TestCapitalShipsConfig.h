@@ -2,7 +2,7 @@
 
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
-#include "SandboxCore/collision_settings.h"
+#include "SandboxCoreEngine/collision_settings.h"
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"

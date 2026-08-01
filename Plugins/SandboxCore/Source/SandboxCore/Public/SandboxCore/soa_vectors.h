@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "soa_vectors.generated.h"
 
 template <typename T>
 struct TVectors2View
@@ -158,19 +157,15 @@ struct TVectors3View
     }
 };
 
-USTRUCT()
 struct FVectors2f
 {
-    GENERATED_BODY()
 
     using value_type = float;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
-    UPROPERTY()
     TArray<float> xs;
-    UPROPERTY()
     TArray<float> ys;
 
     auto get_view() -> View
@@ -287,19 +282,15 @@ struct FVectors2f
     }
 };
 
-USTRUCT()
 struct FVectors2d
 {
-    GENERATED_BODY()
 
     using value_type = double;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
-    UPROPERTY()
     TArray<double> xs;
-    UPROPERTY()
     TArray<double> ys;
 
     auto get_view() -> View
@@ -416,19 +407,15 @@ struct FVectors2d
     }
 };
 
-USTRUCT()
 struct FVectors2i32
 {
-    GENERATED_BODY()
 
     using value_type = int32;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
-    UPROPERTY()
     TArray<int32> xs;
-    UPROPERTY()
     TArray<int32> ys;
 
     auto get_view() -> View
@@ -545,19 +532,15 @@ struct FVectors2i32
     }
 };
 
-USTRUCT()
 struct FVectors2u32
 {
-    GENERATED_BODY()
 
     using value_type = uint32;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
 
-    UPROPERTY()
     TArray<uint32> xs;
-    UPROPERTY()
     TArray<uint32> ys;
 
     auto get_view() -> View
@@ -674,21 +657,16 @@ struct FVectors2u32
     }
 };
 
-USTRUCT()
 struct FVectors3f
 {
-    GENERATED_BODY()
 
     using value_type = float;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
-    UPROPERTY()
     TArray<float> xs;
-    UPROPERTY()
     TArray<float> ys;
-    UPROPERTY()
     TArray<float> zs;
 
     auto get_view() -> View
@@ -815,21 +793,16 @@ struct FVectors3f
     }
 };
 
-USTRUCT()
 struct FVectors3d
 {
-    GENERATED_BODY()
 
     using value_type = double;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
-    UPROPERTY()
     TArray<double> xs;
-    UPROPERTY()
     TArray<double> ys;
-    UPROPERTY()
     TArray<double> zs;
 
     auto get_view() -> View
@@ -956,21 +929,16 @@ struct FVectors3d
     }
 };
 
-USTRUCT()
 struct FVectors3i32
 {
-    GENERATED_BODY()
 
     using value_type = int32;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
-    UPROPERTY()
     TArray<int32> xs;
-    UPROPERTY()
     TArray<int32> ys;
-    UPROPERTY()
     TArray<int32> zs;
 
     auto get_view() -> View
@@ -1097,21 +1065,16 @@ struct FVectors3i32
     }
 };
 
-USTRUCT()
 struct FVectors3u32
 {
-    GENERATED_BODY()
 
     using value_type = uint32;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
 
-    UPROPERTY()
     TArray<uint32> xs;
-    UPROPERTY()
     TArray<uint32> ys;
-    UPROPERTY()
     TArray<uint32> zs;
 
     auto get_view() -> View

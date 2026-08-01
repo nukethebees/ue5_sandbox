@@ -3,8 +3,8 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestTubeSpinnersConfig.h"
 
-#include <SandboxCore/actor_components.h>
-#include <SandboxCore/actor_utils.h>
+#include <SandboxCoreEngine/actor_components.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/CapsuleComponent.h>

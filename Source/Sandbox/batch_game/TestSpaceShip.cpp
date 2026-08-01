@@ -17,7 +17,7 @@
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Camera/CameraComponent.h>
 #include <Components/SceneComponent.h>

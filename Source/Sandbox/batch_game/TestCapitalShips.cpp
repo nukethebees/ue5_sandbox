@@ -14,16 +14,16 @@
 #include <Sandbox/utilities/mesh.h>
 
 #include <NiagaraFunctionLibrary.h>
-#include <SandboxCore/actor_utils.h>
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/collision_settings.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/transforms.h>
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/collision_settings.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>

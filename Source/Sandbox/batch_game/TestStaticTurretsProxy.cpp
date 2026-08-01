@@ -4,7 +4,7 @@
 #include "TestStaticTurrets.h"
 #include "TestStaticTurretsConfig.h"
 
-#include <SandboxCore/actor_utils.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/CapsuleComponent.h>

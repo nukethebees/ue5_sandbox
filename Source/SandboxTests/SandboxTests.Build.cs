@@ -25,6 +25,7 @@ public class SandboxTests : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[] {
             "SandboxCore",
+            "SandboxCoreEngine",
             "Sandbox",
             "Core",
             "CoreUObject",

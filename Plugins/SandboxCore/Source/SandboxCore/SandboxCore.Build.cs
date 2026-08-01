@@ -12,8 +12,6 @@ public class SandboxCore : ModuleRules
             new string[]
             {
                 "Core",
-                "CoreUObject",
-                "Engine",
             }
             );
     }

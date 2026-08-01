@@ -8,7 +8,7 @@
 #include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/world.h>
 
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Blueprint/WidgetLayoutLibrary.h>
 #include <DrawDebugHelpers.h>

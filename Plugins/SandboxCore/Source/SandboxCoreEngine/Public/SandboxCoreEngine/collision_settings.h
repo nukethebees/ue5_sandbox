@@ -33,8 +33,8 @@ struct FCollisionSettings {
 };
 
 namespace ml {
-auto SANDBOXCORE_API copy_collision_settings(UPrimitiveComponent const& component)
+auto SANDBOXCOREENGINE_API copy_collision_settings(UPrimitiveComponent const& component)
     -> FCollisionSettings;
-void SANDBOXCORE_API apply_collision_settings(UPrimitiveComponent& component,
+void SANDBOXCOREENGINE_API apply_collision_settings(UPrimitiveComponent& component,
                                               FCollisionSettings const& settings);
 }

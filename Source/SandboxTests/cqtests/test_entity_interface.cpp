@@ -10,7 +10,7 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
-#include <SandboxCore/actor_utils.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/MapTestSpawner.h>
 #include <Containers/Set.h>

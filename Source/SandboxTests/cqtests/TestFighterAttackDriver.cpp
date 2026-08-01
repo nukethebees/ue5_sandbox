@@ -2,7 +2,7 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 

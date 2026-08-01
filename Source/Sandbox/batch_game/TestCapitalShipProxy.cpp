@@ -5,10 +5,10 @@
 #include "TestCapitalShipsConfig.h"
 #include "TestTeamVisualData.h"
 
-#include <SandboxCore/actor_components.h>
-#include <SandboxCore/actor_utils.h>
-#include <SandboxCore/collision_settings.h>
-#include <SandboxCore/uobject_utils.h>
+#include <SandboxCoreEngine/actor_components.h>
+#include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/collision_settings.h>
+#include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>

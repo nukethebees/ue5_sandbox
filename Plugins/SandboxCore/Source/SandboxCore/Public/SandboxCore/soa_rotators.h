@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "soa_rotators.generated.h"
 
 template <typename T>
 struct TRotatorsView
@@ -85,21 +84,16 @@ struct TRotatorsView
     }
 };
 
-USTRUCT()
 struct FRotatorsf
 {
-    GENERATED_BODY()
 
     using value_type = float;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
 
-    UPROPERTY()
     TArray<float> pitches;
-    UPROPERTY()
     TArray<float> yaws;
-    UPROPERTY()
     TArray<float> rolls;
 
     auto get_view() -> View
@@ -212,21 +206,16 @@ struct FRotatorsf
     }
 };
 
-USTRUCT()
 struct FRotatorsd
 {
-    GENERATED_BODY()
 
     using value_type = double;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
 
-    UPROPERTY()
     TArray<double> pitches;
-    UPROPERTY()
     TArray<double> yaws;
-    UPROPERTY()
     TArray<double> rolls;
 
     auto get_view() -> View

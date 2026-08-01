@@ -23,9 +23,6 @@ public class SandboxCoreTests : TestModuleRules
 		{
 			"Core",
 			"SandboxCore",
-			"Engine",
-			"Core",
-			"SlateCore",
 		});
     }
 }
