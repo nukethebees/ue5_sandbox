@@ -206,6 +206,31 @@ Check non-zero dist:
         return result;
     }
 
+    template <IsUnrealVector T>
+    bool dist_greater_than(T const& lhs,
+                           T const& rhs,
+                           VectorTraits<T>::Element const threshold,
+                           FString const& description,
+                           int32 const i = INDEX_NONE) {
+        auto const dist{T::Dist(lhs, rhs)};
+        auto const result{dist > threshold};
+        store_result(result);
+        display_result(result,
+                       FString::Printf(TEXT(R"(%s%s 
+Check dist > %f:
+    Distance : %f
+    From     : %s
+    To       : %s)"),
+                                       *start_msg(i),
+                                       *description,
+                                       threshold,
+                                       dist,
+                                       *lhs.ToCompactString(),
+                                       *rhs.ToCompactString()));
+
+        return result;
+    }
+
     /* ---------------------------------------------------------------------------- */
     // Greater
     /* ---------------------------------------------------------------------------- */
