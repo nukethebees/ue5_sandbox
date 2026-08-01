@@ -362,7 +362,8 @@ void SANDBOXCORE_API multiply_in_place(FVectors3f& dst, TConstArrayView<float> c
 /* ---------------------------------------------------------------------------------------------- */
 // Size
 /* ---------------------------------------------------------------------------------------------- */
-inline auto size_sq(FVectors3f const& vecs, int32 const i) -> float {
+template <is_readable_vec3f T>
+auto size_sq(T&& vecs, int32 const i) -> float {
     return ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i]);
 }
 

@@ -41,9 +41,21 @@ TEST_CASE("SandboxCore.ProjectileIntercept.solve_intercept_times.Benchmarks", "[
         };
     }};
 
-    benchmark_impl.template operator()<ml::detail::solve_intercept_times_loop::solve_intercept_times>(
-        "ml::detail::solve_intercept_times_loop");
+    benchmark_impl.template operator()<ml::detail::solve_intercept_times_aos::solve_intercept_times>(
+        "ml::detail::solve_intercept_times_aos");
+
+    benchmark_impl.template operator()<ml::detail::solve_intercept_times_struct_loop::solve_intercept_times>(
+        "ml::detail::solve_intercept_times_struct_loop");
+
+    benchmark_impl.template operator()<ml::detail::solve_intercept_times_soa_loop::solve_intercept_times>(
+        "ml::detail::solve_intercept_times_soa_loop");
 
     benchmark_impl.template operator()<ml::detail::solve_intercept_times_aos::solve_intercept_times>(
         "ml::detail::solve_intercept_times_aos");
+
+    benchmark_impl.template operator()<ml::detail::solve_intercept_times_struct_loop::solve_intercept_times>(
+        "ml::detail::solve_intercept_times_struct_loop");
+
+    benchmark_impl.template operator()<ml::detail::solve_intercept_times_soa_loop::solve_intercept_times>(
+        "ml::detail::solve_intercept_times_soa_loop");
 }

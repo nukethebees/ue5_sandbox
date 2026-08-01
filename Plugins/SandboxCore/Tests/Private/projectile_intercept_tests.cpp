@@ -67,7 +67,7 @@ TEST_CASE("SandboxCore.ProjectileIntercept.solve_intercept_times.MatchesScalar")
 
     test_impl.template operator()<ml::solve_intercept_times>("ml");
 
-    test_impl.template operator()<ml::detail::solve_intercept_times_loop::solve_intercept_times>("ml::detail::solve_intercept_times_loop");
+    test_impl.template operator()<ml::detail::solve_intercept_times_struct_loop::solve_intercept_times>("ml::detail::solve_intercept_times_struct_loop");
 
     test_impl.template operator()<ml::detail::solve_intercept_times_aos::solve_intercept_times>("ml::detail::solve_intercept_times_aos");
 }
