@@ -67,8 +67,6 @@ void ATestCapitalShipFighters::begin_play() {
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
-
-    turn_speed_radians = FMath::DegreesToRadians(actor_config->turn_speed_degrees);
 }
 
 void ATestCapitalShipFighters::begin_tick() {

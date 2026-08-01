@@ -301,6 +301,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
 void ATestBatchOrchestrator::route_actor_references() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
+    capital_ships->bind_fighters(*capital_ship_fighters);
 
     if (player_ship) {
         mission_manager->set_player_ship(*player_ship);

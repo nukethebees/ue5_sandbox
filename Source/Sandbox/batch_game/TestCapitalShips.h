@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
+#include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -29,7 +30,6 @@ class UBoxComponent;
 
 class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
-class ATestCapitalShipFighters;
 class ATestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
@@ -163,6 +163,10 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
+    inline void bind_fighters(ATestCapitalShipFighters& fighters) {
+        fighter_commands.bind(fighters);
+    }
+
     auto get_handle(int32 i) const -> FRegistryEntityHandle { return entities.handles[i]; }
 
     auto get_fighter_spawn_slots() const noexcept -> int32;
@@ -259,8 +263,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     RegistryEntityData entity_update_data;
 
     // Fighter spawning
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestCapitalShipFighters> fighters_actor{nullptr};
+    ml::test_capital_ship_fighters::CommandInterface fighter_commands;
 
     TestCapitalShipFighterSpawnQueue fighter_queue;
     TArray<FRegistryEntityHandle> fighter_handles;

@@ -37,6 +37,7 @@ class ATestLasers;
 class ATestEntityRegistry;
 
 namespace ml::test_capital_ship_fighters {
+class CommandInterface;
 
 template <bool is_const>
 struct EntityDataView : public ml::FSoAViewMixin {
@@ -129,6 +130,7 @@ struct EntityData : public ml::FSoAArrayMixin {
 UCLASS()
 class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
+    friend class ml::test_capital_ship_fighters::CommandInterface;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -163,11 +165,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void update_visuals();
     void end_tick();
 
-    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
-    void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
-
-    void self_destruct_fighter(FRegistryEntityHandle handle);
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
@@ -179,9 +176,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
-
-    auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
-    auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
 
     auto get_view(int32 const offset, int32 const width) -> EntityData::View {
         return entity_buffers.current().get_view(offset, width);
@@ -252,6 +246,13 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void check_fighter_tasks() const {}
 #endif
   protected:
+    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
+    void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
+    void self_destruct_fighter(FRegistryEntityHandle handle);
+
+    auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
+    auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
+
     // Accessors
     auto get_task_view(Task task) noexcept -> TaskView const&;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView const&;
@@ -343,3 +344,49 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
     bool enable_ship_location_debug_drawing{false};
 };
+
+namespace ml::test_capital_ship_fighters {
+class SANDBOX_API CommandInterface {
+  public:
+    inline void bind(ATestCapitalShipFighters& new_fighters) { fighters = &new_fighters; }
+
+    inline void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
+        check(IsValid(fighters));
+        fighters->queue_spawns(queue);
+    }
+
+    inline void queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
+        check(IsValid(fighters));
+        fighters->queue_orders(queue);
+    }
+
+    inline void self_destruct_fighter(FRegistryEntityHandle const handle) {
+        check(IsValid(fighters));
+        fighters->self_destruct_fighter(handle);
+    }
+
+    inline auto get_new_spawn_entity_data() const
+        -> ATestCapitalShipFighters::RegistryEntityData const& {
+        check(IsValid(fighters));
+        return fighters->get_new_spawn_entity_data();
+    }
+
+    inline auto get_new_spawn_entity_handles() const -> SpawnedEntityHandles const& {
+        check(IsValid(fighters));
+        return fighters->get_new_spawn_entity_handles();
+    }
+
+    inline auto get_num_instances() const noexcept -> int32 {
+        check(IsValid(fighters));
+        return fighters->get_num_instances();
+    }
+
+    inline auto get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept
+        -> FRegistryEntityHandle {
+        check(IsValid(fighters));
+        return fighters->get_target_handle(fighter_handle);
+    }
+  private:
+    ATestCapitalShipFighters* fighters{nullptr};
+};
+}

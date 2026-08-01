@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestTeamVisualData.h>
@@ -56,7 +55,6 @@ void ATestCapitalShips::begin_play() {
     auto* world{GetWorld()};
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        SANDBOX_NAMED_UOBJECT_PTR(fighters_actor),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(world),
     });
@@ -414,7 +412,7 @@ void ATestCapitalShips::queue_fighter_spawns() {
         entities.fighter_spawn_timers.remaining_times[i] = entities.fighter_spawn_cooldowns[i];
     }
 
-    fighters_actor->queue_spawns(fighter_queue);
+    fighter_commands.queue_spawns(fighter_queue);
 }
 void ATestCapitalShips::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::refresh_fighter_handles);
@@ -425,7 +423,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
 
     entity_registry->refresh_handles(fighter_handles);
 
-    auto const& spawn_data{fighters_actor->get_new_spawn_entity_data()};
+    auto const& spawn_data{fighter_commands.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
 
     auto const n_spawned_per_capital{get_fighter_spawn_slots()};
@@ -437,7 +435,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
     int32 spawning_capital_idx{0};
     int32 spawned_fighter_idx{0};
 
-    auto const& spawn_handles{fighters_actor->get_new_spawn_entity_handles()};
+    auto const& spawn_handles{fighter_commands.get_new_spawn_entity_handles()};
     auto const n_capitals{get_num_instances()};
     for (int32 capital_idx{0}; capital_idx < n_capitals; ++capital_idx) {
         FIndexSpan new_span{
@@ -495,7 +493,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
     Swap(fighter_handles, fighter_handles_scratch);
 
 #if WITH_EDITOR
-    auto const n_fighters{fighters_actor->get_num_instances()};
+    auto const n_fighters{fighter_commands.get_num_instances()};
     auto const n_fighter_handles{fighter_handles.Num()};
     ensureMsgf(n_fighters == n_fighter_handles,
                TEXT("Fighters: %d, Handles: %d"),
@@ -528,7 +526,8 @@ void ATestCapitalShips::queue_fighter_orders() {
         } else {
             for (int32 fighter_span_idx{span.start()}; fighter_span_idx < end; ++fighter_span_idx) {
                 auto const fighter_handle{fighter_handles[fighter_span_idx]};
-                auto const fighter_target_handle{fighters_actor->get_target_handle(fighter_handle)};
+                auto const fighter_target_handle{
+                    fighter_commands.get_target_handle(fighter_handle)};
 
                 if (fighter_target_handle.is_null() ||
                     entity_registry->is_valid_dead(fighter_target_handle)) {
@@ -544,7 +543,7 @@ void ATestCapitalShips::queue_fighter_orders() {
         }
     }
 
-    if (fighter_order_queue.num() > 0) { fighters_actor->queue_orders(fighter_order_queue); }
+    if (fighter_order_queue.num() > 0) { fighter_commands.queue_orders(fighter_order_queue); }
 }
 
 // Visuals
@@ -683,7 +682,7 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
         if (replacement_idx < 0) {
             // No replacement found. Destroy them all.
             for (int32 i{fighter_span.offset}; i < span_end; ++i) {
-                fighters_actor->self_destruct_fighter(fighter_handles[i]);
+                fighter_commands.self_destruct_fighter(fighter_handles[i]);
             }
         } else {
             // Reassign to someone else on the team
