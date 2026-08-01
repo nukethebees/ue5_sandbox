@@ -227,6 +227,7 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 }
 
 // Movement - turning
+void ATestSpaceShip::set_move_input(FVector2D) {}
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

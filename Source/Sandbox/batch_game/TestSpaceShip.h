@@ -98,6 +98,7 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Movement
     /* ------------------------------------------------------------------------------------------ */
+    void set_move_input(FVector2D input);
     void turn(FVector2D direction);
     void start_boost();
     void stop_boost();
