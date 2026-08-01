@@ -3,11 +3,15 @@
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include "CoreMinimal.h"
+#include "benchmark_cli_args.h"
 #include "TestHarness.h"
 
 TEST_CASE("SandboxCore.ProjectileIntercept.solve_intercept_times.Benchmarks", "[benchmark]") {
-    int32 constexpr count{16 * 1024};
+    auto const benchmark_cli_args{get_benchmark_cli_args()};
+    auto const count{benchmark_cli_args.benchmark_entities.value_or(1024 * 16)};
     float constexpr projectile_speed{500.0f};
+
+    REQUIRE(count > 0);
 
     TArray<FVector3f> shooter_positions_aos;
     TArray<FVector3f> target_positions_aos;
