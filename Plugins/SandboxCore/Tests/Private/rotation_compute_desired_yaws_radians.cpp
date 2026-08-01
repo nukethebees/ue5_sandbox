@@ -23,67 +23,67 @@ void check_desired_yaw_radians(T const start_x, T const start_y, T const end_x, 
 }
 } // namespace
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes zero yaw for positive X", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes zero yaw for positive X", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(0, 0, 1, 0, 0);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes zero yaw for positive X", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes zero yaw for positive X", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(0, 0, 1, 0, 0);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes positive half pi for positive Y", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes positive half pi for positive Y", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(0, 0, 0, 1, UE_HALF_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes positive half pi for positive Y", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes positive half pi for positive Y", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(0, 0, 0, 1, UE_HALF_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes pi for negative X", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes pi for negative X", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(0, 0, -1, 0, UE_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes pi for negative X", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes pi for negative X", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(0, 0, -1, 0, UE_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes negative half pi for negative Y", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes negative half pi for negative Y", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(0, 0, 0, -1, -UE_HALF_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes negative half pi for negative Y", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes negative half pi for negative Y", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(0, 0, 0, -1, -UE_HALF_PI);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes upper right diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes upper right diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(10, 20, 11, 21, UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes upper right diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes upper right diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(10, 20, 11, 21, UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes upper left diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes upper left diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(10, 20, 9, 21, 3 * UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes upper left diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes upper left diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(10, 20, 9, 21, 3 * UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes lower left diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes lower left diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(10, 20, 9, 19, -3 * UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes lower left diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes lower left diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(10, 20, 9, 19, -3 * UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<float>.Computes lower right diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_float.Computes lower right diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<float>(10, 20, 11, 19, -UE_PI / 4);
 }
 
-TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians<double>.Computes lower right diagonal yaw", "[SandboxCore][Math][movement]") {
+TEST_CASE("SandboxCore.Math.ComputeDesiredYawsRadians_double.Computes lower right diagonal yaw", "[SandboxCore][Math][movement]") {
     check_desired_yaw_radians<double>(10, 20, 11, 19, -UE_PI / 4);
 }
 
