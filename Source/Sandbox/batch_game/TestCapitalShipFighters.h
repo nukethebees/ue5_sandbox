@@ -198,16 +198,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         return entity_buffers.current().target_handles[find_index(fighter_handle)];
     }
 
-    auto set_target_handle_unchecked(int32 const fighter_idx,
-                                     FRegistryEntityHandle const new_target) noexcept {
-        entity_buffers.current().target_handles[fighter_idx] = new_target;
-    }
-    auto set_target_handle(FRegistryEntityHandle const fighter_handle,
-                           FRegistryEntityHandle const new_target) noexcept {
-        auto const idx{find_index(fighter_handle)};
-        set_target_handle_unchecked(idx, new_target);
-    }
-
     auto get_target_locations() const {
         return entity_buffers.current().target_locations.get_view();
     }
@@ -217,23 +207,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     }
 
     auto get_tasks() const -> TConstArrayView<Task> { return entity_buffers.current().tasks; }
-    void set_task_unchecked(int32 const i, Task const task) noexcept {
-        entity_buffers.current().tasks[i] = task;
-    }
-    void set_task(FRegistryEntityHandle const handle, Task const task) noexcept {
-        set_task_unchecked(find_index(handle), task);
-    }
-
-    auto find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
-        return entity_buffers.current().entity_handles.Find(fighter_handle);
-    }
-
-    // It is an error to call this when spans are invalid
-    auto get_task_spans() const -> TaskSpans;
-    auto get_task_span(Task const task) const -> FIndexSpan {
-        return task_spans[std::to_underlying(task)];
-    }
-    auto get_task_counts() const -> TaskCounts;
 
     auto get_teams() const -> TConstArrayView<ETestTeam> { return entity_buffers.current().teams; }
 
@@ -256,6 +229,34 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Accessors
     auto get_task_view(Task task) noexcept -> TaskView const&;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView const&;
+
+    auto set_target_handle_unchecked(int32 const fighter_idx,
+                                     FRegistryEntityHandle const new_target) noexcept {
+        entity_buffers.current().target_handles[fighter_idx] = new_target;
+    }
+    auto set_target_handle(FRegistryEntityHandle const fighter_handle,
+                           FRegistryEntityHandle const new_target) noexcept {
+        auto const idx{find_index(fighter_handle)};
+        set_target_handle_unchecked(idx, new_target);
+    }
+
+    void set_task_unchecked(int32 const i, Task const task) noexcept {
+        entity_buffers.current().tasks[i] = task;
+    }
+    void set_task(FRegistryEntityHandle const handle, Task const task) noexcept {
+        set_task_unchecked(find_index(handle), task);
+    }
+
+    auto find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
+        return entity_buffers.current().entity_handles.Find(fighter_handle);
+    }
+
+    // It is an error to call this when spans are invalid
+    auto get_task_spans() const -> TaskSpans;
+    auto get_task_span(Task const task) const -> FIndexSpan {
+        return task_spans[std::to_underlying(task)];
+    }
+    auto get_task_counts() const -> TaskCounts;
 
     // Movement
     void move(float const dt, TaskView const& task_span);
