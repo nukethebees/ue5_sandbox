@@ -110,6 +110,12 @@ void ATestSpaceShip::move(float const dt) {
     update_actor_rotation(dt);
     update_visual_orientation(dt);
     integrate_velocity(dt);
+
+    auto const planar_translation{
+        FVector{0.f, planar_movement_direction.X, planar_movement_direction.Y} *
+        planar_movement_speed * dt};
+    constexpr bool sweep{false};
+    AddActorLocalOffset(planar_translation, sweep);
 }
 void ATestSpaceShip::queue_commands() {
     update_laser_firing();
@@ -227,7 +233,9 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 }
 
 // Movement - turning
-void ATestSpaceShip::set_move_input(FVector2D) {}
+void ATestSpaceShip::set_move_input(FVector2D const input) {
+    planar_movement_direction = input;
+}
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

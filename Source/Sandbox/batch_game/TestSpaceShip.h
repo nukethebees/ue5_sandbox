@@ -277,6 +277,11 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     float target_speed{0.f};
 
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    FVector2D planar_movement_direction{FVector2D::ZeroVector};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
+    float planar_movement_speed{1000.f};
+
     // Movement - Cruising
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};

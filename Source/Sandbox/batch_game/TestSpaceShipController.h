@@ -43,9 +43,14 @@ class ATestSpaceShipController
 
     auto get_pawn() -> Pawn&;
 
+    // Input
+    void set_mapping_context(UInputMappingContext const* context);
+
     // Movement
     UFUNCTION()
     void set_move_input(FInputActionValue const& value);
+    UFUNCTION()
+    void move_completed();
     UFUNCTION()
     void turn(FInputActionValue const& value);
     UFUNCTION()
