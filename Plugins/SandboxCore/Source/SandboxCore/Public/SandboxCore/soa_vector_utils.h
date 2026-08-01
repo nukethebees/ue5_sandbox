@@ -104,11 +104,11 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<FVector3f> const& vectors) -> 
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f const& src);
 void SANDBOXCORE_API assign_from(FVectors3f& dst, FVectors3f::ConstView src);
 
-template <is_vec3f Vec3f>
-inline void assign_from(FVectors3f& dst, int32 const dst_i, Vec3f const& src, int32 const src_i) {
-    dst.xs[dst_i] = src.xs[src_i];
-    dst.ys[dst_i] = src.ys[src_i];
-    dst.zs[dst_i] = src.zs[src_i];
+template <is_mutable_vec3f DstT, is_readable_vec3f SrcT>
+inline void assign_from(DstT&& dst, int32 const dst_i, SrcT&& src, int32 const src_i) {
+    dst.xs.GetData()[dst_i] = src.xs.GetData()[src_i];
+    dst.ys.GetData()[dst_i] = src.ys.GetData()[src_i];
+    dst.zs.GetData()[dst_i] = src.zs.GetData()[src_i];
 }
 
 inline void assign(FVectors3f& vector, int32 const i, float const value) {
