@@ -114,6 +114,11 @@ void ATestCapitalShipFighters::move(float const dt) {
         // [Attack] Update move destination to attack position
         ml::multiply(
             attack_view.move_target_locations, attack_view.target_directions, laser_half_distance);
+
+        ml::subtract_scaled(attack_view.move_target_locations,
+                            attack_view.target_locations,
+                            attack_view.target_directions,
+                            laser_half_distance);
     }
 
     // [All] Update movement direction

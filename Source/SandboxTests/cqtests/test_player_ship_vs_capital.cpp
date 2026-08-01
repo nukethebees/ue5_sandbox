@@ -129,6 +129,12 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                                      expected_min_distance_moved,
                                      TEXT("Check fighter moves late in sim"),
                                      i);
+
+            checks.dist_greater_than(fighter_target_locations.value_at(i_before_end)[i],
+                                     fighter_target_locations.value_at(i_end)[i],
+                                     expected_min_distance_moved,
+                                     TEXT("Check fighter target location updates late in sim"),
+                                     i);
         }
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
