@@ -255,6 +255,31 @@ void add_scaled_in_place(Dst& dst, Src const& a, TConstArrayView<float> const b,
 }
 
 /* ---------------------------------------------------------------------------------------------- */
+// Subtraction
+/* ---------------------------------------------------------------------------------------------- */
+template <is_mutable_vec3f Dst, is_readable_vec3f A, is_readable_vec3f B>
+void subtract_scaled(Dst&& dst, A&& a, B&& b, float const c) {
+    auto const n{ml::num(dst)};
+    check(ml::num(a) == n);
+    check(ml::num(b) == n);
+
+    check(dst.xs.GetData() != a.xs.GetData());
+    check(dst.xs.GetData() != b.xs.GetData());
+
+    return ml::kernel::subtract_scaled<float>(dst.xs.GetData(),
+                                              dst.ys.GetData(),
+                                              dst.zs.GetData(),
+                                              a.xs.GetData(),
+                                              a.ys.GetData(),
+                                              a.zs.GetData(),
+                                              b.xs.GetData(),
+                                              b.ys.GetData(),
+                                              b.zs.GetData(),
+                                              c,
+                                              n);
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 // Interpolation
 /* ---------------------------------------------------------------------------------------------- */
 inline void

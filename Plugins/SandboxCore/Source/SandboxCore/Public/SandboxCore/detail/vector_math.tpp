@@ -149,6 +149,43 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
 }
 
 /* ---------------------------------------------------------------------------------------------- */
+// Subtraction
+/* ---------------------------------------------------------------------------------------------- */
+template <ml::Numeric T>
+void subtract_scaled(T* RESTRICT out_x,
+                     T* RESTRICT out_y,
+                     T* RESTRICT out_z,
+                     T const* RESTRICT a_x,
+                     T const* RESTRICT a_y,
+                     T const* RESTRICT a_z,
+                     T const* RESTRICT b_x,
+                     T const* RESTRICT b_y,
+                     T const* RESTRICT b_z,
+                     T const c,
+                     int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        out_x[i] = a_x[i] - b_x[i] * c;
+        out_y[i] = a_y[i] - b_y[i] * c;
+        out_z[i] = a_z[i] - b_z[i] * c;
+    }
+}
+template <ml::Numeric T>
+void subtract_scaled_in_place(T* RESTRICT a_x,
+                              T* RESTRICT a_y,
+                              T* RESTRICT a_z,
+                              T const* RESTRICT b_x,
+                              T const* RESTRICT b_y,
+                              T const* RESTRICT b_z,
+                              T const c,
+                              int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        a_x[i] -= b_x[i] * c;
+        a_y[i] -= b_y[i] * c;
+        a_z[i] -= b_z[i] * c;
+    }
+}
+
+/* ---------------------------------------------------------------------------------------------- */
 // Multiplication
 /* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
