@@ -340,6 +340,7 @@ void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandl
 }
 void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
                                               FVectors3f::View const& locations,
+                                              FVectors3f::View const& velocities,
                                               TArrayView<float> const radii) {
     auto const n_handles{ml::num(handles)};
     if (n_handles == 0) { return; }
@@ -362,6 +363,21 @@ void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> 
     refresh_handles(handles);
 
     if (should_update_view(locations)) { refresh_locations(handles, locations); }
+
+    if (should_update_view(velocities)) {
+        for (int32 i{}; i < n_handles; ++i) {
+            auto const handle{handles[i]};
+
+            if (handle.is_null()) {
+                velocities.xs[i] = 0.0f;
+                velocities.ys[i] = 0.0f;
+                velocities.zs[i] = 0.0f;
+                continue;
+            }
+
+            ml::assign_from(velocities, i, entity_data.velocities, handle.index);
+        }
+    }
 
     if (should_update_view(radii)) {
         for (int32 i{}; i < n_handles; ++i) {

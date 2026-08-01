@@ -103,6 +103,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Empty views are considered to be unused parameters
     void refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
                              FVectors3f::View const& locations,
+                             FVectors3f::View const& velocities,
                              TArrayView<float> radii);
 
     // Entity queries

@@ -13,6 +13,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/transforms.h>
@@ -105,6 +106,24 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto const laser_half_distance{laser_max_distance / 2.f};
 
     if (do_attack) {
+        ml::solve_intercept_times(attack_view.intercept_times,
+                                  attack_view.locations.get_const_view(),
+                                  attack_view.target_locations.get_const_view(),
+                                  attack_view.target_velocities.get_const_view(),
+                                  actor_config->laser_speed);
+
+        for (int32 i{0}; i < n_attack; ++i) {
+            auto const intercept_location{ml::get_vector3f(attack_view.target_locations, i) +
+                                          ml::get_vector3f(attack_view.target_velocities, i) *
+                                              attack_view.intercept_times[i]};
+            auto const desired_firing_direction{
+                (intercept_location - ml::get_vector3f(attack_view.locations, i)).GetSafeNormal()};
+
+            attack_view.desired_firing_directions.xs[i] = desired_firing_direction.X;
+            attack_view.desired_firing_directions.ys[i] = desired_firing_direction.Y;
+            attack_view.desired_firing_directions.zs[i] = desired_firing_direction.Z;
+        }
+
         // [Attack] Update direction to target
         ml::direction(
             attack_view.target_directions, attack_view.locations, attack_view.target_locations);
@@ -128,8 +147,9 @@ void ATestCapitalShipFighters::move(float const dt) {
         ml::lerp_in_place(move_view.aim_directions, move_view.movement_directions, d_turn);
     }
     if (do_attack) {
-        // [Attack] Look at enemy
-        ml::lerp_in_place(attack_view.aim_directions, attack_view.target_directions, d_turn);
+        // [Attack] Look towards the firing intercept
+        ml::lerp_in_place(
+            attack_view.aim_directions, attack_view.desired_firing_directions, d_turn);
     }
 
     // Move phase
@@ -361,10 +381,12 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     auto const n{get_num_instances()};
 
     registry_update_data.reset();
+    if (n < 1) { return; }
+
     ml::add_uninitialised(registry_update_data, n);
 
     registry_update_data.locations = data.locations;
-    registry_update_data.velocities = data.aim_directions;
+    ml::multiply(registry_update_data.velocities, data.movement_directions, data.speeds);
     registry_update_data.healths = data.healths;
     registry_update_data.teams = data.teams;
     for (int32 i{0}; i < n; ++i) {
@@ -484,7 +506,10 @@ void ATestCapitalShipFighters::commit_spawns() {
 
     data.target_handles.Append(new_targets);
     data.target_locations.add_zeroed(n_new);
+    data.target_velocities.add_zeroed(n_new);
     data.target_directions.add_zeroed(n_new);
+    data.intercept_times.AddZeroed(n_new);
+    data.desired_firing_directions.add_zeroed(n_new);
     data.target_distance_sq.AddZeroed(n_new);
     data.target_radii.AddZeroed(n_new);
 
@@ -585,7 +610,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
     ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
 
-    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.target_directions);
+    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_firing_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
@@ -707,8 +732,10 @@ void ATestCapitalShipFighters::commit_orders() {
 void ATestCapitalShipFighters::refresh_target_data() {
     auto& data{entity_buffers.current()};
 
-    entity_registry->refresh_entity_data(
-        data.target_handles, data.target_locations.get_view(), data.target_radii);
+    entity_registry->refresh_entity_data(data.target_handles,
+                                         data.target_locations.get_view(),
+                                         data.target_velocities.get_view(),
+                                         data.target_radii);
 }
 
 // Misc
