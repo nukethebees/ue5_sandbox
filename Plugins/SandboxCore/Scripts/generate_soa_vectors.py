@@ -36,6 +36,7 @@ class LayoutSpec:
     base_name: str
     components: list[str]
     functions: list[FnSpec]
+    aos_types: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -228,6 +229,41 @@ def generate_copy_element(layout: LayoutSpec, storage_type: str) -> list[str]:
     return lines
 
 
+def generate_add_functions(layout: LayoutSpec, aos_type: str | None) -> list[str]:
+    if aos_type is None:
+        return []
+
+    component_args = join_args(
+        [f"value_type const {component[0]}" for component in layout.components]
+    )
+    lines = [
+        f"    auto add({component_args}) -> size_type",
+        "    {",
+        f"        auto const index{{{layout.components[0]}.Add({layout.components[0][0]})}};",
+    ]
+    for component in layout.components[1:]:
+        lines.append(f"        {component}.Add({component[0]});")
+    lines.extend(
+        [
+            "        return index;",
+            "    }",
+            "",
+            "    auto add(aos_type const& value) -> size_type",
+            "    {",
+            "        return add("
+            + join_args(
+                [
+                    f"value.{axis}"
+                    for axis in ["X", "Y", "Z"][: len(layout.components)]
+                ]
+            )
+            + ");",
+            "    }",
+        ]
+    )
+    return lines
+
+
 def generate_view_return(
     layout: LayoutSpec, return_type: str, function_name: str
 ) -> list[str]:
@@ -252,11 +288,13 @@ def generate_view_return(
 
 def generate_storage_struct(layout: LayoutSpec, value_type: str) -> str:
     name = storage_name(layout, value_type)
+    aos_type = layout.aos_types[value_type] if layout.aos_types else None
     lines = [
         "",
         f"struct {name}",
         "{",
         f"    using value_type = {value_type};",
+        f"    using aos_type = {aos_type};" if aos_type else "",
         "    using size_type = TArray<value_type>::SizeType;",
         f"    using View = {view_name(layout)}<value_type>;",
         f"    using ConstView = {view_name(layout)}<value_type const>;",
@@ -282,6 +320,8 @@ def generate_storage_struct(layout: LayoutSpec, value_type: str) -> str:
         "    }",
         "",
         *generate_copy_element(layout, name),
+        "",
+        *generate_add_functions(layout, aos_type),
     ]
 
     for fn in layout.functions:
@@ -347,11 +387,23 @@ def vector_spec() -> HeaderSpec:
                 base_name="Vectors2",
                 components=["xs", "ys"],
                 functions=functions,
+                aos_types={
+                    "float": "FVector2f",
+                    "double": "FVector2d",
+                    "int32": "FIntPoint",
+                    "uint32": "FUintPoint",
+                },
             ),
             LayoutSpec(
                 base_name="Vectors3",
                 components=["xs", "ys", "zs"],
                 functions=functions,
+                aos_types={
+                    "float": "FVector3f",
+                    "double": "FVector3d",
+                    "int32": "FIntVector",
+                    "uint32": "FUintVector3",
+                },
             ),
         ],
         value_types=["float", "double", "int32", "uint32"],

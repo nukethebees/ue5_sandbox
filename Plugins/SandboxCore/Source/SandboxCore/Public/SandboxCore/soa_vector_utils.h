@@ -86,6 +86,17 @@ inline auto SANDBOXCORE_API make_vectors3f(TArray<float> xs, TArray<float> ys, T
         .zs = MoveTemp(zs),
     };
 }
+[[nodiscard]]
+inline auto SANDBOXCORE_API make_vectors3f(TArray<FVector3f> const& vectors) -> FVectors3f {
+    FVectors3f out;
+    out.reserve(vectors.Num());
+
+    for (auto const& vector : vectors) {
+        out.add(vector);
+    }
+
+    return out;
+}
 
 /* ---------------------------------------------------------------------------------------------- */
 // Assignment

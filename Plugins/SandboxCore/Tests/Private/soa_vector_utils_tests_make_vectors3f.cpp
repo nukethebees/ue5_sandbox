@@ -33,6 +33,28 @@ TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.Arrays") {
     CHECK(vectors.zs == expected_zs);
 }
 
+TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.ArrayOfVectors") {
+    TArray<FVector3f> const input{
+        {1.0f, 2.0f, 3.0f},
+        {4.0f, 5.0f, 6.0f},
+    };
+
+    auto const vectors{ml::make_vectors3f(input)};
+
+    CHECK(vectors.xs == Values{1.0f, 4.0f});
+    CHECK(vectors.ys == Values{2.0f, 5.0f});
+    CHECK(vectors.zs == Values{3.0f, 6.0f});
+}
+
+TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.EmptyArrayOfVectors") {
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{})};
+
+    CHECK(vectors.is_empty());
+    CHECK(vectors.xs.IsEmpty());
+    CHECK(vectors.ys.IsEmpty());
+    CHECK(vectors.zs.IsEmpty());
+}
+
 TEST_CASE("SandboxCore.SoaVectorUtils.make_vectors3f.Empty") {
     auto const vectors{ml::make_vectors3f(std::initializer_list<float>{},
                                           std::initializer_list<float>{},

@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 
-
 template <typename T>
 struct TVectors2View
 {
@@ -159,8 +158,8 @@ struct TVectors3View
 
 struct FVectors2f
 {
-
     using value_type = float;
+    using aos_type = FVector2f;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
@@ -227,6 +226,18 @@ struct FVectors2f
         ys[dst_i] = src.ys[src_i];
     }
 
+    auto add(value_type const x, value_type const y) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -284,8 +295,8 @@ struct FVectors2f
 
 struct FVectors2d
 {
-
     using value_type = double;
+    using aos_type = FVector2d;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
@@ -352,6 +363,18 @@ struct FVectors2d
         ys[dst_i] = src.ys[src_i];
     }
 
+    auto add(value_type const x, value_type const y) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -409,8 +432,8 @@ struct FVectors2d
 
 struct FVectors2i32
 {
-
     using value_type = int32;
+    using aos_type = FIntPoint;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
@@ -477,6 +500,18 @@ struct FVectors2i32
         ys[dst_i] = src.ys[src_i];
     }
 
+    auto add(value_type const x, value_type const y) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -534,8 +569,8 @@ struct FVectors2i32
 
 struct FVectors2u32
 {
-
     using value_type = uint32;
+    using aos_type = FUintPoint;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors2View<value_type>;
     using ConstView = TVectors2View<value_type const>;
@@ -602,6 +637,18 @@ struct FVectors2u32
         ys[dst_i] = src.ys[src_i];
     }
 
+    auto add(value_type const x, value_type const y) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -659,8 +706,8 @@ struct FVectors2u32
 
 struct FVectors3f
 {
-
     using value_type = float;
+    using aos_type = FVector3f;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
@@ -729,6 +776,19 @@ struct FVectors3f
         zs[dst_i] = src.zs[src_i];
     }
 
+    auto add(value_type const x, value_type const y, value_type const z) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        zs.Add(z);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y, value.Z);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -795,8 +855,8 @@ struct FVectors3f
 
 struct FVectors3d
 {
-
     using value_type = double;
+    using aos_type = FVector3d;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
@@ -865,6 +925,19 @@ struct FVectors3d
         zs[dst_i] = src.zs[src_i];
     }
 
+    auto add(value_type const x, value_type const y, value_type const z) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        zs.Add(z);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y, value.Z);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -931,8 +1004,8 @@ struct FVectors3d
 
 struct FVectors3i32
 {
-
     using value_type = int32;
+    using aos_type = FIntVector;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
@@ -1001,6 +1074,19 @@ struct FVectors3i32
         zs[dst_i] = src.zs[src_i];
     }
 
+    auto add(value_type const x, value_type const y, value_type const z) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        zs.Add(z);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y, value.Z);
+    }
+
     auto reset() -> void
     {
         xs.Reset();
@@ -1067,8 +1153,8 @@ struct FVectors3i32
 
 struct FVectors3u32
 {
-
     using value_type = uint32;
+    using aos_type = FUintVector3;
     using size_type = TArray<value_type>::SizeType;
     using View = TVectors3View<value_type>;
     using ConstView = TVectors3View<value_type const>;
@@ -1135,6 +1221,19 @@ struct FVectors3u32
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
+    }
+
+    auto add(value_type const x, value_type const y, value_type const z) -> size_type
+    {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        zs.Add(z);
+        return index;
+    }
+
+    auto add(aos_type const& value) -> size_type
+    {
+        return add(value.X, value.Y, value.Z);
     }
 
     auto reset() -> void

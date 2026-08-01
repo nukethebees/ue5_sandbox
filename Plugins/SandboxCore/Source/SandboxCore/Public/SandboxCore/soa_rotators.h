@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 
-
 template <typename T>
 struct TRotatorsView
 {
@@ -86,8 +85,8 @@ struct TRotatorsView
 
 struct FRotatorsf
 {
-
     using value_type = float;
+
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
@@ -156,6 +155,7 @@ struct FRotatorsf
         rolls[dst_i] = src.rolls[src_i];
     }
 
+
     auto reset() -> void
     {
         pitches.Reset();
@@ -208,8 +208,8 @@ struct FRotatorsf
 
 struct FRotatorsd
 {
-
     using value_type = double;
+
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
@@ -277,6 +277,7 @@ struct FRotatorsd
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
     }
+
 
     auto reset() -> void
     {

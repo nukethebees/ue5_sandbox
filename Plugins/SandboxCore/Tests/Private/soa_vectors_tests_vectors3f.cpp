@@ -3,6 +3,10 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
+#include <type_traits>
+
+static_assert(std::is_same_v<FVectors3f::aos_type, FVector3f>);
+
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
     FVectors3f vectors;
 
@@ -11,6 +15,32 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
     CHECK(vectors.xs.IsEmpty());
     CHECK(vectors.ys.IsEmpty());
     CHECK(vectors.zs.IsEmpty());
+}
+
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddComponents") {
+    FVectors3f vectors;
+
+    auto const first_index{vectors.add(1.0f, 2.0f, 3.0f)};
+    auto const second_index{vectors.add(4.0f, 5.0f, 6.0f)};
+
+    auto const expected{ml::make_vectors3f(
+        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    CHECK(first_index == 0);
+    CHECK(second_index == 1);
+    CHECK(ml::almost_equal(vectors, expected));
+}
+
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddAosValue") {
+    FVectors3f vectors;
+
+    auto const first_index{vectors.add(FVector3f{1.0f, 2.0f, 3.0f})};
+    auto const second_index{vectors.add(FVector3f{4.0f, 5.0f, 6.0f})};
+
+    auto const expected{ml::make_vectors3f(
+        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    CHECK(first_index == 0);
+    CHECK(second_index == 1);
+    CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetView") {
