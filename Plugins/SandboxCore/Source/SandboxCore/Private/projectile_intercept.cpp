@@ -49,7 +49,7 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
 }
 }
 
-namespace ml::solve_intercept_times_loop {
+namespace ml::detail::solve_intercept_times_loop {
 void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            FVectors3f::ConstView const shooter_positions,
                            FVectors3f::ConstView const target_positions,
@@ -121,7 +121,7 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
 }
 }
 
-namespace ml::solve_intercept_times_aos {
+namespace ml::detail::solve_intercept_times_aos {
 void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            FVectors3f::ConstView const shooter_positions,
                            FVectors3f::ConstView const target_positions,
