@@ -12,11 +12,14 @@
 
 #include <Blueprint/WidgetLayoutLibrary.h>
 #include <DrawDebugHelpers.h>
+#include <Engine/Engine.h>
+#include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystems.h>
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
+#include <UnrealClient.h>
 
 #include <Sandbox/utilities/macros/null_checks.hpp>
 
@@ -103,6 +106,17 @@ void ATestSpaceShipController::Tick(float dt) {
     Super::Tick(dt);
 
     log_config.tick(dt);
+
+    if (screenshot_period > 0.f) {
+        screenshot_accumulator += dt;
+        if (screenshot_accumulator >= screenshot_period) {
+            screenshot_accumulator = FMath::Fmod(screenshot_accumulator, screenshot_period);
+
+            if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) {
+                GEngine->GameViewport->Viewport->TakeHighResScreenShot();
+            }
+        }
+    }
 
     TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
     update_crosshair_positions(*ss);

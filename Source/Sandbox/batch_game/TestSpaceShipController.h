@@ -134,6 +134,10 @@ class ATestSpaceShipController
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Screenshot")
+    float screenshot_period{-1.f};
+    float screenshot_accumulator{0.f};
+
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debug")
     bool debug_crosshair{false};
