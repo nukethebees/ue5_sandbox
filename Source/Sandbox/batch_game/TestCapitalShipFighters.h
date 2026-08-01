@@ -111,24 +111,24 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> target_distance_sq;
     TArray<float> target_radii;
 
-#define SANDBOX_PACK(STAMPER, NON_FINAL)            \
-    NON_FINAL(STAMPER(entity_handles))              \
-    NON_FINAL(STAMPER(tasks))                       \
-    NON_FINAL(STAMPER(locations))                   \
-    NON_FINAL(STAMPER(aim_directions))              \
-    NON_FINAL(STAMPER(move_target_locations))       \
-    NON_FINAL(STAMPER(movement_directions))         \
-    NON_FINAL(STAMPER(speeds))                      \
-    NON_FINAL(STAMPER(teams))                       \
-    NON_FINAL(STAMPER(healths))                     \
-    NON_FINAL(STAMPER(attack_cooldowns))            \
-    NON_FINAL(STAMPER(target_handles))              \
-    NON_FINAL(STAMPER(target_locations))            \
-    NON_FINAL(STAMPER(target_velocities))           \
-    NON_FINAL(STAMPER(target_directions))           \
-    NON_FINAL(STAMPER(intercept_times))             \
-    NON_FINAL(STAMPER(desired_firing_directions))     \
-    NON_FINAL(STAMPER(target_distance_sq))          \
+#define SANDBOX_PACK(STAMPER, NON_FINAL)          \
+    NON_FINAL(STAMPER(entity_handles))            \
+    NON_FINAL(STAMPER(tasks))                     \
+    NON_FINAL(STAMPER(locations))                 \
+    NON_FINAL(STAMPER(aim_directions))            \
+    NON_FINAL(STAMPER(move_target_locations))     \
+    NON_FINAL(STAMPER(movement_directions))       \
+    NON_FINAL(STAMPER(speeds))                    \
+    NON_FINAL(STAMPER(teams))                     \
+    NON_FINAL(STAMPER(healths))                   \
+    NON_FINAL(STAMPER(attack_cooldowns))          \
+    NON_FINAL(STAMPER(target_handles))            \
+    NON_FINAL(STAMPER(target_locations))          \
+    NON_FINAL(STAMPER(target_velocities))         \
+    NON_FINAL(STAMPER(target_directions))         \
+    NON_FINAL(STAMPER(intercept_times))           \
+    NON_FINAL(STAMPER(desired_firing_directions)) \
+    NON_FINAL(STAMPER(target_distance_sq))        \
     STAMPER(target_radii)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
