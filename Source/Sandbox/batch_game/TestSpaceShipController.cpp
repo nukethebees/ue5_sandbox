@@ -112,6 +112,12 @@ void ATestSpaceShipController::Tick(float dt) {
         hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
     }
 
+    auto const new_kills{ss->get_kills()};
+    if (new_kills != player_kills) {
+        player_kills = new_kills;
+        hud_widget->set_points(new_kills);
+    }
+
     log_config.on_tick_end();
 }
 

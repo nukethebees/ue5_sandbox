@@ -95,6 +95,8 @@ class ATestSpaceShip
     auto get_actor_config() const { return actor_config; }
     void set_actor_config(UTestSpaceShipData* data) { actor_config = data; }
 
+    auto get_kills() const -> int32;
+
     /* ------------------------------------------------------------------------------------------ */
     // Movement
     /* ------------------------------------------------------------------------------------------ */

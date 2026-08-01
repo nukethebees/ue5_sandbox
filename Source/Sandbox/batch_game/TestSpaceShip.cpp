@@ -213,6 +213,7 @@ auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
     return team;
 }
+auto ATestSpaceShip::get_kills() const -> int32 { return entity_registry->get_kills(unique_entity_id); }
 
 /* ------------------------------------------------------------------------------------------ */
 // Movement

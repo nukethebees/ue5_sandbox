@@ -127,6 +127,9 @@ class ATestSpaceShipController
     FDelegateHandle on_mission_update_handle;
     FDelegateHandle on_mission_manager_ready_handle;
 
+    // Player state
+    int32 player_kills{0};
+
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};
 
