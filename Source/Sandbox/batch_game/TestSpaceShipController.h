@@ -118,6 +118,7 @@ class ATestSpaceShipController
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     int32 input_mapping_context_index{0};
 
     // Mission state

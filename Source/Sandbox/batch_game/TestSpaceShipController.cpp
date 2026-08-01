@@ -142,7 +142,13 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
-    check(input.mapping_contexts.Num() > 0);
+
+    auto const n_contexts{input.mapping_contexts.Num()};
+
+    check(n_contexts > 0);
+    check(input_mapping_context_index >= 0);
+    check(input_mapping_context_index < n_contexts);
+
     set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
 
     initialise_hud();
