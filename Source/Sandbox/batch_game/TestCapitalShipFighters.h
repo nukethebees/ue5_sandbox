@@ -316,10 +316,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
 
-    // Transform
-    float turn_speed_radians{0.f};
-    float turn_speed_unitless{0.5f};
-
     // Tasks
     TaskSpans task_spans{};
     TaskViews task_views{};

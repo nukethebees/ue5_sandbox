@@ -29,7 +29,7 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     float speed{2000.f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    float turn_speed_degrees{90.f};
+    float turn_speed_unitless{1.f};
 
     // Combat
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

@@ -89,7 +89,7 @@ void ATestCapitalShipFighters::make_decisions() {
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);
 
-    auto const d_turn{turn_speed_unitless * dt};
+    auto const d_turn{actor_config->turn_speed_unitless * dt};
 
     auto& data{entity_buffers.current()};
 
