@@ -1,4 +1,6 @@
 #include <SandboxCore/projectile_intercept.h>
+#include <SandboxCore/soa_vector_utils.h>
+#include <SandboxCore/soa_vectors.h>
 
 namespace ml {
 auto solve_intercept_time(FVector3f const& shooter_pos,
@@ -19,22 +21,16 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
     value_type const c{static_cast<value_type>(r.SizeSquared())};
 
     if (FMath::Abs(a) < eps) {
-        if (FMath::Abs(b) < eps) {
-            return {};
-        }
+        if (FMath::Abs(b) < eps) { return {}; }
 
         value_type const t{-c / b};
-        if (t > 0.f) {
-            return t;
-        }
+        if (t > 0.f) { return t; }
 
         return {};
     }
 
     value_type const discriminant{b * b - 4.0f * a * c};
-    if (discriminant < 0.f) {
-        return {};
-    }
+    if (discriminant < 0.f) { return {}; }
 
     value_type const sqrt_discriminant{FMath::Sqrt(discriminant)};
 
@@ -43,21 +39,89 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
 
     value_type best_t{TNumericLimits<value_type>::Max()};
 
-    if (t0 > 0.f) {
-        best_t = t0;
-    }
+    if (t0 > 0.f) { best_t = t0; }
 
-    if ((t1 > 0.f) && (t1 < best_t)) {
-        best_t = t1;
-    }
+    if ((t1 > 0.f) && (t1 < best_t)) { best_t = t1; }
 
-    if (best_t == TNumericLimits<value_type>::Max()) {
-        return {};
-    }
+    if (best_t == TNumericLimits<value_type>::Max()) { return {}; }
 
     return best_t;
 }
+}
 
+namespace ml::solve_intercept_times_loop {
+void solve_intercept_times(TArrayView<float> const out_intercept_times,
+                           FVectors3f::ConstView const shooter_positions,
+                           FVectors3f::ConstView const target_positions,
+                           FVectors3f::ConstView const target_velocities,
+                           float const projectile_speed) {
+    using Vec3 = FVector3f;
+    using value_type = float;
+
+    value_type constexpr no_intercept{-1.f};
+    value_type constexpr eps{1e-8f};
+
+    auto const count{out_intercept_times.Num()};
+
+    check(shooter_positions.num() == count);
+    check(target_positions.num() == count);
+    check(target_velocities.num() == count);
+
+    for (int32 i{0}; i < count; ++i) {
+        auto const target_pos{get_vector3f(target_positions, i)};
+        auto const shooter_pos{get_vector3f(shooter_positions, i)};
+        auto const target_vel{get_vector3f(target_velocities, i)};
+
+        Vec3 const r{target_pos - shooter_pos};
+
+        value_type const a{target_vel.SizeSquared() - projectile_speed * projectile_speed};
+        value_type const b{2.0f * Vec3::DotProduct(r, target_vel)};
+        value_type const c{static_cast<value_type>(r.SizeSquared())};
+
+        if (FMath::Abs(a) < eps) {
+            if (FMath::Abs(b) < eps) {
+                out_intercept_times[i] = value_type{};
+                continue;
+            }
+
+            value_type const t{-c / b};
+            if (t > 0.f) {
+                out_intercept_times[i] = t;
+                continue;
+            }
+
+            out_intercept_times[i] = value_type{};
+            continue;
+        }
+
+        value_type const discriminant{b * b - 4.0f * a * c};
+        if (discriminant < 0.f) {
+            out_intercept_times[i] = value_type{};
+            continue;
+        }
+
+        value_type const sqrt_discriminant{FMath::Sqrt(discriminant)};
+
+        value_type const t0{(-b - sqrt_discriminant) / (2.0f * a)};
+        value_type const t1{(-b + sqrt_discriminant) / (2.0f * a)};
+
+        value_type best_t{TNumericLimits<value_type>::Max()};
+
+        if (t0 > 0.f) { best_t = t0; }
+
+        if ((t1 > 0.f) && (t1 < best_t)) { best_t = t1; }
+
+        if (best_t == TNumericLimits<value_type>::Max()) {
+            out_intercept_times[i] = value_type{};
+            continue;
+        }
+
+        out_intercept_times[i] = best_t;
+    }
+}
+}
+
+namespace ml::solve_intercept_times_aos {
 void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            FVectors3f::ConstView const shooter_positions,
                            FVectors3f::ConstView const target_positions,
