@@ -22,6 +22,7 @@ class UShipGoldRingCountWidget;
 class UPlayerLivesWidget;
 
 class UValueWidget;
+class UVector2DWidget;
 class UDebugGraphWidget;
 
 UCLASS()
@@ -71,6 +72,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     void set_selected_imc(FStringView value);
 
+    void set_turning(FVector2D value);
+    void set_moving(FVector2D value);
+
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
@@ -104,6 +108,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UValueWidget* target_speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* selected_imc_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* turning_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* moving_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

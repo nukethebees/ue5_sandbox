@@ -108,6 +108,8 @@ class ATestSpaceShip
     void roll(float direction);
     void barrel_roll(float direction);
     auto get_target_speed() const -> float;
+    auto get_move_input() const { return planar_movement_direction; }
+    auto get_turn_input() const { return rotation_input; }
 
     // Energy
     bool energy_is_full() const;

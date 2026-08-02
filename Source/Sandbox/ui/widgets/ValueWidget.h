@@ -18,6 +18,8 @@ class SANDBOX_API UValueWidget : public UUserWidget {
   public:
     void NativeConstruct() override;
 
+    void set_format_spec(FName const new_format_spec);
+
     template <ml::Numeric... Ts>
     void update(Ts const... values) {
         if (!value_text) { return; }
@@ -49,5 +51,7 @@ class SANDBOX_API UValueWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     int32 font_size{24};
   private:
+    void update_format_spec_text();
+
     FText format_spec_text;
 };

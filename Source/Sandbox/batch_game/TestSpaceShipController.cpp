@@ -115,6 +115,7 @@ void ATestSpaceShipController::Tick(float dt) {
     TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
     update_crosshair_positions(*ss);
     update_lock_on_widget(*ss);
+    update_input_widgets(*ss);
 
     if (mission_manager->mission_running()) {
         hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
@@ -298,6 +299,13 @@ void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship)
     }
 
     hud_widget->set_lock_on_widget_position(screen_pos);
+}
+
+void ATestSpaceShipController::update_input_widgets(ATestSpaceShip const& ship) {
+    RETURN_IF_NULLPTR(hud_widget);
+
+    hud_widget->set_turning(ship.get_turn_input());
+    hud_widget->set_moving(ship.get_move_input());
 }
 void ATestSpaceShipController::on_ship_fire_rate_changed(ETestShipFireRate const value) {
     check(hud_widget);

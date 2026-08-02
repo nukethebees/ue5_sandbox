@@ -10,6 +10,7 @@
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 #include "Sandbox/ui/widgets/ValueWidget.h"
+#include "Sandbox/ui/widgets/Vector2DWidget.h"
 
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
@@ -134,6 +135,16 @@ void UShipHudWidget::set_target_speed(float value) {
 void UShipHudWidget::set_selected_imc(FStringView value) {
     check(IsValid(selected_imc_widget));
     selected_imc_widget->update(value);
+}
+
+void UShipHudWidget::set_turning(FVector2D value) {
+    check(IsValid(turning_widget));
+    turning_widget->update(value);
+}
+
+void UShipHudWidget::set_moving(FVector2D value) {
+    check(IsValid(moving_widget));
+    moving_widget->update(value);
 }
 
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {

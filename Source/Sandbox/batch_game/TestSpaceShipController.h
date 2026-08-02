@@ -44,6 +44,7 @@ class ATestSpaceShipController
     void initialise_hud();
     void update_crosshair_positions(ATestSpaceShip const& ship);
     void update_lock_on_widget(ATestSpaceShip const& ship);
+    void update_input_widgets(ATestSpaceShip const& ship);
 
     auto get_pawn() -> Pawn&;
 
