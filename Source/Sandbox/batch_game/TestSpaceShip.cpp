@@ -232,7 +232,7 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
             auto const new_velocity{self.planar_flight_model.update(dt)};
-            self.velocity = FVector{new_velocity.X, new_velocity.Y, self.velocity.Z};
+            self.velocity = new_velocity;
             auto const cur_pos{self.GetActorLocation()};
             auto const delta_pos{self.velocity * dt};
             self.SetActorLocation(cur_pos + delta_pos, sweep_movement);
@@ -293,12 +293,10 @@ void ATestSpaceShip::stop_sampling() {
             FVector const world_direction{fwd * target_local_planar_velocity_scale.Y +
                                           right * target_local_planar_velocity_scale.X};
 
-            target_local_planar_velocity =
-                FVector2D{world_direction.X, world_direction.Y} * actor_config->cruise_speed;
+            target_local_planar_velocity = world_direction * actor_config->cruise_speed;
 
-            planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
-                                                FVector2D{velocity.X, velocity.Y},
-                                                target_local_planar_velocity);
+            planar_flight_model.set_new_impulse(
+                speed_responses.accelerating_to_cruise, velocity, target_local_planar_velocity);
             break;
         }
         case ETestSpaceShipControlMode::Power: {

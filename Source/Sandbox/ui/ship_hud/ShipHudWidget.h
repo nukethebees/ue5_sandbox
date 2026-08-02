@@ -76,7 +76,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_moving(FVector2D value);
     void set_desired_velocity_scale(FVector2D value);
     void set_ship_velocity(FVector value);
-    void set_target_velocity(FVector2D value);
+    void set_target_velocity(FVector value);
     void set_control_mode(FStringView value);
     void set_flight_mode(FStringView value);
 

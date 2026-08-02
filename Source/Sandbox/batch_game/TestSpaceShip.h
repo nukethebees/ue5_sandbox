@@ -284,7 +284,7 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Movement - Speed
     TSpaceShipFlightModel<float> forward_flight_model{};
-    TSpaceShipFlightModel<FVector2D> planar_flight_model{};
+    TSpaceShipFlightModel<FVector> planar_flight_model{};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
@@ -298,7 +298,7 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
     FVector2D target_local_planar_velocity_scale{FVector2D::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
-    FVector2D target_local_planar_velocity{FVector2D::ZeroVector};
+    FVector target_local_planar_velocity{FVector::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
     FVector2D planar_movement_direction{FVector2D::ZeroVector};
 
