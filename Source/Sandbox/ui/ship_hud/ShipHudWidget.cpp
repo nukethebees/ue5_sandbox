@@ -147,6 +147,16 @@ void UShipHudWidget::set_moving(FVector2D value) {
     moving_widget->update(value);
 }
 
+void UShipHudWidget::set_desired_velocity_scale(FVector2D value) {
+    check(IsValid(desired_velocity_scale_widget));
+    desired_velocity_scale_widget->update(value);
+}
+
+void UShipHudWidget::set_ship_velocity(FVector value) {
+    check(IsValid(ship_velocity_widget));
+    ship_velocity_widget->update(value.ToCompactString());
+}
+
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);

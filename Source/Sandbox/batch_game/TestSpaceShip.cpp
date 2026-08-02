@@ -105,6 +105,8 @@ void ATestSpaceShip::update_timers(float const dt) {
     time_since_rotation_input += dt;
 }
 void ATestSpaceShip::move(float const dt) {
+    if (sampling) { target_local_planar_velocity_scale = FVector2D{}; }
+
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);

@@ -74,6 +74,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     void set_turning(FVector2D value);
     void set_moving(FVector2D value);
+    void set_desired_velocity_scale(FVector2D value);
+    void set_ship_velocity(FVector value);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
@@ -112,6 +114,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UVector2DWidget* turning_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UVector2DWidget* moving_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* desired_velocity_scale_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* ship_velocity_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

@@ -312,6 +312,8 @@ void ATestSpaceShipController::update_input_widgets(ATestSpaceShip const& ship) 
 
     hud_widget->set_turning(ship.get_turn_input());
     hud_widget->set_moving(ship.get_move_input());
+    hud_widget->set_desired_velocity_scale(ship.get_target_local_planar_velocity_scale());
+    hud_widget->set_ship_velocity(ship.get_velocity());
 }
 void ATestSpaceShipController::on_ship_fire_rate_changed(ETestShipFireRate const value) {
     check(hud_widget);

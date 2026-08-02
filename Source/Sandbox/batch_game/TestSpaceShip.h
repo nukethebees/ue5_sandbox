@@ -113,6 +113,9 @@ class ATestSpaceShip
     void barrel_roll(float direction);
     auto get_target_speed() const -> float;
     auto get_move_input() const { return planar_movement_direction; }
+    auto get_target_local_planar_velocity_scale() const {
+        return target_local_planar_velocity_scale;
+    }
     auto get_turn_input() const { return rotation_input; }
 
     // Energy
@@ -285,6 +288,8 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     float target_speed{0.f};
 
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    FVector2D target_local_planar_velocity_scale{FVector2D::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
     FVector2D target_local_planar_velocity{FVector2D::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
