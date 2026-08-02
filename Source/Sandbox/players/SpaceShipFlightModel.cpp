@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 
-auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
+auto FSpaceShipFlightModel::step_size() const -> float {
+    return target_speed - old_speed;
+}
+auto FSpaceShipFlightModel::calculate_delta(float t) const -> float {
     auto const inner{c * FMath::Cos(wd * t + delta)};
     auto const h{1.f - FMath::Exp(-z_wn * t) * inner};
 
@@ -12,9 +15,9 @@ auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
 
     return step_size() * h;
 }
-auto FSpaceShipFlightModel::update_y(float dt) -> float {
+auto FSpaceShipFlightModel::update(float dt) -> float {
     time += dt;
-    auto const delta_speed{calculate_dy(time)};
+    auto const delta_speed{calculate_delta(time)};
 
 #if WITH_EDITOR
     dy_dbg = delta_speed;

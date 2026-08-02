@@ -12,12 +12,12 @@ struct FSpaceShipFlightModel {
     FSpaceShipFlightModel(FSpeedResponse sr)
         : response(sr) {}
 
-    auto step_size() const { return target_speed - old_speed; }
-
-    auto calculate_dy(float t) const -> float;
-    auto update_y(float dt) -> float;
+    auto update(float dt) -> float;
     void set_new_impulse(FSpeedResponse sr, float old_s, float target_s);
   protected:
+    auto step_size() const -> float;
+    auto calculate_delta(float t) const -> float;
+
     UPROPERTY(VisibleAnywhere)
     FSpeedResponse response{};
     UPROPERTY(VisibleAnywhere)

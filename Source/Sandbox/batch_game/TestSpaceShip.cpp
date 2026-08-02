@@ -219,7 +219,7 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const dt) {
     auto const fwd{self.GetActorForwardVector()};
-    auto const new_speed{self.flight_model.update_y(dt)};
+            auto const new_speed{self.flight_model.update(dt)};
     self.velocity = fwd * new_speed;
 
     auto const cur_pos{self.GetActorLocation()};

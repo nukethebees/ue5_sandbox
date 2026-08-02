@@ -250,7 +250,7 @@ void ASpaceShip::update_visual_orientation(this ASpaceShip& self, float dt) {
 }
 void ASpaceShip::integrate_velocity(this ASpaceShip& self, float dt) {
     auto const fwd{self.GetActorForwardVector()};
-    auto const new_speed{self.flight_model.update_y(dt)};
+    auto const new_speed{self.flight_model.update(dt)};
     self.velocity = fwd * new_speed;
 
     auto const cur_pos{self.GetActorLocation()};
