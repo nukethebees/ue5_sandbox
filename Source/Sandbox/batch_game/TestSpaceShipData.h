@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/players/BarrelRoll.h>
+#include <Sandbox/players/SpeedResponse.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
@@ -40,6 +41,9 @@ class UTestSpaceShipData : public UDataAsset {
     /* ------------------------------------------------------------------------------------------ */
     // Movement
     /* ------------------------------------------------------------------------------------------ */
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
+    FSpeedResponses speed_responses{};
+
     UPROPERTY(EditAnywhere, Category = "Speed")
     float cruise_speed{12000.0f};
     UPROPERTY(EditAnywhere, Category = "Speed")

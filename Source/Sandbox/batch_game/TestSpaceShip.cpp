@@ -284,11 +284,17 @@ void ATestSpaceShip::start_sampling() {
 }
 void ATestSpaceShip::stop_sampling() {
     sampling = false;
+    auto const& speed_responses{actor_config->speed_responses};
 
     switch (control_mode) {
         case ETestSpaceShipControlMode::Velocity: {
+            auto const fwd{GetActorForwardVector()};
+            auto const right{GetActorRightVector()};
+            FVector const world_direction{fwd * target_local_planar_velocity_scale.Y +
+                                          right * target_local_planar_velocity_scale.X};
+
             target_local_planar_velocity =
-                target_local_planar_velocity_scale * actor_config->cruise_speed;
+                FVector2D{world_direction.X, world_direction.Y} * actor_config->cruise_speed;
 
             planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
                                                 FVector2D{velocity.X, velocity.Y},
@@ -344,6 +350,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
 // Movement - boost/brake
 void ATestSpaceShip::set(EBoostBrakeState s) {
     auto const cur_speed{get_speed()};
+    auto const& speed_responses{actor_config->speed_responses};
     FSpeedResponse response{speed_responses.accelerating_to_cruise};
 
     switch (s) {

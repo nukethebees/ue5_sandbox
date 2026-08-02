@@ -14,7 +14,6 @@
 #include <Sandbox/players/ShipLaserMode.h>
 #include <Sandbox/players/SpaceShipCommon.h>
 #include <Sandbox/players/SpaceShipFlightModel.h>
-#include <Sandbox/players/SpeedResponse.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -290,8 +289,6 @@ class ATestSpaceShip
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
-    FSpeedResponses speed_responses{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     FVector velocity;

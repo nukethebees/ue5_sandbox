@@ -159,7 +159,7 @@ void UShipHudWidget::set_ship_velocity(FVector value) {
 
 void UShipHudWidget::set_target_velocity(FVector2D value) {
     check(IsValid(target_velocity_widget));
-    target_velocity_widget->update(value.ToString());
+    target_velocity_widget->update(value.ToString(), value.Size());
 }
 
 void UShipHudWidget::set_control_mode(FStringView value) {
