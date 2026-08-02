@@ -9,11 +9,27 @@ void UVector2DWidget::NativeConstruct() {
     Super::NativeConstruct();
 
     if (name_text) { name_text->SetText(name); }
+    if (value_text) {
+        value_text->SetVisibility(show_value ? ESlateVisibility::Visible
+                                             : ESlateVisibility::Collapsed);
+    }
 
     update(FVector2D::ZeroVector);
 }
 
 void UVector2DWidget::update(FVector2D const value) {
+    if (value_text) {
+        auto number_format{FNumberFormattingOptions{}};
+        number_format.SetMinimumFractionalDigits(1);
+        number_format.SetMaximumFractionalDigits(1);
+
+        auto const display_value{FText::Format(INVTEXT("{0}, {1} ({2})"),
+                                               FText::AsNumber(value.X, &number_format),
+                                               FText::AsNumber(value.Y, &number_format),
+                                               FText::AsNumber(value.Size(), &number_format))};
+        value_text->SetText(display_value);
+    }
+
     if (!canvas_panel || !background_widget || !cursor_widget) { return; }
 
     auto* const cursor_slot{Cast<UCanvasPanelSlot>(cursor_widget->Slot)};

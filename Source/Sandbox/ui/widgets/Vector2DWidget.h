@@ -25,6 +25,11 @@ class SANDBOX_API UVector2DWidget : public UUserWidget {
     UBorder* cursor_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* name_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* value_text{nullptr};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     FText name;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    bool show_value{true};
 };
