@@ -13,16 +13,18 @@ void UVector2DWidget::NativeConstruct() {
 void UVector2DWidget::update(FVector2D const value) {
     if (!canvas_panel || !background_widget || !cursor_widget) { return; }
 
-    auto* cursor_slot{Cast<UCanvasPanelSlot>(cursor_widget->Slot)};
+    auto* const cursor_slot{Cast<UCanvasPanelSlot>(cursor_widget->Slot)};
     if (!cursor_slot) { return; }
 
     auto const cursor_position{FVector2D{
-        FMath::Clamp(value.X * 0.5 + 0.5, 0.0, 1.0),
-        FMath::Clamp(value.Y * 0.5 + 0.5, 0.0, 1.0),
+        FMath::GetMappedRangeValueClamped(FVector2D{-1.f, 1.f}, FVector2D{0.f, 1.f}, value.X),
+        FMath::GetMappedRangeValueClamped(FVector2D{-1.f, 1.f}, FVector2D{1.f, 0.f}, value.Y),
     }};
 
-    cursor_slot->SetAnchors(
-        FAnchors{static_cast<float>(cursor_position.X), static_cast<float>(cursor_position.Y)});
+    cursor_slot->SetAnchors(FAnchors{
+        static_cast<float>(cursor_position.X),
+        static_cast<float>(cursor_position.Y),
+    });
     cursor_slot->SetAlignment(FVector2D{0.5, 0.5});
     cursor_slot->SetPosition(FVector2D::ZeroVector);
 }
