@@ -213,7 +213,9 @@ auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
     return team;
 }
-auto ATestSpaceShip::get_kills() const -> int32 { return entity_registry->get_kills(unique_entity_id); }
+auto ATestSpaceShip::get_kills() const -> int32 {
+    return entity_registry->get_kills(unique_entity_id);
+}
 
 /* ------------------------------------------------------------------------------------------ */
 // Movement
@@ -231,6 +233,9 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
 }
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return get_velocity();
+}
+auto ATestSpaceShip::get_target_speed() const -> float {
+    return target_speed;
 }
 
 // Movement - turning
@@ -314,6 +319,7 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
         }
     }
 
+    on_target_speed_changed.ExecuteIfBound(target_speed);
     flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }

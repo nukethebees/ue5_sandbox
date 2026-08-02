@@ -15,11 +15,8 @@
 #include <Sandbox/players/SpaceShipFlightModel.h>
 #include <Sandbox/players/SpeedResponse.h>
 
-#include <SandboxCore/generation_index.h>
-
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "Math/Color.h"
 
 #include "TestSpaceShip.generated.h"
 
@@ -110,6 +107,7 @@ class ATestSpaceShip
     auto get_speed() const { return get_velocity().Size(); }
     void roll(float direction);
     void barrel_roll(float direction);
+    auto get_target_speed() const -> float;
 
     // Energy
     bool energy_is_full() const;
@@ -154,6 +152,7 @@ class ATestSpaceShip
 
     // Delegates
     FOnShipSpeedChanged on_speed_changed;
+    FOnShipTargetSpeedChanged on_target_speed_changed;
     FOnShipHealthChanged on_health_changed;
     FOnShipEnergyChanged on_energy_changed;
     FOnShipBombsChanged on_bombs_changed;

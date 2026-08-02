@@ -126,6 +126,16 @@ void UShipHudWidget::set_lives_widget_visibility(ESlateVisibility const new_visi
     set_widget_visibility_checked(lives_widget, new_visibility);
 }
 
+void UShipHudWidget::set_target_speed(float value) {
+    check(IsValid(target_speed_widget));
+    target_speed_widget->update(value);
+}
+
+void UShipHudWidget::set_selected_imc(FStringView value) {
+    check(IsValid(selected_imc_widget));
+    selected_imc_widget->update(value);
+}
+
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);

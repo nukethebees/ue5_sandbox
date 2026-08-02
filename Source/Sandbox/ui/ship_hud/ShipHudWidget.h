@@ -67,6 +67,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_lock_on_widget_visibility(bool const new_visibility);
     void set_lock_on_widget_visibility(ESlateVisibility const new_visibility);
 
+    void set_target_speed(float value);
+    
+    void set_selected_imc(FStringView value);
+
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
@@ -96,6 +100,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UValueWidget* mission_status_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* fire_rate_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* target_speed_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* selected_imc_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

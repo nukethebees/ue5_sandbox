@@ -66,7 +66,10 @@ void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* c
     check(IsValid(context));
     subsystem->AddMappingContext(context, 0);
 
-    UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *GetNameSafe(context));
+    auto const context_name{GetNameSafe(context)};
+
+    UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *context_name);
+    hud_widget->set_selected_imc(context_name);
 }
 
 // Life cycle
@@ -107,16 +110,7 @@ void ATestSpaceShipController::Tick(float dt) {
 
     log_config.tick(dt);
 
-    if (screenshot_period > 0.f) {
-        screenshot_accumulator += dt;
-        if (screenshot_accumulator >= screenshot_period) {
-            screenshot_accumulator = FMath::Fmod(screenshot_accumulator, screenshot_period);
-
-            if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) {
-                GEngine->GameViewport->Viewport->TakeHighResScreenShot();
-            }
-        }
-    }
+    screenshot_tick(dt);
 
     TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
     update_crosshair_positions(*ss);
@@ -127,8 +121,8 @@ void ATestSpaceShipController::Tick(float dt) {
     }
 
     auto const new_kills{ss->get_kills()};
-    if (new_kills != player_kills) {
-        player_kills = new_kills;
+    if (new_kills != ui_cache.player_kills) {
+        ui_cache.player_kills = new_kills;
         hud_widget->set_points(new_kills);
     }
 
@@ -163,9 +157,9 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     check(input_mapping_context_index >= 0);
     check(input_mapping_context_index < n_contexts);
 
-    set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
-
     initialise_hud();
+
+    set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
 
     RETURN_IF_NULLPTR(hud_widget);
     auto* ship{Cast<Pawn>(in_pawn)};
@@ -180,6 +174,9 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
 
     ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
     hud_widget->set_speed(ship->get_speed());
+
+    ship->on_target_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_target_speed);
+    hud_widget->set_target_speed(ship->get_target_speed());
 
     ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
     hud_widget->set_energy(1.f);
@@ -518,4 +515,18 @@ auto ATestSpaceShipController::get_pawn() -> Pawn& {
     }
 
     return *pawn;
+}
+
+// Misc
+void ATestSpaceShipController::screenshot_tick(float dt) {
+    if (screenshot_period > 0.f) {
+        screenshot_accumulator += dt;
+        if (screenshot_accumulator >= screenshot_period) {
+            screenshot_accumulator = FMath::Fmod(screenshot_accumulator, screenshot_period);
+
+            if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) {
+                GEngine->GameViewport->Viewport->TakeHighResScreenShot();
+            }
+        }
+    }
 }

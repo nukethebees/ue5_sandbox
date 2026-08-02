@@ -25,6 +25,10 @@ class ATestSpaceShipController
     , public ml::LogMsgMixin<"SpaceShipController", LogSandboxController> {
     GENERATED_BODY()
   public:
+    struct UICache {
+        int32 player_kills{0};
+    };
+
     using Pawn = ATestSpaceShip;
 
     ATestSpaceShipController();
@@ -102,6 +106,9 @@ class ATestSpaceShipController
     void on_mission_ended(ATestMissionManager const& manager);
     auto make_mission_status_message(ATestMissionManager const& manager) const -> FString;
 
+    // Misc
+    void screenshot_tick(float dt);
+
     // UI
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TSubclassOf<UShipHudWidget> hud_widget_class;
@@ -129,7 +136,7 @@ class ATestSpaceShipController
     FDelegateHandle on_mission_manager_ready_handle;
 
     // Player state
-    int32 player_kills{0};
+    UICache ui_cache;
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

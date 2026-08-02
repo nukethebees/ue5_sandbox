@@ -14,6 +14,7 @@ UENUM()
 enum class EBoostBrakeState : uint8 { None, Boost, Brake };
 
 DECLARE_DELEGATE_OneParam(FOnShipSpeedChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipTargetSpeedChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
 DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
