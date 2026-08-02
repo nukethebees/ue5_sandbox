@@ -185,9 +185,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
     RegistryEntityData entity_data;
     ml::append(entity_data.locations, GetActorLocation());
 
-    entity_data.velocities.xs.Add(velocity.X);
-    entity_data.velocities.ys.Add(velocity.Y);
-    entity_data.velocities.zs.Add(velocity.Z);
+    entity_data.velocities.add(FVector3f{velocity});
 
     entity_data.radii.Add(ml::get_mesh_sphere_bounds(*ship_mesh));
     entity_data.healths.Add(health.health);
@@ -229,6 +227,9 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
 
     self.SetActorLocation(cur_pos + delta_pos, true);
     self.on_speed_changed.ExecuteIfBound(new_speed);
+}
+auto ATestSpaceShip::get_velocity() const -> FVector {
+    return velocity;
 }
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return get_velocity();

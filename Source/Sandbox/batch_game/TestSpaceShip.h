@@ -111,7 +111,7 @@ class ATestSpaceShip
     void stop_boost();
     void start_brake();
     void stop_brake();
-    auto get_velocity() const { return velocity; }
+    auto get_velocity() const -> FVector;
     auto get_speed() const { return get_velocity().Size(); }
     void roll(float direction);
     void barrel_roll(float direction);
@@ -280,7 +280,6 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Movement
     /* ------------------------------------------------------------------------------------------ */
-
     // Movement - Speed
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpaceShipFlightModel flight_model{};
