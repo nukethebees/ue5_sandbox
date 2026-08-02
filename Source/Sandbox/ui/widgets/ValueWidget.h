@@ -20,28 +20,21 @@ class SANDBOX_API UValueWidget : public UUserWidget {
 
     void set_format_spec(FName const new_format_spec);
 
-    template <ml::Numeric... Ts>
+    template <typename... Ts>
     void update(Ts const... values) {
         if (!value_text) { return; }
 
-        auto const display{FText::Format(format_spec_text, FText::AsNumber(values)...)};
+        auto const display{FText::Format(format_spec_text, to_text(values)...)};
 
         value_text->SetText(display);
     }
-    template <ml::Numeric... Ts>
+    template <typename... Ts>
     void update(FNumberFormattingOptions const& options, Ts const... values) {
         if (!value_text) { return; }
 
-        auto const display{FText::Format(format_spec_text, FText::AsNumber(values, &options)...)};
+        auto const display{FText::Format(format_spec_text, to_text(values, &options)...)};
 
         value_text->SetText(display);
-    }
-
-    void update(FStringView const value) {
-        if (value_text) {
-            auto const display{FText::Format(format_spec_text, FText::FromStringView(value))};
-            value_text->SetText(display);
-        }
     }
   protected:
     UPROPERTY(meta = (BindWidget))
@@ -51,6 +44,18 @@ class SANDBOX_API UValueWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     int32 font_size{24};
   private:
+    template <typename T>
+    static auto to_text(T const& value, FNumberFormattingOptions const* const options = nullptr)
+        -> FText {
+        if constexpr (ml::Numeric<T>) {
+            return FText::AsNumber(value, options);
+        } else if constexpr (requires { FText::FromStringView(value); }) {
+            return FText::FromStringView(value);
+        } else {
+            static_assert(!sizeof(T), "Unhandled type");
+        }
+    }
+
     void update_format_spec_text();
 
     FText format_spec_text;
