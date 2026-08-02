@@ -7,6 +7,7 @@
 
 class UBorder;
 class UCanvasPanel;
+class UTextBlock;
 
 UCLASS()
 class SANDBOX_API UVector2DWidget : public UUserWidget {
@@ -22,4 +23,8 @@ class SANDBOX_API UVector2DWidget : public UUserWidget {
     UBorder* background_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UBorder* cursor_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* name_text{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    FText name;
 };

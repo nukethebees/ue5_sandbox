@@ -3,9 +3,14 @@
 #include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/TextBlock.h"
 
 void UVector2DWidget::NativeConstruct() {
     Super::NativeConstruct();
+
+    if (name_text) {
+        name_text->SetText(name);
+    }
 
     update(FVector2D::ZeroVector);
 }
