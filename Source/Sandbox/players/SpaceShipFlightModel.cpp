@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 
 auto FSpaceShipFlightModel::calculate_dy(float t) const -> float {
-    auto const wd_t{wd * t};
     auto const inner{c * FMath::Cos(wd * t + delta)};
     auto const h{1.f - FMath::Exp(-z_wn * t) * inner};
 
