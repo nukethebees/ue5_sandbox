@@ -273,6 +273,16 @@ void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
         }
     }
 }
+void ATestSpaceShip::set_ship_1d_control_x(float const input) {
+    auto control{target_local_planar_velocity_scale};
+    control.X = input;
+    set_ship_2d_control(control);
+}
+void ATestSpaceShip::set_ship_1d_control_y(float const input) {
+    auto control{target_local_planar_velocity_scale};
+    control.Y = input;
+    set_ship_2d_control(control);
+}
 void ATestSpaceShip::select_next_control_mode() {
     control_mode = ml::get_next(control_mode);
 }
@@ -317,7 +327,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
     auto const rotation_speed{self.actor_config->rotation_speed};
     auto const d_rot{rotation_speed * dt};
 
-    if (self.rotation_input != FVector2D::ZeroVector) {
+    if (self.rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(self.roll_input)) {
         auto const drot_pitch{d_rot};
 
         auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X)};
@@ -326,7 +336,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
 
         auto const d_pitch{self.rotation_input.Y * drot_pitch};
         auto const d_yaw{self.rotation_input.X * drot_yaw};
-        auto const d_roll{0.f};
+        auto const d_roll{self.roll_input * d_rot};
 
         FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
         self.AddActorLocalRotation(delta_rotation);
@@ -418,8 +428,9 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float const d
 }
 
 // Movement - rolling
-void ATestSpaceShip::roll(float /*direction*/) {}
-void ATestSpaceShip::barrel_roll(float /*direction*/) {}
+void ATestSpaceShip::roll(float direction) {
+    roll_input = FMath::Clamp(direction, -1.f, 1.f);
+}
 
 /* ------------------------------------------------------------------------------------------ */
 /* Combat */

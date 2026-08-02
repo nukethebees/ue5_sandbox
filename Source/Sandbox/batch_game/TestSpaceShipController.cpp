@@ -47,6 +47,12 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
     bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
+    bind(ship_1d_control_x, Started, &ThisClass::set_ship_2d_control_started);
+    bind(ship_1d_control_x, Triggered, &ThisClass::set_ship_1d_control_x);
+    bind(ship_1d_control_x, Completed, &ThisClass::ship_2d_control_completed);
+    bind(ship_1d_control_y, Started, &ThisClass::set_ship_2d_control_started);
+    bind(ship_1d_control_y, Triggered, &ThisClass::set_ship_1d_control_y);
+    bind(ship_1d_control_y, Completed, &ThisClass::ship_2d_control_completed);
     bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
     bind(cycle_previous_control_mode_input, Started, &ThisClass::cycle_previous_control_mode);
     bind(sample_and_hold_input, Started, &ThisClass::start_sampling);
@@ -56,7 +62,6 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(input.roll, Started, &ThisClass::start_roll);
     bind(input.roll, Triggered, &ThisClass::roll);
     bind(input.roll, Completed, &ThisClass::stop_roll);
-    bind(input.barrel_roll, Triggered, &ThisClass::barrel_roll);
     bind(input.boost, Started, &ThisClass::start_boost);
     bind(input.boost, Completed, &ThisClass::stop_boost);
     bind(input.brake, Started, &ThisClass::start_brake);
@@ -385,6 +390,12 @@ void ATestSpaceShipController::set_ship_2d_control(FInputActionValue const& valu
 void ATestSpaceShipController::ship_2d_control_completed() {
     stop_sampling();
 }
+void ATestSpaceShipController::set_ship_1d_control_x(FInputActionValue const& value) {
+    get_pawn().set_ship_1d_control_x(value.Get<float>());
+}
+void ATestSpaceShipController::set_ship_1d_control_y(FInputActionValue const& value) {
+    get_pawn().set_ship_1d_control_y(value.Get<float>());
+}
 void ATestSpaceShipController::cycle_next_control_mode() {
     get_pawn().select_next_control_mode();
 }
@@ -407,48 +418,12 @@ void ATestSpaceShipController::start_roll(FInputActionValue const& value) {
     UE_LOG(LogSandboxController, Verbose, TEXT("Begin roll: %.1f"), value.Get<float>());
 }
 void ATestSpaceShipController::roll(FInputActionValue const& value) {
-    auto& ship{get_pawn()};
-
-    auto& br{barrel_roll_input};
-
-    auto const r{value.Get<float>()};
-
-    if ((FMath::Abs(r) >= br.input_strength_threshold) && !br.threshold_crossed_this_input) {
-        auto const last_crossing_time{br.last_crossing_time};
-
-        TRY_INIT_PTR(world, GetWorld());
-        br.last_crossing_time = world->GetTimeSeconds();
-        br.threshold_crossed_this_input = true;
-
-        UE_LOG(LogSandboxController,
-               Verbose,
-               TEXT("Barrel roll threshold crossed: %.2f"),
-               br.last_crossing_time);
-
-        auto const delta_time{br.last_crossing_time - last_crossing_time};
-        auto const begin_barrel_roll{delta_time <= br.input_time_threshold};
-
-        if (begin_barrel_roll) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Barrel roll: %.1f\n    Prev: %.2f\n    Cur: %.2f\n    Delta: %.2f"),
-                   r,
-                   last_crossing_time,
-                   br.last_crossing_time,
-                   delta_time);
-            ship.barrel_roll(r);
-        }
-    } else {
-        ship.roll(r);
-    }
+    auto const direction{FMath::Clamp(value.Get<float>(), -1.f, 1.f)};
+    get_pawn().roll(direction);
 }
 void ATestSpaceShipController::stop_roll(FInputActionValue const& value) {
     UE_LOG(LogSandboxController, Verbose, TEXT("End roll: %.1f"), value.Get<float>());
     get_pawn().roll(0.f);
-    barrel_roll_input.threshold_crossed_this_input = false;
-}
-void ATestSpaceShipController::barrel_roll(FInputActionValue const& value) {
-    get_pawn().barrel_roll(value.Get<float>());
 }
 
 // Boost / brake

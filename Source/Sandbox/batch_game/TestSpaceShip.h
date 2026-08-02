@@ -103,6 +103,8 @@ class ATestSpaceShip
     void set_lateral_move_input(float input);
     void set_vertical_move_input(float input);
     void set_ship_2d_control(FVector2D input);
+    void set_ship_1d_control_x(float input);
+    void set_ship_1d_control_y(float input);
     void select_next_control_mode();
     void select_previous_control_mode();
     void start_sampling();
@@ -115,7 +117,6 @@ class ATestSpaceShip
     auto get_velocity() const -> FVector;
     auto get_speed() const { return get_velocity().Size(); }
     void roll(float direction);
-    void barrel_roll(float direction);
     auto get_target_speed() const -> float;
     auto get_move_input() const { return planar_movement_direction; }
     auto get_control_mode() const { return control_mode; }
@@ -309,6 +310,9 @@ class ATestSpaceShip
     // Movement - rotation
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
+    float roll_input{0.f};
 
     UPROPERTY()
     float time_since_rotation_input{100.f};

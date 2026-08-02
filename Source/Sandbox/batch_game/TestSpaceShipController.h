@@ -5,7 +5,6 @@
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/logging/LogMsgMixin.hpp>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/players/BarrelRollInputData.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
 
@@ -72,6 +71,10 @@ class ATestSpaceShipController
     UFUNCTION()
     void ship_2d_control_completed();
     UFUNCTION()
+    void set_ship_1d_control_x(FInputActionValue const& value);
+    UFUNCTION()
+    void set_ship_1d_control_y(FInputActionValue const& value);
+    UFUNCTION()
     void cycle_next_control_mode();
     UFUNCTION()
     void cycle_previous_control_mode();
@@ -89,8 +92,6 @@ class ATestSpaceShipController
     void roll(FInputActionValue const& value);
     UFUNCTION()
     void stop_roll(FInputActionValue const& value);
-    UFUNCTION()
-    void barrel_roll(FInputActionValue const& value);
     UFUNCTION()
     void start_boost(FInputActionValue const& value);
     UFUNCTION()
@@ -144,9 +145,6 @@ class ATestSpaceShipController
     float far_cursor_distance{6000.f};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    FBarrelRollInputData barrel_roll_input{};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
@@ -157,6 +155,10 @@ class ATestSpaceShipController
     UInputAction* sample_and_hold_input{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     UInputAction* ship_2d_control{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* ship_1d_control_x{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* ship_1d_control_y{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     UInputAction* cycle_next_control_mode_input{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
