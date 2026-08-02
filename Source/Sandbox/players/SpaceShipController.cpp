@@ -92,7 +92,7 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     ship->on_lives_changed.BindUObject(hud_widget, &UShipHudWidget::set_lives);
     hud_widget->set_lives(ship->get_lives());
     ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
-    on_laser_firing_mode_changed(ELaserFiringMode::idle);
+    on_laser_firing_mode_changed(ELaserFiringState::idle);
     ship->on_lock_on_acquired.BindUObject(this, &ThisClass::on_lock_on_acquired);
     on_lock_on_acquired(nullptr);
 
@@ -282,26 +282,26 @@ void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
     ship->fire_bomb();
 }
 
-void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringMode mode) {
+void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringState mode) {
     RETURN_IF_NULLPTR(hud_widget);
 
     switch (mode) {
-        case ELaserFiringMode::lock_on_searching: {
+        case ELaserFiringState::lock_on_searching: {
             hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
             break;
         }
-        case ELaserFiringMode::lock_on_acquired: {
+        case ELaserFiringState::lock_on_acquired: {
             break;
         }
         default: {
             UE_LOG(LogSandboxController, Warning, TEXT("Unhandled laser firing mode."));
             [[fallthrough]];
         }
-        case ELaserFiringMode::idle:
+        case ELaserFiringState::idle:
             [[fallthrough]];
-        case ELaserFiringMode::lock_on_transition:
+        case ELaserFiringState::lock_on_transition:
             [[fallthrough]];
-        case ELaserFiringMode::burst: {
+        case ELaserFiringState::burst: {
             hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
             break;
         }

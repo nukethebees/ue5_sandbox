@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Sandbox/players/SpeedResponse.h"
 
-template<typename T>
+template <typename T>
 struct TSpaceShipFlightModel {
     TSpaceShipFlightModel() = default;
     TSpaceShipFlightModel(FSpeedResponse sr)
@@ -28,9 +28,7 @@ struct TSpaceShipFlightModel {
         time = 0.f;
 
         // Fix issue where damping ratio is 1
-        if (FMath::Abs(1.f - response.damping_ratio) < 1e-6) {
-            response.damping_ratio = 0.9999f;
-        }
+        if (FMath::Abs(1.f - response.damping_ratio) < 1e-6) { response.damping_ratio = 0.9999f; }
 
 #if WITH_EDITOR
         step_size_original_dbg = step_size();
@@ -46,11 +44,8 @@ struct TSpaceShipFlightModel {
         delta = FMath::Atan2(-alpha, 1.f);
         c = FMath::Sqrt(1.f + alpha * alpha);
     }
-
   protected:
-    auto step_size() const -> T {
-        return target_speed - old_speed;
-    }
+    auto step_size() const -> T { return target_speed - old_speed; }
 
     auto calculate_delta(float const t) const -> T {
         auto const inner{c * FMath::Cos(wd * t + delta)};

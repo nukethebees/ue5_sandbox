@@ -4,7 +4,7 @@
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/BarrelRoll.h"
 #include "Sandbox/players/DamageableShip.h"
-#include "Sandbox/players/LaserFiringMode.h"
+#include "Sandbox/players/LaserFiringState.h"
 #include "Sandbox/players/ShipLaserMode.h"
 #include "Sandbox/players/SpaceShipCommon.h"
 #include "Sandbox/players/SpaceShipFlightModel.h"
@@ -107,7 +107,7 @@ class ASpaceShip
     void BeginPlay() override;
 
     void set(EBoostBrakeState s);
-    void set_laser_mode(ELaserFiringMode laser_mode);
+    void set_laser_mode(ELaserFiringState laser_mode);
     void update_boost_brake(this ASpaceShip& self, float dt);
     void update_actor_rotation(this ASpaceShip& self, float dt);
     void update_visual_orientation(this ASpaceShip& self, float dt);
@@ -229,7 +229,7 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     float laser_lock_on_distance{10000.f};
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Laser")
-    ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
+    ELaserFiringState laser_firing_mode{ELaserFiringState::idle};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     TSubclassOf<AShipLaser> laser_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")

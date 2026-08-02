@@ -6,7 +6,7 @@
 #include <Sandbox/logging/LogMsgMixin.hpp>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/players/BarrelRollInputData.h>
-#include <Sandbox/players/LaserFiringMode.h>
+#include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
 
 #include <CoreMinimal.h>
@@ -117,7 +117,7 @@ class ATestSpaceShipController
 
     // UI
     UFUNCTION()
-    void on_laser_firing_mode_changed(ELaserFiringMode mode);
+    void on_laser_firing_mode_changed(ELaserFiringState mode);
     UFUNCTION()
     void on_lock_on_acquired(AActor* target);
     UFUNCTION()

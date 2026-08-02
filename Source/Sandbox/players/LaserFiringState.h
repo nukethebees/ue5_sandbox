@@ -2,10 +2,10 @@
 
 #include "CoreMinimal.h"
 
-#include "LaserFiringMode.generated.h"
+#include "LaserFiringState.generated.h"
 
 UENUM()
-enum class ELaserFiringMode : uint8 {
+enum class ELaserFiringState : uint8 {
     idle,
     burst,
     lock_on_transition,

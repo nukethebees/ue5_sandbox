@@ -81,7 +81,7 @@ void ASpaceShip::BeginPlay() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
 
-    set_laser_mode(ELaserFiringMode::idle);
+    set_laser_mode(ELaserFiringState::idle);
 
 #if WITH_EDITOR
     static constexpr float sample_rate_hz{60.0f};
@@ -172,7 +172,7 @@ void ASpaceShip::set(EBoostBrakeState s) {
     flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }
-void ASpaceShip::set_laser_mode(ELaserFiringMode new_laser_mode) {
+void ASpaceShip::set_laser_mode(ELaserFiringState new_laser_mode) {
     if (laser_firing_mode != new_laser_mode) {
         on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
     }
@@ -263,25 +263,25 @@ void ASpaceShip::update_laser_firing(float dt) {
     auto const cooldown_finished{laser_shot_cooldown <= 0.f};
 
     switch (laser_firing_mode) {
-        case ELaserFiringMode::idle: {
+        case ELaserFiringState::idle: {
             break;
         }
-        case ELaserFiringMode::burst: {
+        case ELaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
                 laser_shot_cooldown = laser_firing_period + dt;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
                     laser_shot_cooldown = laser_lock_on_transition_delay + dt;
-                    set_laser_mode(ELaserFiringMode::lock_on_transition);
+                    set_laser_mode(ELaserFiringState::lock_on_transition);
                 }
             }
             break;
         }
-        case ELaserFiringMode::lock_on_transition: {
-            if (cooldown_finished) { set_laser_mode(ELaserFiringMode::lock_on_searching); }
+        case ELaserFiringState::lock_on_transition: {
+            if (cooldown_finished) { set_laser_mode(ELaserFiringState::lock_on_searching); }
         }
-        case ELaserFiringMode::lock_on_searching: {
+        case ELaserFiringState::lock_on_searching: {
             TRY_INIT_PTR(world, GetWorld());
             auto const middle{get_middle_socket()};
 
@@ -305,7 +305,7 @@ void ASpaceShip::update_laser_firing(float dt) {
                 UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
 #endif
                 set_lock_on_target(hit.GetActor());
-                set_laser_mode(ELaserFiringMode::lock_on_acquired);
+                set_laser_mode(ELaserFiringState::lock_on_acquired);
             }
 
 #if WITH_EDITOR
@@ -317,7 +317,7 @@ void ASpaceShip::update_laser_firing(float dt) {
 
             break;
         }
-        case ELaserFiringMode::lock_on_acquired: {
+        case ELaserFiringState::lock_on_acquired: {
             break;
         }
     }
@@ -366,18 +366,18 @@ void ASpaceShip::barrel_roll(float direction) {
 }
 
 void ASpaceShip::start_fire_laser() {
-    set_laser_mode(ELaserFiringMode::burst);
+    set_laser_mode(ELaserFiringState::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
     set_lock_on_target(nullptr);
 }
 void ASpaceShip::stop_fire_laser() {
-    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+    if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
         fire_homing_laser();
         set_lock_on_target(nullptr);
     }
 
-    set_laser_mode(ELaserFiringMode::idle);
+    set_laser_mode(ELaserFiringState::idle);
 }
 void ASpaceShip::fire_laser() {
     auto const left{ship_mesh->GetSocketTransform(Sockets::left, RTS_World)};
@@ -464,10 +464,10 @@ void ASpaceShip::fire_bomb() {
         LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
 
     active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
-    if (laser_firing_mode == ELaserFiringMode::lock_on_acquired) {
+    if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
         active_bomb->set_target(this->lock_on_target);
         set_lock_on_target(nullptr);
-        set_laser_mode(ELaserFiringMode::idle);
+        set_laser_mode(ELaserFiringState::idle);
     }
     active_bomb->FinishSpawning(fire_point);
 

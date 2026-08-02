@@ -10,7 +10,7 @@
 #include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/players/LaserFiringMode.h>
+#include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/ShipLaserMode.h>
 #include <Sandbox/players/SpaceShipCommon.h>
 #include <Sandbox/players/SpaceShipFlightModel.h>
@@ -201,7 +201,7 @@ class ATestSpaceShip
     void set_lock_on_target(AActor* target);
 
     // Combat - laser
-    void set_laser_mode(ELaserFiringMode laser_mode);
+    void set_laser_mode(ELaserFiringState laser_mode);
     void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
@@ -332,8 +332,8 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
     AActor* lock_on_target{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
-    ELaserFiringMode laser_firing_mode{ELaserFiringMode::idle};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    ELaserFiringState laser_firing_mode{ELaserFiringState::idle};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
 
     // Combat - Bombs
