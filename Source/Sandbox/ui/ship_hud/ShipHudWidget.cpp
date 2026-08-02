@@ -162,6 +162,11 @@ void UShipHudWidget::set_control_mode(FStringView value) {
     control_mode_widget->update(value);
 }
 
+void UShipHudWidget::set_flight_mode(FStringView value) {
+    check(IsValid(flight_mode_widget));
+    flight_mode_widget->update(value);
+}
+
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
