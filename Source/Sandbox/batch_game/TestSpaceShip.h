@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestShipFireRate.h>
+#include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/LaserFiringMode.h>
@@ -275,6 +276,8 @@ class ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpaceShipFlightModel flight_model{};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
+    ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpeedResponses speed_responses{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
@@ -282,6 +285,8 @@ class ATestSpaceShip
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     float target_speed{0.f};
 
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    FVector2D target_local_planar_velocity{FVector2D::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
     FVector2D planar_movement_direction{FVector2D::ZeroVector};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
