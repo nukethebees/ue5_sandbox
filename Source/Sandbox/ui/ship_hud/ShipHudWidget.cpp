@@ -157,6 +157,11 @@ void UShipHudWidget::set_ship_velocity(FVector value) {
     ship_velocity_widget->update(value.ToCompactString());
 }
 
+void UShipHudWidget::set_control_mode(FStringView value) {
+    check(IsValid(control_mode_widget));
+    control_mode_widget->update(value);
+}
+
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);

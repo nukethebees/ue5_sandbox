@@ -66,6 +66,14 @@ class ATestSpaceShipController
     UFUNCTION()
     void vertical_move_completed();
     UFUNCTION()
+    void set_ship_2d_control(FInputActionValue const& value);
+    UFUNCTION()
+    void ship_2d_control_completed();
+    UFUNCTION()
+    void cycle_next_control_mode();
+    UFUNCTION()
+    void cycle_previous_control_mode();
+    UFUNCTION()
     void start_sampling();
     UFUNCTION()
     void stop_sampling();
@@ -145,6 +153,12 @@ class ATestSpaceShipController
     UInputAction* vertical_move_input{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     UInputAction* sample_and_hold_input{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* ship_2d_control{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* cycle_next_control_mode_input{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* cycle_previous_control_mode_input{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     int32 input_mapping_context_index{0};

@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestShipFireRate.h>
+#include <Sandbox/batch_game/TestSpaceShipControlMode.h>
 #include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
@@ -100,6 +101,9 @@ class ATestSpaceShip
     void set_move_input(FVector2D input);
     void set_lateral_move_input(float input);
     void set_vertical_move_input(float input);
+    void set_ship_2d_control(FVector2D input);
+    void select_next_control_mode();
+    void select_previous_control_mode();
     void start_sampling();
     void stop_sampling();
     void turn(FVector2D direction);
@@ -113,6 +117,7 @@ class ATestSpaceShip
     void barrel_roll(float direction);
     auto get_target_speed() const -> float;
     auto get_move_input() const { return planar_movement_direction; }
+    auto get_control_mode() const { return control_mode; }
     auto get_target_local_planar_velocity_scale() const {
         return target_local_planar_velocity_scale;
     }
@@ -280,6 +285,8 @@ class ATestSpaceShip
     FSpaceShipFlightModel flight_model{};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
+    ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     FSpeedResponses speed_responses{};
 

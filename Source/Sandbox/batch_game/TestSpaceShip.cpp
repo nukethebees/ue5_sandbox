@@ -105,8 +105,6 @@ void ATestSpaceShip::update_timers(float const dt) {
     time_since_rotation_input += dt;
 }
 void ATestSpaceShip::move(float const dt) {
-    if (sampling) { target_local_planar_velocity_scale = FVector2D{}; }
-
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);
@@ -248,6 +246,17 @@ void ATestSpaceShip::set_lateral_move_input(float const input) {
 }
 void ATestSpaceShip::set_vertical_move_input(float const input) {
     planar_movement_direction.Y = input;
+}
+void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
+    if (!sampling) { return; }
+
+    target_local_planar_velocity_scale = input;
+}
+void ATestSpaceShip::select_next_control_mode() {
+    control_mode = ml::get_next(control_mode);
+}
+void ATestSpaceShip::select_previous_control_mode() {
+    control_mode = ml::get_previous(control_mode);
 }
 void ATestSpaceShip::start_sampling() {
     sampling = true;

@@ -44,6 +44,10 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
     bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
     bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
+    bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
+    bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
+    bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
+    bind(cycle_previous_control_mode_input, Started, &ThisClass::cycle_previous_control_mode);
     bind(sample_and_hold_input, Started, &ThisClass::start_sampling);
     bind(sample_and_hold_input, Completed, &ThisClass::stop_sampling);
     bind(input.turn, Triggered, &ThisClass::turn);
@@ -314,6 +318,7 @@ void ATestSpaceShipController::update_input_widgets(ATestSpaceShip const& ship) 
     hud_widget->set_moving(ship.get_move_input());
     hud_widget->set_desired_velocity_scale(ship.get_target_local_planar_velocity_scale());
     hud_widget->set_ship_velocity(ship.get_velocity());
+    hud_widget->set_control_mode(*ml::to_string_without_type_prefix(ship.get_control_mode()));
 }
 void ATestSpaceShipController::on_ship_fire_rate_changed(ETestShipFireRate const value) {
     check(hud_widget);
@@ -367,6 +372,18 @@ void ATestSpaceShipController::set_vertical_move_input(FInputActionValue const& 
 }
 void ATestSpaceShipController::vertical_move_completed() {
     get_pawn().set_vertical_move_input(0.f);
+}
+void ATestSpaceShipController::set_ship_2d_control(FInputActionValue const& value) {
+    get_pawn().set_ship_2d_control(value.Get<FVector2D>());
+}
+void ATestSpaceShipController::ship_2d_control_completed() {
+    get_pawn().set_ship_2d_control(FVector2D::ZeroVector);
+}
+void ATestSpaceShipController::cycle_next_control_mode() {
+    get_pawn().select_next_control_mode();
+}
+void ATestSpaceShipController::cycle_previous_control_mode() {
+    get_pawn().select_previous_control_mode();
 }
 void ATestSpaceShipController::start_sampling() {
     get_pawn().start_sampling();
