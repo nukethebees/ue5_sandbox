@@ -103,7 +103,6 @@ void ATestSpaceShip::update_timers(float const dt) {
 
     laser_shot_cooldown -= dt;
     time_since_rotation_input += dt;
-    update_barrel_roll_timers(dt);
 }
 void ATestSpaceShip::move(float const dt) {
     update_boost_brake(dt);
@@ -258,8 +257,7 @@ void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float cons
     if (self.rotation_input != FVector2D::ZeroVector) {
         auto const drot_pitch{d_rot};
 
-        auto const manual_bank_strength{self.manual_bank_direction * 0.5};
-        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X + manual_bank_strength)};
+        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X)};
         auto const yaw_speed{self.actor_config->rotation_speed * abs_yaw_strength};
         auto const drot_yaw{yaw_speed * dt};
 
@@ -356,34 +354,8 @@ void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float const d
 }
 
 // Movement - rolling
-void ATestSpaceShip::update_barrel_roll_timers(float const dt) {
-    auto const original_roll_time{roll_state.roll_time_remaining};
-
-    roll_state.roll_time_remaining -= dt;
-    roll_state.cooldown_remaining -= dt;
-
-    if ((original_roll_time >= 0.f) && (roll_state.roll_time_remaining <= 0.f)) {
-        roll_state.cooldown_remaining = actor_config->barrel_roll_config.roll_cooldown;
-    }
-}
-void ATestSpaceShip::roll(float direction) {
-#if WITH_EDITOR
-    if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {
-        UE_LOG(LogSandbox, Verbose, TEXT("Rolling: %.2f"), direction);
-    }
-#endif
-    manual_bank_direction = clamp(direction, 1.f);
-}
-void ATestSpaceShip::barrel_roll(float direction) {
-    if (!roll_state.can_start_rolling()) { return; }
-
-    roll_state.roll_time_remaining = actor_config->barrel_roll_config.roll_duration;
-    roll_state.direction = FMath::Sign(direction);
-
-#if WITH_EDITOR
-    UE_LOG(LogSandbox, Verbose, TEXT("Barrel rolling: %.2f"), direction);
-#endif
-}
+void ATestSpaceShip::roll(float /*direction*/) {}
+void ATestSpaceShip::barrel_roll(float /*direction*/) {}
 
 /* ------------------------------------------------------------------------------------------ */
 /* Combat */
@@ -629,22 +601,8 @@ void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float 
     auto const turn_target{turn_intensity * self.actor_config->turn_bank_angle_max};
     auto const turn_speed{turn_intensity * self.actor_config->turn_bank_speed};
 
-    auto const manual_bank_intensity{self.manual_bank_direction};
-    auto const manual_bank_target{manual_bank_intensity * self.actor_config->manual_bank_angle_max};
-    auto const manual_bank_speed{manual_bank_intensity * self.actor_config->manual_bank_speed};
-
-    double new_roll{current_rotation.Roll};
-    if (self.roll_state.is_rolling()) {
-        auto const delta_roll{dt * self.actor_config->barrel_roll_config.roll_speed *
-                              self.roll_state.direction};
-        new_roll = current_rotation.Roll + delta_roll;
-    } else {
-        auto const roll_speed{FMath::Max(self.actor_config->turn_bank_speed,
-                                         FMath::Abs(turn_speed + manual_bank_speed))};
-        auto const bank_is_bigger{FMath::Abs(manual_bank_target) > FMath::Abs(turn_target)};
-        auto const roll_target{bank_is_bigger ? manual_bank_target : turn_target};
-        new_roll = FMath::FInterpTo(current_rotation.Roll, roll_target, dt, roll_speed);
-    }
+    auto const roll_speed{FMath::Max(self.actor_config->turn_bank_speed, FMath::Abs(turn_speed))};
+    auto const new_roll{FMath::FInterpTo(current_rotation.Roll, turn_target, dt, roll_speed)};
 
     self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }

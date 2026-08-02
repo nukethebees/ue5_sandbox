@@ -8,7 +8,6 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/players/LaserFiringMode.h>
 #include <Sandbox/players/ShipLaserMode.h>
 #include <Sandbox/players/SpaceShipCommon.h>
@@ -175,7 +174,6 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Movement
     /* ------------------------------------------------------------------------------------------ */
-    void update_barrel_roll_timers(float const dt);
     auto GetVelocity() const -> FVector override;
     void set(EBoostBrakeState s);
     void update_boost_brake(this ATestSpaceShip& self, float const dt);
@@ -292,13 +290,6 @@ class ATestSpaceShip
     // Movement - rotation
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
     FVector2D rotation_input{FVector2D::ZeroVector};
-
-    // Movement - bank/roll
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering|Roll")
-    float manual_bank_direction{0.f};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    FBarrelRollState roll_state{};
 
     UPROPERTY()
     float time_since_rotation_input{100.f};
