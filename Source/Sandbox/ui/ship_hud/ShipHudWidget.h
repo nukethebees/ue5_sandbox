@@ -76,6 +76,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_moving(FVector2D value);
     void set_desired_velocity_scale(FVector2D value);
     void set_ship_velocity(FVector value);
+    void set_target_velocity(FVector2D value);
     void set_control_mode(FStringView value);
     void set_flight_mode(FStringView value);
 
@@ -108,6 +109,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UValueWidget* mission_status_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* fire_rate_widget{nullptr};
+
     UPROPERTY(meta = (BindWidget))
     UValueWidget* target_speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -120,6 +122,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UVector2DWidget* desired_velocity_scale_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* ship_velocity_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* target_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* control_mode_widget{nullptr};
     UPROPERTY(meta = (BindWidget))

@@ -232,6 +232,7 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
             break;
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
+            auto const new_velocity{self.planar_flight_model.update(dt)};
             break;
         }
     }
@@ -259,7 +260,15 @@ void ATestSpaceShip::set_vertical_move_input(float const input) {
 void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
     if (!sampling) { return; }
 
-    target_local_planar_velocity_scale = input;
+    switch (control_mode) {
+        case ETestSpaceShipControlMode::Velocity: {
+            target_local_planar_velocity_scale = input;
+            break;
+        }
+        case ETestSpaceShipControlMode::Power: {
+            break;
+        }
+    }
 }
 void ATestSpaceShip::select_next_control_mode() {
     control_mode = ml::get_next(control_mode);
@@ -272,6 +281,21 @@ void ATestSpaceShip::start_sampling() {
 }
 void ATestSpaceShip::stop_sampling() {
     sampling = false;
+
+    switch (control_mode) {
+        case ETestSpaceShipControlMode::Velocity: {
+            target_local_planar_velocity =
+                target_local_planar_velocity_scale * actor_config->cruise_speed;
+
+            planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
+                                                FVector2D{velocity.X, velocity.Y},
+                                                target_local_planar_velocity);
+            break;
+        }
+        case ETestSpaceShipControlMode::Power: {
+            break;
+        }
+    }
 }
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR

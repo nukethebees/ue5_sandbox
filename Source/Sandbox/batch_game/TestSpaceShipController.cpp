@@ -319,6 +319,7 @@ void ATestSpaceShipController::update_input_widgets(ATestSpaceShip const& ship) 
     hud_widget->set_moving(ship.get_move_input());
     hud_widget->set_desired_velocity_scale(ship.get_target_local_planar_velocity_scale());
     hud_widget->set_ship_velocity(ship.get_velocity());
+    hud_widget->set_target_velocity(ship.get_target_local_planar_velocity());
     hud_widget->set_control_mode(*ml::to_string_without_type_prefix(ship.get_control_mode()));
     hud_widget->set_flight_mode(*ml::to_string_without_type_prefix(ship.get_flight_mode()));
 }
