@@ -44,6 +44,7 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
     bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
     bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
+    bind(ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
     bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
     bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
@@ -374,11 +375,14 @@ void ATestSpaceShipController::set_vertical_move_input(FInputActionValue const& 
 void ATestSpaceShipController::vertical_move_completed() {
     get_pawn().set_vertical_move_input(0.f);
 }
+void ATestSpaceShipController::set_ship_2d_control_started() {
+    start_sampling();
+}
 void ATestSpaceShipController::set_ship_2d_control(FInputActionValue const& value) {
     get_pawn().set_ship_2d_control(value.Get<FVector2D>());
 }
 void ATestSpaceShipController::ship_2d_control_completed() {
-    get_pawn().set_ship_2d_control(FVector2D::ZeroVector);
+    stop_sampling();
 }
 void ATestSpaceShipController::cycle_next_control_mode() {
     get_pawn().select_next_control_mode();

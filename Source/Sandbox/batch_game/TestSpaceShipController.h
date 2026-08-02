@@ -66,6 +66,8 @@ class ATestSpaceShipController
     UFUNCTION()
     void vertical_move_completed();
     UFUNCTION()
+    void set_ship_2d_control_started();
+    UFUNCTION()
     void set_ship_2d_control(FInputActionValue const& value);
     UFUNCTION()
     void ship_2d_control_completed();
