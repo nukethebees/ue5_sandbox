@@ -48,6 +48,8 @@ class ATestSpaceShip
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
+    static constexpr bool sweep_movement{false};
+
     struct Sockets {
         inline static FName const left{"Left"};
         inline static FName const right{"Right"};
@@ -122,9 +124,7 @@ class ATestSpaceShip
     auto get_target_local_planar_velocity_scale() const {
         return target_local_planar_velocity_scale;
     }
-    auto get_target_local_planar_velocity() const {
-        return target_local_planar_velocity;
-    }
+    auto get_target_local_planar_velocity() const { return target_local_planar_velocity; }
     auto get_turn_input() const { return rotation_input; }
 
     // Energy

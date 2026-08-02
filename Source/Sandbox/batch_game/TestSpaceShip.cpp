@@ -113,8 +113,7 @@ void ATestSpaceShip::move(float const dt) {
     auto const planar_translation{
         FVector{0.f, planar_movement_direction.X, planar_movement_direction.Y} *
         planar_movement_speed * dt};
-    constexpr bool sweep{false};
-    AddActorLocalOffset(planar_translation, sweep);
+    AddActorLocalOffset(planar_translation, sweep_movement);
 }
 void ATestSpaceShip::queue_commands() {
     update_laser_firing();
@@ -227,12 +226,16 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
             auto const cur_pos{self.GetActorLocation()};
             auto const delta_pos{self.velocity * dt};
 
-            self.SetActorLocation(cur_pos + delta_pos, true);
+            self.SetActorLocation(cur_pos + delta_pos, sweep_movement);
             self.on_speed_changed.ExecuteIfBound(new_speed);
             break;
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
             auto const new_velocity{self.planar_flight_model.update(dt)};
+            self.velocity = FVector{new_velocity.X, new_velocity.Y, self.velocity.Z};
+            auto const cur_pos{self.GetActorLocation()};
+            auto const delta_pos{self.velocity * dt};
+            self.SetActorLocation(cur_pos + delta_pos, sweep_movement);
             break;
         }
     }
