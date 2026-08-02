@@ -146,13 +146,6 @@ void ATestBatchOrchestrator::tick(float const dt) {
         lasers->begin_tick();
     }
 
-    {
-        // Process spawns from last tick
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_spawns);
-
-        lasers->commit_spawns();
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Actor decision phase
     // ---------------------------------------------------------------------------------------------
@@ -210,6 +203,7 @@ void ATestBatchOrchestrator::tick(float const dt) {
         // Projectile simulation
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
+        lasers->commit_spawns();
         lasers->simulate(dt);
     }
 
