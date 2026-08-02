@@ -91,6 +91,9 @@ class UTestSpaceShipData : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Movement")
     float auto_level_roll_delay{1.f};
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
+    float planar_movement_speed{5000.f};
+
     /* ------------------------------------------------------------------------ */
     /* Combat */
     /* ------------------------------------------------------------------------ */

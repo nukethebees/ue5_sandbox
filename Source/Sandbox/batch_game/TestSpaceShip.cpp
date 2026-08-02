@@ -112,7 +112,7 @@ void ATestSpaceShip::move(float const dt) {
 
     auto const planar_translation{
         FVector{0.f, planar_movement_direction.X, planar_movement_direction.Y} *
-        planar_movement_speed * dt};
+        actor_config->planar_movement_speed * dt};
     AddActorLocalOffset(planar_translation, sweep_movement);
 }
 void ATestSpaceShip::queue_commands() {
