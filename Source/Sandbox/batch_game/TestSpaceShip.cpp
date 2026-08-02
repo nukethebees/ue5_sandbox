@@ -241,6 +241,12 @@ auto ATestSpaceShip::get_target_speed() const -> float {
 void ATestSpaceShip::set_move_input(FVector2D const input) {
     planar_movement_direction = input;
 }
+void ATestSpaceShip::set_lateral_move_input(float const input) {
+    planar_movement_direction.X = input;
+}
+void ATestSpaceShip::set_vertical_move_input(float const input) {
+    planar_movement_direction.Y = input;
+}
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

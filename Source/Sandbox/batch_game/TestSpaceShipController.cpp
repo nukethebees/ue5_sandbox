@@ -40,6 +40,10 @@ void ATestSpaceShipController::SetupInputComponent() {
     // Movement
     bind(input.move, Triggered, &ThisClass::set_move_input);
     bind(input.move, Completed, &ThisClass::move_completed);
+    bind(lateral_move_input, Triggered, &ThisClass::set_lateral_move_input);
+    bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
+    bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
+    bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.roll, Started, &ThisClass::start_roll);
@@ -347,6 +351,18 @@ void ATestSpaceShipController::set_move_input(FInputActionValue const& value) {
 }
 void ATestSpaceShipController::move_completed() {
     get_pawn().set_move_input(FVector2D::ZeroVector);
+}
+void ATestSpaceShipController::set_lateral_move_input(FInputActionValue const& value) {
+    get_pawn().set_lateral_move_input(value.Get<float>());
+}
+void ATestSpaceShipController::lateral_move_completed() {
+    get_pawn().set_lateral_move_input(0.f);
+}
+void ATestSpaceShipController::set_vertical_move_input(FInputActionValue const& value) {
+    get_pawn().set_vertical_move_input(value.Get<float>());
+}
+void ATestSpaceShipController::vertical_move_completed() {
+    get_pawn().set_vertical_move_input(0.f);
 }
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
     get_pawn().turn(value.Get<FVector2D>());

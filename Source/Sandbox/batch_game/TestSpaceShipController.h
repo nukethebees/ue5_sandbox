@@ -15,6 +15,7 @@
 #include "TestSpaceShipController.generated.h"
 
 class UShipHudWidget;
+class UInputAction;
 class ATestSpaceShip;
 class ATestMissionManager;
 
@@ -56,6 +57,14 @@ class ATestSpaceShipController
     void set_move_input(FInputActionValue const& value);
     UFUNCTION()
     void move_completed();
+    UFUNCTION()
+    void set_lateral_move_input(FInputActionValue const& value);
+    UFUNCTION()
+    void lateral_move_completed();
+    UFUNCTION()
+    void set_vertical_move_input(FInputActionValue const& value);
+    UFUNCTION()
+    void vertical_move_completed();
     UFUNCTION()
     void turn(FInputActionValue const& value);
     UFUNCTION()
@@ -125,6 +134,11 @@ class ATestSpaceShipController
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* lateral_move_input{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* vertical_move_input{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     int32 input_mapping_context_index{0};
