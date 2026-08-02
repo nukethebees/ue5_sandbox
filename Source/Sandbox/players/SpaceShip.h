@@ -153,8 +153,7 @@ class ASpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
-    FSpaceShipFlightModel flight_model{};
+    TSpaceShipFlightModel<float> flight_model{};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpeedResponses speed_responses{};
 

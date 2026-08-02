@@ -218,15 +218,23 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 // Movement
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const dt) {
-    auto const fwd{self.GetActorForwardVector()};
-            auto const new_speed{self.flight_model.update(dt)};
-    self.velocity = fwd * new_speed;
+    switch (self.flight_mode) {
+        case ETestSpaceShipFlightMode::ForwardSpeed: {
+            auto const fwd{self.GetActorForwardVector()};
+            auto const new_speed{self.forward_flight_model.update(dt)};
+            self.velocity = fwd * new_speed;
 
-    auto const cur_pos{self.GetActorLocation()};
-    auto const delta_pos{self.velocity * dt};
+            auto const cur_pos{self.GetActorLocation()};
+            auto const delta_pos{self.velocity * dt};
 
-    self.SetActorLocation(cur_pos + delta_pos, true);
-    self.on_speed_changed.ExecuteIfBound(new_speed);
+            self.SetActorLocation(cur_pos + delta_pos, true);
+            self.on_speed_changed.ExecuteIfBound(new_speed);
+            break;
+        }
+        case ETestSpaceShipFlightMode::PlanarVelocity: {
+            break;
+        }
+    }
 }
 auto ATestSpaceShip::get_velocity() const -> FVector {
     return velocity;
@@ -342,7 +350,7 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
     }
 
     on_target_speed_changed.ExecuteIfBound(target_speed);
-    flight_model.set_new_impulse(response, cur_speed, target_speed);
+    forward_flight_model.set_new_impulse(response, cur_speed, target_speed);
     boost_brake_state = s;
 }
 

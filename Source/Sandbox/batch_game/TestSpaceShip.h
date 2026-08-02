@@ -281,8 +281,8 @@ class ATestSpaceShip
     // Movement
     /* ------------------------------------------------------------------------------------------ */
     // Movement - Speed
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
-    FSpaceShipFlightModel flight_model{};
+    TSpaceShipFlightModel<float> forward_flight_model{};
+    TSpaceShipFlightModel<FVector2D> planar_flight_model{};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
