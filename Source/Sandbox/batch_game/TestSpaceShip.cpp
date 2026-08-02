@@ -110,10 +110,19 @@ void ATestSpaceShip::move(float const dt) {
     update_visual_orientation(dt);
     integrate_velocity(dt);
 
-    auto const planar_translation{
-        FVector{0.f, planar_movement_direction.X, planar_movement_direction.Y} *
-        actor_config->planar_movement_speed * dt};
-    AddActorLocalOffset(planar_translation, sweep_movement);
+    auto const lateral_adjustment_speed{planar_movement_direction.X *
+                                        actor_config->lateral_adjustment_speed};
+    auto const vertical_adjustment_speed{planar_movement_direction.Y *
+                                         actor_config->vertical_adjustment_speed};
+    auto const adjustment_velocity{
+        FVector{0.f, lateral_adjustment_speed, vertical_adjustment_speed}};
+    auto const world_planar_velocity{
+        GetActorTransform().TransformVectorNoScale(adjustment_velocity)};
+
+    velocity += world_planar_velocity;
+
+    auto const translation{velocity * dt};
+    SetActorLocation(GetActorLocation() + translation, sweep_movement);
 }
 void ATestSpaceShip::queue_commands() {
     update_laser_firing();
@@ -222,23 +231,16 @@ void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const d
             auto const fwd{self.GetActorForwardVector()};
             auto const new_speed{self.forward_flight_model.update(dt)};
             self.velocity = fwd * new_speed;
-
-            auto const cur_pos{self.GetActorLocation()};
-            auto const delta_pos{self.velocity * dt};
-
-            self.SetActorLocation(cur_pos + delta_pos, sweep_movement);
-            self.on_speed_changed.ExecuteIfBound(new_speed);
             break;
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
-            auto const new_velocity{self.planar_flight_model.update(dt)};
-            self.velocity = new_velocity;
-            auto const cur_pos{self.GetActorLocation()};
-            auto const delta_pos{self.velocity * dt};
-            self.SetActorLocation(cur_pos + delta_pos, sweep_movement);
+            self.planar_velocity = self.planar_flight_model.update(dt);
+            self.velocity = self.planar_velocity;
             break;
         }
     }
+
+    self.on_speed_changed.ExecuteIfBound(self.velocity.Size());
 }
 auto ATestSpaceShip::get_velocity() const -> FVector {
     return velocity;
@@ -248,6 +250,9 @@ auto ATestSpaceShip::GetVelocity() const -> FVector {
 }
 auto ATestSpaceShip::get_target_speed() const -> float {
     return target_speed;
+}
+auto ATestSpaceShip::get_speed() const -> float {
+    return get_velocity().Size();
 }
 
 // Movement - turning
@@ -305,8 +310,9 @@ void ATestSpaceShip::stop_sampling() {
 
             target_local_planar_velocity = world_direction * actor_config->cruise_speed;
 
-            planar_flight_model.set_new_impulse(
-                speed_responses.accelerating_to_cruise, velocity, target_local_planar_velocity);
+            planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
+                                                planar_velocity,
+                                                target_local_planar_velocity);
             break;
         }
         case ETestSpaceShipControlMode::Power: {

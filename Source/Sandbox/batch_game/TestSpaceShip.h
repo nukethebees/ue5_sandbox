@@ -115,7 +115,7 @@ class ATestSpaceShip
     void start_brake();
     void stop_brake();
     auto get_velocity() const -> FVector;
-    auto get_speed() const { return get_velocity().Size(); }
+    auto get_speed() const -> float;
     void roll(float direction);
     auto get_target_speed() const -> float;
     auto get_move_input() const { return planar_movement_direction; }
@@ -293,6 +293,8 @@ class ATestSpaceShip
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     FVector velocity;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
+    FVector planar_velocity{FVector::ZeroVector};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
     float target_speed{0.f};
 
