@@ -68,7 +68,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_lock_on_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_target_speed(float value);
-    
+
     void set_selected_imc(FStringView value);
 
 #if WITH_EDITOR

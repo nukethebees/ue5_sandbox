@@ -528,7 +528,7 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
     new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);
 
-    laser_actor->spawn_lasers(new_lasers);
+    laser_actor->queue_laser_spawns(new_lasers);
 }
 void ATestSpaceShip::upgrade_laser() {
     if (laser_mode == EShipLaserMode::Single) {

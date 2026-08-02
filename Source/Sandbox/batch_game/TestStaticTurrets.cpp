@@ -295,7 +295,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         laser_cooldowns[i] = cooldown;
     }
 
-    laser_actor->spawn_lasers(new_lasers);
+    laser_actor->queue_laser_spawns(new_lasers);
 }
 auto ATestStaticTurrets::get_disengage_radius() const -> float {
     return actor_config->detection_radius * 1.2f;

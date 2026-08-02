@@ -264,7 +264,7 @@ void ATestTubeSpinners::fire_lasers() {
         next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_actor->spawn_lasers(new_lasers);
+    laser_actor->queue_laser_spawns(new_lasers);
 }
 
 // Checks

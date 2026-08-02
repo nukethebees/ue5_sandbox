@@ -135,8 +135,8 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 }
 
 // Spawning / Configuration
-void ATestLasers::spawn_lasers(FTestLasersSpawnRequests const& spawn_data) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_lasers);
+void ATestLasers::queue_laser_spawns(FTestLasersSpawnRequests const& spawn_data) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::queue_laser_spawns);
 
     spawn_data.validate_array_sizes();
     pending_spawns.append_from(spawn_data);

@@ -683,7 +683,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
 
-    laser_actor->spawn_lasers(new_lasers);
+    laser_actor->queue_laser_spawns(new_lasers);
 }
 
 // Orders

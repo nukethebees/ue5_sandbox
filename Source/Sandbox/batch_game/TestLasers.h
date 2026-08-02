@@ -93,7 +93,7 @@ class ATestLasers : public AActor {
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     // Spawning / configuration
-    void spawn_lasers(FTestLasersSpawnRequests const& spawn_data);
+    void queue_laser_spawns(FTestLasersSpawnRequests const& spawn_data);
 
     // Checks
     void validate_array_sizes() const;
