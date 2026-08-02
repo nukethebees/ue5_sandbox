@@ -1,20 +1,28 @@
 #include "Sandbox/ui/widgets/Vector2DWidget.h"
 
-#include "Sandbox/ui/widgets/ValueWidget.h"
-
-#include <CoreMinimal.h>
+#include "Components/Border.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 
 void UVector2DWidget::NativeConstruct() {
     Super::NativeConstruct();
 
-    if (!name.IsNone()) {
-        FName const spec{FString::Printf(TEXT("%s: {0}"), *name.ToString())};
-        value_widget->set_format_spec(spec);
-    }
+    update(FVector2D::ZeroVector);
 }
 
 void UVector2DWidget::update(FVector2D const value) {
-    if (!value_widget) { return; }
+    if (!canvas_panel || !background_widget || !cursor_widget) { return; }
 
-    value_widget->update(value.ToString());
+    auto* cursor_slot{Cast<UCanvasPanelSlot>(cursor_widget->Slot)};
+    if (!cursor_slot) { return; }
+
+    auto const cursor_position{FVector2D{
+        FMath::Clamp(value.X * 0.5 + 0.5, 0.0, 1.0),
+        FMath::Clamp(value.Y * 0.5 + 0.5, 0.0, 1.0),
+    }};
+
+    cursor_slot->SetAnchors(
+        FAnchors{static_cast<float>(cursor_position.X), static_cast<float>(cursor_position.Y)});
+    cursor_slot->SetAlignment(FVector2D{0.5, 0.5});
+    cursor_slot->SetPosition(FVector2D::ZeroVector);
 }
