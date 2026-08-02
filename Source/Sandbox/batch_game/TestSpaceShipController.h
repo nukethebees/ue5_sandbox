@@ -66,6 +66,10 @@ class ATestSpaceShipController
     UFUNCTION()
     void vertical_move_completed();
     UFUNCTION()
+    void start_sampling();
+    UFUNCTION()
+    void stop_sampling();
+    UFUNCTION()
     void turn(FInputActionValue const& value);
     UFUNCTION()
     void turn_completed(FInputActionValue const& value);
@@ -139,6 +143,8 @@ class ATestSpaceShipController
     UInputAction* lateral_move_input{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     UInputAction* vertical_move_input{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    UInputAction* sample_and_hold_input{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     int32 input_mapping_context_index{0};

@@ -247,6 +247,12 @@ void ATestSpaceShip::set_lateral_move_input(float const input) {
 void ATestSpaceShip::set_vertical_move_input(float const input) {
     planar_movement_direction.Y = input;
 }
+void ATestSpaceShip::start_sampling() {
+    sampling = true;
+}
+void ATestSpaceShip::stop_sampling() {
+    sampling = false;
+}
 void ATestSpaceShip::turn(FVector2D direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

@@ -99,6 +99,8 @@ class ATestSpaceShip
     void set_move_input(FVector2D input);
     void set_lateral_move_input(float input);
     void set_vertical_move_input(float input);
+    void start_sampling();
+    void stop_sampling();
     void turn(FVector2D direction);
     void start_boost();
     void stop_boost();
@@ -328,6 +330,11 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "Sandbox|Health")
     FShipHealth health{1000};
+
+    /* ------------------------------------------------------------------------------------------ */
+    // Misc
+    /* ------------------------------------------------------------------------------------------ */
+    bool sampling{false};
 
     // Logging
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging")
