@@ -8,9 +8,7 @@
 void UVector2DWidget::NativeConstruct() {
     Super::NativeConstruct();
 
-    if (name_text) {
-        name_text->SetText(name);
-    }
+    if (name_text) { name_text->SetText(name); }
 
     update(FVector2D::ZeroVector);
 }
