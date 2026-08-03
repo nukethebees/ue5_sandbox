@@ -52,6 +52,30 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
 #undef SANDBOX_PACK
 };
 
+struct Entities : public ml::FSoAArrayMixin {
+    TArray<FInstancedStaticMeshInstanceData> ismc_data;
+    TArray<FLinearColor> colours;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    FVectors3f velocities;
+    TArray<int32> damages;
+    TArray<float> lifetimes_remaining;
+    TArray<FRegistryEntityHandle> instigator_handles;
+
+#define SANDBOX_PACK(STAMPER, NON_FINAL)    \
+    NON_FINAL(STAMPER(ismc_data))           \
+    NON_FINAL(STAMPER(colours))             \
+    NON_FINAL(STAMPER(locations))           \
+    NON_FINAL(STAMPER(rotations))           \
+    NON_FINAL(STAMPER(velocities))          \
+    NON_FINAL(STAMPER(damages))             \
+    NON_FINAL(STAMPER(lifetimes_remaining)) \
+    STAMPER(instigator_handles)
+
+    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
+#undef SANDBOX_PACK
+};
+
 struct HitDetails : public ml::FSoAArrayMixin {
     FVectors3f locations;
     TArray<FLinearColor> colours;
@@ -74,6 +98,7 @@ class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
     using SpawnRequests = ml::test_lasers::SpawnRequests;
+    using Entities = ml::test_lasers::Entities;
     using HitDetails = ml::test_lasers::HitDetails;
     using ThreadLocalCollisionData = ml::test_lasers::ThreadLocalCollisionData;
 
@@ -145,19 +170,7 @@ class ATestLasers : public AActor {
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    TArray<FLinearColor> colours;
-
-    // Transform
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FVectors3f velocities;
-
-    TArray<int32> damages;
-
-    // Lifetime
-    TArray<float> lifetimes_remaining;
-    TArray<FRegistryEntityHandle> instigator_handles;
+    Entities entities;
 
     // Spawning
     ml::test_lasers::SpawnRequests pending_spawns;
