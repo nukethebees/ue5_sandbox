@@ -54,10 +54,11 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
 
 struct HitDetails : public ml::FSoAArrayMixin {
     FVectors3f locations;
+    TArray<FLinearColor> colours;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations);
+        return std::forward<TFunc>(func)(self.locations, self.colours);
     }
 };
 
@@ -145,7 +146,7 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    HitDetails hit_details;
+    TArray<FLinearColor> colours;
 
     // Transform
     FVectors3f locations;
@@ -170,6 +171,9 @@ class ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 collision_jobs{8};
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
+
+    // Hits
+    HitDetails hit_details;
 
     // Debugging
     bool have_warned_hit_effect{false};

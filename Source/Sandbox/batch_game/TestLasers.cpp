@@ -126,6 +126,7 @@ void ATestLasers::queue_laser_spawns(SpawnRequests const& spawn_data) {
 void ATestLasers::preallocate_instances() {
     instances->PreAllocateInstancesMemory(n_preallocated_instances);
     ml::invoke_on_all([n = this->n_preallocated_instances](auto& array) { ml::reserve(array, n); },
+                      colours,
                       locations,
                       rotations,
                       velocities,
@@ -147,6 +148,7 @@ void ATestLasers::process_pending_spawns() {
     custom_data_spawn_buffer.SetNumUninitialized(n_to_add * n_custom_ismc_floats,
                                                  EAllowShrinking::No);
 
+    ml::append_from(colours, pending_spawns.colours);
     ml::append_from(locations, pending_spawns.locations);
     ml::append_from(rotations, pending_spawns.rotations);
     damages.Append(pending_spawns.damages);
@@ -221,10 +223,16 @@ void ATestLasers::handle_collisions(float const dt) {
         to_remove.Append(data[i].to_remove);
 
         ml::append_from(hit_details.locations, data[i].hit_details.locations);
+
+        auto const n_to_remove{data[i].to_remove.Num()};
+        for (int32 j{0}; j < n_to_remove; ++j) {
+            hit_details.colours.Add(colours[data[i].to_remove[j]]);
+        }
     }
 
     to_remove.Sort(TGreater<int32>{});
     remove_instances(to_remove);
+    hit_details.validate_array_sizes();
 }
 void ATestLasers::check_collision_thread(int32 const job_index,
                                          int32 const updates_per_slice,
@@ -402,7 +410,13 @@ void ATestLasers::collect_old_instance_indices() {
 // Misc
 void ATestLasers::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(ismc_data, locations, rotations, velocities, lifetimes_remaining, instigator_handles);
+    ml::reset(ismc_data,
+              colours,
+              locations,
+              rotations,
+              velocities,
+              lifetimes_remaining,
+              instigator_handles);
     clear_spawn_buffers();
 }
 void ATestLasers::remove_instances(TConstArrayView<int32> const indices) {
@@ -414,6 +428,7 @@ void ATestLasers::remove_instances(TConstArrayView<int32> const indices) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);
         ml::remove_at_swap_many_sorted_desc(indices,
+                                            colours,
                                             locations,
                                             rotations,
                                             velocities,
@@ -441,6 +456,7 @@ void ATestLasers::clear_hit_buffers() {
 // Checks
 void ATestLasers::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(colours),
         SANDBOX_NAMED_NUM(locations),
         SANDBOX_NAMED_NUM(rotations),
         SANDBOX_NAMED_NUM(velocities),
