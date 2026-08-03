@@ -1,22 +1,16 @@
 #include "TestLasers.h"
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasersConfig.h>
-#include <Sandbox/batch_game/TestStaticTurrets.h>
-#include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/generation_index.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCore/transforms.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Async/ParallelFor.h>

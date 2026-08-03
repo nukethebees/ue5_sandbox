@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/input/EnhancedInputMixin.hpp>
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
 
