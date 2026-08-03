@@ -340,7 +340,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Laser
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    FTestLasersSpawnRequests new_lasers;
+    ml::test_lasers::SpawnRequests new_lasers;
     TArray<float> aiming_dot_product_buffer;
 
     // Misc buffers

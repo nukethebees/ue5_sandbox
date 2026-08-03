@@ -562,7 +562,7 @@ void ATestSpaceShip::fire_laser() {
     laser_shot_cooldown = actor_config->laser_firing_period;
 }
 void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
-    FTestLasersSpawnRequests new_lasers;
+    ml::test_lasers::SpawnRequests new_lasers;
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};

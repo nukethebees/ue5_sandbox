@@ -31,21 +31,22 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
-void FTestLasersSpawnRequests::set_damages(int32 const value) {
+namespace ml::test_lasers {
+void SpawnRequests::set_damages(int32 const value) {
     ml::fill(damages, value);
 }
-void FTestLasersSpawnRequests::set_speeds(float const value) {
+void SpawnRequests::set_speeds(float const value) {
     ml::fill(speeds, value);
 }
-void FTestLasersSpawnRequests::set_max_distances(float const value) {
+void SpawnRequests::set_max_distances(float const value) {
     ml::fill(max_distances, value);
 }
-void FTestLasersSpawnRequests::set_colours(FLinearColor const value) {
+void SpawnRequests::set_colours(FLinearColor const value) {
     ml::fill(colours, value);
 }
 
-void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestLasersSpawnRequests::append_from);
+void SpawnRequests::append_from(SpawnRequests const& other) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::SpawnRequests::append_from);
 
     other.validate_array_sizes();
 
@@ -56,6 +57,7 @@ void FTestLasersSpawnRequests::append_from(FTestLasersSpawnRequests const& other
     max_distances.Append(other.max_distances);
     instigator_handles.Append(other.instigator_handles);
     colours.Append(other.colours);
+}
 }
 
 ATestLasers::ATestLasers()
@@ -135,7 +137,7 @@ auto ATestLasers::get_num_instances() const noexcept -> int32 {
 }
 
 // Spawning / Configuration
-void ATestLasers::queue_laser_spawns(FTestLasersSpawnRequests const& spawn_data) {
+void ATestLasers::queue_laser_spawns(SpawnRequests const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::queue_laser_spawns);
 
     spawn_data.validate_array_sizes();

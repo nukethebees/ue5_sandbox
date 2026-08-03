@@ -24,7 +24,8 @@ class UWorld;
 class UTestLasersConfig;
 class ATestEntityRegistry;
 
-struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
+namespace ml::test_lasers {
+struct SpawnRequests : public ml::FSoAArrayMixin {
     FVectors3f locations;
     FRotatorsf rotations;
     TArray<int32> damages;
@@ -38,7 +39,7 @@ struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
     void set_max_distances(float const value);
     void set_colours(FLinearColor const value);
 
-    void append_from(FTestLasersSpawnRequests const& other);
+    void append_from(SpawnRequests const& other);
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -51,6 +52,7 @@ struct FTestLasersSpawnRequests : public ml::FSoAArrayMixin {
                                          self.colours);
     }
 };
+}
 
 struct FTestLasersHitDetails : public ml::FSoAArrayMixin {
     FVectors3f locations;
@@ -65,6 +67,8 @@ UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
+    using SpawnRequests = ml::test_lasers::SpawnRequests;
+
     struct ThreadLocalCollisionData {
         UnresolvedCollisionDamageEvents collision_damage_events;
         TArray<int32> to_remove;
@@ -93,7 +97,7 @@ class ATestLasers : public AActor {
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     // Spawning / configuration
-    void queue_laser_spawns(FTestLasersSpawnRequests const& spawn_data);
+    void queue_laser_spawns(SpawnRequests const& spawn_data);
 
     // Checks
     void validate_array_sizes() const;
@@ -154,7 +158,7 @@ class ATestLasers : public AActor {
     TArray<FRegistryEntityHandle> instigator_handles;
 
     // Spawning
-    FTestLasersSpawnRequests pending_spawns;
+    ml::test_lasers::SpawnRequests pending_spawns;
     TArray<float> custom_data_spawn_buffer;
     TArray<FTransform> dummy_transforms_spawn_buffer;
 

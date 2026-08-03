@@ -102,7 +102,7 @@ class ATestTubeSpinners : public AActor {
     FCountdownTimers laser_cooldowns;
     TArray<int32> next_fire_point_indices;
     TArray<int32> indices_ready_to_fire;
-    FTestLasersSpawnRequests new_lasers;
+    ml::test_lasers::SpawnRequests new_lasers;
 
     // Debugging / logging
     UPROPERTY(EditAnywhere, Category = "Sandbox")
