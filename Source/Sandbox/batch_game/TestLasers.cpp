@@ -352,6 +352,9 @@ void ATestLasers::prepare_ismc_transforms() {
 void ATestLasers::spawn_hit_effects() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_hit_effects);
 
+    static FName const colour_parameter{TEXT("User.Colour")};
+    static FName const ribbon_colour_parameter{TEXT("User.Ribbon_Colour")};
+
     auto hit_effect{actor_config->hit_effect};
     if (!IsValid(hit_effect)) {
         if (!have_warned_hit_effect) {
@@ -371,16 +374,23 @@ void ATestLasers::spawn_hit_effects() {
     auto* world{GetWorld()};
     for (int32 i{0}; i < n; ++i) {
         constexpr bool auto_destroy{true};
-        constexpr bool auto_activate{true};
+        constexpr bool auto_activate{false};
 
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
-                                                       hit_effect,
-                                                       ml::get_vector3d(hit_details.locations, i),
-                                                       FRotator::ZeroRotator,
-                                                       scale,
-                                                       auto_destroy,
-                                                       auto_activate,
-                                                       ENCPoolMethod::AutoRelease);
+        auto* system{UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            world,
+            hit_effect,
+            ml::get_vector3d(hit_details.locations, i),
+            FRotator::ZeroRotator,
+            scale,
+            auto_destroy,
+            auto_activate,
+            ENCPoolMethod::AutoRelease)};
+
+        constexpr double colour_scale{20.0};
+        auto const colour{hit_details.colours[i] * colour_scale};
+        system->SetVariableLinearColor(colour_parameter, colour);
+        system->SetVariableLinearColor(ribbon_colour_parameter, colour);
+        system->Activate();
     }
 }
 
