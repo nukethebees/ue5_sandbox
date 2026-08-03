@@ -44,20 +44,6 @@ void SpawnRequests::set_max_distances(float const value) {
 void SpawnRequests::set_colours(FLinearColor const value) {
     ml::fill(colours, value);
 }
-
-void SpawnRequests::append_from(SpawnRequests const& other) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::SpawnRequests::append_from);
-
-    other.validate_array_sizes();
-
-    ml::append_from(locations, other.locations);
-    ml::append_from(rotations, other.rotations);
-    damages.Append(other.damages);
-    speeds.Append(other.speeds);
-    max_distances.Append(other.max_distances);
-    instigator_handles.Append(other.instigator_handles);
-    colours.Append(other.colours);
-}
 }
 
 ATestLasers::ATestLasers()

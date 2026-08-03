@@ -39,18 +39,17 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
     void set_max_distances(float const value);
     void set_colours(FLinearColor const value);
 
-    void append_from(SpawnRequests const& other);
+#define SANDBOX_PACK(STAMPER, NON_FINAL)   \
+    NON_FINAL(STAMPER(locations))          \
+    NON_FINAL(STAMPER(rotations))          \
+    NON_FINAL(STAMPER(damages))            \
+    NON_FINAL(STAMPER(speeds))             \
+    NON_FINAL(STAMPER(max_distances))      \
+    NON_FINAL(STAMPER(instigator_handles)) \
+    STAMPER(colours)
 
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations,
-                                         self.rotations,
-                                         self.damages,
-                                         self.speeds,
-                                         self.max_distances,
-                                         self.instigator_handles,
-                                         self.colours);
-    }
+    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
+#undef SANDBOX_PACK
 };
 }
 
