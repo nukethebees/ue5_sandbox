@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/input/EnhancedInputMixin.hpp>
 #include <Sandbox/logging/ActorLoggingConfig.h>
-#include <Sandbox/logging/LogMsgMixin.hpp>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
@@ -21,8 +20,7 @@ class ATestMissionManager;
 UCLASS()
 class ATestSpaceShipController
     : public APlayerController
-    , public ml::EnhancedInputMixin
-    , public ml::LogMsgMixin<"SpaceShipController", LogSandboxController> {
+    , public ml::EnhancedInputMixin {
     GENERATED_BODY()
   public:
     struct UICache {
