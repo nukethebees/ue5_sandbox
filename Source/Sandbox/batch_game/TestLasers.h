@@ -51,9 +51,8 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK
 };
-}
 
-struct FTestLasersHitDetails : public ml::FSoAArrayMixin {
+struct HitDetails : public ml::FSoAArrayMixin {
     FVectors3f locations;
 
     template <typename TFunc>
@@ -62,17 +61,20 @@ struct FTestLasersHitDetails : public ml::FSoAArrayMixin {
     }
 };
 
+struct ThreadLocalCollisionData {
+    UnresolvedCollisionDamageEvents collision_damage_events;
+    TArray<int32> to_remove;
+    HitDetails hit_details;
+};
+}
+
 UCLASS()
 class ATestLasers : public AActor {
     GENERATED_BODY()
   public:
     using SpawnRequests = ml::test_lasers::SpawnRequests;
-
-    struct ThreadLocalCollisionData {
-        UnresolvedCollisionDamageEvents collision_damage_events;
-        TArray<int32> to_remove;
-        FTestLasersHitDetails hit_details;
-    };
+    using HitDetails = ml::test_lasers::HitDetails;
+    using ThreadLocalCollisionData = ml::test_lasers::ThreadLocalCollisionData;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{5}; // RGB[3], lifetime, spawn time
@@ -143,7 +145,7 @@ class ATestLasers : public AActor {
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    FTestLasersHitDetails hit_details;
+    HitDetails hit_details;
 
     // Transform
     FVectors3f locations;
