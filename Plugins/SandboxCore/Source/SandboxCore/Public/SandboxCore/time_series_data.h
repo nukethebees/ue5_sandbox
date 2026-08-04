@@ -2,6 +2,7 @@
 
 #include <Containers/Array.h>
 
+#include <Containers/ArrayView.h>
 #include <HAL/Platform.h>
 #include <Math/UnrealMathUtility.h>
 #include <Misc/AssertionMacros.h>
