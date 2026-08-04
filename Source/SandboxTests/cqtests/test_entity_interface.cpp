@@ -9,6 +9,7 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -27,14 +28,11 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     ml::FSoftTestAssertions checks;
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
-    ATestBatchOrchestrator const* orchestrator{nullptr};
-    ATestEntityRegistry const* registry{nullptr};
-    ATestCapitalShips const* capitals{nullptr};
-
     ml::TimeSeriesData<int32> capital_proxy_counts;
     ml::TimeSeriesData<int32> turret_proxy_counts;
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> capital_target_handles;
     ml::TimeSeriesData<TArray<uint8>> capital_target_alive;
+    FTestTimeline timeline;
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_proxy_base"), TestRunner, checks); }
@@ -47,18 +45,6 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
         test_driver->orchestrator.start_simulation();
-
-        for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
-            orchestrator = *it;
-            break;
-        }
-        ASSERT_THAT(IsNotNull(orchestrator));
-
-        registry = orchestrator->get_entity_registry();
-        ASSERT_THAT(IsNotNull(registry));
-
-        capitals = orchestrator->get_capital_ships();
-        ASSERT_THAT(IsNotNull(capitals));
     }
 
     void sample_values(ATestBatchOrchestrator&) {
@@ -68,15 +54,23 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
         capital_proxy_counts.add(t, ml::get_actors<ATestCapitalShipProxy>(world).Num());
         turret_proxy_counts.add(t, ml::get_actors<ATestStaticTurretsProxy>(world).Num());
 
+        auto const capitals{test_driver->orchestrator.get_capital_ships()};
+
         TArray<FRegistryEntityHandle> target_handles;
         target_handles.Append(capitals->get_target_handles());
         capital_target_handles.add(t, MoveTemp(target_handles));
+
+        auto const registry{test_driver->orchestrator.get_entity_registry()};
 
         TArray<uint8> target_alive;
         for (auto const handle : capitals->get_target_handles()) {
             target_alive.Add(registry->is_valid_alive(handle));
         }
         capital_target_alive.add(t, MoveTemp(target_alive));
+    }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
     }
 
     void main_checks() {
@@ -108,10 +102,10 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
             .Then([this] {
                 initial_setup();
                 test_driver->orchestrator.set_end_tick_test_hook(
-                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
-                test_driver->set_delta_time_wait(test_time);
+                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+                timeline.finish_at(test_time);
             })
-            .Until([this] { return test_driver->time_wait_completed(); }, FTimespan{0, 0, 1})
+            .Until([this] { return timeline.is_finished(); }, FTimespan{0, 0, 1})
             .Then([this] { main_checks(); });
     }
 };

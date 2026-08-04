@@ -10,6 +10,7 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
@@ -38,8 +39,8 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
 
-    static constexpr int32 wait_after_setup{2};
-    static constexpr int32 wait_after_kills{2};
+    static constexpr time_type wait_after_setup{2.0 / 60.0};
+    static constexpr time_type wait_after_kills{2.0 / 60.0};
 
     FRegistryEntityHandle capital_first_target;
     FRegistryEntityHandle capital_second_target;
@@ -50,6 +51,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     static constexpr int32 test_capital_idx{0};
 
     ml::TimeSeriesData<FSimulationSample> samples;
+    FTestTimeline timeline;
     time_type t_after_setup{0.0};
     time_type t_after_initial_kills{0.0};
     time_type t_after_all_kills{0.0};
@@ -68,6 +70,10 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         sample.capital_count = capitals->get_num_instances();
         samples.add(t, MoveTemp(sample));
     }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
+    }
 
     void initial_setup() {
         auto& world{spawner->GetWorld()};
@@ -85,8 +91,24 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         capital_fighter_start = capital_fighter_span.start();
         capital_fighter_end = capital_fighter_span.end();
     }
-    void set_wait_after_kills() {
-        test_driver->set_wait_until_tick_from_now(wait_after_kills);
+    void initial_setup_and_stimuli() {
+        initial_setup();
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+
+        timeline
+            .then_after(wait_after_setup,
+                        [this] {
+                            t_after_setup = test_driver->get_time();
+                            kill_initial_targets();
+                        })
+            .then_after(wait_after_kills,
+                        [this] {
+                            t_after_initial_kills = test_driver->get_time();
+                            kill_all_not_on_main_team();
+                        })
+            .finish_after(wait_after_kills,
+                          [this] { t_after_all_kills = test_driver->get_time(); });
     }
 
     template <auto EnumValue>
@@ -149,28 +171,8 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     TEST_METHOD(MainTest)
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] {
-                initial_setup();
-                test_driver->orchestrator.set_end_tick_test_hook(
-                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
-                set_wait_after_kills();
-            })
-            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
-            .Then([this] {
-                t_after_setup = test_driver->get_time();
-                kill_initial_targets();
-                set_wait_after_kills();
-            })
-            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
-            .Then([this] {
-                t_after_initial_kills = test_driver->get_time();
-                kill_all_not_on_main_team();
-                set_wait_after_kills();
-            })
-            .Until([this] { return test_driver->tick_wait_completed(); }, FTimespan{0, 0, 1})
-            .Then([this] {
-                t_after_all_kills = test_driver->get_time();
-                full_checks();
-            });
+            .Then([this] { initial_setup_and_stimuli(); })
+            .Until([this] { return timeline.is_finished(); }, FTimespan{0, 0, 1})
+            .Then([this] { full_checks(); });
     }
 };

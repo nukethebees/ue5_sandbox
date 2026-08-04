@@ -6,6 +6,7 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
@@ -24,6 +25,7 @@ TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<int32> unique_ids;
     ml::TimeSeriesData<int32> kills;
     ml::TimeSeriesData<int32> alive;
+    FTestTimeline timeline;
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_simple_batch"), TestRunner, checks); }
@@ -41,11 +43,16 @@ TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
         kills.add(t, registry.count_kills());
         alive.add(t, registry.count_alive());
     }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
+    }
 
     void initial_setup() {
         test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        timeline.finish_at(test_time);
         test_driver->orchestrator.start_simulation();
     }
 
@@ -64,11 +71,8 @@ TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
     {
 
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] {
-                initial_setup();
-                test_driver->set_delta_time_wait(test_time);
-            })
-            .Until([this] { return test_driver->time_wait_completed(); }, timeout)
+            .Then([this] { initial_setup(); })
+            .Until([this] { return timeline.is_finished(); }, timeout)
             .Then([this] {
                 full_checks();
                 SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

@@ -11,6 +11,7 @@
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/array_math.h>
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
@@ -28,6 +29,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::FSoftTestAssertions checks{};
     ml::TimeSeriesData<ATestEntityRegistry::TeamCounts> alive_per_team;
+    FTestTimeline timeline;
 
     TMap<ETestTeam, int32> expected_teams{
         {ETestTeam::White, 0},
@@ -63,6 +65,10 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 
     void sample_values(ATestBatchOrchestrator&) {
         alive_per_team.add(test_driver->get_time(), test_driver->registry.count_alive_per_team());
+    }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
     }
 
     void run_checks() {
@@ -127,10 +133,10 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
             .Do([this] {
                 initial_setup();
                 test_driver->orchestrator.set_end_tick_test_hook(
-                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
-                test_driver->set_delta_time_wait(test_time);
+                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+                timeline.finish_at(test_time);
             })
-            .Until([this] { return test_driver->time_wait_completed(); }, FTimespan{0, 0, 1})
+            .Until([this] { return timeline.is_finished(); }, FTimespan{0, 0, 1})
             .Then([this] { run_checks(); });
     }
 };

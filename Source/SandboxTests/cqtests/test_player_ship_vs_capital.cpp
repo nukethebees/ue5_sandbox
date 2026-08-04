@@ -9,6 +9,7 @@
 #include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <AssetRegistry/AssetRegistryModule.h>
@@ -42,6 +43,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<TArray<FVector3f>> fighter_target_locations;
     ml::TimeSeriesData<TArray<FVector3f>> fighter_locations;
     ml::TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_ticks;
+    FTestTimeline timeline;
 
     int32 i_setup{INDEX_NONE};
     int32 i_tracked{INDEX_NONE};
@@ -63,6 +65,10 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         fighter_target_locations.add(t, ml::to_vector3f_array(fighters->get_target_locations()));
         fighter_locations.add(t, ml::to_vector3f_array(fighters->get_locations()));
         orchestrator_ticks.add(t, orchestrator.get_completed_ticks());
+    }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -90,7 +96,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         fighters = &test_driver->get_capital_ship_fighters();
         player_ship_handle = player_ship->get_entity_handle();
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        timeline.finish_at(t_end);
     }
 
     void full_checks() {
@@ -240,11 +247,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 
         TestCommandBuilder
             // Initial phase
-            .Do([this] {
-                initial_setup();
-                test_driver->set_delta_time_wait(t_end);
-            })
-            .Until([this] { return test_driver->time_wait_completed(); }, timeout)
+            .Do([this] { initial_setup(); })
+            .Until([this] { return timeline.is_finished(); }, timeout)
             .Do([this] {
                 full_checks();
                 if (!checks.all_passed) { fail_self_analysis(); }

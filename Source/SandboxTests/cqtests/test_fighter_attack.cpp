@@ -12,6 +12,7 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
+#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
@@ -43,6 +44,7 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     ETestTeam enemy_team;
 
     ml::TimeSeriesData<FSimulationSample> samples;
+    FTestTimeline timeline;
     time_type t_pre_fight{0.0};
     time_type t_post_fight{0.0};
 
@@ -65,6 +67,10 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         sample.fighter_teams.Append(test_driver->get_capital_ship_fighters().get_teams());
         sample.radii.Append(entity_data.radii);
         samples.add(t, MoveTemp(sample));
+    }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        timeline.tick(test_driver->get_time());
     }
 
     void initial_setup() {
@@ -98,14 +104,15 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         hero = *maybe_hero;
         enemy = *maybe_enemy;
     }
-    void initial_phase() {
+    void initial_setup_and_stimuli() {
         initial_setup();
         initial_samples();
         initial_checks();
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
-
-        test_driver->set_delta_time_wait(initial_wait);
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        timeline.at(initial_wait, [this] { t_pre_fight = test_driver->get_time(); })
+            .finish_after(local_driver->get_fight_duration(),
+                          [this] { t_post_fight = test_driver->get_time(); });
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -119,11 +126,6 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
             checks.are_equal(hero_team, teams[i], TEXT("Fighters are on hero team."));
         }
     }
-    void pre_fight_phase() {
-        t_pre_fight = test_driver->get_time();
-        test_driver->set_delta_time_wait(local_driver->get_fight_duration());
-    }
-
     void full_checks() {
         auto const& pre_fight{samples.nearest_value(t_pre_fight)};
         auto const& post_fight{samples.nearest_value(t_post_fight)};
@@ -137,22 +139,10 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
-    void post_fight_phase() {
-        t_post_fight = test_driver->get_time();
-        full_checks();
-    }
-
     TEST_METHOD(Main)
     {
-        auto check_wait_over{[this] { return test_driver->time_wait_completed(); }};
-
-        TestCommandBuilder
-            // Initial phase
-            .Do([this] { initial_phase(); })
-            .Until(check_wait_over, default_timeout)
-            // Fight
-            .Then([this] { pre_fight_phase(); })
-            .Until(check_wait_over, default_timeout)
-            .Then([this] { post_fight_phase(); });
+        TestCommandBuilder.Do([this] { initial_setup_and_stimuli(); })
+            .Until([this] { return timeline.is_finished(); }, default_timeout)
+            .Then([this] { full_checks(); });
     }
 };
