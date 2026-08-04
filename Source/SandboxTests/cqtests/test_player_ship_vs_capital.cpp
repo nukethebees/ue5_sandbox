@@ -9,7 +9,6 @@
 #include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
-#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <AssetRegistry/AssetRegistryModule.h>
@@ -43,7 +42,6 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<TArray<FVector3f>> fighter_target_locations;
     ml::TimeSeriesData<TArray<FVector3f>> fighter_locations;
     ml::TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_ticks;
-    FTestTimeline timeline;
 
     int32 i_setup{INDEX_NONE};
     int32 i_tracked{INDEX_NONE};
@@ -68,7 +66,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_values(orchestrator);
-        timeline.tick(test_driver->get_time());
+        test_driver->timeline.tick(test_driver->get_time());
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -97,7 +95,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         player_ship_handle = player_ship->get_entity_handle();
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-        timeline.finish_at(t_end);
+        test_driver->timeline.finish_at(t_end);
     }
 
     void full_checks() {
@@ -248,7 +246,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         TestCommandBuilder
             // Initial phase
             .Do([this] { initial_setup(); })
-            .Until([this] { return timeline.is_finished(); }, timeout)
+            .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Do([this] {
                 full_checks();
                 if (!checks.all_passed) { fail_self_analysis(); }

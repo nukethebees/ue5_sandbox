@@ -10,7 +10,6 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
-#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
@@ -51,7 +50,6 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     static constexpr int32 test_capital_idx{0};
 
     ml::TimeSeriesData<FSimulationSample> samples;
-    FTestTimeline timeline;
     time_type t_after_setup{0.0};
     time_type t_after_initial_kills{0.0};
     time_type t_after_all_kills{0.0};
@@ -72,7 +70,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_values(orchestrator);
-        timeline.tick(test_driver->get_time());
+        test_driver->timeline.tick(test_driver->get_time());
     }
 
     void initial_setup() {
@@ -96,7 +94,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
 
-        timeline
+        test_driver->timeline
             .then_after(wait_after_setup,
                         [this] {
                             t_after_setup = test_driver->get_time();
@@ -172,7 +170,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
             .Then([this] { initial_setup_and_stimuli(); })
-            .Until([this] { return timeline.is_finished(); }, FTimespan{0, 0, 1})
+            .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
             .Then([this] { full_checks(); });
     }
 };

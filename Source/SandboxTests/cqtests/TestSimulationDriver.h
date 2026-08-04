@@ -2,6 +2,8 @@
 
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 
+#include <SandboxCore/test_timeline.h>
+
 #include <HAL/Platform.h>
 
 class UWorld;
@@ -49,5 +51,6 @@ struct TestSimulationDriver {
     uint64 tick_wait_end{0};
     time_type time_wait_end{0.f};
     time_type time_scale{20.f};
+    FTestTimeline timeline;
 };
 }

@@ -9,7 +9,6 @@
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
-#include <SandboxCore/test_timeline.h>
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -32,7 +31,6 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<int32> turret_proxy_counts;
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> capital_target_handles;
     ml::TimeSeriesData<TArray<uint8>> capital_target_alive;
-    FTestTimeline timeline;
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_proxy_base"), TestRunner, checks); }
@@ -70,7 +68,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_values(orchestrator);
-        timeline.tick(test_driver->get_time());
+        test_driver->timeline.tick(test_driver->get_time());
     }
 
     void main_checks() {
@@ -103,9 +101,9 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
                 initial_setup();
                 test_driver->orchestrator.set_end_tick_test_hook(
                     FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-                timeline.finish_at(test_time);
+                test_driver->timeline.finish_at(test_time);
             })
-            .Until([this] { return timeline.is_finished(); }, FTimespan{0, 0, 1})
+            .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
             .Then([this] { main_checks(); });
     }
 };
