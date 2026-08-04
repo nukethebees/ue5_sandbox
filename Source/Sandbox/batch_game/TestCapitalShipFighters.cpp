@@ -590,9 +590,12 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
     ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
 
+    static FName const socket_name{TEXT("Gun")};
+
     auto const n_ships{ml::num(data)};
     auto const cooldown{actor_config->fire_cooldown};
-    auto const fire_point_offset{actor_config->fire_point_offset};
+    auto const fire_point_offset{instances->GetSocketLocation(socket_name)};
+    FVector3f const fire_point_offset_float{fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
 
     auto const laser_damage{actor_config->laser_damage};
@@ -642,8 +645,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             auto const ship_location{ml::get_vector3d(data.locations, ship_index)};
             auto const direction{ml::get_vector3d(data.aim_directions, ship_index)};
 
-            auto const laser_offset{fire_point_offset * direction};
-            auto const start{ship_location + laser_offset};
+            auto const start{ship_location + fire_point_offset};
 
             // Trace to near the outside of the enemy
             auto const end_offset{direction * (los_check_buffer + data.target_radii[ship_index])};
@@ -668,8 +670,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
 
-        auto const laser_offset{fire_point_offset * direction};
-        auto const laser_location{ship_location + laser_offset};
+        auto const laser_location{ship_location + fire_point_offset_float};
 
         ml::assign(new_lasers.locations, i, laser_location);
         ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());

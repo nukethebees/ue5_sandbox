@@ -48,9 +48,6 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     float fire_cooldown{0.33f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    float fire_point_offset{100.f};
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float attack_retry_cooldown{0.15f};
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
