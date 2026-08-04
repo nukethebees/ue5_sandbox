@@ -136,9 +136,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
 #endif
 
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // Setup phase
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         {
             // Clear transient data
             // Assume registry data is stable here
@@ -153,9 +153,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             lasers->begin_tick();
         }
 
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // Actor decision phase
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // Query target data from registry
         // Queue projectile spawns
 
@@ -176,9 +176,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             capital_ship_fighters->make_decisions();
         }
 
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // Simulation phase
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         {
             // Movement
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
@@ -215,9 +215,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             lasers->simulate(tick_period);
         }
 
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // Resolution phase
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         {
             // Resolve hit events
             TRACE_CPUPROFILER_EVENT_SCOPE(
@@ -275,9 +275,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             lasers->update_visual_data();
         }
 
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         // End phase
-        // ---------------------------------------------------------------------------------------------
+        /* -------------------------------------------------------------------------------- */
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
@@ -301,8 +301,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 #endif
 
         ++completed_ticks;
+        end_tick_test_hook.ExecuteIfBound(*this);
     }
 
+    /* -------------------------------------------------------------------------------- */
+    // Rendering
+    /* -------------------------------------------------------------------------------- */
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
@@ -316,8 +320,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         niagara_spawner->update_spawns(dt);
     }
-
-    end_tick_test_hook.ExecuteIfBound(*this);
 }
 
 void ATestBatchOrchestrator::route_actor_references() {
