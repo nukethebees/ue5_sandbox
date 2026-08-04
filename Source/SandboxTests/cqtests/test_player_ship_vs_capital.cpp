@@ -43,6 +43,11 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<TArray<FVector3f>> fighter_target_locations;
     ml::TimeSeriesData<TArray<FVector3f>> fighter_locations;
 
+    int32 i_setup{INDEX_NONE};
+    int32 i_tracked{INDEX_NONE};
+    int32 i_before_end{INDEX_NONE};
+    int32 i_end{INDEX_NONE};
+
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_player_ship_vs_capital"), TestRunner, checks); }
     AFTER_EACH()
@@ -70,6 +75,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     static constexpr time_type t_tracked{t_settled + track_time};
     static constexpr time_type t_end{t_tracked + time_type{5.0}};
 
+    static constexpr time_type sample_time_before_end{0.5};
+
     FTimespan timeout{0, 0, FMath::CeilToInt32(t_end + 1.0)};
 
     void initial_setup() {
@@ -85,12 +92,11 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     }
 
     void full_checks() {
-        int32 const i_setup{fighter_target_locations.nearest_index(t_settled)};
-        int32 const i_tracked{fighter_target_locations.nearest_index(t_tracked)};
-        int32 const i_end{fighter_target_locations.nearest_index(t_end)};
+        i_setup = fighter_target_locations.nearest_index(t_settled);
+        i_tracked = fighter_target_locations.nearest_index(t_tracked);
+        i_end = fighter_target_locations.nearest_index(t_end);
 
-        constexpr time_type before_end{0.5};
-        int32 const i_before_end{fighter_target_locations.nearest_index(t_end - before_end)};
+        i_before_end = fighter_target_locations.nearest_index(t_end - sample_time_before_end);
 
         checks.dist_zero(player_ship_locations.value_at(i_setup),
                          player_ship_registry_locations.value_at(i_setup),
@@ -150,13 +156,31 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 
     void fail_self_analysis() {
         export_failure_data();
+
+        auto const times{player_ship_locations.times()};
+        TestRunner->AddInfo(
+            FString::Printf(TEXT("Sample indices and times: setup=%d (%.3f), tracked=%d (%.3f), "
+                                 "before_end=%d (%.3f), end=%d (%.3f)"),
+                            i_setup,
+                            times[i_setup],
+                            i_tracked,
+                            times[i_tracked],
+                            i_before_end,
+                            times[i_before_end],
+                            i_end,
+                            times[i_end]));
     }
 
     void export_failure_data() const {
         static FName const package_name{TEXT("/Game/test_results/player_ship_vs_capital")};
         static FName const asset_name{TEXT("player_ship_vs_capital")};
 
-        auto* const package{CreatePackage(*package_name.ToString())};
+        auto const package_path{package_name.ToString()};
+        auto* package{FPackageName::DoesPackageExist(package_path)
+                          ? LoadPackage(nullptr, *package_path, LOAD_None)
+                          : CreatePackage(*package_path)};
+        package->FullyLoad();
+
         auto* data_table{FindObject<UDataTable>(package, *asset_name.ToString())};
         if (!data_table) {
             data_table = NewObject<UDataTable>(package, asset_name, RF_Public | RF_Standalone);
