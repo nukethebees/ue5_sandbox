@@ -53,6 +53,10 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float los_check_buffer{100.f};
 
+    // Awareness
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float awareness_radius{50000.f};
+
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
