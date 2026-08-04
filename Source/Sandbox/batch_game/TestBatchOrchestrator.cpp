@@ -15,7 +15,7 @@
 #include <SandboxCore/invoke.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
-#include <DrawDebugHelpers.h>
+#include <CoreGlobals.h>
 
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
@@ -27,13 +27,11 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
-    SetActorTickEnabled(true);
-    if (start_mode == EOrchestratorStartMode::Paused) { SetActorTickEnabled(false); }
-
     begin_play();
 }
 void ATestBatchOrchestrator::start_simulation() {
-    check(start_mode == EOrchestratorStartMode::Paused);
+    check((start_mode == EOrchestratorStartMode::Paused) ||
+          (start_mode == EOrchestratorStartMode::PausedInTest));
     check(!IsActorTickEnabled());
 
     SetActorTickEnabled(true);
@@ -113,10 +111,23 @@ void ATestBatchOrchestrator::begin_play() {
     if (player_ship) { mission_manager->begin_play(); }
 
 #if WITH_EDITOR
-    if (log_ticks) {
-        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
-    }
+    if (log_ticks) { UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play end")); }
 #endif
+
+    SetActorTickEnabled(true);
+    switch (start_mode) {
+        case EOrchestratorStartMode::Paused: {
+            SetActorTickEnabled(false);
+            break;
+        }
+        case EOrchestratorStartMode::PausedInTest: {
+            if (GIsAutomationTesting) { SetActorTickEnabled(false); }
+            break;
+        }
+        case EOrchestratorStartMode::Automatic: {
+            break;
+        }
+    }
 }
 void ATestBatchOrchestrator::validate_proxy_handles() {
     if (player_ship) {

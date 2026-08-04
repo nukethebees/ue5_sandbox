@@ -23,6 +23,7 @@ DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&)
 UENUM(BlueprintType)
 enum class EOrchestratorStartMode : uint8 {
     Paused,
+    PausedInTest,
     Automatic,
 };
 
