@@ -42,6 +42,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     ml::TimeSeriesData<FVector> player_ship_registry_locations;
     ml::TimeSeriesData<TArray<FVector3f>> fighter_target_locations;
     ml::TimeSeriesData<TArray<FVector3f>> fighter_locations;
+    ml::TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_ticks;
 
     int32 i_setup{INDEX_NONE};
     int32 i_tracked{INDEX_NONE};
@@ -62,6 +63,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 
         fighter_target_locations.add(t, ml::to_vector3f_array(fighters->get_target_locations()));
         fighter_locations.add(t, ml::to_vector3f_array(fighters->get_locations()));
+        orchestrator_ticks.add(t, orchestrator.get_completed_ticks());
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -82,6 +84,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
+
+        test_driver->orchestrator.start_simulation();
 
         player_ship = &test_driver->get_player_ship();
         capitals = &test_driver->get_capital_ships();
@@ -193,34 +197,26 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         auto const times{player_ship_locations.times()};
         auto const n_times{times.Num()};
         for (int32 time_index{0}; time_index < n_times; ++time_index) {
+            FPlayerShipVsCapitalResultRow row{};
+            row.time = times[time_index];
+            row.tick = orchestrator_ticks.value_at(time_index);
+            row.player_ship_location = player_ship_locations.value_at(time_index);
+            row.player_ship_registry_location = player_ship_registry_locations.value_at(time_index);
+
             auto const& target_locations{fighter_target_locations.value_at(time_index)};
-            auto const& current_fighter_locations{fighter_locations.value_at(time_index)};
-            auto const n_fighters{
-                FMath::Max(target_locations.Num(), current_fighter_locations.Num())};
-            auto const first_fighter_index{n_fighters > 0 ? 0 : -1};
-
-            for (int32 fighter_index{first_fighter_index}; fighter_index < n_fighters;
-                 ++fighter_index) {
-                FPlayerShipVsCapitalResultRow row{};
-                row.time = times[time_index];
-                row.player_ship_location = player_ship_locations.value_at(time_index);
-                row.player_ship_registry_location =
-                    player_ship_registry_locations.value_at(time_index);
-                row.fighter_index = fighter_index;
-
-                if (fighter_index >= 0 && target_locations.IsValidIndex(fighter_index)) {
-                    row.has_fighter_target_location = true;
-                    row.fighter_target_location = FVector{target_locations[fighter_index]};
-                }
-                if (fighter_index >= 0 && current_fighter_locations.IsValidIndex(fighter_index)) {
-                    row.has_fighter_location = true;
-                    row.fighter_location = FVector{current_fighter_locations[fighter_index]};
-                }
-
-                auto const row_name{
-                    FName{FString::Printf(TEXT("%06d_%06d"), time_index, fighter_index + 1)}};
-                data_table->AddRow(row_name, row);
+            row.fighter_target_locations.Reserve(target_locations.Num());
+            for (auto const& target_location : target_locations) {
+                row.fighter_target_locations.Add(FVector{target_location});
             }
+
+            auto const& current_fighter_locations{fighter_locations.value_at(time_index)};
+            row.fighter_locations.Reserve(current_fighter_locations.Num());
+            for (auto const& fighter_location : current_fighter_locations) {
+                row.fighter_locations.Add(FVector{fighter_location});
+            }
+
+            auto const row_name{FName{FString::Printf(TEXT("%06d"), time_index)}};
+            data_table->AddRow(row_name, row);
         }
 
         data_table->MarkPackageDirty();

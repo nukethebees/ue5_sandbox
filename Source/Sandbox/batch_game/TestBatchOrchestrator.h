@@ -20,6 +20,12 @@ class ATestBatchOrchestrator;
 
 DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&);
 
+UENUM(BlueprintType)
+enum class EOrchestratorStartMode : uint8 {
+    Paused,
+    Automatic,
+};
+
 UCLASS()
 class SANDBOX_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
@@ -31,6 +37,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     void Tick(float dt) override;
     void tick(time_type const dt);
+    void start_simulation();
 
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
@@ -56,6 +63,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void spawn_missing_actors();
 #endif
   private:
+    void begin_play();
     void validate_proxy_handles();
     void route_actor_references();
 
@@ -65,11 +73,13 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     double tick_rate{60.f};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     double time_scale{1.f};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
 
     time_type tick_period{0.f};
     time_type accumulator{0.f};
 
-    uint64 completed_ticks{0};
+    tick_type completed_ticks{0};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

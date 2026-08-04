@@ -13,23 +13,17 @@ struct FPlayerShipVsCapitalResultRow : public FTableRowBase {
     double time{0.0};
 
     UPROPERTY()
+    uint64 tick{0};
+
+    UPROPERTY()
     FVector player_ship_location{FVector::ZeroVector};
 
     UPROPERTY()
     FVector player_ship_registry_location{FVector::ZeroVector};
 
     UPROPERTY()
-    int32 fighter_index{-1};
+    TArray<FVector> fighter_target_locations;
 
     UPROPERTY()
-    bool has_fighter_target_location{false};
-
-    UPROPERTY()
-    FVector fighter_target_location{FVector::ZeroVector};
-
-    UPROPERTY()
-    bool has_fighter_location{false};
-
-    UPROPERTY()
-    FVector fighter_location{FVector::ZeroVector};
+    TArray<FVector> fighter_locations;
 };

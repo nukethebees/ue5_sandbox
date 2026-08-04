@@ -27,6 +27,18 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
+    SetActorTickEnabled(true);
+    if (start_mode == EOrchestratorStartMode::Paused) { SetActorTickEnabled(false); }
+
+    begin_play();
+}
+void ATestBatchOrchestrator::start_simulation() {
+    check(start_mode == EOrchestratorStartMode::Paused);
+    check(!IsActorTickEnabled());
+
+    SetActorTickEnabled(true);
+}
+void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 
     completed_ticks = 0;
