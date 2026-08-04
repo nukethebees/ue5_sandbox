@@ -334,6 +334,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 }
 
+void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
+    check(scale > time_type{0});
+    time_scale = scale;
+}
+
 void ATestBatchOrchestrator::route_actor_references() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);

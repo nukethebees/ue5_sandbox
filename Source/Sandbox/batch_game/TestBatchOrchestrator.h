@@ -39,6 +39,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void tick(time_type const dt);
     void start_simulation();
 
+    void set_time_scale(time_type scale) noexcept;
+
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
         return static_cast<time_type>(completed_ticks) * tick_period;
