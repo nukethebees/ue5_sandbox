@@ -6,16 +6,16 @@
 
 #include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/cqtests/test_setup.h>
+#include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
+#include <AssetRegistry/AssetRegistryModule.h>
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/DataTable.h>
-#include <AssetRegistry/AssetRegistryModule.h>
 #include <HAL/FileManager.h>
 #include <Misc/Optional.h>
 #include <Misc/PackageName.h>
@@ -149,25 +149,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     }
 
     void fail_self_analysis() {
-
         export_failure_data();
-
-        FString msg{TEXT("Fail debug info.")};
-
-        msg += TEXT("Times:");
-        auto const times{player_ship_locations.times()};
-        auto const n_times{times.Num()};
-        for (int32 i{0}; i < n_times; ++i) {
-            msg += FString::Printf(TEXT(" %.3f"), times[i]);
-        }
-
-        msg += TEXT("Positions:");
-        for (int32 i{0}; i < n_times; ++i) {
-            msg +=
-                FString::Printf(TEXT(" %s"), *player_ship_locations.value_at(i).ToCompactString());
-        }
-
-        TestRunner->AddInfo(msg);
     }
 
     void export_failure_data() const {
@@ -189,7 +171,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         for (int32 time_index{0}; time_index < n_times; ++time_index) {
             auto const& target_locations{fighter_target_locations.value_at(time_index)};
             auto const& current_fighter_locations{fighter_locations.value_at(time_index)};
-            auto const n_fighters{FMath::Max(target_locations.Num(), current_fighter_locations.Num())};
+            auto const n_fighters{
+                FMath::Max(target_locations.Num(), current_fighter_locations.Num())};
             auto const first_fighter_index{n_fighters > 0 ? 0 : -1};
 
             for (int32 fighter_index{first_fighter_index}; fighter_index < n_fighters;
@@ -210,9 +193,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                     row.fighter_location = FVector{current_fighter_locations[fighter_index]};
                 }
 
-                auto const row_name{FName{FString::Printf(TEXT("%06d_%06d"),
-                                                           time_index,
-                                                           fighter_index + 1)}};
+                auto const row_name{
+                    FName{FString::Printf(TEXT("%06d_%06d"), time_index, fighter_index + 1)}};
                 data_table->AddRow(row_name, row);
             }
         }
