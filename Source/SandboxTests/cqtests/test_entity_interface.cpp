@@ -4,7 +4,6 @@
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
@@ -22,6 +21,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions checks;
+    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     ATestBatchOrchestrator const* orchestrator{nullptr};
     ATestEntityRegistry const* registry{nullptr};
@@ -37,6 +37,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
   private:
     void initial_setup() {
         auto& world{spawner->GetWorld()};
+        test_driver = ml::TestSimulationDriver::from_world(world);
 
         for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
             orchestrator = *it;
@@ -81,8 +82,11 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     TEST_METHOD(MainTest)
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup(); })
-            .Until([this] -> bool { return orchestrator->get_completed_ticks() == tick_wait_end; },
+            .Then([this] {
+                initial_setup();
+                test_driver->set_wait_until_tick_from_now(tick_wait_end);
+            })
+            .Until([this] -> bool { return test_driver->tick_wait_completed(); },
                    FTimespan{0, 0, 1})
             .Then([this] { main_checks(); });
     }
