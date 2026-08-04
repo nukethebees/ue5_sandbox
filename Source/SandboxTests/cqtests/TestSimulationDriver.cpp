@@ -66,10 +66,10 @@ void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> co
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
-    tick_wait_end = orchestrator.get_tick_count() + wait_cycles;
+    tick_wait_end = orchestrator.get_completed_ticks() + wait_cycles;
 }
 bool TestSimulationDriver::tick_wait_completed() const {
-    return orchestrator.get_tick_count() >= tick_wait_end;
+    return orchestrator.get_completed_ticks() >= tick_wait_end;
 }
 
 auto TestSimulationDriver::get_time() const -> time_type {

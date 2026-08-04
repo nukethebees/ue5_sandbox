@@ -238,8 +238,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         if (!checks.all_passed) {
             FString msg;
-            msg += FString::Printf(TEXT("Failed on tick: %llu"),
-                                   test_driver->orchestrator.get_tick_count());
+            msg += FString::Printf(TEXT("Failed after tick: %llu"),
+                                   test_driver->orchestrator.get_completed_ticks() - 1);
 
             msg += TEXT("\nCapital ship fighter handles:");
             for (auto const& handle : capital_fighter_handles) {

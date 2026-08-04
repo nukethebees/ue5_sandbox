@@ -82,7 +82,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     {
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
             .Then([this] { initial_setup(); })
-            .Until([this] -> bool { return orchestrator->get_tick_count() == tick_wait_end; },
+            .Until([this] -> bool { return orchestrator->get_completed_ticks() == tick_wait_end; },
                    FTimespan{0, 0, 1})
             .Then([this] { main_checks(); });
     }

@@ -24,12 +24,18 @@ UCLASS()
 class SANDBOX_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
   public:
+    using tick_type = uint64;
+    using time_type = double;
+
     ATestBatchOrchestrator();
 
     void Tick(float dt) override;
-    void tick(float const dt);
+    void tick(time_type const dt);
 
-    auto get_tick_count() const noexcept { return tick_counter; }
+    auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
+    auto get_simulation_time() const noexcept -> time_type {
+        return static_cast<time_type>(completed_ticks) * tick_period;
+    }
 
     auto get_player_ship() const -> auto const* { return player_ship.Get(); }
     auto get_lasers() const -> auto const* { return lasers.Get(); }
@@ -56,7 +62,14 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
-    float tick_rate{60.f};
+    double tick_rate{60.f};
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    double time_scale{1.f};
+
+    time_type tick_period{0.f};
+    time_type accumulator{0.f};
+
+    uint64 completed_ticks{0};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
@@ -77,9 +90,6 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
-
-    UPROPERTY(Transient)
-    uint64 tick_counter{0};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox")

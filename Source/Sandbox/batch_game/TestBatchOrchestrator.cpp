@@ -29,7 +29,9 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 
-    tick_counter = 0;
+    completed_ticks = 0;
+    tick_period = 1.f / tick_rate;
+
 #if WITH_EDITOR
     if (log_ticks) {
         UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
@@ -117,145 +119,178 @@ void ATestBatchOrchestrator::validate_proxy_handles() {
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
 
-    tick(dt);
+    tick(static_cast<time_type>(dt));
 }
-void ATestBatchOrchestrator::tick(float const dt) {
+void ATestBatchOrchestrator::tick(time_type const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
 
-    ++tick_counter;
+    accumulator += (dt * time_scale);
+
+    while (accumulator >= tick_period) {
 #if WITH_EDITOR
-    if (log_ticks) {
-        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d start"), tick_counter);
-    }
+        if (log_ticks) {
+            UE_LOG(LogSandbox,
+                   Display,
+                   TEXT("ATestBatchOrchestrator: Tick %d start"),
+                   completed_ticks);
+        }
 #endif
 
-    // ---------------------------------------------------------------------------------------------
-    // Setup phase
-    // ---------------------------------------------------------------------------------------------
-    {
-        // Clear transient data
-        // Assume registry data is stable here
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
+        // ---------------------------------------------------------------------------------------------
+        // Setup phase
+        // ---------------------------------------------------------------------------------------------
+        {
+            // Clear transient data
+            // Assume registry data is stable here
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
-        if (player_ship) { player_ship->begin_tick(); }
+            if (player_ship) { player_ship->begin_tick(); }
 
-        capital_ships->begin_tick();
-        capital_ship_fighters->begin_tick();
-        turrets->begin_tick();
-        spinners->begin_tick();
-        lasers->begin_tick();
+            capital_ships->begin_tick();
+            capital_ship_fighters->begin_tick();
+            turrets->begin_tick();
+            spinners->begin_tick();
+            lasers->begin_tick();
+        }
+
+        // ---------------------------------------------------------------------------------------------
+        // Actor decision phase
+        // ---------------------------------------------------------------------------------------------
+        // Query target data from registry
+        // Queue projectile spawns
+
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
+
+            if (player_ship) { player_ship->update_timers(tick_period); }
+            capital_ship_fighters->update_timers(tick_period);
+            capital_ships->update_timers(tick_period);
+            turrets->update_timers(tick_period);
+            spinners->update_timers(tick_period);
+        }
+
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
+            turrets->make_decisions();
+            capital_ships->make_decisions();
+            capital_ship_fighters->make_decisions();
+        }
+
+        // ---------------------------------------------------------------------------------------------
+        // Simulation phase
+        // ---------------------------------------------------------------------------------------------
+        {
+            // Movement
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
+
+            if (player_ship) { player_ship->move(tick_period); }
+
+            capital_ship_fighters->move(tick_period);
+            spinners->move(tick_period);
+        }
+
+        {
+            // Queue commands
+            // e.g. spawning lasers for the next frame
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
+
+            if (player_ship) { player_ship->queue_commands(); }
+
+            capital_ship_fighters->queue_commands();
+            turrets->queue_commands();
+            spinners->queue_commands();
+        }
+
+        {
+            // Entity collision
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::entity_collision);
+        }
+
+        {
+            // Projectile simulation
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
+
+            lasers->commit_spawns();
+            lasers->simulate(tick_period);
+        }
+
+        // ---------------------------------------------------------------------------------------------
+        // Resolution phase
+        // ---------------------------------------------------------------------------------------------
+        {
+            // Resolve hit events
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
+
+            if (player_ship) { player_ship->resolve_damage_events(); }
+
+            capital_ships->resolve_damage_events();
+            capital_ship_fighters->resolve_damage_events();
+            turrets->resolve_damage_events();
+        }
+
+        {
+            // Send updates to the registry
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
+
+            if (player_ship) { player_ship->update_entity_registry(); }
+
+            capital_ships->update_entity_registry();
+            capital_ship_fighters->update_entity_registry();
+            turrets->update_entity_registry();
+            spinners->update_entity_registry();
+        }
+
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
+
+            entity_registry->commit_updates();
+        }
+
+        {
+            // Apply changes from the registry e.g. destroyed targets
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
+
+            if (player_ship) { player_ship->sync_from_registry(); }
+
+            capital_ships->sync_from_registry();
+            capital_ship_fighters->sync_from_registry();
+            turrets->sync_from_registry();
+        }
+
+        if (player_ship) { mission_manager->mission_tick(tick_period); }
+
+        // ---------------------------------------------------------------------------------------------
+        // End phase
+        // ---------------------------------------------------------------------------------------------
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
+
+            if (player_ship) { player_ship->end_tick(); }
+
+            capital_ships->end_tick();
+            capital_ship_fighters->end_tick();
+            turrets->end_tick();
+            spinners->end_tick();
+            lasers->end_tick();
+            entity_registry->end_tick();
+        }
+
+        accumulator -= tick_period;
+
+#if WITH_EDITOR
+        if (log_ticks) {
+            UE_LOG(
+                LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d end"), completed_ticks);
+        }
+#endif
+
+        ++completed_ticks;
     }
 
-    // ---------------------------------------------------------------------------------------------
-    // Actor decision phase
-    // ---------------------------------------------------------------------------------------------
-    // Query target data from registry
-    // Queue projectile spawns
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
-
-        if (player_ship) { player_ship->update_timers(dt); }
-        capital_ship_fighters->update_timers(dt);
-        capital_ships->update_timers(dt);
-        turrets->update_timers(dt);
-        spinners->update_timers(dt);
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
-        turrets->make_decisions();
-        capital_ships->make_decisions();
-        capital_ship_fighters->make_decisions();
-    }
-
-    // ---------------------------------------------------------------------------------------------
-    // Simulation phase
-    // ---------------------------------------------------------------------------------------------
-    {
-        // Movement
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
-
-        if (player_ship) { player_ship->move(dt); }
-
-        capital_ship_fighters->move(dt);
-        spinners->move(dt);
-    }
-
-    {
-        // Queue commands
-        // e.g. spawning lasers for the next frame
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
-
-        if (player_ship) { player_ship->queue_commands(); }
-
-        capital_ship_fighters->queue_commands();
-        turrets->queue_commands();
-        spinners->queue_commands();
-    }
-
-    {
-        // Entity collision
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::entity_collision);
-    }
-
-    {
-        // Projectile simulation
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
-
-        lasers->commit_spawns();
-        lasers->simulate(dt);
-    }
-
-    // ---------------------------------------------------------------------------------------------
-    // Resolution phase
-    // ---------------------------------------------------------------------------------------------
-    {
-        // Resolve hit events
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
-
-        if (player_ship) { player_ship->resolve_damage_events(); }
-
-        capital_ships->resolve_damage_events();
-        capital_ship_fighters->resolve_damage_events();
-        turrets->resolve_damage_events();
-    }
-
-    {
-        // Send updates to the registry
-        TRACE_CPUPROFILER_EVENT_SCOPE(
-            Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
-
-        if (player_ship) { player_ship->update_entity_registry(); }
-
-        capital_ships->update_entity_registry();
-        capital_ship_fighters->update_entity_registry();
-        turrets->update_entity_registry();
-        spinners->update_entity_registry();
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
-
-        entity_registry->commit_updates();
-    }
-
-    {
-        // Apply changes from the registry e.g. destroyed targets
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
-
-        if (player_ship) { player_ship->sync_from_registry(); }
-
-        capital_ships->sync_from_registry();
-        capital_ship_fighters->sync_from_registry();
-        turrets->sync_from_registry();
-    }
-
-    if (player_ship) { mission_manager->mission_tick(dt); }
-
-    // ---------------------------------------------------------------------------------------------
-    // End phase
-    // ---------------------------------------------------------------------------------------------
     {
         // Update visual state
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_visuals);
@@ -270,25 +305,6 @@ void ATestBatchOrchestrator::tick(float const dt) {
 
         niagara_spawner->update_spawns(dt);
     }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
-
-        if (player_ship) { player_ship->end_tick(); }
-
-        capital_ships->end_tick();
-        capital_ship_fighters->end_tick();
-        turrets->end_tick();
-        spinners->end_tick();
-        lasers->end_tick();
-        entity_registry->end_tick();
-    }
-
-#if WITH_EDITOR
-    if (log_ticks) {
-        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d end"), tick_counter);
-    }
-#endif
 
     end_tick_test_hook.ExecuteIfBound(*this);
 }
