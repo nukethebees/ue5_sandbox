@@ -19,6 +19,15 @@
 #include <limits>
 
 namespace ml {
+TestSimulationDriver::TestSimulationDriver(UWorld& world,
+                                           ATestEntityRegistry& registry,
+                                           ATestBatchOrchestrator& orchestrator)
+    : world{world}
+    , registry{registry}
+    , orchestrator{orchestrator} {
+    orchestrator.set_time_scale(time_scale);
+}
+
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     ATestBatchOrchestrator* orchestrator{nullptr};
     ATestEntityRegistry* registry{nullptr};
@@ -63,6 +72,10 @@ void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> co
     ml::fill(damage_events.instigators, FRegistryEntityHandle{});
 
     registry.queue_direct_damage_events(damage_events);
+}
+
+void TestSimulationDriver::set_time_scale(time_type const scale) {
+    orchestrator.set_time_scale(scale);
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {

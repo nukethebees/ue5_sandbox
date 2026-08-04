@@ -22,10 +22,7 @@ struct TestSimulationDriver {
 
     explicit TestSimulationDriver(UWorld& world,
                                   ATestEntityRegistry& registry,
-                                  ATestBatchOrchestrator& orchestrator)
-        : world{world}
-        , registry{registry}
-        , orchestrator{orchestrator} {}
+                                  ATestBatchOrchestrator& orchestrator);
 
     static auto from_world(UWorld& world) -> TestSimulationDriver;
 
@@ -34,6 +31,8 @@ struct TestSimulationDriver {
     auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
 
     void queue_kills(TConstArrayView<FRegistryEntityHandle> const targets);
+
+    void set_time_scale(time_type scale);
 
     void set_wait_until_tick_from_now(uint64 wait_cycles);
     bool tick_wait_completed() const;
@@ -49,5 +48,6 @@ struct TestSimulationDriver {
 
     uint64 tick_wait_end{0};
     time_type time_wait_end{0.f};
+    time_type time_scale{20.f};
 };
 }
