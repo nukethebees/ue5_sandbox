@@ -129,6 +129,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
+        test_driver->orchestrator.start_simulation();
 
         capitals = test_driver->orchestrator.get_capital_ships();
         ASSERT_THAT(IsNotNull(capitals));
@@ -171,8 +172,6 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         TestRunner->AddInfo(TEXT("fn: initial_setup_stage"));
 
         initial_setup();
-        initial_sampling_stage();
-        initial_checks_stage();
     }
 
     /* ------------------------------------------------------------------------------------------ */
@@ -267,6 +266,9 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     }
     void pre_fighter_kill_stage() {
         TestRunner->AddInfo(TEXT("fn: pre_fighter_kill_stage"));
+
+        initial_sampling_stage();
+        initial_checks_stage();
 
         run_spawn_capital_handle_checks();
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

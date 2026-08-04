@@ -4,7 +4,6 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 
-#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
@@ -84,7 +83,6 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
-
         test_driver->orchestrator.start_simulation();
 
         player_ship = &test_driver->get_player_ship();

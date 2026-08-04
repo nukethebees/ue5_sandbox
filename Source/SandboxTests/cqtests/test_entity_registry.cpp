@@ -11,6 +11,7 @@
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/array_math.h>
+#include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
 #include <Containers/Map.h>
@@ -20,9 +21,13 @@
 
 TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 {
+    using ThisClass = TestEntityRegistry;
+    using time_type = ml::TestSimulationDriver::time_type;
+
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::FSoftTestAssertions checks{};
+    ml::TimeSeriesData<ATestEntityRegistry::TeamCounts> alive_per_team;
 
     TMap<ETestTeam, int32> expected_teams{
         {ETestTeam::White, 0},
@@ -35,10 +40,15 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_entity_registry"), TestRunner, checks); }
+    AFTER_EACH()
+    { test_driver->orchestrator.clear_end_tick_test_hook(); }
   private:
+    static constexpr time_type test_time{0.1};
+
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
+        test_driver->orchestrator.start_simulation();
     }
 
     auto get_total_expected() const -> int32 {
@@ -51,8 +61,12 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
         return total;
     }
 
+    void sample_values(ATestBatchOrchestrator&) {
+        alive_per_team.add(test_driver->get_time(), test_driver->registry.count_alive_per_team());
+    }
+
     void run_checks() {
-        count_teams();
+        count_teams(alive_per_team.nearest_index(test_time));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
@@ -80,10 +94,10 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
         return msg;
     }
 
-    void count_teams() {
+    void count_teams(int32 const sample_index) {
         TMap<ETestTeam, int32> teams_counted;
 
-        auto const counts{test_driver->registry.count_alive_per_team()};
+        auto const& counts{alive_per_team.value_at(sample_index)};
         auto const counts_view{TConstArrayView<int32>(counts)};
         auto const count_sum{ml::sum(counts_view)};
 
@@ -109,9 +123,14 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 
     TEST_METHOD(MainTest)
     {
-        TestCommandBuilder.Do([this] {
-            initial_setup();
-            run_checks();
-        });
+        TestCommandBuilder
+            .Do([this] {
+                initial_setup();
+                test_driver->orchestrator.set_end_tick_test_hook(
+                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
+                test_driver->set_delta_time_wait(test_time);
+            })
+            .Until([this] { return test_driver->time_wait_completed(); }, FTimespan{0, 0, 1})
+            .Then([this] { run_checks(); });
     }
 };

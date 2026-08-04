@@ -2,32 +2,32 @@
 #include "TestFighterAttackDriver.h"
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/utilities/world.h>
 
-#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
+
+#include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
-namespace {
-struct FPreFight {
-    int32 enemy_health;
-};
-
-struct FPostFight {
-    int32 enemy_health;
-};
-}
-
 TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
 {
     using time_type = ml::TestSimulationDriver::time_type;
+    using ThisClass = FighterCapitalAttack;
+
+    struct FSimulationSample {
+        int32 enemy_health{0};
+        TArray<ETestTeam> fighter_teams;
+        TArray<float> radii;
+    };
 
     inline static FTimespan const default_timeout{0, 0, 12};
 
@@ -42,17 +42,35 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     FRegistryEntityHandle enemy;
     ETestTeam enemy_team;
 
+    ml::TimeSeriesData<FSimulationSample> samples;
+    time_type t_pre_fight{0.0};
+    time_type t_post_fight{0.0};
+
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_fighter_attack"), TestRunner, checks); }
+    AFTER_EACH()
+    { test_driver->orchestrator.clear_end_tick_test_hook(); }
   private:
     /* ---------------------------------------------------------------------------- */
     // Initial phase
     /* ---------------------------------------------------------------------------- */
     static constexpr time_type initial_wait{1.0};
 
+    void sample_values(ATestBatchOrchestrator&) {
+        auto const t{test_driver->get_time()};
+        auto const& entity_data{test_driver->registry.get_entity_data()};
+
+        FSimulationSample sample{};
+        sample.enemy_health = test_driver->get_capital_ships().get_health(enemy);
+        sample.fighter_teams.Append(test_driver->get_capital_ship_fighters().get_teams());
+        sample.radii.Append(entity_data.radii);
+        samples.add(t, MoveTemp(sample));
+    }
+
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
+        test_driver->orchestrator.start_simulation();
         local_driver = ml::get_first_actor<ATestFighterAttackDriver>(world);
     }
     void initial_checks() {
@@ -84,6 +102,8 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         initial_setup();
         initial_samples();
         initial_checks();
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::sample_values));
 
         test_driver->set_delta_time_wait(initial_wait);
     }
@@ -91,48 +111,35 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     /* ---------------------------------------------------------------------------- */
     // Fight phase
     /* ---------------------------------------------------------------------------- */
-    FPreFight pre_fight;
-    FPostFight post_fight;
-
-    void pre_fight_samples() {
-        auto const& capitals{test_driver->get_capital_ships()};
-
-        pre_fight.enemy_health = capitals.get_health(enemy);
-    }
-    void check_fighters_team() {
-        auto const& fighters{test_driver->get_capital_ship_fighters()};
-        auto const teams{fighters.get_teams()};
+    void check_fighters_team(FSimulationSample const& sample) {
+        auto const& teams{sample.fighter_teams};
 
         auto const n{teams.Num()};
         for (int32 i{0}; i < n; ++i) {
             checks.are_equal(hero_team, teams[i], TEXT("Fighters are on hero team."));
         }
     }
-    void pre_fight_checks() {
-        check_fighters_team();
-        ml::check_radii(*test_driver, checks, 0.05f);
-    }
     void pre_fight_phase() {
-        pre_fight_samples();
-        pre_fight_checks();
-
+        t_pre_fight = test_driver->get_time();
         test_driver->set_delta_time_wait(local_driver->get_fight_duration());
     }
 
-    // Post fight
-    void post_fight_samples() {
-        auto const& capitals{test_driver->get_capital_ships()};
+    void full_checks() {
+        auto const& pre_fight{samples.nearest_value(t_pre_fight)};
+        auto const& post_fight{samples.nearest_value(t_post_fight)};
 
-        post_fight.enemy_health = capitals.get_health(enemy);
-    }
-    void post_fight_checks() {
+        check_fighters_team(pre_fight);
+        for (int32 i{0}; i < pre_fight.radii.Num(); ++i) {
+            checks.is_greater_than(pre_fight.radii[i], 0.05f, TEXT("Check radii > 0.05"), i);
+        }
+
         checks.is_true(post_fight.enemy_health < pre_fight.enemy_health, TEXT("Enemy lost health"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
     void post_fight_phase() {
-        post_fight_samples();
-        post_fight_checks();
+        t_post_fight = test_driver->get_time();
+        full_checks();
     }
 
     TEST_METHOD(Main)
