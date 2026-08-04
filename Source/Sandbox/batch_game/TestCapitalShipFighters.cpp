@@ -84,6 +84,47 @@ void ATestCapitalShipFighters::update_timers(float const dt) {
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
+
+    auto& data{entity_buffers.current()};
+
+    auto const awareness_radius{actor_config->awareness_radius};
+    auto const attack_engagement_threshold{actor_config->attack_engagement_threshold};
+    auto const attack_engagement_threshold_sq{attack_engagement_threshold *
+                                              attack_engagement_threshold};
+
+    auto const n{data.num()};
+    TStaticArray<FRegistryEntityHandle, 128> nearby_entities;
+
+    auto const dot_threshold{actor_config->minimum_opportunistic_intercept_deviation_dot_product};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const fighter_location{ml::get_vector3f(data.locations, i)};
+        auto const target_handle{data.target_handles[i]};
+
+        if (entity_registry->is_valid_alive(target_handle)) {
+            auto const target_location{entity_registry->get_location(target_handle)};
+            auto const target_distance_sq{
+                FVector3f::DistSquared(fighter_location, target_location)};
+
+            if (target_distance_sq <= attack_engagement_threshold_sq) { continue; }
+        }
+
+        auto const n_nearby_entities{entity_registry->collect_non_team_entities_in_range(
+            fighter_location, data.teams[i], awareness_radius, nearby_entities)};
+
+        auto const aim_direction{ml::get_vector3f(data.aim_directions, i)};
+        for (int32 j{0}; j < n_nearby_entities; ++j) {
+            auto const potential_target{nearby_entities[j]};
+            auto const potential_target_location{entity_registry->get_location(potential_target)};
+            auto const direction_to_target{
+                (potential_target_location - fighter_location).GetSafeNormal()};
+
+            if (FVector3f::DotProduct(aim_direction, direction_to_target) > dot_threshold) {
+                data.target_handles[i] = potential_target;
+                break;
+            }
+        }
+    }
 }
 void ATestCapitalShipFighters::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::move_ships);

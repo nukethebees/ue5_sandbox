@@ -51,11 +51,18 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     float attack_retry_cooldown{0.15f};
 
     UPROPERTY(EditAnywhere)
+    float attack_engagement_threshold{5000.f};
+
+    UPROPERTY(EditAnywhere)
     float los_check_buffer{100.f};
 
     // Awareness
     UPROPERTY(EditAnywhere)
-    float awareness_radius{50000.f};
+    float awareness_radius{10000.f};
+
+    // What dot product we need to deviate off course and fight someone nearby
+    UPROPERTY(EditAnywhere)
+    float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 
     // Debugging
     UPROPERTY(EditAnywhere)
