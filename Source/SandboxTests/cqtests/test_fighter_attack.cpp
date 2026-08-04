@@ -2,10 +2,8 @@
 #include "TestFighterAttackDriver.h"
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/world.h>
 
 #include <SandboxTests/cqtests/level_checks.h>
