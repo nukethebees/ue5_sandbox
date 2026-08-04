@@ -56,6 +56,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
+    float tick_rate{60.f};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> lasers{nullptr};
