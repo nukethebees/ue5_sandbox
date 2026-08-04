@@ -21,6 +21,9 @@ class TimeSeriesData {
     auto num() const -> size_type { return times_.Num(); }
     bool is_empty() const { return times_.IsEmpty(); }
 
+    auto times() const -> TConstArrayView<time_type> { return times_; }
+    auto values() const -> TConstArrayView<value_type> { return values_; }
+
     template <typename AddType>
         requires std::is_same_v<value_type, std::remove_cvref_t<AddType>>
     void add(time_type const t, AddType&& value) {
