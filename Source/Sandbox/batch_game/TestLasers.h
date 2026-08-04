@@ -113,7 +113,8 @@ class ATestLasers : public AActor {
     void begin_tick();
     void commit_spawns();
     void simulate(float const dt);
-    void update_visuals();
+    void update_visual_data();
+    void commit_visual_data();
     void end_tick();
 
     // Accessors

@@ -118,16 +118,23 @@ void ATestStaticTurrets::sync_from_registry() {
 
     handle_dead_entities();
 }
-void ATestStaticTurrets::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_visuals);
+void ATestStaticTurrets::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_visual_data);
     // Clear old instances
     if (local_indices_to_remove.Num()) {
         constexpr bool is_reverse_sorted{true};
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
 
-        instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true, true);
+        constexpr bool mark_render_state_dirty{false};
+        constexpr bool teleport{true};
+        instances->BatchUpdateInstancesTransforms(
+            0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
     }
+}
+void ATestStaticTurrets::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::commit_visual_data);
 
+    instances->MarkRenderStateDirty();
     if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) { draw_debugging_shapes(); }
 }
 void ATestStaticTurrets::end_tick() {

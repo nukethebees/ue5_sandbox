@@ -220,12 +220,16 @@ void ATestCapitalShipFighters::sync_from_registry() {
 
     checkCode(entity_buffers.current().validate_array_sizes());
 }
-void ATestCapitalShipFighters::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visuals);
+void ATestCapitalShipFighters::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visual_data);
 
     prepare_ismc_transforms();
     update_ismc();
+}
+void ATestCapitalShipFighters::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_visual_data);
 
+    instances->MarkRenderStateDirty();
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) { draw_debug_shapes(); }
 }
 void ATestCapitalShipFighters::end_tick() {
@@ -318,7 +322,7 @@ void ATestCapitalShipFighters::prepare_ismc_transforms() {
 void ATestCapitalShipFighters::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc);
 
-    constexpr bool mark_render_state_dirty{true};
+    constexpr bool mark_render_state_dirty{false};
     constexpr bool teleport{true};
     instances->BatchUpdateInstancesTransforms(
         0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);

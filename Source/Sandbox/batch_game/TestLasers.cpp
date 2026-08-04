@@ -95,12 +95,16 @@ void ATestLasers::simulate(float const dt) {
     handle_collisions(dt);
     update_locations(dt);
 }
-void ATestLasers::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visuals);
+void ATestLasers::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visual_data);
 
     prepare_ismc_transforms();
     update_ismc();
+}
+void ATestLasers::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::commit_visual_data);
 
+    instances->MarkRenderStateDirty();
     spawn_hit_effects();
 }
 void ATestLasers::end_tick() {
@@ -301,7 +305,7 @@ void ATestLasers::configure_ismc() {
 void ATestLasers::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
 
-    constexpr bool mark_render_dirty{true};
+    constexpr bool mark_render_dirty{false};
     constexpr bool teleport{true};
 
     instances->BatchUpdateInstancesData(

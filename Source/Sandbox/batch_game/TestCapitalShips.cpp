@@ -169,15 +169,19 @@ void ATestCapitalShips::sync_from_registry() {
 
     handle_dead_entities();
 }
-void ATestCapitalShips::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_visuals);
+void ATestCapitalShips::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_visual_data);
 
     // Clear old instances
     if (local_indices_to_remove.Num()) {
         constexpr bool is_reverse_sorted{true};
         instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
     }
+}
+void ATestCapitalShips::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_visual_data);
 
+    instances->MarkRenderStateDirty();
     if (debugging_shapes_enabled) { draw_debugging_shapes(); }
 }
 void ATestCapitalShips::end_tick() {

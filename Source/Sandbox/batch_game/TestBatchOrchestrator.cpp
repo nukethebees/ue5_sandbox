@@ -263,6 +263,18 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         if (player_ship) { mission_manager->mission_tick(tick_period); }
 
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
+
+            if (player_ship) { player_ship->update_visual_data(); }
+
+            capital_ships->update_visual_data();
+            capital_ship_fighters->update_visual_data();
+            turrets->update_visual_data();
+            spinners->update_visual_data();
+            lasers->update_visual_data();
+        }
+
         // ---------------------------------------------------------------------------------------------
         // End phase
         // ---------------------------------------------------------------------------------------------
@@ -292,16 +304,15 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 
     {
-        // Update visual state
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_visuals);
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
-        if (player_ship) { player_ship->update_visuals(); }
+        if (player_ship) { player_ship->commit_visual_data(); }
 
-        capital_ships->update_visuals();
-        capital_ship_fighters->update_visuals();
-        turrets->update_visuals();
-        spinners->update_visuals();
-        lasers->update_visuals();
+        capital_ships->commit_visual_data();
+        capital_ship_fighters->commit_visual_data();
+        turrets->commit_visual_data();
+        spinners->commit_visual_data();
+        lasers->commit_visual_data();
 
         niagara_spawner->update_spawns(dt);
     }

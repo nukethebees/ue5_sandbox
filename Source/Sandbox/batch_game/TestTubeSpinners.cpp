@@ -79,9 +79,13 @@ void ATestTubeSpinners::queue_commands() {
 void ATestTubeSpinners::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_entity_registry);
 }
-void ATestTubeSpinners::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_visuals);
+void ATestTubeSpinners::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_visual_data);
     update_ismc();
+}
+void ATestTubeSpinners::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::commit_visual_data);
+    instances->MarkRenderStateDirty();
 }
 void ATestTubeSpinners::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick);
@@ -206,7 +210,10 @@ void ATestTubeSpinners::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc);
 
     update_ismc_transforms();
-    instances->BatchUpdateInstancesTransforms(0, ismc_transforms, is_world_space, true, false);
+    constexpr bool mark_render_state_dirty{false};
+    constexpr bool teleport{false};
+    instances->BatchUpdateInstancesTransforms(
+        0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 
 // Firing

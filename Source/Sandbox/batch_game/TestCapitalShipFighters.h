@@ -171,7 +171,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void resolve_damage_events();
     void update_entity_registry();
     void sync_from_registry();
-    void update_visuals();
+    void update_visual_data();
+    void commit_visual_data();
     void end_tick();
 
     // Accessors

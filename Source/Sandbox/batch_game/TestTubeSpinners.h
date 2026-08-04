@@ -39,7 +39,8 @@ class ATestTubeSpinners : public AActor {
     void move(float const dt);
     void queue_commands();
     void update_entity_registry();
-    void update_visuals();
+    void update_visual_data();
+    void commit_visual_data();
     void end_tick();
 
     // Accessors

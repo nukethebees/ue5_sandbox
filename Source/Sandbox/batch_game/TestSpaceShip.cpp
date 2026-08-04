@@ -166,9 +166,12 @@ void ATestSpaceShip::resolve_damage_targets() {
 void ATestSpaceShip::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::sync_from_registry);
 }
-void ATestSpaceShip::update_visuals() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visuals);
+void ATestSpaceShip::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visual_data);
     boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
+}
+void ATestSpaceShip::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::commit_visual_data);
     draw_debug_shapes();
 }
 void ATestSpaceShip::end_tick() {
