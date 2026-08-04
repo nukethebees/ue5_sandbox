@@ -6,6 +6,7 @@
 
 #include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
@@ -13,7 +14,14 @@
 
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
+#include <Engine/DataTable.h>
+#include <AssetRegistry/AssetRegistryModule.h>
+#include <HAL/FileManager.h>
 #include <Misc/Optional.h>
+#include <Misc/PackageName.h>
+#include <Misc/Paths.h>
+#include <UObject/Package.h>
+#include <UObject/SavePackage.h>
 
 TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 {
@@ -112,7 +120,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                          fighter_locations.value_at(i_end).Num(),
                          TEXT("Check num fighter locations same as target locations"));
 
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        if (!checks.all_passed) { return; }
 
         for (int32 i{0}; i < n_locs; ++i) {
             checks.not_dist_zero(fighter_target_locations.value_at(i_tracked)[i],
@@ -137,7 +145,94 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                                      i);
         }
 
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        if (!checks.all_passed) { return; }
+    }
+
+    void fail_self_analysis() {
+
+        export_failure_data();
+
+        FString msg{TEXT("Fail debug info.")};
+
+        msg += TEXT("Times:");
+        auto const times{player_ship_locations.times()};
+        auto const n_times{times.Num()};
+        for (int32 i{0}; i < n_times; ++i) {
+            msg += FString::Printf(TEXT(" %.3f"), times[i]);
+        }
+
+        msg += TEXT("Positions:");
+        for (int32 i{0}; i < n_times; ++i) {
+            msg +=
+                FString::Printf(TEXT(" %s"), *player_ship_locations.value_at(i).ToCompactString());
+        }
+
+        TestRunner->AddInfo(msg);
+    }
+
+    void export_failure_data() const {
+        static FName const package_name{TEXT("/Game/test_results/player_ship_vs_capital")};
+        static FName const asset_name{TEXT("player_ship_vs_capital")};
+
+        auto* const package{CreatePackage(*package_name.ToString())};
+        auto* data_table{FindObject<UDataTable>(package, *asset_name.ToString())};
+        if (!data_table) {
+            data_table = NewObject<UDataTable>(package, asset_name, RF_Public | RF_Standalone);
+            FAssetRegistryModule::AssetCreated(data_table);
+        }
+
+        data_table->EmptyTable();
+        data_table->RowStruct = FPlayerShipVsCapitalResultRow::StaticStruct();
+
+        auto const times{player_ship_locations.times()};
+        auto const n_times{times.Num()};
+        for (int32 time_index{0}; time_index < n_times; ++time_index) {
+            auto const& target_locations{fighter_target_locations.value_at(time_index)};
+            auto const& current_fighter_locations{fighter_locations.value_at(time_index)};
+            auto const n_fighters{FMath::Max(target_locations.Num(), current_fighter_locations.Num())};
+            auto const first_fighter_index{n_fighters > 0 ? 0 : -1};
+
+            for (int32 fighter_index{first_fighter_index}; fighter_index < n_fighters;
+                 ++fighter_index) {
+                FPlayerShipVsCapitalResultRow row{};
+                row.time = times[time_index];
+                row.player_ship_location = player_ship_locations.value_at(time_index);
+                row.player_ship_registry_location =
+                    player_ship_registry_locations.value_at(time_index);
+                row.fighter_index = fighter_index;
+
+                if (fighter_index >= 0 && target_locations.IsValidIndex(fighter_index)) {
+                    row.has_fighter_target_location = true;
+                    row.fighter_target_location = FVector{target_locations[fighter_index]};
+                }
+                if (fighter_index >= 0 && current_fighter_locations.IsValidIndex(fighter_index)) {
+                    row.has_fighter_location = true;
+                    row.fighter_location = FVector{current_fighter_locations[fighter_index]};
+                }
+
+                auto const row_name{FName{FString::Printf(TEXT("%06d_%06d"),
+                                                           time_index,
+                                                           fighter_index + 1)}};
+                data_table->AddRow(row_name, row);
+            }
+        }
+
+        data_table->MarkPackageDirty();
+
+        auto const output_path{FPackageName::LongPackageNameToFilename(
+            package_name.ToString(), FPackageName::GetAssetPackageExtension())};
+        auto const output_directory{FPaths::GetPath(output_path)};
+        IFileManager::Get().MakeDirectory(*output_directory, true);
+
+        FSavePackageArgs save_args{};
+        save_args.TopLevelFlags = RF_Public | RF_Standalone;
+        if (UPackage::SavePackage(package, data_table, *output_path, save_args)) {
+            TestRunner->AddInfo(
+                FString::Printf(TEXT("Exported failure data asset to %s"), *output_path));
+        } else {
+            TestRunner->AddInfo(
+                FString::Printf(TEXT("Failed to export failure data to %s"), *output_path));
+        }
     }
 
     TEST_METHOD(Main)
@@ -150,6 +245,10 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                 test_driver->set_delta_time_wait(t_end);
             })
             .Until([this] { return test_driver->time_wait_completed(); }, timeout)
-            .Do([this] { full_checks(); });
+            .Do([this] {
+                full_checks();
+                if (!checks.all_passed) { fail_self_analysis(); }
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+            });
     }
 };

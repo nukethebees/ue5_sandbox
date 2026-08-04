@@ -84,6 +84,9 @@ Content/Fab
 /notes/
 *.pyc
 
+# Functional test result exports
+/Content/test_results/
+
 # Assets
 Content/Purchased
 Content/Purchased/Derived
