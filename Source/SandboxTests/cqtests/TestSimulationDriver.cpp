@@ -73,7 +73,7 @@ bool TestSimulationDriver::tick_wait_completed() const {
 }
 
 auto TestSimulationDriver::get_time() const -> time_type {
-    return world.GetTimeSeconds();
+    return orchestrator.get_simulation_time();
 }
 void TestSimulationDriver::set_delta_time_wait(time_type dt) {
     check(dt > time_type{0});
