@@ -2,10 +2,14 @@
 
 #include "Sandbox/ui/widgets/ValueWidget.h"
 
-void UValueWidget::NativeConstruct() {
-    Super::NativeConstruct();
+void UValueWidget::NativePreConstruct() {
+    Super::NativePreConstruct();
 
     update_format_spec_text();
+    value_text->SetText(format_spec_text);
+}
+void UValueWidget::NativeConstruct() {
+    Super::NativeConstruct();
 }
 void UValueWidget::update_format_spec_text() {
     format_spec_text = FText::FromName(format_spec);

@@ -16,6 +16,7 @@ UCLASS()
 class SANDBOX_API UValueWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    void NativePreConstruct() override;
     void NativeConstruct() override;
 
     void set_format_spec(FName const new_format_spec);
