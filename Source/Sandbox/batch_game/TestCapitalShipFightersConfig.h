@@ -18,43 +18,43 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     UTestCapitalShipFightersConfig() = default;
 
     // Visuals
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Movement
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float speed{2000.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float turn_speed_unitless{1.f};
 
     // Combat
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     int32 laser_damage{10};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float laser_speed{10000.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float laser_max_distance{10000.f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     int32 health{50};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float fire_cooldown{0.33f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float attack_retry_cooldown{0.15f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float los_check_buffer{100.f};
 
     // Awareness
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere)
     float awareness_radius{50000.f};
 
     // Debugging
