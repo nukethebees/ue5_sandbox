@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
 
 #include <CoreMinimal.h>
@@ -92,11 +93,6 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USimulationConfig> simulation_config{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
-    ESimulationAssetActorScope simulation_asset_actor_scope{
-        ESimulationAssetActorScope::OrchestratorActors};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
-    ESimulationAssetProxyMode simulation_asset_proxy_mode{ESimulationAssetProxyMode::Include};
 
     time_type tick_period{0.f};
     time_type accumulator{0.f};
@@ -124,25 +120,14 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestSpaceShip> player_ship_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestLasers> lasers_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestCapitalShips> capital_ships_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestCapitalShipFighters> capital_ship_fighters_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestStaticTurrets> turrets_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestTubeSpinners> spinners_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    FSimulationActorClasses actor_classes;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestEntityRegistry> entity_registry_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ATestMissionManager> mission_manager_class{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TSubclassOf<ADelayedNiagaraSpawner> niagara_spawner_class{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
+    ESimulationAssetActorScope simulation_asset_actor_scope{
+        ESimulationAssetActorScope::OrchestratorActors};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
+    ESimulationAssetProxyMode simulation_asset_proxy_mode{ESimulationAssetProxyMode::Include};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool log_ticks{false};

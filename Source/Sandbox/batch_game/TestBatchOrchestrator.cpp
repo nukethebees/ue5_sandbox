@@ -86,8 +86,10 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
     }
 #endif
     simulation_config = assets;
+#if WITH_EDITORONLY_DATA
     simulation_asset_actor_scope = actor_scope;
     simulation_asset_proxy_mode = proxy_mode;
+#endif
 
     if (actor_scope == ESimulationAssetActorScope::OrchestratorActors) {
         if (IsValid(player_ship)) {
@@ -511,14 +513,14 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
         ml::ensure_actor_exists(*world, c);
     }};
 
-    spawn(lasers_class);
-    spawn(capital_ships_class);
-    spawn(capital_ship_fighters_class);
-    spawn(turrets_class);
-    spawn(spinners_class);
+    spawn(actor_classes.lasers_class);
+    spawn(actor_classes.capital_ships_class);
+    spawn(actor_classes.capital_ship_fighters_class);
+    spawn(actor_classes.turrets_class);
+    spawn(actor_classes.spinners_class);
 
-    spawn(entity_registry_class);
-    spawn(mission_manager_class);
-    spawn(niagara_spawner_class);
+    spawn(actor_classes.entity_registry_class);
+    spawn(actor_classes.mission_manager_class);
+    spawn(actor_classes.niagara_spawner_class);
 }
 #endif
