@@ -20,7 +20,9 @@ void apply_damage(int32 const local_index,
                   TArray<int32>& local_indices_to_remove,
                   EntityDeathInfo& entity_death_info) {
     healths[local_index] -= damage_amount;
-    if ((healths[local_index] > 0) || local_indices_to_remove.Contains(local_index)) { return; }
+    if ((healths[local_index] > 0) || local_indices_to_remove.Contains(local_index)) {
+        return;
+    }
 
     local_indices_to_remove.Add(local_index);
 
@@ -57,7 +59,9 @@ void resolve_damage_events(ATestEntityRegistry const& registry,
 
     for (int32 i{0}; i < n_direct_events; ++i) {
         auto const local_index{entity_handles.Find(direct_view.damaged_entities[i])};
-        if (local_index == INDEX_NONE) { continue; }
+        if (local_index == INDEX_NONE) {
+            continue;
+        }
 
         apply_damage(local_index,
                      direct_view.damage_amounts[i],
@@ -81,7 +85,9 @@ void refresh_targets(ATestEntityRegistry const& registry,
 
     auto const n{target_handles.Num()};
     for (int32 i{0}; i < n; ++i) {
-        if (target_handles[i].is_null()) { indices_without_targets.Add(i); }
+        if (target_handles[i].is_null()) {
+            indices_without_targets.Add(i);
+        }
     }
 
     for (int32 const i : indices_without_targets) {

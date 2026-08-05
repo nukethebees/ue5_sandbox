@@ -52,7 +52,9 @@ void ASpaceShipController::Tick(float dt) {
     update_lock_on_widget(*ss);
 
 #if WITH_EDITOR
-    if (can_log()) { seconds_since_last_log = 0.f; }
+    if (can_log()) {
+        seconds_since_last_log = 0.f;
+    }
 
     seconds_since_last_log += dt;
 #endif
@@ -124,7 +126,9 @@ void ASpaceShipController::OnUnPossess() {
     Super::OnUnPossess();
 }
 void ASpaceShipController::initialise_hud() {
-    if (hud_widget) { return; }
+    if (hud_widget) {
+        return;
+    }
 
     RETURN_IF_NULLPTR(hud_widget_class);
     hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
@@ -180,7 +184,9 @@ void ASpaceShipController::update_crosshair_positions(ASpaceShip const& ship) {
 }
 void ASpaceShipController::update_lock_on_widget(ASpaceShip const& ship) {
     auto const* tgt{ship.get_lock_on_target()};
-    if (!tgt) { return; }
+    if (!tgt) {
+        return;
+    }
     RETURN_IF_NULLPTR(hud_widget);
 
     auto const actor_pos{tgt->GetActorLocation()};

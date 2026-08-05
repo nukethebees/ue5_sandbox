@@ -9,7 +9,9 @@
 namespace ml {
 auto get_best_display_name(AActor const& actor) -> FString {
     // GetActorLabel can return incorrect values for a CDO
-    if (actor.HasAnyFlags(RF_ClassDefaultObject)) { return actor.GetClass()->GetName(); }
+    if (actor.HasAnyFlags(RF_ClassDefaultObject)) {
+        return actor.GetClass()->GetName();
+    }
 
 #if WITH_EDITOR
     return actor.GetActorLabel();
@@ -33,7 +35,9 @@ auto get_static_meshes_bounding_box(AActor const& actor) -> FBox {
     actor.GetComponents<UStaticMeshComponent>(mesh_comps);
 
     for (auto const* comp : mesh_comps) {
-        if (comp && comp->IsRegistered()) { box += comp->Bounds.GetBox(); }
+        if (comp && comp->IsRegistered()) {
+            box += comp->Bounds.GetBox();
+        }
     }
 
     return box;
@@ -54,7 +58,9 @@ void face_point(AActor& actor, FVector const& point) {
 }
 
 void fatal_if_actor_transform_not_identity(AActor const& actor) {
-    if (actor.GetActorTransform().Equals(FTransform::Identity)) { return; }
+    if (actor.GetActorTransform().Equals(FTransform::Identity)) {
+        return;
+    }
 
     UE_LOG(LogSandboxActor,
            Fatal,
@@ -82,7 +88,9 @@ void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobili
     actor.GetComponents(components);
 
     for (auto* const component : components) {
-        if (component != nullptr) { component->SetMobility(mobility); }
+        if (component != nullptr) {
+            component->SetMobility(mobility);
+        }
     }
 }
 }

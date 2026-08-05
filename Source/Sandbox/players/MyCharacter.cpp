@@ -112,7 +112,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 UCameraComponent const* AMyCharacter::get_active_camera() const {
     auto const camera_index{static_cast<int32>(camera_mode)};
-    if (cameras.IsValidIndex(camera_index)) { return cameras[camera_index]; }
+    if (cameras.IsValidIndex(camera_index)) {
+        return cameras[camera_index];
+    }
 
     log_warning(TEXT("Invalid camera mode. Returning first person."));
     return cameras[static_cast<int32>(ECharacterCameraMode::FirstPerson)];
@@ -149,10 +151,14 @@ void AMyCharacter::stop_sprint() {
     update_speed();
 }
 void AMyCharacter::start_jetpack() {
-    if (jetpack != nullptr) { jetpack->start_jetpack(); }
+    if (jetpack != nullptr) {
+        jetpack->start_jetpack();
+    }
 }
 void AMyCharacter::stop_jetpack() {
-    if (jetpack != nullptr) { jetpack->stop_jetpack(); }
+    if (jetpack != nullptr) {
+        jetpack->stop_jetpack();
+    }
 }
 
 // Vision
@@ -233,7 +239,9 @@ void AMyCharacter::set_torch(bool on) {
     torch->SetVisibility(torch_on);
 }
 void AMyCharacter::scroll_torch_cone(FInputActionValue const& value) {
-    if (!torch) { log_warning(TEXT("No  torch")); }
+    if (!torch) {
+        log_warning(TEXT("No  torch"));
+    }
 
     auto const scroll_delta{value.Get<float>()};
 
@@ -289,7 +297,9 @@ void AMyCharacter::drop_waypoint() {
 }
 
 void AMyCharacter::handle_death() {
-    if (auto const* world{GetWorld()}) { UGameplayStatics::OpenLevel(world, "MainMenu"); }
+    if (auto const* world{GetWorld()}) {
+        UGameplayStatics::OpenLevel(world, "MainMenu");
+    }
 }
 
 FGenericTeamId AMyCharacter::GetGenericTeamId() const {
@@ -310,7 +320,9 @@ void AMyCharacter::set_movement_multiplier(float multiplier) {
 }
 void AMyCharacter::disable_all_cameras() {
     for (auto* camera : cameras) {
-        if (camera) { camera->SetActive(false); }
+        if (camera) {
+            camera->SetActive(false);
+        }
     }
 }
 void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
@@ -327,7 +339,9 @@ void AMyCharacter::change_camera_to(ECharacterCameraMode mode) {
         cameras[camera_index]->SetActive(true);
     } else {
         log_warning(TEXT("Invalid camera mode. Switching to first person."));
-        if (cameras.IsValidIndex(default_index)) { cameras[default_index]->SetActive(true); }
+        if (cameras.IsValidIndex(default_index)) {
+            cameras[default_index]->SetActive(true);
+        }
     }
 }
 

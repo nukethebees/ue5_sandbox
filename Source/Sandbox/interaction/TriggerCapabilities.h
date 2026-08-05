@@ -33,7 +33,9 @@ struct FTriggerCapabilities {
 
     bool has_capability(ETriggerSourceCapability cap) const {
         for (uint8 i{0}; i < count_; ++i) {
-            if (capabilities_[i] == cap) { return true; }
+            if (capabilities_[i] == cap) {
+                return true;
+            }
         }
         return false;
     }

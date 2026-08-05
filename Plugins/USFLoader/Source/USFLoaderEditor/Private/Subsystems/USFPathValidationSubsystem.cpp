@@ -22,11 +22,15 @@ TOptional<FString> UUSFPathValidationSubsystem::ResolveUSFPath(FString const& Vi
 }
 
 void UUSFPathValidationSubsystem::ClearCache() {
-    if (auto* Subsystem = GetSubsystem()) { Subsystem->ClearCache_Internal(); }
+    if (auto* Subsystem = GetSubsystem()) {
+        Subsystem->ClearCache_Internal();
+    }
 }
 
 int32 UUSFPathValidationSubsystem::GetCacheSize() {
-    if (auto* Subsystem = GetSubsystem()) { return Subsystem->GetCacheSize_Internal(); }
+    if (auto* Subsystem = GetSubsystem()) {
+        return Subsystem->GetCacheSize_Internal();
+    }
     return 0;
 }
 
@@ -41,7 +45,9 @@ bool UUSFPathValidationSubsystem::ValidateUSFPath_Internal(FString const& Virtua
     auto resolved_path{ResolveVirtualPath(VirtualPath)};
     bool file_exists{false};
 
-    if (!resolved_path.IsEmpty()) { file_exists = FPaths::FileExists(resolved_path); }
+    if (!resolved_path.IsEmpty()) {
+        file_exists = FPaths::FileExists(resolved_path);
+    }
 
     auto new_index{CacheEntries.Add(FCachedPathResult(VirtualPath, resolved_path, file_exists))};
     PathToIndex.Add(VirtualPath, new_index);
@@ -53,14 +59,18 @@ TOptional<FString>
     UUSFPathValidationSubsystem::ResolveUSFPath_Internal(FString const& VirtualPath) {
     if (auto* index_ptr{PathToIndex.Find(VirtualPath)}) {
         auto const& cached_entry{CacheEntries[*index_ptr]};
-        if (cached_entry.bExists) { return cached_entry.ResolvedPath; }
+        if (cached_entry.bExists) {
+            return cached_entry.ResolvedPath;
+        }
         return {};
     }
 
     auto resolved_path{ResolveVirtualPath(VirtualPath)};
     bool file_exists{false};
 
-    if (!resolved_path.IsEmpty()) { file_exists = FPaths::FileExists(resolved_path); }
+    if (!resolved_path.IsEmpty()) {
+        file_exists = FPaths::FileExists(resolved_path);
+    }
 
     auto new_index{CacheEntries.Add(FCachedPathResult(VirtualPath, resolved_path, file_exists))};
     PathToIndex.Add(VirtualPath, new_index);
@@ -113,6 +123,8 @@ FString UUSFPathValidationSubsystem::ResolveVirtualPath(FString const& VirtualPa
 }
 
 UUSFPathValidationSubsystem* UUSFPathValidationSubsystem::GetSubsystem() {
-    if (GEditor) { return GEditor->GetEditorSubsystem<UUSFPathValidationSubsystem>(); }
+    if (GEditor) {
+        return GEditor->GetEditorSubsystem<UUSFPathValidationSubsystem>();
+    }
     return nullptr;
 }

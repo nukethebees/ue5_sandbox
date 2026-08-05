@@ -1,9 +1,11 @@
 #include "Sandbox/players/SpeedBoostComponent.h"
 
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Sandbox/players/MaxSpeedChangeListener.h"
 #include "Sandbox/players/MovementMultiplierReceiver.h"
+
+#include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
 
 USpeedBoostComponent::USpeedBoostComponent() {
@@ -12,7 +14,9 @@ USpeedBoostComponent::USpeedBoostComponent() {
 
 void USpeedBoostComponent::apply_speed_boost(FSpeedBoost boost) {
     auto* const multiplier_receiver{get_multiplier_receiver()};
-    if (!multiplier_receiver) { return; }
+    if (!multiplier_receiver) {
+        return;
+    }
 
     auto const current_time{static_cast<double>(GetWorld()->GetTimeSeconds())};
     auto const expiration{current_time + boost.duration};
@@ -32,9 +36,13 @@ void USpeedBoostComponent::apply_speed_boost(FSpeedBoost boost) {
             total_multiplier /= boost.multiplier;
 
             auto* const multiplier_receiver{get_multiplier_receiver()};
-            if (!multiplier_receiver) { return; }
+            if (!multiplier_receiver) {
+                return;
+            }
 
-            if (active_boosts.IsEmpty()) { total_multiplier = 1.0f; }
+            if (active_boosts.IsEmpty()) {
+                total_multiplier = 1.0f;
+            }
 
             // Apply the updated multiplier
             multiplier_receiver->set_movement_multiplier(total_multiplier);

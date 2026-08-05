@@ -49,7 +49,9 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     bool const actor_changed{hit_actor != last_seen_actor.Get()};
 
     if (!actor_changed) {
-        if (hit) { logger.log_very_verbose(TEXT("!actor_changed")); }
+        if (hit) {
+            logger.log_very_verbose(TEXT("!actor_changed"));
+        }
         return;
     }
 

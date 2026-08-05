@@ -19,7 +19,9 @@ void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 void USpaceSaveSubsystem::Deinitialize() {
     UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
 
-    if (current_save) { save_to_disk(); }
+    if (current_save) {
+        save_to_disk();
+    }
 
     log_save_data();
 
@@ -31,7 +33,9 @@ auto USpaceSaveSubsystem::get_save() const -> USpaceSaveGame const* {
     return current_save;
 }
 auto USpaceSaveSubsystem::get_mutable_save() -> USpaceSaveGame& {
-    if (!current_save) { load_or_create(); }
+    if (!current_save) {
+        load_or_create();
+    }
 
     check(current_save);
     return *current_save;
@@ -120,7 +124,9 @@ void USpaceSaveSubsystem::log_save_data() const {
 
 #if WITH_EDITOR
     auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    if (!settings->print_save_data) { return; }
+    if (!settings->print_save_data) {
+        return;
+    }
 #endif
 
     auto const dump_name{slot_name()};
@@ -168,7 +174,9 @@ void USpaceSaveSubsystem::log_save_data() const {
 
 // Migration
 void USpaceSaveSubsystem::migrate_if_needed() {
-    if (!current_save) { return; }
+    if (!current_save) {
+        return;
+    }
 
     while (current_save->save_version < USpaceSaveGame::current_save_version) {
         switch (current_save->save_version) {
@@ -188,7 +196,9 @@ void USpaceSaveSubsystem::migrate_to_v2() {
     for (auto& record : current_save->score_records) {
         record.fail_reason = ETestMissionFailReason::None;
 
-        if (record.end_state == ETestMissionState::Failed) { continue; }
+        if (record.end_state == ETestMissionState::Failed) {
+            continue;
+        }
 
         switch (record.mission_mode) {
             case ETestMissionMode::KillEnemiesWithinTime: {

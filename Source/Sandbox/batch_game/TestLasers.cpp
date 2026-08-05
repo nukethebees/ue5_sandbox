@@ -136,7 +136,9 @@ void ATestLasers::process_pending_spawns() {
 
     pending_spawns.validate_array_sizes();
     auto const n_to_add{ml::num(pending_spawns)};
-    if (n_to_add <= 0) { return; }
+    if (n_to_add <= 0) {
+        return;
+    }
 
     auto const offset{get_num_instances()};
     auto const new_total{offset + n_to_add};
@@ -204,10 +206,14 @@ void ATestLasers::handle_collisions(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::handle_collisions);
 
     auto const n{get_num_instances()};
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     auto& data{thread_local_collision_data};
-    if (data.Num() < collision_jobs) { data.SetNum(collision_jobs); }
+    if (data.Num() < collision_jobs) {
+        data.SetNum(collision_jobs);
+    }
 
     auto const updates_per_slice{FMath::DivideAndRoundUp(n, collision_jobs)};
 
@@ -261,16 +267,22 @@ void ATestLasers::check_collision_thread(int32 const job_index,
         auto const did_hit{
             world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
 
-        if (!did_hit) { continue; }
+        if (!did_hit) {
+            continue;
+        }
 
         data.to_remove.Add(i);
 
         // Identify who we hit
         auto* hit_actor{hit.GetActor()};
-        if (!IsValid(hit_actor)) { continue; }
+        if (!IsValid(hit_actor)) {
+            continue;
+        }
 
         auto* hit_component{hit.GetComponent()};
-        if (!IsValid(hit_component)) { continue; }
+        if (!IsValid(hit_component)) {
+            continue;
+        }
 
         data.collision_damage_events.damage_amounts.Add(lasers.entities.damages[i]);
         data.collision_damage_events.damaged_actors.Add(hit_actor);
@@ -320,7 +332,9 @@ void ATestLasers::prepare_ismc_transforms() {
     auto const n_transforms{entities.ismc_data.Num()};
     auto const n_transforms_to_add(n_ismc_instances - n_transforms);
 
-    if (!n_ismc_instances && !n_laser_instances) { return; }
+    if (!n_ismc_instances && !n_laser_instances) {
+        return;
+    }
 
     entities.ismc_data.Reset();
     entities.ismc_data.AddUninitialized(n_ismc_instances);
@@ -371,7 +385,9 @@ void ATestLasers::spawn_hit_effects() {
     }
 
     auto const n{ml::num(hit_details)};
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     FVector const scale{FVector::OneVector};
 
@@ -408,12 +424,16 @@ void ATestLasers::collect_old_instance_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::collect_old_instance_indices);
 
     auto const n{get_num_instances()};
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     to_remove.Reset();
 
     for (int32 i{n - 1}; i >= 0; --i) {
-        if (entities.lifetimes_remaining[i] <= 0.f) { to_remove.Add(i); }
+        if (entities.lifetimes_remaining[i] <= 0.f) {
+            to_remove.Add(i);
+        }
     }
 }
 
@@ -427,7 +447,9 @@ void ATestLasers::remove_instances(TConstArrayView<int32> const indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances);
 
     auto const n{indices.Num()};
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::remove_instances::remove_at_swap);

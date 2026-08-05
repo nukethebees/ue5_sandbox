@@ -78,5 +78,7 @@ UMassBulletCollisionDetectionProcessor::UMassBulletCollisionDetectionProcessor()
     ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionDetection;
     ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::Movement);
 
-    if (HasAnyFlags(RF_ClassDefaultObject)) { set_execution_flags(EProcessorExecutionFlags::All); }
+    if (HasAnyFlags(RF_ClassDefaultObject)) {
+        set_execution_flags(EProcessorExecutionFlags::All);
+    }
 }

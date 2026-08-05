@@ -68,12 +68,18 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
         orchestrator = nullptr;
         actors_spawned = false;
         map_change_handle = FEditorDelegates::MapChange.AddLambda([this](uint32 const flags) {
-            if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) { return; }
+            if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) {
+                return;
+            }
 
-            if (!TestRunner->TestNotNull(TEXT("Editor is available"), GEditor)) { return; }
+            if (!TestRunner->TestNotNull(TEXT("Editor is available"), GEditor)) {
+                return;
+            }
 
             auto* const world{GEditor->GetEditorWorldContext().World()};
-            if (!TestRunner->TestNotNull(TEXT("Editor world is available"), world)) { return; }
+            if (!TestRunner->TestNotNull(TEXT("Editor world is available"), world)) {
+                return;
+            }
 
             actors_spawned = spawn_orchestrator(*world);
         });

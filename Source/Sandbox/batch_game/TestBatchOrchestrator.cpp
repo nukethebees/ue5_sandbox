@@ -27,7 +27,9 @@ template <typename TActor, typename TConfig>
 void apply_actor_config(TActor& actor, TConfig* const config) {
 #if WITH_EDITOR
     auto const* const world{actor.GetWorld()};
-    if (IsValid(world) && !world->IsGameWorld()) { actor.Modify(); }
+    if (IsValid(world) && !world->IsGameWorld()) {
+        actor.Modify();
+    }
 #endif
     actor.set_actor_config(config);
 }
@@ -75,7 +77,9 @@ void ATestBatchOrchestrator::pause_simulation() {
 }
 
 void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
-    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) { return; }
+    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) {
+        return;
+    }
 
     actor_classes = config.actor_classes;
     set_assets(config.simulation_config.Get(),
@@ -97,7 +101,9 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
 void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
                                         ESimulationAssetActorScope const actor_scope,
                                         ESimulationAssetProxyMode const proxy_mode) {
-    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) { return; }
+    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) {
+        return;
+    }
     if (!ensureAlwaysMsgf(assets->is_valid(),
                           TEXT("Simulation config contains invalid actor configs"))) {
         return;
@@ -112,7 +118,9 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
     }
 
 #if WITH_EDITOR
-    if (IsValid(world) && !world->IsGameWorld()) { Modify(); }
+    if (IsValid(world) && !world->IsGameWorld()) {
+        Modify();
+    }
 #endif
     simulation_config = assets;
 #if WITH_EDITORONLY_DATA
@@ -124,14 +132,18 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
         if (IsValid(player_ship)) {
             apply_actor_config(*player_ship, assets->player_ship_config.Get());
         }
-        if (IsValid(lasers)) { apply_actor_config(*lasers, assets->lasers_config.Get()); }
+        if (IsValid(lasers)) {
+            apply_actor_config(*lasers, assets->lasers_config.Get());
+        }
         if (IsValid(capital_ships)) {
             apply_actor_config(*capital_ships, assets->capital_ships_config.Get());
         }
         if (IsValid(capital_ship_fighters)) {
             apply_actor_config(*capital_ship_fighters, assets->capital_ship_fighters_config.Get());
         }
-        if (IsValid(turrets)) { apply_actor_config(*turrets, assets->static_turrets_config.Get()); }
+        if (IsValid(turrets)) {
+            apply_actor_config(*turrets, assets->static_turrets_config.Get());
+        }
         if (IsValid(spinners)) {
             apply_actor_config(*spinners, assets->tube_spinners_config.Get());
         }
@@ -206,10 +218,14 @@ void ATestBatchOrchestrator::begin_play() {
     auto register_owner{
         [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); }};
 
-    if (player_ship) { register_owner(player_ship); }
+    if (player_ship) {
+        register_owner(player_ship);
+    }
     ml::invoke_on_all(register_owner, capital_ships, capital_ship_fighters, turrets, spinners);
 
-    if (player_ship) { player_ship->begin_play(); }
+    if (player_ship) {
+        player_ship->begin_play();
+    }
     ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
                       capital_ships,
                       capital_ship_fighters,
@@ -229,10 +245,14 @@ void ATestBatchOrchestrator::begin_play() {
     entity_registry->commit_updates();
     entity_registry->end_tick();
 
-    if (player_ship) { mission_manager->begin_play(); }
+    if (player_ship) {
+        mission_manager->begin_play();
+    }
 
 #if WITH_EDITOR
-    if (log_ticks) { UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play end")); }
+    if (log_ticks) {
+        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play end"));
+    }
 #endif
 
     switch (start_mode) {
@@ -276,7 +296,9 @@ void ATestBatchOrchestrator::Tick(float dt) {
 void ATestBatchOrchestrator::tick(time_type const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
 
-    if (state != EOrchestratorState::Running) { return; }
+    if (state != EOrchestratorState::Running) {
+        return;
+    }
 
     accumulator += (dt * time_scale);
 
@@ -298,7 +320,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Assume registry data is stable here
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
-            if (player_ship) { player_ship->begin_tick(); }
+            if (player_ship) {
+                player_ship->begin_tick();
+            }
 
             capital_ships->begin_tick();
             capital_ship_fighters->begin_tick();
@@ -316,7 +340,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
-            if (player_ship) { player_ship->update_timers(tick_period); }
+            if (player_ship) {
+                player_ship->update_timers(tick_period);
+            }
             capital_ship_fighters->update_timers(tick_period);
             capital_ships->update_timers(tick_period);
             turrets->update_timers(tick_period);
@@ -337,7 +363,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Movement
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
-            if (player_ship) { player_ship->move(tick_period); }
+            if (player_ship) {
+                player_ship->move(tick_period);
+            }
 
             capital_ship_fighters->move(tick_period);
             spinners->move(tick_period);
@@ -348,7 +376,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // e.g. spawning lasers for the next frame
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
 
-            if (player_ship) { player_ship->queue_commands(); }
+            if (player_ship) {
+                player_ship->queue_commands();
+            }
 
             capital_ship_fighters->queue_commands();
             turrets->queue_commands();
@@ -377,7 +407,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
 
-            if (player_ship) { player_ship->resolve_damage_events(); }
+            if (player_ship) {
+                player_ship->resolve_damage_events();
+            }
 
             capital_ships->resolve_damage_events();
             capital_ship_fighters->resolve_damage_events();
@@ -389,7 +421,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
 
-            if (player_ship) { player_ship->update_entity_registry(); }
+            if (player_ship) {
+                player_ship->update_entity_registry();
+            }
 
             capital_ships->update_entity_registry();
             capital_ship_fighters->update_entity_registry();
@@ -408,19 +442,25 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
 
-            if (player_ship) { player_ship->sync_from_registry(); }
+            if (player_ship) {
+                player_ship->sync_from_registry();
+            }
 
             capital_ships->sync_from_registry();
             capital_ship_fighters->sync_from_registry();
             turrets->sync_from_registry();
         }
 
-        if (player_ship) { mission_manager->mission_tick(tick_period); }
+        if (player_ship) {
+            mission_manager->mission_tick(tick_period);
+        }
 
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
 
-            if (player_ship) { player_ship->update_visual_data(); }
+            if (player_ship) {
+                player_ship->update_visual_data();
+            }
 
             capital_ships->update_visual_data();
             capital_ship_fighters->update_visual_data();
@@ -435,7 +475,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
-            if (player_ship) { player_ship->end_tick(); }
+            if (player_ship) {
+                player_ship->end_tick();
+            }
 
             capital_ships->end_tick();
             capital_ship_fighters->end_tick();
@@ -464,7 +506,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
-        if (player_ship) { player_ship->commit_visual_data(); }
+        if (player_ship) {
+            player_ship->commit_visual_data();
+        }
 
         capital_ships->commit_visual_data();
         capital_ship_fighters->commit_visual_data();
@@ -551,7 +595,9 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
             return nullptr;
         }
 
-        if (auto* const actor{ml::get_first_actor<T>(*world)}) { return actor; }
+        if (auto* const actor{ml::get_first_actor<T>(*world)}) {
+            return actor;
+        }
 
         auto* const actor{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
         if (IsValid(actor)) {

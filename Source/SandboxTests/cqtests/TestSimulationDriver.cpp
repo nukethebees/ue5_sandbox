@@ -37,10 +37,14 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
         orchestrator = *it;
         break;
     }
-    if (!IsValid(orchestrator)) { UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr")); }
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
+    }
 
     registry = orchestrator->get_entity_registry();
-    if (!IsValid(registry)) { UE_LOG(LogSandboxTest, Fatal, TEXT("registry is nullptr")); }
+    if (!IsValid(registry)) {
+        UE_LOG(LogSandboxTest, Fatal, TEXT("registry is nullptr"));
+    }
 
     return TestSimulationDriver{world, *registry, *orchestrator};
 }

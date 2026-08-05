@@ -77,7 +77,9 @@ void UExplosionSubsystem::execute_explosion(FVector location,
     }
 #endif
 
-    if (!found_overlaps) { return; }
+    if (!found_overlaps) {
+        return;
+    }
     TRY_INIT_PTR(damage_manager, world->GetSubsystem<UDamageManagerSubsystem>());
 
     constexpr auto is_movable{[](auto& component) -> bool {

@@ -8,7 +8,9 @@
 void UVector2DWidget::NativeConstruct() {
     Super::NativeConstruct();
 
-    if (name_text) { name_text->SetText(name); }
+    if (name_text) {
+        name_text->SetText(name);
+    }
     if (value_text) {
         value_text->SetVisibility(show_value ? ESlateVisibility::Visible
                                              : ESlateVisibility::Collapsed);
@@ -30,10 +32,14 @@ void UVector2DWidget::update(FVector2D const value) {
         value_text->SetText(display_value);
     }
 
-    if (!canvas_panel || !background_widget || !cursor_widget) { return; }
+    if (!canvas_panel || !background_widget || !cursor_widget) {
+        return;
+    }
 
     auto* const cursor_slot{Cast<UCanvasPanelSlot>(cursor_widget->Slot)};
-    if (!cursor_slot) { return; }
+    if (!cursor_slot) {
+        return;
+    }
 
     auto const cursor_position{FVector2D{
         FMath::GetMappedRangeValueClamped(FVector2D{-1.f, 1.f}, FVector2D{0.f, 1.f}, value.X),

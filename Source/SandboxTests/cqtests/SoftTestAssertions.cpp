@@ -13,7 +13,9 @@ void FSoftTestAssertions::display_result(bool const passed, FString const& msg) 
 }
 
 auto FSoftTestAssertions::start_msg(int32 const i) const -> FString {
-    if (i != INDEX_NONE) { return FString::Printf(TEXT("[%d] "), i); }
+    if (i != INDEX_NONE) {
+        return FString::Printf(TEXT("[%d] "), i);
+    }
     return {};
 }
 

@@ -135,7 +135,9 @@ void ATestStaticTurrets::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::commit_visual_data);
 
     instances->MarkRenderStateDirty();
-    if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) { draw_debugging_shapes(); }
+    if (draw_target_arrows_enabled || draw_debug_entity_info_enabled) {
+        draw_debugging_shapes();
+    }
 }
 void ATestStaticTurrets::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
@@ -211,7 +213,9 @@ void ATestStaticTurrets::perform_search() {
         auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
         for (int32 i{begin}; i < end; ++i) {
-            if (!target_handles[i].is_null()) { continue; }
+            if (!target_handles[i].is_null()) {
+                continue;
+            }
 
             auto const turret_location{ml::get_vector3f(locations, i)};
             auto const this_team{teams[i]};
@@ -225,7 +229,9 @@ void ATestStaticTurrets::perform_search() {
             for (int32 j{0}; j < n_entities; ++j) {
                 auto const target_index{elems[j]};
 
-                if (this_team == entity_registry->get_team(target_index)) { continue; }
+                if (this_team == entity_registry->get_team(target_index)) {
+                    continue;
+                }
 
                 target_handles[i] = target_index;
                 break;
@@ -256,14 +262,18 @@ void ATestStaticTurrets::fire_at_enemies() {
     for (int32 i{0}; i < n; ++i) {
         auto const target_handle{target_handles[i]};
 
-        if (target_handle.is_null()) { continue; }
+        if (target_handle.is_null()) {
+            continue;
+        }
 
         if (!entity_registry->is_valid_alive(target_handle)) {
             target_handles[i].reset();
             continue;
         }
 
-        if (!(laser_cooldowns[i] <= 0.f)) { continue; }
+        if (!(laser_cooldowns[i] <= 0.f)) {
+            continue;
+        }
 
         auto const turret_location{ml::get_vector3f(locations, i)};
         auto const target_location{entity_registry->get_location(target_handle)};
@@ -315,7 +325,9 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     auto* world{GetWorld()};
     auto const proxies{ml::get_actors<Proxy>(*world)};
     auto const n_to_add{proxies.Num()};
-    if (n_to_add == 0) { return; }
+    if (n_to_add == 0) {
+        return;
+    }
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -400,7 +412,9 @@ void ATestStaticTurrets::trigger_death_effects() {
 void ATestStaticTurrets::handle_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::handle_dead_entities);
 
-    if (local_indices_to_remove.IsEmpty()) { return; }
+    if (local_indices_to_remove.IsEmpty()) {
+        return;
+    }
 
     trigger_death_effects();
 

@@ -25,7 +25,9 @@ AAmmoItem::AAmmoItem()
 }
 
 void AAmmoItem::on_interacted(AActor& instigator) {
-    if (UInventoryComponent::add_item(instigator, this)) { Destroy(); }
+    if (UInventoryComponent::add_item(instigator, this)) {
+        Destroy();
+    }
 }
 
 void AAmmoItem::BeginPlay() {

@@ -15,13 +15,17 @@ TEST_CLASS(SimulationConfig, "Sandbox.UnitTests")
     TEST_METHOD(DeepCopy)
     {
         auto const* const source{ml::load_default_simulation_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default simulation config loads"), source)) { return; }
+        if (!TestRunner->TestNotNull(TEXT("Default simulation config loads"), source)) {
+            return;
+        }
         if (!TestRunner->TestTrue(TEXT("Default simulation config is valid"), source->is_valid())) {
             return;
         }
 
         auto* const copy{source->deep_copy()};
-        if (!TestRunner->TestNotNull(TEXT("Deep copy is created"), copy)) { return; }
+        if (!TestRunner->TestNotNull(TEXT("Deep copy is created"), copy)) {
+            return;
+        }
 
         TestRunner->TestTrue(TEXT("Bundle has a different address"), source != copy);
         TestRunner->TestTrue(TEXT("Copied bundle is valid"), copy->is_valid());

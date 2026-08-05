@@ -15,7 +15,9 @@ void ADelayedNiagaraSpawner::update_spawns(float const dt) {
     auto* world{GetWorld()};
     auto const pending_spawn_count{num()};
 
-    if (!IsValid(world) || (pending_spawn_count <= 0)) { return; }
+    if (!IsValid(world) || (pending_spawn_count <= 0)) {
+        return;
+    }
 
     constexpr bool auto_activate{true};
     constexpr bool auto_destroy{true};
@@ -23,7 +25,9 @@ void ADelayedNiagaraSpawner::update_spawns(float const dt) {
     for (auto index{pending_spawn_count - 1}; index >= 0; --index) {
         times_remaining[index] -= dt;
 
-        if (times_remaining[index] > 0.0f) { continue; }
+        if (times_remaining[index] > 0.0f) {
+            continue;
+        }
 
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
                                                        systems[index],

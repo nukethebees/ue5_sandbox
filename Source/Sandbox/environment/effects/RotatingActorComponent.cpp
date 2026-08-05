@@ -22,7 +22,9 @@ void URotatingActorComponent::BeginPlay() {
 }
 
 void URotatingActorComponent::EndPlay(EEndPlayReason::Type EndPlayReason) {
-    if (!destroy_component_after_static_registration) { unregister_from_subsystem(); }
+    if (!destroy_component_after_static_registration) {
+        unregister_from_subsystem();
+    }
 
     Super::EndPlay(EndPlayReason);
 }

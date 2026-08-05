@@ -11,5 +11,7 @@ void FFrameLogTracker::Serialize(const TCHAR* V,
                                  ELogVerbosity::Type Verbosity,
                                  FName const& Category) {
     static FName const to_ignore{TEXT("LogSandboxFrameCount")};
-    if (Category != to_ignore) { FPlatformAtomics::InterlockedIncrement(&log_count_this_frame); }
+    if (Category != to_ignore) {
+        FPlatformAtomics::InterlockedIncrement(&log_count_this_frame);
+    }
 }

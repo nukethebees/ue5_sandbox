@@ -32,7 +32,9 @@ void AWeaponPickup::OnConstruction(FTransform const& Transform) {
     Super::OnConstruction(Transform);
 
 #if WITH_EDITOR
-    if (this->bIsEditorPreviewActor) { return; }
+    if (this->bIsEditorPreviewActor) {
+        return;
+    }
 #endif
 
     TRY_INIT_PTR(world, GetWorld());

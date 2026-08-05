@@ -49,7 +49,9 @@ struct RowData : public ml::LogMsgMixin<"RowData"> {
 
     void refresh_current_value() {
         if (auto* settings{UGameUserSettings::GetGameUserSettings()}) {
-            if (config) { current_value = config->get_value(*settings); }
+            if (config) {
+                current_value = config->get_value(*settings);
+            }
         }
     }
     template <typename T>

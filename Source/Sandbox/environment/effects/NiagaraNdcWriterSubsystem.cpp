@@ -13,7 +13,9 @@
 auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t queue_size)
     -> FNdcWriterIndex {
     auto const asset_name{asset.GetFName()};
-    if (auto i{asset_lookup_.Find(asset_name)}) { return *i; }
+    if (auto i{asset_lookup_.Find(asset_name)}) {
+        return *i;
+    }
 
     FNdcWriterIndex i{assets_.Emplace(&asset)};
     asset_lookup_.Add(asset_name, i);
@@ -32,7 +34,9 @@ auto UNiagaraNdcWriterSubsystem::get_asset(FNdcWriterIndex index) -> NdcAsset* {
     auto const i{index.get_value()};
     check((i > 0) && (i < num_assets()));
     auto& asset{assets_[i]};
-    if (asset.IsValid()) { return asset.Get(); }
+    if (asset.IsValid()) {
+        return asset.Get();
+    }
     return nullptr;
 }
 
@@ -55,7 +59,9 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
     auto const n_assets{num_assets()};
 
     TRY_INIT_PTR(world, GetWorld());
-    if (!search_parameters_.OwningComponent) { update_owning_component(*world); }
+    if (!search_parameters_.OwningComponent) {
+        update_owning_component(*world);
+    }
 
     static auto const position_label{FName("spawn_position")};
     static auto const rotation_label{FName("spawn_rotation")};
@@ -69,7 +75,9 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         auto flushed_result{queue.swap_and_consume()};
         flushed_result.log_results(writer_debug_source);
 
-        if (flushed_result.is_empty()) { continue; }
+        if (flushed_result.is_empty()) {
+            continue;
+        }
 
         auto const n_effects{static_cast<int32>(flushed_result.success_count)};
         auto view{flushed_result.view};

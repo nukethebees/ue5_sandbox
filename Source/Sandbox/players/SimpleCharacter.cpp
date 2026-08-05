@@ -42,7 +42,9 @@ void ASimpleCharacter::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};
     Super::BeginPlay();
 
-    if (!Controller && AIControllerClass) { SpawnDefaultController(); }
+    if (!Controller && AIControllerClass) {
+        SpawnDefaultController();
+    }
 }
 
 void ASimpleCharacter::handle_death() {

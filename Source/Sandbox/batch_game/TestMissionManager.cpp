@@ -78,7 +78,9 @@ void ATestMissionManager::mission_tick(float const dt) {
     mission_elapsed_seconds = GetWorld()->GetTimeSeconds() - mission_start_time;
     auto const ship_alive(player_ship->is_alive());
 
-    if (!ship_alive) { set_mission_state(ETestMissionState::Failed); }
+    if (!ship_alive) {
+        set_mission_state(ETestMissionState::Failed);
+    }
 
     switch (mission_mode) {
         case ETestMissionMode::None: {
@@ -145,7 +147,9 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state) {
 }
 
 void ATestMissionManager::mission_tick_survive_seconds(float const dt) {
-    if (mission_elapsed_seconds >= target_time) { set_mission_state(ETestMissionState::Succeeded); }
+    if (mission_elapsed_seconds >= target_time) {
+        set_mission_state(ETestMissionState::Succeeded);
+    }
 }
 void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
     auto const old_kills{player_kills};
@@ -153,9 +157,13 @@ void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
 
     player_kills = new_kills;
 
-    if (new_kills != old_kills) { on_mission_update.Broadcast(*this); }
+    if (new_kills != old_kills) {
+        on_mission_update.Broadcast(*this);
+    }
 
-    if (player_kills >= kill_target) { set_mission_state(ETestMissionState::Succeeded); }
+    if (player_kills >= kill_target) {
+        set_mission_state(ETestMissionState::Succeeded);
+    }
 }
 void ATestMissionManager::mission_tick_kill_enemies_within_time(float const dt) {
     auto const old_kills{player_kills};
@@ -163,14 +171,20 @@ void ATestMissionManager::mission_tick_kill_enemies_within_time(float const dt) 
 
     player_kills = new_kills;
 
-    if (new_kills != old_kills) { on_mission_update.Broadcast(*this); }
+    if (new_kills != old_kills) {
+        on_mission_update.Broadcast(*this);
+    }
 
-    if (player_kills >= kill_target) { set_mission_state(ETestMissionState::Succeeded); }
+    if (player_kills >= kill_target) {
+        set_mission_state(ETestMissionState::Succeeded);
+    }
 
     auto const mission_time{get_mission_stopwatch()};
     auto const mission_time_limit{get_target_time()};
 
-    if (mission_time >= mission_time_limit) { set_mission_state(ETestMissionState::Failed); }
+    if (mission_time >= mission_time_limit) {
+        set_mission_state(ETestMissionState::Failed);
+    }
 }
 
 void ATestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
@@ -205,7 +219,9 @@ void ATestMissionManager::handle_mission_failure() {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
 
     auto fail_reason{ETestMissionFailReason::None};
-    if (!player_ship->is_alive()) { fail_reason = ETestMissionFailReason::PlayerKilled; }
+    if (!player_ship->is_alive()) {
+        fail_reason = ETestMissionFailReason::PlayerKilled;
+    }
 
     switch (mission_mode) {
         case ETestMissionMode::SurviveTime: {

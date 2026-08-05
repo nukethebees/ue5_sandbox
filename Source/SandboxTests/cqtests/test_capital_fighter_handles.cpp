@@ -133,7 +133,9 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             capital_values.Add(FCapitalSample{capital_handle, capital_target});
             capital_fighter_counts.Add(fighter_span.count);
 
-            if (capital_handle != main_capital_handle) { continue; }
+            if (capital_handle != main_capital_handle) {
+                continue;
+            }
 
             auto const main_fighter_handles{capitals->get_fighter_handles(capital_index)};
             main_capital_fighters.Reserve(main_fighter_handles.Num());
@@ -477,11 +479,15 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         TestRunner->AddInfo(
             FString::Printf(TEXT("Fighter handle count mismatch ticks: %d"), mismatch_ticks.Num()));
-        if (!has_consecutive_mismatches) { return; }
+        if (!has_consecutive_mismatches) {
+            return;
+        }
 
         FString mismatch_tick_list;
         for (auto const tick : mismatch_ticks) {
-            if (!mismatch_tick_list.IsEmpty()) { mismatch_tick_list += TEXT(", "); }
+            if (!mismatch_tick_list.IsEmpty()) {
+                mismatch_tick_list += TEXT(", ");
+            }
             mismatch_tick_list += LexToString(tick);
         }
         checks.is_true(

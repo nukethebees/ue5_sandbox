@@ -30,7 +30,9 @@ auto UTestTeamVisualData::build_team_colour_cache() const -> FColourArray {
 auto UTestTeamVisualData::build_team_colour_cache(UTestTeamVisualData const* const data)
     -> FColourArray {
 
-    if (IsValid(data)) { return data->build_team_colour_cache(); }
+    if (IsValid(data)) {
+        return data->build_team_colour_cache();
+    }
 
     ensure(false);
     UE_LOG(
@@ -49,6 +51,8 @@ void UTestTeamVisualData::ensure_all_team_colours_exist() {
     TArray<ETestTeam> keys;
     colours.GetKeys(keys);
     for (auto k : keys) {
-        if (!ml::is_valid(k)) { colours.Remove(k); }
+        if (!ml::is_valid(k)) {
+            colours.Remove(k);
+        }
     }
 }

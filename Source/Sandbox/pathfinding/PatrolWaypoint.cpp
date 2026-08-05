@@ -39,7 +39,9 @@ void APatrolWaypoint::PostEditChangeProperty(FPropertyChangedEvent& event) {
     }
 }
 void APatrolWaypoint::OnActorLabelChanged(AActor* actor) {
-    if (auto* wp{Cast<ThisClass>(actor)}) { wp->name = *wp->GetActorLabel(); }
+    if (auto* wp{Cast<ThisClass>(actor)}) {
+        wp->name = *wp->GetActorLabel();
+    }
 }
 #endif
 

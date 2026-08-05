@@ -8,7 +8,7 @@ AlignAfterOpenBracket: Align
 AlignConsecutiveBitFields: Consecutive
 AlignEscapedNewlines: Left
 AlignOperands: AlignAfterOperator
-AllowShortBlocksOnASingleLine: Always
+AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortCompoundRequirementOnASingleLine: true
 AllowShortEnumsOnASingleLine: true

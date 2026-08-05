@@ -69,7 +69,9 @@ void UHorizAntigravLiftComponent::OnOverlapBegin(UPrimitiveComponent* Overlapped
         }
     }
 
-    if (!floating_characters.IsEmpty()) { SetComponentTickEnabled(true); }
+    if (!floating_characters.IsEmpty()) {
+        SetComponentTickEnabled(true);
+    }
 }
 void UHorizAntigravLiftComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp,
                                                AActor* other_actor,
@@ -83,5 +85,7 @@ void UHorizAntigravLiftComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedCo
         }
     }
 
-    if (floating_characters.IsEmpty()) { SetComponentTickEnabled(false); }
+    if (floating_characters.IsEmpty()) {
+        SetComponentTickEnabled(false);
+    }
 }

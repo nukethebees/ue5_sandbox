@@ -100,7 +100,9 @@ void ATestCapitalShips::resolve_initial_targets() {
 
         auto const target{proxy.get_target_ship()};
 
-        if (!target) { continue; }
+        if (!target) {
+            continue;
+        }
 
         auto const* const target_entity_interface{CastChecked<ITestEntity>(target)};
 
@@ -185,7 +187,9 @@ void ATestCapitalShips::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_visual_data);
 
     instances->MarkRenderStateDirty();
-    if (debugging_shapes_enabled) { draw_debugging_shapes(); }
+    if (debugging_shapes_enabled) {
+        draw_debugging_shapes();
+    }
 }
 void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
@@ -200,9 +204,13 @@ auto ATestCapitalShips::get_num_instances() const -> int32 {
     return entities.handles.Num();
 }
 auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> bool {
-    if (!index.is_valid()) { return false; }
+    if (!index.is_valid()) {
+        return false;
+    }
 
-    if (!entities.locations.xs.IsValidIndex(index.index)) { return false; }
+    if (!entities.locations.xs.IsValidIndex(index.index)) {
+        return false;
+    }
 
     return true;
 }
@@ -230,7 +238,9 @@ auto ATestCapitalShips::get_team(FRegistryEntityHandle handle) const noexcept ->
     auto const n{get_num_instances()};
 
     for (int32 i{}; i < n; ++i) {
-        if (handle == entities.handles[i]) { return entities.teams[i]; }
+        if (handle == entities.handles[i]) {
+            return entities.teams[i];
+        }
     }
 
     UE_LOG(LogSandbox, Fatal, TEXT("Invalid handle passed"));
@@ -242,7 +252,9 @@ auto ATestCapitalShips::find_first_index_on_team(ETestTeam team) const noexcept
     auto const n{get_num_instances()};
 
     for (int32 i{0}; i < n; ++i) {
-        if (entities.teams[i] == team) { return i; }
+        if (entities.teams[i] == team) {
+            return i;
+        }
     }
 
     return {};
@@ -393,7 +405,9 @@ void ATestCapitalShips::queue_fighter_spawns() {
         ships_ready_to_spawn_fighters_indices = data.ships_ready_to_spawn_fighters_buffer;
     }
 
-    if (ships_ready_to_spawn_fighters_indices.IsEmpty()) { return; }
+    if (ships_ready_to_spawn_fighters_indices.IsEmpty()) {
+        return;
+    }
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
 
@@ -541,7 +555,9 @@ void ATestCapitalShips::queue_fighter_orders() {
         }
     }
 
-    if (fighter_order_queue.num() > 0) { fighters_interface.queue_orders(fighter_order_queue); }
+    if (fighter_order_queue.num() > 0) {
+        fighters_interface.queue_orders(fighter_order_queue);
+    }
 }
 
 // Visuals
@@ -618,7 +634,9 @@ void ATestCapitalShips::trigger_death_effects() {
         auto const base_location{ml::get_vector3d(entities.locations, entity_index)};
 
         for (int32 explosion_i{0}; explosion_i < n_small_burst_explosions; ++explosion_i) {
-            if (explosion_i > 0) { current_delay += time_between_explosions; }
+            if (explosion_i > 0) {
+                current_delay += time_between_explosions;
+            }
 
             auto const offset{FVector{
                 FMath::FRandRange(min_range.X, max_range.X),
@@ -641,7 +659,9 @@ void ATestCapitalShips::trigger_death_effects() {
 void ATestCapitalShips::handle_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::handle_dead_entities);
 
-    if (local_indices_to_remove.IsEmpty()) { return; }
+    if (local_indices_to_remove.IsEmpty()) {
+        return;
+    }
 
     trigger_death_effects();
     reassign_fighter_handles_of_dying_capital();
@@ -657,7 +677,9 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
     TArray<ETestTeam, TInlineAllocator<team_count>> teams_to_replace;
     for (auto const capital_idx : local_indices_to_remove) {
         auto const team{entities.teams[capital_idx]};
-        if (!teams_to_replace.Contains(team)) { teams_to_replace.Add(team); }
+        if (!teams_to_replace.Contains(team)) {
+            teams_to_replace.Add(team);
+        }
     }
 
     auto const n{get_num_instances()};
@@ -668,7 +690,9 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
             teams_to_replace.RemoveSwap(team, EAllowShrinking::No);
         }
 
-        if (teams_to_replace.IsEmpty()) { break; }
+        if (teams_to_replace.IsEmpty()) {
+            break;
+        }
     }
 
     for (auto const capital_idx : local_indices_to_remove) {

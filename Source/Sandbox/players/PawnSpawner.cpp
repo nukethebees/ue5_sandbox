@@ -19,7 +19,9 @@ void APawnSpawner::BeginPlay() {
         return;
     }
 
-    if (spawn_at_start) { spawn_pawn(); }
+    if (spawn_at_start) {
+        spawn_pawn();
+    }
 }
 
 void APawnSpawner::Tick(float DeltaTime) {

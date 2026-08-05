@@ -120,7 +120,9 @@ void ATestCapitalShipFighters::make_decisions() {
     auto const dot_threshold{actor_config->minimum_opportunistic_intercept_deviation_dot_product};
 
     for (int32 i{0}; i < n; ++i) {
-        if (!data.awareness_scan_countdowns.try_consume(i)) { continue; }
+        if (!data.awareness_scan_countdowns.try_consume(i)) {
+            continue;
+        }
 
         auto const fighter_location{ml::get_vector3f(data.locations, i)};
         auto const target_handle{data.target_handles[i]};
@@ -130,7 +132,9 @@ void ATestCapitalShipFighters::make_decisions() {
             auto const target_distance_sq{
                 FVector3f::DistSquared(fighter_location, target_location)};
 
-            if (target_distance_sq <= attack_engagement_threshold_sq) { continue; }
+            if (target_distance_sq <= attack_engagement_threshold_sq) {
+                continue;
+            }
         }
 
         auto const n_nearby_entities{entity_registry->collect_non_team_entities_in_range(
@@ -157,7 +161,9 @@ void ATestCapitalShipFighters::move(float const dt) {
 
     auto& data{entity_buffers.current()};
 
-    if (data.num() < 1) { return; }
+    if (data.num() < 1) {
+        return;
+    }
 
     auto const& move_view{get_task_view(Task::MoveToDestination)};
     auto const& attack_view{get_task_view(Task::Attack)};
@@ -251,7 +257,9 @@ void ATestCapitalShipFighters::resolve_damage_events() {
     auto const n_direct_damage{direct_damage.num()};
     for (int32 i{0}; i < n_direct_damage; ++i) {
         auto const local_index{data.entity_handles.Find(direct_damage.damaged_entities[i])};
-        if (local_index == INDEX_NONE) { continue; }
+        if (local_index == INDEX_NONE) {
+            continue;
+        }
 
         data.target_handles[local_index] = direct_damage.instigators[i];
     }
@@ -280,7 +288,9 @@ void ATestCapitalShipFighters::sync_from_registry() {
     // Update
     commit_orders();
     refresh_target_data();
-    if (!tasks_are_contiguous()) { refresh_layout(); }
+    if (!tasks_are_contiguous()) {
+        refresh_layout();
+    }
     refresh_task_views();
 
     checkCode(entity_buffers.current().validate_array_sizes());
@@ -295,7 +305,9 @@ void ATestCapitalShipFighters::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_visual_data);
 
     instances->MarkRenderStateDirty();
-    if (enable_target_debug_drawing || enable_ship_location_debug_drawing) { draw_debug_shapes(); }
+    if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
+        draw_debug_shapes();
+    }
 }
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
@@ -401,10 +413,14 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{ml::get_vector3d(data.locations, i)};
 
-        if (enable_ship_location_debug_drawing) { debug_drawer.draw_sphere(ship_location); }
+        if (enable_ship_location_debug_drawing) {
+            debug_drawer.draw_sphere(ship_location);
+        }
 
         if (enable_target_debug_drawing) {
-            if (!data.target_handles[i].is_valid()) { continue; }
+            if (!data.target_handles[i].is_valid()) {
+                continue;
+            }
 
             auto const target_location{ml::get_vector3d(data.target_locations, i)};
             debug_drawer.draw_line(ship_location, target_location);
@@ -415,7 +431,9 @@ void ATestCapitalShipFighters::write_ismc_custom_data(int32 const offset, int32 
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::write_ismc_custom_data);
 
     check(count >= 0);
-    if (count == 0) { return; }
+    if (count == 0) {
+        return;
+    }
 
     auto const& data{entity_buffers.current()};
 
@@ -450,7 +468,9 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     auto const n{get_num_instances()};
 
     registry_update_data.reset();
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     ml::add_uninitialised(registry_update_data, n);
 
@@ -559,7 +579,9 @@ void ATestCapitalShipFighters::commit_spawns() {
         SANDBOX_NAMED_NUM(new_teams),
         SANDBOX_NAMED_NUM(new_targets),
     });
-    if (n_new < 1) { return; }
+    if (n_new < 1) {
+        return;
+    }
 
     auto const speed{actor_config->speed};
 
@@ -686,7 +708,9 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_firing_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
-        if (data.attack_cooldowns[ship_index] > 0.f) { continue; }
+        if (data.attack_cooldowns[ship_index] > 0.f) {
+            continue;
+        }
 
         if ((data.target_distance_sq[ship_index] > laser_max_distance_sq) ||
             (!data.target_handles[ship_index].is_valid()) ||
@@ -698,7 +722,9 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         can_fire.Add(ship_index);
     }
 
-    if (can_fire.IsEmpty()) { return; }
+    if (can_fire.IsEmpty()) {
+        return;
+    }
 
     // Perform LOS checks to see if we can fire
     [&] {
@@ -779,7 +805,9 @@ void ATestCapitalShipFighters::commit_orders() {
     auto& data{entity_buffers.current()};
 
     auto const n_orders{ml::num(order_queue)};
-    if (n_orders < 1) { return; }
+    if (n_orders < 1) {
+        return;
+    }
 
     auto& index_buffer{scratch_int_buffer};
     index_buffer.Reset();
@@ -791,11 +819,17 @@ void ATestCapitalShipFighters::commit_orders() {
 
     for (int32 i{0}; i < n_orders; ++i) {
         auto const fighter_index{index_buffer[i]};
-        if (fighter_index == INDEX_NONE) { continue; }
+        if (fighter_index == INDEX_NONE) {
+            continue;
+        }
 
         auto const order{order_queue.orders[i]};
-        if (order.task) { data.tasks[fighter_index] = order_queue.tasks[i]; }
-        if (order.target) { data.target_handles[fighter_index] = order_queue.targets[i]; }
+        if (order.task) {
+            data.tasks[fighter_index] = order_queue.tasks[i];
+        }
+        if (order.target) {
+            data.target_handles[fighter_index] = order_queue.targets[i];
+        }
     }
 }
 

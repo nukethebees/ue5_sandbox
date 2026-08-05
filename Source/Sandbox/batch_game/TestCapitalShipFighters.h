@@ -56,25 +56,25 @@ struct EntityDataView : public ml::FSoAViewMixin {
 #define MEMBER_DECL(TYPE, NAME) TYPE NAME;
 #define FN_ARG(TYPE, NAME) self.NAME
 
-#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                    \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles)) \
-    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))   \
-    NON_FINAL(X(VectorsView, locations))                       \
-    NON_FINAL(X(VectorsView, aim_directions))                  \
-    NON_FINAL(X(VectorsView, move_target_locations))           \
-    NON_FINAL(X(VectorsView, movement_directions))             \
-    NON_FINAL(X(TView<float>, speeds))                         \
-    NON_FINAL(X(TView<ETestTeam>, teams))                      \
-    NON_FINAL(X(TView<int32>, healths))                        \
+#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                                      \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))                   \
+    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))                     \
+    NON_FINAL(X(VectorsView, locations))                                         \
+    NON_FINAL(X(VectorsView, aim_directions))                                    \
+    NON_FINAL(X(VectorsView, move_target_locations))                             \
+    NON_FINAL(X(VectorsView, movement_directions))                               \
+    NON_FINAL(X(TView<float>, speeds))                                           \
+    NON_FINAL(X(TView<ETestTeam>, teams))                                        \
+    NON_FINAL(X(TView<int32>, healths))                                          \
     NON_FINAL(X(TView<FTickCountdown::counter_type>, awareness_scan_countdowns)) \
-    NON_FINAL(X(TView<float>, attack_cooldowns))               \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles)) \
-    NON_FINAL(X(VectorsView, target_locations))                \
-    NON_FINAL(X(VectorsView, target_velocities))               \
-    NON_FINAL(X(VectorsView, target_directions))               \
-    NON_FINAL(X(TView<float>, intercept_times))                \
-    NON_FINAL(X(VectorsView, desired_firing_directions))       \
-    NON_FINAL(X(TView<float>, target_distance_sq))             \
+    NON_FINAL(X(TView<float>, attack_cooldowns))                                 \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles))                   \
+    NON_FINAL(X(VectorsView, target_locations))                                  \
+    NON_FINAL(X(VectorsView, target_velocities))                                 \
+    NON_FINAL(X(VectorsView, target_directions))                                 \
+    NON_FINAL(X(TView<float>, intercept_times))                                  \
+    NON_FINAL(X(VectorsView, desired_firing_directions))                         \
+    NON_FINAL(X(TView<float>, target_distance_sq))                               \
     X(TView<float>, target_radii)
 
     SANDBOX_CLASS_MEMBERS(MEMBER_DECL, EXPAND)

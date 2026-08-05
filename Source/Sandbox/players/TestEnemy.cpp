@@ -1,15 +1,16 @@
 #include "Sandbox/players/TestEnemy.h"
 
-#include "AIController.h"
-#include "Components/ArrowComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "Materials/MaterialInstanceDynamic.h"
-
 #include "Sandbox/combat/bullets/BulletActor.h"
 #include "Sandbox/health/HealthComponent.h"
 #include "Sandbox/players/NpcPatrolComponent.h"
 #include "Sandbox/players/SimpleAIController.h"
+
+#include "AIController.h"
+#include "Components/ArrowComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -39,7 +40,9 @@ void ATestEnemy::OnConstruction(FTransform const& transform) {
 
     defend_position = GetActorLocation();
 
-    if (controller_class) { AIControllerClass = controller_class; }
+    if (controller_class) {
+        AIControllerClass = controller_class;
+    }
 }
 void ATestEnemy::BeginPlay() {
     constexpr auto logger{NestedLogger<"BeginPlay">()};

@@ -62,9 +62,13 @@ struct LogMsgMixin {
 
 #define LOG_ELSE_BRANCH(VERBOSITY) else LOG_BRANCH(VERBOSITY)
 
-        if constexpr (verbosity > LOCAL_CATEGORY.GetCompileTimeVerbosity()) { return; }
+        if constexpr (verbosity > LOCAL_CATEGORY.GetCompileTimeVerbosity()) {
+            return;
+        }
 
-        if (LOCAL_CATEGORY.IsSuppressed(verbosity)) { return; }
+        if (LOCAL_CATEGORY.IsSuppressed(verbosity)) {
+            return;
+        }
 
         auto tagx{self.get_tag()};
         auto msg{FString::Printf(std::move(fmt), std::forward<Args>(args)...)};

@@ -104,7 +104,9 @@ void AShipHomingLaser::explode() {
     }
 
 #if WITH_EDITOR
-    if (debug_explosion) { draw_debug_sphere(); }
+    if (debug_explosion) {
+        draw_debug_sphere();
+    }
 #endif
 
     apply_damage(*world);
@@ -131,7 +133,9 @@ void AShipHomingLaser::apply_damage(UWorld& world) {
         auto* actor_hit{hit.GetActor()};
 
         auto* ship{Cast<IDamageableShip>(actor_hit)};
-        if (!ship) { continue; }
+        if (!ship) {
+            continue;
+        }
 
         auto const damage_result{ship->apply_damage({damage, *instigator, *hit.Component})};
         if (damage_result.was_killed()) {

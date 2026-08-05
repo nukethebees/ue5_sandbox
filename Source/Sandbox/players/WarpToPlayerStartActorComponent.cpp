@@ -27,7 +27,9 @@ void UWarpToPlayerStartActorComponent::OnOverlapBegin(UPrimitiveComponent* Overl
                                                       FHitResult const& sweep_result) {
     UE_LOG(LogTemp, Warning, TEXT("Overlap begin"));
     for (auto it{TActorIterator<APlayerStart>(GetWorld())}; it; ++it) {
-        if (other_actor) { other_actor->SetActorLocation(it->GetActorLocation()); }
+        if (other_actor) {
+            other_actor->SetActorLocation(it->GetActorLocation());
+        }
         return;
     }
     UE_LOG(LogTemp, Warning, TEXT("UWarpToPlayerStartActorComponent: No player start found."));

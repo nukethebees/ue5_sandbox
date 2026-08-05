@@ -125,7 +125,9 @@ struct FSoftTestAssertions {
         auto const n_exp{ml::num(exp)};
         auto const n_got{ml::num(got)};
 
-        if (!are_equal(n_exp, n_got, description)) { return false; }
+        if (!are_equal(n_exp, n_got, description)) {
+            return false;
+        }
 
         for (int32 i{0}; i < n_exp; ++i) {
             are_equal(exp[i], got[i], FString::Printf(TEXT("[%d] %s"), i, *description));

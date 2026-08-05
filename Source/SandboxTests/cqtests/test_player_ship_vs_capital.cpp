@@ -131,7 +131,9 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                          fighter_locations.value_at(i_end).Num(),
                          TEXT("Check num fighter locations same as target locations"));
 
-        if (!checks.all_passed) { return; }
+        if (!checks.all_passed) {
+            return;
+        }
 
         for (int32 i{0}; i < n_locs; ++i) {
             checks.not_dist_zero(fighter_target_locations.value_at(i_tracked)[i],
@@ -156,7 +158,9 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
                                      i);
         }
 
-        if (!checks.all_passed) { return; }
+        if (!checks.all_passed) {
+            return;
+        }
     }
 
     void fail_self_analysis() {
@@ -220,7 +224,9 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Do([this] {
                 full_checks();
-                if (!checks.all_passed) { fail_self_analysis(); }
+                if (!checks.all_passed) {
+                    fail_self_analysis();
+                }
                 SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             });
     }

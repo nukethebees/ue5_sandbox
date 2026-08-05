@@ -7,12 +7,15 @@
 #include <Sandbox/batch_game/TestStaticTurretsConfig.h>
 #include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
 
+#include <UObject/Package.h>
 #include <UObject/UObjectGlobals.h>
 
 namespace {
 template <typename T>
 auto duplicate_config(T const* const config, UObject& outer) -> T* {
-    if (!IsValid(config)) { return nullptr; }
+    if (!IsValid(config)) {
+        return nullptr;
+    }
 
     return DuplicateObject<T>(config, &outer);
 }

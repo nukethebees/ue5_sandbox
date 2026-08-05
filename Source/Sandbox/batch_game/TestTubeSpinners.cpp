@@ -111,7 +111,9 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
 
     auto* world{GetWorld()};
 
-    if (!world) { return; }
+    if (!world) {
+        return;
+    }
 
     TArray<Proxy*> proxies{};
     ml::append_actors(*world, proxies);
@@ -228,12 +230,16 @@ void ATestTubeSpinners::fire_lasers() {
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_max_distance{actor_config->laser_max_distance};
 
-    if (n_firing_points < 1) { return; }
+    if (n_firing_points < 1) {
+        return;
+    }
 
     ml::reset(indices_ready_to_fire, new_lasers);
 
     for (int32 i{0}; i < n; ++i) {
-        if (!(laser_cooldowns[i] <= 0.f)) { continue; }
+        if (!(laser_cooldowns[i] <= 0.f)) {
+            continue;
+        }
 
         indices_ready_to_fire.Add(i);
         laser_cooldowns[i] = cooldown;

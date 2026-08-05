@@ -237,7 +237,9 @@ void ATestSpaceShipController::OnUnPossess() {
 
 // UI
 void ATestSpaceShipController::initialise_hud() {
-    if (IsValid(hud_widget)) { return; }
+    if (IsValid(hud_widget)) {
+        return;
+    }
 
     ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
 
@@ -302,7 +304,9 @@ void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& 
 }
 void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship) {
     auto const* tgt{ship.get_lock_on_target()};
-    if (!tgt) { return; }
+    if (!tgt) {
+        return;
+    }
     RETURN_IF_NULLPTR(hud_widget);
 
     auto const actor_pos{tgt->GetActorLocation()};

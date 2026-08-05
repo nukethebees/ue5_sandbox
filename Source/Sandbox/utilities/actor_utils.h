@@ -44,14 +44,18 @@ void set_actor_component_mobility(AActor& actor, EComponentMobility::Type mobili
 template <typename T>
 void destroy_all_actors(T& actors) {
     for (auto* a : actors) {
-        if (IsValid(a)) { a->Destroy(); }
+        if (IsValid(a)) {
+            a->Destroy();
+        }
     }
 }
 
 template <typename T>
     requires std::derived_from<T, AActor>
 auto ensure_actor_exists(UWorld& world, TSubclassOf<T> subclass) -> T* {
-    if (auto* const actor{get_first_actor<T>(world)}) { return actor; }
+    if (auto* const actor{get_first_actor<T>(world)}) {
+        return actor;
+    }
 
     auto* const actor{world.SpawnActor<T>(subclass)};
     if (IsValid(actor)) {

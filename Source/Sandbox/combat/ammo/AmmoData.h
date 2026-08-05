@@ -20,12 +20,16 @@ struct FAmmoData {
     bool is_empty() const { return ml::is_discrete(type) && (amount == 0); }
 
     auto& operator+=(FAmmoData const& other) {
-        if (type == other.type) { amount += other.amount; }
+        if (type == other.type) {
+            amount += other.amount;
+        }
 
         return *this;
     }
     auto& operator-=(FAmmoData const& other) {
-        if (type == other.type) { amount -= other.amount; }
+        if (type == other.type) {
+            amount -= other.amount;
+        }
 
         return *this;
     }

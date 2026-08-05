@@ -143,12 +143,16 @@ void ATestSpaceShip::resolve_damage_events() {
     auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
     auto const n_direct_damage{direct_damage.num()};
     for (int32 i{0}; i < n_direct_damage; ++i) {
-        if (direct_damage.damaged_entities[i] != registry_handle) { continue; }
+        if (direct_damage.damaged_entities[i] != registry_handle) {
+            continue;
+        }
 
         health.health -= direct_damage.damage_amounts[i];
     }
 
-    if (health.health != original_health) { on_health_changed.ExecuteIfBound(health); }
+    if (health.health != original_health) {
+        on_health_changed.ExecuteIfBound(health);
+    }
 }
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
@@ -269,7 +273,9 @@ void ATestSpaceShip::set_vertical_move_input(float const input) {
     planar_movement_direction.Y = input;
 }
 void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
-    if (!sampling) { return; }
+    if (!sampling) {
+        return;
+    }
 
     switch (control_mode) {
         case ETestSpaceShipControlMode::Velocity: {
@@ -392,7 +398,9 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
         case EBoostBrakeState::None: {
             target_speed = actor_config->cruise_speed;
             thrust_change_rate = 1.f / actor_config->thrust_recharge_time;
-            if (target_speed < cur_speed) { response = speed_responses.slowing_to_cruise; }
+            if (target_speed < cur_speed) {
+                response = speed_responses.slowing_to_cruise;
+            }
 
             boost_engine_effect->Deactivate();
 
@@ -411,7 +419,9 @@ void ATestSpaceShip::start_boost() {
     }
 }
 void ATestSpaceShip::stop_boost() {
-    if (boost_brake_state == EBoostBrakeState::Boost) { set(EBoostBrakeState::None); }
+    if (boost_brake_state == EBoostBrakeState::Boost) {
+        set(EBoostBrakeState::None);
+    }
 }
 void ATestSpaceShip::start_brake() {
     if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
@@ -419,12 +429,16 @@ void ATestSpaceShip::start_brake() {
     }
 }
 void ATestSpaceShip::stop_brake() {
-    if (boost_brake_state == EBoostBrakeState::Brake) { set(EBoostBrakeState::None); }
+    if (boost_brake_state == EBoostBrakeState::Brake) {
+        set(EBoostBrakeState::None);
+    }
 }
 void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float const dt) {
     auto const starting_thrust_energy{self.thrust_energy};
 
-    if (starting_thrust_energy <= 0.f) { self.set(EBoostBrakeState::None); }
+    if (starting_thrust_energy <= 0.f) {
+        self.set(EBoostBrakeState::None);
+    }
 
     self.thrust_energy += dt * self.thrust_change_rate;
     self.thrust_energy =
@@ -476,7 +490,9 @@ void ATestSpaceShip::update_laser_firing() {
             break;
         }
         case ELaserFiringState::lock_on_transition: {
-            if (cooldown_finished) { set_laser_mode(ELaserFiringState::lock_on_searching); }
+            if (cooldown_finished) {
+                set_laser_mode(ELaserFiringState::lock_on_searching);
+            }
         }
         case ELaserFiringState::lock_on_searching: {
             TRY_INIT_PTR(world, GetWorld());
@@ -496,7 +512,9 @@ void ATestSpaceShip::update_laser_firing() {
                     hit, start, end, obj_query_params, query_params)) {
 
                 auto const actor_hit{hit.GetActor()};
-                if (!actor_hit) { break; }
+                if (!actor_hit) {
+                    break;
+                }
 
                 set_lock_on_target(hit.GetActor());
                 set_laser_mode(ELaserFiringState::lock_on_acquired);
@@ -742,7 +760,9 @@ void ATestSpaceShip::add_health(int32 added_health) {
     set_health(health.health + added_health);
 }
 void ATestSpaceShip::set_health(int32 new_health) {
-    if (new_health == health.health) { return; }
+    if (new_health == health.health) {
+        return;
+    }
 
     auto const old_health{health.max_health};
     health.health = FMath::Min(new_health, health.max_health);
@@ -764,7 +784,9 @@ void ATestSpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
                                          FMath::Clamp(velocity.Size(), 0.0, 100e3)};
     speed_sample_index++;
-    if (speed_sample_index >= speed_sample_max) { speed_sample_index = 0; }
+    if (speed_sample_index >= speed_sample_max) {
+        speed_sample_index = 0;
+    }
 
     on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
                                     speed_sample_index);

@@ -60,7 +60,9 @@ void FTestVolumeDetailsCustomisation::build_custom_rows(IDetailLayoutBuilder& de
     // clang-format on
 }
 auto FTestVolumeDetailsCustomisation::get_box() -> UBoxComponent* {
-    if (!selected_actor.IsValid()) { return {}; }
+    if (!selected_actor.IsValid()) {
+        return {};
+    }
     return selected_actor->GetComponentByClass<UBoxComponent>();
 }
 

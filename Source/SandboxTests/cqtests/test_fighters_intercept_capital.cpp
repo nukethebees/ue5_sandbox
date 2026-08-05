@@ -49,7 +49,9 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
     }
     AFTER_EACH()
     {
-        if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
+        if (test_driver.IsSet()) {
+            test_driver->orchestrator.clear_end_tick_test_hook();
+        }
         test_driver->orchestrator.pause_simulation();
     }
   private:
@@ -91,7 +93,9 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
 
     void check_fighters_share_target(FSimulationSample const& sample, FString const& description) {
         auto const& fighter_targets{sample.fighter_targets};
-        if (!checks.is_greater_than(fighter_targets.Num(), int32{0}, description)) { return; }
+        if (!checks.is_greater_than(fighter_targets.Num(), int32{0}, description)) {
+            return;
+        }
 
         auto const shared_target{fighter_targets[0]};
         for (int32 fighter_index{1}; fighter_index < fighter_targets.Num(); ++fighter_index) {
@@ -180,7 +184,9 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
             .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 11})
             .Then([this] {
                 full_checks();
-                if (!checks.all_passed || test_driver->should_export_results()) { export_data(); }
+                if (!checks.all_passed || test_driver->should_export_results()) {
+                    export_data();
+                }
                 SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             });
     }
