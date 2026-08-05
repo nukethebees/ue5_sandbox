@@ -87,6 +87,9 @@ Content/Fab
 # Functional test result exports
 /Content/test_results/
 
+# CQ Test maps
+/Content/CQTestMapTemp
+
 # Assets
 Content/Purchased
 Content/Purchased/Derived
