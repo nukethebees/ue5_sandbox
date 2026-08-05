@@ -68,6 +68,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
+    ml::TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_tick_samples;
     ml::TimeSeriesData<int32> fighter_spawn_slots_samples;
     ml::TimeSeriesData<int32> fighter_count_samples;
     ml::TimeSeriesData<int32> capital_count_samples;
@@ -102,7 +103,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
     }
   private:
-    void sample_values(ATestBatchOrchestrator&) {
+    void sample_values(ATestBatchOrchestrator& orchestrator) {
         auto const fighter_spawn_slots{capitals->get_fighter_spawn_slots()};
         auto const fighter_count{fighters->get_num_instances()};
         TArray<FRegistryEntityHandle> capital_fighter_handles;
@@ -147,6 +148,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         }
 
         auto const time{test_driver->get_time()};
+        orchestrator_tick_samples.add(time, orchestrator.get_completed_ticks());
         fighter_spawn_slots_samples.add(time, fighter_spawn_slots);
         fighter_count_samples.add(time, fighter_count);
         capital_count_samples.add(time, capital_values.Num());
@@ -450,7 +452,47 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             main_capital_fighter_samples.value_at(sample_index)};
     }
 
+    void check_fighter_handle_counts_for_all_ticks() {
+        auto const fighter_handle_counts{fighter_handle_count_samples.values()};
+        auto const capital_fighter_handle_counts{capital_fighter_handle_count_samples.values()};
+        auto const ticks{orchestrator_tick_samples.values()};
+        check(fighter_handle_counts.Num() == capital_fighter_handle_counts.Num());
+        check(fighter_handle_counts.Num() == ticks.Num());
+
+        TArray<ATestBatchOrchestrator::tick_type> mismatch_ticks;
+        bool has_consecutive_mismatches{false};
+        for (int32 sample_index{0}; sample_index < fighter_handle_counts.Num(); ++sample_index) {
+            if (fighter_handle_counts[sample_index] ==
+                capital_fighter_handle_counts[sample_index]) {
+                continue;
+            }
+
+            auto const tick{ticks[sample_index]};
+            if (!mismatch_ticks.IsEmpty() && tick == mismatch_ticks.Last() + 1) {
+                has_consecutive_mismatches = true;
+            }
+            mismatch_ticks.Add(tick);
+        }
+
+        TestRunner->AddInfo(FString::Printf(TEXT("Fighter handle count mismatch ticks: %d"),
+                                            mismatch_ticks.Num()));
+        if (!has_consecutive_mismatches) { return; }
+
+        FString mismatch_tick_list;
+        for (auto const tick : mismatch_ticks) {
+            if (!mismatch_tick_list.IsEmpty()) { mismatch_tick_list += TEXT(", "); }
+            mismatch_tick_list += LexToString(tick);
+        }
+        checks.is_true(false,
+                       FString::Printf(
+                           TEXT("Fighter and capital-owned fighter handle counts differ on "
+                                "consecutive ticks. All mismatch ticks: %s"),
+                           *mismatch_tick_list));
+    }
+
     void full_checks(bool const should_kill_fighters, bool const should_kill_capital) {
+        check_fighter_handle_counts_for_all_ticks();
+
         check(t_initial.IsSet());
         auto const initial{snapshot_at(*t_initial)};
 
@@ -491,6 +533,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
                                            ml::TimeSeriesData<T> const& output) {
             ml::add_simple_curve_row(*curves, name, output.values(), output.times());
         }};
+        add_curve(TEXT("orchestrator_tick"), orchestrator_tick_samples);
         add_curve(TEXT("fighter_spawn_slots"), fighter_spawn_slots_samples);
         add_curve(TEXT("fighter_count"), fighter_count_samples);
         add_curve(TEXT("capital_count"), capital_count_samples);

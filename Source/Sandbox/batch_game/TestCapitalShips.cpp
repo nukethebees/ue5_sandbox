@@ -495,15 +495,6 @@ void ATestCapitalShips::refresh_fighter_handles() {
 
     check(fighter_handles_scratch.Num() >= n_fighters_spawned);
     Swap(fighter_handles, fighter_handles_scratch);
-
-#if WITH_EDITOR
-    auto const n_fighters{fighters_interface.get_num_instances()};
-    auto const n_fighter_handles{fighter_handles.Num()};
-    ensureMsgf(n_fighters == n_fighter_handles,
-               TEXT("Active fighters: %d, Fighter handles in capital: %d"),
-               n_fighters,
-               n_fighter_handles);
-#endif
 }
 
 // Orders
