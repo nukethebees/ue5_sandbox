@@ -63,6 +63,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(VectorsView, aim_directions))                                    \
     NON_FINAL(X(VectorsView, move_target_locations))                             \
     NON_FINAL(X(VectorsView, movement_directions))                               \
+    NON_FINAL(X(TView<float>, move_distances))                                   \
     NON_FINAL(X(TView<float>, speeds))                                           \
     NON_FINAL(X(TView<ETestTeam>, teams))                                        \
     NON_FINAL(X(TView<int32>, healths))                                          \
@@ -75,6 +76,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(TView<float>, intercept_times))                                  \
     NON_FINAL(X(VectorsView, desired_firing_directions))                         \
     NON_FINAL(X(TView<float>, target_distance_sq))                               \
+    NON_FINAL(X(TView<float>, target_distances))                                 \
     X(TView<float>, target_radii)
 
     SANDBOX_CLASS_MEMBERS(MEMBER_DECL, EXPAND)
@@ -101,6 +103,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     FVectors3f aim_directions;
     FVectors3f move_target_locations;
     FVectors3f movement_directions;
+    TArray<float> move_distances;
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
@@ -114,6 +117,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> intercept_times;
     FVectors3f desired_firing_directions;
     TArray<float> target_distance_sq;
+    TArray<float> target_distances;
     TArray<float> target_radii;
 
 #define SANDBOX_PACK(STAMPER, NON_FINAL)          \
@@ -123,6 +127,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(aim_directions))            \
     NON_FINAL(STAMPER(move_target_locations))     \
     NON_FINAL(STAMPER(movement_directions))       \
+    NON_FINAL(STAMPER(move_distances))            \
     NON_FINAL(STAMPER(speeds))                    \
     NON_FINAL(STAMPER(teams))                     \
     NON_FINAL(STAMPER(healths))                   \
@@ -135,6 +140,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(intercept_times))           \
     NON_FINAL(STAMPER(desired_firing_directions)) \
     NON_FINAL(STAMPER(target_distance_sq))        \
+    NON_FINAL(STAMPER(target_distances))          \
     STAMPER(target_radii)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)

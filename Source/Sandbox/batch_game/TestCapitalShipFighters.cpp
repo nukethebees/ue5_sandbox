@@ -128,11 +128,7 @@ void ATestCapitalShipFighters::make_decisions() {
         auto const target_handle{data.target_handles[i]};
 
         if (entity_registry->is_valid_alive(target_handle)) {
-            auto const target_location{entity_registry->get_location(target_handle)};
-            auto const target_distance_sq{
-                FVector3f::DistSquared(fighter_location, target_location)};
-
-            if (target_distance_sq <= attack_engagement_threshold_sq) {
+            if (data.target_distance_sq[i] <= attack_engagement_threshold_sq) {
                 continue;
             }
         }
@@ -206,8 +202,9 @@ void ATestCapitalShipFighters::move(float const dt) {
                             laser_half_distance);
     }
 
-    // Update movement direction
-    ml::direction(data.movement_directions, data.locations, data.move_target_locations);
+    // Update movement direction and remaining distance to the movement destination
+    ml::direction_and_distance(
+        data.movement_directions, data.move_distances, data.locations, data.move_target_locations);
 
     // Look phase
     if (do_move) {
@@ -223,6 +220,12 @@ void ATestCapitalShipFighters::move(float const dt) {
     // Move phase
     move(dt, move_view);
     move(dt, attack_view);
+
+    ml::dist_sq(
+        attack_view.target_distance_sq, attack_view.locations, attack_view.target_locations);
+    for (int32 i{0}; i < n_attack; ++i) {
+        attack_view.target_distances[i] = FMath::Sqrt(attack_view.target_distance_sq[i]);
+    }
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
@@ -313,7 +316,16 @@ void ATestCapitalShipFighters::end_tick() {
 
 // Movement
 void ATestCapitalShipFighters::move(float const dt, TaskView const& fighters) {
-    ml::add_scaled_in_place(fighters.locations, fighters.movement_directions, fighters.speeds, dt);
+    auto const n{fighters.num()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const max_move_distance{fighters.speeds[i] * dt};
+        fighters.move_distances[i] = FMath::Min(fighters.move_distances[i], max_move_distance);
+    }
+
+    ml::add_scaled_in_place(fighters.locations,
+                            fighters.movement_directions,
+                            TConstArrayView<float>{fighters.move_distances},
+                            1.f);
 }
 
 // Accessors
@@ -587,6 +599,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     ml::append_from(data.locations, new_locations);
     data.move_target_locations.add_zeroed(n_new);
     data.movement_directions.add_zeroed(n_new);
+    data.move_distances.AddZeroed(n_new);
     ml::add_uninitialised(data.aim_directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
@@ -600,6 +613,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     data.intercept_times.AddZeroed(n_new);
     data.desired_firing_directions.add_zeroed(n_new);
     data.target_distance_sq.AddZeroed(n_new);
+    data.target_distances.AddZeroed(n_new);
     data.target_radii.AddZeroed(n_new);
 
     data.attack_cooldowns.remaining_times.AddZeroed(n_new);
@@ -677,7 +691,6 @@ void ATestCapitalShipFighters::remove_dead_entities() {
 // Combat
 void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::handle_firing);
-    ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
 
     static FName const socket_name{TEXT("Gun")};
 
@@ -838,6 +851,12 @@ void ATestCapitalShipFighters::refresh_target_data() {
                                          data.target_locations.get_view(),
                                          data.target_velocities.get_view(),
                                          data.target_radii);
+
+    ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
+    auto const n{data.num()};
+    for (int32 i{0}; i < n; ++i) {
+        data.target_distances[i] = FMath::Sqrt(data.target_distance_sq[i]);
+    }
 }
 
 // Misc
