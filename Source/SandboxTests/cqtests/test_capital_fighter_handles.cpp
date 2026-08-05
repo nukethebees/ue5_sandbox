@@ -140,7 +140,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         main_capital_index = *capitals->find_first_index_on_team(main_capital_team);
         main_capital_handle = capitals->get_handle(main_capital_index);
 
-        TestRunner->AddInfo(FString::Printf(TEXT("Main capital team: %s"),
+        TestRunner->AddInfo(FString::Printf(TEXT("Check main capital team is %s"),
                                             *ml::to_string_without_type_prefix(main_capital_team)));
 
 #if WITH_EDITOR
@@ -338,8 +338,10 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
                 test_driver->registry.is_valid_alive(kept[i]), TEXT("Kept is valid alive"), i);
         }
         for (int32 i{0}; i < kept.Num(); ++i) {
-            checks.is_true(test_driver->registry.is_valid_dead(destroyed[i]),
-                           TEXT("Destroyed is valid dead"),
+            auto const handle{destroyed[i]};
+            checks.is_true(test_driver->registry.is_valid_dead(handle),
+                           FString::Printf(TEXT("Destroyed handle %s is valid and entity is dead"),
+                                           *handle.to_string()),
                            i);
         }
 
@@ -350,12 +352,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
         for (int32 i{}; i < n_post; ++i) {
             auto const handle{post_fighter_kill_main_fighters.handles[i]};
-            checks.is_true(
-                initial_main_fighters.handles.Contains(handle),
-                FString::Printf(
-                    TEXT("Post-kill main fighter[%d] (%s) was parented by main before kill"),
-                    i,
-                    *handle.to_string()));
+            checks.is_true(initial_main_fighters.handles.Contains(handle),
+                           FString::Printf(TEXT("After killing fighters, main fighter[%d] (%s) was "
+                                                "parented by main capital before kill"),
+                                           i,
+                                           *handle.to_string()));
         }
     }
     void post_fighter_kill_check_stage() {
@@ -410,7 +411,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         for (int32 i{0}; i < n; ++i) {
             checks.not_equal(main_capital_handle,
                              sample.target_handles[i],
-                             FString::Printf(TEXT("(%s) Fighter (%s) not targeting parent"),
+                             FString::Printf(TEXT("(%s) Check fighter %s is not targeting parent"),
                                              *info,
                                              *sample.handles[i].to_string()),
                              i);
