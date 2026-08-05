@@ -59,8 +59,11 @@ struct SpawnData : public ml::FSoAArrayMixin {
 // Cycled each tick via double buffering
 struct EntityTickData : public ml::FSoAArrayMixin {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
+    TestCapitalShipFighterSpawnQueue fighter_queue;
 
-#define SANDBOX_PACK(STAMPER, NON_FINAL) STAMPER(ships_ready_to_spawn_fighters_buffer)
+#define SANDBOX_PACK(STAMPER, NON_FINAL)                    \
+    NON_FINAL(STAMPER(ships_ready_to_spawn_fighters_buffer)) \
+    STAMPER(fighter_queue)
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK
@@ -266,7 +269,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Fighter spawning
     ml::test_capital_ship_fighters::CommandInterface fighters_interface;
 
-    TestCapitalShipFighterSpawnQueue fighter_queue;
     TArray<FRegistryEntityHandle> fighter_handles;
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
     FighterReassignment fighter_reassignment_queue;

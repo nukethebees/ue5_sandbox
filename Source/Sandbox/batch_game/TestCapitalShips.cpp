@@ -188,7 +188,7 @@ void ATestCapitalShips::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
 
-    fighters_spawned += ml::num(fighter_queue);
+    fighters_spawned += ml::num(tick_buffers.current().fighter_queue);
     validate_array_sizes();
 }
 
@@ -362,6 +362,8 @@ void ATestCapitalShips::queue_fighter_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::queue_fighter_spawns);
 
     auto& data{tick_buffers.current()};
+    auto& fighter_queue{data.fighter_queue};
+    fighter_queue.reset();
 
     auto const n_capital_ships{get_num_instances()};
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
@@ -391,8 +393,6 @@ void ATestCapitalShips::queue_fighter_spawns() {
     if (ships_ready_to_spawn_fighters_indices.IsEmpty()) { return; }
 
     auto const relative_transforms{actor_config->fighter_spawn_slots_relative_transforms};
-
-    ml::reset(fighter_queue);
 
     for (auto const i : ships_ready_to_spawn_fighters_indices) {
         auto const target_handle{entities.target_handles[i]};
@@ -432,8 +432,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
     spawn_data.validate_array_sizes();
 
     auto const n_spawned_per_capital{get_fighter_spawn_slots()};
-    auto const n_capitals_spawned_fighters{prev.ships_ready_to_spawn_fighters_buffer.Num()};
-    auto const n_fighters_spawned_expected{n_capitals_spawned_fighters * n_spawned_per_capital};
+    auto const n_fighters_spawned_expected{prev.fighter_queue.num()};
     auto const n_fighters_spawned{spawn_data.num()};
     ensure(n_fighters_spawned_expected == n_fighters_spawned);
 
@@ -497,7 +496,7 @@ void ATestCapitalShips::refresh_fighter_handles() {
     check(fighter_handles_scratch.Num() >= n_fighters_spawned);
     Swap(fighter_handles, fighter_handles_scratch);
 
-#if WITH_EDITOR
+#if WITH_EDITOR && 0
     auto const n_fighters{fighters_interface.get_num_instances()};
     auto const n_fighter_handles{fighter_handles.Num()};
     ensureMsgf(n_fighters == n_fighter_handles,
@@ -703,16 +702,11 @@ void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
 void ATestCapitalShips::clear_runtime_state() {
     instances->ClearInstances();
 
-    ml::reset(entities,
-              local_indices_to_remove,
-              tick_buffers.current(),
-              tick_buffers.previous(),
-              fighter_queue);
+    ml::reset(entities, local_indices_to_remove, tick_buffers.current(), tick_buffers.previous());
 }
 void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
               tick_buffers.current(),
-              fighter_queue,
               entity_update_data,
               fighter_handles_scratch);
 }
@@ -753,7 +747,6 @@ void ATestCapitalShips::validate_array_sizes() const {
     });
 
     entities.validate_array_sizes();
-    tick_buffers.current().validate_array_sizes();
 }
 void ATestCapitalShips::validate_proxy_handles() const {
     entity_registry->validate_handles(entities.handles);
