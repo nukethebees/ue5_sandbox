@@ -42,6 +42,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     void set_time_scale(time_type scale) noexcept;
 
+    auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
+    auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
+
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
         return static_cast<time_type>(completed_ticks) * tick_period;
@@ -68,7 +71,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
   private:
     void begin_play();
     void validate_proxy_handles();
-    void route_actor_references();
+    void bind_simulation_dependencies();
 
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
@@ -129,3 +132,31 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     bool log_ticks{false};
 #endif
 };
+
+namespace ml::test_batch_orchestrator {
+class SANDBOX_API SimulationClockInterface {
+  public:
+    inline void bind(ATestBatchOrchestrator const& new_orchestrator) noexcept {
+        orchestrator = &new_orchestrator;
+    }
+
+    inline auto frequency_to_tick_period(ATestBatchOrchestrator::time_type const frequency) const
+        noexcept -> ATestBatchOrchestrator::tick_type {
+        check(IsValid(orchestrator));
+        return orchestrator->frequency_to_tick_period(frequency);
+    }
+
+    inline auto duration_to_tick_period(ATestBatchOrchestrator::time_type const duration) const
+        noexcept -> ATestBatchOrchestrator::tick_type {
+        check(IsValid(orchestrator));
+        return orchestrator->duration_to_tick_period(duration);
+    }
+
+    inline auto get_completed_ticks() const noexcept -> ATestBatchOrchestrator::tick_type {
+        check(IsValid(orchestrator));
+        return orchestrator->get_completed_ticks();
+    }
+  private:
+    ATestBatchOrchestrator const* orchestrator{nullptr};
+};
+}

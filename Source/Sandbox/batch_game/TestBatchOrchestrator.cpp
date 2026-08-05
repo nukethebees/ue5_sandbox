@@ -40,6 +40,7 @@ void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 
     completed_ticks = 0;
+    check(tick_rate > time_type{0});
     tick_period = 1.f / tick_rate;
 
 #if WITH_EDITOR
@@ -59,7 +60,7 @@ void ATestBatchOrchestrator::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
     });
 
-    route_actor_references();
+    bind_simulation_dependencies();
 
     entity_registry->reset();
 
@@ -350,9 +351,24 @@ void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     time_scale = scale;
 }
 
-void ATestBatchOrchestrator::route_actor_references() {
+auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
+    -> tick_type {
+    check(frequency > time_type{0});
+    check(tick_rate > time_type{0});
+    return static_cast<tick_type>(FMath::CeilToInt64(tick_rate / frequency));
+}
+
+auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
+    -> tick_type {
+    check(duration >= time_type{0});
+    check(tick_period > time_type{0});
+    return static_cast<tick_type>(FMath::CeilToInt64(duration / tick_period));
+}
+
+void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);
+    capital_ship_fighters->bind_simulation_clock(*this);
 
     if (player_ship) {
         mission_manager->set_player_ship(*player_ship);

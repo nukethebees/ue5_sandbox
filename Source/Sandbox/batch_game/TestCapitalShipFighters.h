@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
@@ -163,6 +164,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void clear_runtime_state();
     void begin_play();
 
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
+        simulation_clock.bind(orchestrator);
+    }
+
     void begin_tick();
     void update_timers(float const dt);
     void make_decisions();
@@ -313,6 +318,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     // Config data
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity data
     TestEntityOwnerId owner_id{};
