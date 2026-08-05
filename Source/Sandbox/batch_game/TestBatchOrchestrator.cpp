@@ -69,6 +69,10 @@ void ATestBatchOrchestrator::start_simulation() {
     state = EOrchestratorState::Running;
     SetActorTickEnabled(true);
 }
+void ATestBatchOrchestrator::pause_simulation() {
+    state = EOrchestratorState::Paused;
+    SetActorTickEnabled(false);
+}
 
 void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
     if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) { return; }

@@ -52,6 +52,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void Tick(float dt) override;
     void tick(time_type const dt);
     void start_simulation();
+    void pause_simulation();
 
     void set_test_config(UTestSimulationConfig const& config);
     void set_start_mode(EOrchestratorStartMode mode);
