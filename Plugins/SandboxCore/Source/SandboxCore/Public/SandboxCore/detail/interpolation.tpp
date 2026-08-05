@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/numeric.h"
 
@@ -190,7 +191,7 @@ void lerp_1d(TArrayView<T> out,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out.Num()};
 
-    check(ml::all_num_equal_to(count, from, to, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(out, from, to, alpha));
 
     ml::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha.GetData(), count);
 }
@@ -202,7 +203,7 @@ void lerp_1d(TArrayView<T> out,
              T const alpha) noexcept {
     auto const count{out.Num()};
 
-    check(ml::all_num_equal_to(count, from, to));
+    check(ml::all_num_equal_and_pointers_not_equal(out, from, to));
 
     ml::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha, count);
 }
@@ -213,7 +214,7 @@ void lerp_1d_in_place(TArrayView<T> current,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current.Num()};
 
-    check(ml::all_num_equal_to(count, target, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(current, target, alpha));
 
     ml::kernel::lerp_1d_in_place(
         current.GetData(), target.GetData(), alpha.GetData(), count);
@@ -225,7 +226,7 @@ void lerp_1d_in_place(TArrayView<T> current,
                       T const alpha) noexcept {
     auto const count{current.Num()};
 
-    check(ml::all_num_equal_to(count, target));
+    check(ml::all_num_equal_and_pointers_not_equal(current, target));
 
     ml::kernel::lerp_1d_in_place(current.GetData(), target.GetData(), alpha, count);
 }
@@ -240,7 +241,8 @@ void lerp_2d(TArrayView<T> out_x,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_to(count, out_y, from_x, from_y, to_x, to_y, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_x, out_y, from_x, from_y, to_x, to_y, alpha));
 
     ml::kernel::lerp_2d(out_x.GetData(),
                         out_y.GetData(),
@@ -262,7 +264,8 @@ void lerp_2d(TArrayView<T> out_x,
              T const alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_to(count, out_y, from_x, from_y, to_x, to_y));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_x, out_y, from_x, from_y, to_x, to_y));
 
     ml::kernel::lerp_2d(out_x.GetData(),
                         out_y.GetData(),
@@ -282,7 +285,8 @@ void lerp_2d_in_place(TArrayView<T> current_x,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_to(count, current_y, target_x, target_y, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        current_x, current_y, target_x, target_y, alpha));
 
     ml::kernel::lerp_2d_in_place(current_x.GetData(),
                                  current_y.GetData(),
@@ -300,7 +304,7 @@ void lerp_2d_in_place(TArrayView<T> current_x,
                       T const alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_to(count, current_y, target_x, target_y));
+    check(ml::all_num_equal_and_pointers_not_equal(current_x, current_y, target_x, target_y));
 
     ml::kernel::lerp_2d_in_place(current_x.GetData(),
                                  current_y.GetData(),
@@ -323,8 +327,8 @@ void lerp_3d(TArrayView<T> out_x,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_to(
-        count, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_x, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z, alpha));
 
     ml::kernel::lerp_3d(out_x.GetData(),
                         out_y.GetData(),
@@ -352,8 +356,8 @@ void lerp_3d(TArrayView<T> out_x,
              T const alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(
-        ml::all_num_equal_to(count, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_x, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z));
 
     ml::kernel::lerp_3d(out_x.GetData(),
                         out_y.GetData(),
@@ -378,7 +382,8 @@ void lerp_3d_in_place(TArrayView<T> current_x,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_to(count, current_y, current_z, target_x, target_y, target_z, alpha));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        current_x, current_y, current_z, target_x, target_y, target_z, alpha));
 
     ml::kernel::lerp_3d_in_place(current_x.GetData(),
                                  current_y.GetData(),
@@ -400,7 +405,8 @@ void lerp_3d_in_place(TArrayView<T> current_x,
                       T const alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_to(count, current_y, current_z, target_x, target_y, target_z));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        current_x, current_y, current_z, target_x, target_y, target_z));
 
     ml::kernel::lerp_3d_in_place(current_x.GetData(),
                                  current_y.GetData(),

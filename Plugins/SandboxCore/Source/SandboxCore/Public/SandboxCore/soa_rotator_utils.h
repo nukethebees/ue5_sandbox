@@ -56,9 +56,7 @@ inline auto SANDBOXCORE_API make_rotatorsf(std::initializer_list<float> const pi
 inline auto SANDBOXCORE_API make_rotatorsf(TArray<float> pitches,
                                            TArray<float> yaws,
                                            TArray<float> rolls) -> FRotatorsf {
-    auto const n{pitches.Num()};
-    check(n == yaws.Num());
-    check(n == rolls.Num());
+    check(ml::all_num_equal(pitches, yaws, rolls));
 
     return {
         .pitches = MoveTemp(pitches),

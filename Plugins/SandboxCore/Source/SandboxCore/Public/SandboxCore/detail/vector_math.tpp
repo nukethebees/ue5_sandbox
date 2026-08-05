@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/log_categories.h"
 #include "SandboxCore/numeric.h"
@@ -456,7 +457,8 @@ void add_vector3(TArrayView<T> out_x,
                  TConstArrayView<T> rhs_y,
                  TConstArrayView<T> rhs_z) noexcept {
     auto const count{lhs_x.Num()};
-    check(ml::all_num_equal_to(count, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, out_x, out_y, out_z));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_x, out_y, out_z, lhs_x, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z));
 
     ml::kernel::add_vector3(out_x.GetData(),
                             out_y.GetData(),
@@ -475,7 +477,7 @@ void add_vector3(TArrayView<T> out_x,
 /* ---------------------------------------------------------------------------------------------- */
 template <ml::HasSizeSquared T>
 void size_sq_vector(TConstArrayView<T> vecs, TArrayView<T> out) noexcept {
-    check(vecs.Num() == out.Num());
+    check(ml::all_num_equal_and_pointers_not_equal(vecs, out));
     size_sq_vector(out.GetData(), vecs.GetData(), vecs.Num());
 }
 
@@ -486,19 +488,16 @@ void size_sq_vector(TArrayView<T> out,
                     TConstArrayView<T> zs) noexcept {
     auto const count{xs.Num()};
 
-    auto const are_equal{ml::all_num_equal_to(count, ys, zs, out)};
-    check(are_equal);
-    if (!are_equal) {
-        UE_LOG(LogSandboxCore, Error, TEXT("size_sq_vector: Mismatched array sizes."));
+    auto const inputs_are_valid{ml::all_num_equal_and_pointers_not_equal(out, xs, ys, zs)};
+    check(inputs_are_valid);
+    if (!inputs_are_valid) {
+        UE_LOG(LogSandboxCore, Error, TEXT("size_sq_vector: Invalid array sizes or aliases."));
         checkNoEntry();
         return;
     }
     if (count < 1) {
         return;
     }
-
-    check(ml::all_num_equal_and_pointers_not_equal(out, xs, ys, zs));
-
     size_sq_vector(out.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), count);
 }
 
@@ -514,14 +513,8 @@ void dot_product(TArrayView<T> const out,
                  TConstArrayView<T> const b_ys,
                  TConstArrayView<T> const b_zs) noexcept {
     auto const n{a_xs.Num()};
-
-    check(n == a_xs.Num());
-    check(n == a_ys.Num());
-    check(n == a_zs.Num());
-    check(n == b_xs.Num());
-    check(n == b_ys.Num());
-    check(n == b_zs.Num());
-    check(n == out.Num());
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs));
 
     ml::kernel::dot_product(out.GetData(),
                             a_xs.GetData(),
@@ -547,12 +540,6 @@ void direction(TArrayView<T> const out_xs,
                TConstArrayView<T> const b_ys,
                TConstArrayView<T> const b_zs) noexcept {
     auto const count{out_xs.Num()};
-
-    if (count < 1) {
-        check(ml::all_num_equal_to(
-            count, out_ys, out_zs, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs));
-        return;
-    }
 
     check(ml::all_num_equal_and_pointers_not_equal(
         out_xs, out_ys, out_zs, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs));
@@ -580,11 +567,6 @@ void to_rotations(TArrayView<T> const pitches,
                   TConstArrayView<T> const ys,
                   TConstArrayView<T> const zs) noexcept {
     auto const count{xs.Num()};
-
-    if (count < 1) {
-        check(ml::all_num_equal_to(count, ys, zs, pitches, yaws, rolls));
-        return;
-    }
 
     check(ml::all_num_equal_and_pointers_not_equal(pitches, yaws, rolls, xs, ys, zs));
 

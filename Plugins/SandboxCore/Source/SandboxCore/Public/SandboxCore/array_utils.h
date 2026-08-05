@@ -7,7 +7,6 @@
 #include <Math/UnrealMathUtility.h>
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
-#include "Containers/StaticArray.h"
 
 #include <concepts>
 #include <type_traits>
@@ -97,34 +96,6 @@ auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) 
     return all_num_equal_to(ml::num(array), other, rest...);
 }
 
-template <HasNumAndGetData... Containers>
-    requires(sizeof...(Containers) >= 2)
-[[nodiscard]] auto all_num_equal_and_pointers_not_equal(Containers const&... containers) -> bool {
-    TStaticArray<void const*, sizeof...(Containers)> pointers{};
-    int32 pointer_count{0};
-    int32 expected_num{0};
-
-    auto const validate = [&](auto const& container) {
-        if (pointer_count == 0) {
-            expected_num = container.Num();
-        } else if (container.Num() != expected_num) {
-            return false;
-        }
-
-        void const* const pointer{container.GetData()};
-        for (int32 i{0}; i < pointer_count; ++i) {
-            if (pointers[i] == pointer) {
-                return false;
-            }
-        }
-
-        pointers[pointer_count++] = pointer;
-        return true;
-    };
-
-    return (validate(containers) && ...);
-}
-
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
 
 template <typename... TArrays>
@@ -188,14 +159,5 @@ void collect_valid_indices_by_key(KeysType const& keys,
     }
 
     out_indices.SetNum(n, EAllowShrinking::No);
-}
-
-template <typename T, typename... Ts>
-    requires (std::convertible_to<Ts, std::remove_cvref_t<T>> && ...)
-constexpr auto to_static_array(T&& first, Ts&&... rest) {
-    using Element = std::remove_cvref_t<T>;
-
-    return TStaticArray<Element, 1 + sizeof...(Ts)>{
-        std::forward<T>(first), static_cast<Element>(std::forward<Ts>(rest))...};
 }
 }

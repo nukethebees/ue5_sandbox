@@ -1,4 +1,5 @@
-#include <SandboxCore/array_utils.h>
+#include <SandboxCore/array_checks.h>
+#include <SandboxCore/soa_vector_utils.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
@@ -78,7 +79,7 @@ TEST_CASE("SandboxCore.Array.all_num_equal_and_pointers_not_equal.Empty containe
     TArray<int32> const first;
     TArray<int32> const second;
 
-    CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(first, second));
+    CHECK(ml::all_num_equal_and_pointers_not_equal(first, second));
 }
 
 TEST_CASE("SandboxCore.Array.all_num_equal_and_pointers_not_equal.Overlapping offset views") {
@@ -87,4 +88,65 @@ TEST_CASE("SandboxCore.Array.all_num_equal_and_pointers_not_equal.Overlapping of
     auto const right{TConstArrayView<int32>{values}.Right(2)};
 
     CHECK(ml::all_num_equal_and_pointers_not_equal(left, right));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Single vector") {
+    auto const vectors{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+
+    CHECK(ml::all_num_equal_and_pointers_not_equal(vectors));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Distinct vectors") {
+    auto const first{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}})};
+    auto const second{ml::make_vectors3f(TArray<FVector3f>{{4.0f, 5.0f, 6.0f}})};
+
+    CHECK(ml::all_num_equal_and_pointers_not_equal(first, second));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Aliased vectors") {
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}})};
+    auto const view{vectors.get_const_view()};
+
+    CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(vectors, view));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Mixed inputs") {
+    TArray<float> const output{0.0f, 0.0f};
+    auto const vectors{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+
+    CHECK(ml::all_num_equal_and_pointers_not_equal(output, vectors));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Vector component sizes") {
+    TArray<float> const xs{1.0f, 2.0f};
+    TArray<float> const ys{3.0f};
+    TArray<float> const zs{4.0f, 5.0f};
+    FVectors3f::ConstView const vectors{xs, ys, zs};
+
+    CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(vectors));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Internal vector alias") {
+    TArray<float> const values{1.0f, 2.0f};
+    TArray<float> const other{3.0f, 4.0f};
+    FVectors3f::ConstView const vectors{values, other, values};
+
+    CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(vectors));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Mixed alias") {
+    auto const vectors{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    TConstArrayView<float> const output{vectors.xs};
+
+    CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(output, vectors));
+}
+
+TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Empty vectors") {
+    FVectors3f const first;
+    FVectors3f const second;
+
+    CHECK(ml::all_num_equal_and_pointers_not_equal(first, second));
 }

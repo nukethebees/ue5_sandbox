@@ -851,10 +851,8 @@ void ATestCapitalShipFighters::refresh_target_data() {
                                          data.target_velocities.get_view(),
                                          data.target_radii);
 
-    ml::dist_and_dist_sq(data.target_distances,
-                         data.target_distance_sq,
-                         data.locations,
-                         data.target_locations);
+    ml::dist_and_dist_sq(
+        data.target_distances, data.target_distance_sq, data.locations, data.target_locations);
 }
 
 // Misc

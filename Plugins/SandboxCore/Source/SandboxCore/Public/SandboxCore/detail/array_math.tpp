@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxCore/array_checks.h"
 #include <SandboxCore/numeric.h>
 
 #include "CoreMinimal.h"
@@ -142,7 +143,7 @@ void multiply_in_place(TArray<T>& data, T const value) noexcept {
 }
 template <ml::Numeric T>
 void multiply_in_place(TArrayView<T> const data, TConstArrayView<T> const values) noexcept {
-    check(data.Num() == values.Num());
+    check(ml::all_num_equal_and_pointers_not_equal(data, values));
     ml::kernel::multiply_in_place(data.GetData(), values.GetData(), data.Num());
 }
 

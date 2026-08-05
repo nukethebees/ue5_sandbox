@@ -1,4 +1,5 @@
 #include <SandboxCore/projectile_intercept.h>
+#include <SandboxCore/array_checks.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -57,15 +58,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            float const projectile_speed) {
     auto const count{out_intercept_times.Num()};
 
-    check(shooter_positions.num() == count);
-    check(target_positions.num() == count);
-    check(target_velocities.num() == count);
-    check(shooter_positions.ys.Num() == count);
-    check(shooter_positions.zs.Num() == count);
-    check(target_positions.ys.Num() == count);
-    check(target_positions.zs.Num() == count);
-    check(target_velocities.ys.Num() == count);
-    check(target_velocities.zs.Num() == count);
+    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
+                                                    shooter_positions,
+                                                    target_positions,
+                                                    target_velocities));
 
     for (int32 i{0}; i < count; ++i) {
         auto const shooter_pos{
@@ -95,9 +91,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
 
     auto const count{out_intercept_times.Num()};
 
-    check(shooter_positions.num() == count);
-    check(target_positions.num() == count);
-    check(target_velocities.num() == count);
+    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
+                                                    shooter_positions,
+                                                    target_positions,
+                                                    target_velocities));
 
     auto const projectile_speed_sq{projectile_speed * projectile_speed};
     constexpr value_type max{TNumericLimits<value_type>::Max()};
@@ -165,9 +162,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
     auto const count{out_intercept_times.Num()};
     auto* const out{out_intercept_times.GetData()};
 
-    check(shooter_positions.num() == count);
-    check(target_positions.num() == count);
-    check(target_velocities.num() == count);
+    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
+                                                    shooter_positions,
+                                                    target_positions,
+                                                    target_velocities));
 
     auto const projectile_speed_sq{projectile_speed * projectile_speed};
     constexpr value_type max{TNumericLimits<value_type>::Max()};

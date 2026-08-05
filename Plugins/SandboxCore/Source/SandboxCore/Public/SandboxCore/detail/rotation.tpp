@@ -2,6 +2,7 @@
 
 #include "SandboxCore/angle_traits.h"
 #include "SandboxCore/angle_unit.h"
+#include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/log_categories.h"
 #include "SandboxCore/numeric.h"
@@ -265,12 +266,12 @@ void rotate_towards_1d_normalised_in_place(TArrayView<T> current,
                                            T const delta_time) noexcept {
     auto const count{current.Num()};
 
-    auto const are_equal{ml::all_num_equal_to(count, target)};
-    check(are_equal);
-    if (!are_equal) {
+    auto const inputs_are_valid{ml::all_num_equal_and_pointers_not_equal(current, target)};
+    check(inputs_are_valid);
+    if (!inputs_are_valid) {
         UE_LOG(LogSandboxCore,
                Error,
-               TEXT("rotate_towards_1d_normalised_in_place: Mismatched array sizes."));
+               TEXT("rotate_towards_1d_normalised_in_place: Invalid array sizes or aliases."));
         checkNoEntry();
         return;
     }
@@ -307,11 +308,13 @@ void compute_desired_yaws_radians(TConstArrayView<T> const start_xs,
                                   TArrayView<T> const out_yaws_radians) {
     auto const count{start_xs.Num()};
 
-    auto const are_equal{ml::all_num_equal_to(count, start_ys, end_xs, end_ys, out_yaws_radians)};
-    check(are_equal);
-    if (!are_equal) {
-        UE_LOG(
-            LogSandboxCore, Error, TEXT("compute_desired_yaws_radians: Mismatched array sizes."));
+    auto const inputs_are_valid{ml::all_num_equal_and_pointers_not_equal(
+        start_xs, start_ys, end_xs, end_ys, out_yaws_radians)};
+    check(inputs_are_valid);
+    if (!inputs_are_valid) {
+        UE_LOG(LogSandboxCore,
+               Error,
+               TEXT("compute_desired_yaws_radians: Invalid array sizes or aliases."));
         checkNoEntry();
         return;
     }

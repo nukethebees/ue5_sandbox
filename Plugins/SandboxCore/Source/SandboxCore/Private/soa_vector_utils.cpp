@@ -46,7 +46,7 @@ void multiply_in_place(FVectors3f& dst, float const value) {
 void multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values) {
     auto const n{dst.num()};
 
-    check(n == values.Num());
+    check(ml::all_num_equal_and_pointers_not_equal(dst, values));
 
     ml::kernel::multiply_in_place(
         dst.xs.GetData(), dst.ys.GetData(), dst.zs.GetData(), values.GetData(), n);
@@ -56,13 +56,8 @@ void multiply_in_place(FVectors3f& dst, TConstArrayView<float> const values) {
 // Addition
 /* ---------------------------------------------------------------------------------------------- */
 void add_scaled_in_place(FVectors3f& dst, FVectors3f const& src, float const scale_factor) {
-    ml::check_is_consistent(dst);
-    ml::check_is_consistent(src);
-
     auto const n{ml::num(dst)};
-    check(ml::num(src) == n);
-
-    check(&dst != &src);
+    check(ml::all_num_equal_and_pointers_not_equal(dst, src));
 
     return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
                                                   dst.ys.GetData(),
@@ -74,17 +69,8 @@ void add_scaled_in_place(FVectors3f& dst, FVectors3f const& src, float const sca
                                                   n);
 }
 void add_scaled_in_place(FVectors3f& dst, FVectors3f const& a, FVectors3f const& b, float const c) {
-    ml::check_is_consistent(dst);
-    ml::check_is_consistent(a);
-    ml::check_is_consistent(b);
-
     auto const n{ml::num(dst)};
-    check(ml::num(a) == n);
-    check(ml::num(b) == n);
-
-    check(&dst != &a);
-    check(&dst != &b);
-    check(&a != &b);
+    check(ml::all_num_equal_and_pointers_not_equal(dst, a, b));
 
     return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
                                                   dst.ys.GetData(),

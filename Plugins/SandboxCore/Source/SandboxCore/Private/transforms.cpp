@@ -1,5 +1,6 @@
 #include <SandboxCore/transforms.h>
 
+#include <SandboxCore/array_utils.h>
 #include <SandboxCore/container_ops.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_rotators.h>
@@ -23,7 +24,7 @@ auto make_transforms(FVectors3f const& locations, FRotatorsf const& rotations)
 auto make_transforms(TVectors3View<float const> const locations,
                      TRotatorsView<float const> const rotations) -> TArray<FTransform> {
     auto const n{ml::num(locations)};
-    check(n == ml::num(rotations));
+    check(ml::all_num_equal(locations, rotations));
 
     TArray<FTransform> out;
     for (int32 i{0}; i < n; ++i) {
@@ -36,7 +37,7 @@ auto make_transforms(TVectors3View<float const> const locations,
 void set_transform_locations(TArrayView<FTransform> const transforms, FVectors3f const& locations) {
     auto const n{ml::num(transforms)};
 
-    check(n == locations.num());
+    check(ml::all_num_equal(transforms, locations));
 
     for (int32 i{0}; i < n; ++i) {
         transforms[i].SetLocation(ml::get_vector3d(locations, i));
