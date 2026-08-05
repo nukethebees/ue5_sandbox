@@ -310,6 +310,27 @@ void dist_sq_vector(T* RESTRICT out,
     }
 }
 
+template <std::floating_point T>
+void dist_and_dist_sq_vector(T* RESTRICT out_distances,
+                             T* RESTRICT out_distances_sq,
+                             T const* RESTRICT xs_lhs,
+                             T const* RESTRICT ys_lhs,
+                             T const* RESTRICT zs_lhs,
+                             T const* RESTRICT xs_rhs,
+                             T const* RESTRICT ys_rhs,
+                             T const* RESTRICT zs_rhs,
+                             int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        auto const x{xs_rhs[i] - xs_lhs[i]};
+        auto const y{ys_rhs[i] - ys_lhs[i]};
+        auto const z{zs_rhs[i] - zs_lhs[i]};
+        auto const distance_sq{x * x + y * y + z * z};
+
+        out_distances[i] = FMath::Sqrt(distance_sq);
+        out_distances_sq[i] = distance_sq;
+    }
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 // Dot product
 /* ---------------------------------------------------------------------------------------------- */

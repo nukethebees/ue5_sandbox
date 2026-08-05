@@ -221,11 +221,10 @@ void ATestCapitalShipFighters::move(float const dt) {
     move(dt, move_view);
     move(dt, attack_view);
 
-    ml::dist_sq(
-        attack_view.target_distance_sq, attack_view.locations, attack_view.target_locations);
-    for (int32 i{0}; i < n_attack; ++i) {
-        attack_view.target_distances[i] = FMath::Sqrt(attack_view.target_distance_sq[i]);
-    }
+    ml::dist_and_dist_sq(attack_view.target_distances,
+                         attack_view.target_distance_sq,
+                         attack_view.locations,
+                         attack_view.target_locations);
 }
 void ATestCapitalShipFighters::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::queue_commands);
@@ -852,11 +851,10 @@ void ATestCapitalShipFighters::refresh_target_data() {
                                          data.target_velocities.get_view(),
                                          data.target_radii);
 
-    ml::dist_sq(data.target_distance_sq, data.locations, data.target_locations);
-    auto const n{data.num()};
-    for (int32 i{0}; i < n; ++i) {
-        data.target_distances[i] = FMath::Sqrt(data.target_distance_sq[i]);
-    }
+    ml::dist_and_dist_sq(data.target_distances,
+                         data.target_distance_sq,
+                         data.locations,
+                         data.target_locations);
 }
 
 // Misc

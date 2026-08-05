@@ -67,4 +67,14 @@ ML_EXTERN_FN(FVector);
                                                     int32 const count) noexcept
 ML_EXTERN_FN(float);
 #undef ML_EXTERN_FN
+
+#define ML_EXTERN_FN(T)                                                     \
+    template SANDBOXCORE_API void dist_and_dist_sq_vector<T>(               \
+        T * RESTRICT out_distances, T * RESTRICT out_distances_sq,          \
+        T const* RESTRICT xs_lhs, T const* RESTRICT ys_lhs,                 \
+        T const* RESTRICT zs_lhs, T const* RESTRICT xs_rhs,                 \
+        T const* RESTRICT ys_rhs, T const* RESTRICT zs_rhs,                 \
+        int32 const count) noexcept
+ML_EXTERN_FN(float);
+#undef ML_EXTERN_FN
 }

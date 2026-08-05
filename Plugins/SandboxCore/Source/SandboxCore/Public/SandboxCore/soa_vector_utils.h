@@ -430,6 +430,42 @@ void dist_sq(TArrayView<float> const out, U&& as, V&& bs) {
                                out.Num());
 }
 
+template <is_readable_vec3f U, is_readable_vec3f V>
+void dist_and_dist_sq(TArrayView<float> const out_distances,
+                      TArrayView<float> const out_distances_sq,
+                      U&& as,
+                      V&& bs) {
+    auto const n{ml::num(as)};
+    check(ml::num(bs) == n);
+    check(out_distances.Num() >= n);
+    check(out_distances_sq.Num() >= n);
+
+    if (n < 1) {
+        return;
+    }
+
+    auto const distances{out_distances.Left(n)};
+    auto const distances_sq{out_distances_sq.Left(n)};
+    check(ml::all_num_equal_and_pointers_not_equal(distances,
+                                                    distances_sq,
+                                                    as.xs,
+                                                    as.ys,
+                                                    as.zs,
+                                                    bs.xs,
+                                                    bs.ys,
+                                                    bs.zs));
+
+    ml::kernel::dist_and_dist_sq_vector(distances.GetData(),
+                                        distances_sq.GetData(),
+                                        as.xs.GetData(),
+                                        as.ys.GetData(),
+                                        as.zs.GetData(),
+                                        bs.xs.GetData(),
+                                        bs.ys.GetData(),
+                                        bs.zs.GetData(),
+                                        n);
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 // Direction
 /* ---------------------------------------------------------------------------------------------- */
