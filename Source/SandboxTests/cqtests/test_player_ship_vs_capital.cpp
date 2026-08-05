@@ -7,20 +7,15 @@
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestPlayerShipVsCapitalResults.h>
+#include <SandboxTests/cqtests/TestResultAssetIO.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
-#include <AssetRegistry/AssetRegistryModule.h>
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/DataTable.h>
-#include <HAL/FileManager.h>
 #include <Misc/Optional.h>
-#include <Misc/PackageName.h>
-#include <Misc/Paths.h>
-#include <UObject/Package.h>
-#include <UObject/SavePackage.h>
 
 TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 {
@@ -179,20 +174,8 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
     }
 
     void export_failure_data() const {
-        static FName const package_name{TEXT("/Game/test_results/player_ship_vs_capital")};
-        static FName const asset_name{TEXT("player_ship_vs_capital")};
-
-        auto const package_path{package_name.ToString()};
-        auto* package{FPackageName::DoesPackageExist(package_path)
-                          ? LoadPackage(nullptr, *package_path, LOAD_None)
-                          : CreatePackage(*package_path)};
-        package->FullyLoad();
-
-        auto* data_table{FindObject<UDataTable>(package, *asset_name.ToString())};
-        if (!data_table) {
-            data_table = NewObject<UDataTable>(package, asset_name, RF_Public | RF_Standalone);
-            FAssetRegistryModule::AssetCreated(data_table);
-        }
+        auto const result_asset{ml::FTestResultAsset{TEXT("player_ship_vs_capital"), *TestRunner}};
+        auto* data_table{result_asset.load_or_create<UDataTable>()};
 
         data_table->EmptyTable();
         data_table->RowStruct = FPlayerShipVsCapitalResultRow::StaticStruct();
@@ -222,22 +205,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
             data_table->AddRow(row_name, row);
         }
 
-        data_table->MarkPackageDirty();
-
-        auto const output_path{FPackageName::LongPackageNameToFilename(
-            package_name.ToString(), FPackageName::GetAssetPackageExtension())};
-        auto const output_directory{FPaths::GetPath(output_path)};
-        IFileManager::Get().MakeDirectory(*output_directory, true);
-
-        FSavePackageArgs save_args{};
-        save_args.TopLevelFlags = RF_Public | RF_Standalone;
-        if (UPackage::SavePackage(package, data_table, *output_path, save_args)) {
-            TestRunner->AddInfo(
-                FString::Printf(TEXT("Exported failure data asset to %s"), *output_path));
-        } else {
-            TestRunner->AddInfo(
-                FString::Printf(TEXT("Failed to export failure data to %s"), *output_path));
-        }
+        result_asset.save(*data_table);
     }
 
     TEST_METHOD(Main)

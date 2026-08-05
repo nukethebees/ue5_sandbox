@@ -6,19 +6,14 @@
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestFightersInterceptCapitalResults.h>
+#include <SandboxTests/cqtests/TestResultAssetIO.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
-#include <AssetRegistry/AssetRegistryModule.h>
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <HAL/FileManager.h>
 #include <Misc/Optional.h>
-#include <Misc/PackageName.h>
-#include <Misc/Paths.h>
-#include <UObject/Package.h>
-#include <UObject/SavePackage.h>
 
 TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
 {
@@ -132,22 +127,9 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
     }
 
     void export_failure_data() const {
-        static FName const package_name{TEXT("/Game/test_results/fighters_intercept_capital")};
-        static FName const asset_name{TEXT("fighters_intercept_capital")};
-
-        auto const package_path{package_name.ToString()};
-        auto* package{FPackageName::DoesPackageExist(package_path)
-                          ? LoadPackage(nullptr, *package_path, LOAD_None)
-                          : CreatePackage(*package_path)};
-        package->FullyLoad();
-
-        auto* results{
-            FindObject<UTestFightersInterceptCapitalResults>(package, *asset_name.ToString())};
-        if (!results) {
-            results = NewObject<UTestFightersInterceptCapitalResults>(
-                package, asset_name, RF_Public | RF_Standalone);
-            FAssetRegistryModule::AssetCreated(results);
-        }
+        auto const result_asset{
+            ml::FTestResultAsset{TEXT("fighters_intercept_capital"), *TestRunner}};
+        auto* results{result_asset.load_or_create<UTestFightersInterceptCapitalResults>()};
 
         results->hero_capital = hero_capital.to_string();
         results->original_target = original_target.to_string();
@@ -170,22 +152,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
             results->time_series_results.Add(MoveTemp(row));
         }
 
-        results->MarkPackageDirty();
-
-        auto const output_path{FPackageName::LongPackageNameToFilename(
-            package_name.ToString(), FPackageName::GetAssetPackageExtension())};
-        auto const output_directory{FPaths::GetPath(output_path)};
-        IFileManager::Get().MakeDirectory(*output_directory, true);
-
-        FSavePackageArgs save_args{};
-        save_args.TopLevelFlags = RF_Public | RF_Standalone;
-        if (UPackage::SavePackage(package, results, *output_path, save_args)) {
-            TestRunner->AddInfo(
-                FString::Printf(TEXT("Exported failure data asset to %s"), *output_path));
-        } else {
-            TestRunner->AddInfo(
-                FString::Printf(TEXT("Failed to export failure data to %s"), *output_path));
-        }
+        result_asset.save(*results);
     }
 
     TEST_METHOD(MainTest)
