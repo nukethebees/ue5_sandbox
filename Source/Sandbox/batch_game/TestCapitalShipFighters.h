@@ -200,6 +200,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     auto get_locations() const { return entity_buffers.current().locations.get_view(); }
 
+    auto has_handle(FRegistryEntityHandle const fighter_handle) const -> bool {
+        return find_index(fighter_handle) != INDEX_NONE;
+    }
+
     auto get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return entity_buffers.current().target_handles;
     }
