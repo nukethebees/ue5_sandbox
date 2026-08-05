@@ -59,7 +59,9 @@ auto almost_equal(T const* const lhs,
     check(count >= 0);
 
     for (int32 i{0}; i < count; ++i) {
-        if (!FMath::IsNearlyEqual(lhs[i], rhs[i], tolerance)) { return false; }
+        if (!FMath::IsNearlyEqual(lhs[i], rhs[i], tolerance)) {
+            return false;
+        }
     }
 
     return true;
@@ -95,6 +97,34 @@ auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) 
     return all_num_equal_to(ml::num(array), other, rest...);
 }
 
+template <HasNumAndGetData... Containers>
+    requires(sizeof...(Containers) >= 2)
+[[nodiscard]] auto all_num_equal_and_pointers_not_equal(Containers const&... containers) -> bool {
+    TStaticArray<void const*, sizeof...(Containers)> pointers{};
+    int32 pointer_count{0};
+    int32 expected_num{0};
+
+    auto const validate = [&](auto const& container) {
+        if (pointer_count == 0) {
+            expected_num = container.Num();
+        } else if (container.Num() != expected_num) {
+            return false;
+        }
+
+        void const* const pointer{container.GetData()};
+        for (int32 i{0}; i < pointer_count; ++i) {
+            if (pointers[i] == pointer) {
+                return false;
+            }
+        }
+
+        pointers[pointer_count++] = pointer;
+        return true;
+    };
+
+    return (validate(containers) && ...);
+}
+
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
 
 template <typename... TArrays>
@@ -102,11 +132,15 @@ void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArra
     check(ml::is_sorted_desc(indices));
 
     auto const n{indices.Num()};
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     int32 last_handled{INDEX_NONE};
     for (auto const index : indices) {
-        if (index == last_handled) { continue; }
+        if (index == last_handled) {
+            continue;
+        }
         ((RemoveAtSwapTraits<TArrays>::remove_at_swap(arrays, index, 1, EAllowShrinking::No)), ...);
         last_handled = index;
     }
@@ -145,7 +179,9 @@ void collect_valid_indices_by_key(KeysType const& keys,
     for (auto const& search_key : search_keys) {
         auto const index{keys.IndexOfByKey(search_key)};
 
-        if (index == INDEX_NONE) { continue; }
+        if (index == INDEX_NONE) {
+            continue;
+        }
 
         out_indices[n] = index;
         ++n;

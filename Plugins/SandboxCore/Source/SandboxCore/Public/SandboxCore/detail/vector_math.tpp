@@ -472,6 +472,11 @@ void size_sq_vector(TArrayView<T> out,
         checkNoEntry();
         return;
     }
+    if (count < 1) {
+        return;
+    }
+
+    check(ml::all_num_equal_and_pointers_not_equal(out, xs, ys, zs));
 
     size_sq_vector(out.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), count);
 }
@@ -522,15 +527,14 @@ void direction(TArrayView<T> const out_xs,
                TConstArrayView<T> const b_zs) noexcept {
     auto const count{out_xs.Num()};
 
-    check(count == a_xs.Num());
-    check(count == a_ys.Num());
-    check(count == a_zs.Num());
-    check(count == b_xs.Num());
-    check(count == b_ys.Num());
-    check(count == b_zs.Num());
-    check(count == out_xs.Num());
-    check(count == out_ys.Num());
-    check(count == out_zs.Num());
+    if (count < 1) {
+        check(ml::all_num_equal_to(
+            count, out_ys, out_zs, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs));
+        return;
+    }
+
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_xs, out_ys, out_zs, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs));
 
     ml::kernel::direction(out_xs.GetData(),
                           out_ys.GetData(),
@@ -556,11 +560,12 @@ void to_rotations(TArrayView<T> const pitches,
                   TConstArrayView<T> const zs) noexcept {
     auto const count{xs.Num()};
 
-    check(count == ys.Num());
-    check(count == zs.Num());
-    check(count == pitches.Num());
-    check(count == yaws.Num());
-    check(count == rolls.Num());
+    if (count < 1) {
+        check(ml::all_num_equal_to(count, ys, zs, pitches, yaws, rolls));
+        return;
+    }
+
+    check(ml::all_num_equal_and_pointers_not_equal(pitches, yaws, rolls, xs, ys, zs));
 
     ml::kernel::to_rotations(pitches.GetData(),
                              yaws.GetData(),

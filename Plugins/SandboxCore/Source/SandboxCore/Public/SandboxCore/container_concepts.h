@@ -7,6 +7,12 @@
 #include <concepts>
 
 namespace ml {
+template <typename T>
+concept HasNumAndGetData = requires(T const& value) {
+    { value.Num() } -> std::convertible_to<int32>;
+    { value.GetData() } -> std::convertible_to<void const*>;
+};
+
 // num
 template <typename T>
 concept SupportsNum = requires(T const& value) {
