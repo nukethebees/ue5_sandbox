@@ -164,6 +164,10 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const*;
     void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
 
+    void set_actor_config(UTestCapitalShipsConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
+
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 

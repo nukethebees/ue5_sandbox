@@ -27,6 +27,9 @@ class ATestStaticTurretsProxy
     ATestStaticTurretsProxy();
 
     auto get_team() const { return team; }
+    void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {

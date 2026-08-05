@@ -58,6 +58,10 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
+    void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
+
     auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
 
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }

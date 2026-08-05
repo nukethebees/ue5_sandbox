@@ -120,6 +120,9 @@ class ATestLasers : public AActor {
     // Accessors
     auto get_num_instances() const noexcept -> int32;
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
+    void set_actor_config(UTestLasersConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
 
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }

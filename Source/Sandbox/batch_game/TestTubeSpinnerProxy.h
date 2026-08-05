@@ -27,6 +27,9 @@ class ATestTubeSpinnerProxy
     ATestTubeSpinnerProxy();
 
     auto get_initial_active_fire_point() const { return initial_active_fire_point; }
+    void set_actor_config(UTestTubeSpinnersConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {

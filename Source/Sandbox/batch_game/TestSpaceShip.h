@@ -93,7 +93,9 @@ class ATestSpaceShip
     void set_laser_actor(ATestLasers* actor) { laser_actor = actor; }
 
     auto get_actor_config() const { return actor_config; }
-    void set_actor_config(UTestSpaceShipData* data) { actor_config = data; }
+    void set_actor_config(UTestSpaceShipData* const new_config) noexcept {
+        actor_config = new_config;
+    }
 
     auto get_kills() const -> int32;
 

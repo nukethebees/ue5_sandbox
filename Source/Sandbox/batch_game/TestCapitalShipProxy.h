@@ -22,6 +22,10 @@ class ATestCapitalShipProxy
     GENERATED_BODY()
   public:
     ATestCapitalShipProxy();
+
+    void set_actor_config(UTestCapitalShipsConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
   protected:
     void OnConstruction(FTransform const& transform) override;
   public:

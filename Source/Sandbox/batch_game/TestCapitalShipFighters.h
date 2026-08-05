@@ -186,6 +186,10 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void set_owner_id(TestEntityOwnerId const new_owner_id);
     auto get_owner_id() const -> TestEntityOwnerId;
 
+    void set_actor_config(UTestCapitalShipFightersConfig* const new_config) noexcept {
+        actor_config = new_config;
+    }
+
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
