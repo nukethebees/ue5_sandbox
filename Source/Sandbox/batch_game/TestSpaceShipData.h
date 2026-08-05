@@ -16,6 +16,8 @@ class UStaticMesh;
 
 class UTestTeamVisualData;
 
+class AShipBomb;
+
 UCLASS(BlueprintType)
 class UTestSpaceShipData : public UDataAsset {
     GENERATED_BODY()
