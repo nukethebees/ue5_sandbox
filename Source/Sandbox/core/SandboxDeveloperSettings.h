@@ -29,4 +29,7 @@ class USandboxDeveloperSettings : public UDeveloperSettings {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool log_successful_assertions{false};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    bool export_test_results{false};
 };
