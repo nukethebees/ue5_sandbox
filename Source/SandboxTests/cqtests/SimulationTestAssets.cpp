@@ -1,6 +1,7 @@
 #include "SimulationTestAssets.h"
 
 #include <Sandbox/batch_game/SimulationConfig.h>
+#include <Sandbox/batch_game/TestSimulationConfig.h>
 
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
@@ -12,6 +13,15 @@ auto load_default_simulation_config() -> USimulationConfig const* {
         FSoftObjectPath{TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/"
                              "DA_default_simulation_config."
                              "DA_default_simulation_config")}};
+
+    return default_config.LoadSynchronous();
+}
+
+auto load_default_test_simulation_config() -> UTestSimulationConfig const* {
+    static TSoftObjectPtr<UTestSimulationConfig> const default_config{
+        FSoftObjectPath{TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/"
+                             "DA_default_test_simulation_config."
+                             "DA_default_test_simulation_config")}};
 
     return default_config.LoadSynchronous();
 }
