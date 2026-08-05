@@ -9,6 +9,7 @@
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
+#include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
@@ -26,9 +27,7 @@ template <typename TActor, typename TConfig>
 void apply_actor_config(TActor& actor, TConfig* const config) {
 #if WITH_EDITOR
     auto const* const world{actor.GetWorld()};
-    if (IsValid(world) && !world->IsGameWorld()) {
-        actor.Modify();
-    }
+    if (IsValid(world) && !world->IsGameWorld()) { actor.Modify(); }
 #endif
     actor.set_actor_config(config);
 }
@@ -53,20 +52,50 @@ void ATestBatchOrchestrator::BeginPlay() {
 
     begin_play();
 }
-void ATestBatchOrchestrator::start_simulation() {
-    check((start_mode == EOrchestratorStartMode::Paused) ||
-          (start_mode == EOrchestratorStartMode::PausedInTest));
-    check(!IsActorTickEnabled());
+void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
+    state = EOrchestratorState::Stopped;
+    SetActorTickEnabled(false);
 
+    Super::EndPlay(end_play_reason);
+}
+void ATestBatchOrchestrator::start_simulation() {
+    if (state != EOrchestratorState::Paused) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("ATestBatchOrchestrator::start_simulation: Orchestrator is not paused"));
+        return;
+    }
+
+    state = EOrchestratorState::Running;
     SetActorTickEnabled(true);
+}
+
+void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
+    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) {
+        return;
+    }
+
+    actor_classes = config.actor_classes;
+    set_assets(config.simulation_config.Get(),
+               ESimulationAssetActorScope::OrchestratorActors,
+               ESimulationAssetProxyMode::Include);
+}
+
+void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
+    if (state != EOrchestratorState::Uninitialised) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("ATestBatchOrchestrator::set_start_mode: Orchestrator is already initialised"));
+        return;
+    }
+
+    start_mode = mode;
 }
 
 void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
                                         ESimulationAssetActorScope const actor_scope,
                                         ESimulationAssetProxyMode const proxy_mode) {
-    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) {
-        return;
-    }
+    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) { return; }
     if (!ensureAlwaysMsgf(assets->is_valid(),
                           TEXT("Simulation config contains invalid actor configs"))) {
         return;
@@ -81,9 +110,7 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
     }
 
 #if WITH_EDITOR
-    if (IsValid(world) && !world->IsGameWorld()) {
-        Modify();
-    }
+    if (IsValid(world) && !world->IsGameWorld()) { Modify(); }
 #endif
     simulation_config = assets;
 #if WITH_EDITORONLY_DATA
@@ -95,19 +122,14 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
         if (IsValid(player_ship)) {
             apply_actor_config(*player_ship, assets->player_ship_config.Get());
         }
-        if (IsValid(lasers)) {
-            apply_actor_config(*lasers, assets->lasers_config.Get());
-        }
+        if (IsValid(lasers)) { apply_actor_config(*lasers, assets->lasers_config.Get()); }
         if (IsValid(capital_ships)) {
             apply_actor_config(*capital_ships, assets->capital_ships_config.Get());
         }
         if (IsValid(capital_ship_fighters)) {
-            apply_actor_config(*capital_ship_fighters,
-                               assets->capital_ship_fighters_config.Get());
+            apply_actor_config(*capital_ship_fighters, assets->capital_ship_fighters_config.Get());
         }
-        if (IsValid(turrets)) {
-            apply_actor_config(*turrets, assets->static_turrets_config.Get());
-        }
+        if (IsValid(turrets)) { apply_actor_config(*turrets, assets->static_turrets_config.Get()); }
         if (IsValid(spinners)) {
             apply_actor_config(*spinners, assets->tube_spinners_config.Get());
         }
@@ -125,11 +147,11 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
     if (proxy_mode == ESimulationAssetProxyMode::Include) {
         check(world);
         set_actor_config_on_all<ATestCapitalShips::Proxy>(*world,
-                                                         assets->capital_ships_config.Get());
+                                                          assets->capital_ships_config.Get());
         set_actor_config_on_all<ATestStaticTurrets::Proxy>(*world,
-                                                          assets->static_turrets_config.Get());
+                                                           assets->static_turrets_config.Get());
         set_actor_config_on_all<ATestTubeSpinners::Proxy>(*world,
-                                                         assets->tube_spinners_config.Get());
+                                                          assets->tube_spinners_config.Get());
     }
 }
 void ATestBatchOrchestrator::begin_play() {
@@ -211,17 +233,25 @@ void ATestBatchOrchestrator::begin_play() {
     if (log_ticks) { UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play end")); }
 #endif
 
-    SetActorTickEnabled(true);
     switch (start_mode) {
         case EOrchestratorStartMode::Paused: {
+            state = EOrchestratorState::Paused;
             SetActorTickEnabled(false);
             break;
         }
         case EOrchestratorStartMode::PausedInTest: {
-            if (GIsAutomationTesting) { SetActorTickEnabled(false); }
+            if (GIsAutomationTesting) {
+                state = EOrchestratorState::Paused;
+                SetActorTickEnabled(false);
+            } else {
+                state = EOrchestratorState::Running;
+                SetActorTickEnabled(true);
+            }
             break;
         }
         case EOrchestratorStartMode::Automatic: {
+            state = EOrchestratorState::Running;
+            SetActorTickEnabled(true);
             break;
         }
     }
@@ -243,6 +273,8 @@ void ATestBatchOrchestrator::Tick(float dt) {
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
+
+    if (state != EOrchestratorState::Running) { return; }
 
     accumulator += (dt * time_scale);
 
@@ -457,8 +489,8 @@ auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency)
 auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
     -> tick_type {
     check(duration >= time_type{0});
-    check(tick_period > time_type{0});
-    return static_cast<tick_type>(FMath::CeilToInt64(duration / tick_period));
+    check(tick_rate > time_type{0});
+    return static_cast<tick_type>(FMath::CeilToInt64(duration * tick_rate));
 }
 
 void ATestBatchOrchestrator::bind_simulation_dependencies() {
@@ -494,33 +526,78 @@ void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
 
-#if WITH_EDITOR
-void ATestBatchOrchestrator::apply_simulation_config() {
-    set_assets(
-        simulation_config.Get(), simulation_asset_actor_scope, simulation_asset_proxy_mode);
-}
-
 void ATestBatchOrchestrator::spawn_missing_actors() {
-    auto* world{GetWorld()};
+    if (state != EOrchestratorState::Uninitialised) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("ATestBatchOrchestrator::spawn_missing_actors: Orchestrator is already "
+                    "initialised"));
+        return;
+    }
 
-    auto spawn{[&](auto c) {
-        if (!IsValid(c)) {
+    auto* world{GetWorld()};
+    if (!ensureAlwaysMsgf(IsValid(world), TEXT("Cannot spawn simulation actors without a world"))) {
+        return;
+    }
+
+    TArray<AActor*> spawned_actors;
+    auto spawn{[&]<typename T>(TSubclassOf<T> const actor_class) -> T* {
+        if (!IsValid(actor_class)) {
             UE_LOG(LogSandbox,
                    Warning,
                    TEXT("ATestBatchOrchestrator::spawn_missing_actors: Null actor class"));
-            return;
+            return nullptr;
         }
-        ml::ensure_actor_exists(*world, c);
+
+        for (TActorIterator<T> it{world}; it; ++it) {
+            return *it;
+        }
+
+        auto* const actor{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
+        if (IsValid(actor)) {
+            spawned_actors.Add(actor);
+        } else {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("ATestBatchOrchestrator::spawn_missing_actors: Failed to spawn %s"),
+                   *actor_class->GetName());
+        }
+
+        return actor;
     }};
 
-    spawn(actor_classes.lasers_class);
-    spawn(actor_classes.capital_ships_class);
-    spawn(actor_classes.capital_ship_fighters_class);
-    spawn(actor_classes.turrets_class);
-    spawn(actor_classes.spinners_class);
+    if (IsValid(actor_classes.player_ship_class)) {
+        player_ship = spawn(actor_classes.player_ship_class);
+    }
 
-    spawn(actor_classes.entity_registry_class);
-    spawn(actor_classes.mission_manager_class);
-    spawn(actor_classes.niagara_spawner_class);
+    lasers = spawn(actor_classes.lasers_class);
+    capital_ships = spawn(actor_classes.capital_ships_class);
+    capital_ship_fighters = spawn(actor_classes.capital_ship_fighters_class);
+    turrets = spawn(actor_classes.turrets_class);
+    spinners = spawn(actor_classes.spinners_class);
+
+    entity_registry = spawn(actor_classes.entity_registry_class);
+    mission_manager = spawn(actor_classes.mission_manager_class);
+    niagara_spawner = spawn(actor_classes.niagara_spawner_class);
+
+    if (IsValid(simulation_config)) {
+        set_assets(simulation_config.Get(),
+                   ESimulationAssetActorScope::OrchestratorActors,
+                   ESimulationAssetProxyMode::Include);
+    }
+
+    for (auto* const actor : spawned_actors) {
+        actor->FinishSpawning(FTransform::Identity);
+        UE_LOG(LogSandbox, Display, TEXT("Spawned missing %s"), *actor->GetClass()->GetName());
+    }
+}
+
+#if WITH_EDITOR
+void ATestBatchOrchestrator::apply_simulation_config() {
+    set_assets(simulation_config.Get(), simulation_asset_actor_scope, simulation_asset_proxy_mode);
+}
+
+void ATestBatchOrchestrator::spawn_missing_actors_button() {
+    spawn_missing_actors();
 }
 #endif

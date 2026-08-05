@@ -19,6 +19,7 @@ class ATestTubeSpinners;
 class ATestEntityRegistry;
 class ATestMissionManager;
 class ADelayedNiagaraSpawner;
+class UTestSimulationConfig;
 
 class ATestBatchOrchestrator;
 
@@ -29,6 +30,14 @@ enum class EOrchestratorStartMode : uint8 {
     Paused,
     PausedInTest,
     Automatic,
+};
+
+UENUM(BlueprintType)
+enum class EOrchestratorState : uint8 {
+    Uninitialised,
+    Paused,
+    Running,
+    Stopped,
 };
 
 UCLASS()
@@ -44,6 +53,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void tick(time_type const dt);
     void start_simulation();
 
+    void set_test_config(UTestSimulationConfig const& config);
+    void set_start_mode(EOrchestratorStartMode mode);
     void set_assets(USimulationConfig* const assets,
                     ESimulationAssetActorScope const actor_scope,
                     ESimulationAssetProxyMode const proxy_mode);
@@ -52,6 +63,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
 
+    auto get_state() const noexcept -> EOrchestratorState { return state; }
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
         return static_cast<time_type>(completed_ticks) * tick_period;
@@ -64,19 +76,24 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_turrets() const -> auto const* { return turrets.Get(); }
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
-    auto get_entity_registry() const { return entity_registry; }
+    auto get_entity_registry() const -> ATestEntityRegistry* { return entity_registry; }
+    auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
+    auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
 
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
+
+    void spawn_missing_actors();
   protected:
     void BeginPlay() override;
+    void EndPlay(EEndPlayReason::Type end_play_reason) override;
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Sandbox|Assets")
     void apply_simulation_config();
 
     UFUNCTION(CallInEditor, Category = "Sandbox")
-    void spawn_missing_actors();
+    void spawn_missing_actors_button();
 #endif
   private:
     void begin_play();
@@ -91,6 +108,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     double time_scale{1.f};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
+    UPROPERTY(VisibleAnywhere, Transient, Category = "Sandbox")
+    EOrchestratorState state{EOrchestratorState::Uninitialised};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USimulationConfig> simulation_config{nullptr};
@@ -120,10 +139,10 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
-#if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
     FSimulationActorClasses actor_classes;
 
+#if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     ESimulationAssetActorScope simulation_asset_actor_scope{
         ESimulationAssetActorScope::OrchestratorActors};
