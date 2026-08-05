@@ -1,18 +1,18 @@
 #pragma once
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <Sandbox/batch_game/TestStaticTurrets.h>
+#include <Sandbox/batch_game/TestTubeSpinners.h>
+#include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
+
 #include "CoreMinimal.h"
 
 #include "SimulationActorClasses.generated.h"
-
-class ATestSpaceShip;
-class ATestLasers;
-class ATestCapitalShips;
-class ATestCapitalShipFighters;
-class ATestStaticTurrets;
-class ATestTubeSpinners;
-class ATestEntityRegistry;
-class ATestMissionManager;
-class ADelayedNiagaraSpawner;
 
 USTRUCT()
 struct SANDBOX_API FSimulationActorClasses {

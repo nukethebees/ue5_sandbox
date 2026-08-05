@@ -3,6 +3,7 @@
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeamVisualData.h>
@@ -48,6 +49,11 @@ ATestCapitalShipFighters::ATestCapitalShipFighters()
     PrimaryActorTick.bStartWithTickEnabled = false;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+}
+
+void ATestCapitalShipFighters::bind_simulation_clock(
+    ATestBatchOrchestrator const& orchestrator) noexcept {
+    simulation_clock.bind(orchestrator);
 }
 
 // Actor life cycle

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationActorClasses.h>
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
 
 #include <CoreMinimal.h>
@@ -133,31 +134,3 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     bool log_ticks{false};
 #endif
 };
-
-namespace ml::test_batch_orchestrator {
-class SANDBOX_API SimulationClockInterface {
-  public:
-    inline void bind(ATestBatchOrchestrator const& new_orchestrator) noexcept {
-        orchestrator = &new_orchestrator;
-    }
-
-    inline auto frequency_to_tick_period(ATestBatchOrchestrator::time_type const frequency) const
-        noexcept -> ATestBatchOrchestrator::tick_type {
-        check(IsValid(orchestrator));
-        return orchestrator->frequency_to_tick_period(frequency);
-    }
-
-    inline auto duration_to_tick_period(ATestBatchOrchestrator::time_type const duration) const
-        noexcept -> ATestBatchOrchestrator::tick_type {
-        check(IsValid(orchestrator));
-        return orchestrator->duration_to_tick_period(duration);
-    }
-
-    inline auto get_completed_ticks() const noexcept -> ATestBatchOrchestrator::tick_type {
-        check(IsValid(orchestrator));
-        return orchestrator->get_completed_ticks();
-    }
-  private:
-    ATestBatchOrchestrator const* orchestrator{nullptr};
-};
-}

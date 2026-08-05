@@ -1,11 +1,11 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
@@ -36,6 +36,7 @@ class UInstancedStaticMeshComponent;
 class UTestCapitalShipFightersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
 
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
@@ -164,9 +165,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void clear_runtime_state();
     void begin_play();
 
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-        simulation_clock.bind(orchestrator);
-    }
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
 
     void begin_tick();
     void update_timers(float const dt);
