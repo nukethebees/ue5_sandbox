@@ -5,11 +5,11 @@
 
 #include <vector>
 
-TEST_CASE("SandboxCore.TestTimeline.New timeline is idle") {
+TEST_CASE("SandboxCore.TestTimeline.New timeline is empty") {
     FTestTimeline timeline;
 
-    CHECK_FALSE(timeline.has_started());
-    CHECK_FALSE(timeline.is_finished());
+    CHECK(timeline.is_empty());
+    CHECK(timeline.is_finished());
     CHECK(timeline.pending_event_count() == 0);
 }
 
@@ -22,7 +22,7 @@ TEST_CASE("SandboxCore.TestTimeline.Events run at and after their scheduled time
         timeline.tick(0.5);
 
         CHECK(calls == 0);
-        CHECK_FALSE(timeline.has_started());
+        CHECK_FALSE(timeline.is_empty());
     }
 
     SECTION("at scheduled time") {
@@ -33,7 +33,7 @@ TEST_CASE("SandboxCore.TestTimeline.Events run at and after their scheduled time
         timeline.tick(1.0);
 
         CHECK(calls == 1);
-        CHECK(timeline.has_started());
+        CHECK(timeline.is_empty());
     }
 
     SECTION("after scheduled time") {
@@ -57,6 +57,7 @@ TEST_CASE("SandboxCore.TestTimeline.Events execute exactly once") {
     timeline.tick(2.0);
 
     CHECK(calls == 1);
+    CHECK(timeline.is_empty());
     CHECK(timeline.pending_event_count() == 0);
 }
 
@@ -116,20 +117,18 @@ TEST_CASE("SandboxCore.TestTimeline.Relative and absolute scheduling use absolut
     CHECK(calls == expected_at_six);
 }
 
-TEST_CASE("SandboxCore.TestTimeline.Finish events complete the timeline") {
+TEST_CASE("SandboxCore.TestTimeline.Finish events keep the timeline active until their time") {
     SECTION("finish_at") {
         FTestTimeline timeline;
-        bool final_callback_called{false};
-        timeline.finish_at(2.0, [&] { final_callback_called = true; });
+        timeline.finish_at(2.0);
 
         timeline.tick(1.0);
-        CHECK_FALSE(timeline.has_started());
+        CHECK_FALSE(timeline.is_empty());
         CHECK_FALSE(timeline.is_finished());
         CHECK(timeline.pending_event_count() == 1);
 
         timeline.tick(2.0);
-        CHECK(final_callback_called);
-        CHECK(timeline.has_started());
+        CHECK(timeline.is_empty());
         CHECK(timeline.is_finished());
         CHECK(timeline.pending_event_count() == 0);
     }
@@ -148,14 +147,14 @@ TEST_CASE("SandboxCore.TestTimeline.Finish events complete the timeline") {
     }
 }
 
-TEST_CASE("SandboxCore.TestTimeline.Final callbacks run before completion") {
+TEST_CASE("SandboxCore.TestTimeline.Final callbacks observe an empty queue") {
     FTestTimeline timeline;
-    bool was_finished_during_callback{true};
+    bool was_empty_during_callback{false};
 
-    timeline.finish_after(1.0, [&] { was_finished_during_callback = timeline.is_finished(); });
+    timeline.then_after(1.0, [&] { was_empty_during_callback = timeline.is_empty(); });
     timeline.tick(1.0);
 
-    CHECK_FALSE(was_finished_during_callback);
+    CHECK(was_empty_during_callback);
     CHECK(timeline.is_finished());
 }
 
@@ -165,7 +164,7 @@ TEST_CASE("SandboxCore.TestTimeline.Large time jumps run all events and completi
 
     timeline.at(1.0, [&] { calls.push_back(1); })
         .then_after(1.0, [&] { calls.push_back(2); })
-        .finish_after(1.0, [&] { calls.push_back(3); });
+        .then_after(1.0, [&] { calls.push_back(3); });
 
     timeline.tick(100.0);
     timeline.tick(200.0);
@@ -174,6 +173,22 @@ TEST_CASE("SandboxCore.TestTimeline.Large time jumps run all events and completi
     CHECK(calls == expected);
     CHECK(timeline.is_finished());
     CHECK(timeline.pending_event_count() == 0);
+}
+
+TEST_CASE("SandboxCore.TestTimeline.Callbacks can append events") {
+    FTestTimeline timeline;
+    std::vector<int32> calls;
+
+    timeline.at(1.0, [&] {
+        calls.push_back(1);
+        timeline.at(2.0, [&] { calls.push_back(2); });
+    });
+
+    timeline.tick(2.0);
+
+    std::vector<int32> const expected{1, 2};
+    CHECK(calls == expected);
+    CHECK(timeline.is_empty());
 }
 
 // Unreal's check macro terminates the test process, so invalid-operation cases cannot be

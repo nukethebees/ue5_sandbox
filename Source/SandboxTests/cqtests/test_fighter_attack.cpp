@@ -109,8 +109,8 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.at(initial_wait, [this] { t_pre_fight = test_driver->get_time(); })
-            .finish_after(local_driver->get_fight_duration(),
-                          [this] { t_post_fight = test_driver->get_time(); });
+            .then_after(local_driver->get_fight_duration(),
+                        [this] { t_post_fight = test_driver->get_time(); });
     }
 
     /* ---------------------------------------------------------------------------- */

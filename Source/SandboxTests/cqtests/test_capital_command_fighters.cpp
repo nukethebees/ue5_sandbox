@@ -105,8 +105,8 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                             t_after_initial_kills = test_driver->get_time();
                             kill_all_not_on_main_team();
                         })
-            .finish_after(wait_after_kills,
-                          [this] { t_after_all_kills = test_driver->get_time(); });
+            .then_after(wait_after_kills,
+                        [this] { t_after_all_kills = test_driver->get_time(); });
     }
 
     template <auto EnumValue>
