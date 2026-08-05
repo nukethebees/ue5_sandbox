@@ -2,11 +2,14 @@
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
+#include <Sandbox/batch_game/TestStaticTurretsProxy.h>
+#include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
@@ -16,6 +19,27 @@
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <CoreGlobals.h>
+#include <EngineUtils.h>
+
+namespace {
+template <typename TActor, typename TConfig>
+void apply_actor_config(TActor& actor, TConfig* const config) {
+#if WITH_EDITOR
+    auto const* const world{actor.GetWorld()};
+    if (IsValid(world) && !world->IsGameWorld()) {
+        actor.Modify();
+    }
+#endif
+    actor.set_actor_config(config);
+}
+
+template <typename TActor, typename TConfig>
+void set_actor_config_on_all(UWorld& world, TConfig* const config) {
+    for (TActorIterator<TActor> it{&world}; it; ++it) {
+        apply_actor_config(**it, config);
+    }
+}
+}
 
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
@@ -35,6 +59,76 @@ void ATestBatchOrchestrator::start_simulation() {
     check(!IsActorTickEnabled());
 
     SetActorTickEnabled(true);
+}
+
+void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
+                                        ESimulationAssetActorScope const actor_scope,
+                                        ESimulationAssetProxyMode const proxy_mode) {
+    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) {
+        return;
+    }
+    if (!ensureAlwaysMsgf(assets->is_valid(),
+                          TEXT("Simulation config contains invalid actor configs"))) {
+        return;
+    }
+
+    auto* const world{GetWorld()};
+    auto const requires_world{actor_scope == ESimulationAssetActorScope::AllActorsInLevel ||
+                              proxy_mode == ESimulationAssetProxyMode::Include};
+    if (requires_world &&
+        !ensureAlwaysMsgf(IsValid(world), TEXT("Cannot apply simulation config without a world"))) {
+        return;
+    }
+
+#if WITH_EDITOR
+    if (IsValid(world) && !world->IsGameWorld()) {
+        Modify();
+    }
+#endif
+    simulation_config = assets;
+    simulation_asset_actor_scope = actor_scope;
+    simulation_asset_proxy_mode = proxy_mode;
+
+    if (actor_scope == ESimulationAssetActorScope::OrchestratorActors) {
+        if (IsValid(player_ship)) {
+            apply_actor_config(*player_ship, assets->player_ship_config.Get());
+        }
+        if (IsValid(lasers)) {
+            apply_actor_config(*lasers, assets->lasers_config.Get());
+        }
+        if (IsValid(capital_ships)) {
+            apply_actor_config(*capital_ships, assets->capital_ships_config.Get());
+        }
+        if (IsValid(capital_ship_fighters)) {
+            apply_actor_config(*capital_ship_fighters,
+                               assets->capital_ship_fighters_config.Get());
+        }
+        if (IsValid(turrets)) {
+            apply_actor_config(*turrets, assets->static_turrets_config.Get());
+        }
+        if (IsValid(spinners)) {
+            apply_actor_config(*spinners, assets->tube_spinners_config.Get());
+        }
+    } else {
+        check(world);
+        set_actor_config_on_all<ATestSpaceShip>(*world, assets->player_ship_config.Get());
+        set_actor_config_on_all<ATestLasers>(*world, assets->lasers_config.Get());
+        set_actor_config_on_all<ATestCapitalShips>(*world, assets->capital_ships_config.Get());
+        set_actor_config_on_all<ATestCapitalShipFighters>(
+            *world, assets->capital_ship_fighters_config.Get());
+        set_actor_config_on_all<ATestStaticTurrets>(*world, assets->static_turrets_config.Get());
+        set_actor_config_on_all<ATestTubeSpinners>(*world, assets->tube_spinners_config.Get());
+    }
+
+    if (proxy_mode == ESimulationAssetProxyMode::Include) {
+        check(world);
+        set_actor_config_on_all<ATestCapitalShips::Proxy>(*world,
+                                                         assets->capital_ships_config.Get());
+        set_actor_config_on_all<ATestStaticTurrets::Proxy>(*world,
+                                                          assets->static_turrets_config.Get());
+        set_actor_config_on_all<ATestTubeSpinners::Proxy>(*world,
+                                                         assets->tube_spinners_config.Get());
+    }
 }
 void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
@@ -399,6 +493,11 @@ void ATestBatchOrchestrator::clear_end_tick_test_hook() {
 }
 
 #if WITH_EDITOR
+void ATestBatchOrchestrator::apply_simulation_config() {
+    set_assets(
+        simulation_config.Get(), simulation_asset_actor_scope, simulation_asset_proxy_mode);
+}
+
 void ATestBatchOrchestrator::spawn_missing_actors() {
     auto* world{GetWorld()};
 

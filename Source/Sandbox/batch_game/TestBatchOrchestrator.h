@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationConfig.h>
+
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
@@ -40,6 +42,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void tick(time_type const dt);
     void start_simulation();
 
+    void set_assets(USimulationConfig* const assets,
+                    ESimulationAssetActorScope const actor_scope,
+                    ESimulationAssetProxyMode const proxy_mode);
     void set_time_scale(time_type scale) noexcept;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
@@ -65,6 +70,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void BeginPlay() override;
 
 #if WITH_EDITOR
+    UFUNCTION(CallInEditor, Category = "Sandbox|Assets")
+    void apply_simulation_config();
+
     UFUNCTION(CallInEditor, Category = "Sandbox")
     void spawn_missing_actors();
 #endif
@@ -81,6 +89,14 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     double time_scale{1.f};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
+    TObjectPtr<USimulationConfig> simulation_config{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
+    ESimulationAssetActorScope simulation_asset_actor_scope{
+        ESimulationAssetActorScope::OrchestratorActors};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
+    ESimulationAssetProxyMode simulation_asset_proxy_mode{ESimulationAssetProxyMode::Include};
 
     time_type tick_period{0.f};
     time_type accumulator{0.f};
