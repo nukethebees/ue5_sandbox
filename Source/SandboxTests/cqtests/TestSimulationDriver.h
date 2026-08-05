@@ -50,7 +50,7 @@ struct TestSimulationDriver {
 
     uint64 tick_wait_end{0};
     time_type time_wait_end{0.f};
-    time_type time_scale{20.f};
+    time_type time_scale{100.f};
     FTestTimeline timeline;
 };
 }
