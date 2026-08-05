@@ -29,6 +29,20 @@ class MultiBuffer {
     auto next() -> value_type& { return buffers[next_idx]; }
     auto next() const -> value_type const& { return buffers[next_idx]; }
 
+    template <typename TFunc>
+    void for_each(TFunc&& func) {
+        for (auto& buffer : buffers) {
+            func(buffer);
+        }
+    }
+
+    template <typename TFunc>
+    void for_each(TFunc&& func) const {
+        for (auto const& buffer : buffers) {
+            func(buffer);
+        }
+    }
+
     void cycle() {
         previous_idx = current_idx;
         current_idx = next_idx;

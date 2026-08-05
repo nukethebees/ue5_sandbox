@@ -81,8 +81,9 @@ void ATestCapitalShipFighters::begin_play() {
 
     auto const awareness_scan_tick_value{
         static_cast<FTickCountdown::counter_type>(awareness_scan_tick_period)};
-    entity_buffers.current().awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
-    entity_buffers.next().awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
+    entity_buffers.for_each([awareness_scan_tick_value](auto& data) {
+        data.awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
+    });
 
     configure_ismc();
 
