@@ -41,7 +41,10 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_entity_registry"), TestRunner, checks); }
     AFTER_EACH()
-    { test_driver->orchestrator.clear_end_tick_test_hook(); }
+    {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
+    }
   private:
     static constexpr time_type test_time{0.1};
 

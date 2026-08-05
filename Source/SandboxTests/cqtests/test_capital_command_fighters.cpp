@@ -57,7 +57,10 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_capital_command_fighters"), TestRunner, checks); }
     AFTER_EACH()
-    { test_driver->orchestrator.clear_end_tick_test_hook(); }
+    {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
+    }
   private:
     void sample_values(ATestBatchOrchestrator&) {
         auto const t{test_driver->get_time()};
@@ -105,8 +108,7 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
                             t_after_initial_kills = test_driver->get_time();
                             kill_all_not_on_main_team();
                         })
-            .then_after(wait_after_kills,
-                        [this] { t_after_all_kills = test_driver->get_time(); });
+            .then_after(wait_after_kills, [this] { t_after_all_kills = test_driver->get_time(); });
     }
 
     template <auto EnumValue>

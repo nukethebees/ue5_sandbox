@@ -49,7 +49,10 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_fighter_attack"), TestRunner, checks); }
     AFTER_EACH()
-    { test_driver->orchestrator.clear_end_tick_test_hook(); }
+    {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
+    }
   private:
     /* ---------------------------------------------------------------------------- */
     // Initial phase

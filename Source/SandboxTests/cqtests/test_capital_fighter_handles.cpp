@@ -100,7 +100,10 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
     { spawner = ml::level_test_setup(TEXT("FuncT_capital_fighter_handles"), TestRunner, checks); }
     AFTER_EACH()
     {
-        if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
+        if (test_driver.IsSet()) {
+            test_driver->orchestrator.clear_end_tick_test_hook();
+            test_driver->orchestrator.pause_simulation();
+        }
     }
   private:
     void sample_values(ATestBatchOrchestrator & orchestrator) {

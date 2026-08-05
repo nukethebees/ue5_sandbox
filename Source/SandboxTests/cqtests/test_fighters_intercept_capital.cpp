@@ -50,6 +50,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
     AFTER_EACH()
     {
         if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
+        test_driver->orchestrator.pause_simulation();
     }
   private:
     void sample_values(ATestBatchOrchestrator&) {

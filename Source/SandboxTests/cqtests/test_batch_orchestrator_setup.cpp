@@ -88,6 +88,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
     {
         FEditorDelegates::MapChange.Remove(map_change_handle);
         map_change_handle.Reset();
+        orchestrator->pause_simulation();
     }
 
     TEST_METHOD(SpawnMissingActors)

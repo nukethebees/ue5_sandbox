@@ -28,7 +28,10 @@ TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_simple_batch"), TestRunner, checks); }
     AFTER_EACH()
-    { test_driver->orchestrator.clear_end_tick_test_hook(); }
+    {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
+    }
   private:
     static constexpr time_type test_time{3.0};
     FTimespan const timeout{0, 0, 4};
