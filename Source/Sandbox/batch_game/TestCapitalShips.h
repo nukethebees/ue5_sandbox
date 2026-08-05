@@ -165,7 +165,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     inline void bind_fighters(ATestCapitalShipFighters& fighters) {
-        fighter_commands.bind(fighters);
+        fighters_interface.bind(fighters);
     }
 
     auto get_handle(int32 i) const -> FRegistryEntityHandle { return entities.handles[i]; }
@@ -264,7 +264,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     RegistryEntityData entity_update_data;
 
     // Fighter spawning
-    ml::test_capital_ship_fighters::CommandInterface fighter_commands;
+    ml::test_capital_ship_fighters::CommandInterface fighters_interface;
 
     TestCapitalShipFighterSpawnQueue fighter_queue;
     TArray<FRegistryEntityHandle> fighter_handles;
