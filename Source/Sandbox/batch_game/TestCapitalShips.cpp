@@ -379,7 +379,8 @@ void ATestCapitalShips::queue_fighter_spawns() {
         auto const n_ready_to_spawn{ships_ready_to_spawn_fighters_indices.Num()};
 
         for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
-            if (entities.target_handles[i].is_null()) {
+            auto const capital_index{ships_ready_to_spawn_fighters_indices[i]};
+            if (entities.target_handles[capital_index].is_null()) {
                 data.ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
             }
         }
