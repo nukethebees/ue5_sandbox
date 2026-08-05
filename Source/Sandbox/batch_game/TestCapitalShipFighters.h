@@ -21,6 +21,7 @@
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/tick_countdown.h>
 
 #include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
@@ -65,6 +66,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(TView<float>, speeds))                         \
     NON_FINAL(X(TView<ETestTeam>, teams))                      \
     NON_FINAL(X(TView<int32>, healths))                        \
+    NON_FINAL(X(TView<FTickCountdown::counter_type>, awareness_scan_countdowns)) \
     NON_FINAL(X(TView<float>, attack_cooldowns))               \
     NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles)) \
     NON_FINAL(X(VectorsView, target_locations))                \
@@ -102,6 +104,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
+    FTickCountdown awareness_scan_countdowns;
     FCountdownTimers attack_cooldowns;
 
     TArray<FRegistryEntityHandle> target_handles;
@@ -123,6 +126,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(speeds))                    \
     NON_FINAL(STAMPER(teams))                     \
     NON_FINAL(STAMPER(healths))                   \
+    NON_FINAL(STAMPER(awareness_scan_countdowns)) \
     NON_FINAL(STAMPER(attack_cooldowns))          \
     NON_FINAL(STAMPER(target_handles))            \
     NON_FINAL(STAMPER(target_locations))          \

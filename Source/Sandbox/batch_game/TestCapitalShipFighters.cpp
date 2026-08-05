@@ -28,6 +28,8 @@
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
+#include <limits>
+
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
 namespace {
@@ -70,6 +72,18 @@ void ATestCapitalShipFighters::begin_play() {
 
     ensureAlways(IsValid(actor_config->team_visual_data));
 
+    auto const awareness_scan_tick_period{
+        simulation_clock.frequency_to_tick_period(actor_config->awareness_scan_frequency)};
+    checkf(awareness_scan_tick_period <=
+               static_cast<decltype(awareness_scan_tick_period)>(
+                   std::numeric_limits<FTickCountdown::counter_type>::max()),
+           TEXT("Awareness scan tick period does not fit in FTickCountdown::counter_type"));
+
+    auto const awareness_scan_tick_value{
+        static_cast<FTickCountdown::counter_type>(awareness_scan_tick_period)};
+    entity_buffers.current().awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
+    entity_buffers.next().awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
+
     configure_ismc();
 
     debug_drawer = actor_config->debug_drawer;
@@ -81,6 +95,7 @@ void ATestCapitalShipFighters::begin_tick() {
 
     auto& data{entity_buffers.current()};
 
+    data.awareness_scan_countdowns.tick();
     clear_tick_buffers();
 }
 void ATestCapitalShipFighters::update_timers(float const dt) {
@@ -104,6 +119,8 @@ void ATestCapitalShipFighters::make_decisions() {
     auto const dot_threshold{actor_config->minimum_opportunistic_intercept_deviation_dot_product};
 
     for (int32 i{0}; i < n; ++i) {
+        if (!data.awareness_scan_countdowns.try_consume(i)) { continue; }
+
         auto const fighter_location{ml::get_vector3f(data.locations, i)};
         auto const target_handle{data.target_handles[i]};
 
@@ -554,6 +571,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     ml::append_n(data.speeds, speed, n_new);
     data.teams.Append(new_teams);
     ml::append_n(data.healths, actor_config->health, n_new);
+    data.awareness_scan_countdowns.add_zeroed(n_new);
 
     data.target_handles.Append(new_targets);
     data.target_locations.add_zeroed(n_new);

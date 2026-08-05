@@ -60,6 +60,11 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     UPROPERTY(EditAnywhere)
     float awareness_radius{10000.f};
 
+    UPROPERTY(EditAnywhere,
+              Category = "Awareness",
+              meta = (ClampMin = "0.001", UIMin = "0.001", Units = "Hz"))
+    float awareness_scan_frequency{6.f};
+
     // What dot product we need to deviate off course and fight someone nearby
     UPROPERTY(EditAnywhere)
     float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
