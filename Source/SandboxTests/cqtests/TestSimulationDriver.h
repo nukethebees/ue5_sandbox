@@ -33,6 +33,7 @@ struct TestSimulationDriver {
     auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
 
     void queue_kills(TConstArrayView<FRegistryEntityHandle> const targets);
+    bool should_export_results() const;
 
     void set_time_scale(time_type scale);
 

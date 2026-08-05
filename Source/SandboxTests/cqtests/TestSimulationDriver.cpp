@@ -9,6 +9,7 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/constants/collision_channels.h>
+#include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <Components/PrimitiveComponent.h>
@@ -72,6 +73,14 @@ void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> co
     ml::fill(damage_events.instigators, FRegistryEntityHandle{});
 
     registry.queue_direct_damage_events(damage_events);
+}
+bool TestSimulationDriver::should_export_results() const {
+#if WITH_EDITOR
+    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
+    return settings->export_test_results;
+#else
+    return false;
+#endif
 }
 
 void TestSimulationDriver::set_time_scale(time_type const scale) {
