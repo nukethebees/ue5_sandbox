@@ -103,7 +103,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
     }
   private:
-    void sample_values(ATestBatchOrchestrator& orchestrator) {
+    void sample_values(ATestBatchOrchestrator & orchestrator) {
         auto const fighter_spawn_slots{capitals->get_fighter_spawn_slots()};
         auto const fighter_count{fighters->get_num_instances()};
         TArray<FRegistryEntityHandle> capital_fighter_handles;
@@ -137,10 +137,9 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 
             for (auto const fighter_handle : main_fighter_handles) {
                 if (fighters->has_handle(fighter_handle)) {
-                    main_capital_fighters.Emplace(
-                        fighter_handle,
-                        fighters->get_target_handle(fighter_handle),
-                        fighters->get_target_location(fighter_handle));
+                    main_capital_fighters.Emplace(fighter_handle,
+                                                  fighters->get_target_handle(fighter_handle),
+                                                  fighters->get_target_location(fighter_handle));
                 } else {
                     main_capital_fighters.Emplace();
                 }
@@ -440,16 +439,15 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         auto const sample_index{fighter_spawn_slots_samples.nearest_index(time)};
         check(sample_index != INDEX_NONE);
 
-        return FSimulationSnapshot{
-            fighter_spawn_slots_samples.value_at(sample_index),
-            fighter_count_samples.value_at(sample_index),
-            capital_samples.value_at(sample_index),
-            capital_fighter_handle_samples.value_at(sample_index),
-            capital_fighter_count_samples.value_at(sample_index),
-            fighter_handle_samples.value_at(sample_index),
-            fighter_target_handle_samples.value_at(sample_index),
-            fighter_task_samples.value_at(sample_index),
-            main_capital_fighter_samples.value_at(sample_index)};
+        return FSimulationSnapshot{fighter_spawn_slots_samples.value_at(sample_index),
+                                   fighter_count_samples.value_at(sample_index),
+                                   capital_samples.value_at(sample_index),
+                                   capital_fighter_handle_samples.value_at(sample_index),
+                                   capital_fighter_count_samples.value_at(sample_index),
+                                   fighter_handle_samples.value_at(sample_index),
+                                   fighter_target_handle_samples.value_at(sample_index),
+                                   fighter_task_samples.value_at(sample_index),
+                                   main_capital_fighter_samples.value_at(sample_index)};
     }
 
     void check_fighter_handle_counts_for_all_ticks() {
@@ -474,8 +472,8 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             mismatch_ticks.Add(tick);
         }
 
-        TestRunner->AddInfo(FString::Printf(TEXT("Fighter handle count mismatch ticks: %d"),
-                                            mismatch_ticks.Num()));
+        TestRunner->AddInfo(
+            FString::Printf(TEXT("Fighter handle count mismatch ticks: %d"), mismatch_ticks.Num()));
         if (!has_consecutive_mismatches) { return; }
 
         FString mismatch_tick_list;
@@ -483,11 +481,11 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
             if (!mismatch_tick_list.IsEmpty()) { mismatch_tick_list += TEXT(", "); }
             mismatch_tick_list += LexToString(tick);
         }
-        checks.is_true(false,
-                       FString::Printf(
-                           TEXT("Fighter and capital-owned fighter handle counts differ on "
-                                "consecutive ticks. All mismatch ticks: %s"),
-                           *mismatch_tick_list));
+        checks.is_true(
+            false,
+            FString::Printf(TEXT("Fighter and capital-owned fighter handle counts differ on "
+                                 "consecutive ticks. All mismatch ticks: %s"),
+                            *mismatch_tick_list));
     }
 
     void full_checks(bool const should_kill_fighters, bool const should_kill_capital) {
@@ -529,8 +527,7 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
         auto* curves{result_asset.load_or_create<UCurveTable>(TEXT("data_curve"))};
         curves->EmptyTable();
 
-        auto add_curve{[curves]<typename T>(FName const name,
-                                           ml::TimeSeriesData<T> const& output) {
+        auto add_curve{[curves]<typename T>(FName const name, ml::TimeSeriesData<T> const& output) {
             ml::add_simple_curve_row(*curves, name, output.values(), output.times());
         }};
         add_curve(TEXT("orchestrator_tick"), orchestrator_tick_samples);

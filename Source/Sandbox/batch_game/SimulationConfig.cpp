@@ -9,22 +9,19 @@
 
 #include <UObject/UObjectGlobals.h>
 
-
 namespace {
 template <typename T>
 auto duplicate_config(T const* const config, UObject& outer) -> T* {
-    if (!IsValid(config)) {
-        return nullptr;
-    }
+    if (!IsValid(config)) { return nullptr; }
 
     return DuplicateObject<T>(config, &outer);
 }
 }
 
 auto USimulationConfig::is_valid() const noexcept -> bool {
-    return IsValid(player_ship_config) && IsValid(lasers_config) &&
-           IsValid(capital_ships_config) && IsValid(capital_ship_fighters_config) &&
-           IsValid(static_turrets_config) && IsValid(tube_spinners_config);
+    return IsValid(player_ship_config) && IsValid(lasers_config) && IsValid(capital_ships_config) &&
+           IsValid(capital_ship_fighters_config) && IsValid(static_turrets_config) &&
+           IsValid(tube_spinners_config);
 }
 
 auto USimulationConfig::deep_copy(UObject* const outer) const -> USimulationConfig* {

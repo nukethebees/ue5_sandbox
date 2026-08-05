@@ -5,10 +5,10 @@
 #include "MassSimulationSubsystem.h"
 #include "Materials/Material.h"
 
+#include <SandboxCoreEngine/actor_utils.h>
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/combat/bullets/BulletDataAssetIds.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
-#include <SandboxCoreEngine/actor_utils.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 

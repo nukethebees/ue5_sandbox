@@ -1,7 +1,7 @@
 #include "SimulationTestAssets.h"
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
@@ -28,8 +28,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
     FDelegateHandle map_change_handle{};
     bool actors_spawned{false};
 
-    auto spawn_orchestrator(UWorld& world) -> bool
-    {
+    auto spawn_orchestrator(UWorld & world) -> bool {
         auto const* const config{ml::load_default_test_simulation_config()};
         if (!TestRunner->TestNotNull(TEXT("Default test simulation config loads"), config)) {
             return false;
@@ -53,8 +52,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
         return true;
     }
 
-    void resolve_orchestrator()
-    {
+    void resolve_orchestrator() {
         if (!TestRunner->TestTrue(TEXT("Actors are spawned from the map-change callback"),
                                   actors_spawned)) {
             return;
@@ -70,18 +68,12 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
         orchestrator = nullptr;
         actors_spawned = false;
         map_change_handle = FEditorDelegates::MapChange.AddLambda([this](uint32 const flags) {
-            if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) {
-                return;
-            }
+            if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) { return; }
 
-            if (!TestRunner->TestNotNull(TEXT("Editor is available"), GEditor)) {
-                return;
-            }
+            if (!TestRunner->TestNotNull(TEXT("Editor is available"), GEditor)) { return; }
 
             auto* const world{GEditor->GetEditorWorldContext().World()};
-            if (!TestRunner->TestNotNull(TEXT("Editor world is available"), world)) {
-                return;
-            }
+            if (!TestRunner->TestNotNull(TEXT("Editor world is available"), world)) { return; }
 
             actors_spawned = spawn_orchestrator(*world);
         });
@@ -112,21 +104,18 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
             TestRunner->TestFalse(TEXT("Paused orchestrator does not tick"),
                                   orchestrator->IsActorTickEnabled());
 
-            TestRunner->TestEqual(TEXT("One lasers actor exists"),
-                                  ml::count_actors<ATestLasers>(world),
-                                  1);
+            TestRunner->TestEqual(
+                TEXT("One lasers actor exists"), ml::count_actors<ATestLasers>(world), 1);
             TestRunner->TestEqual(TEXT("One capital ships actor exists"),
                                   ml::count_actors<ATestCapitalShips>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One fighters actor exists"),
                                   ml::count_actors<ATestCapitalShipFighters>(world),
                                   1);
-            TestRunner->TestEqual(TEXT("One turrets actor exists"),
-                                  ml::count_actors<ATestStaticTurrets>(world),
-                                  1);
-            TestRunner->TestEqual(TEXT("One spinners actor exists"),
-                                  ml::count_actors<ATestTubeSpinners>(world),
-                                  1);
+            TestRunner->TestEqual(
+                TEXT("One turrets actor exists"), ml::count_actors<ATestStaticTurrets>(world), 1);
+            TestRunner->TestEqual(
+                TEXT("One spinners actor exists"), ml::count_actors<ATestTubeSpinners>(world), 1);
             TestRunner->TestEqual(TEXT("One entity registry exists"),
                                   ml::count_actors<ATestEntityRegistry>(world),
                                   1);
@@ -189,9 +178,8 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
             TestRunner->TestEqual(TEXT("One second uses the configured tick rate"),
                                   clock.duration_to_tick_period(1.0),
                                   uint64{60});
-            TestRunner->TestEqual(TEXT("Duration periods round up"),
-                                  clock.duration_to_tick_period(0.025),
-                                  uint64{2});
+            TestRunner->TestEqual(
+                TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
         });
     }
 };

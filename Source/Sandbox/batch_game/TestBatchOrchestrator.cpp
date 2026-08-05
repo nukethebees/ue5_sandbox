@@ -6,10 +6,10 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
@@ -71,9 +71,7 @@ void ATestBatchOrchestrator::start_simulation() {
 }
 
 void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
-    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) {
-        return;
-    }
+    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) { return; }
 
     actor_classes = config.actor_classes;
     set_assets(config.simulation_config.Get(),

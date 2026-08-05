@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SandboxCoreEngine/actor_utils.h>
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
 #include "Sandbox/containers/LockFreeMPSCQueue.h"
@@ -9,7 +10,6 @@
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
-#include <SandboxCoreEngine/actor_utils.h>
 
 #include "CoreMinimal.h"
 #include "Mass/EntityHandle.h"

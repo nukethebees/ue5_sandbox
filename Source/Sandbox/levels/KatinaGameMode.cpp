@@ -1,10 +1,10 @@
 #include "Sandbox/levels/KatinaGameMode.h"
 
+#include <SandboxCoreEngine/actor_utils.h>
 #include "EngineUtils.h"
 #include "Sandbox/environment/SandboxActorSpawner.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/MothershipBoss.h"
-#include <SandboxCoreEngine/actor_utils.h>
 
 #include "EngineUtils.h"
 

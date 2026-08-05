@@ -61,7 +61,7 @@ struct EntityTickData : public ml::FSoAArrayMixin {
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue fighter_queue;
 
-#define SANDBOX_PACK(STAMPER, NON_FINAL)                    \
+#define SANDBOX_PACK(STAMPER, NON_FINAL)                     \
     NON_FINAL(STAMPER(ships_ready_to_spawn_fighters_buffer)) \
     STAMPER(fighter_queue)
 

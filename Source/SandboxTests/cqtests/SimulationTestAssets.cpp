@@ -6,7 +6,6 @@
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
 
-
 namespace ml {
 auto load_default_simulation_config() -> USimulationConfig const* {
     static TSoftObjectPtr<USimulationConfig> const default_config{

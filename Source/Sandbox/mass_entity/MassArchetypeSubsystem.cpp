@@ -1,12 +1,12 @@
 #include "Sandbox/mass_entity/MassArchetypeSubsystem.h"
 
+#include <SandboxCoreEngine/actor_utils.h>
 #include "Sandbox/combat/bullets/BulletDataAsset.h"
 #include "Sandbox/combat/bullets/MassBulletFragments.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
 #include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/environment/effects/NiagaraNdcWriterSubsystem.h"
 #include "Sandbox/mass_entity/mass_utils.h"
-#include <SandboxCoreEngine/actor_utils.h>
 
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"

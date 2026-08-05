@@ -11,22 +11,19 @@
 
 namespace ml {
 FTestResultAsset::FTestResultAsset(FName const test_name, FAutomationTestBase& in_test_runner)
-    : package_name_prefix{FString::Printf(TEXT("/Game/test_results/%s/%s"),
-                                         *test_name.ToString(),
-                                         *test_name.ToString())}
+    : package_name_prefix{FString::Printf(
+          TEXT("/Game/test_results/%s/%s"), *test_name.ToString(), *test_name.ToString())}
     , asset_name_prefix{test_name}
     , test_runner{&in_test_runner} {}
 
-auto FTestResultAsset::load_or_create(UClass* const asset_class,
-                                      FName const output_name) const -> UObject* {
+auto FTestResultAsset::load_or_create(UClass* const asset_class, FName const output_name) const
+    -> UObject* {
     check(!output_name.IsNone());
 
-    auto const asset_name{FName{FString::Printf(TEXT("%s_%s"),
-                                               *asset_name_prefix.ToString(),
-                                               *output_name.ToString())}};
-    auto const package_name{FName{FString::Printf(TEXT("%s_%s"),
-                                                 *package_name_prefix.ToString(),
-                                                 *output_name.ToString())}};
+    auto const asset_name{FName{
+        FString::Printf(TEXT("%s_%s"), *asset_name_prefix.ToString(), *output_name.ToString())}};
+    auto const package_name{FName{
+        FString::Printf(TEXT("%s_%s"), *package_name_prefix.ToString(), *output_name.ToString())}};
     auto const package_path{package_name.ToString()};
     auto* package{FPackageName::DoesPackageExist(package_path)
                       ? LoadPackage(nullptr, *package_path, LOAD_None)
