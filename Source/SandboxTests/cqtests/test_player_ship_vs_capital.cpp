@@ -175,7 +175,7 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
 
     void export_failure_data() const {
         auto const result_asset{ml::FTestResultAsset{TEXT("player_ship_vs_capital"), *TestRunner}};
-        auto* data_table{result_asset.load_or_create<UDataTable>()};
+        auto* data_table{result_asset.load_or_create<UDataTable>(TEXT("data_table"))};
 
         data_table->EmptyTable();
         data_table->RowStruct = FPlayerShipVsCapitalResultRow::StaticStruct();

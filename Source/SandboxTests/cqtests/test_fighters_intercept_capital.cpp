@@ -23,6 +23,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
     struct FSimulationSample {
         FRegistryEntityHandle parent_target;
         TArray<FRegistryEntityHandle> fighter_targets;
+        int32 fighter_count{0};
     };
 
     static constexpr time_type test_duration{20.0};
@@ -56,6 +57,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
 
         FSimulationSample sample{};
         sample.parent_target = capitals->get_target_handle(hero_capital_index);
+        sample.fighter_count = fighter_handles.Num();
         sample.fighter_targets.Reserve(fighter_handles.Num());
         for (auto const fighter_handle : fighter_handles) {
             sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
@@ -126,10 +128,12 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
         check_fighters_share_target(end, TEXT("Fighters share their final target"));
     }
 
-    void export_failure_data() const {
+    void export_data() const {
         auto const result_asset{
             ml::FTestResultAsset{TEXT("fighters_intercept_capital"), *TestRunner}};
-        auto* results{result_asset.load_or_create<UTestFightersInterceptCapitalResults>()};
+        auto* results{
+            result_asset.load_or_create<UTestFightersInterceptCapitalResults>(TEXT("data_asset"))};
+        auto* curves{result_asset.load_or_create<UCurveTable>(TEXT("data_curve"))};
 
         results->hero_capital = hero_capital.to_string();
         results->original_target = original_target.to_string();
@@ -137,6 +141,11 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
 
         auto const sample_times{samples.times()};
         auto const sample_values{samples.values()};
+        curves->EmptyTable();
+        TArray<float> curve_times;
+        TArray<int32> fighter_counts;
+        curve_times.Reserve(sample_values.Num());
+        fighter_counts.Reserve(sample_values.Num());
         results->time_series_results.Reset(sample_values.Num());
         for (int32 sample_index{0}; sample_index < sample_values.Num(); ++sample_index) {
             auto const& sample{sample_values[sample_index]};
@@ -149,10 +158,18 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
                 row.fighter_targets.Add(fighter_target.to_string());
             }
 
+            curve_times.Add(static_cast<float>(sample_times[sample_index]));
+            fighter_counts.Add(sample.fighter_count);
             results->time_series_results.Add(MoveTemp(row));
         }
 
+        ml::add_simple_curve_row(*curves,
+                                 TEXT("fighter_count"),
+                                 TConstArrayView<int32>{fighter_counts},
+                                 TConstArrayView<float>{curve_times});
+
         result_asset.save(*results);
+        result_asset.save(*curves);
     }
 
     TEST_METHOD(MainTest)
@@ -162,7 +179,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
             .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 11})
             .Then([this] {
                 full_checks();
-                if (!checks.all_passed) { export_failure_data(); }
+                if (!checks.all_passed || test_driver->should_export_results()) { export_data(); }
                 SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             });
     }

@@ -2,615 +2,531 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
+#include <Sandbox/batch_game/TestTeam.h>
 
-#include <SandboxTests/cqtests/lex_to_string.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
+#include <SandboxTests/cqtests/TestResultAssetIO.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
-#include <SandboxTests/SandboxTestLogCategories.h>
+
+#include <SandboxCore/time_series_data.h>
 
 #include <Components/MapTestSpawner.h>
 #include <Containers/Set.h>
 #include <CQTest.h>
-#include <EngineUtils.h>
 #include <Misc/Optional.h>
 
 /*
-This test relies on a long spawn delay to ensure more fighters aren't spawned.
+This test relies on a long spawn delay to ensure more fighters are not spawned.
 The assumption is that there is one wave of fighters total.
 */
 
 TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
 {
+    using ThisClass = CapitalFighterHandles;
+    using Task = ATestCapitalShipFighters::Task;
+    using time_type = ml::TestSimulationDriver::time_type;
+
+    struct FCapitalSample {
+        FRegistryEntityHandle handle;
+        FRegistryEntityHandle target_handle;
+    };
+
+    struct FFighterSample {
+        FRegistryEntityHandle handle{};
+        FRegistryEntityHandle target_handle{};
+        FVector3f target_location{FVector3f::ZeroVector};
+    };
+
+    struct FSimulationSnapshot {
+        int32 fighter_spawn_slots{0};
+        int32 fighter_count{0};
+        TArray<FCapitalSample> capitals;
+        TArray<FRegistryEntityHandle> capital_fighter_handles;
+        TArray<int32> capital_fighter_counts;
+        TArray<FRegistryEntityHandle> fighter_handles;
+        TArray<FRegistryEntityHandle> fighter_target_handles;
+        TArray<Task> fighter_tasks;
+        TArray<FFighterSample> main_capital_fighters;
+    };
+
+    static constexpr ETestTeam main_capital_team{ETestTeam::Green};
+    static constexpr int32 n_capitals_exp{3};
+
+    static constexpr time_type initial_sample_delay{2.0};
+    static constexpr time_type fighter_kill_delay{3.0};
+    static constexpr time_type post_fighter_kill_sample_delay{2.0};
+    static constexpr time_type capital_kill_delay{3.0};
+    static constexpr time_type post_capital_kill_sample_delay{5.0};
+    static constexpr time_type final_sample_delay{5.0};
+
+    inline static FTimespan const default_timeout{0, 0, 5};
+
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
+    ml::TimeSeriesData<int32> fighter_spawn_slots_samples;
+    ml::TimeSeriesData<int32> fighter_count_samples;
+    ml::TimeSeriesData<int32> capital_count_samples;
+    ml::TimeSeriesData<int32> capital_fighter_handle_count_samples;
+    ml::TimeSeriesData<int32> capital_fighter_span_count_samples;
+    ml::TimeSeriesData<int32> fighter_handle_count_samples;
+    ml::TimeSeriesData<int32> fighter_target_handle_count_samples;
+    ml::TimeSeriesData<int32> fighter_task_count_samples;
+    ml::TimeSeriesData<int32> main_capital_fighter_count_samples;
 
-    static constexpr ETestTeam main_capital_team{ETestTeam::Green};
+    ml::TimeSeriesData<TArray<FCapitalSample>> capital_samples;
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> capital_fighter_handle_samples;
+    ml::TimeSeriesData<TArray<int32>> capital_fighter_count_samples;
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> fighter_handle_samples;
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> fighter_target_handle_samples;
+    ml::TimeSeriesData<TArray<Task>> fighter_task_samples;
+    ml::TimeSeriesData<TArray<FFighterSample>> main_capital_fighter_samples;
 
-    static constexpr int32 cycles_to_wait{5};
-    static constexpr int32 n_capitals_exp{3};
+    FRegistryEntityHandle main_capital_handle;
+    TArray<FRegistryEntityHandle> destroyed;
+    TArray<FRegistryEntityHandle> kept;
 
-    struct FighterSample {
-        TArray<FRegistryEntityHandle> handles;
-        TArray<FRegistryEntityHandle> target_handles;
-        TArray<FVector3f> target_locations;
-    };
+    TOptional<time_type> t_initial;
+    TOptional<time_type> t_post_fighter_kill;
+    TOptional<time_type> t_pre_capital_kill;
+    TOptional<time_type> t_post_capital_kill;
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_capital_fighter_handles"), TestRunner, checks); }
+    AFTER_EACH()
+    {
+        if (test_driver.IsSet()) { test_driver->orchestrator.clear_end_tick_test_hook(); }
+    }
   private:
-    /* ------------------------------------------------------------------------------------------ */
-    // Sampling
-    /* ------------------------------------------------------------------------------------------ */
-    void fill_fighter_target_info(FighterSample & sample) {
-        TestRunner->AddInfo(TEXT("fn: fill_fighter_target_info"));
-
-        auto const main_fighters_span{
-            capitals->get_capital_fighter_handle_span(main_capital_index)};
-        auto const fighter_target_handles{fighters->get_target_handles()};
-        auto const fighter_target_locations{fighters->get_target_locations()};
-
-        auto const span_end{main_fighters_span.end()};
-        for (int32 i{main_fighters_span.start()}; i < span_end; ++i) {
-            auto const handle{sample.handles[i]};
-            sample.target_locations.Add(fighters->get_target_location(handle));
-            sample.target_handles.Add(fighters->get_target_handle(handle));
-        }
-    }
-
-    void save_fighter_handles(TArray<FRegistryEntityHandle> & handles) {
-        auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
-        auto const fighter_handles{capitals->get_fighter_handles()};
-
-        for (int32 i{main_span.start()}; i < main_span.end(); ++i) {
-            handles.Add(fighter_handles[i]);
-        }
-
-        handles.Sort();
-    }
-    void sample_fighter_data(FighterSample & sample) {
-        TestRunner->AddInfo(TEXT("fn: sample_fighter_data"));
-
-        save_fighter_handles(sample.handles);
-        fill_fighter_target_info(sample);
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // General checks
-    /* ------------------------------------------------------------------------------------------ */
-    void check_capitals_not_targeting_self() {
-        TestRunner->AddInfo(TEXT("fn: check_capitals_not_targeting_self"));
-
-        auto const n{capitals->get_num_instances()};
-
-        for (int32 i{}; i < n; ++i) {
-            auto const handle{capitals->get_handle(i)};
-            auto const target{capitals->get_target_handle(i)};
-
-            checks.not_equal(
-                handle, target, FString::Printf(TEXT("Check capital[%d] not targeting self"), i));
-        }
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Logging
-    /* ------------------------------------------------------------------------------------------ */
-    void log_capital_fighter_info(FighterSample const& sample, FString const info) {
-        auto msg{FString::Printf(TEXT("Capital fighters (%s):"), *info)};
-
-        msg += TEXT("\n    Handles, Targets, Target locs");
-
-        auto const n{sample.handles.Num()};
-        for (int32 i{0}; i < n; ++i) {
-            msg += FString::Printf(TEXT("\n    [%d] %s, %s, %s"),
-                                   i,
-                                   *sample.handles[i].to_string(),
-                                   *sample.target_handles[i].to_string(),
-                                   *sample.target_locations[i].ToCompactString());
-        }
-
-        TestRunner->AddInfo(msg);
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Start
-    /* ------------------------------------------------------------------------------------------ */
-    int32 main_capital_index{0};
-    FRegistryEntityHandle main_capital_handle;
-    FighterSample initial_main_fighters;
-
-    void initial_setup() {
-        TestRunner->AddInfo(TEXT("fn: initial_setup"));
-
-        auto& world{spawner->GetWorld()};
-        test_driver = ml::TestSimulationDriver::from_world(world);
-        test_driver->orchestrator.start_simulation();
-
-        capitals = test_driver->orchestrator.get_capital_ships();
-        ASSERT_THAT(IsNotNull(capitals));
-
-        fighters = test_driver->orchestrator.get_capital_ship_fighters();
-        ASSERT_THAT(IsNotNull(fighters));
-
-        main_capital_index = *capitals->find_first_index_on_team(main_capital_team);
-        main_capital_handle = capitals->get_handle(main_capital_index);
-
-        TestRunner->AddInfo(FString::Printf(TEXT("Check main capital team is %s"),
-                                            *ml::to_string_without_type_prefix(main_capital_team)));
-
-#if WITH_EDITOR
-        auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-        checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-    }
-    bool wait_for_fighters_to_spawn() {
-        auto const n_fighters{capitals->get_fighters_spawned()};
-        if (n_fighters > 0) { return true; }
-
-        return false;
-    }
-
-    void initial_sampling_stage() {
-        TestRunner->AddInfo(TEXT("fn: initial_sampling_stage"));
-
-        sample_fighter_data(initial_main_fighters);
-    }
-    void initial_checks_stage() {
-        TestRunner->AddInfo(TEXT("fn: initial_checks_stage"));
-
-        check_capitals_not_targeting_self();
-        check_main_capital_fighters_not_targeting_parent(initial_main_fighters, TEXT("Initial"));
-
-        log_capital_fighter_info(initial_main_fighters, TEXT("Initial"));
-    }
-    void initial_setup_stage() {
-        TestRunner->AddInfo(TEXT("fn: initial_setup_stage"));
-
-        initial_setup();
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Killing fighters
-    /* ------------------------------------------------------------------------------------------ */
-    TArray<FRegistryEntityHandle> destroyed;
-    TArray<FRegistryEntityHandle> kept;
-    FighterSample post_fighter_kill_main_fighters;
-
-    void run_spawn_capital_handle_checks() {
-        TestRunner->AddInfo(TEXT("fn: run_spawn_capital_handle_checks"));
+    void sample_values(ATestBatchOrchestrator&) {
+        auto const fighter_spawn_slots{capitals->get_fighter_spawn_slots()};
+        auto const fighter_count{fighters->get_num_instances()};
+        TArray<FRegistryEntityHandle> capital_fighter_handles;
+        TArray<FRegistryEntityHandle> fighter_handles;
+        TArray<FRegistryEntityHandle> fighter_target_handles;
+        TArray<Task> fighter_tasks;
+        capital_fighter_handles.Append(capitals->get_fighter_handles());
+        fighter_handles.Append(fighters->get_handles());
+        fighter_target_handles.Append(fighters->get_target_handles());
+        fighter_tasks.Append(fighters->get_tasks());
 
         auto const n_capitals{capitals->get_num_instances()};
+        TArray<FCapitalSample> capital_values;
+        TArray<int32> capital_fighter_counts;
+        TArray<FFighterSample> main_capital_fighters;
+        capital_values.Reserve(n_capitals);
+        capital_fighter_counts.Reserve(n_capitals);
 
-        checks.are_equal(n_capitals_exp, n_capitals, TEXT("Number of capitals."));
+        for (int32 capital_index{0}; capital_index < n_capitals; ++capital_index) {
+            auto const capital_handle{capitals->get_handle(capital_index)};
+            auto const capital_target{capitals->get_target_handle(capital_index)};
+            auto const fighter_span{capitals->get_capital_fighter_handle_span(capital_index)};
 
-        auto const capital_fighters_spawn_slots{capitals->get_fighter_spawn_slots()};
+            capital_values.Add(FCapitalSample{capital_handle, capital_target});
+            capital_fighter_counts.Add(fighter_span.count);
 
-        auto const n_fighters_spawned_exp{n_capitals * capital_fighters_spawn_slots};
-        auto const n_fighters_spawned{capitals->get_fighters_spawned()};
+            if (capital_handle != main_capital_handle) { continue; }
 
-        checks.are_equal(n_fighters_spawned_exp,
-                         n_fighters_spawned,
-                         TEXT("Number of fighters (according to capitals)"));
+            auto const main_fighter_handles{capitals->get_fighter_handles(capital_index)};
+            main_capital_fighters.Reserve(main_fighter_handles.Num());
 
-        auto const n_fighters_exp{n_fighters_spawned};
-        auto const n_fighters{fighters->get_num_instances()};
-
-        checks.are_equal(n_fighters_exp, n_fighters, TEXT("Number of fighters."));
-
-        auto const& capital_fighter_handles{capitals->get_fighter_handles()};
-        auto const& capital_fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
-
-        auto const n_fighter_handles_exp{n_capitals * capital_fighters_spawn_slots};
-        auto const n_fighter_handles{capital_fighter_handles.Num()};
-        checks.are_equal(
-            n_fighter_handles_exp, n_fighter_handles, TEXT("Number of fighter handles"));
-
-        auto const n_fighter_spans_exp{n_capitals};
-        auto const n_fighter_spans{capital_fighter_handle_spans.Num()};
-        checks.are_equal(n_fighter_spans_exp, n_fighter_spans, TEXT("Fighter handle spans"));
-
-        for (int32 i{0}; i < n_capitals; ++i) {
-            auto const span{capital_fighter_handle_spans[i]};
-
-            auto const span_count_exp{capital_fighters_spawn_slots};
-            auto const span_count{span.count};
-
-            checks.are_equal(
-                span_count_exp, span_count, FString::Printf(TEXT("Span count (%d)"), i));
-        }
-
-        // Check handle uniqueness
-        TSet<FRegistryEntityHandle> unique_handles;
-        for (int32 i{}; i < n_fighter_handles; ++i) {
-            auto const& handle{capital_fighter_handles[i]};
-
-            auto const is_unique{
-                checks.is_true(!unique_handles.Contains(handle),
-                               FString::Printf(TEXT("[%d] Unique capital fighter handle"), i))};
-            if (is_unique) { unique_handles.Add(handle); }
-        }
-
-        if (!checks.all_passed) {
-            FString msg;
-            msg += FString::Printf(TEXT("Failed after tick: %llu"),
-                                   test_driver->orchestrator.get_completed_ticks() - 1);
-
-            msg += TEXT("\nCapital ship fighter handles:");
-            for (auto const& handle : capital_fighter_handles) {
-                msg += FString::Printf(TEXT("\n    %s"), *handle.to_string());
-            }
-
-            msg += TEXT("\nCapital ship fighter handles spans:");
-            for (int32 span_i{0}; span_i < n_capitals; ++span_i) {
-                msg += FString::Printf(TEXT("\n        Capital %d"), span_i);
-
-                auto const& span{capital_fighter_handle_spans[span_i]};
-
-                auto const offset{span.offset};
-                auto const count{span.count};
-                auto const end{span.end()};
-
-                for (int32 i{offset}; i < end; ++i) {
-                    msg += FString::Printf(
-                        TEXT("\n    %d: %s"), i, *capital_fighter_handles[i].to_string());
+            for (auto const fighter_handle : main_fighter_handles) {
+                if (fighters->has_handle(fighter_handle)) {
+                    main_capital_fighters.Emplace(
+                        fighter_handle,
+                        fighters->get_target_handle(fighter_handle),
+                        fighters->get_target_location(fighter_handle));
+                } else {
+                    main_capital_fighters.Emplace();
                 }
             }
-
-            TestRunner->AddInfo(msg);
         }
+
+        auto const time{test_driver->get_time()};
+        fighter_spawn_slots_samples.add(time, fighter_spawn_slots);
+        fighter_count_samples.add(time, fighter_count);
+        capital_count_samples.add(time, capital_values.Num());
+        capital_fighter_handle_count_samples.add(time, capital_fighter_handles.Num());
+        capital_fighter_span_count_samples.add(time, capital_fighter_counts.Num());
+        fighter_handle_count_samples.add(time, fighter_handles.Num());
+        fighter_target_handle_count_samples.add(time, fighter_target_handles.Num());
+        fighter_task_count_samples.add(time, fighter_tasks.Num());
+        main_capital_fighter_count_samples.add(time, main_capital_fighters.Num());
+
+        capital_samples.add(time, MoveTemp(capital_values));
+        capital_fighter_handle_samples.add(time, MoveTemp(capital_fighter_handles));
+        capital_fighter_count_samples.add(time, MoveTemp(capital_fighter_counts));
+        fighter_handle_samples.add(time, MoveTemp(fighter_handles));
+        fighter_target_handle_samples.add(time, MoveTemp(fighter_target_handles));
+        fighter_task_samples.add(time, MoveTemp(fighter_tasks));
+        main_capital_fighter_samples.add(time, MoveTemp(main_capital_fighters));
     }
-    void pre_fighter_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: pre_fighter_kill_stage"));
 
-        initial_sampling_stage();
-        initial_checks_stage();
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_values(orchestrator);
+        test_driver->timeline.tick(test_driver->get_time());
+    }
 
-        run_spawn_capital_handle_checks();
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto find_main_capital_index() const -> TOptional<int32> {
+        auto const n_capitals{capitals->get_num_instances()};
+        for (int32 capital_index{0}; capital_index < n_capitals; ++capital_index) {
+            if (capitals->get_handle(capital_index) == main_capital_handle) {
+                return capital_index;
+            }
+        }
+
+        return NullOpt;
+    }
+
+    void initial_setup() {
+        test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
+        checks.are_equal(ATestBatchOrchestrator::tick_type{0},
+                         test_driver->orchestrator.get_completed_ticks(),
+                         TEXT("Simulation is paused before the test starts it"));
+        test_driver->orchestrator.start_simulation();
+
+        capitals = &test_driver->get_capital_ships();
+        fighters = &test_driver->get_capital_ship_fighters();
+
+        auto const main_capital_index{capitals->find_first_index_on_team(main_capital_team)};
+        if (checks.is_true(main_capital_index.has_value(), TEXT("Find green main capital"))) {
+            main_capital_handle = capitals->get_handle(*main_capital_index);
+        }
+
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
     }
 
     void kill_fighters() {
-        TestRunner->AddInfo(TEXT("fn: kill_fighters"));
-
-        auto const fighter_handles{capitals->get_fighter_handles()};
-        auto const fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
-
         destroyed.Reset();
         kept.Reset();
 
-        for (auto const span : fighter_handle_spans) {
-            auto const end{span.end()};
-            for (int32 i{span.offset}; i < end; ++i) {
-                auto const handle{fighter_handles[i]};
-                if (i % 2 == 0) {
-                    destroyed.Add(handle);
-                } else {
-                    kept.Add(handle);
-                }
+        auto const fighter_handles{capitals->get_fighter_handles()};
+        for (int32 fighter_index{0}; fighter_index < fighter_handles.Num(); ++fighter_index) {
+            auto const handle{fighter_handles[fighter_index]};
+            if (fighter_index % 2 == 0) {
+                destroyed.Add(handle);
+            } else {
+                kept.Add(handle);
             }
-        }
-
-        for (auto const& handle : destroyed) {
-            UE_LOG(LogSandboxTest, Display, TEXT("Test: Destroying %s"), *handle.to_string());
         }
 
         test_driver->queue_kills(destroyed);
     }
-    void kill_fighters_stage() {
-        kill_fighters();
-        test_driver->set_wait_until_tick_from_now(cycles_to_wait);
-    }
 
-    void post_fighter_kill_sample_stage() {
-        TestRunner->AddInfo(TEXT("fn: post_fighter_kill_sample_stage"));
-
-        sample_fighter_data(post_fighter_kill_main_fighters);
-    }
-    void check_fighter_handles_after_fighter_kills() {
-        TestRunner->AddInfo(TEXT("fn: check_handles_after_fighter_kills"));
-
-        auto const fighter_handles{capitals->get_fighter_handles()};
-        auto const fighter_handle_spans{capitals->get_capital_fighter_handle_spans()};
-
-        int32 total_left{0};
-        for (auto const span : fighter_handle_spans) {
-            auto const count{span.count};
-            total_left += count;
-
-            auto const end{span.end()};
-            for (int32 i{span.offset}; i < end; ++i) {
-                auto const handle{fighter_handles[i]};
-                checks.is_true(kept.Contains(handle),
-                               FString::Printf(TEXT("[%d] Fighter handle is kept"), i));
-                checks.is_true(!destroyed.Contains(handle),
-                               FString::Printf(TEXT("[%d] Fighter handle not destroyed"), i));
-            }
-        }
-
-        // Look directly at kept/destroyed
-        for (int32 i{0}; i < kept.Num(); ++i) {
-            checks.is_true(
-                test_driver->registry.is_valid_alive(kept[i]), TEXT("Kept is valid alive"), i);
-        }
-        for (int32 i{0}; i < kept.Num(); ++i) {
-            auto const handle{destroyed[i]};
-            checks.is_true(test_driver->registry.is_valid_dead(handle),
-                           FString::Printf(TEXT("Destroyed handle %s is valid and entity is dead"),
-                                           *handle.to_string()),
-                           i);
-        }
-
-        checks.are_equal(kept.Num(), total_left, TEXT("Expected left"));
-    }
-    void check_remaining_main_capital_fighters_unchanged() {
-        auto const n_post{post_fighter_kill_main_fighters.handles.Num()};
-
-        for (int32 i{}; i < n_post; ++i) {
-            auto const handle{post_fighter_kill_main_fighters.handles[i]};
-            checks.is_true(initial_main_fighters.handles.Contains(handle),
-                           FString::Printf(TEXT("After killing fighters, main fighter[%d] (%s) was "
-                                                "parented by main capital before kill"),
-                                           i,
-                                           *handle.to_string()));
-        }
-    }
-    void post_fighter_kill_check_stage() {
-        TestRunner->AddInfo(TEXT("fn: post_fighter_kill_check_stage"));
-
-        check_fighter_handles_after_fighter_kills();
-        check_main_capital_fighters_not_targeting_parent(post_fighter_kill_main_fighters,
-                                                         TEXT("Post-kill fighters"));
-
-        check_remaining_main_capital_fighters_unchanged();
-        check_fighter_targets_all_not_null();
-    }
-    void post_fighter_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: post_fighter_kill_stage"));
-
-        post_fighter_kill_sample_stage();
-        log_capital_fighter_info(post_fighter_kill_main_fighters, TEXT("Post fighter kill"));
-        post_fighter_kill_check_stage();
-
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Kill a capital
-    /* ------------------------------------------------------------------------------------------ */
-    int32 n_fighters_before_capital_kill{0};
-    int32 n_main_capital_fighters_before_capital_kill{0};
-
-    FighterSample pre_capital_kill_main_fighters;
-    FighterSample post_capital_kill_main_fighters;
-
-    void save_data_before_capital_kill() {
-        TestRunner->AddInfo(TEXT("fn: save_fighter_info_before_capital_kill"));
-
-        n_fighters_before_capital_kill = fighters->get_num_instances();
-
-        auto const main_span{capitals->get_capital_fighter_handle_span(main_capital_index)};
-        n_main_capital_fighters_before_capital_kill = main_span.count;
-
-        sample_fighter_data(pre_capital_kill_main_fighters);
-    }
-
-    void check_main_fighters_after_event(
-        FighterSample const& before, FighterSample const& after, FString const info) {}
-
-    void check_main_capital_fighters_not_targeting_parent(FighterSample const& sample,
-                                                          FString const info) {
-        TestRunner->AddInfo(TEXT("fn: check_main_capital_fighters_not_targeting_parent"));
-
-        auto const n{sample.target_handles.Num()};
-
-        for (int32 i{0}; i < n; ++i) {
-            checks.not_equal(main_capital_handle,
-                             sample.target_handles[i],
-                             FString::Printf(TEXT("(%s) Check fighter %s is not targeting parent"),
-                                             *info,
-                                             *sample.handles[i].to_string()),
-                             i);
-        }
-    }
-    void check_capital_state_after_kill() {
-        TestRunner->AddInfo(TEXT("fn: check_capital_state_after_kill"));
-
-        auto const n_capitals{capitals->get_num_instances()};
-        checks.are_equal(n_capitals, n_capitals_exp - 1, TEXT("Check capital count after kill"));
-
-        // Check fighter ownership
-        auto const fighter_spans{capitals->get_capital_fighter_handle_spans()};
-        auto const fighter_handles{capitals->get_fighter_handles()};
-
-        // save original handles in a sorted array
-        // save new handles in a sorted array
-        // compare each element
-    }
-    void check_fighter_tasks_after_kill() {
-        TestRunner->AddInfo(TEXT("fn: check_fighter_tasks_after_kill"));
-
-        auto const fighter_tasks{fighters->get_tasks()};
-        auto const n{fighter_tasks.Num()};
-
-        for (int32 i{}; i < n; ++i) {
-            auto const task{fighter_tasks[i]};
-            checks.are_equal(task,
-                             ETestCapitalShipFightersTask::Attack,
-                             FString::Printf(TEXT("Check is attacking: %d"), i));
-        }
-    }
-    void check_num_fighters_after_kill() {
-        TestRunner->AddInfo(TEXT("fn: check_num_fighters_after_kill"));
-
-        auto const n_fighters{fighters->get_num_instances()};
-
-        checks.are_equal(n_fighters_before_capital_kill,
-                         n_fighters,
-                         TEXT("Check number of fighters is unchanged."));
-    }
-    void check_capital_fighter_handles_unchanged(FighterSample const& before,
-                                                 FighterSample const& after) {
-        TestRunner->AddInfo(TEXT("fn: check_capital_fighter_handles_unchanged"));
-
-        auto const n_original{before.handles.Num()};
-
-        if (!checks.are_equal(n_original,
-                              after.handles.Num(),
-                              TEXT("Check num main capital fighter handles unchanged"))) {
+    void kill_capital_opponent() {
+        auto const main_capital_index{find_main_capital_index()};
+        if (!checks.is_true(main_capital_index.IsSet(), TEXT("Find main capital before kill"))) {
             return;
         }
 
-        checks.all_equal(
-            after.handles, after.handles, TEXT("Check main cap fighter handle is unchanged"));
-    }
-    void check_fighters_target_location_changed() {
-        TestRunner->AddInfo(TEXT("fn: check_fighters_target_location_changed"));
-
-        auto const n_original_locations{pre_capital_kill_main_fighters.target_locations.Num()};
-        auto const n_new_locations{post_capital_kill_main_fighters.target_locations.Num()};
-
-        auto const n_original_handles{pre_capital_kill_main_fighters.target_handles.Num()};
-        auto const n_new_handles{post_capital_kill_main_fighters.target_handles.Num()};
-
-        auto const n_exp{n_main_capital_fighters_before_capital_kill};
-        checks.are_equal(n_exp,
-                         n_original_locations,
-                         FString::Printf(TEXT("Correct number of original locations")));
-        checks.are_equal(
-            n_exp, n_new_locations, FString::Printf(TEXT("Correct number of new locations")));
-        checks.are_equal(
-            n_exp, n_original_handles, FString::Printf(TEXT("Correct number of original handles")));
-        checks.are_equal(
-            n_exp, n_new_handles, FString::Printf(TEXT("Correct number of new handles")));
-
-        if (!checks.all_passed) { return; }
-
-        for (int32 i{0}; i < n_new_locations; ++i) {
-            auto const old_loc{pre_capital_kill_main_fighters.target_locations[i]};
-            auto const new_loc{post_capital_kill_main_fighters.target_locations[i]};
-
-            auto const old_handle{pre_capital_kill_main_fighters.target_handles[i]};
-            auto const new_handle{post_capital_kill_main_fighters.target_handles[i]};
-
-            auto const locs_equal{old_loc == new_loc};
-            auto const handles_equal{old_loc == new_loc};
-
-            checks.not_equal(
-                old_loc, new_loc, FString::Printf(TEXT("Check locations not the same [%d]."), i));
-
-            checks.not_equal(old_handle,
-                             new_handle,
-                             FString::Printf(TEXT("Check handles not the same [%d]"), i));
+        auto const target{capitals->get_target_handle(*main_capital_index)};
+        if (!checks.is_true(test_driver->registry.is_valid_alive(target),
+                            TEXT("Capital target is alive before kill"))) {
+            return;
         }
-    }
-    void check_fighter_targets_all_not_null() {
-        TestRunner->AddInfo(TEXT("fn: check_fighter_targets_all_not_null"));
 
-        auto const fighter_target_handles{fighters->get_target_handles()};
-        auto const n{fighter_target_handles.Num()};
-
-        for (int32 i{0}; i < n; ++i) {
-            auto const handle{fighter_target_handles[i]};
-            checks.is_true(!handle.is_null(), TEXT("Fighter handles not null"), i);
-        }
-    }
-
-    void kill_capital_opponent() {
-        TestRunner->AddInfo(TEXT("fn: kill_capital_opponent"));
-
-        auto const target{capitals->get_target_handle(main_capital_index)};
-        auto const target_team{capitals->get_team(target)};
-
-        TestRunner->AddInfo(FString::Printf(TEXT("Killing handle %s (team: %s)"),
-                                            *target.to_string(),
-                                            *ml::to_string_without_type_prefix(target_team)));
-
-        checks.is_true(test_driver->registry.is_valid_alive(target),
-                       TEXT("Check target alive before kill"));
         test_driver->queue_kills(TArray{target});
     }
-    void save_data_after_capital_kill() {
-        TestRunner->AddInfo(TEXT("fn: save_data_after_capital_kill"));
 
-        sample_fighter_data(post_capital_kill_main_fighters);
+    void configure_timeline(bool const should_kill_fighters, bool const should_kill_capital) {
+        test_driver->timeline.then_after(initial_sample_delay,
+                                         [this] { t_initial = test_driver->get_time(); });
+
+        if (should_kill_fighters) {
+            test_driver->timeline.then_after(fighter_kill_delay, [this] { kill_fighters(); });
+            test_driver->timeline.then_after(post_fighter_kill_sample_delay, [this] {
+                t_post_fighter_kill = test_driver->get_time();
+            });
+        }
+
+        if (should_kill_capital) {
+            test_driver->timeline.then_after(capital_kill_delay, [this] {
+                t_pre_capital_kill = test_driver->get_time();
+                kill_capital_opponent();
+            });
+            test_driver->timeline.then_after(post_capital_kill_sample_delay, [this] {
+                t_post_capital_kill = test_driver->get_time();
+            });
+        }
+
+        test_driver->timeline.finish_after(final_sample_delay);
     }
 
-    void pre_capital_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: pre_capital_kill_stage"));
-
-        save_data_before_capital_kill();
-
-        check_main_capital_fighters_not_targeting_parent(pre_capital_kill_main_fighters,
-                                                         TEXT("Pre-kill capital"));
-    }
-    void capital_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: capital_kill_stage"));
-
-        kill_capital_opponent();
-        test_driver->set_wait_until_tick_from_now(30);
-    }
-    void post_capital_kill_stage() {
-        TestRunner->AddInfo(TEXT("fn: post_capital_kill_stage"));
-
-        save_data_after_capital_kill();
-
-        check_main_capital_fighters_not_targeting_parent(post_capital_kill_main_fighters,
-                                                         TEXT("Post-kill capital"));
-        check_num_fighters_after_kill();
-        check_capitals_not_targeting_self();
-        check_capital_state_after_kill();
-        check_fighter_tasks_after_kill();
-        check_capital_fighter_handles_unchanged(pre_capital_kill_main_fighters,
-                                                post_capital_kill_main_fighters);
-        check_fighters_target_location_changed();
-        check_fighter_targets_all_not_null();
-
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    void check_capitals_not_targeting_self(FSimulationSnapshot const& sample) {
+        for (int32 capital_index{0}; capital_index < sample.capitals.Num(); ++capital_index) {
+            auto const& capital{sample.capitals[capital_index]};
+            checks.not_equal(capital.handle,
+                             capital.target_handle,
+                             TEXT("Capital is not targeting itself"),
+                             capital_index);
+        }
     }
 
-    inline static FTimespan const default_timeout{0, 0, 3};
+    void check_main_capital_fighters_not_targeting_parent(FSimulationSnapshot const& sample,
+                                                          FString const& description) {
+        for (int32 fighter_index{0}; fighter_index < sample.main_capital_fighters.Num();
+             ++fighter_index) {
+            checks.not_equal(main_capital_handle,
+                             sample.main_capital_fighters[fighter_index].target_handle,
+                             description,
+                             fighter_index);
+        }
+    }
+
+    void check_spawn_capital_handle_state(FSimulationSnapshot const& sample) {
+        checks.are_equal(n_capitals_exp, sample.capitals.Num(), TEXT("Number of capitals"));
+
+        auto const expected_fighter_count{sample.capitals.Num() * sample.fighter_spawn_slots};
+        checks.are_equal(
+            expected_fighter_count, sample.fighter_count, TEXT("Number of spawned fighters"));
+        checks.are_equal(expected_fighter_count,
+                         sample.capital_fighter_handles.Num(),
+                         TEXT("Number of capital fighter handles"));
+        checks.are_equal(sample.capitals.Num(),
+                         sample.capital_fighter_counts.Num(),
+                         TEXT("Number of capital fighter spans"));
+        for (int32 capital_index{0}; capital_index < sample.capital_fighter_counts.Num();
+             ++capital_index) {
+            checks.are_equal(sample.fighter_spawn_slots,
+                             sample.capital_fighter_counts[capital_index],
+                             TEXT("Capital fighter span count"),
+                             capital_index);
+        }
+
+        TSet<FRegistryEntityHandle> unique_handles;
+        for (int32 fighter_index{0}; fighter_index < sample.capital_fighter_handles.Num();
+             ++fighter_index) {
+            auto const handle{sample.capital_fighter_handles[fighter_index]};
+            checks.is_true(!unique_handles.Contains(handle),
+                           TEXT("Capital fighter handle is unique"),
+                           fighter_index);
+            unique_handles.Add(handle);
+        }
+    }
+
+    void check_all_fighter_targets_not_null(FSimulationSnapshot const& sample) {
+        for (int32 fighter_index{0}; fighter_index < sample.fighter_target_handles.Num();
+             ++fighter_index) {
+            checks.is_true(!sample.fighter_target_handles[fighter_index].is_null(),
+                           TEXT("Fighter target is not null"),
+                           fighter_index);
+        }
+    }
+
+    void check_fighter_kill_state(FSimulationSnapshot const& initial,
+                                  FSimulationSnapshot const& after_kill) {
+        for (int32 fighter_index{0}; fighter_index < after_kill.capital_fighter_handles.Num();
+             ++fighter_index) {
+            auto const handle{after_kill.capital_fighter_handles[fighter_index]};
+            checks.is_true(
+                kept.Contains(handle), TEXT("Remaining fighter handle was kept"), fighter_index);
+            checks.is_true(!destroyed.Contains(handle),
+                           TEXT("Remaining fighter handle was not destroyed"),
+                           fighter_index);
+        }
+
+        for (int32 fighter_index{0}; fighter_index < kept.Num(); ++fighter_index) {
+            checks.is_true(test_driver->registry.is_valid_alive(kept[fighter_index]),
+                           TEXT("Kept fighter is alive"),
+                           fighter_index);
+        }
+        for (int32 fighter_index{0}; fighter_index < destroyed.Num(); ++fighter_index) {
+            checks.is_true(test_driver->registry.is_valid_dead(destroyed[fighter_index]),
+                           TEXT("Destroyed fighter is dead"),
+                           fighter_index);
+        }
+
+        checks.are_equal(kept.Num(),
+                         after_kill.capital_fighter_handles.Num(),
+                         TEXT("Expected number of remaining fighters"));
+
+        for (int32 fighter_index{0}; fighter_index < after_kill.main_capital_fighters.Num();
+             ++fighter_index) {
+            auto const handle{after_kill.main_capital_fighters[fighter_index].handle};
+            auto const was_initially_parented{initial.main_capital_fighters.ContainsByPredicate(
+                [handle](FFighterSample const& fighter) { return fighter.handle == handle; })};
+            checks.is_true(was_initially_parented,
+                           TEXT("Remaining main-capital fighter retains its parent"),
+                           fighter_index);
+        }
+    }
+
+    void check_main_capital_fighter_handles_unchanged(FSimulationSnapshot const& before,
+                                                      FSimulationSnapshot const& after) {
+        if (!checks.are_equal(before.main_capital_fighters.Num(),
+                              after.main_capital_fighters.Num(),
+                              TEXT("Number of main-capital fighters is unchanged"))) {
+            return;
+        }
+
+        for (int32 fighter_index{0}; fighter_index < after.main_capital_fighters.Num();
+             ++fighter_index) {
+            auto const handle{after.main_capital_fighters[fighter_index].handle};
+            auto const was_present_before{before.main_capital_fighters.ContainsByPredicate(
+                [handle](FFighterSample const& fighter) { return fighter.handle == handle; })};
+            checks.is_true(was_present_before,
+                           TEXT("Main-capital fighter handle is unchanged"),
+                           fighter_index);
+        }
+    }
+
+    void check_fighter_targets_changed(FSimulationSnapshot const& before,
+                                       FSimulationSnapshot const& after) {
+        if (!checks.are_equal(
+                before.main_capital_fighters.Num(),
+                after.main_capital_fighters.Num(),
+                TEXT("Number of main-capital fighters before and after capital kill"))) {
+            return;
+        }
+
+        for (int32 fighter_index{0}; fighter_index < before.main_capital_fighters.Num();
+             ++fighter_index) {
+            auto const& before_fighter{before.main_capital_fighters[fighter_index]};
+            auto const* after_fighter{after.main_capital_fighters.FindByPredicate(
+                [&before_fighter](FFighterSample const& fighter) {
+                    return fighter.handle == before_fighter.handle;
+                })};
+
+            if (!checks.is_true(after_fighter != nullptr,
+                                TEXT("Find main-capital fighter after capital kill"),
+                                fighter_index)) {
+                continue;
+            }
+
+            checks.not_equal(before_fighter.target_handle,
+                             after_fighter->target_handle,
+                             TEXT("Fighter target handle changed after capital kill"),
+                             fighter_index);
+            checks.not_equal(before_fighter.target_location,
+                             after_fighter->target_location,
+                             TEXT("Fighter target location changed after capital kill"),
+                             fighter_index);
+        }
+    }
+
+    void check_capital_kill_state(FSimulationSnapshot const& before_kill,
+                                  FSimulationSnapshot const& after_kill) {
+        checks.are_equal(
+            n_capitals_exp - 1, after_kill.capitals.Num(), TEXT("Number of capitals after kill"));
+        checks.are_equal(before_kill.fighter_count,
+                         after_kill.fighter_count,
+                         TEXT("Number of fighters is unchanged after capital kill"));
+
+        check_capitals_not_targeting_self(after_kill);
+        check_main_capital_fighters_not_targeting_parent(
+            after_kill,
+            TEXT("Main-capital fighter is not targeting its parent after capital kill"));
+        check_main_capital_fighter_handles_unchanged(before_kill, after_kill);
+        check_fighter_targets_changed(before_kill, after_kill);
+        check_all_fighter_targets_not_null(after_kill);
+
+        for (int32 fighter_index{0}; fighter_index < after_kill.fighter_tasks.Num();
+             ++fighter_index) {
+            checks.are_equal(Task::Attack,
+                             after_kill.fighter_tasks[fighter_index],
+                             TEXT("Fighter is attacking after capital kill"),
+                             fighter_index);
+        }
+    }
+
+    auto snapshot_at(time_type const time) const -> FSimulationSnapshot {
+        auto const sample_index{fighter_spawn_slots_samples.nearest_index(time)};
+        check(sample_index != INDEX_NONE);
+
+        return FSimulationSnapshot{
+            fighter_spawn_slots_samples.value_at(sample_index),
+            fighter_count_samples.value_at(sample_index),
+            capital_samples.value_at(sample_index),
+            capital_fighter_handle_samples.value_at(sample_index),
+            capital_fighter_count_samples.value_at(sample_index),
+            fighter_handle_samples.value_at(sample_index),
+            fighter_target_handle_samples.value_at(sample_index),
+            fighter_task_samples.value_at(sample_index),
+            main_capital_fighter_samples.value_at(sample_index)};
+    }
+
+    void full_checks(bool const should_kill_fighters, bool const should_kill_capital) {
+        check(t_initial.IsSet());
+        auto const initial{snapshot_at(*t_initial)};
+
+        check_spawn_capital_handle_state(initial);
+        check_capitals_not_targeting_self(initial);
+        checks.is_greater_than(
+            initial.main_capital_fighters.Num(), int32{0}, TEXT("Green capital has fighters"));
+        check_main_capital_fighters_not_targeting_parent(
+            initial, TEXT("Main-capital fighter is not targeting its parent initially"));
+        check_all_fighter_targets_not_null(initial);
+
+        if (should_kill_fighters) {
+            check(t_post_fighter_kill.IsSet());
+            auto const after_fighter_kill{snapshot_at(*t_post_fighter_kill)};
+            check_fighter_kill_state(initial, after_fighter_kill);
+            check_main_capital_fighters_not_targeting_parent(
+                after_fighter_kill,
+                TEXT("Main-capital fighter is not targeting its parent after fighter kill"));
+            check_all_fighter_targets_not_null(after_fighter_kill);
+        }
+
+        if (should_kill_capital) {
+            check(t_pre_capital_kill.IsSet());
+            check(t_post_capital_kill.IsSet());
+
+            auto const before_capital_kill{snapshot_at(*t_pre_capital_kill)};
+            auto const after_capital_kill{snapshot_at(*t_post_capital_kill)};
+            check_capital_kill_state(before_capital_kill, after_capital_kill);
+        }
+    }
+
+    void export_data(FName const test_name) const {
+        auto const result_asset{ml::FTestResultAsset{test_name, *TestRunner}};
+        auto* curves{result_asset.load_or_create<UCurveTable>(TEXT("data_curve"))};
+        curves->EmptyTable();
+
+        auto add_curve{[curves]<typename T>(FName const name,
+                                           ml::TimeSeriesData<T> const& output) {
+            ml::add_simple_curve_row(*curves, name, output.values(), output.times());
+        }};
+        add_curve(TEXT("fighter_spawn_slots"), fighter_spawn_slots_samples);
+        add_curve(TEXT("fighter_count"), fighter_count_samples);
+        add_curve(TEXT("capital_count"), capital_count_samples);
+        add_curve(TEXT("capital_fighter_handle_count"), capital_fighter_handle_count_samples);
+        add_curve(TEXT("capital_fighter_span_count"), capital_fighter_span_count_samples);
+        add_curve(TEXT("fighter_handle_count"), fighter_handle_count_samples);
+        add_curve(TEXT("fighter_target_handle_count"), fighter_target_handle_count_samples);
+        add_curve(TEXT("fighter_task_count"), fighter_task_count_samples);
+        add_curve(TEXT("main_capital_fighter_count"), main_capital_fighter_count_samples);
+
+        result_asset.save(*curves);
+    }
+
+    void run_test(
+        FName const test_name, bool const should_kill_fighters, bool const should_kill_capital) {
+        TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
+            .Then([this, should_kill_fighters, should_kill_capital] {
+                initial_setup();
+                configure_timeline(should_kill_fighters, should_kill_capital);
+            })
+            .Until([this] { return test_driver->timeline.is_finished(); }, default_timeout)
+            .Then([this, test_name, should_kill_fighters, should_kill_capital] {
+                full_checks(should_kill_fighters, should_kill_capital);
+                if (!checks.all_passed || test_driver->should_export_results()) {
+                    export_data(test_name);
+                }
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+            });
+    }
 
     TEST_METHOD(KillFightersOnly)
-    {
-        TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup_stage(); })
-            .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, default_timeout)
-            // Fighter kill
-            .Then([this] { pre_fighter_kill_stage(); })
-            .Then([this] { kill_fighters_stage(); })
-            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
-            .Then([this] { post_fighter_kill_stage(); });
-    }
-    TEST_METHOD(KillCapital)
-    {
+    { run_test(TEXT("capital_fighter_handles_kill_fighters_only"), true, false); }
 
-        TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup_stage(); })
-            // Capital kill
-            .Then([this] { pre_capital_kill_stage(); })
-            .Then([this] { capital_kill_stage(); })
-            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
-            .Then([this] { post_capital_kill_stage(); });
-    }
+    TEST_METHOD(KillCapital)
+    { run_test(TEXT("capital_fighter_handles_kill_capital"), false, true); }
+
     TEST_METHOD(All)
-    {
-        TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup_stage(); })
-            .Until([this]() -> bool { return wait_for_fighters_to_spawn(); }, default_timeout)
-            .Then([this] { pre_fighter_kill_stage(); })
-            // Fighter kill
-            .Then([this] { kill_fighters_stage(); })
-            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
-            .Then([this] { post_fighter_kill_stage(); })
-            // Capital kill
-            .Then([this] { pre_capital_kill_stage(); })
-            .Then([this] { capital_kill_stage(); })
-            .Until([this] { return test_driver->tick_wait_completed(); }, default_timeout)
-            .Then([this] { post_capital_kill_stage(); });
-    }
+    { run_test(TEXT("capital_fighter_handles_all"), true, true); }
 };

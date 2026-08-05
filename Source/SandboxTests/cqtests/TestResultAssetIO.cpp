@@ -11,11 +11,22 @@
 
 namespace ml {
 FTestResultAsset::FTestResultAsset(FName const test_name, FAutomationTestBase& in_test_runner)
-    : package_name{FString::Printf(TEXT("/Game/test_results/%s"), *test_name.ToString())}
-    , asset_name{test_name}
+    : package_name_prefix{FString::Printf(TEXT("/Game/test_results/%s/%s"),
+                                         *test_name.ToString(),
+                                         *test_name.ToString())}
+    , asset_name_prefix{test_name}
     , test_runner{&in_test_runner} {}
 
-auto FTestResultAsset::load_or_create(UClass* const asset_class) const -> UObject* {
+auto FTestResultAsset::load_or_create(UClass* const asset_class,
+                                      FName const output_name) const -> UObject* {
+    check(!output_name.IsNone());
+
+    auto const asset_name{FName{FString::Printf(TEXT("%s_%s"),
+                                               *asset_name_prefix.ToString(),
+                                               *output_name.ToString())}};
+    auto const package_name{FName{FString::Printf(TEXT("%s_%s"),
+                                                 *package_name_prefix.ToString(),
+                                                 *output_name.ToString())}};
     auto const package_path{package_name.ToString()};
     auto* package{FPackageName::DoesPackageExist(package_path)
                       ? LoadPackage(nullptr, *package_path, LOAD_None)
@@ -36,12 +47,14 @@ auto FTestResultAsset::load_or_create(UClass* const asset_class) const -> UObjec
 void FTestResultAsset::save(UObject& asset) const {
     auto* package{asset.GetOutermost()};
     check(package);
-    check(package->GetFName() == package_name);
+    auto const package_name{package->GetName()};
+    check(package_name.StartsWith(package_name_prefix.ToString()));
+    check(asset.GetName().StartsWith(asset_name_prefix.ToString()));
 
     package->MarkPackageDirty();
 
     auto const output_path{FPackageName::LongPackageNameToFilename(
-        package_name.ToString(), FPackageName::GetAssetPackageExtension())};
+        package_name, FPackageName::GetAssetPackageExtension())};
     auto const output_directory{FPaths::GetPath(output_path)};
     IFileManager::Get().MakeDirectory(*output_directory, true);
 
