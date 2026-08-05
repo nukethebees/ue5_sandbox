@@ -47,9 +47,13 @@ inline auto SANDBOXCORE_API almost_equal(FVectors3f const& a,
                                          FVectors3f const& b,
                                          float const tolerance = KINDA_SMALL_NUMBER) -> bool {
     auto const n{ml::num(a)};
-    if (n != ml::num(b)) { return false; }
+    if (n != ml::num(b)) {
+        return false;
+    }
 
-    if (n == 0) { return true; }
+    if (n == 0) {
+        return true;
+    }
 
     return ml::kernel::almost_equal(a.xs.GetData(), b.xs.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.ys.GetData(), b.ys.GetData(), n, tolerance) &&
@@ -207,7 +211,9 @@ inline void append_n(FVectors3f& vector, int32 const count, float const value) {
 
 template <is_vec3f Vec3f>
 inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
-    if constexpr (std::is_same_v<Vec3f, FVectors3f>) { check(&vector != &to_append); }
+    if constexpr (std::is_same_v<Vec3f, FVectors3f>) {
+        check(&vector != &to_append);
+    }
 
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
@@ -408,7 +414,9 @@ inline void direction(OutType&& out, FromType&& from, ToType&& to) {
     check(ml::num(to) == n);
     check(ml::num(out) >= n);
 
-    if (n < 1) { return; }
+    if (n < 1) {
+        return;
+    }
 
     check(out.xs.GetData() != from.xs.GetData());
     check(out.ys.GetData() != from.ys.GetData());
@@ -432,6 +440,45 @@ inline void direction(OutType&& out, FromType&& from, ToType&& to) {
                           to.ys.GetData(),
                           to.zs.GetData(),
                           n);
+}
+
+template <is_mutable_vec3f OutType, is_readable_vec3f FromType, is_readable_vec3f ToType>
+inline void direction_and_distance(OutType&& out,
+                                   TArrayView<float> const out_distances,
+                                   FromType&& from,
+                                   ToType&& to) {
+    auto const n{ml::num(from)};
+    check(ml::num(to) == n);
+    check(ml::num(out) >= n);
+    check(out_distances.Num() >= n);
+
+    if (n < 1) {
+        return;
+    }
+
+    check(out.xs.GetData() != from.xs.GetData());
+    check(out.ys.GetData() != from.ys.GetData());
+    check(out.zs.GetData() != from.zs.GetData());
+
+    check(out.xs.GetData() != to.xs.GetData());
+    check(out.ys.GetData() != to.ys.GetData());
+    check(out.zs.GetData() != to.zs.GetData());
+
+    check(from.xs.GetData() != to.xs.GetData());
+    check(from.ys.GetData() != to.ys.GetData());
+    check(from.zs.GetData() != to.zs.GetData());
+
+    ml::kernel::direction_and_distance(out.xs.GetData(),
+                                       out.ys.GetData(),
+                                       out.zs.GetData(),
+                                       out_distances.GetData(),
+                                       from.xs.GetData(),
+                                       from.ys.GetData(),
+                                       from.zs.GetData(),
+                                       to.xs.GetData(),
+                                       to.ys.GetData(),
+                                       to.zs.GetData(),
+                                       n);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -505,7 +552,9 @@ inline auto all_normalised(FVectors3f::ConstView const vecs) -> bool {
 
     for (int32 i{0}; i < n; ++i) {
         auto const size_sq{ml::size_sq(vecs.xs[i], vecs.ys[i], vecs.zs[i])};
-        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) { return false; }
+        if (!FMath::IsNearlyEqual(size_sq, 1.0f, KINDA_SMALL_NUMBER)) {
+            return false;
+        }
     }
 
     return true;

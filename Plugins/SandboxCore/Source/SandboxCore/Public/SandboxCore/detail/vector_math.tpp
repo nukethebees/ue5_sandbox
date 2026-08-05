@@ -363,6 +363,43 @@ void direction(T* const RESTRICT out_xs,
     }
 }
 
+template <std::floating_point T>
+void direction_and_distance(T* const RESTRICT out_xs,
+                            T* const RESTRICT out_ys,
+                            T* const RESTRICT out_zs,
+                            T* const RESTRICT out_distances,
+                            T const* const RESTRICT from_xs,
+                            T const* const RESTRICT from_ys,
+                            T const* const RESTRICT from_zs,
+                            T const* const RESTRICT to_xs,
+                            T const* const RESTRICT to_ys,
+                            T const* const RESTRICT to_zs,
+                            int32 const count) noexcept {
+    for (int32 i{0}; i < count; ++i) {
+        auto const dx{to_xs[i] - from_xs[i]};
+        auto const dy{to_ys[i] - from_ys[i]};
+        auto const dz{to_zs[i] - from_zs[i]};
+
+        auto const size_sq{ml::size_sq(dx, dy, dz)};
+
+        if (size_sq <= static_cast<T>(UE_SMALL_NUMBER)) {
+            out_xs[i] = T{0};
+            out_ys[i] = T{0};
+            out_zs[i] = T{0};
+            out_distances[i] = T{0};
+            continue;
+        }
+
+        auto const distance{FMath::Sqrt(size_sq)};
+        auto const inv_distance{static_cast<T>(1) / distance};
+
+        out_xs[i] = dx * inv_distance;
+        out_ys[i] = dy * inv_distance;
+        out_zs[i] = dz * inv_distance;
+        out_distances[i] = distance;
+    }
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 // Rotation
 /* ---------------------------------------------------------------------------------------------- */
