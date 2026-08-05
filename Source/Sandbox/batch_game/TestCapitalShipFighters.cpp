@@ -195,30 +195,27 @@ void ATestCapitalShipFighters::move(float const dt) {
             attack_view.desired_firing_directions.zs[i] = desired_firing_direction.Z;
         }
 
-        // [Attack] Update direction to target
+        // Update direction to target
         ml::direction(
             attack_view.target_directions, attack_view.locations, attack_view.target_locations);
 
-        // [Attack] Update move destination to attack position
-        ml::multiply(
-            attack_view.move_target_locations, attack_view.target_directions, laser_half_distance);
-
+        // Update move destination to attack position
         ml::subtract_scaled(attack_view.move_target_locations,
                             attack_view.target_locations,
                             attack_view.target_directions,
                             laser_half_distance);
     }
 
-    // [All] Update movement direction
+    // Update movement direction
     ml::direction(data.movement_directions, data.locations, data.move_target_locations);
 
     // Look phase
     if (do_move) {
-        // [Move] Look at movement destination
+        // Look at movement destination
         ml::lerp_in_place(move_view.aim_directions, move_view.movement_directions, d_turn);
     }
     if (do_attack) {
-        // [Attack] Look towards the firing intercept
+        // Look towards the firing intercept
         ml::lerp_in_place(
             attack_view.aim_directions, attack_view.desired_firing_directions, d_turn);
     }
