@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
+#include "SandboxCore/lock_free_mpsc_queue_enums.h"
 
 namespace ml {
 template <typename T, typename... Args>
@@ -40,6 +40,10 @@ class LockFreeMPSCQueue {
         : allocator_{std::move(alloc)} {}
 
     ~LockFreeMPSCQueue() {
+        if (data_ == nullptr) {
+            return;
+        }
+
         if constexpr (!std::is_trivially_destructible_v<value_type>) {
             auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
             destroy_buffer(read_buffer_start, read_size_);
@@ -111,6 +115,10 @@ class LockFreeMPSCQueue {
 
     [[nodiscard]] auto swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>)
         -> view_type {
+        if (!is_initialised()) {
+            return {};
+        }
+
         // Swap the read/write buffers and destroy the objects in the new write buffer
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};

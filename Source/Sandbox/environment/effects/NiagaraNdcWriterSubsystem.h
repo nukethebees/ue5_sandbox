@@ -2,11 +2,11 @@
 
 #include <span>
 
-#include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
-#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/environment/effects/NdcWriterIndex.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "SandboxCore/lock_free_mpsc_queue_soa.h"
+#include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "CoreMinimal.h"
 #include "NiagaraDataChannelPublic.h"

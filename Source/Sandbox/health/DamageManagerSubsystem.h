@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Sandbox/containers/LockFreeMPSCQueue.h"
-#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "SandboxCore/lock_free_mpsc_queue.h"
+#include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"

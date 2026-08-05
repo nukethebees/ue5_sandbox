@@ -8,7 +8,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
+#include "SandboxCore/lock_free_mpsc_queue_enums.h"
 
 namespace ml {
 

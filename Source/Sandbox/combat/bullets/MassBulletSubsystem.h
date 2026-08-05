@@ -3,13 +3,13 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include "Sandbox/combat/bullets/BulletTypeIndex.h"
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
-#include "Sandbox/containers/LockFreeMPSCQueue.h"
-#include "Sandbox/containers/LockFreeMPSCQueueSoA.h"
-#include "Sandbox/containers/MonitoredLockFreeMPSCQueue.h"
 #include "Sandbox/health/HealthChange.h"
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
+#include "SandboxCore/lock_free_mpsc_queue.h"
+#include "SandboxCore/lock_free_mpsc_queue_soa.h"
+#include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "CoreMinimal.h"
 #include "Mass/EntityHandle.h"

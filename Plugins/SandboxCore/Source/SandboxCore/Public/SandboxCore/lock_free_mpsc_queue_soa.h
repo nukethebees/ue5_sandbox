@@ -13,7 +13,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "Sandbox/containers/LockFreeMPSCQueueEnums.h"
+#include "SandboxCore/lock_free_mpsc_queue_enums.h"
 
 template <typename View, typename... Ts>
 concept is_soa_queue_view = std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>;
@@ -110,6 +110,10 @@ class LockFreeMPSCQueueSoA {
     }
 
     [[nodiscard]] auto swap_and_consume() noexcept -> view_type {
+        if (!is_initialised()) {
+            return view_type{std::span<Ts>{}...};
+        }
+
         // Swap buffers
         auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
         auto const old_read_size{read_size_};

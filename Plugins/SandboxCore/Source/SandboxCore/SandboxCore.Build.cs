@@ -7,6 +7,7 @@ public class SandboxCore : ModuleRules
     public SandboxCore(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+        CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         PublicDependencyModuleNames.AddRange(
             new string[]
