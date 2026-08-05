@@ -189,7 +189,7 @@ void ATestTubeSpinners::rotate_instances(float const dt) {
 
 // Visuals
 void ATestTubeSpinners::configure_ismc() {
-    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->SetStaticMesh(actor_config->mesh));
     instances->SetCanEverAffectNavigation(false);
 }
 void ATestTubeSpinners::update_ismc_transforms() {

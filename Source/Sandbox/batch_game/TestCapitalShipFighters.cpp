@@ -328,7 +328,7 @@ auto ATestCapitalShipFighters::get_const_task_view(Task task) const noexcept
 
 // Visuals
 void ATestCapitalShipFighters::configure_ismc() {
-    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->SetStaticMesh(actor_config->mesh));
 
     instances->SetCanEverAffectNavigation(false);
 

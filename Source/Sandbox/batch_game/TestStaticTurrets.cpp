@@ -152,7 +152,7 @@ void ATestStaticTurrets::configure_ismc() {
     instances->SetCanEverAffectNavigation(false);
     instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
-    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->SetStaticMesh(actor_config->mesh));
 
     instances->SetRemoveSwap();
 

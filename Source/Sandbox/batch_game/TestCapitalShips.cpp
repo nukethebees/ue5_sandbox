@@ -58,6 +58,9 @@ void ATestCapitalShips::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(world),
     });
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
+    });
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = world;
@@ -543,7 +546,7 @@ void ATestCapitalShips::queue_fighter_orders() {
 
 // Visuals
 void ATestCapitalShips::configure_ismc() {
-    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->SetStaticMesh(actor_config->mesh));
     instances->SetMaterial(0, actor_config->material);
     instances->SetCanEverAffectNavigation(false);
 

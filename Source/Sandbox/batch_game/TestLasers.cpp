@@ -284,7 +284,7 @@ void ATestLasers::check_collision_thread(int32 const job_index,
 
 // Visuals
 void ATestLasers::configure_ismc() {
-    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->SetStaticMesh(actor_config->mesh));
     instances->SetMaterial(0, actor_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
