@@ -21,11 +21,13 @@ concept is_vec3f = std::same_as<std::remove_cvref_t<T>, FVectors3f> ||
                    std::same_as<std::remove_cvref_t<T>, TVectors3View<float const>>;
 
 template <typename T>
-concept is_mutable_vec3f = is_vec3f<T> && std::is_lvalue_reference_v<T&&> && requires(T&& value) {
-    { value.xs.GetData() } -> std::convertible_to<float*>;
-    { value.ys.GetData() } -> std::convertible_to<float*>;
-    { value.zs.GetData() } -> std::convertible_to<float*>;
-};
+concept is_mutable_vec3f =
+    (std::same_as<T, FVectors3f&> || std::same_as<std::remove_cvref_t<T>, TVectors3View<float>>) &&
+    requires(T&& value) {
+        { value.xs.GetData() } -> std::convertible_to<float*>;
+        { value.ys.GetData() } -> std::convertible_to<float*>;
+        { value.zs.GetData() } -> std::convertible_to<float*>;
+    };
 
 template <typename T>
 concept is_readable_vec3f = is_vec3f<T> && requires(T const& value) {
@@ -38,6 +40,21 @@ concept is_readable_vec3f = is_vec3f<T> && requires(T const& value) {
 // Checks
 /* ---------------------------------------------------------------------------------------------- */
 void SANDBOXCORE_API check_is_consistent(FVectors3f const& vec);
+
+template <is_readable_vec3f First, is_readable_vec3f Second, is_readable_vec3f... Rest>
+[[nodiscard]] bool
+    pointers_not_equal(First const& first, Second const& second, Rest const&... rest) {
+    auto const pair_is_distinct{(first.xs.GetData() != second.xs.GetData()) &&
+                                (first.ys.GetData() != second.ys.GetData()) &&
+                                (first.zs.GetData() != second.zs.GetData())};
+
+    if constexpr (sizeof...(Rest) > 0) {
+        return pair_is_distinct && (pointers_not_equal(first, rest) && ...) &&
+               pointers_not_equal(second, rest...);
+    } else {
+        return pair_is_distinct;
+    }
+}
 
 /* ---------------------------------------------------------------------------------------------- */
 // Comparison
@@ -142,9 +159,10 @@ void assign_from(DstT&& dst, SrcT&& src) {
     auto const n_src{src.num()};
 
     check(n_dst == n_src);
-    check(dst.xs.GetData() != src.xs.GetData());
-    check(dst.ys.GetData() != src.ys.GetData());
-    check(dst.zs.GetData() != src.zs.GetData());
+    if (n_dst < 1) {
+        return;
+    }
+    check(pointers_not_equal(dst, src));
 
     ml::kernel::assign_from(dst.xs.GetData(),
                             dst.ys.GetData(),
@@ -258,7 +276,10 @@ void add_scaled_in_place(Dst& dst, Src const& a, TConstArrayView<float> const b,
     check(ml::num(a) == n);
     check(ml::num(b) == n);
 
-    check(&dst != &a);
+    if (n < 1) {
+        return;
+    }
+    check(pointers_not_equal(dst, a));
 
     return ml::kernel::add_scaled_in_place<float>(dst.xs.GetData(),
                                                   dst.ys.GetData(),
@@ -280,8 +301,10 @@ void subtract_scaled(Dst&& dst, A&& a, B&& b, float const c) {
     check(ml::num(a) == n);
     check(ml::num(b) == n);
 
-    check(dst.xs.GetData() != a.xs.GetData());
-    check(dst.xs.GetData() != b.xs.GetData());
+    if (n < 1) {
+        return;
+    }
+    check(pointers_not_equal(dst, a, b));
 
     return ml::kernel::subtract_scaled<float>(dst.xs.GetData(),
                                               dst.ys.GetData(),
@@ -330,9 +353,10 @@ void multiply(Dst&& dst, Src&& src, TConstArrayView<float> const scale_factors) 
     check(n == ml::num(src));
     check(n == ml::num(scale_factors));
 
-    check(dst.xs.GetData() != src.xs.GetData());
-    check(dst.ys.GetData() != src.ys.GetData());
-    check(dst.zs.GetData() != src.zs.GetData());
+    if (n < 1) {
+        return;
+    }
+    check(pointers_not_equal(dst, src));
 
     ml::kernel::multiply<float>(dst.xs.GetData(),
                                 dst.ys.GetData(),
@@ -348,9 +372,10 @@ void multiply(Dst&& dst, Src&& src, float const scale_factor) {
     auto const n{ml::num(dst)};
     check(n == ml::num(src));
 
-    check(dst.xs.GetData() != src.xs.GetData());
-    check(dst.ys.GetData() != src.ys.GetData());
-    check(dst.zs.GetData() != src.zs.GetData());
+    if (n < 1) {
+        return;
+    }
+    check(pointers_not_equal(dst, src));
 
     ml::kernel::multiply<float>(dst.xs.GetData(),
                                 dst.ys.GetData(),
@@ -418,17 +443,7 @@ inline void direction(OutType&& out, FromType&& from, ToType&& to) {
         return;
     }
 
-    check(out.xs.GetData() != from.xs.GetData());
-    check(out.ys.GetData() != from.ys.GetData());
-    check(out.zs.GetData() != from.zs.GetData());
-
-    check(out.xs.GetData() != to.xs.GetData());
-    check(out.ys.GetData() != to.ys.GetData());
-    check(out.zs.GetData() != to.zs.GetData());
-
-    check(from.xs.GetData() != to.xs.GetData());
-    check(from.ys.GetData() != to.ys.GetData());
-    check(from.zs.GetData() != to.zs.GetData());
+    check(pointers_not_equal(out, from, to));
 
     ml::kernel::direction(out.xs.GetData(),
                           out.ys.GetData(),
@@ -456,17 +471,7 @@ inline void direction_and_distance(OutType&& out,
         return;
     }
 
-    check(out.xs.GetData() != from.xs.GetData());
-    check(out.ys.GetData() != from.ys.GetData());
-    check(out.zs.GetData() != from.zs.GetData());
-
-    check(out.xs.GetData() != to.xs.GetData());
-    check(out.ys.GetData() != to.ys.GetData());
-    check(out.zs.GetData() != to.zs.GetData());
-
-    check(from.xs.GetData() != to.xs.GetData());
-    check(from.ys.GetData() != to.ys.GetData());
-    check(from.zs.GetData() != to.zs.GetData());
+    check(pointers_not_equal(out, from, to));
 
     ml::kernel::direction_and_distance(out.xs.GetData(),
                                        out.ys.GetData(),
