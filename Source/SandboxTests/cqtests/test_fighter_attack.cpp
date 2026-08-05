@@ -6,7 +6,7 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/utilities/world.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>

@@ -6,7 +6,7 @@
 #include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/environment/effects/NiagaraNdcWriterSubsystem.h"
 #include "Sandbox/mass_entity/mass_utils.h"
-#include "Sandbox/utilities/world.h"
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"

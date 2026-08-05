@@ -4,7 +4,7 @@
 #include "Sandbox/environment/SandboxActorSpawner.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/MothershipBoss.h"
-#include "Sandbox/utilities/world.h"
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include "EngineUtils.h"
 

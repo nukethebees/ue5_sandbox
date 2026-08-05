@@ -13,24 +13,13 @@
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 
+#include <SandboxCoreEngine/actor_utils.h>
+
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Editor.h>
 #include <Engine/World.h>
-#include <EngineUtils.h>
 #include <Kismet/GameplayStatics.h>
-
-namespace {
-template <typename T>
-auto count_actors(UWorld& world) -> int32 {
-    auto count{int32{0}};
-    for (TActorIterator<T> it{&world}; it; ++it) {
-        ++count;
-    }
-
-    return count;
-}
-}
 
 TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
 {
@@ -71,12 +60,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
             return;
         }
 
-        orchestrator = nullptr;
-        auto& world{spawner->GetWorld()};
-        for (TActorIterator<ATestBatchOrchestrator> it{&world}; it; ++it) {
-            orchestrator = *it;
-            break;
-        }
+        orchestrator = ml::get_first_actor<ATestBatchOrchestrator>(spawner->GetWorld());
 
         TestRunner->TestNotNull(TEXT("PIE orchestrator is available"), orchestrator);
     }
@@ -129,28 +113,28 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
                                   orchestrator->IsActorTickEnabled());
 
             TestRunner->TestEqual(TEXT("One lasers actor exists"),
-                                  count_actors<ATestLasers>(world),
+                                  ml::count_actors<ATestLasers>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One capital ships actor exists"),
-                                  count_actors<ATestCapitalShips>(world),
+                                  ml::count_actors<ATestCapitalShips>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One fighters actor exists"),
-                                  count_actors<ATestCapitalShipFighters>(world),
+                                  ml::count_actors<ATestCapitalShipFighters>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One turrets actor exists"),
-                                  count_actors<ATestStaticTurrets>(world),
+                                  ml::count_actors<ATestStaticTurrets>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One spinners actor exists"),
-                                  count_actors<ATestTubeSpinners>(world),
+                                  ml::count_actors<ATestTubeSpinners>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One entity registry exists"),
-                                  count_actors<ATestEntityRegistry>(world),
+                                  ml::count_actors<ATestEntityRegistry>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One mission manager exists"),
-                                  count_actors<ATestMissionManager>(world),
+                                  ml::count_actors<ATestMissionManager>(world),
                                   1);
             TestRunner->TestEqual(TEXT("One Niagara spawner exists"),
-                                  count_actors<ADelayedNiagaraSpawner>(world),
+                                  ml::count_actors<ADelayedNiagaraSpawner>(world),
                                   1);
 
             TestRunner->TestNotNull(TEXT("Lasers are bound"), orchestrator->get_lasers());

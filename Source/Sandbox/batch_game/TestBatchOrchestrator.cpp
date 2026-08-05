@@ -549,9 +549,7 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
             return nullptr;
         }
 
-        for (TActorIterator<T> it{world}; it; ++it) {
-            return *it;
-        }
+        if (auto* const actor{ml::get_first_actor<T>(*world)}) { return actor; }
 
         auto* const actor{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
         if (IsValid(actor)) {

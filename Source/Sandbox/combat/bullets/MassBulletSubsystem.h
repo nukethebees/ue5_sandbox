@@ -9,7 +9,7 @@
 #include "Sandbox/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/mass_entity/EntityDefinition.h"
-#include "Sandbox/utilities/world.h"
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include "CoreMinimal.h"
 #include "Mass/EntityHandle.h"

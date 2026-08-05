@@ -2,9 +2,10 @@
 
 #include "Sandbox/utilities/ActorCorners.h"
 
+#include <SandboxCoreEngine/actor_utils.h>
+
 #include <CoreMinimal.h>
 #include <Engine/World.h>
-#include <EngineUtils.h>
 #include <GameFramework/Actor.h>
 #include <Math/Box.h>
 #include <Math/Vector.h>
@@ -50,9 +51,7 @@ void destroy_all_actors(T& actors) {
 template <typename T>
     requires std::derived_from<T, AActor>
 auto ensure_actor_exists(UWorld& world, TSubclassOf<T> subclass) -> T* {
-    for (TActorIterator<T> it{&world}; it; ++it) {
-        return *it;
-    }
+    if (auto* const actor{get_first_actor<T>(world)}) { return actor; }
 
     auto* const actor{world.SpawnActor<T>(subclass)};
     if (IsValid(actor)) {

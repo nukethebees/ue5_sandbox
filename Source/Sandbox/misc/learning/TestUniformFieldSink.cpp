@@ -2,7 +2,7 @@
 
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/utilities/macros/null_checks.hpp"
-#include "Sandbox/utilities/world.h"
+#include <SandboxCoreEngine/actor_utils.h>
 #include "TestUniformField.h"
 
 #include "Components/SceneComponent.h"

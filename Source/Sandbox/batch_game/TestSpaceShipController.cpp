@@ -6,7 +6,7 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
 #include <Sandbox/utilities/enums.h>
-#include <Sandbox/utilities/world.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 

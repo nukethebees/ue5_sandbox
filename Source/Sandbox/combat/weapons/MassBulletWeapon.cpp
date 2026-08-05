@@ -3,7 +3,7 @@
 #include "Sandbox/combat/bullets/MassBulletSubsystemData.h"
 #include "Sandbox/combat/bullets/MassBulletVisualizationActor.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/world.h"
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
