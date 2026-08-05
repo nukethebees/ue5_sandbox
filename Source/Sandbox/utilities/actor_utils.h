@@ -49,12 +49,16 @@ void destroy_all_actors(T& actors) {
 
 template <typename T>
     requires std::derived_from<T, AActor>
-void ensure_actor_exists(UWorld& world, TSubclassOf<T> subclass) {
+auto ensure_actor_exists(UWorld& world, TSubclassOf<T> subclass) -> T* {
     for (TActorIterator<T> it{&world}; it; ++it) {
-        return;
+        return *it;
     }
 
-    world.SpawnActor<T>(subclass);
-    UE_LOG(LogTemp, Display, TEXT("Spawned missing %s"), *T::StaticClass()->GetName());
+    auto* const actor{world.SpawnActor<T>(subclass)};
+    if (IsValid(actor)) {
+        UE_LOG(LogTemp, Display, TEXT("Spawned missing %s"), *T::StaticClass()->GetName());
+    }
+
+    return actor;
 }
 } // namespace ml
