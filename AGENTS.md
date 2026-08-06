@@ -7,6 +7,7 @@
 - always use braces
 - prefer auto where type is obvious
 - prefer simple C++ over template metaprogramming
+- save loop bounds as const local variables
 
 # Testing
 
