@@ -50,7 +50,9 @@ struct EntityDataView : public ml::FSoAViewMixin {
     template <typename T>
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
     using VectorsView = std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
-    using TickCountdownView =
+    using TickCountdownView8 =
+        std::conditional_t<is_const, FTickCountdown8::ConstView, FTickCountdown8::View>;
+    using TickCountdownView16 =
         std::conditional_t<is_const, FTickCountdown16::ConstView, FTickCountdown16::View>;
 
 #define EXPAND(X) X
@@ -58,28 +60,28 @@ struct EntityDataView : public ml::FSoAViewMixin {
 #define MEMBER_DECL(TYPE, NAME) TYPE NAME;
 #define FN_ARG(TYPE, NAME) self.NAME
 
-#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                       \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))    \
-    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))      \
-    NON_FINAL(X(VectorsView, locations))                          \
-    NON_FINAL(X(VectorsView, aim_directions))                     \
-    NON_FINAL(X(VectorsView, move_target_locations))              \
-    NON_FINAL(X(VectorsView, movement_directions))                \
-    NON_FINAL(X(TView<float>, move_distances))                    \
-    NON_FINAL(X(TView<float>, speeds))                            \
-    NON_FINAL(X(TView<ETestTeam>, teams))                         \
-    NON_FINAL(X(TView<int32>, healths))                           \
-    NON_FINAL(X(TickCountdownView, awareness_scan_countdowns))    \
-    NON_FINAL(X(TickCountdownView, attack_reposition_countdowns)) \
-    NON_FINAL(X(TView<float>, attack_cooldowns))                  \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles))    \
-    NON_FINAL(X(VectorsView, target_locations))                   \
-    NON_FINAL(X(VectorsView, target_velocities))                  \
-    NON_FINAL(X(VectorsView, target_directions))                  \
-    NON_FINAL(X(TView<float>, intercept_times))                   \
-    NON_FINAL(X(VectorsView, desired_firing_directions))          \
-    NON_FINAL(X(TView<float>, target_distance_sq))                \
-    NON_FINAL(X(TView<float>, target_distances))                  \
+#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                         \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))      \
+    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))        \
+    NON_FINAL(X(VectorsView, locations))                            \
+    NON_FINAL(X(VectorsView, aim_directions))                       \
+    NON_FINAL(X(VectorsView, move_target_locations))                \
+    NON_FINAL(X(VectorsView, movement_directions))                  \
+    NON_FINAL(X(TView<float>, move_distances))                      \
+    NON_FINAL(X(TView<float>, speeds))                              \
+    NON_FINAL(X(TView<ETestTeam>, teams))                           \
+    NON_FINAL(X(TView<int32>, healths))                             \
+    NON_FINAL(X(TickCountdownView8, awareness_scan_countdowns))     \
+    NON_FINAL(X(TickCountdownView16, attack_reposition_countdowns)) \
+    NON_FINAL(X(TView<float>, attack_cooldowns))                    \
+    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles))      \
+    NON_FINAL(X(VectorsView, target_locations))                     \
+    NON_FINAL(X(VectorsView, target_velocities))                    \
+    NON_FINAL(X(VectorsView, target_directions))                    \
+    NON_FINAL(X(TView<float>, intercept_times))                     \
+    NON_FINAL(X(VectorsView, desired_firing_directions))            \
+    NON_FINAL(X(TView<float>, target_distance_sq))                  \
+    NON_FINAL(X(TView<float>, target_distances))                    \
     X(TView<float>, target_radii)
 
     SANDBOX_CLASS_MEMBERS(MEMBER_DECL, EXPAND)
@@ -110,7 +112,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
-    FTickCountdown16 awareness_scan_countdowns;
+    FTickCountdown8 awareness_scan_countdowns;
     FTickCountdown16 attack_reposition_countdowns;
     FCountdownTimers attack_cooldowns;
 
