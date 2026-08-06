@@ -388,6 +388,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     bool enable_target_debug_drawing{false};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
     bool enable_ship_location_debug_drawing{false};
+  private:
+    void visual_log_state() const;
 };
 
 namespace ml::test_capital_ship_fighters {

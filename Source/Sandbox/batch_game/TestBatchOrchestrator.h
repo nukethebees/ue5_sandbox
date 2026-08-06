@@ -100,6 +100,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void begin_play();
     void validate_proxy_handles();
     void bind_simulation_dependencies();
+    void start_visual_logging();
+    void stop_visual_logging();
 
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
@@ -111,6 +113,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(VisibleAnywhere, Transient, Category = "Sandbox")
     EOrchestratorState state{EOrchestratorState::Uninitialised};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Visual Logger")
+    bool enable_visual_logging{false};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USimulationConfig> simulation_config{nullptr};

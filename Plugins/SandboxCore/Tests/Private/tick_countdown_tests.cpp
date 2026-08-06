@@ -11,9 +11,7 @@
 
 namespace {
 template <typename T>
-void set_counters(
-    T& countdown,
-    std::initializer_list<typename std::remove_cvref_t<T>::counter_type> const values) {
+void set_counters(T& countdown, std::initializer_list<typename std::remove_cvref_t<T>::counter_type> const values) {
     check(countdown.num() == static_cast<int32>(values.size()));
 
     int32 index{0};
@@ -32,9 +30,7 @@ concept SupportsRestartCounter = requires(T& value) {
 };
 
 template <typename T>
-concept SupportsSetCounter = requires(T& value) {
-    value.set_counter(0, typename T::counter_type{0});
-};
+concept SupportsSetCounter = requires(T& value) { value.set_counter(0, typename T::counter_type{0}); };
 
 template <typename T>
 concept SupportsZeroCounter = requires(T& value) { value.zero_counter(0); };

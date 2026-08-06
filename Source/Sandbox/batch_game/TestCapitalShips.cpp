@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/logging/SandboxVisualLoggerStyle.h>
 #include <Sandbox/utilities/actor_utils.h>
 #include <Sandbox/utilities/IndexSpan.h>
 #include <Sandbox/utilities/mesh.h>
@@ -29,6 +30,7 @@
 #include <Engine/StaticMesh.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
+#include <VisualLogger/VisualLogger.h>
 
 #include <array>
 #include <limits>
@@ -197,6 +199,105 @@ void ATestCapitalShips::end_tick() {
 
     fighters_spawned += ml::num(tick_buffers.current().fighter_queue);
     validate_array_sizes();
+    visual_log_state();
+}
+
+void ATestCapitalShips::visual_log_state() const {
+#if ENABLE_VISUAL_LOG
+    if (!FVisualLogger::IsRecording()) {
+        return;
+    }
+#else
+    return;
+#endif
+
+    if (auto const msg{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        })};
+        !msg.IsEmpty()) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),
+               *msg);
+        return;
+    }
+
+    if (auto const msg{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->visual_logger_style),
+        })};
+        !msg.IsEmpty()) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),
+               *msg);
+        return;
+    }
+
+    auto const& style{*actor_config->visual_logger_style};
+    FVector const capital_extent{style.entities.capital_ship_box_extent};
+    auto const normal_line_thickness{static_cast<uint16>(style.lines.normal_line_thickness)};
+    auto const highlighted_line_thickness{
+        static_cast<uint16>(style.lines.highlighted_line_thickness)};
+
+    auto const capital_count{get_num_instances()};
+    for (int32 capital_index{0}; capital_index < capital_count; ++capital_index) {
+        FVector const capital_location{ml::get_vector3f(entities.locations, capital_index)};
+        FBox const capital_box{capital_location - capital_extent,
+                               capital_location + capital_extent};
+        UE_VLOG_BOX(this,
+                    LogSandboxEntities,
+                    Log,
+                    capital_box,
+                    style.entities.capital_ship_colour,
+                    TEXT("Capital %d Team %d"),
+                    entities.handles[capital_index].index,
+                    static_cast<int32>(entities.teams[capital_index]));
+
+        auto const fighter_handles_view{get_fighter_handles(capital_index)};
+        auto const fighter_count{fighter_handles_view.Num()};
+        for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
+            auto const fighter_handle{fighter_handles_view[fighter_index]};
+            if (!entity_registry->is_valid_alive(fighter_handle)) {
+                continue;
+            }
+
+            FVector const fighter_location{entity_registry->get_location(fighter_handle)};
+            UE_VLOG_SEGMENT_THICK(this,
+                                  LogSandboxEntities,
+                                  Log,
+                                  capital_location,
+                                  fighter_location,
+                                  style.navigation.parent_to_child_line_colour,
+                                  normal_line_thickness,
+                                  TEXT("Fighter %d"),
+                                  fighter_handle.index);
+        }
+
+        auto const target_handle{entities.target_handles[capital_index]};
+        if (!entity_registry->is_valid_alive(target_handle)) {
+            continue;
+        }
+
+        FVector const target_location{entity_registry->get_location(target_handle)};
+        UE_VLOG_WIRESPHERE(this,
+                           LogSandboxTargeting,
+                           Log,
+                           target_location,
+                           style.entities.fighter_entity_radius,
+                           style.combat.selected_target_colour,
+                           TEXT("Target %d"),
+                           target_handle.index);
+        UE_VLOG_SEGMENT_THICK(this,
+                              LogSandboxTargeting,
+                              Log,
+                              capital_location,
+                              target_location,
+                              style.combat.selected_target_colour,
+                              highlighted_line_thickness,
+                              TEXT("Target %d"),
+                              target_handle.index);
+    }
 }
 
 // Accessors

@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/logging/SandboxVisualLoggerStyle.h>
 #include <Sandbox/utilities/actor_utils.h>
 #include <Sandbox/utilities/mesh.h>
 
@@ -28,6 +29,7 @@
 #include <Misc/Optional.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
+#include <VisualLogger/VisualLogger.h>
 
 #include <array>
 
@@ -52,13 +54,15 @@ auto find_appropriate_fire_point(UWorld& world,
         float X;
         float Y;
     };
-    static constexpr std::array<Offset, 10> fire_point_angle_offsets{{
+    static constexpr std::array<Offset, 12> fire_point_angle_offsets{{
         {30.f, 0.f},
         {-30.f, 0.f},
         {60.f, 0.f},
         {-60.f, 0.f},
         {90.f, 0.f},
         {-90.f, 0.f},
+        {0.f, 90.f},
+        {0.f, -90.f},
         {30.f, 30.f},
         {-30.f, 30.f},
         {30.f, -30.f},
@@ -66,8 +70,9 @@ auto find_appropriate_fire_point(UWorld& world,
     }};
 
     auto const base_direction{(reference_location - target_location).GetSafeNormal()};
+    auto const base_candidate_rotation{base_direction.ToOrientationRotator()};
     for (auto const angle_offset : fire_point_angle_offsets) {
-        auto candidate_rotation{base_direction.ToOrientationRotator()};
+        auto candidate_rotation{base_candidate_rotation};
         candidate_rotation.Yaw += angle_offset.X;
         candidate_rotation.Pitch += angle_offset.Y;
 
@@ -85,6 +90,18 @@ auto find_appropriate_fire_point(UWorld& world,
     }
 
     return NullOpt;
+}
+
+auto get_visual_logger_entity_colour(FSandboxVisualLoggerEntityStyle const& style,
+                                     ETestTeam const team) -> FColor {
+    switch (team) {
+        case ETestTeam::Blue:
+            return style.friendly_entity_colour;
+        case ETestTeam::Red:
+            return style.enemy_entity_colour;
+        default:
+            return style.neutral_entity_colour;
+    }
 }
 }
 
@@ -392,6 +409,104 @@ void ATestCapitalShipFighters::commit_visual_data() {
 void ATestCapitalShipFighters::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
+    visual_log_state();
+}
+
+void ATestCapitalShipFighters::visual_log_state() const {
+#if ENABLE_VISUAL_LOG
+    if (!FVisualLogger::IsRecording()) {
+        return;
+    }
+#else
+    return;
+#endif
+
+    if (auto const msg{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        })};
+        !msg.IsEmpty()) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShipFighters::visual_log_state UObject ptrs are invalid:\n%s"),
+               *msg);
+        return;
+    }
+
+    if (auto const msg{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->visual_logger_style),
+        })};
+        !msg.IsEmpty()) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShipFighters::visual_log_state UObject ptrs are invalid:\n%s"),
+               *msg);
+        return;
+    }
+
+    auto const& style{*actor_config->visual_logger_style};
+    auto const normal_line_thickness{static_cast<uint16>(style.lines.normal_line_thickness)};
+    auto const highlighted_line_thickness{
+        static_cast<uint16>(style.lines.highlighted_line_thickness)};
+    auto const& data{entity_buffers.current()};
+
+    auto const fighter_count{data.num()};
+    for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
+        auto const fighter_handle{data.entity_handles[fighter_index]};
+        FVector const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
+        auto const fighter_colour{
+            get_visual_logger_entity_colour(style.entities, data.teams[fighter_index])};
+        UE_VLOG_SPHERE(this,
+                       LogSandboxEntities,
+                       Log,
+                       fighter_location,
+                       style.entities.fighter_entity_radius,
+                       fighter_colour,
+                       TEXT("Fighter %d"),
+                       fighter_handle.index);
+
+        FVector const desired_move_location{
+            ml::get_vector3f(data.desired_move_locations, fighter_index)};
+        UE_VLOG_WIRESPHERE(this,
+                           LogSandboxNavigation,
+                           Log,
+                           desired_move_location,
+                           style.entities.fighter_entity_radius,
+                           style.navigation.movement_destination_colour,
+                           TEXT("Move destination"));
+        UE_VLOG_SEGMENT_THICK(this,
+                              LogSandboxNavigation,
+                              Log,
+                              fighter_location,
+                              desired_move_location,
+                              style.navigation.movement_destination_colour,
+                              normal_line_thickness,
+                              TEXT("Move destination"));
+
+        auto const target_handle{data.target_handles[fighter_index]};
+        if (!entity_registry->is_valid_alive(target_handle)) {
+            continue;
+        }
+
+        FVector const target_location{ml::get_vector3f(data.target_locations, fighter_index)};
+        UE_VLOG_WIRESPHERE(this,
+                           LogSandboxTargeting,
+                           Log,
+                           target_location,
+                           style.entities.fighter_entity_radius,
+                           style.combat.selected_target_colour,
+                           TEXT("Target %d"),
+                           target_handle.index);
+        UE_VLOG_SEGMENT_THICK(this,
+                              LogSandboxTargeting,
+                              Log,
+                              fighter_location,
+                              target_location,
+                              style.combat.selected_target_colour,
+                              highlighted_line_thickness,
+                              TEXT("Target %d"),
+                              target_handle.index);
+    }
 }
 
 // Movement

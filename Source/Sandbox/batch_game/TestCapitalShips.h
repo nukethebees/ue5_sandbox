@@ -292,4 +292,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};
+  private:
+    void visual_log_state() const;
 };

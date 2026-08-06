@@ -10,6 +10,7 @@
 class UStaticMesh;
 
 class UTestTeamVisualData;
+class USandboxVisualLoggerStyle;
 
 UCLASS(BlueprintType)
 class UTestCapitalShipFightersConfig : public UDataAsset {
@@ -97,4 +98,7 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     // Debugging
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Debugging|Visual Logger")
+    TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
 };

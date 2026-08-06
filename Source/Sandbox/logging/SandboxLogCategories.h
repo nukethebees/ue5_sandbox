@@ -24,5 +24,10 @@ DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInput, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxInventory, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxHealth, Log, All);
 
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxEntities, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxNavigation, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxTargeting, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogSandboxCombat, Log, All);
+
 // Misc
 DECLARE_LOG_CATEGORY_EXTERN(LogSandboxLearning, Log, All);

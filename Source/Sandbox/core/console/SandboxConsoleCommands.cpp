@@ -82,6 +82,10 @@ static void cmd_sandbox_log(TArray<FString> const& args) {
             LogSandboxInput,
             LogSandboxInventory,
             LogSandboxHealth,
+            LogSandboxEntities,
+            LogSandboxNavigation,
+            LogSandboxTargeting,
+            LogSandboxCombat,
             // Misc
             LogSandboxLearning);
 

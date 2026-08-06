@@ -21,6 +21,7 @@
 
 #include <CoreGlobals.h>
 #include <EngineUtils.h>
+#include <VisualLogger/VisualLogger.h>
 
 namespace {
 template <typename TActor, typename TConfig>
@@ -57,6 +58,7 @@ void ATestBatchOrchestrator::BeginPlay() {
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     state = EOrchestratorState::Stopped;
     SetActorTickEnabled(false);
+    stop_visual_logging();
 
     Super::EndPlay(end_play_reason);
 }
@@ -70,6 +72,7 @@ void ATestBatchOrchestrator::start_simulation() {
 
     state = EOrchestratorState::Running;
     SetActorTickEnabled(true);
+    start_visual_logging();
 }
 void ATestBatchOrchestrator::pause_simulation() {
     state = EOrchestratorState::Paused;
@@ -277,7 +280,38 @@ void ATestBatchOrchestrator::begin_play() {
             break;
         }
     }
+
+    if (state == EOrchestratorState::Running) {
+        start_visual_logging();
+    }
 }
+
+void ATestBatchOrchestrator::start_visual_logging() {
+#if ENABLE_VISUAL_LOG
+    if (!enable_visual_logging) {
+        return;
+    }
+
+    auto& visual_logger{FVisualLogger::Get()};
+    visual_logger.SetGetTimeStampFunc([this](UObject const*) { return get_simulation_time(); });
+    visual_logger.SetIsRecording(true);
+#endif
+}
+
+void ATestBatchOrchestrator::stop_visual_logging() {
+#if ENABLE_VISUAL_LOG
+    if (!enable_visual_logging) {
+        return;
+    }
+
+    auto& visual_logger{FVisualLogger::Get()};
+    if (FVisualLogger::IsRecording()) {
+        visual_logger.SetIsRecording(false);
+    }
+    visual_logger.SetGetTimeStampFunc(TFunction<double(UObject const*)>{});
+#endif
+}
+
 void ATestBatchOrchestrator::validate_proxy_handles() {
     if (player_ship) {
         if (!entity_registry->is_valid_handle(player_ship->get_entity_registry_handle())) {
