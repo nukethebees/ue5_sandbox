@@ -6,36 +6,8 @@ FTickCountdown::FTickCountdown(size_type const count, counter_type const initial
     counters.Init(tick_value, count);
 }
 
-void FTickCountdown::tick() noexcept {
-    for (auto& counter : counters) {
-        --counter;
-    }
-}
-
 auto FTickCountdown::is_ready(counter_type const value) noexcept -> bool {
     return value <= 0;
-}
-
-auto FTickCountdown::try_consume(size_type const index) noexcept -> bool {
-    auto& counter{counters[index]};
-    if (!is_ready(counter)) {
-        return false;
-    }
-
-    counter = tick_value;
-    return true;
-}
-
-void FTickCountdown::consume(size_type const index) noexcept {
-    (void)try_consume(index);
-}
-
-void FTickCountdown::consume() noexcept {
-    for (auto& counter : counters) {
-        if (is_ready(counter)) {
-            counter = tick_value;
-        }
-    }
 }
 
 void FTickCountdown::reset() {
@@ -79,20 +51,20 @@ auto FTickCountdown::num() const noexcept -> size_type {
 }
 
 auto FTickCountdown::get_view() noexcept -> View {
-    return counters;
+    return {tick_value, counters};
 }
 
 auto FTickCountdown::get_view() const noexcept -> ConstView {
-    return counters;
+    return {tick_value, counters};
 }
 
 auto FTickCountdown::get_view(size_type const offset, size_type const count) noexcept -> View {
-    return View{counters}.Slice(offset, count);
+    return {tick_value, TArrayView<counter_type>{counters}.Slice(offset, count)};
 }
 
 auto FTickCountdown::get_view(size_type const offset, size_type const count) const noexcept
     -> ConstView {
-    return ConstView{counters}.Slice(offset, count);
+    return {tick_value, TConstArrayView<counter_type>{counters}.Slice(offset, count)};
 }
 
 auto FTickCountdown::get_const_view(size_type const offset, size_type const count) const noexcept

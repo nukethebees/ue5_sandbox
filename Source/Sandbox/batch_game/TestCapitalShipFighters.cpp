@@ -98,11 +98,9 @@ void ATestCapitalShipFighters::begin_play() {
         data.attack_reposition_countdowns.tick_value = attack_reposition_tick_value;
     });
 
-    checkf(actor_config->inner_attack_distance_ratio <=
-               actor_config->desired_attack_distance_ratio,
+    checkf(actor_config->inner_attack_distance_ratio <= actor_config->desired_attack_distance_ratio,
            TEXT("Inner attack distance ratio must not exceed desired attack distance ratio"));
-    checkf(actor_config->desired_attack_distance_ratio <=
-               actor_config->outer_attack_distance_ratio,
+    checkf(actor_config->desired_attack_distance_ratio <= actor_config->outer_attack_distance_ratio,
            TEXT("Desired attack distance ratio must not exceed outer attack distance ratio"));
 
     configure_ismc();
@@ -191,12 +189,12 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto const do_attack{n_attack > 0};
 
     auto const laser_max_distance{actor_config->laser_max_distance};
-    auto const desired_attack_distance{
-        laser_max_distance * actor_config->desired_attack_distance_ratio};
-    auto const inner_attack_distance{
-        laser_max_distance * actor_config->inner_attack_distance_ratio};
-    auto const outer_attack_distance{
-        laser_max_distance * actor_config->outer_attack_distance_ratio};
+    auto const desired_attack_distance{laser_max_distance *
+                                       actor_config->desired_attack_distance_ratio};
+    auto const inner_attack_distance{laser_max_distance *
+                                     actor_config->inner_attack_distance_ratio};
+    auto const outer_attack_distance{laser_max_distance *
+                                     actor_config->outer_attack_distance_ratio};
 
     if (do_attack) {
         ml::solve_intercept_times(attack_view.intercept_times,
@@ -215,12 +213,8 @@ void ATestCapitalShipFighters::move(float const dt) {
             attack_view.desired_firing_directions.xs[i] = desired_firing_direction.X;
             attack_view.desired_firing_directions.ys[i] = desired_firing_direction.Y;
             attack_view.desired_firing_directions.zs[i] = desired_firing_direction.Z;
-        }
 
-        auto const attack_span{get_task_span(Task::Attack)};
-        for (int32 i{0}; i < n_attack; ++i) {
-            auto const fighter_index{attack_span.offset + i};
-            if (!data.attack_reposition_countdowns.try_consume(fighter_index)) {
+            if (!attack_view.attack_reposition_countdowns.try_consume(i)) {
                 continue;
             }
 
@@ -230,10 +224,9 @@ void ATestCapitalShipFighters::move(float const dt) {
                 continue;
             }
 
-            auto const target_direction{
-                (ml::get_vector3f(attack_view.target_locations, i) -
-                 ml::get_vector3f(attack_view.locations, i))
-                    .GetSafeNormal()};
+            auto const target_direction{(ml::get_vector3f(attack_view.target_locations, i) -
+                                         ml::get_vector3f(attack_view.locations, i))
+                                            .GetSafeNormal()};
             ml::assign(attack_view.target_directions, i, target_direction);
             ml::assign(attack_view.move_target_locations,
                        i,
@@ -880,10 +873,8 @@ void ATestCapitalShipFighters::commit_orders() {
             data.tasks[fighter_index] = new_task;
 
             if ((old_task != Task::Attack) && (new_task == Task::Attack)) {
-                ml::assign_from(data.move_target_locations,
-                                fighter_index,
-                                data.locations,
-                                fighter_index);
+                ml::assign_from(
+                    data.move_target_locations, fighter_index, data.locations, fighter_index);
                 data.attack_reposition_countdowns.counters[fighter_index] = 0;
             }
         }

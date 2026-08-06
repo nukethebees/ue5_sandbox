@@ -200,8 +200,15 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     view[1] = 2;
     CHECK(countdown.counters[1] == 2);
 
+    view[2] = 0;
+    CHECK(view.try_consume(2));
+    CHECK(countdown.counters[2] == countdown.tick_value);
+
+    view.reset(1);
+    CHECK(countdown.counters[1] == countdown.tick_value);
+
     auto const& const_countdown{countdown};
     auto const_view{const_countdown.get_view()};
     static_assert(std::is_same_v<decltype(const_view), FTickCountdown::ConstView>);
-    CHECK(const_view[1] == 2);
+    CHECK(const_view[1] == countdown.tick_value);
 }
