@@ -79,7 +79,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(VectorsView, target_velocities))                    \
     NON_FINAL(X(VectorsView, target_directions))                    \
     NON_FINAL(X(TView<float>, intercept_times))                     \
-    NON_FINAL(X(VectorsView, desired_firing_directions))            \
+    NON_FINAL(X(VectorsView, desired_aiming_directions))            \
     NON_FINAL(X(TView<float>, target_distance_sq))                  \
     NON_FINAL(X(TView<float>, target_distances))                    \
     X(TView<float>, target_radii)
@@ -121,7 +121,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     FVectors3f target_velocities;
     FVectors3f target_directions;
     TArray<float> intercept_times;
-    FVectors3f desired_firing_directions;
+    FVectors3f desired_aiming_directions;
     TArray<float> target_distance_sq;
     TArray<float> target_distances;
     TArray<float> target_radii;
@@ -145,7 +145,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(target_velocities))            \
     NON_FINAL(STAMPER(target_directions))            \
     NON_FINAL(STAMPER(intercept_times))              \
-    NON_FINAL(STAMPER(desired_firing_directions))    \
+    NON_FINAL(STAMPER(desired_aiming_directions))    \
     NON_FINAL(STAMPER(target_distance_sq))           \
     NON_FINAL(STAMPER(target_distances))             \
     STAMPER(target_radii)

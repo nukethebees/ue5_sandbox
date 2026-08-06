@@ -210,9 +210,9 @@ void ATestCapitalShipFighters::move(float const dt) {
             auto const desired_firing_direction{
                 (intercept_location - ml::get_vector3f(attack_view.locations, i)).GetSafeNormal()};
 
-            attack_view.desired_firing_directions.xs[i] = desired_firing_direction.X;
-            attack_view.desired_firing_directions.ys[i] = desired_firing_direction.Y;
-            attack_view.desired_firing_directions.zs[i] = desired_firing_direction.Z;
+            attack_view.desired_aiming_directions.xs[i] = desired_firing_direction.X;
+            attack_view.desired_aiming_directions.ys[i] = desired_firing_direction.Y;
+            attack_view.desired_aiming_directions.zs[i] = desired_firing_direction.Z;
 
             if (!attack_view.attack_reposition_countdowns.try_consume(i)) {
                 continue;
@@ -236,8 +236,10 @@ void ATestCapitalShipFighters::move(float const dt) {
     }
 
     // Update movement direction and remaining distance to the movement destination
-    ml::direction_and_distance(
-        data.movement_directions, data.move_distances, data.locations, data.move_destination_locations);
+    ml::direction_and_distance(data.movement_directions,
+                               data.move_distances,
+                               data.locations,
+                               data.move_destination_locations);
 
     // Look phase
     if (do_move) {
@@ -247,7 +249,7 @@ void ATestCapitalShipFighters::move(float const dt) {
     if (do_attack) {
         // Look towards the firing intercept
         ml::lerp_in_place(
-            attack_view.aim_directions, attack_view.desired_firing_directions, d_turn);
+            attack_view.aim_directions, attack_view.desired_aiming_directions, d_turn);
     }
 
     // Move phase
@@ -644,7 +646,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     data.target_velocities.add_zeroed(n_new);
     data.target_directions.add_zeroed(n_new);
     data.intercept_times.AddZeroed(n_new);
-    data.desired_firing_directions.add_zeroed(n_new);
+    data.desired_aiming_directions.add_zeroed(n_new);
     data.target_distance_sq.AddZeroed(n_new);
     data.target_distances.AddZeroed(n_new);
     data.target_radii.AddZeroed(n_new);
@@ -748,7 +750,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
     ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
 
-    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_firing_directions);
+    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_aiming_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (data.attack_cooldowns[ship_index] > 0.f) {
