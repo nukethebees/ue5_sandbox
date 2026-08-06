@@ -37,6 +37,7 @@ class ATestStaticTurretsProxy
     }
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
   protected:
+    void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
 
 #if WITH_EDITOR

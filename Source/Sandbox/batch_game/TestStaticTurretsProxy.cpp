@@ -1,6 +1,7 @@
 #include "TestStaticTurretsProxy.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "TestProxyActorFunctions.h"
 #include "TestStaticTurrets.h"
 #include "TestStaticTurretsConfig.h"
 
@@ -31,6 +32,11 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
     configure_component(*mesh);
     configure_component(*collision);
     configure_component(*detection);
+}
+
+void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+    ml::set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
 }
 
 void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component) {

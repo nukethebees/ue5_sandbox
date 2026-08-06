@@ -3,6 +3,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "TestCapitalShips.h"
 #include "TestCapitalShipsConfig.h"
+#include "TestProxyActorFunctions.h"
 #include "TestTeamVisualData.h"
 
 #include <SandboxCoreEngine/actor_components.h>
@@ -29,6 +30,7 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
 
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
+    ml::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
