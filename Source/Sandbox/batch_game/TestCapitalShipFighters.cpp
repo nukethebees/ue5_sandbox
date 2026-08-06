@@ -98,6 +98,28 @@ void ATestCapitalShipFighters::begin_play() {
         data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_value);
     });
 
+    auto const fire_cooldown_tick_period{
+        simulation_clock.duration_to_tick_period(actor_config->fire_cooldown)};
+    checkf(fire_cooldown_tick_period <=
+               static_cast<decltype(fire_cooldown_tick_period)>(
+                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
+           TEXT("Fire cooldown does not fit in FTickCountdown16::counter_type"));
+
+    auto const fire_cooldown_tick_value{
+        static_cast<FTickCountdown16::counter_type>(fire_cooldown_tick_period)};
+    entity_buffers.for_each([fire_cooldown_tick_value](auto& data) {
+        data.attack_cooldowns.set_tick_value(fire_cooldown_tick_value);
+    });
+
+    auto const attack_retry_cooldown_tick_period{
+        simulation_clock.duration_to_tick_period(actor_config->attack_retry_cooldown)};
+    checkf(attack_retry_cooldown_tick_period <=
+               static_cast<decltype(attack_retry_cooldown_tick_period)>(
+                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
+           TEXT("Attack retry cooldown does not fit in FTickCountdown16::counter_type"));
+    attack_retry_cooldown_tick_value =
+        static_cast<FTickCountdown16::counter_type>(attack_retry_cooldown_tick_period);
+
     checkf(actor_config->inner_attack_distance_ratio <= actor_config->desired_attack_distance_ratio,
            TEXT("Inner attack distance ratio must not exceed desired attack distance ratio"));
     checkf(actor_config->desired_attack_distance_ratio <= actor_config->outer_attack_distance_ratio,
@@ -118,10 +140,10 @@ void ATestCapitalShipFighters::begin_tick() {
     data.attack_reposition_countdowns.tick();
     clear_tick_buffers();
 }
-void ATestCapitalShipFighters::update_timers(float const dt) {
+void ATestCapitalShipFighters::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_timers);
 
-    entity_buffers.current().attack_cooldowns.tick(dt);
+    entity_buffers.current().attack_cooldowns.tick();
 }
 void ATestCapitalShipFighters::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::make_decisions);
@@ -653,7 +675,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     data.target_distances.AddZeroed(n_new);
     data.target_radii.AddZeroed(n_new);
 
-    data.attack_cooldowns.remaining_times.AddZeroed(n_new);
+    data.attack_cooldowns.add_zeroed(n_new);
 
     // Fill entity data and set aim_directions
     new_spawn_entity_data.add_uninitialised(n_new);
@@ -732,7 +754,6 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     static FName const socket_name{TEXT("Gun")};
 
     auto const n_ships{ml::num(data)};
-    auto const cooldown{actor_config->fire_cooldown};
     auto const fire_point_offset{instances->GetSocketLocation(socket_name)};
     FVector3f const fire_point_offset_float{fire_point_offset};
     auto const aim_threshold{fire_dot_product_threshold};
@@ -741,8 +762,6 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_max_distance{actor_config->laser_max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
-
-    auto const attack_retry_cooldown{actor_config->attack_retry_cooldown};
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -755,14 +774,14 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_aiming_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
-        if (data.attack_cooldowns[ship_index] > 0.f) {
+        if (!FTickCountdown16::is_ready(data.attack_cooldowns[ship_index])) {
             continue;
         }
 
         if ((data.target_distance_sq[ship_index] > laser_max_distance_sq) ||
             (!data.target_handles[ship_index].is_valid()) ||
             (aiming_dot_product_buffer[ship_index] < aim_threshold)) {
-            data.attack_cooldowns[ship_index] += attack_retry_cooldown;
+            data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
             continue;
         }
 
@@ -799,7 +818,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
 
             if (did_hit) {
                 can_fire.RemoveAtSwap(i, EAllowShrinking::No);
-                data.attack_cooldowns[ship_index] += attack_retry_cooldown;
+                data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
             }
         }
     }();
@@ -820,7 +839,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
 
-        data.attack_cooldowns[ship_index] = cooldown;
+        (void)data.attack_cooldowns.try_consume(ship_index);
     }
 
     new_lasers.set_damages(laser_damage);

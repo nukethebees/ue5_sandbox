@@ -15,7 +15,6 @@
 #include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/IndexSpan.h>
 
-#include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
@@ -74,7 +73,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(TView<int32>, healths))                             \
     NON_FINAL(X(TickCountdownView8, awareness_scan_countdowns))     \
     NON_FINAL(X(TickCountdownView16, attack_reposition_countdowns)) \
-    NON_FINAL(X(TView<float>, attack_cooldowns))                    \
+    NON_FINAL(X(TickCountdownView16, attack_cooldowns))             \
     NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles))      \
     NON_FINAL(X(VectorsView, target_locations))                     \
     NON_FINAL(X(VectorsView, target_velocities))                    \
@@ -119,7 +118,7 @@ struct EntityData : public ml::FSoAArrayMixin {
 
     FTickCountdown8 awareness_scan_countdowns;
     FTickCountdown16 attack_reposition_countdowns;
-    FCountdownTimers attack_cooldowns;
+    FTickCountdown16 attack_cooldowns;
 
     TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
@@ -343,6 +342,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
+    FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
 
     // Entity data
     TestEntityOwnerId owner_id{};
