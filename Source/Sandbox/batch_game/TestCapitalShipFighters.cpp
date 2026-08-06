@@ -25,8 +25,11 @@
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
+#include <Misc/Optional.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
+
+#include <array>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
@@ -36,6 +39,52 @@ inline auto get_span(FVectors3f& vec, FIndexSpan const span) {
 }
 inline auto get_span(FVectors3f const& vec, FIndexSpan const span) {
     return vec.get_view().slice(span.offset, span.count);
+}
+
+auto find_appropriate_fire_point(UWorld& world,
+                                 FCollisionQueryParams const& params,
+                                 FVector3f const target_location,
+                                 FVector3f const reference_location,
+                                 FVector3d const fire_point_offset,
+                                 FVector3d const target_aim_point,
+                                 float const desired_attack_distance) -> TOptional<FVector3f> {
+    struct Offset {
+        float X;
+        float Y;
+    };
+    static constexpr std::array<Offset, 10> fire_point_angle_offsets{{
+        {30.f, 0.f},
+        {-30.f, 0.f},
+        {60.f, 0.f},
+        {-60.f, 0.f},
+        {90.f, 0.f},
+        {-90.f, 0.f},
+        {30.f, 30.f},
+        {-30.f, 30.f},
+        {30.f, -30.f},
+        {-30.f, -30.f},
+    }};
+
+    auto const base_direction{(reference_location - target_location).GetSafeNormal()};
+    for (auto const angle_offset : fire_point_angle_offsets) {
+        auto candidate_rotation{base_direction.ToOrientationRotator()};
+        candidate_rotation.Yaw += angle_offset.X;
+        candidate_rotation.Pitch += angle_offset.Y;
+
+        auto const candidate_direction{candidate_rotation.Vector()};
+        auto const candidate_location{target_location +
+                                      candidate_direction * desired_attack_distance};
+        auto const trace_start{FVector3d{candidate_location} + fire_point_offset};
+
+        FHitResult hit{};
+        auto const did_hit{world.LineTraceSingleByChannel(
+            hit, trace_start, target_aim_point, ECC_Visibility, params)};
+        if (!did_hit) {
+            return candidate_location;
+        }
+    }
+
+    return NullOpt;
 }
 }
 
@@ -735,6 +784,10 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_max_distance{actor_config->laser_max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
+    auto const desired_attack_distance{laser_max_distance *
+                                       actor_config->desired_attack_distance_ratio};
+    auto const arrival_distance{actor_config->arrival_distance};
+    auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -792,6 +845,28 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             if (did_hit) {
                 can_fire.RemoveAtSwap(i, EAllowShrinking::No);
                 data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
+
+                auto const fighter_location{ml::get_vector3f(data.locations, ship_index)};
+                auto const desired_move_location{
+                    ml::get_vector3f(data.desired_move_locations, ship_index)};
+                auto const has_arrived{
+                    FVector3f::DistSquared(fighter_location, desired_move_location) <=
+                    attack_position_arrival_distance_sq};
+                if (!has_arrived) {
+                    continue;
+                }
+
+                auto const candidate{
+                    find_appropriate_fire_point(*world,
+                                                params,
+                                                ml::get_vector3f(data.target_locations, ship_index),
+                                                desired_move_location,
+                                                fire_point_offset,
+                                                end,
+                                                desired_attack_distance)};
+                if (candidate.IsSet()) {
+                    ml::assign(data.desired_move_locations, ship_index, *candidate);
+                }
             }
         }
     }();
