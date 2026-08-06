@@ -228,7 +228,7 @@ void ATestCapitalShipFighters::move(float const dt) {
                                          ml::get_vector3f(attack_view.locations, i))
                                             .GetSafeNormal()};
             ml::assign(attack_view.target_directions, i, target_direction);
-            ml::assign(attack_view.move_target_locations,
+            ml::assign(attack_view.move_destination_locations,
                        i,
                        ml::get_vector3f(attack_view.target_locations, i) -
                            target_direction * desired_attack_distance);
@@ -237,7 +237,7 @@ void ATestCapitalShipFighters::move(float const dt) {
 
     // Update movement direction and remaining distance to the movement destination
     ml::direction_and_distance(
-        data.movement_directions, data.move_distances, data.locations, data.move_target_locations);
+        data.movement_directions, data.move_distances, data.locations, data.move_destination_locations);
 
     // Look phase
     if (do_move) {
@@ -629,7 +629,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     // entity_handles handles later
     ml::append_n(data.tasks, Task::Attack, n_new);
     ml::append_from(data.locations, new_locations);
-    ml::append_from(data.move_target_locations, new_locations);
+    ml::append_from(data.move_destination_locations, new_locations);
     data.movement_directions.add_zeroed(n_new);
     data.move_distances.AddZeroed(n_new);
     ml::add_uninitialised(data.aim_directions, n_new);
@@ -874,7 +874,7 @@ void ATestCapitalShipFighters::commit_orders() {
 
             if ((old_task != Task::Attack) && (new_task == Task::Attack)) {
                 ml::assign_from(
-                    data.move_target_locations, fighter_index, data.locations, fighter_index);
+                    data.move_destination_locations, fighter_index, data.locations, fighter_index);
                 data.attack_reposition_countdowns.zero_counter(fighter_index);
             }
         }
