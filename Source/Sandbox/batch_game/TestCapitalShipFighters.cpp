@@ -180,10 +180,7 @@ void ATestCapitalShipFighters::begin_play() {
     attack_retry_cooldown_tick_value =
         static_cast<FTickCountdown16::counter_type>(attack_retry_cooldown_tick_period);
 
-    checkf(actor_config->inner_attack_distance_ratio <= actor_config->desired_attack_distance_ratio,
-           TEXT("Inner attack distance ratio must not exceed desired attack distance ratio"));
-    checkf(actor_config->desired_attack_distance_ratio <= actor_config->outer_attack_distance_ratio,
-           TEXT("Desired attack distance ratio must not exceed outer attack distance ratio"));
+    check(actor_config->attack_distance_band.values_are_valid());
 
     configure_ismc();
 
@@ -271,12 +268,10 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto const do_attack{n_attack > 0};
 
     auto const laser_max_distance{actor_config->laser_max_distance};
-    auto const desired_attack_distance{laser_max_distance *
-                                       actor_config->desired_attack_distance_ratio};
-    auto const inner_attack_distance{laser_max_distance *
-                                     actor_config->inner_attack_distance_ratio};
-    auto const outer_attack_distance{laser_max_distance *
-                                     actor_config->outer_attack_distance_ratio};
+    auto const& attack_distance_band{actor_config->attack_distance_band};
+    auto const desired_attack_distance{laser_max_distance * attack_distance_band.desired_ratio};
+    auto const inner_attack_distance{laser_max_distance * attack_distance_band.minimum_ratio};
+    auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum_ratio};
 
     if (do_attack) {
         ml::solve_intercept_times(attack_view.intercept_times,
@@ -930,7 +925,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     auto const laser_max_distance{actor_config->laser_max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
     auto const desired_attack_distance{laser_max_distance *
-                                       actor_config->desired_attack_distance_ratio};
+                                       actor_config->attack_distance_band.desired_ratio};
     auto const arrival_distance{actor_config->arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
 

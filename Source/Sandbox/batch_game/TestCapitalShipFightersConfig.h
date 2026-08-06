@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AttackDistanceBand.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
 
 #include "CoreMinimal.h"
@@ -59,20 +60,8 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
               meta = (ClampMin = "0.001", UIMin = "0.001", Units = "Hz"))
     float attack_reposition_frequency{10.f};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Combat",
-              meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
-    float desired_attack_distance_ratio{0.5f};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Combat",
-              meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
-    float inner_attack_distance_ratio{0.4f};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Combat",
-              meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
-    float outer_attack_distance_ratio{0.6f};
+    UPROPERTY(EditAnywhere, Category = "Combat")
+    FAttackDistanceBand attack_distance_band;
 
     UPROPERTY(EditAnywhere,
               Category = "Combat",
