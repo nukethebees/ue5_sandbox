@@ -20,6 +20,7 @@
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/transforms.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxNative/deterministic_bias.h>
 
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
@@ -49,7 +50,9 @@ auto find_appropriate_fire_point(UWorld& world,
                                  FVector3f const reference_location,
                                  FVector3d const fire_point_offset,
                                  float const trace_end_offset,
-                                 float const desired_attack_distance) -> TOptional<FVector3f> {
+                                 float const desired_attack_distance,
+                                 uint32 const integral_bias,
+                                 float const float_bias) -> TOptional<FVector3f> {
     struct Offset {
         float X;
         float Y;
@@ -78,15 +81,23 @@ auto find_appropriate_fire_point(UWorld& world,
 
     auto const base_direction{(reference_location - target_location).GetSafeNormal()};
     auto const base_candidate_rotation{base_direction.ToOrientationRotator()};
+    auto const pattern_yaw_offset{float_bias * 360.f};
+    auto const n_offsets{static_cast<uint32>(fire_point_angle_offsets.size())};
+    auto const first_offset_index{integral_bias % n_offsets};
     FVector3d const trace_target{target_location};
-    for (auto const angle_offset : fire_point_angle_offsets) {
+
+    for (uint32 offset{}; offset < n_offsets; ++offset) {
+        auto const offset_index{(first_offset_index + offset) % n_offsets};
+        auto const angle_offset{fire_point_angle_offsets[offset_index]};
+
         auto candidate_rotation{base_candidate_rotation};
-        candidate_rotation.Yaw += angle_offset.X;
+        candidate_rotation.Yaw += pattern_yaw_offset + angle_offset.X;
         candidate_rotation.Pitch += angle_offset.Y;
 
         auto const candidate_direction{candidate_rotation.Vector()};
         auto const candidate_location{target_location +
                                       candidate_direction * desired_attack_distance};
+
         auto const trace_start{FVector3d{candidate_location} + fire_point_offset};
         auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
         auto const trace_end{trace_target - trace_direction * trace_end_offset};
@@ -852,6 +863,15 @@ void ATestCapitalShipFighters::commit_spawns() {
     new_spawn_entity_handles =
         entity_registry->add_entities(new_spawn_entity_data.get_const_view());
     data.entity_handles.Append(new_spawn_entity_handles.registry_handles);
+    data.integral_biases.AddUninitialized(n_new);
+    data.float_biases.AddUninitialized(n_new);
+    for (int32 i{0}; i < n_new; ++i) {
+        auto const index{n_cur + i};
+        auto const handle{new_spawn_entity_handles.registry_handles[i]};
+        auto const biases{ml::make_deterministic_biases(handle.index, handle.generation)};
+        data.integral_biases[index] = biases.integral;
+        data.float_biases[index] = biases.floating;
+    }
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);
@@ -989,7 +1009,9 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
                                                 desired_move_location,
                                                 fire_point_offset,
                                                 trace_end_offset,
-                                                desired_attack_distance)};
+                                                desired_attack_distance,
+                                                data.integral_biases[ship_index],
+                                                data.float_biases[ship_index])};
                 if (candidate.IsSet()) {
                     ml::assign(data.desired_move_locations, ship_index, *candidate);
                 }

@@ -61,6 +61,8 @@ struct EntityDataView : public ml::FSoAViewMixin {
 
 #define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                         \
     NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))      \
+    NON_FINAL(X(TView<uint32>, integral_biases))                    \
+    NON_FINAL(X(TView<float>, float_biases))                        \
     NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))        \
     NON_FINAL(X(VectorsView, locations))                            \
     NON_FINAL(X(VectorsView, desired_move_locations))               \
@@ -102,6 +104,8 @@ struct EntityData : public ml::FSoAArrayMixin {
     using ConstView = EntityDataView<true>;
 
     TArray<FRegistryEntityHandle> entity_handles;
+    TArray<uint32> integral_biases;
+    TArray<float> float_biases;
     TArray<ETestCapitalShipFightersTask> tasks;
 
     FVectors3f locations;
@@ -131,6 +135,8 @@ struct EntityData : public ml::FSoAArrayMixin {
 
 #define SANDBOX_PACK(STAMPER, NON_FINAL)             \
     NON_FINAL(STAMPER(entity_handles))               \
+    NON_FINAL(STAMPER(integral_biases))              \
+    NON_FINAL(STAMPER(float_biases))                 \
     NON_FINAL(STAMPER(tasks))                        \
     NON_FINAL(STAMPER(locations))                    \
     NON_FINAL(STAMPER(desired_move_locations))       \
