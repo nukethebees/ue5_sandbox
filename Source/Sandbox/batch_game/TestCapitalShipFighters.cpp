@@ -54,19 +54,26 @@ auto find_appropriate_fire_point(UWorld& world,
         float X;
         float Y;
     };
-    static constexpr std::array<Offset, 12> fire_point_angle_offsets{{
-        {30.f, 0.f},
-        {-30.f, 0.f},
-        {60.f, 0.f},
-        {-60.f, 0.f},
+    static constexpr std::array<Offset, 16> fire_point_angle_offsets{{
+        {0.f, 0.f},
+
+        {45.f, 0.f},
+        {-45.f, 0.f},
         {90.f, 0.f},
         {-90.f, 0.f},
-        {0.f, 90.f},
-        {0.f, -90.f},
-        {30.f, 30.f},
-        {-30.f, 30.f},
-        {30.f, -30.f},
-        {-30.f, -30.f},
+        {135.f, 0.f},
+        {-135.f, 0.f},
+        {180.f, 0.f},
+
+        {0.f, 35.f},
+        {90.f, 35.f},
+        {180.f, 35.f},
+        {-90.f, 35.f},
+
+        {45.f, -35.f},
+        {135.f, -35.f},
+        {-135.f, -35.f},
+        {-45.f, -35.f},
     }};
 
     auto const base_direction{(reference_location - target_location).GetSafeNormal()};
