@@ -1,0 +1,30 @@
+{
+	"id": "NonLevels",
+	"name": "NonLevels",
+	"enabledTests": [
+		"Sandbox.enum.without_class_prefix.without_class_prefix.should format 'ELocalTestEnum::Bar' as 'Bar'",
+		"Sandbox.enum.without_class_prefix.without_class_prefix.should format 'ELocalTestEnum::Baz' as 'Baz'",
+		"Sandbox.enum.without_class_prefix.without_class_prefix.should format 'ELocalTestEnum::Foo' as 'Foo'",
+		"Sandbox.fighters.entity_bias_packed_data",
+		"Sandbox.geometry.subdivide_arc_into_segments.get_angle_between_norm_lines.Start=-90p0, Arc=180p0, Segs=1",
+		"Sandbox.geometry.subdivide_arc_into_segments.get_angle_between_norm_lines.Start=-90p0, Arc=180p0, Segs=2",
+		"Sandbox.geometry.subdivide_arc_into_segments.get_angle_between_norm_lines.Start=0p0, Arc=180p0, Segs=1",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format '__42' as '42'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'a_b_c' as 'A B C'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'Level1' as 'Level 1'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'Level123' as 'Level 123'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'level_one' as 'Level One'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'None' as ''",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'singleword' as 'Singleword'",
+		"Sandbox.levels.format_level_display_name 1.format_level_display_name.should format 'test_level_42' as 'Test Level 42'",
+		"Sandbox.UnitTests.AttackDistanceBand.ValuesAreValid",
+		"Sandbox.UnitTests.SimulationConfig.DeepCopy",
+		"Sandbox.UnitTests.TestBatchOrchestratorSetup.SimulationClockConversions",
+		"Sandbox.UnitTests.TestBatchOrchestratorSetup.SpawnMissingActors",
+		"Sandbox.USFPathValidation.should be available in editor context",
+		"Sandbox.USFPathValidation.should reject empty path",
+		"Sandbox.USFPathValidation.should reject non-existent path",
+		"Sandbox.USFPathValidation.should reject path without leading slash",
+		"Sandbox.USFPathValidation.should validate plugin test shader"
+	]
+}
