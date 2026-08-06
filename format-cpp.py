@@ -100,7 +100,11 @@ def main() -> None:
     # Define directories to search (relative to script location)
     directories = [
         script_dir / "Source",
-        script_dir / "Plugins" / "USFLoader"
+        script_dir / "Plugins" / "USFLoader",
+        script_dir / "Plugins" / "SandboxCore",
+        script_dir / "Plugins" / "SandboxEditorTools",
+        script_dir / "Plugins" / "SandboxMaterialExpressions",
+        script_dir / "Plugins" / "USFLoader",
     ]
 
     # Get file extensions to format

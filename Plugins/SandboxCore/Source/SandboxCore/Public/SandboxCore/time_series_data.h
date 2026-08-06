@@ -28,14 +28,18 @@ class TimeSeriesData {
     template <typename AddType>
         requires std::is_same_v<value_type, std::remove_cvref_t<AddType>>
     void add(time_type const t, AddType&& value) {
-        if (!is_empty()) { check(times_.Last() < t); }
+        if (!is_empty()) {
+            check(times_.Last() < t);
+        }
 
         times_.Emplace(t);
         values_.Emplace(std::forward<AddType>(value));
     }
 
     auto nearest_index(time_type const t) const -> size_type {
-        if (is_empty()) { return INDEX_NONE; }
+        if (is_empty()) {
+            return INDEX_NONE;
+        }
 
         size_type nearest_index{0};
         time_type smallest_delta{FMath::Abs(t - times_[0])};
@@ -49,7 +53,9 @@ class TimeSeriesData {
                 nearest_index = i;
                 smallest_delta = abs_delta;
             }
-            if (delta < time_type{0}) { break; }
+            if (delta < time_type{0}) {
+                break;
+            }
         }
 
         return nearest_index;

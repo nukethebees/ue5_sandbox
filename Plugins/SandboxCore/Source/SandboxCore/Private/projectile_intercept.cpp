@@ -1,5 +1,5 @@
-#include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/array_checks.h>
+#include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -22,16 +22,22 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
     value_type const c{static_cast<value_type>(r.SizeSquared())};
 
     if (FMath::Abs(a) < eps) {
-        if (FMath::Abs(b) < eps) { return no_intercept; }
+        if (FMath::Abs(b) < eps) {
+            return no_intercept;
+        }
 
         value_type const t{-c / b};
-        if (t > 0.f) { return t; }
+        if (t > 0.f) {
+            return t;
+        }
 
         return no_intercept;
     }
 
     value_type const discriminant{b * b - 4.0f * a * c};
-    if (discriminant < 0.f) { return no_intercept; }
+    if (discriminant < 0.f) {
+        return no_intercept;
+    }
 
     value_type const sqrt_discriminant{FMath::Sqrt(discriminant)};
 
@@ -40,11 +46,17 @@ auto solve_intercept_time(FVector3f const& shooter_pos,
 
     value_type best_t{TNumericLimits<value_type>::Max()};
 
-    if (t0 > 0.f) { best_t = t0; }
+    if (t0 > 0.f) {
+        best_t = t0;
+    }
 
-    if ((t1 > 0.f) && (t1 < best_t)) { best_t = t1; }
+    if ((t1 > 0.f) && (t1 < best_t)) {
+        best_t = t1;
+    }
 
-    if (best_t == TNumericLimits<value_type>::Max()) { return {}; }
+    if (best_t == TNumericLimits<value_type>::Max()) {
+        return {};
+    }
 
     return best_t;
 }
@@ -58,10 +70,8 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            float const projectile_speed) {
     auto const count{out_intercept_times.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
-                                                    shooter_positions,
-                                                    target_positions,
-                                                    target_velocities));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_intercept_times, shooter_positions, target_positions, target_velocities));
 
     for (int32 i{0}; i < count; ++i) {
         auto const shooter_pos{
@@ -91,10 +101,8 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
 
     auto const count{out_intercept_times.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
-                                                    shooter_positions,
-                                                    target_positions,
-                                                    target_velocities));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_intercept_times, shooter_positions, target_positions, target_velocities));
 
     auto const projectile_speed_sq{projectile_speed * projectile_speed};
     constexpr value_type max{TNumericLimits<value_type>::Max()};
@@ -113,7 +121,9 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
         out_intercept_times[i] = no_intercept;
 
         if (FMath::Abs(a) < eps) {
-            if (FMath::Abs(b) < eps) { continue; }
+            if (FMath::Abs(b) < eps) {
+                continue;
+            }
 
             value_type const t{-c / b};
             if (t > 0.f) {
@@ -125,7 +135,9 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
         }
 
         value_type const discriminant{b * b - 4.0f * a * c};
-        if (discriminant < 0.f) { continue; }
+        if (discriminant < 0.f) {
+            continue;
+        }
 
         value_type const sqrt_discriminant{FMath::Sqrt(discriminant)};
 
@@ -136,11 +148,17 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
 
         value_type best_t{max};
 
-        if (t0 > 0.f) { best_t = t0; }
+        if (t0 > 0.f) {
+            best_t = t0;
+        }
 
-        if ((t1 > 0.f) && (t1 < best_t)) { best_t = t1; }
+        if ((t1 > 0.f) && (t1 < best_t)) {
+            best_t = t1;
+        }
 
-        if (best_t == max) { continue; }
+        if (best_t == max) {
+            continue;
+        }
 
         out_intercept_times[i] = best_t;
     }
@@ -162,10 +180,8 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
     auto const count{out_intercept_times.Num()};
     auto* const out{out_intercept_times.GetData()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(out_intercept_times,
-                                                    shooter_positions,
-                                                    target_positions,
-                                                    target_velocities));
+    check(ml::all_num_equal_and_pointers_not_equal(
+        out_intercept_times, shooter_positions, target_positions, target_velocities));
 
     auto const projectile_speed_sq{projectile_speed * projectile_speed};
     constexpr value_type max{TNumericLimits<value_type>::Max()};
@@ -186,7 +202,9 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
         out[i] = no_intercept;
 
         if (FMath::Abs(a) < eps) {
-            if (FMath::Abs(b) < eps) { continue; }
+            if (FMath::Abs(b) < eps) {
+                continue;
+            }
 
             value_type const t{-c / b};
             if (t > 0.f) {
@@ -198,7 +216,9 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
         }
 
         value_type const discriminant{b * b - 4.0f * a * c};
-        if (discriminant < 0.f) { continue; }
+        if (discriminant < 0.f) {
+            continue;
+        }
 
         value_type const sqrt_discriminant{FMath::Sqrt(discriminant)};
 
@@ -209,11 +229,17 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
 
         value_type best_t{max};
 
-        if (t0 > 0.f) { best_t = t0; }
+        if (t0 > 0.f) {
+            best_t = t0;
+        }
 
-        if ((t1 > 0.f) && (t1 < best_t)) { best_t = t1; }
+        if ((t1 > 0.f) && (t1 < best_t)) {
+            best_t = t1;
+        }
 
-        if (best_t == max) { continue; }
+        if (best_t == max) {
+            continue;
+        }
 
         out[i] = best_t;
     }

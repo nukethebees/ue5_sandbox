@@ -86,7 +86,9 @@ void copy_element(
     int32 const dst_i, int32 const src_i, Container& dst, Container const& src, Rest&&... rest) {
     CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
 
-    if constexpr (sizeof...(rest)) { copy_element(dst_i, src_i, rest...); }
+    if constexpr (sizeof...(rest)) {
+        copy_element(dst_i, src_i, rest...);
+    }
 }
 
 template <SupportsGetView... Containers>
@@ -104,6 +106,8 @@ template <typename Container, typename... Rest>
 void append_from(Container& dst, Container const& src, Rest&&... rest) {
     AppendFromTraits<Container>::append_from(dst, src);
 
-    if constexpr (sizeof...(rest)) { append_from(rest...); }
+    if constexpr (sizeof...(rest)) {
+        append_from(rest...);
+    }
 }
 }

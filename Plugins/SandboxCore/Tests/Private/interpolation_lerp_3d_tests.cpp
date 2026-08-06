@@ -3,8 +3,7 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Math.Lerp3D.View writes interpolated values",
-          "[SandboxCore][Math][Lerp3D]") {
+TEST_CASE("SandboxCore.Math.Lerp3D.View writes interpolated values", "[SandboxCore][Math][Lerp3D]") {
     TArray<float> const from_x{0.0f, 10.0f, -10.0f, 100.0f};
     TArray<float> const from_y{5.0f, 20.0f, -20.0f, 200.0f};
     TArray<float> const from_z{50.0f, 100.0f, -100.0f, 1000.0f};
@@ -59,8 +58,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.View supports empty arrays", "[SandboxCore][M
     CHECK(out_z.Num() == 0);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar writes interpolated values",
-          "[SandboxCore][Math][Lerp3D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp3D.Scalar writes interpolated values", "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f, -10.0f};
     TArray<float> const from_y{100.0f, 200.0f, 300.0f};
     TArray<float> const from_z{1000.0f, 2000.0f, 3000.0f};
@@ -93,8 +91,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar writes interpolated values",
     CHECK(out_z[2] == 4500.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha zero",
-          "[SandboxCore][Math][Lerp3D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha zero", "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
     TArray<float> const from_z{5.0f, 6.0f};
@@ -124,8 +121,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha zero",
     CHECK(out_z[1] == 6.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha one",
-          "[SandboxCore][Math][Lerp3D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha one", "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
     TArray<float> const from_z{5.0f, 6.0f};
@@ -155,8 +151,7 @@ TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports alpha one",
     CHECK(out_z[1] == 60.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports empty arrays",
-          "[SandboxCore][Math][Lerp3D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp3D.Scalar supports empty arrays", "[SandboxCore][Math][Lerp3D][Scalar]") {
     TArray<float> const from_x;
     TArray<float> const from_y;
     TArray<float> const from_z;

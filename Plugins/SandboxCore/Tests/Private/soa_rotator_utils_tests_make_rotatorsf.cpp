@@ -34,9 +34,7 @@ TEST_CASE("SandboxCore.SoaRotatorUtils.make_rotatorsf.Arrays") {
 }
 
 TEST_CASE("SandboxCore.SoaRotatorUtils.make_rotatorsf.Empty") {
-    auto const rotators{ml::make_rotatorsf(std::initializer_list<float>{},
-                                           std::initializer_list<float>{},
-                                           std::initializer_list<float>{})};
+    auto const rotators{ml::make_rotatorsf(std::initializer_list<float>{}, std::initializer_list<float>{}, std::initializer_list<float>{})};
 
     CHECK(rotators.num() == 0);
     CHECK(rotators.is_empty());

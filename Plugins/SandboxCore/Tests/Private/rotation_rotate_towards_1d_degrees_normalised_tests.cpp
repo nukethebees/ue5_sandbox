@@ -253,8 +253,8 @@ void check_rotate_towards_in_place(
     CHECK(current == expected);
 }
 
-void
-    check_rotate_towards_in_place(float const current, float const target, float const speed, float const delta_time, float const expected) {
+void check_rotate_towards_in_place(
+    float const current, float const target, float const speed, float const delta_time, float const expected) {
     auto current_array{TArray<float>{current}};
     auto const target_array{TArray<float>{target}};
 

@@ -76,8 +76,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.multiply.MutableView") {
 
     ml::multiply(dst_view, src.get_const_view(), scale_factors);
 
-    auto const expected{
-        ml::make_vectors3f(TArray<FVector3f>{{100.0f, 200.0f, 300.0f}, {2.0f, 6.0f, 10.0f}, {6.0f, 12.0f, 18.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{100.0f, 200.0f, 300.0f}, {2.0f, 6.0f, 10.0f}, {6.0f, 12.0f, 18.0f}})};
 
     CHECK(ml::almost_equal(dst, expected));
 }
@@ -89,8 +88,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.multiply.ScalarMutableView") {
 
     ml::multiply(dst_view, src.get_const_view(), 2.0f);
 
-    auto const expected{
-        ml::make_vectors3f(TArray<FVector3f>{{100.0f, 200.0f, 300.0f}, {2.0f, 6.0f, 10.0f}, {4.0f, 8.0f, 12.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{100.0f, 200.0f, 300.0f}, {2.0f, 6.0f, 10.0f}, {4.0f, 8.0f, 12.0f}})};
 
     CHECK(ml::almost_equal(dst, expected));
 }

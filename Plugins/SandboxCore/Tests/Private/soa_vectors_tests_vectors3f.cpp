@@ -15,10 +15,8 @@ static_assert(std::is_same_v<decltype(FVectors3f::Data::zs), float*>);
 static_assert(std::is_same_v<decltype(FVectors3f::ConstData::xs), float const*>);
 static_assert(std::is_same_v<decltype(FVectors3f::ConstData::ys), float const*>);
 static_assert(std::is_same_v<decltype(FVectors3f::ConstData::zs), float const*>);
-static_assert(std::is_same_v<decltype(std::declval<FVectors3f&>().get_data()),
-                             FVectors3f::Data>);
-static_assert(std::is_same_v<decltype(std::declval<FVectors3f const&>().get_data()),
-                             FVectors3f::ConstData>);
+static_assert(std::is_same_v<decltype(std::declval<FVectors3f&>().get_data()), FVectors3f::Data>);
+static_assert(std::is_same_v<decltype(std::declval<FVectors3f const&>().get_data()), FVectors3f::ConstData>);
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.DefaultIsEmpty") {
     FVectors3f vectors;
@@ -36,8 +34,7 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddComponents") {
     auto const first_index{vectors.add(1.0f, 2.0f, 3.0f)};
     auto const second_index{vectors.add(4.0f, 5.0f, 6.0f)};
 
-    auto const expected{ml::make_vectors3f(
-        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
     CHECK(first_index == 0);
     CHECK(second_index == 1);
     CHECK(ml::almost_equal(vectors, expected));
@@ -49,16 +46,14 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.AddAosValue") {
     auto const first_index{vectors.add(FVector3f{1.0f, 2.0f, 3.0f})};
     auto const second_index{vectors.add(FVector3f{4.0f, 5.0f, 6.0f})};
 
-    auto const expected{ml::make_vectors3f(
-        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
     CHECK(first_index == 0);
     CHECK(second_index == 1);
     CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetData") {
-    auto vectors{ml::make_vectors3f(
-        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
 
     auto [xs, ys, zs] = vectors.get_data();
 
@@ -70,8 +65,7 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetData") {
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetDataConst") {
-    auto const vectors{ml::make_vectors3f(
-        TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
 
     auto [xs, ys, zs] = vectors.get_data();
 
@@ -117,14 +111,16 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetViewWithOffsetAndCount") {
     view.ys[1] = 70.0f;
     view.zs[0] = 100.0f;
 
-    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
+    auto const expected{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     CHECK(view.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));
 }
 
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.GetConstViewsWithOffsetAndCount") {
-    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {2.0f, 6.0f, 10.0f}, {3.0f, 7.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
+    auto const vectors{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {2.0f, 6.0f, 10.0f}, {3.0f, 7.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     auto view{vectors.get_view(1, 2)};
     auto const_view{vectors.get_const_view(1, 2)};
@@ -147,7 +143,8 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.Slice") {
     slice.ys[1] = 70.0f;
     slice.zs[0] = 100.0f;
 
-    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
+    auto const expected{
+        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 5.0f, 9.0f}, {20.0f, 6.0f, 100.0f}, {3.0f, 70.0f, 11.0f}, {4.0f, 8.0f, 12.0f}})};
 
     CHECK(slice.num() == 2);
     CHECK(ml::almost_equal(vectors, expected));

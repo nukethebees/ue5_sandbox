@@ -9,9 +9,9 @@
 
 USTRUCT()
 struct FLayoutSettings {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere)
     EGridLayoutShape shape{EGridLayoutShape::Cuboid};
     UPROPERTY(EditAnywhere)
     ELayoutOffsetMode offset_mode{ELayoutOffsetMode::CentreToCentre};

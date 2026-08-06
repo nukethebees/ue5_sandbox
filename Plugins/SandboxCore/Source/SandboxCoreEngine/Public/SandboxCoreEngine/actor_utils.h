@@ -25,13 +25,17 @@ void get_first_actor(UWorld& world, T*& actor) {
 
 template <typename T>
 auto get_or_create_actor_singleton(UWorld& world) -> T* {
-    if (auto* const actor{get_first_actor<T>(world)}) { return actor; }
+    if (auto* const actor{get_first_actor<T>(world)}) {
+        return actor;
+    }
 
     FActorSpawnParameters spawn_params{};
     auto* const actor{
         world.SpawnActor<T>(FVector::ZeroVector, FRotator::ZeroRotator, spawn_params)};
 
-    if (actor) { actor->SetActorLabel(T::StaticClass()->GetName()); }
+    if (actor) {
+        actor->SetActorLabel(T::StaticClass()->GetName());
+    }
 
     return actor;
 }
@@ -46,7 +50,9 @@ void for_each_instance(TActor& actor, F&& fn) {
 
     for (auto it{TActorIterator<TActor>{world}}; it; ++it) {
         auto* instance{*it};
-        if (!IsValid(instance)) { continue; }
+        if (!IsValid(instance)) {
+            continue;
+        }
 
         fn(*instance);
     }

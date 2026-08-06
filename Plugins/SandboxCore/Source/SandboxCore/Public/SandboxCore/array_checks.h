@@ -38,7 +38,7 @@ consteval auto array_check_pointer_count() -> int32 {
 }
 
 template <detail::ArrayCheckInput... Inputs>
-    requires((detail::array_check_pointer_count<Inputs>() + ...) >= 2)
+    requires ((detail::array_check_pointer_count<Inputs>() + ...) >= 2)
 [[nodiscard]] auto all_num_equal_and_pointers_not_equal(Inputs const&... inputs) -> bool {
     constexpr int32 pointer_capacity{(detail::array_check_pointer_count<Inputs>() + ...)};
     TStaticArray<void const*, pointer_capacity> pointers{};

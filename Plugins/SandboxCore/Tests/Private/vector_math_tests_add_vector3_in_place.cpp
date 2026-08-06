@@ -12,13 +12,8 @@ TEST_CASE("SandboxCore.Math.add_vector3_in_place.Zero") {
     TArray<float> const src_y{0.0f, 0.0f, 0.0f};
     TArray<float> const src_z{0.0f, 0.0f, 0.0f};
 
-    ml::kernel::add_vector3_in_place(dst_x.GetData(),
-                                     dst_y.GetData(),
-                                     dst_z.GetData(),
-                                     src_x.GetData(),
-                                     src_y.GetData(),
-                                     src_z.GetData(),
-                                     dst_x.Num());
+    ml::kernel::add_vector3_in_place(
+        dst_x.GetData(), dst_y.GetData(), dst_z.GetData(), src_x.GetData(), src_y.GetData(), src_z.GetData(), dst_x.Num());
 
     REQUIRE(dst_x == TArray<float>{1.0f, 2.0f, 3.0f});
     REQUIRE(dst_y == TArray<float>{4.0f, 5.0f, 6.0f});
@@ -34,13 +29,8 @@ TEST_CASE("SandboxCore.Math.add_vector3_in_place.One") {
     TArray<float> const src_y{1.0f, 1.0f, 1.0f};
     TArray<float> const src_z{1.0f, 1.0f, 1.0f};
 
-    ml::kernel::add_vector3_in_place(dst_x.GetData(),
-                                     dst_y.GetData(),
-                                     dst_z.GetData(),
-                                     src_x.GetData(),
-                                     src_y.GetData(),
-                                     src_z.GetData(),
-                                     dst_x.Num());
+    ml::kernel::add_vector3_in_place(
+        dst_x.GetData(), dst_y.GetData(), dst_z.GetData(), src_x.GetData(), src_y.GetData(), src_z.GetData(), dst_x.Num());
 
     REQUIRE(dst_x == TArray<float>{2.0f, 3.0f, 4.0f});
     REQUIRE(dst_y == TArray<float>{5.0f, 6.0f, 7.0f});
@@ -56,13 +46,8 @@ TEST_CASE("SandboxCore.Math.add_vector3_in_place.Empty") {
     TArray<float> const src_y{};
     TArray<float> const src_z{};
 
-    ml::kernel::add_vector3_in_place(dst_x.GetData(),
-                                     dst_y.GetData(),
-                                     dst_z.GetData(),
-                                     src_x.GetData(),
-                                     src_y.GetData(),
-                                     src_z.GetData(),
-                                     dst_x.Num());
+    ml::kernel::add_vector3_in_place(
+        dst_x.GetData(), dst_y.GetData(), dst_z.GetData(), src_x.GetData(), src_y.GetData(), src_z.GetData(), dst_x.Num());
 
     REQUIRE(dst_x == TArray<float>{});
     REQUIRE(dst_y == TArray<float>{});

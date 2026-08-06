@@ -81,10 +81,9 @@ TEST_CASE("SandboxCore.TestTimeline.Crossed events run in scheduled and insertio
     FTestTimeline timeline;
     std::vector<int32> calls;
 
-    timeline.at(1.0, [&] { calls.push_back(1); })
-        .at(2.0, [&] { calls.push_back(2); })
-        .at(2.0, [&] { calls.push_back(3); })
-        .at(3.0, [&] { calls.push_back(4); });
+    timeline.at(1.0, [&] { calls.push_back(1); }).at(2.0, [&] { calls.push_back(2); }).at(2.0, [&] { calls.push_back(3); }).at(3.0, [&] {
+        calls.push_back(4);
+    });
 
     timeline.tick(3.0);
 
@@ -162,9 +161,7 @@ TEST_CASE("SandboxCore.TestTimeline.Large time jumps run all events and completi
     FTestTimeline timeline;
     std::vector<int32> calls;
 
-    timeline.at(1.0, [&] { calls.push_back(1); })
-        .then_after(1.0, [&] { calls.push_back(2); })
-        .then_after(1.0, [&] { calls.push_back(3); });
+    timeline.at(1.0, [&] { calls.push_back(1); }).then_after(1.0, [&] { calls.push_back(2); }).then_after(1.0, [&] { calls.push_back(3); });
 
     timeline.tick(100.0);
     timeline.tick(200.0);

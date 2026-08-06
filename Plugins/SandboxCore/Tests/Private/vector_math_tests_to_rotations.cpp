@@ -77,13 +77,7 @@ TEST_CASE("SandboxCore.Math.to_rotations.Pointer") {
     yaws.SetNumUninitialized(xs.Num());
     rolls.SetNumUninitialized(xs.Num());
 
-    ml::kernel::to_rotations(pitches.GetData(),
-                             yaws.GetData(),
-                             rolls.GetData(),
-                             xs.GetData(),
-                             ys.GetData(),
-                             zs.GetData(),
-                             xs.Num());
+    ml::kernel::to_rotations(pitches.GetData(), yaws.GetData(), rolls.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), xs.Num());
 
     auto const result{ml::make_rotatorsf(pitches, yaws, rolls)};
     auto const expected{ml::make_rotatorsf({0.0f, 0.0f, 90.0f, 0.0f, 0.0f, 0.0f, 45.0f},
@@ -101,13 +95,7 @@ TEST_CASE("SandboxCore.Math.to_rotations.PointerEmpty") {
     TArray<float> yaws;
     TArray<float> rolls;
 
-    ml::kernel::to_rotations(pitches.GetData(),
-                             yaws.GetData(),
-                             rolls.GetData(),
-                             xs.GetData(),
-                             ys.GetData(),
-                             zs.GetData(),
-                             xs.Num());
+    ml::kernel::to_rotations(pitches.GetData(), yaws.GetData(), rolls.GetData(), xs.GetData(), ys.GetData(), zs.GetData(), xs.Num());
 
     CHECK(pitches.IsEmpty());
     CHECK(yaws.IsEmpty());

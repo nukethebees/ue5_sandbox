@@ -7,15 +7,12 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction.Vectors3f") {
     FVectors3f out;
     out.set_num_uninitialised(3);
 
-    auto const a{
-        ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {2.0f, 3.0f, 4.0f}})};
-    auto const b{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {4.0f, 6.0f, 3.0f}, {2.0f, 3.0f, 4.0f}})};
+    auto const a{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {2.0f, 3.0f, 4.0f}})};
+    auto const b{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {4.0f, 6.0f, 3.0f}, {2.0f, 3.0f, 4.0f}})};
 
     ml::direction(out, a, b);
 
-    auto const expected{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.6f, 0.8f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.6f, 0.8f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
     CHECK(ml::almost_equal(out, expected));
     CHECK(ml::all_normalised(out.get_const_view().left(2)));
 }
@@ -37,15 +34,13 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction.Views") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.direction.OutputCanBeLargerThanInput") {
-    auto out{
-        ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {9.0f, 9.0f, 9.0f}, {9.0f, 9.0f, 9.0f}})};
+    auto out{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {9.0f, 9.0f, 9.0f}, {9.0f, 9.0f, 9.0f}})};
     auto const a{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}})};
     auto const b{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {1.0f, 3.0f, 3.0f}})};
 
     ml::direction(out, a, b);
 
-    auto const expected{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {9.0f, 9.0f, 9.0f}})};
+    auto const expected{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {9.0f, 9.0f, 9.0f}})};
     CHECK(ml::almost_equal(out, expected));
     CHECK(ml::all_normalised(out.get_const_view().left(2)));
 }
@@ -68,15 +63,12 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Vectors3f") {
     TArray<float> distances;
     distances.SetNumUninitialized(3);
 
-    auto const from{
-        ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
-    auto const to{
-        ml::make_vectors3f(TArray<FVector3f>{{2.0f, 0.0f, 0.0f}, {4.0f, 6.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const from{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const to{ml::make_vectors3f(TArray<FVector3f>{{2.0f, 0.0f, 0.0f}, {4.0f, 6.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
 
     ml::direction_and_distance(out, distances, from, to);
 
-    auto const expected_directions{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.6f, 0.8f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
+    auto const expected_directions{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.6f, 0.8f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
     CHECK(ml::almost_equal(out, expected_directions));
     CHECK(FMath::IsNearlyEqual(distances[0], 2.0f));
     CHECK(FMath::IsNearlyEqual(distances[1], 5.0f));
@@ -84,12 +76,9 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Vectors3f") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Views") {
-    auto out{ml::make_vectors3f(
-        TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
-    auto const from{ml::make_vectors3f(
-        TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})};
-    auto const to{ml::make_vectors3f(
-        TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 3.0f, 0.0f}, {1.0f, 1.0f, 5.0f}})};
+    auto out{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
+    auto const from{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})};
+    auto const to{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 3.0f, 0.0f}, {1.0f, 1.0f, 5.0f}})};
     TArray<float> distances{-1.0f, -1.0f, -1.0f};
 
     ml::direction_and_distance(out.get_view().slice(1, 2),
@@ -118,10 +107,8 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Empty") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Clamps movement without overshoot") {
-    auto locations{ml::make_vectors3f(
-        TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
-    auto const targets{ml::make_vectors3f(
-        TArray<FVector3f>{{10.0f, 0.0f, 0.0f}, {3.0f, 0.0f, 0.0f}})};
+    auto locations{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}})};
+    auto const targets{ml::make_vectors3f(TArray<FVector3f>{{10.0f, 0.0f, 0.0f}, {3.0f, 0.0f, 0.0f}})};
     FVectors3f directions;
     directions.set_num_uninitialised(2);
     TArray<float> move_distances;
@@ -132,8 +119,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.direction_and_distance.Clamps movement wit
     for (int32 i{0}; i < move_distances.Num(); ++i) {
         move_distances[i] = FMath::Min(move_distances[i], max_move_distances[i]);
     }
-    ml::add_scaled_in_place(
-        locations, directions, TConstArrayView<float>{move_distances}, 1.0f);
+    ml::add_scaled_in_place(locations, directions, TConstArrayView<float>{move_distances}, 1.0f);
 
     CHECK(ml::get_vector3f(locations, 0) == FVector3f(2.0f, 0.0f, 0.0f));
     CHECK(ml::get_vector3f(locations, 1) == FVector3f(3.0f, 0.0f, 0.0f));

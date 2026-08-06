@@ -4,11 +4,9 @@
 
 #include "Modules/ModuleManager.h"
 
-class FSandboxMaterialExpressionsEditorModule : public IModuleInterface
-{
-public:
-
-	/** IModuleInterface implementation */
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
+class FSandboxMaterialExpressionsEditorModule : public IModuleInterface {
+  public:
+    /** IModuleInterface implementation */
+    virtual void StartupModule() override;
+    virtual void ShutdownModule() override;
 };

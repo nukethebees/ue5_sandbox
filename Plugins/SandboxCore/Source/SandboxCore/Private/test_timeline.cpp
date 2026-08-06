@@ -5,6 +5,8 @@ void FTestTimeline::tick(time_type const current_time) {
         auto function{std::move(events_.front().function)};
         events_.pop();
 
-        if (function) { function(); }
+        if (function) {
+            function();
+        }
     }
 }

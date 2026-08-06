@@ -36,5 +36,5 @@ namespace ml {
 auto SANDBOXCOREENGINE_API copy_collision_settings(UPrimitiveComponent const& component)
     -> FCollisionSettings;
 void SANDBOXCOREENGINE_API apply_collision_settings(UPrimitiveComponent& component,
-                                              FCollisionSettings const& settings);
+                                                    FCollisionSettings const& settings);
 }

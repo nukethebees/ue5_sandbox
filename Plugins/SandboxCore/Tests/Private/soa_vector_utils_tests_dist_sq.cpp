@@ -20,10 +20,8 @@ TEST_CASE("SandboxCore.SoaVectorUtils.dist_sq.Components") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.dist_and_dist_sq.Vectors3f") {
-    auto const from{ml::make_vectors3f(
-        TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
-    auto const to{ml::make_vectors3f(
-        TArray<FVector3f>{{3.0f, 4.0f, 0.0f}, {3.0f, 5.0f, 9.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const from{ml::make_vectors3f(TArray<FVector3f>{{0.0f, 0.0f, 0.0f}, {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const to{ml::make_vectors3f(TArray<FVector3f>{{3.0f, 4.0f, 0.0f}, {3.0f, 5.0f, 9.0f}, {4.0f, 5.0f, 6.0f}})};
     TArray<float> distances;
     distances.SetNumUninitialized(3);
     TArray<float> distances_sq;
@@ -38,10 +36,8 @@ TEST_CASE("SandboxCore.SoaVectorUtils.dist_and_dist_sq.Vectors3f") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.dist_and_dist_sq.Views") {
-    auto const from{ml::make_vectors3f(
-        TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})};
-    auto const to{ml::make_vectors3f(
-        TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 3.0f, 4.0f}, {3.0f, 4.0f, 7.0f}})};
+    auto const from{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})};
+    auto const to{ml::make_vectors3f(TArray<FVector3f>{{9.0f, 9.0f, 9.0f}, {0.0f, 3.0f, 4.0f}, {3.0f, 4.0f, 7.0f}})};
     TArray<float> distances{-1.0f, -1.0f, -1.0f};
     TArray<float> distances_sq{-1.0f, -1.0f, -1.0f};
     TArray<float> const expected_distances{-1.0f, 5.0f, 7.0f};

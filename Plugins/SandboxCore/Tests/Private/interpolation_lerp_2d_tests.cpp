@@ -3,8 +3,7 @@
 #include "CoreMinimal.h"
 #include "TestHarness.h"
 
-TEST_CASE("SandboxCore.Math.Lerp2D.View writes interpolated values",
-          "[SandboxCore][Math][Lerp2D]") {
+TEST_CASE("SandboxCore.Math.Lerp2D.View writes interpolated values", "[SandboxCore][Math][Lerp2D]") {
     TArray<float> const from_x{0.0f, 10.0f, -10.0f, 100.0f};
     TArray<float> const from_y{5.0f, 20.0f, -20.0f, 200.0f};
 
@@ -46,8 +45,7 @@ TEST_CASE("SandboxCore.Math.Lerp2D.View supports empty arrays", "[SandboxCore][M
     CHECK(out_y.Num() == 0);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp2D.Scalar writes interpolated values",
-          "[SandboxCore][Math][Lerp2D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp2D.Scalar writes interpolated values", "[SandboxCore][Math][Lerp2D][Scalar]") {
     TArray<float> const from_x{0.0f, 10.0f, -10.0f};
     TArray<float> const from_y{100.0f, 200.0f, 300.0f};
 
@@ -72,8 +70,7 @@ TEST_CASE("SandboxCore.Math.Lerp2D.Scalar writes interpolated values",
     CHECK(out_y[2] == 450.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha zero",
-          "[SandboxCore][Math][Lerp2D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha zero", "[SandboxCore][Math][Lerp2D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
 
@@ -96,8 +93,7 @@ TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha zero",
     CHECK(out_y[1] == 4.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha one",
-          "[SandboxCore][Math][Lerp2D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha one", "[SandboxCore][Math][Lerp2D][Scalar]") {
     TArray<float> const from_x{1.0f, 2.0f};
     TArray<float> const from_y{3.0f, 4.0f};
 
@@ -120,8 +116,7 @@ TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports alpha one",
     CHECK(out_y[1] == 40.0f);
 }
 
-TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports empty arrays",
-          "[SandboxCore][Math][Lerp2D][Scalar]") {
+TEST_CASE("SandboxCore.Math.Lerp2D.Scalar supports empty arrays", "[SandboxCore][Math][Lerp2D][Scalar]") {
     TArray<float> const from_x;
     TArray<float> const from_y;
     TArray<float> const to_x;

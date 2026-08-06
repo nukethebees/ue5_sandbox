@@ -67,14 +67,10 @@ TEST_CASE("SandboxCore.Transforms.make_transforms.View") {
 
     auto const n{expected_locations.Num()};
 
-    auto const locations{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}})};
-    auto const rotations{ml::make_rotatorsf({10.0f, 40.0f, 70.0f},
-                                            {20.0f, 50.0f, 80.0f},
-                                            {30.0f, 60.0f, 90.0f})};
+    auto const locations{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}})};
+    auto const rotations{ml::make_rotatorsf({10.0f, 40.0f, 70.0f}, {20.0f, 50.0f, 80.0f}, {30.0f, 60.0f, 90.0f})};
 
-    auto const result{ml::make_transforms(locations.get_const_view().right(2),
-                                          rotations.get_const_view().right(2))};
+    auto const result{ml::make_transforms(locations.get_const_view().right(2), rotations.get_const_view().right(2))};
 
     CHECK(result.Num() == n);
 

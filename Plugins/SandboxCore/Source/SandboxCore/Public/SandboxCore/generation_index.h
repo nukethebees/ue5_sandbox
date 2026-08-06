@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 
-
 struct SANDBOXCORE_API FGenerationIndex {
 
     static constexpr int32 INDEX_NONE{-1};

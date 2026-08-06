@@ -4,7 +4,7 @@
 
 namespace ml::kernel {
 #define ML_EXTERN_FN(T)                                                      \
-    extern template SANDBOXCORE_API void lerp_1d<T>(T* RESTRICT out,         \
+    extern template SANDBOXCORE_API void lerp_1d<T>(T * RESTRICT out,        \
                                                     T const* RESTRICT from,  \
                                                     T const* RESTRICT to,    \
                                                     T const* RESTRICT alpha, \

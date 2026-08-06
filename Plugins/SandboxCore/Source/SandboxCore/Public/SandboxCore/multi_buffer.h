@@ -49,7 +49,9 @@ class MultiBuffer {
 
         ++next_idx;
 
-        if (next_idx == buffer_count) { next_idx = 0; }
+        if (next_idx == buffer_count) {
+            next_idx = 0;
+        }
     }
   private:
     TStaticArray<value_type, buffer_count> buffers{};

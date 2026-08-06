@@ -26,7 +26,13 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamEmpty") {
 }
 
 TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.Vectors") {
-    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 1.0f}})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 0.0f, 0.0f},
+                                                            {0.0f, 1.0f, 0.0f},
+                                                            {0.0f, 0.0f, 1.0f},
+                                                            {1.0f, 1.0f, 0.0f},
+                                                            {-1.0f, 0.0f, 0.0f},
+                                                            {0.0f, -1.0f, 0.0f},
+                                                            {1.0f, 0.0f, 1.0f}})};
 
     auto const result{ml::to_rotatorsf(vectors)};
     auto const expected{ml::make_rotatorsf({0.0f, 0.0f, 90.0f, 0.0f, 0.0f, 0.0f, 45.0f},
@@ -41,9 +47,7 @@ TEST_CASE("SandboxCore.SoaVectorUtils.to_rotatorsf.OutParamVectors") {
     auto result{ml::make_rotatorsf({9.0f}, {9.0f}, {9.0f})};
 
     ml::to_rotatorsf(result, vectors);
-    auto const expected{ml::make_rotatorsf({0.0f, 0.0f, 0.0f},
-                                           {0.0f, 90.0f, -90.0f},
-                                           {0.0f, 0.0f, 0.0f})};
+    auto const expected{ml::make_rotatorsf({0.0f, 0.0f, 0.0f}, {0.0f, 90.0f, -90.0f}, {0.0f, 0.0f, 0.0f})};
 
     CHECK(result.num() == 3);
     CHECK(ml::almost_equal(result, expected));

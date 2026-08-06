@@ -26,9 +26,13 @@ inline auto SANDBOXCORE_API almost_equal(FRotatorsf const& a,
                                          FRotatorsf const& b,
                                          float const tolerance = KINDA_SMALL_NUMBER) -> bool {
     auto const n{a.num()};
-    if (n != b.num()) { return false; }
+    if (n != b.num()) {
+        return false;
+    }
 
-    if (n == 0) { return true; }
+    if (n == 0) {
+        return true;
+    }
 
     return ml::kernel::almost_equal(a.pitches.GetData(), b.pitches.GetData(), n, tolerance) &&
            ml::kernel::almost_equal(a.yaws.GetData(), b.yaws.GetData(), n, tolerance) &&

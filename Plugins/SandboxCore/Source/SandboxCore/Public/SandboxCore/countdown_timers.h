@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 
-
 struct SANDBOXCORE_API FCountdownTimers {
 
     using View = TArrayView<float>;

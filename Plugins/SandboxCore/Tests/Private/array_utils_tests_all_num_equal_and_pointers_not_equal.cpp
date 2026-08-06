@@ -91,8 +91,7 @@ TEST_CASE("SandboxCore.Array.all_num_equal_and_pointers_not_equal.Overlapping of
 }
 
 TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Single vector") {
-    auto const vectors{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
 
     CHECK(ml::all_num_equal_and_pointers_not_equal(vectors));
 }
@@ -113,8 +112,7 @@ TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Aliased 
 
 TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Mixed inputs") {
     TArray<float> const output{0.0f, 0.0f};
-    auto const vectors{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
 
     CHECK(ml::all_num_equal_and_pointers_not_equal(output, vectors));
 }
@@ -137,8 +135,7 @@ TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Internal
 }
 
 TEST_CASE("SandboxCore.ArrayChecks.all_num_equal_and_pointers_not_equal.Mixed alias") {
-    auto const vectors{
-        ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
+    auto const vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})};
     TConstArrayView<float> const output{vectors.xs};
 
     CHECK_FALSE(ml::all_num_equal_and_pointers_not_equal(output, vectors));

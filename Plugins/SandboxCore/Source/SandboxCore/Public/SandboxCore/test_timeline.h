@@ -42,7 +42,6 @@ class SANDBOXCORE_API FTestTimeline {
     [[nodiscard]] bool is_empty() const noexcept { return events_.empty(); }
     [[nodiscard]] bool is_finished() const noexcept { return is_empty(); }
     [[nodiscard]] std::size_t pending_event_count() const noexcept { return events_.size(); }
-
   private:
     struct FEvent {
         time_type time;

@@ -80,10 +80,8 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueue.Supports non-trivial movable values") {
     ml::LockFreeMPSCQueue<std::unique_ptr<std::int32_t>> queue{};
     REQUIRE(queue.init(2) == ml::ELockFreeMPSCQueueInitResult::Success);
 
-    REQUIRE(queue.enqueue(std::make_unique<std::int32_t>(11)) ==
-            ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    REQUIRE(queue.enqueue(std::make_unique<std::int32_t>(22)) ==
-            ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    REQUIRE(queue.enqueue(std::make_unique<std::int32_t>(11)) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    REQUIRE(queue.enqueue(std::make_unique<std::int32_t>(22)) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
 
     auto const values{queue.swap_and_consume()};
     REQUIRE(values.size() == 2);

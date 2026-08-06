@@ -54,12 +54,9 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Consumes FIFO batches and reuses cap
     ml::LockFreeMPSCQueueSoA<void, std::int32_t, float, FVector> queue{};
     REQUIRE(queue.init(2) == ml::ELockFreeMPSCQueueInitResult::Success);
 
-    CHECK(queue.enqueue(10, 1.5f, FVector{1.0, 2.0, 3.0}) ==
-          ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    CHECK(queue.enqueue(20, 2.5f, FVector{4.0, 5.0, 6.0}) ==
-          ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    CHECK(queue.enqueue(30, 3.5f, FVector::ZeroVector) ==
-          ml::ELockFreeMPSCQueueEnqueueResult::Full);
+    CHECK(queue.enqueue(10, 1.5f, FVector{1.0, 2.0, 3.0}) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    CHECK(queue.enqueue(20, 2.5f, FVector{4.0, 5.0, 6.0}) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    CHECK(queue.enqueue(30, 3.5f, FVector::ZeroVector) == ml::ELockFreeMPSCQueueEnqueueResult::Full);
 
     auto const [integers, floats, vectors]{queue.swap_and_consume()};
     REQUIRE(integers.size() == 2);
@@ -72,8 +69,7 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Consumes FIFO batches and reuses cap
     CHECK(vectors[0] == FVector(1.0, 2.0, 3.0));
     CHECK(vectors[1] == FVector(4.0, 5.0, 6.0));
 
-    CHECK(queue.enqueue(30, 3.5f, FVector::ZeroVector) ==
-          ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    CHECK(queue.enqueue(30, 3.5f, FVector::ZeroVector) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
     auto const [next_integers, next_floats, next_vectors]{queue.swap_and_consume()};
     REQUIRE(next_integers.size() == 1);
     CHECK(next_integers[0] == 30);
@@ -104,10 +100,8 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Supports custom views and SwapAndVis
 TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Custom views support Unreal value types") {
     ml::LockFreeMPSCQueueSoA<FIntVectorQueueView, std::int32_t, FVector> queue{};
     REQUIRE(queue.init(2) == ml::ELockFreeMPSCQueueInitResult::Success);
-    REQUIRE(queue.enqueue(5, FVector{1.0, 2.0, 3.0}) ==
-            ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    REQUIRE(queue.enqueue(10, FVector{4.0, 5.0, 6.0}) ==
-            ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    REQUIRE(queue.enqueue(5, FVector{1.0, 2.0, 3.0}) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    REQUIRE(queue.enqueue(10, FVector{4.0, 5.0, 6.0}) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
 
     auto const view{queue.swap_and_consume()};
     REQUIRE(view.integers.size() == 2);
@@ -136,8 +130,7 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Accepts multiple concurrent producer
             start_barrier.arrive_and_wait();
             for (std::int32_t i{0}; i < values_per_producer; ++i) {
                 auto const value{producer_index * values_per_producer + i};
-                if (queue.enqueue(value, value + value_count) !=
-                    ml::ELockFreeMPSCQueueEnqueueResult::Success) {
+                if (queue.enqueue(value, value + value_count) != ml::ELockFreeMPSCQueueEnqueueResult::Success) {
                     ++enqueue_failures;
                 }
             }

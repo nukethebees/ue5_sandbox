@@ -33,8 +33,7 @@ TEST_CASE("SandboxCore.Math.shortest_signed_angle_delta_degrees.wraps across zer
     CHECK(ml::shortest_signed_angle_delta_degrees(1.0f, 359.0f) == -2.0f);
 }
 
-TEST_CASE("SandboxCore.Math.shortest_signed_angle_delta_degrees.handles negative angles",
-          "[SandboxCore][Math][ShortestSignedAngleDelta]") {
+TEST_CASE("SandboxCore.Math.shortest_signed_angle_delta_degrees.handles negative angles", "[SandboxCore][Math][ShortestSignedAngleDelta]") {
     CHECK(ml::shortest_signed_angle_delta_degrees(-10.0f, 10.0f) == 20.0f);
     CHECK(ml::shortest_signed_angle_delta_degrees(10.0f, -10.0f) == -20.0f);
 
@@ -51,9 +50,8 @@ TEST_CASE("SandboxCore.Math.shortest_signed_angle_delta_degrees.handles angles o
     CHECK(ml::shortest_signed_angle_delta_degrees(-720.0f, -90.0f) == -90.0f);
 }
 
-TEST_CASE(
-    "SandboxCore.Math.shortest_signed_angle_delta_degrees.normalises exact half-turns to negative half-turn",
-    "[SandboxCore][Math][ShortestSignedAngleDelta]") {
+TEST_CASE("SandboxCore.Math.shortest_signed_angle_delta_degrees.normalises exact half-turns to negative half-turn",
+          "[SandboxCore][Math][ShortestSignedAngleDelta]") {
     CHECK(ml::shortest_signed_angle_delta_degrees(0.0f, 180.0f) == -180.0f);
     CHECK(ml::shortest_signed_angle_delta_degrees(180.0f, 0.0f) == -180.0f);
 

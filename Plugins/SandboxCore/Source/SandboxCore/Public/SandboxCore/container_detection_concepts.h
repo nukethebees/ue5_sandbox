@@ -95,14 +95,12 @@ concept SupportsUnrealArrayView = requires(T& value) {
 };
 
 template <typename T>
-concept HasGetView = requires(T& value,
-                              T const& const_value,
-                              int32 const offset,
-                              int32 const count) {
-    { value.get_view(offset, count) };
-    { const_value.get_view(offset, count) };
-    { const_value.get_const_view(offset, count) };
-};
+concept HasGetView =
+    requires(T& value, T const& const_value, int32 const offset, int32 const count) {
+        { value.get_view(offset, count) };
+        { const_value.get_view(offset, count) };
+        { const_value.get_const_view(offset, count) };
+    };
 
 template <typename T>
 concept HasUnrealAppend = requires(T& dst, T const& src) {
