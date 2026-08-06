@@ -64,8 +64,9 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))      \
     NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))        \
     NON_FINAL(X(VectorsView, locations))                            \
-    NON_FINAL(X(VectorsView, aim_directions))                       \
     NON_FINAL(X(VectorsView, desired_move_locations))               \
+    NON_FINAL(X(VectorsView, aim_directions))                       \
+    NON_FINAL(X(VectorsView, desired_aiming_directions))            \
     NON_FINAL(X(VectorsView, movement_directions))                  \
     NON_FINAL(X(TView<float>, move_distances))                      \
     NON_FINAL(X(TView<float>, speeds))                              \
@@ -79,7 +80,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(VectorsView, target_velocities))                    \
     NON_FINAL(X(VectorsView, target_directions))                    \
     NON_FINAL(X(TView<float>, intercept_times))                     \
-    NON_FINAL(X(VectorsView, desired_aiming_directions))            \
     NON_FINAL(X(TView<float>, target_distance_sq))                  \
     NON_FINAL(X(TView<float>, target_distances))                    \
     X(TView<float>, target_radii)
@@ -104,14 +104,19 @@ struct EntityData : public ml::FSoAArrayMixin {
 
     TArray<FRegistryEntityHandle> entity_handles;
     TArray<ETestCapitalShipFightersTask> tasks;
+
     FVectors3f locations;
-    FVectors3f aim_directions;
     FVectors3f desired_move_locations;
+    FVectors3f aim_directions;
+    FVectors3f desired_aiming_directions;
+
     FVectors3f movement_directions;
     TArray<float> move_distances;
     TArray<float> speeds;
+
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
+
     FTickCountdown8 awareness_scan_countdowns;
     FTickCountdown16 attack_reposition_countdowns;
     FCountdownTimers attack_cooldowns;
@@ -121,7 +126,6 @@ struct EntityData : public ml::FSoAArrayMixin {
     FVectors3f target_velocities;
     FVectors3f target_directions;
     TArray<float> intercept_times;
-    FVectors3f desired_aiming_directions;
     TArray<float> target_distance_sq;
     TArray<float> target_distances;
     TArray<float> target_radii;
@@ -130,8 +134,9 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(entity_handles))               \
     NON_FINAL(STAMPER(tasks))                        \
     NON_FINAL(STAMPER(locations))                    \
-    NON_FINAL(STAMPER(aim_directions))               \
     NON_FINAL(STAMPER(desired_move_locations))       \
+    NON_FINAL(STAMPER(aim_directions))               \
+    NON_FINAL(STAMPER(desired_aiming_directions))    \
     NON_FINAL(STAMPER(movement_directions))          \
     NON_FINAL(STAMPER(move_distances))               \
     NON_FINAL(STAMPER(speeds))                       \
@@ -145,7 +150,6 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(target_velocities))            \
     NON_FINAL(STAMPER(target_directions))            \
     NON_FINAL(STAMPER(intercept_times))              \
-    NON_FINAL(STAMPER(desired_aiming_directions))    \
     NON_FINAL(STAMPER(target_distance_sq))           \
     NON_FINAL(STAMPER(target_distances))             \
     STAMPER(target_radii)
