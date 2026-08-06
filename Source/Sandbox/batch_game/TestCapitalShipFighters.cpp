@@ -48,7 +48,7 @@ auto find_appropriate_fire_point(UWorld& world,
                                  FVector3f const target_location,
                                  FVector3f const reference_location,
                                  FVector3d const fire_point_offset,
-                                 FVector3d const target_aim_point,
+                                 float const trace_end_offset,
                                  float const desired_attack_distance) -> TOptional<FVector3f> {
     struct Offset {
         float X;
@@ -71,6 +71,7 @@ auto find_appropriate_fire_point(UWorld& world,
 
     auto const base_direction{(reference_location - target_location).GetSafeNormal()};
     auto const base_candidate_rotation{base_direction.ToOrientationRotator()};
+    FVector3d const trace_target{target_location};
     for (auto const angle_offset : fire_point_angle_offsets) {
         auto candidate_rotation{base_candidate_rotation};
         candidate_rotation.Yaw += angle_offset.X;
@@ -80,10 +81,12 @@ auto find_appropriate_fire_point(UWorld& world,
         auto const candidate_location{target_location +
                                       candidate_direction * desired_attack_distance};
         auto const trace_start{FVector3d{candidate_location} + fire_point_offset};
+        auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
+        auto const trace_end{trace_target - trace_direction * trace_end_offset};
 
         FHitResult hit{};
-        auto const did_hit{world.LineTraceSingleByChannel(
-            hit, trace_start, target_aim_point, ECC_Visibility, params)};
+        auto const did_hit{
+            world.LineTraceSingleByChannel(hit, trace_start, trace_end, ECC_Visibility, params)};
         if (!did_hit) {
             return candidate_location;
         }
@@ -951,7 +954,8 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             auto const start{ship_location + fire_point_offset};
 
             // Trace to near the outside of the enemy
-            auto const end_offset{direction * (los_check_buffer + data.target_radii[ship_index])};
+            auto const trace_end_offset{los_check_buffer + data.target_radii[ship_index]};
+            auto const end_offset{direction * trace_end_offset};
             auto const end{ml::get_vector3d(data.target_locations, ship_index) - end_offset};
 
             auto const did_hit{
@@ -977,7 +981,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
                                                 ml::get_vector3f(data.target_locations, ship_index),
                                                 desired_move_location,
                                                 fire_point_offset,
-                                                end,
+                                                trace_end_offset,
                                                 desired_attack_distance)};
                 if (candidate.IsSet()) {
                     ml::assign(data.desired_move_locations, ship_index, *candidate);
