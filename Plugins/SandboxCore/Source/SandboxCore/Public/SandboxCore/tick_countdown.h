@@ -5,6 +5,7 @@
 #include <concepts>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 template <std::signed_integral CounterType>
 class TTickCountdown {
@@ -35,6 +36,13 @@ class TTickCountdown {
         {
             check_index(index);
             return countdown_->try_consume(offset_ + index);
+        }
+
+        void restart_counter(size_type const index) const noexcept
+            requires (!std::is_const_v<T>)
+        {
+            check_index(index);
+            countdown_->restart_counter(offset_ + index);
         }
 
         void set_counter(size_type const index, counter_type const value) const noexcept
@@ -104,13 +112,24 @@ class TTickCountdown {
         return value <= 0;
     }
 
+    template <std::integral TickType>
+    [[nodiscard]] static constexpr auto tick_can_fit(TickType const value) noexcept -> bool {
+        if constexpr (std::signed_integral<TickType>) {
+            if (value < 0) {
+                return false;
+            }
+        }
+
+        return std::in_range<counter_type>(value);
+    }
+
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
         auto& counter{counters_[index]};
         if (!is_ready(counter)) {
             return false;
         }
 
-        counter = tick_value_;
+        restart_counter(index);
         return true;
     }
 
@@ -157,10 +176,13 @@ class TTickCountdown {
 
     [[nodiscard]] auto tick_value() const noexcept -> counter_type { return tick_value_; }
 
-    void set_tick_value(counter_type const value) noexcept {
-        check(value >= 0);
-        tick_value_ = value;
+    template <std::integral TickType>
+    void set_tick_value(TickType const value) noexcept {
+        check(tick_can_fit(value));
+        tick_value_ = static_cast<counter_type>(value);
     }
+
+    void restart_counter(size_type const index) noexcept { counters_[index] = tick_value_; }
 
     void set_counter(size_type const index, counter_type const value) noexcept {
         check(value >= 0);

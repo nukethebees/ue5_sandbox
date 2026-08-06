@@ -11,7 +11,9 @@
 
 namespace {
 template <typename T>
-void set_counters(T& countdown, std::initializer_list<typename std::remove_cvref_t<T>::counter_type> const values) {
+void set_counters(
+    T& countdown,
+    std::initializer_list<typename std::remove_cvref_t<T>::counter_type> const values) {
     check(countdown.num() == static_cast<int32>(values.size()));
 
     int32 index{0};
@@ -24,7 +26,15 @@ template <typename T>
 concept SupportsTryConsume = requires(T& value) { value.try_consume(0); };
 
 template <typename T>
-concept SupportsSetCounter = requires(T& value) { value.set_counter(0, typename T::counter_type{0}); };
+concept SupportsRestartCounter = requires(T& value) {
+    value.restart_counter(0);
+    value.restart_counter(0, typename T::counter_type{0});
+};
+
+template <typename T>
+concept SupportsSetCounter = requires(T& value) {
+    value.set_counter(0, typename T::counter_type{0});
+};
 
 template <typename T>
 concept SupportsZeroCounter = requires(T& value) { value.zero_counter(0); };
@@ -43,9 +53,11 @@ static_assert(ml::SupportsSetNum<FTickCountdown16>);
 static_assert(ml::SupportsCopyElement<FTickCountdown16>);
 static_assert(ml::SupportsGetView<FTickCountdown16>);
 static_assert(SupportsTryConsume<FTickCountdown16::View>);
+static_assert(SupportsRestartCounter<FTickCountdown16::View>);
 static_assert(SupportsSetCounter<FTickCountdown16::View>);
 static_assert(SupportsZeroCounter<FTickCountdown16::View>);
 static_assert(!SupportsTryConsume<FTickCountdown16::ConstView>);
+static_assert(!SupportsRestartCounter<FTickCountdown16::ConstView>);
 static_assert(!SupportsSetCounter<FTickCountdown16::ConstView>);
 static_assert(!SupportsZeroCounter<FTickCountdown16::ConstView>);
 static_assert(std::is_same_v<decltype(std::declval<FTickCountdown16&>().counters()), TConstArrayView<FTickCountdown16::counter_type>>);
@@ -87,6 +99,23 @@ TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterValue") {
     CHECK_FALSE(FTickCountdown16::is_ready(1));
     CHECK(FTickCountdown16::is_ready(0));
     CHECK(FTickCountdown16::is_ready(-1));
+}
+
+TEST_CASE("SandboxCore.TickCountdown.TickCanFitHandlesDifferentIntegralTypes") {
+    CHECK(FTickCountdown8::tick_can_fit(int64{0}));
+    CHECK(FTickCountdown8::tick_can_fit(uint64{127}));
+    CHECK_FALSE(FTickCountdown8::tick_can_fit(int64{-1}));
+    CHECK_FALSE(FTickCountdown8::tick_can_fit(uint64{128}));
+    CHECK(FTickCountdown16::tick_can_fit(uint64{32767}));
+    CHECK_FALSE(FTickCountdown16::tick_can_fit(uint64{32768}));
+}
+
+TEST_CASE("SandboxCore.TickCountdown.SetTickValueAcceptsDifferentIntegralTypes") {
+    FTickCountdown16 countdown;
+
+    countdown.set_tick_value(uint64{32767});
+
+    CHECK(countdown.tick_value() == 32767);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.ConsumeIndexResetsOnlyReadyCounter") {
@@ -148,6 +177,18 @@ TEST_CASE("SandboxCore.TickCountdown.SetAndZeroCounter") {
 
     CHECK(countdown.counters()[0] == 3);
     CHECK(countdown.counters()[1] == 0);
+}
+
+TEST_CASE("SandboxCore.TickCountdown.RestartCounterUsesDefaultOrExplicitTickValue") {
+    FTickCountdown16 countdown{2, 5};
+    countdown.zero_counter(0);
+    countdown.zero_counter(1);
+
+    countdown.restart_counter(0);
+    countdown.restart_counter(1, 3);
+
+    CHECK(countdown.counters()[0] == 5);
+    CHECK(countdown.counters()[1] == 3);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.Int8ClampsNegativeCountersEvery64Ticks") {
@@ -283,6 +324,9 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     CHECK(countdown.counters()[1] == 2);
     CHECK(view[1] == 2);
 
+    view.restart_counter(1);
+    CHECK(view[1] == countdown.tick_value());
+
     view.zero_counter(2);
     CHECK(view.try_consume(2));
     CHECK(countdown.counters()[2] == countdown.tick_value());
@@ -290,5 +334,5 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     auto const& const_countdown{countdown};
     auto const_view{const_countdown.get_view()};
     static_assert(std::is_same_v<decltype(const_view), FTickCountdown16::ConstView>);
-    CHECK(const_view[1] == 2);
+    CHECK(const_view[1] == countdown.tick_value());
 }

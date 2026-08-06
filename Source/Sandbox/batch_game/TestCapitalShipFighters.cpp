@@ -28,8 +28,6 @@
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 
-#include <limits>
-
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 
 namespace {
@@ -74,49 +72,24 @@ void ATestCapitalShipFighters::begin_play() {
 
     auto const awareness_scan_tick_period{
         simulation_clock.frequency_to_tick_period(actor_config->awareness_scan_frequency)};
-    checkf(awareness_scan_tick_period <=
-               static_cast<decltype(awareness_scan_tick_period)>(
-                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
-           TEXT("Awareness scan tick period does not fit in FTickCountdown16::counter_type"));
-
-    auto const awareness_scan_tick_value{
-        static_cast<FTickCountdown16::counter_type>(awareness_scan_tick_period)};
-    entity_buffers.for_each([awareness_scan_tick_value](auto& data) {
-        data.awareness_scan_countdowns.set_tick_value(awareness_scan_tick_value);
+    entity_buffers.for_each([=](auto& data) {
+        data.awareness_scan_countdowns.set_tick_value(awareness_scan_tick_period);
     });
 
     auto const attack_reposition_tick_period{
         simulation_clock.frequency_to_tick_period(actor_config->attack_reposition_frequency)};
-    checkf(attack_reposition_tick_period <=
-               static_cast<decltype(attack_reposition_tick_period)>(
-                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
-           TEXT("Attack reposition tick period does not fit in FTickCountdown16::counter_type"));
-
-    auto const attack_reposition_tick_value{
-        static_cast<FTickCountdown16::counter_type>(attack_reposition_tick_period)};
-    entity_buffers.for_each([attack_reposition_tick_value](auto& data) {
-        data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_value);
+    entity_buffers.for_each([=](auto& data) {
+        data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_period);
     });
 
     auto const fire_cooldown_tick_period{
         simulation_clock.duration_to_tick_period(actor_config->fire_cooldown)};
-    checkf(fire_cooldown_tick_period <=
-               static_cast<decltype(fire_cooldown_tick_period)>(
-                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
-           TEXT("Fire cooldown does not fit in FTickCountdown16::counter_type"));
-
-    auto const fire_cooldown_tick_value{
-        static_cast<FTickCountdown16::counter_type>(fire_cooldown_tick_period)};
-    entity_buffers.for_each([fire_cooldown_tick_value](auto& data) {
-        data.attack_cooldowns.set_tick_value(fire_cooldown_tick_value);
-    });
+    entity_buffers.for_each(
+        [=](auto& data) { data.attack_cooldowns.set_tick_value(fire_cooldown_tick_period); });
 
     auto const attack_retry_cooldown_tick_period{
         simulation_clock.duration_to_tick_period(actor_config->attack_retry_cooldown)};
-    checkf(attack_retry_cooldown_tick_period <=
-               static_cast<decltype(attack_retry_cooldown_tick_period)>(
-                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
-           TEXT("Attack retry cooldown does not fit in FTickCountdown16::counter_type"));
+    check(FTickCountdown16::tick_can_fit(attack_retry_cooldown_tick_period));
     attack_retry_cooldown_tick_value =
         static_cast<FTickCountdown16::counter_type>(attack_retry_cooldown_tick_period);
 
@@ -839,7 +812,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
 
-        (void)data.attack_cooldowns.try_consume(ship_index);
+        data.attack_cooldowns.restart_counter(ship_index);
     }
 
     new_lasers.set_damages(laser_damage);
