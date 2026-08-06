@@ -218,9 +218,13 @@ void ATestCapitalShipFighters::move(float const dt) {
                 continue;
             }
 
-            auto const target_distance{attack_view.target_distances[i]};
-            if ((target_distance >= inner_attack_distance) &&
-                (target_distance <= outer_attack_distance)) {
+            auto const target_to_move_distance{
+                FVector3f::Dist(ml::get_vector3f(attack_view.target_locations, i),
+                                ml::get_vector3f(attack_view.desired_move_locations, i))};
+            auto const is_valid_attack_position{
+                (target_to_move_distance >= inner_attack_distance) &&
+                (target_to_move_distance <= outer_attack_distance)};
+            if (is_valid_attack_position) {
                 continue;
             }
 
@@ -236,10 +240,8 @@ void ATestCapitalShipFighters::move(float const dt) {
     }
 
     // Update movement direction and remaining distance to the movement destination
-    ml::direction_and_distance(data.movement_directions,
-                               data.move_distances,
-                               data.locations,
-                               data.desired_move_locations);
+    ml::direction_and_distance(
+        data.movement_directions, data.move_distances, data.locations, data.desired_move_locations);
 
     // Look phase
     if (do_move) {
