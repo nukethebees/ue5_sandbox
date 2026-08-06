@@ -73,10 +73,13 @@ void destroy_proxy_actors(UWorld& world) {
 }
 
 template <typename... TProxies>
-void bind_and_destroy_proxy_actors(UWorld& world, ATestEntityRegistry const& entity_registry) {
+void bind_and_destroy_proxy_actors(UWorld& world,
+                                   ATestEntityRegistry const& entity_registry,
+                                   ATestMissionManager& mission_manager) {
     FProxyEntityHandleMap proxy_handles;
     (add_proxy_handles<TProxies>(world, entity_registry, proxy_handles), ...);
 
+    mission_manager.on_proxy_handles_bound(proxy_handles);
     ATestBatchOrchestrator::on_proxy_handles_bound.Broadcast(proxy_handles);
 
     (destroy_proxy_actors<TProxies>(world), ...);
@@ -284,7 +287,8 @@ void ATestBatchOrchestrator::begin_play() {
     check(world);
     bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
                                   ATestStaticTurretsProxy,
-                                  ATestTubeSpinnerProxy>(*world, *entity_registry);
+                                  ATestTubeSpinnerProxy>(
+        *world, *entity_registry, *mission_manager);
 
     if (player_ship) {
         mission_manager->update_player_handles();

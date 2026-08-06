@@ -9,4 +9,5 @@ enum class ETestMissionFailReason : uint8 {
     None,
     PlayerKilled,
     TimeElapsed,
+    DefenceObjectiveFailed,
 };

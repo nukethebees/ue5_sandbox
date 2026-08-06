@@ -20,6 +20,16 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManag
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerUpdate, ATestMissionManager const&);
 
+USTRUCT()
+struct FTestMissionStartupData {
+    GENERATED_BODY()
+
+    void prune_invalid_actors();
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TArray<TObjectPtr<AActor>> entities_must_survive;
+};
+
 UCLASS()
 class ATestMissionManager : public AActor {
     GENERATED_BODY()
@@ -29,6 +39,8 @@ class ATestMissionManager : public AActor {
     void mission_tick();
 
     void update_player_handles();
+    void on_proxy_handles_bound(
+        TMap<AActor const*, FRegistryEntityHandle> const& proxy_handles);
 
     // Accessors
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
@@ -59,15 +71,18 @@ class ATestMissionManager : public AActor {
     FOnMissionManagerUpdate on_mission_update;
   private:
     void set_mission_mode(ETestMissionMode const new_mode);
-    void set_mission_state(ETestMissionState const new_state);
+    void set_mission_state(
+        ETestMissionState const new_state,
+        ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
 
     void mission_tick_survive_seconds();
     void mission_tick_kill_enemies();
     void mission_tick_kill_enemies_within_time();
+    auto entities_that_must_survive_are_alive() const -> bool;
 
     void handle_mission_ended(ETestMissionFailReason const fail_reason);
     void handle_mission_success();
-    void handle_mission_failure();
+    void handle_mission_failure(ETestMissionFailReason fail_reason);
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
@@ -77,6 +92,11 @@ class ATestMissionManager : public AActor {
 
     FRegistryEntityHandle player_registry_handle{};
     TestEntityUniqueId player_id{};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    FTestMissionStartupData startup_data{};
+
+    TArray<FRegistryEntityHandle> entity_handles_that_must_survive{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};

@@ -5,7 +5,6 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/save/SpaceSaveGame.h>
 #include <Sandbox/save/SpaceSaveSubsystem.h>
-#include <Sandbox/utilities/enums.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
@@ -13,11 +12,18 @@
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
 
+void FTestMissionStartupData::prune_invalid_actors() {
+    entities_must_survive.RemoveAll(
+        [](TObjectPtr<AActor> const& actor) { return !IsValid(actor); });
+}
+
 void ATestMissionManager::begin_play() {
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(player_ship),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
+
+    startup_data.prune_invalid_actors();
 
     if (kill_target <= 0) {
         auto const player_team{player_ship->get_team()};
@@ -54,6 +60,23 @@ void ATestMissionManager::bind_simulation_clock(
     simulation_clock.bind(orchestrator);
 }
 
+void ATestMissionManager::on_proxy_handles_bound(
+    TMap<AActor const*, FRegistryEntityHandle> const& proxy_handles) {
+    auto const& entities_must_survive{startup_data.entities_must_survive};
+    entity_handles_that_must_survive.Reset(entities_must_survive.Num());
+
+    for (auto const& actor : entities_must_survive) {
+        if (!IsValid(actor)) {
+            continue;
+        }
+
+        auto const* const handle{proxy_handles.Find(actor.Get())};
+        check(handle);
+        check(entity_registry->is_valid_handle(*handle));
+        entity_handles_that_must_survive.Add(*handle);
+    }
+}
+
 void ATestMissionManager::mission_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestMissionManager::mission_tick);
 
@@ -84,7 +107,15 @@ void ATestMissionManager::mission_tick() {
     auto const ship_alive(player_ship->is_alive());
 
     if (!ship_alive) {
-        set_mission_state(ETestMissionState::Failed);
+        set_mission_state(ETestMissionState::Failed, ETestMissionFailReason::PlayerKilled);
+        return;
+    }
+
+    if (!entity_handles_that_must_survive.IsEmpty() &&
+        !entities_that_must_survive_are_alive()) {
+        set_mission_state(ETestMissionState::Failed,
+                          ETestMissionFailReason::DefenceObjectiveFailed);
+        return;
     }
 
     switch (mission_mode) {
@@ -122,8 +153,11 @@ auto ATestMissionManager::is_ready() const noexcept -> bool {
 void ATestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
     mission_mode = new_mode;
 }
-void ATestMissionManager::set_mission_state(ETestMissionState const new_state) {
-    auto const old_mission_state{new_state};
+void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
+                                            ETestMissionFailReason const fail_reason) {
+    check((new_state == ETestMissionState::Failed) ==
+          (fail_reason != ETestMissionFailReason::None));
+
     mission_state = new_state;
 
     switch (mission_state) {
@@ -138,7 +172,7 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state) {
             return;
         }
         case ETestMissionState::Failed: {
-            handle_mission_failure();
+            handle_mission_failure(fail_reason);
             return;
         }
         case ETestMissionState::Disabled: {
@@ -188,8 +222,18 @@ void ATestMissionManager::mission_tick_kill_enemies_within_time() {
     auto const mission_time_limit{get_target_time()};
 
     if (mission_time >= mission_time_limit) {
-        set_mission_state(ETestMissionState::Failed);
+        set_mission_state(ETestMissionState::Failed, ETestMissionFailReason::TimeElapsed);
     }
+}
+
+auto ATestMissionManager::entities_that_must_survive_are_alive() const -> bool {
+    for (auto const handle : entity_handles_that_must_survive) {
+        if (!entity_registry->is_valid_alive(handle)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void ATestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
@@ -220,35 +264,8 @@ void ATestMissionManager::handle_mission_success() {
 
     on_mission_ended.Broadcast(*this);
 }
-void ATestMissionManager::handle_mission_failure() {
+void ATestMissionManager::handle_mission_failure(ETestMissionFailReason const fail_reason) {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
-
-    auto fail_reason{ETestMissionFailReason::None};
-    if (!player_ship->is_alive()) {
-        fail_reason = ETestMissionFailReason::PlayerKilled;
-    }
-
-    switch (mission_mode) {
-        case ETestMissionMode::SurviveTime: {
-            break;
-        }
-        case ETestMissionMode::KillEnemies: {
-            break;
-        }
-        case ETestMissionMode::KillEnemiesWithinTime: {
-            if (mission_elapsed_seconds >= target_time) {
-                fail_reason = ETestMissionFailReason::TimeElapsed;
-            }
-            break;
-        }
-        default: {
-            UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("ATestMissionManager::handle_mission_failure: Unhandled mission mode: %s"),
-                   *ml::to_string_without_type_prefix(mission_mode));
-            break;
-        }
-    }
 
     handle_mission_ended(fail_reason);
 
