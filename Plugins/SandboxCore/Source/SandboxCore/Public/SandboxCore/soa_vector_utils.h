@@ -93,22 +93,29 @@ inline void assign_from(DstT&& dst, int32 const dst_i, SrcT&& src, int32 const s
     dst.zs.GetData()[dst_i] = src.zs.GetData()[src_i];
 }
 
-inline void assign(FVectors3f& vector, int32 const i, float const value) {
+template <is_mutable_vec3f DstT>
+void assign(DstT&& vector, int32 const i, float const value) {
     vector.xs[i] = value;
     vector.ys[i] = value;
     vector.zs[i] = value;
 }
-inline void assign(FVectors3f& vector, int32 const i, float const x, float const y, float const z) {
+
+template <is_mutable_vec3f DstT>
+void assign(DstT&& vector, int32 const i, float const x, float const y, float const z) {
     vector.xs[i] = x;
     vector.ys[i] = y;
     vector.zs[i] = z;
 }
-inline void assign(FVectors3f& vector, int32 const i, FVector const& value) {
+
+template <is_mutable_vec3f DstT>
+void assign(DstT&& vector, int32 const i, FVector const& value) {
     vector.xs[i] = static_cast<float>(value.X);
     vector.ys[i] = static_cast<float>(value.Y);
     vector.zs[i] = static_cast<float>(value.Z);
 }
-inline void assign(FVectors3f& vector, int32 const i, FVector3f const& value) {
+
+template <is_mutable_vec3f DstT>
+void assign(DstT&& vector, int32 const i, FVector3f const& value) {
     vector.xs[i] = value.X;
     vector.ys[i] = value.Y;
     vector.zs[i] = value.Z;
