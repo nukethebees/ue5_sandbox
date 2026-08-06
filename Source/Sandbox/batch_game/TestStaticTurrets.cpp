@@ -66,10 +66,6 @@ void ATestStaticTurrets::begin_play() {
     configure_ismc();
     register_all_proxies_in_level();
 }
-void ATestStaticTurrets::resolve_initial_targets() {
-    auto const proxies{ml::get_actors<Proxy>(*GetWorld())};
-    ml::destroy_all_actors(proxies);
-}
 
 void ATestStaticTurrets::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);

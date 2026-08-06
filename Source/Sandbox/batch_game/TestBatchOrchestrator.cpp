@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
@@ -41,7 +42,48 @@ void set_actor_config_on_all(UWorld& world, TConfig* const config) {
         apply_actor_config(**it, config);
     }
 }
+
+template <typename TProxy>
+void add_proxy_handles(UWorld& world,
+                       ATestEntityRegistry const& entity_registry,
+                       FProxyEntityHandleMap& proxy_handles) {
+    for (TActorIterator<TProxy> it{&world}; it; ++it) {
+        auto* const proxy{*it};
+        check(IsValid(proxy));
+
+        auto const* const entity{Cast<ITestEntity>(proxy)};
+        check(entity);
+
+        auto const handle{entity->get_entity_handle()};
+        check(entity_registry.is_valid_handle(handle));
+        check(!proxy_handles.Contains(proxy));
+        proxy_handles.Add(proxy, handle);
+    }
 }
+
+template <typename TProxy>
+void destroy_proxy_actors(UWorld& world) {
+    for (TActorIterator<TProxy> it{&world}; it;) {
+        auto* const proxy{*it};
+        ++it;
+
+        check(IsValid(proxy));
+        check(proxy->Destroy());
+    }
+}
+
+template <typename... TProxies>
+void bind_and_destroy_proxy_actors(UWorld& world, ATestEntityRegistry const& entity_registry) {
+    FProxyEntityHandleMap proxy_handles;
+    (add_proxy_handles<TProxies>(world, entity_registry, proxy_handles), ...);
+
+    ATestBatchOrchestrator::on_proxy_handles_bound.Broadcast(proxy_handles);
+
+    (destroy_proxy_actors<TProxies>(world), ...);
+}
+}
+
+FOnProxyHandlesBound ATestBatchOrchestrator::on_proxy_handles_bound;
 
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
@@ -237,8 +279,12 @@ void ATestBatchOrchestrator::begin_play() {
                       lasers);
 
     validate_proxy_handles();
-    ml::invoke_on_all(
-        [this](auto actor) { actor->resolve_initial_targets(); }, capital_ships, turrets);
+
+    auto* const world{GetWorld()};
+    check(world);
+    bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
+                                  ATestStaticTurretsProxy,
+                                  ATestTubeSpinnerProxy>(*world, *entity_registry);
 
     if (player_ship) {
         mission_manager->update_player_handles();

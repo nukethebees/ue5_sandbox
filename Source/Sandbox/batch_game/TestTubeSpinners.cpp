@@ -135,7 +135,11 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
     }
 
     spawn_instances(new_locations.get_const_view(), new_yaws, new_fire_point_indices);
-    ml::destroy_all_actors(proxies);
+
+    auto const first_new_handle{registry_entity_handles.Num() - n_to_add};
+    for (int32 i{0}; i < n_to_add; ++i) {
+        proxies[i]->set_entity_handle(registry_entity_handles[first_new_handle + i]);
+    }
 }
 void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_locations,
                                         TConstArrayView<float> const new_yaws,

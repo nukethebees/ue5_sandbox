@@ -89,21 +89,17 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
     void initial_samples() {
-        auto const& capitals{test_driver->get_capital_ships()};
-
         hero_team = local_driver->get_hero_team();
         enemy_team = local_driver->get_enemy_team();
 
-        auto const maybe_hero{capitals.find_first_handle_on_team(hero_team)};
-        auto const maybe_enemy{capitals.find_first_handle_on_team(enemy_team)};
+        hero = local_driver->get_hero_handle();
+        enemy = local_driver->get_enemy_handle();
 
-        checks.is_true(maybe_hero.has_value(), TEXT("Read hero handle"));
-        checks.is_true(maybe_enemy.has_value(), TEXT("Read enemy handle"));
+        checks.is_true(test_driver->registry.is_valid_handle(hero), TEXT("Read hero handle"));
+        checks.is_true(test_driver->registry.is_valid_handle(enemy), TEXT("Read enemy handle"));
+        checks.is_true(hero != enemy, TEXT("Hero and enemy handles are distinct"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-
-        hero = *maybe_hero;
-        enemy = *maybe_enemy;
     }
     void initial_setup_and_stimuli() {
         initial_setup();

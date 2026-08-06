@@ -3,6 +3,7 @@
 #include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestTeamVisualData.h>
@@ -28,6 +29,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
+#include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
 #include <VisualLogger/VisualLogger.h>
@@ -72,57 +74,46 @@ void ATestCapitalShips::begin_play() {
                  actor_config->fighter_spawn_slots_relative_transforms.Num());
 
     configure_ismc();
+
+    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
+    ATestBatchOrchestrator::on_proxy_handles_bound.AddUObject(this, &ThisClass::bind_proxy_handles);
+
     register_all_proxies_in_level();
 }
-void ATestCapitalShips::resolve_initial_targets() {
-    auto world{GetWorld()};
-    auto const proxies{ml::get_actors<Proxy>(*world)};
-    auto const n{proxies.Num()};
+void ATestCapitalShips::bind_proxy_handles(FProxyEntityHandleMap const& proxy_handles) {
+    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
 
-    // Assign the entity targets
-    for (int32 i{0}; i < n; ++i) {
-        auto& proxy{*proxies[i]};
-        auto const handle{proxy.get_entity_handle()};
+    auto* const world{GetWorld()};
+    check(world);
 
-        if (!entity_registry->is_valid_handle(handle)) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] has invalid handle"),
-                   i);
-        }
+    for (TActorIterator<Proxy> it{world}; it; ++it) {
+        auto const& proxy{**it};
+        auto const* const handle{proxy_handles.Find(&proxy)};
+        check(handle);
 
-        auto const entity_index{entities.handles.Find(handle)};
-        if (entity_index == INDEX_NONE) {
-            UE_LOG(
-                LogSandbox,
-                Fatal,
-                TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] has no entity index"),
-                i);
-        }
+        check(entity_registry->is_valid_handle(*handle));
+
+        auto const entity_index{entities.handles.Find(*handle)};
+        check(entity_index != INDEX_NONE);
 
         auto const target{proxy.get_target_ship()};
-
         if (!target) {
             continue;
         }
 
-        auto const* const target_entity_interface{CastChecked<ITestEntity>(target)};
+        auto const target_handle{[&] {
+            if (auto const* const proxy_target_handle{proxy_handles.Find(target)}) {
+                return *proxy_target_handle;
+            }
 
-        auto const target_handle{target_entity_interface->get_entity_handle()};
-        if (!entity_registry->is_valid_handle(target_handle)) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("ATestCapitalShips::resolve_initial_targets: proxy[%d] target has an "
-                        "invalid handle (proxy: %s, target: %s)"),
-                   i,
-                   *ml::get_best_display_name(proxy),
-                   *ml::get_best_display_name(*target));
-        }
+            auto const* const target_entity{Cast<ITestEntity>(target)};
+            check(target_entity);
+            return target_entity->get_entity_handle();
+        }()};
 
+        check(entity_registry->is_valid_handle(target_handle));
         entities.target_handles[entity_index] = target_handle;
     }
-
-    ml::destroy_all_actors(proxies);
 }
 
 void ATestCapitalShips::begin_tick() {

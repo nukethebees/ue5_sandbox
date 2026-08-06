@@ -31,8 +31,7 @@ auto FFighterEntityBiasPackedDataTest::RunTest(FString const&) -> bool {
 
     EntityData const& const_source{source};
     auto const_view{const_source.get_const_view(1, 2)};
-    static_assert(
-        std::is_same_v<decltype(const_view.integral_biases), TConstArrayView<uint32>>);
+    static_assert(std::is_same_v<decltype(const_view.integral_biases), TConstArrayView<uint32>>);
     static_assert(std::is_same_v<decltype(const_view.float_biases), TConstArrayView<float>>);
     TestEqual(TEXT("Const view integral bias"), const_view.integral_biases[1], 300u);
     TestEqual(TEXT("Const view float bias"), const_view.float_biases[0], 0.2f);

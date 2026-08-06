@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
+#include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
@@ -29,6 +30,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 
     ml::TimeSeriesData<int32> capital_proxy_counts;
     ml::TimeSeriesData<int32> turret_proxy_counts;
+    ml::TimeSeriesData<int32> spinner_proxy_counts;
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> capital_target_handles;
     ml::TimeSeriesData<TArray<uint8>> capital_target_alive;
 
@@ -54,6 +56,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
 
         capital_proxy_counts.add(t, ml::get_actors<ATestCapitalShipProxy>(world).Num());
         turret_proxy_counts.add(t, ml::get_actors<ATestStaticTurretsProxy>(world).Num());
+        spinner_proxy_counts.add(t, ml::get_actors<ATestTubeSpinnerProxy>(world).Num());
 
         auto const capitals{test_driver->orchestrator.get_capital_ships()};
 
@@ -85,6 +88,7 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
     void check_no_proxies_alive(int32 const i) {
         checks.are_equal(0, capital_proxy_counts.value_at(i), TEXT("ATestCapitalShipProxy check"));
         checks.are_equal(0, turret_proxy_counts.value_at(i), TEXT("ATestStaticTurretsProxy check"));
+        checks.are_equal(0, spinner_proxy_counts.value_at(i), TEXT("ATestTubeSpinnerProxy check"));
     }
     void check_capital_targets(int32 const i) {
         auto const& target_handles{capital_target_handles.value_at(i)};

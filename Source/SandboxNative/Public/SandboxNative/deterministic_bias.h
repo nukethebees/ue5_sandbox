@@ -26,8 +26,7 @@ constexpr auto make_deterministic_biases(int32 const first, int32 const second) 
     auto const combined{deterministic_bias_detail::mix(first_bits ^ 0x9e3779b9u) ^
                         deterministic_bias_detail::mix(second_bits ^ 0x85ebca6bu)};
     auto const integral{deterministic_bias_detail::mix(combined)};
-    auto const float_bits{
-        deterministic_bias_detail::mix(combined ^ integral ^ 0xc2b2ae35u)};
+    auto const float_bits{deterministic_bias_detail::mix(combined ^ integral ^ 0xc2b2ae35u)};
     constexpr auto float_scale{1.f / 16'777'216.f};
     auto const floating{static_cast<float>(float_bits >> 8) * float_scale};
 

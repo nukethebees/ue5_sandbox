@@ -35,6 +35,7 @@ class ATestTubeSpinnerProxy
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return entity_handle;
     }
+    void set_entity_handle(FRegistryEntityHandle const handle) noexcept { entity_handle = handle; }
   private:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy|Add Points")

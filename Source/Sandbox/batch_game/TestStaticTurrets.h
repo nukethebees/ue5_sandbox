@@ -39,7 +39,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     void clear_runtime_state();
     void begin_play();
-    void resolve_initial_targets();
 
     void begin_tick();
     void update_timers(float const dt);

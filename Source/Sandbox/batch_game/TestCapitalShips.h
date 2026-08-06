@@ -141,7 +141,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     void clear_runtime_state();
     void begin_play();
-    void resolve_initial_targets();
 
     void begin_tick();
     void update_timers(float const dt);
@@ -225,6 +224,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
   protected:
     // Ship spawning
     void register_all_proxies_in_level();
+    void bind_proxy_handles(TMap<AActor const*, FRegistryEntityHandle> const& proxy_handles);
     void spawn_ships(SpawnData const& spawn_data);
 
     // Entity data
