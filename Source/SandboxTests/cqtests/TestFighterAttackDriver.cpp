@@ -29,30 +29,31 @@ void ATestFighterAttackDriver::PostInitializeComponents() {
     hero_team = hero->get_team();
     enemy_team = enemy->get_team();
 
-    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
-    ATestBatchOrchestrator::on_proxy_handles_bound.AddUObject(this, &ThisClass::bind_proxy_handles);
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+    ATestBatchOrchestrator::on_proxy_entities_bound.AddUObject(this,
+                                                               &ThisClass::bind_proxy_entities);
 }
 void ATestFighterAttackDriver::BeginPlay() {
     Super::BeginPlay();
 }
 
-void ATestFighterAttackDriver::bind_proxy_handles(FProxyEntityHandleMap const& proxy_handles) {
-    auto const* const new_hero_handle{proxy_handles.Find(hero.Get())};
-    auto const* const new_enemy_handle{proxy_handles.Find(enemy.Get())};
+void ATestFighterAttackDriver::bind_proxy_entities(FProxyEntityMap const& proxy_entities) {
+    auto const* const new_hero{proxy_entities.Find(hero.Get())};
+    auto const* const new_enemy{proxy_entities.Find(enemy.Get())};
 
-    if (!new_hero_handle && !new_enemy_handle) {
+    if (!new_hero && !new_enemy) {
         return;
     }
 
-    check(new_hero_handle);
-    check(new_enemy_handle);
-    check(*new_hero_handle != *new_enemy_handle);
+    check(new_hero);
+    check(new_enemy);
+    check(new_hero->handle != new_enemy->handle);
 
-    hero_handle = *new_hero_handle;
-    enemy_handle = *new_enemy_handle;
+    hero_handle = new_hero->handle;
+    enemy_handle = new_enemy->handle;
 
     hero = nullptr;
     enemy = nullptr;
 
-    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
 }

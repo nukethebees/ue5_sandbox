@@ -1,12 +1,50 @@
 #pragma once
 
+#include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
 
 struct FMapTestSpawner;
 class FAutomationTestBase;
+class FTestCommandBuilder;
+class UTestSimulationConfig;
+class UWorld;
+class ATestBatchOrchestrator;
 
 namespace ml {
 struct FSoftTestAssertions;
+
+using FConfigureBatchTestLevel = TFunction<void(UWorld&, UTestSimulationConfig const&)>;
+
+class FTestBatchOrchestratorLevelSetup {
+  public:
+    FTestBatchOrchestratorLevelSetup() = default;
+    ~FTestBatchOrchestratorLevelSetup();
+
+    FTestBatchOrchestratorLevelSetup(FTestBatchOrchestratorLevelSetup const&) = delete;
+    FTestBatchOrchestratorLevelSetup(FTestBatchOrchestratorLevelSetup&&) = delete;
+    auto operator=(FTestBatchOrchestratorLevelSetup const&)
+        -> FTestBatchOrchestratorLevelSetup& = delete;
+    auto operator=(FTestBatchOrchestratorLevelSetup&&)
+        -> FTestBatchOrchestratorLevelSetup& = delete;
+
+    void setup(FTestCommandBuilder& command_builder,
+               FAutomationTestBase& test_runner,
+               FConfigureBatchTestLevel configure_level = {});
+    void teardown();
+
+    auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator; }
+    auto get_world() const -> UWorld&;
+  private:
+    auto spawn_orchestrator(UWorld& world) -> bool;
+    void resolve_orchestrator();
+
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    FAutomationTestBase* test_runner{nullptr};
+    ATestBatchOrchestrator* orchestrator{nullptr};
+    FDelegateHandle map_change_handle{};
+    FConfigureBatchTestLevel configure_level{};
+    bool actors_spawned{false};
+};
 
 auto level_test_setup(FString const& map_directory,
                       FString const& map_name,

@@ -75,25 +75,26 @@ void ATestCapitalShips::begin_play() {
 
     configure_ismc();
 
-    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
-    ATestBatchOrchestrator::on_proxy_handles_bound.AddUObject(this, &ThisClass::bind_proxy_handles);
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+    ATestBatchOrchestrator::on_proxy_entities_bound.AddUObject(this,
+                                                               &ThisClass::bind_proxy_entities);
 
     register_all_proxies_in_level();
 }
-void ATestCapitalShips::bind_proxy_handles(FProxyEntityHandleMap const& proxy_handles) {
-    ATestBatchOrchestrator::on_proxy_handles_bound.RemoveAll(this);
+void ATestCapitalShips::bind_proxy_entities(FProxyEntityMap const& proxy_entities) {
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
 
     auto* const world{GetWorld()};
     check(world);
 
     for (TActorIterator<Proxy> it{world}; it; ++it) {
         auto const& proxy{**it};
-        auto const* const handle{proxy_handles.Find(&proxy)};
-        check(handle);
+        auto const* const identifiers{proxy_entities.Find(&proxy)};
+        check(identifiers);
 
-        check(entity_registry->is_valid_handle(*handle));
+        check(entity_registry->is_valid_handle(identifiers->handle));
 
-        auto const entity_index{entities.handles.Find(*handle)};
+        auto const entity_index{entities.handles.Find(identifiers->handle)};
         check(entity_index != INDEX_NONE);
 
         auto const target{proxy.get_target_ship()};
@@ -102,8 +103,8 @@ void ATestCapitalShips::bind_proxy_handles(FProxyEntityHandleMap const& proxy_ha
         }
 
         auto const target_handle{[&] {
-            if (auto const* const proxy_target_handle{proxy_handles.Find(target)}) {
-                return *proxy_target_handle;
+            if (auto const* const proxy_target{proxy_entities.Find(target)}) {
+                return proxy_target->handle;
             }
 
             auto const* const target_entity{Cast<ITestEntity>(target)};

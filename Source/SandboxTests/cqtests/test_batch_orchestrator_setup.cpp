@@ -1,4 +1,4 @@
-#include "SimulationTestAssets.h"
+#include "test_setup.h"
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -7,7 +7,6 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
@@ -15,96 +14,27 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <Editor.h>
-#include <Engine/World.h>
-#include <Kismet/GameplayStatics.h>
 
 TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
 {
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ATestBatchOrchestrator* orchestrator{nullptr};
-    FDelegateHandle map_change_handle{};
-    bool actors_spawned{false};
-
-    auto spawn_orchestrator(UWorld & world) -> bool {
-        auto const* const config{ml::load_default_test_simulation_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default test simulation config loads"), config)) {
-            return false;
-        }
-        if (!TestRunner->TestTrue(TEXT("Default test simulation config is valid"),
-                                  config->is_valid())) {
-            return false;
-        }
-
-        auto* const new_orchestrator{world.SpawnActorDeferred<ATestBatchOrchestrator>(
-            ATestBatchOrchestrator::StaticClass(), FTransform::Identity)};
-        if (!TestRunner->TestNotNull(TEXT("Deferred orchestrator is spawned"), new_orchestrator)) {
-            return false;
-        }
-
-        new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
-        new_orchestrator->set_test_config(*config);
-        new_orchestrator->spawn_missing_actors();
-
-        UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity);
-        return true;
-    }
-
-    void resolve_orchestrator() {
-        if (!TestRunner->TestTrue(TEXT("Actors are spawned from the map-change callback"),
-                                  actors_spawned)) {
-            return;
-        }
-
-        orchestrator = ml::get_first_actor<ATestBatchOrchestrator>(spawner->GetWorld());
-
-        TestRunner->TestNotNull(TEXT("PIE orchestrator is available"), orchestrator);
-    }
+    ml::FTestBatchOrchestratorLevelSetup level_setup;
 
     BEFORE_EACH()
-    {
-        orchestrator = nullptr;
-        actors_spawned = false;
-        map_change_handle = FEditorDelegates::MapChange.AddLambda([this](uint32 const flags) {
-            if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) {
-                return;
-            }
-
-            if (!TestRunner->TestNotNull(TEXT("Editor is available"), GEditor)) {
-                return;
-            }
-
-            auto* const world{GEditor->GetEditorWorldContext().World()};
-            if (!TestRunner->TestNotNull(TEXT("Editor world is available"), world)) {
-                return;
-            }
-
-            actors_spawned = spawn_orchestrator(*world);
-        });
-
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        ASSERT_THAT(IsNotNull(spawner));
-        spawner->AddWaitUntilLoadedCommand(TestRunner);
-        TestCommandBuilder.Do([this] { resolve_orchestrator(); });
-    }
+    { level_setup.setup(TestCommandBuilder, *TestRunner); }
 
     AFTER_EACH()
-    {
-        FEditorDelegates::MapChange.Remove(map_change_handle);
-        map_change_handle.Reset();
-        orchestrator->pause_simulation();
-    }
+    { level_setup.teardown(); }
 
     TEST_METHOD(SpawnMissingActors)
     {
         TestCommandBuilder.Do([this] {
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
-            auto& world{spawner->GetWorld()};
+            auto& world{level_setup.get_world()};
 
             TestRunner->TestTrue(TEXT("Orchestrator begins paused in an automation test"),
                                  orchestrator->get_state() == EOrchestratorState::Paused);
@@ -163,6 +93,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
     TEST_METHOD(SimulationClockConversions)
     {
         TestCommandBuilder.Do([this] {
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }

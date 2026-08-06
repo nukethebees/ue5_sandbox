@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
@@ -28,7 +29,7 @@ class ATestFighterAttackDriver : public AActor {
   protected:
     void PostInitializeComponents() override;
     void BeginPlay() override;
-    void bind_proxy_handles(TMap<AActor const*, FRegistryEntityHandle> const& proxy_handles);
+    void bind_proxy_entities(FProxyEntityMap const& proxy_entities);
 
     // Hero
     UPROPERTY(EditAnywhere, Category = "Test")

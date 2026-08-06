@@ -46,7 +46,7 @@ void set_actor_config_on_all(UWorld& world, TConfig* const config) {
 template <typename TProxy>
 void add_proxy_handles(UWorld& world,
                        ATestEntityRegistry const& entity_registry,
-                       FProxyEntityHandleMap& proxy_handles) {
+                       FProxyEntityMap& proxy_entities) {
     for (TActorIterator<TProxy> it{&world}; it; ++it) {
         auto* const proxy{*it};
         check(IsValid(proxy));
@@ -56,8 +56,14 @@ void add_proxy_handles(UWorld& world,
 
         auto const handle{entity->get_entity_handle()};
         check(entity_registry.is_valid_handle(handle));
-        check(!proxy_handles.Contains(proxy));
-        proxy_handles.Add(proxy, handle);
+        auto const unique_id{entity_registry.find_unique_id(handle)};
+        check(entity_registry.is_valid_unique_id(unique_id));
+        check(!proxy_entities.Contains(proxy));
+        proxy_entities.Add(proxy,
+                           FRegistryEntityIdentifiers{
+                               .handle = handle,
+                               .unique_id = unique_id,
+                           });
     }
 }
 
@@ -76,17 +82,17 @@ template <typename... TProxies>
 void bind_and_destroy_proxy_actors(UWorld& world,
                                    ATestEntityRegistry const& entity_registry,
                                    ATestMissionManager& mission_manager) {
-    FProxyEntityHandleMap proxy_handles;
-    (add_proxy_handles<TProxies>(world, entity_registry, proxy_handles), ...);
+    FProxyEntityMap proxy_entities;
+    (add_proxy_handles<TProxies>(world, entity_registry, proxy_entities), ...);
 
-    mission_manager.on_proxy_handles_bound(proxy_handles);
-    ATestBatchOrchestrator::on_proxy_handles_bound.Broadcast(proxy_handles);
+    mission_manager.on_proxy_entities_bound(proxy_entities);
+    ATestBatchOrchestrator::on_proxy_entities_bound.Broadcast(proxy_entities);
 
     (destroy_proxy_actors<TProxies>(world), ...);
 }
 }
 
-FOnProxyHandlesBound ATestBatchOrchestrator::on_proxy_handles_bound;
+FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
@@ -290,17 +296,10 @@ void ATestBatchOrchestrator::begin_play() {
                                   ATestTubeSpinnerProxy>(
         *world, *entity_registry, *mission_manager);
 
-    if (player_ship) {
-        mission_manager->update_player_handles();
-        check(entity_registry->is_valid_unique_id(mission_manager->get_player_id()));
-    }
-
     entity_registry->commit_updates();
     entity_registry->end_tick();
 
-    if (player_ship) {
-        mission_manager->begin_play();
-    }
+    mission_manager->begin_play();
 
 #if WITH_EDITOR
     if (log_ticks) {
@@ -535,9 +534,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             turrets->sync_from_registry();
         }
 
-        if (player_ship) {
-            mission_manager->mission_tick();
-        }
+        mission_manager->mission_tick();
 
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
@@ -630,8 +627,6 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     mission_manager->bind_simulation_clock(*this);
 
     if (player_ship) {
-        mission_manager->set_player_ship(*player_ship);
-
         player_ship->set_entity_registry(entity_registry);
         player_ship->set_laser_actor(lasers);
     }

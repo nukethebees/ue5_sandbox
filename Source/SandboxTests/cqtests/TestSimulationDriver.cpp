@@ -65,7 +65,8 @@ auto TestSimulationDriver::get_capital_ship_fighters() const -> ATestCapitalShip
     return *actor;
 }
 
-void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets) {
+void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets,
+                                       FRegistryEntityHandle const instigator) {
     auto const damage{std::numeric_limits<int32>::max()};
     auto const n{targets.Num()};
 
@@ -74,7 +75,7 @@ void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> co
 
     damage_events.damaged_entities = targets;
     ml::fill(damage_events.damage_amounts, damage);
-    ml::fill(damage_events.instigators, FRegistryEntityHandle{});
+    ml::fill(damage_events.instigators, instigator);
 
     registry.queue_direct_damage_events(damage_events);
 }

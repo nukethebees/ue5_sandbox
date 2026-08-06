@@ -1,9 +1,9 @@
 #pragma once
 
+#include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -24,10 +24,8 @@ class UTestSimulationConfig;
 
 class ATestBatchOrchestrator;
 
-using FProxyEntityHandleMap = TMap<AActor const*, FRegistryEntityHandle>;
-
 DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnProxyHandlesBound, FProxyEntityHandleMap const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnProxyEntitiesBound, FProxyEntityMap const&);
 
 UENUM(BlueprintType)
 enum class EOrchestratorStartMode : uint8 {
@@ -90,7 +88,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     void spawn_missing_actors();
 
-    static FOnProxyHandlesBound on_proxy_handles_bound;
+    static FOnProxyEntitiesBound on_proxy_entities_bound;
   protected:
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;

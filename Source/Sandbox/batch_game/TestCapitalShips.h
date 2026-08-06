@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
@@ -224,7 +225,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
   protected:
     // Ship spawning
     void register_all_proxies_in_level();
-    void bind_proxy_handles(TMap<AActor const*, FRegistryEntityHandle> const& proxy_handles);
+    void bind_proxy_entities(FProxyEntityMap const& proxy_entities);
     void spawn_ships(SpawnData const& spawn_data);
 
     // Entity data
