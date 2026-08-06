@@ -65,7 +65,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))        \
     NON_FINAL(X(VectorsView, locations))                            \
     NON_FINAL(X(VectorsView, aim_directions))                       \
-    NON_FINAL(X(VectorsView, move_destination_locations))           \
+    NON_FINAL(X(VectorsView, desired_move_locations))               \
     NON_FINAL(X(VectorsView, movement_directions))                  \
     NON_FINAL(X(TView<float>, move_distances))                      \
     NON_FINAL(X(TView<float>, speeds))                              \
@@ -106,7 +106,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<ETestCapitalShipFightersTask> tasks;
     FVectors3f locations;
     FVectors3f aim_directions;
-    FVectors3f move_destination_locations;
+    FVectors3f desired_move_locations;
     FVectors3f movement_directions;
     TArray<float> move_distances;
     TArray<float> speeds;
@@ -131,7 +131,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(tasks))                        \
     NON_FINAL(STAMPER(locations))                    \
     NON_FINAL(STAMPER(aim_directions))               \
-    NON_FINAL(STAMPER(move_destination_locations))   \
+    NON_FINAL(STAMPER(desired_move_locations))       \
     NON_FINAL(STAMPER(movement_directions))          \
     NON_FINAL(STAMPER(move_distances))               \
     NON_FINAL(STAMPER(speeds))                       \
