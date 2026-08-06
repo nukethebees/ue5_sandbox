@@ -73,6 +73,11 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
               meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
     float outer_attack_distance_ratio{0.6f};
 
+    UPROPERTY(EditAnywhere,
+              Category = "Combat",
+              meta = (ClampMin = "0.0", UIMin = "0.0", Units = "cm"))
+    float arrival_distance{500.f};
+
     UPROPERTY(EditAnywhere)
     float los_check_buffer{100.f};
 
