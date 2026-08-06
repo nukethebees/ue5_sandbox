@@ -48,7 +48,7 @@ auto find_appropriate_fire_point(UWorld& world,
                                  FCollisionQueryParams const& params,
                                  FVector3f const target_location,
                                  FVector3f const reference_location,
-                                 FVector3d const fire_point_offset,
+                                 float const fire_point_distance,
                                  float const trace_end_offset,
                                  float const desired_attack_distance,
                                  uint32 const integral_bias,
@@ -98,7 +98,10 @@ auto find_appropriate_fire_point(UWorld& world,
         auto const candidate_location{target_location +
                                       candidate_direction * desired_attack_distance};
 
-        auto const trace_start{FVector3d{candidate_location} + fire_point_offset};
+        auto const candidate_aim_direction{
+            (trace_target - FVector3d{candidate_location}).GetSafeNormal()};
+        auto const trace_start{FVector3d{candidate_location} +
+                               candidate_aim_direction * fire_point_distance};
         auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
         auto const trace_end{trace_target - trace_direction * trace_end_offset};
 
@@ -916,8 +919,8 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     static FName const socket_name{TEXT("Gun")};
 
     auto const n_ships{ml::num(data)};
-    auto const fire_point_offset{instances->GetSocketLocation(socket_name)};
-    FVector3f const fire_point_offset_float{fire_point_offset};
+    auto const fire_point_distance{static_cast<float>(
+        instances->GetSocketTransform(socket_name, RTS_Component).GetLocation().Size())};
     auto const aim_threshold{fire_dot_product_threshold};
 
     auto const laser_damage{actor_config->laser_damage};
@@ -973,7 +976,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
             auto const ship_location{ml::get_vector3d(data.locations, ship_index)};
             auto const direction{ml::get_vector3d(data.aim_directions, ship_index)};
 
-            auto const start{ship_location + fire_point_offset};
+            auto const start{ship_location + direction * fire_point_distance};
 
             // Trace to near the outside of the enemy
             auto const trace_end_offset{los_check_buffer + data.target_radii[ship_index]};
@@ -1002,7 +1005,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
                                                 params,
                                                 ml::get_vector3f(data.target_locations, ship_index),
                                                 desired_move_location,
-                                                fire_point_offset,
+                                                fire_point_distance,
                                                 trace_end_offset,
                                                 desired_attack_distance,
                                                 data.integral_biases[ship_index],
@@ -1023,7 +1026,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
 
-        auto const laser_location{ship_location + fire_point_offset_float};
+        auto const laser_location{ship_location + direction * fire_point_distance};
 
         ml::assign(new_lasers.locations, i, laser_location);
         ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());
