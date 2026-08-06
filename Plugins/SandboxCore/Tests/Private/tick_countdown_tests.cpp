@@ -7,23 +7,32 @@
 
 #include <initializer_list>
 #include <type_traits>
-
+#include <utility>
 
 namespace {
-void set_counters(FTickCountdown& countdown,
-                  std::initializer_list<FTickCountdown::counter_type> const values) {
+template <typename T>
+void set_counters(T& countdown, std::initializer_list<typename std::remove_cvref_t<T>::counter_type> const values) {
     check(countdown.num() == static_cast<int32>(values.size()));
 
-    auto counters{countdown.counters()};
     int32 index{0};
     for (auto const value : values) {
-        counters[index++] = value;
+        countdown.set_counter(index++, value);
     }
 }
+
+template <typename T>
+concept SupportsTryConsume = requires(T& value) { value.try_consume(0); };
+
+template <typename T>
+concept SupportsSetCounter = requires(T& value) { value.set_counter(0, typename T::counter_type{0}); };
+
+template <typename T>
+concept SupportsZeroCounter = requires(T& value) { value.zero_counter(0); };
 }
 
 static_assert(std::is_same_v<FTickCountdown::size_type, int32>);
 static_assert(std::is_same_v<FTickCountdown::counter_type, int16>);
+static_assert(std::is_same_v<TTickCountdown<int8>::counter_type, int8>);
 static_assert(ml::SupportsNum<FTickCountdown>);
 static_assert(ml::SupportsReset<FTickCountdown>);
 static_assert(ml::SupportsReserve<FTickCountdown>);
@@ -33,6 +42,13 @@ static_assert(ml::SupportsRemoveAtSwap<FTickCountdown>);
 static_assert(ml::SupportsSetNum<FTickCountdown>);
 static_assert(ml::SupportsCopyElement<FTickCountdown>);
 static_assert(ml::SupportsGetView<FTickCountdown>);
+static_assert(SupportsTryConsume<FTickCountdown::View>);
+static_assert(SupportsSetCounter<FTickCountdown::View>);
+static_assert(SupportsZeroCounter<FTickCountdown::View>);
+static_assert(!SupportsTryConsume<FTickCountdown::ConstView>);
+static_assert(!SupportsSetCounter<FTickCountdown::ConstView>);
+static_assert(!SupportsZeroCounter<FTickCountdown::ConstView>);
+static_assert(std::is_same_v<decltype(std::declval<FTickCountdown&>().counters()), TConstArrayView<FTickCountdown::counter_type>>);
 
 TEST_CASE("SandboxCore.TickCountdown.DefaultConstruction") {
     FTickCountdown countdown;
@@ -58,13 +74,13 @@ TEST_CASE("SandboxCore.TickCountdown.SizedConstruction") {
 
 TEST_CASE("SandboxCore.TickCountdown.TickDecrementsEveryCounter") {
     FTickCountdown countdown{3, 2};
-    set_counters(countdown, {2, 0, -2});
+    set_counters(countdown, {2, 0, 0});
 
     countdown.tick();
 
     CHECK(countdown.counters()[0] == 1);
     CHECK(countdown.counters()[1] == -1);
-    CHECK(countdown.counters()[2] == -3);
+    CHECK(countdown.counters()[2] == -1);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterValue") {
@@ -75,7 +91,8 @@ TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterValue") {
 
 TEST_CASE("SandboxCore.TickCountdown.ConsumeIndexResetsOnlyReadyCounter") {
     FTickCountdown countdown{3, 5};
-    set_counters(countdown, {1, 0, -1});
+    set_counters(countdown, {2, 1, 0});
+    countdown.tick();
 
     countdown.consume(0);
     countdown.consume(1);
@@ -88,7 +105,8 @@ TEST_CASE("SandboxCore.TickCountdown.ConsumeIndexResetsOnlyReadyCounter") {
 
 TEST_CASE("SandboxCore.TickCountdown.TryConsumeReportsWhetherCounterWasReady") {
     FTickCountdown countdown{3, 5};
-    set_counters(countdown, {1, 0, -1});
+    set_counters(countdown, {2, 1, 0});
+    countdown.tick();
 
     CHECK_FALSE(countdown.try_consume(0));
     CHECK(countdown.counters()[0] == 1);
@@ -102,7 +120,8 @@ TEST_CASE("SandboxCore.TickCountdown.TryConsumeReportsWhetherCounterWasReady") {
 
 TEST_CASE("SandboxCore.TickCountdown.ConsumeResetsAllReadyCounters") {
     FTickCountdown countdown{4, 3};
-    set_counters(countdown, {2, 0, -4, 1});
+    set_counters(countdown, {3, 1, 0, 2});
+    countdown.tick();
 
     countdown.consume();
 
@@ -112,17 +131,66 @@ TEST_CASE("SandboxCore.TickCountdown.ConsumeResetsAllReadyCounters") {
     CHECK(countdown.counters()[3] == 1);
 }
 
-TEST_CASE("SandboxCore.TickCountdown.NonPositiveTickValueRemainsReadyAfterConsume") {
+TEST_CASE("SandboxCore.TickCountdown.ZeroTickValueRemainsReadyAfterConsume") {
     FTickCountdown zero_countdown{1, 0};
-    FTickCountdown negative_countdown{1, -2};
 
     zero_countdown.consume(0);
-    negative_countdown.consume();
 
     CHECK(FTickCountdown::is_ready(zero_countdown.counters()[0]));
-    CHECK(FTickCountdown::is_ready(negative_countdown.counters()[0]));
     CHECK(zero_countdown.counters()[0] == 0);
-    CHECK(negative_countdown.counters()[0] == -2);
+}
+
+TEST_CASE("SandboxCore.TickCountdown.SetAndZeroCounter") {
+    FTickCountdown countdown{2, 5};
+
+    countdown.set_counter(0, 3);
+    countdown.zero_counter(1);
+
+    CHECK(countdown.counters()[0] == 3);
+    CHECK(countdown.counters()[1] == 0);
+}
+
+TEST_CASE("SandboxCore.TickCountdown.Int8ClampsNegativeCountersEvery64Ticks") {
+    TTickCountdown<int8> countdown{2, 100};
+    countdown.zero_counter(0);
+
+    for (int32 i{0}; i < 63; ++i) {
+        countdown.tick();
+    }
+
+    CHECK(countdown.counters()[0] == -63);
+    CHECK(countdown.counters()[1] == 37);
+
+    countdown.tick();
+
+    CHECK(countdown.counters()[0] == 0);
+    CHECK(countdown.counters()[1] == 36);
+
+    for (int32 i{0}; i < 64; ++i) {
+        countdown.tick();
+    }
+
+    CHECK(countdown.counters()[0] == 0);
+}
+
+TEST_CASE("SandboxCore.TickCountdown.ResetRestartsCleanerCounter") {
+    TTickCountdown<int8> countdown{1, 0};
+
+    for (int32 i{0}; i < 32; ++i) {
+        countdown.tick();
+    }
+
+    countdown.reset();
+    countdown.add_zeroed(1);
+
+    for (int32 i{0}; i < 63; ++i) {
+        countdown.tick();
+    }
+
+    CHECK(countdown.counters()[0] == -63);
+
+    countdown.tick();
+    CHECK(countdown.counters()[0] == 0);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.SupportsContainerOperations") {
@@ -211,11 +279,11 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     static_assert(std::is_same_v<decltype(view), FTickCountdown::View>);
     REQUIRE(view.num() == 3);
 
-    countdown.counters()[1] = 2;
+    view.set_counter(1, 2);
     CHECK(countdown.counters()[1] == 2);
     CHECK(view[1] == 2);
 
-    countdown.counters()[2] = 0;
+    view.zero_counter(2);
     CHECK(view.try_consume(2));
     CHECK(countdown.counters()[2] == countdown.tick_value());
 

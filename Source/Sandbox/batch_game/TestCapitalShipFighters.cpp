@@ -875,7 +875,7 @@ void ATestCapitalShipFighters::commit_orders() {
             if ((old_task != Task::Attack) && (new_task == Task::Attack)) {
                 ml::assign_from(
                     data.move_target_locations, fighter_index, data.locations, fighter_index);
-                data.attack_reposition_countdowns.counters()[fighter_index] = 0;
+                data.attack_reposition_countdowns.zero_counter(fighter_index);
             }
         }
         if (order.target) {
