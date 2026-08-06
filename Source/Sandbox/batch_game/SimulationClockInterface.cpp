@@ -23,4 +23,9 @@ auto SimulationClockInterface::get_completed_ticks() const noexcept -> tick_type
     check(IsValid(orchestrator));
     return orchestrator->get_completed_ticks();
 }
+
+auto SimulationClockInterface::get_simulation_time() const noexcept -> time_type {
+    check(IsValid(orchestrator));
+    return orchestrator->get_simulation_time();
+}
 }

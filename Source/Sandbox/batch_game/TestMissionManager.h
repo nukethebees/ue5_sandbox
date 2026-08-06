@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestMissionFailReason.h>
@@ -12,6 +13,7 @@
 #include "TestMissionManager.generated.h"
 
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
 class ATestSpaceShip;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
@@ -23,7 +25,8 @@ class ATestMissionManager : public AActor {
     GENERATED_BODY()
   public:
     void begin_play();
-    void mission_tick(float const dt);
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
+    void mission_tick();
 
     void update_player_handles();
 
@@ -58,9 +61,9 @@ class ATestMissionManager : public AActor {
     void set_mission_mode(ETestMissionMode const new_mode);
     void set_mission_state(ETestMissionState const new_state);
 
-    void mission_tick_survive_seconds(float const dt);
-    void mission_tick_kill_enemies(float const dt);
-    void mission_tick_kill_enemies_within_time(float const dt);
+    void mission_tick_survive_seconds();
+    void mission_tick_kill_enemies();
+    void mission_tick_kill_enemies_within_time();
 
     void handle_mission_ended(ETestMissionFailReason const fail_reason);
     void handle_mission_success();
@@ -93,6 +96,5 @@ class ATestMissionManager : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     float mission_elapsed_seconds{0.0f};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
-    float mission_start_time{0.0f};
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 };

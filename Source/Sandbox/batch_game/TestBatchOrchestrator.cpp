@@ -486,7 +486,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
 
         if (player_ship) {
-            mission_manager->mission_tick(tick_period);
+            mission_manager->mission_tick();
         }
 
         {
@@ -577,6 +577,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);
     capital_ship_fighters->bind_simulation_clock(*this);
+    mission_manager->bind_simulation_clock(*this);
 
     if (player_ship) {
         mission_manager->set_player_ship(*player_ship);

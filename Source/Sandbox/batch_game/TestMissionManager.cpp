@@ -46,10 +46,15 @@ void ATestMissionManager::begin_play() {
 
     mission_elapsed_seconds = 0.f;
 
-    mission_start_time = GetWorld()->GetTimeSeconds();
     on_ready.Broadcast(*this);
 }
-void ATestMissionManager::mission_tick(float const dt) {
+
+void ATestMissionManager::bind_simulation_clock(
+    ATestBatchOrchestrator const& orchestrator) noexcept {
+    simulation_clock.bind(orchestrator);
+}
+
+void ATestMissionManager::mission_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestMissionManager::mission_tick);
 
     switch (mission_state) {
@@ -75,7 +80,7 @@ void ATestMissionManager::mission_tick(float const dt) {
         }
     }
 
-    mission_elapsed_seconds = GetWorld()->GetTimeSeconds() - mission_start_time;
+    mission_elapsed_seconds = static_cast<float>(simulation_clock.get_simulation_time());
     auto const ship_alive(player_ship->is_alive());
 
     if (!ship_alive) {
@@ -87,15 +92,15 @@ void ATestMissionManager::mission_tick(float const dt) {
             break;
         }
         case ETestMissionMode::SurviveTime: {
-            mission_tick_survive_seconds(dt);
+            mission_tick_survive_seconds();
             break;
         }
         case ETestMissionMode::KillEnemies: {
-            mission_tick_kill_enemies(dt);
+            mission_tick_kill_enemies();
             break;
         }
         case ETestMissionMode::KillEnemiesWithinTime: {
-            mission_tick_kill_enemies_within_time(dt);
+            mission_tick_kill_enemies_within_time();
             break;
         }
         default: {
@@ -146,12 +151,12 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state) {
     }
 }
 
-void ATestMissionManager::mission_tick_survive_seconds(float const dt) {
+void ATestMissionManager::mission_tick_survive_seconds() {
     if (mission_elapsed_seconds >= target_time) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
-void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
+void ATestMissionManager::mission_tick_kill_enemies() {
     auto const old_kills{player_kills};
     auto const new_kills{entity_registry->get_kills(player_id)};
 
@@ -165,7 +170,7 @@ void ATestMissionManager::mission_tick_kill_enemies(float const dt) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
-void ATestMissionManager::mission_tick_kill_enemies_within_time(float const dt) {
+void ATestMissionManager::mission_tick_kill_enemies_within_time() {
     auto const old_kills{player_kills};
     auto const new_kills{entity_registry->get_kills(player_id)};
 
