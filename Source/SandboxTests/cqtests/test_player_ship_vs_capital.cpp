@@ -67,9 +67,6 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.FunctionalTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
 
-    /* ---------------------------------------------------------------------------- */
-    // Initial phase
-    /* ---------------------------------------------------------------------------- */
     static constexpr time_type initial_wait{0.1};
     static constexpr time_type track_time{0.5};
 
