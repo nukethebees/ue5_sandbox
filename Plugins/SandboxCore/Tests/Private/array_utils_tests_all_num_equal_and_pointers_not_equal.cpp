@@ -21,6 +21,26 @@ static_assert(ml::HasNumAndGetData<TTestContiguousContainer<int32>>);
 static_assert(!ml::HasNumAndGetData<int32>);
 }
 
+TEST_CASE("SandboxCore.Array.all_pointers_not_equal.Different lengths") {
+    TArray<int32> const first{1};
+    TArray<int32> const second{2, 3};
+
+    CHECK(ml::all_pointers_not_equal(first, second));
+}
+
+TEST_CASE("SandboxCore.Array.all_pointers_not_equal.Aliased array") {
+    TArray<int32> const values{1, 2};
+
+    CHECK_FALSE(ml::all_pointers_not_equal(values, values));
+}
+
+TEST_CASE("SandboxCore.Array.all_pointers_not_equal.Aliased vectors") {
+    auto vectors{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 2.0f, 3.0f}})};
+    auto const view{vectors.get_const_view()};
+
+    CHECK_FALSE(ml::all_pointers_not_equal(vectors, view));
+}
+
 TEST_CASE("SandboxCore.Array.all_num_equal_and_pointers_not_equal.Distinct arrays") {
     TArray<int32> const first{1, 2};
     TArray<int32> const second{3, 4};

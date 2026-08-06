@@ -35,26 +35,26 @@ consteval auto array_check_pointer_count() -> int32 {
         return 1;
     }
 }
+
+template <ArrayCheckInput Input, typename Predicate>
+auto all_array_check_containers(Input const& input, Predicate const& predicate) -> bool {
+    if constexpr (is_readable_vec3f<Input>) {
+        return predicate(input.xs) && predicate(input.ys) && predicate(input.zs);
+    } else {
+        return predicate(input);
+    }
+}
 }
 
 template <detail::ArrayCheckInput... Inputs>
     requires ((detail::array_check_pointer_count<Inputs>() + ...) >= 2)
-[[nodiscard]] auto all_num_equal_and_pointers_not_equal(Inputs const&... inputs) -> bool {
+[[nodiscard]] auto all_pointers_not_equal(Inputs const&... inputs) -> bool {
     constexpr int32 pointer_capacity{(detail::array_check_pointer_count<Inputs>() + ...)};
     TStaticArray<void const*, pointer_capacity> pointers{};
     int32 pointer_count{0};
-    int32 expected_num{0};
-    bool has_expected_num{false};
 
     auto const validate_container = [&](auto const& container) {
         auto const count{container.Num()};
-        if (!has_expected_num) {
-            expected_num = count;
-            has_expected_num = true;
-        } else if (count != expected_num) {
-            return false;
-        }
-
         if (count == 0) {
             return true;
         }
@@ -70,16 +70,27 @@ template <detail::ArrayCheckInput... Inputs>
         return true;
     };
 
-    auto const validate_input = [&](auto const& input) {
-        using Input = std::remove_cvref_t<decltype(input)>;
-        if constexpr (is_readable_vec3f<Input>) {
-            return validate_container(input.xs) && validate_container(input.ys) &&
-                   validate_container(input.zs);
-        } else {
-            return validate_container(input);
+    return (detail::all_array_check_containers(inputs, validate_container) && ...);
+}
+
+template <detail::ArrayCheckInput... Inputs>
+    requires ((detail::array_check_pointer_count<Inputs>() + ...) >= 2)
+[[nodiscard]] auto all_num_equal_and_pointers_not_equal(Inputs const&... inputs) -> bool {
+    int32 expected_num{0};
+    bool has_expected_num{false};
+
+    auto const validate_num = [&](auto const& container) {
+        auto const count{container.Num()};
+        if (!has_expected_num) {
+            expected_num = count;
+            has_expected_num = true;
+            return true;
         }
+
+        return count == expected_num;
     };
 
-    return (validate_input(inputs) && ...);
+    return (detail::all_array_check_containers(inputs, validate_num) && ...) &&
+           all_pointers_not_equal(inputs...);
 }
 }

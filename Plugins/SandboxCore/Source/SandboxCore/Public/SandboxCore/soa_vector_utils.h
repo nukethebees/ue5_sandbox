@@ -192,11 +192,9 @@ inline void append_n(FVectors3f& vector, int32 const count, float const value) {
     }
 }
 
-template <is_vec3f Vec3f>
-inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
-    if constexpr (std::is_same_v<Vec3f, FVectors3f>) {
-        check(&vector != &to_append);
-    }
+template <is_readable_vec3f SrcT>
+inline void append_from(FVectors3f& vector, SrcT&& to_append) {
+    check(ml::all_pointers_not_equal(vector, to_append));
 
     auto const n_base{vector.num()};
     auto const n_to_append{to_append.num()};
@@ -214,7 +212,10 @@ inline void append_from(FVectors3f& vector, Vec3f const& to_append) {
 
 template <>
 struct AppendFromTraits<FVectors3f> {
-    static void append_from(FVectors3f& dst, FVectors3f const& src) { ml::append_from(dst, src); }
+    template <is_readable_vec3f SrcT>
+    static void append_from(FVectors3f& dst, SrcT&& src) {
+        ml::append_from(dst, src);
+    }
 };
 
 template <is_vec3f Vec3f>
