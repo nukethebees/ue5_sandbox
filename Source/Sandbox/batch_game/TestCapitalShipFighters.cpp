@@ -82,7 +82,7 @@ void ATestCapitalShipFighters::begin_play() {
     auto const awareness_scan_tick_value{
         static_cast<FTickCountdown::counter_type>(awareness_scan_tick_period)};
     entity_buffers.for_each([awareness_scan_tick_value](auto& data) {
-        data.awareness_scan_countdowns.tick_value = awareness_scan_tick_value;
+        data.awareness_scan_countdowns.set_tick_value(awareness_scan_tick_value);
     });
 
     auto const attack_reposition_tick_period{
@@ -95,7 +95,7 @@ void ATestCapitalShipFighters::begin_play() {
     auto const attack_reposition_tick_value{
         static_cast<FTickCountdown::counter_type>(attack_reposition_tick_period)};
     entity_buffers.for_each([attack_reposition_tick_value](auto& data) {
-        data.attack_reposition_countdowns.tick_value = attack_reposition_tick_value;
+        data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_value);
     });
 
     checkf(actor_config->inner_attack_distance_ratio <= actor_config->desired_attack_distance_ratio,
@@ -875,7 +875,7 @@ void ATestCapitalShipFighters::commit_orders() {
             if ((old_task != Task::Attack) && (new_task == Task::Attack)) {
                 ml::assign_from(
                     data.move_target_locations, fighter_index, data.locations, fighter_index);
-                data.attack_reposition_countdowns.counters[fighter_index] = 0;
+                data.attack_reposition_countdowns.counters()[fighter_index] = 0;
             }
         }
         if (order.target) {

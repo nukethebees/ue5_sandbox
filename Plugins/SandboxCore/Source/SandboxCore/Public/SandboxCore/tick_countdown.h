@@ -2,83 +2,69 @@
 
 #include "CoreMinimal.h"
 
-#include <type_traits>
 
+class FTickCountdown;
 
-template <bool is_const>
-struct TTickCountdownMixin {};
-
-template <>
-struct TTickCountdownMixin<false> {
-    void tick(this auto& self) noexcept {
-        for (auto& counter : self.counters) {
-            --counter;
-        }
-    }
-
-    [[nodiscard]] auto try_consume(this auto& self, int32 const index) noexcept -> bool {
-        auto& counter{self.counters[index]};
-        if (counter > 0) {
-            return false;
-        }
-
-        self.reset(index);
-        return true;
-    }
-
-    void reset(this auto& self, int32 const index) noexcept {
-        self.counters[index] = self.tick_value;
-    }
-
-    void consume(this auto& self, int32 const index) noexcept {
-        (void)self.try_consume(index);
-    }
-
-    void consume(this auto& self) noexcept {
-        for (auto& counter : self.counters) {
-            if (counter <= 0) {
-                counter = self.tick_value;
-            }
-        }
-    }
-};
-
-template <bool is_const>
-struct TTickCountdownView : public TTickCountdownMixin<is_const> {
+class SANDBOXCORE_API FTickCountdownView {
+  public:
     using size_type = int32;
     using counter_type = int16;
-    using element_type = std::conditional_t<is_const, counter_type const, counter_type>;
-    using CountersView = TArrayView<element_type>;
 
-    TTickCountdownView() = default;
-    TTickCountdownView(counter_type const new_tick_value, CountersView const new_counters)
-        : tick_value{new_tick_value}, counters{new_counters} {}
+    FTickCountdownView() = default;
 
-    [[nodiscard]] auto Num() const noexcept -> size_type { return counters.Num(); }
-    [[nodiscard]] auto num() const noexcept -> size_type { return counters.Num(); }
+    [[nodiscard]] auto num() const noexcept -> size_type;
+    [[nodiscard]] auto operator[](size_type const index) const noexcept -> counter_type;
+    [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool;
+  private:
+    friend class FTickCountdown;
 
-    auto operator[](size_type const index) noexcept -> element_type& { return counters[index]; }
-    auto operator[](size_type const index) const noexcept -> element_type const& {
-        return counters[index];
-    }
+    FTickCountdownView(FTickCountdown& countdown,
+                       size_type const offset,
+                       size_type const length) noexcept;
 
-    counter_type tick_value{0};
-    CountersView counters;
+    FTickCountdown* countdown_{nullptr};
+    size_type offset_{0};
+    size_type length_{0};
 };
 
-
-struct SANDBOXCORE_API FTickCountdown : public TTickCountdownMixin<false> {
+class SANDBOXCORE_API FTickCountdownConstView {
+  public:
     using size_type = int32;
     using counter_type = int16;
-    using View = TTickCountdownView<false>;
-    using ConstView = TTickCountdownView<true>;
+
+    FTickCountdownConstView() = default;
+
+    [[nodiscard]] auto num() const noexcept -> size_type;
+    [[nodiscard]] auto operator[](size_type const index) const noexcept -> counter_type;
+  private:
+    friend class FTickCountdown;
+
+    FTickCountdownConstView(FTickCountdown const& countdown,
+                            size_type const offset,
+                            size_type const length) noexcept;
+
+    FTickCountdown const* countdown_{nullptr};
+    size_type offset_{0};
+    size_type length_{0};
+};
+
+class SANDBOXCORE_API FTickCountdown {
+  public:
+    using size_type = int32;
+    using counter_type = int16;
+    using View = FTickCountdownView;
+    using ConstView = FTickCountdownConstView;
 
     FTickCountdown() = default;
     FTickCountdown(size_type const count, counter_type const initial_tick_value);
 
-    [[nodiscard]] static auto is_ready(counter_type const value) noexcept -> bool;
+    void tick() noexcept;
 
-    using TTickCountdownMixin<false>::reset;
+    [[nodiscard]] static auto is_ready(counter_type const value) noexcept -> bool;
+    [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool;
+    void consume(size_type const index) noexcept;
+    void consume() noexcept;
+
     void reset();
     void reserve(size_type const count);
     void add_zeroed(size_type const count);
@@ -91,15 +77,22 @@ struct SANDBOXCORE_API FTickCountdown : public TTickCountdownMixin<false> {
     void copy_element(size_type const dst_index,
                       FTickCountdown const& src,
                       size_type const src_index);
+
     [[nodiscard]] auto num() const noexcept -> size_type;
+    [[nodiscard]] auto tick_value() const noexcept -> counter_type;
+    void set_tick_value(counter_type const value) noexcept;
+    [[nodiscard]] auto counters() noexcept -> TArrayView<counter_type>;
+    [[nodiscard]] auto counters() const noexcept -> TConstArrayView<counter_type>;
+
     [[nodiscard]] auto get_view() noexcept -> View;
     [[nodiscard]] auto get_view() const noexcept -> ConstView;
     [[nodiscard]] auto get_view(size_type const offset, size_type const count) noexcept -> View;
-    [[nodiscard]] auto get_view(size_type const offset, size_type const count) const noexcept
+    [[nodiscard]] auto get_view(size_type const offset,
+                                size_type const count) const noexcept -> ConstView;
+    [[nodiscard]] auto get_const_view(size_type const offset,
+                                      size_type const count) const noexcept
         -> ConstView;
-    [[nodiscard]] auto get_const_view(size_type const offset, size_type const count) const noexcept
-        -> ConstView;
-
-    counter_type tick_value{0};
-    TArray<counter_type> counters;
+  private:
+    counter_type tick_value_{0};
+    TArray<counter_type> counters_;
 };
