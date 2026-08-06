@@ -30,28 +30,28 @@ template <typename T>
 concept SupportsZeroCounter = requires(T& value) { value.zero_counter(0); };
 }
 
-static_assert(std::is_same_v<FTickCountdown::size_type, int32>);
-static_assert(std::is_same_v<FTickCountdown::counter_type, int16>);
+static_assert(std::is_same_v<FTickCountdown16::size_type, int32>);
+static_assert(std::is_same_v<FTickCountdown16::counter_type, int16>);
 static_assert(std::is_same_v<TTickCountdown<int8>::counter_type, int8>);
-static_assert(ml::SupportsNum<FTickCountdown>);
-static_assert(ml::SupportsReset<FTickCountdown>);
-static_assert(ml::SupportsReserve<FTickCountdown>);
-static_assert(ml::SupportsAddUninitialised<FTickCountdown>);
-static_assert(ml::SupportsAddDefaulted<FTickCountdown>);
-static_assert(ml::SupportsRemoveAtSwap<FTickCountdown>);
-static_assert(ml::SupportsSetNum<FTickCountdown>);
-static_assert(ml::SupportsCopyElement<FTickCountdown>);
-static_assert(ml::SupportsGetView<FTickCountdown>);
-static_assert(SupportsTryConsume<FTickCountdown::View>);
-static_assert(SupportsSetCounter<FTickCountdown::View>);
-static_assert(SupportsZeroCounter<FTickCountdown::View>);
-static_assert(!SupportsTryConsume<FTickCountdown::ConstView>);
-static_assert(!SupportsSetCounter<FTickCountdown::ConstView>);
-static_assert(!SupportsZeroCounter<FTickCountdown::ConstView>);
-static_assert(std::is_same_v<decltype(std::declval<FTickCountdown&>().counters()), TConstArrayView<FTickCountdown::counter_type>>);
+static_assert(ml::SupportsNum<FTickCountdown16>);
+static_assert(ml::SupportsReset<FTickCountdown16>);
+static_assert(ml::SupportsReserve<FTickCountdown16>);
+static_assert(ml::SupportsAddUninitialised<FTickCountdown16>);
+static_assert(ml::SupportsAddDefaulted<FTickCountdown16>);
+static_assert(ml::SupportsRemoveAtSwap<FTickCountdown16>);
+static_assert(ml::SupportsSetNum<FTickCountdown16>);
+static_assert(ml::SupportsCopyElement<FTickCountdown16>);
+static_assert(ml::SupportsGetView<FTickCountdown16>);
+static_assert(SupportsTryConsume<FTickCountdown16::View>);
+static_assert(SupportsSetCounter<FTickCountdown16::View>);
+static_assert(SupportsZeroCounter<FTickCountdown16::View>);
+static_assert(!SupportsTryConsume<FTickCountdown16::ConstView>);
+static_assert(!SupportsSetCounter<FTickCountdown16::ConstView>);
+static_assert(!SupportsZeroCounter<FTickCountdown16::ConstView>);
+static_assert(std::is_same_v<decltype(std::declval<FTickCountdown16&>().counters()), TConstArrayView<FTickCountdown16::counter_type>>);
 
 TEST_CASE("SandboxCore.TickCountdown.DefaultConstruction") {
-    FTickCountdown countdown;
+    FTickCountdown16 countdown;
 
     CHECK(countdown.tick_value() == 0);
     CHECK(countdown.num() == 0);
@@ -63,7 +63,7 @@ TEST_CASE("SandboxCore.TickCountdown.DefaultConstruction") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.SizedConstruction") {
-    FTickCountdown countdown{3, 4};
+    FTickCountdown16 countdown{3, 4};
 
     REQUIRE(countdown.num() == 3);
     CHECK(countdown.tick_value() == 4);
@@ -73,7 +73,7 @@ TEST_CASE("SandboxCore.TickCountdown.SizedConstruction") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.TickDecrementsEveryCounter") {
-    FTickCountdown countdown{3, 2};
+    FTickCountdown16 countdown{3, 2};
     set_counters(countdown, {2, 0, 0});
 
     countdown.tick();
@@ -84,13 +84,13 @@ TEST_CASE("SandboxCore.TickCountdown.TickDecrementsEveryCounter") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterValue") {
-    CHECK_FALSE(FTickCountdown::is_ready(1));
-    CHECK(FTickCountdown::is_ready(0));
-    CHECK(FTickCountdown::is_ready(-1));
+    CHECK_FALSE(FTickCountdown16::is_ready(1));
+    CHECK(FTickCountdown16::is_ready(0));
+    CHECK(FTickCountdown16::is_ready(-1));
 }
 
 TEST_CASE("SandboxCore.TickCountdown.ConsumeIndexResetsOnlyReadyCounter") {
-    FTickCountdown countdown{3, 5};
+    FTickCountdown16 countdown{3, 5};
     set_counters(countdown, {2, 1, 0});
     countdown.tick();
 
@@ -104,7 +104,7 @@ TEST_CASE("SandboxCore.TickCountdown.ConsumeIndexResetsOnlyReadyCounter") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.TryConsumeReportsWhetherCounterWasReady") {
-    FTickCountdown countdown{3, 5};
+    FTickCountdown16 countdown{3, 5};
     set_counters(countdown, {2, 1, 0});
     countdown.tick();
 
@@ -119,7 +119,7 @@ TEST_CASE("SandboxCore.TickCountdown.TryConsumeReportsWhetherCounterWasReady") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.ConsumeResetsAllReadyCounters") {
-    FTickCountdown countdown{4, 3};
+    FTickCountdown16 countdown{4, 3};
     set_counters(countdown, {3, 1, 0, 2});
     countdown.tick();
 
@@ -132,16 +132,16 @@ TEST_CASE("SandboxCore.TickCountdown.ConsumeResetsAllReadyCounters") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.ZeroTickValueRemainsReadyAfterConsume") {
-    FTickCountdown zero_countdown{1, 0};
+    FTickCountdown16 zero_countdown{1, 0};
 
     zero_countdown.consume(0);
 
-    CHECK(FTickCountdown::is_ready(zero_countdown.counters()[0]));
+    CHECK(FTickCountdown16::is_ready(zero_countdown.counters()[0]));
     CHECK(zero_countdown.counters()[0] == 0);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.SetAndZeroCounter") {
-    FTickCountdown countdown{2, 5};
+    FTickCountdown16 countdown{2, 5};
 
     countdown.set_counter(0, 3);
     countdown.zero_counter(1);
@@ -194,7 +194,7 @@ TEST_CASE("SandboxCore.TickCountdown.ResetRestartsCleanerCounter") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.SupportsContainerOperations") {
-    FTickCountdown countdown{2, 6};
+    FTickCountdown16 countdown{2, 6};
 
     CHECK(ml::num(countdown) == 2);
 
@@ -207,7 +207,7 @@ TEST_CASE("SandboxCore.TickCountdown.SupportsContainerOperations") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.AddZeroedPreservesExistingCounters") {
-    FTickCountdown countdown{2, 6};
+    FTickCountdown16 countdown{2, 6};
     set_counters(countdown, {4, 2});
 
     countdown.add_zeroed(2);
@@ -220,7 +220,7 @@ TEST_CASE("SandboxCore.TickCountdown.AddZeroedPreservesExistingCounters") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.AddDefaultedPreservesExistingCounters") {
-    FTickCountdown countdown{2, 6};
+    FTickCountdown16 countdown{2, 6};
     set_counters(countdown, {4, 2});
 
     countdown.add_defaulted(2);
@@ -233,7 +233,7 @@ TEST_CASE("SandboxCore.TickCountdown.AddDefaultedPreservesExistingCounters") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.AddUninitialisedPreservesExistingCounters") {
-    FTickCountdown countdown{2, 6};
+    FTickCountdown16 countdown{2, 6};
     set_counters(countdown, {4, 2});
 
     countdown.add_uninitialised(2);
@@ -244,10 +244,10 @@ TEST_CASE("SandboxCore.TickCountdown.AddUninitialisedPreservesExistingCounters")
 }
 
 TEST_CASE("SandboxCore.TickCountdown.SupportsSoAOperations") {
-    FTickCountdown source{3, 6};
+    FTickCountdown16 source{3, 6};
     set_counters(source, {1, 2, 3});
 
-    FTickCountdown destination{3, 6};
+    FTickCountdown16 destination{3, 6};
     destination.copy_element(1, source, 2);
     CHECK(destination.counters()[1] == 3);
 
@@ -273,10 +273,10 @@ TEST_CASE("SandboxCore.TickCountdown.SupportsSoAOperations") {
 }
 
 TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
-    FTickCountdown countdown{3, 4};
+    FTickCountdown16 countdown{3, 4};
 
     auto view{countdown.get_view()};
-    static_assert(std::is_same_v<decltype(view), FTickCountdown::View>);
+    static_assert(std::is_same_v<decltype(view), FTickCountdown16::View>);
     REQUIRE(view.num() == 3);
 
     view.set_counter(1, 2);
@@ -289,6 +289,6 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
 
     auto const& const_countdown{countdown};
     auto const_view{const_countdown.get_view()};
-    static_assert(std::is_same_v<decltype(const_view), FTickCountdown::ConstView>);
+    static_assert(std::is_same_v<decltype(const_view), FTickCountdown16::ConstView>);
     CHECK(const_view[1] == 2);
 }

@@ -51,7 +51,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
     using VectorsView = std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
     using TickCountdownView =
-        std::conditional_t<is_const, FTickCountdown::ConstView, FTickCountdown::View>;
+        std::conditional_t<is_const, FTickCountdown16::ConstView, FTickCountdown16::View>;
 
 #define EXPAND(X) X
 #define EXPAND_WITH_COMMA(X) X,
@@ -110,8 +110,8 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<float> speeds;
     TArray<ETestTeam> teams{};
     TArray<int32> healths;
-    FTickCountdown awareness_scan_countdowns;
-    FTickCountdown attack_reposition_countdowns;
+    FTickCountdown16 awareness_scan_countdowns;
+    FTickCountdown16 attack_reposition_countdowns;
     FCountdownTimers attack_cooldowns;
 
     TArray<FRegistryEntityHandle> target_handles;

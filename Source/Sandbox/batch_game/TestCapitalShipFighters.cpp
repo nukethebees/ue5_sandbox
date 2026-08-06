@@ -76,11 +76,11 @@ void ATestCapitalShipFighters::begin_play() {
         simulation_clock.frequency_to_tick_period(actor_config->awareness_scan_frequency)};
     checkf(awareness_scan_tick_period <=
                static_cast<decltype(awareness_scan_tick_period)>(
-                   std::numeric_limits<FTickCountdown::counter_type>::max()),
-           TEXT("Awareness scan tick period does not fit in FTickCountdown::counter_type"));
+                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
+           TEXT("Awareness scan tick period does not fit in FTickCountdown16::counter_type"));
 
     auto const awareness_scan_tick_value{
-        static_cast<FTickCountdown::counter_type>(awareness_scan_tick_period)};
+        static_cast<FTickCountdown16::counter_type>(awareness_scan_tick_period)};
     entity_buffers.for_each([awareness_scan_tick_value](auto& data) {
         data.awareness_scan_countdowns.set_tick_value(awareness_scan_tick_value);
     });
@@ -89,11 +89,11 @@ void ATestCapitalShipFighters::begin_play() {
         simulation_clock.frequency_to_tick_period(actor_config->attack_reposition_frequency)};
     checkf(attack_reposition_tick_period <=
                static_cast<decltype(attack_reposition_tick_period)>(
-                   std::numeric_limits<FTickCountdown::counter_type>::max()),
-           TEXT("Attack reposition tick period does not fit in FTickCountdown::counter_type"));
+                   std::numeric_limits<FTickCountdown16::counter_type>::max()),
+           TEXT("Attack reposition tick period does not fit in FTickCountdown16::counter_type"));
 
     auto const attack_reposition_tick_value{
-        static_cast<FTickCountdown::counter_type>(attack_reposition_tick_period)};
+        static_cast<FTickCountdown16::counter_type>(attack_reposition_tick_period)};
     entity_buffers.for_each([attack_reposition_tick_value](auto& data) {
         data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_value);
     });

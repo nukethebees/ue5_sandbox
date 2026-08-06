@@ -201,4 +201,6 @@ class TTickCountdown {
     TArray<counter_type> counters_;
 };
 
-using FTickCountdown = TTickCountdown<int16>;
+using FTickCountdown8 = TTickCountdown<int8>;
+using FTickCountdown16 = TTickCountdown<int16>;
+using FTickCountdown32 = TTickCountdown<int32>;
