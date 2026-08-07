@@ -1,8 +1,10 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
 #include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
+#include "Sandbox/batch_game/TestMissionManager.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
+#include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
 #include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
@@ -108,11 +110,16 @@ void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_
 }
 
 void UShipHudWidget::set_mission_status(FStringView const value) {
-    check(IsValid(stopwatch_widget));
+    check(IsValid(mission_status_widget));
     mission_status_widget->update(value);
 }
 void UShipHudWidget::set_mission_status_widget_visibility(ESlateVisibility const new_visibility) {
-    set_widget_visibility_checked(mission_status_widget, new_visibility);
+    if (mission_status_widget) {
+        mission_status_widget->SetVisibility(new_visibility);
+    }
+    if (mission_status_panel) {
+        mission_status_panel->SetVisibility(new_visibility);
+    }
 }
 
 void UShipHudWidget::set_fire_rate(FStringView const value) {
@@ -185,6 +192,12 @@ void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& 
 void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const& colours) {
     if (entity_count_table) {
         entity_count_table->set_team_colours(colours);
+    }
+}
+
+void UShipHudWidget::set_mission_status(ATestMissionManager const& manager) {
+    if (mission_status_panel) {
+        mission_status_panel->update(manager);
     }
 }
 

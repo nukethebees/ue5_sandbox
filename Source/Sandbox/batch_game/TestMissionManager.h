@@ -7,6 +7,7 @@
 #include <Sandbox/batch_game/TestMissionFailReason.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
+#include <Sandbox/health/ShipHealth.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -56,8 +57,13 @@ class SANDBOX_API ATestMissionManager : public AActor {
 
     auto get_survive_seconds() const noexcept -> float { return target_time; }
     auto get_target_time() const noexcept -> float { return target_time; }
+    auto get_time_remaining() const noexcept -> float {
+        return FMath::Max(0.f, target_time - mission_elapsed_seconds);
+    }
     auto get_kill_target() const noexcept -> int32 { return kill_target; }
-    auto get_kills_remaining() const noexcept -> int32 { return kill_target - mission_kills; }
+    auto get_kills_remaining() const noexcept -> int32 {
+        return FMath::Max(0, kill_target - mission_kills);
+    }
     auto get_mission_kills() const noexcept -> int32 { return mission_kills; }
     auto get_mission_fail_reason() const noexcept -> ETestMissionFailReason {
         return mission_fail_reason;
@@ -69,6 +75,9 @@ class SANDBOX_API ATestMissionManager : public AActor {
     auto get_entity_handles_that_must_survive() const noexcept
         -> TConstArrayView<FRegistryEntityHandle> {
         return entity_handles_that_must_survive;
+    }
+    auto get_entity_health_that_must_survive() const noexcept -> TConstArrayView<FShipHealth> {
+        return entity_health_that_must_survive;
     }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
@@ -92,6 +101,8 @@ class SANDBOX_API ATestMissionManager : public AActor {
     void mission_tick_kill_enemies();
     void mission_tick_kill_enemies_within_time();
     void update_mission_kills();
+    void initialise_entity_health_that_must_survive();
+    void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
 
     void handle_mission_ended(ETestMissionFailReason const fail_reason);
@@ -107,6 +118,7 @@ class SANDBOX_API ATestMissionManager : public AActor {
     TArray<FRegistryEntityHandle> hero_entity_handles{};
     TArray<TestEntityUniqueId> hero_entity_ids{};
     TArray<FRegistryEntityHandle> entity_handles_that_must_survive{};
+    TArray<FShipHealth> entity_health_that_must_survive{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};

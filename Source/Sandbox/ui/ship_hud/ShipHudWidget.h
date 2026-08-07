@@ -27,6 +27,8 @@ class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
 class UEntityCountTableWidget;
+class UMissionStatusWidget;
+class ATestMissionManager;
 
 UCLASS()
 class SANDBOX_API UShipHudWidget : public UUserWidget {
@@ -84,6 +86,7 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_flight_mode(FStringView value);
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
+    void set_mission_status(ATestMissionManager const& mission_manager);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
@@ -136,6 +139,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UEntityCountTableWidget* entity_count_table{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UMissionStatusWidget* mission_status_panel{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

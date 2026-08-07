@@ -9,7 +9,11 @@
 - prefer simple C++ over template metaprogramming
 - save loop bounds as const local variables
 
+# UI design
+
+- Use BindWidget for UPROPERTY widgets, never BindWidget
+
 # Testing
 
 - When adding tests, do not compile or run them; ask the user to compile and check them.
-
+- Only create tests when explicitly asked

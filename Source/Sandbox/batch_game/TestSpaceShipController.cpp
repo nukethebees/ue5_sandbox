@@ -157,8 +157,9 @@ void ATestSpaceShipController::Tick(float dt) {
         update_entity_count_table();
     }
 
-    if (mission_manager->mission_running()) {
-        hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+    if ((ui_timers.Num() > FTestSpaceShipControllerUiTimerIndices::mission_status) &&
+        ui_timers.try_consume(FTestSpaceShipControllerUiTimerIndices::mission_status)) {
+        update_mission_status_widget();
     }
 
     auto const new_kills{ss->get_kills()};
@@ -177,7 +178,7 @@ void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
         mission_manager->on_ready.Remove(on_mission_manager_ready_handle);
     }
 
-    if (on_mission_manager_ready_handle.IsValid()) {
+    if (on_mission_update_handle.IsValid()) {
         mission_manager->on_mission_update.Remove(on_mission_update_handle);
     }
 
@@ -319,15 +320,27 @@ void ATestSpaceShipController::initialise_hud() {
         hud_widget->set_entity_colours(ui_data->team_visual_data->build_team_colour_cache());
     }
 
-    if (ui_data->entity_count_update_period <= 0.f) {
+    auto const entity_count_period{ui_data->update_frequencies.entity_count_update_period};
+    auto const mission_status_period{ui_data->update_frequencies.mission_status_update_period};
+    if (entity_count_period <= 0.f || mission_status_period <= 0.f) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: Entity count update period must "
-                    "be positive."));
-    } else {
-        ui_timers.add_started(ui_data->entity_count_update_period,
-                              FTestSpaceShipControllerUiTimerIndices::count);
+               TEXT("ATestSpaceShipController::initialise_hud: UI update periods must be "
+                    "positive."));
+        return;
     }
+
+    ui_timers.add_started(entity_count_period);
+    ui_timers.add_started(mission_status_period);
+}
+
+void ATestSpaceShipController::update_mission_status_widget() {
+    if (!mission_manager || !hud_widget) {
+        return;
+    }
+
+    hud_widget->set_mission_status(*mission_manager);
+    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
 }
 
 void ATestSpaceShipController::update_entity_count_table() {
@@ -619,6 +632,8 @@ void ATestSpaceShipController::on_mission_manager_ready(ATestMissionManager cons
 void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManager const& manager) {
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
+    hud_widget->set_mission_status(manager);
+    hud_widget->set_stopwatch_time(manager.get_mission_stopwatch());
 
     on_mission_update_handle =
         mission_manager->on_mission_update.AddUObject(this, &ThisClass::on_mission_update);
@@ -626,13 +641,14 @@ void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManag
 void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
+    hud_widget->set_mission_status(manager);
     hud_widget->set_points(manager.get_mission_kills());
 }
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
 
     // Do final update
-    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+    update_mission_status_widget();
 
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);

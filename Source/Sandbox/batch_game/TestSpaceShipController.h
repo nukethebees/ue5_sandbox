@@ -25,7 +25,8 @@ struct FShipHealth;
 
 struct FTestSpaceShipControllerUiTimerIndices {
     static constexpr int32 entity_count{0};
-    static constexpr int32 count{1};
+    static constexpr int32 mission_status{1};
+    static constexpr int32 timer_count{2};
 };
 
 UCLASS()
@@ -55,6 +56,7 @@ class ATestSpaceShipController
     void update_lock_on_widget(ATestSpaceShip const& ship);
     void update_input_widgets(ATestSpaceShip const& ship);
     void update_entity_count_table();
+    void update_mission_status_widget();
 
     auto get_pawn() -> Pawn&;
 

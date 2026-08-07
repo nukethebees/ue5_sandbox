@@ -26,6 +26,7 @@ void ATestMissionManager::begin_play() {
     startup_data.prune_invalid_actors();
     mission_fail_reason = ETestMissionFailReason::None;
     mission_kills = 0;
+    initialise_entity_health_that_must_survive();
 
     switch (mission_mode) {
         case ETestMissionMode::None: {
@@ -154,6 +155,10 @@ void ATestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_e
         auto const identifiers{resolve_identifiers(*actor)};
         entity_handles_that_must_survive.AddUnique(identifiers.handle);
     }
+
+    if (mission_state == ETestMissionState::NotStarted) {
+        initialise_entity_health_that_must_survive();
+    }
 }
 
 void ATestMissionManager::mission_tick() {
@@ -183,6 +188,7 @@ void ATestMissionManager::mission_tick() {
     }
 
     mission_elapsed_seconds = static_cast<float>(simulation_clock.get_simulation_time());
+    update_entity_health_that_must_survive();
     if (!entity_handles_that_must_survive.IsEmpty() && !entities_that_must_survive_are_alive()) {
         set_mission_state(ETestMissionState::Failed,
                           ETestMissionFailReason::DefenceObjectiveFailed);
@@ -287,6 +293,36 @@ void ATestMissionManager::update_mission_kills() {
     }
 
     if (mission_kills != old_kills) {
+        on_mission_update.Broadcast(*this);
+    }
+}
+
+void ATestMissionManager::initialise_entity_health_that_must_survive() {
+    entity_health_that_must_survive.Reset(entity_handles_that_must_survive.Num());
+
+    for (auto const handle : entity_handles_that_must_survive) {
+        auto const health{entity_registry->get_health(handle)};
+        entity_health_that_must_survive.Emplace(health);
+    }
+}
+
+void ATestMissionManager::update_entity_health_that_must_survive() {
+    check(entity_health_that_must_survive.Num() == entity_handles_that_must_survive.Num());
+
+    auto has_changed{false};
+    auto const n_handles{entity_handles_that_must_survive.Num()};
+    for (int32 i{0}; i < n_handles; ++i) {
+        auto& health{entity_health_that_must_survive[i]};
+        auto const handle{entity_handles_that_must_survive[i]};
+        auto const new_health{
+            entity_registry->is_valid_handle(handle) ? entity_registry->get_health(handle) : 0};
+        if (health.health != new_health) {
+            health.health = new_health;
+            has_changed = true;
+        }
+    }
+
+    if (has_changed) {
         on_mission_update.Broadcast(*this);
     }
 }

@@ -130,6 +130,18 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         TestRunner->TestFalse(TEXT("Mission result saving is disabled"),
                               manager->should_save_mission_results());
 
+        auto const surviving_health{manager->get_entity_health_that_must_survive()};
+        TestRunner->TestEqual(TEXT("Survival health data matches objective handles"),
+                              surviving_health.Num(),
+                              manager->get_entity_handles_that_must_survive().Num());
+        if (!surviving_health.IsEmpty()) {
+            TestRunner->TestTrue(TEXT("Survival health captures a positive maximum"),
+                                 surviving_health[0].max_health > 0);
+            TestRunner->TestEqual(TEXT("Initial survival health is full"),
+                                  surviving_health[0].health,
+                                  surviving_health[0].max_health);
+        }
+
         if (scenario == EScenario::KillEnemies) {
             queue_enemy_kill(*manager);
         } else if (scenario == EScenario::DefenceObjective) {
@@ -213,6 +225,10 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
                 TestRunner->TestEqual(TEXT("Defence failure reason is retained"),
                                       manager->get_mission_fail_reason(),
                                       ETestMissionFailReason::DefenceObjectiveFailed);
+                auto const surviving_health{manager->get_entity_health_that_must_survive()};
+                TestRunner->TestEqual(TEXT("Destroyed defence objective reports zero health"),
+                                      surviving_health[0].health,
+                                      0);
                 break;
             }
             default: {
