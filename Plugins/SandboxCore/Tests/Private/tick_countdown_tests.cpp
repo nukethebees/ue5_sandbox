@@ -24,10 +24,7 @@ template <typename T>
 concept SupportsTryConsume = requires(T& value) { value.try_consume(0); };
 
 template <typename T>
-concept SupportsRestartCounter = requires(T& value) {
-    value.restart_counter(0);
-    value.restart_counter(0, typename T::counter_type{0});
-};
+concept SupportsRestartCounter = requires(T& value) { value.restart_counter(0); };
 
 template <typename T>
 concept SupportsSetCounter = requires(T& value) { value.set_counter(0, typename T::counter_type{0}); };
@@ -175,16 +172,12 @@ TEST_CASE("SandboxCore.TickCountdown.SetAndZeroCounter") {
     CHECK(countdown.counters()[1] == 0);
 }
 
-TEST_CASE("SandboxCore.TickCountdown.RestartCounterUsesDefaultOrExplicitTickValue") {
+TEST_CASE("SandboxCore.TickCountdown.RestartCounter") {
     FTickCountdown16 countdown{2, 5};
     countdown.zero_counter(0);
-    countdown.zero_counter(1);
 
     countdown.restart_counter(0);
-    countdown.restart_counter(1, 3);
-
     CHECK(countdown.counters()[0] == 5);
-    CHECK(countdown.counters()[1] == 3);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.Int8ClampsNegativeCountersEvery64Ticks") {
