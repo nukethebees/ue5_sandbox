@@ -66,8 +66,7 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, Category = "UI")
     int32 font_size{24};
   private:
-    void set_mission_mode(ETestMissionMode const new_mode,
-                          ETestMissionState const initial_state);
+    void set_mission_mode(ETestMissionMode const new_mode, ETestMissionState const initial_state);
     void set_mission_values(ETestMissionMode const mission_mode,
                             ETestMissionState const mission_state,
                             float const mission_time,
