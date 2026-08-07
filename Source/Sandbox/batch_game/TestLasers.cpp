@@ -144,9 +144,8 @@ void ATestLasers::process_pending_spawns() {
         return;
     }
 
-    constexpr double spawn_offset_ticks{2.0};
-    auto const forward_spawn_offset_time{
-        static_cast<float>(simulation_clock.get_tick_period() * spawn_offset_ticks)};
+    auto const tick_period{static_cast<float>(simulation_clock.get_tick_period())};
+    constexpr float fixed_spawn_offset{10.f};
 
     auto const offset{get_num_instances()};
     auto const new_total{offset + n_to_add};
@@ -174,13 +173,17 @@ void ATestLasers::process_pending_spawns() {
 
         auto const index{offset + i};
 
-        auto const forward_velocity{
-            ml::get_rotator3f(entities.rotations, index).Vector() * speed};
+        auto const forward_direction{ml::get_rotator3f(entities.rotations, index).Vector()};
+        auto const forward_velocity{forward_direction * speed};
+
         auto const base_velocity{ml::get_vector3f(pending_spawns.base_velocities, i)};
+
         auto const velocity{base_velocity + forward_velocity};
-        auto const spawn_location{
-            ml::get_vector3f(entities.locations, index) +
-            forward_velocity * forward_spawn_offset_time};
+
+        auto const base_spawn_location{ml::get_vector3f(entities.locations, index)};
+
+        auto const spawn_location{base_spawn_location + forward_velocity * tick_period +
+                                  forward_direction * fixed_spawn_offset};
 
         ml::assign(entities.locations, index, spawn_location);
         ml::assign(entities.velocities, index, velocity);
