@@ -7,17 +7,6 @@
 #include "UObject/UObjectGlobals.h"
 
 namespace ml {
-void fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs) {
-    FErrorMsg error_msg;
-    report_invalid_uobject_ptrs(ptrs, error_msg);
-
-    if (!error_msg) {
-        return;
-    }
-
-    UE_LOG(LogSandboxCore, Fatal, TEXT("UObject pointers are invalid:\n%s"), *error_msg.message);
-}
-
 auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs) -> FString {
     FErrorMsg error_msg;
     report_invalid_uobject_ptrs(ptrs, error_msg);
@@ -49,5 +38,24 @@ bool report_invalid_uobject_ptrs(
     }
 
     return error_msg.has_error();
+}
+
+void fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs) {
+    FErrorMsg error_msg;
+    if (!report_invalid_uobject_ptrs(ptrs, error_msg)) {
+        return;
+    }
+
+    UE_LOG(LogSandboxCore, Fatal, TEXT("UObject pointers are invalid:\n%s"), *error_msg.message);
+}
+
+void fatal_if_uobject_ptrs_invalid(
+    std::initializer_list<std::initializer_list<NamedUObjectPtr>> ptr_batches) {
+    FErrorMsg error_msg;
+    if (!report_invalid_uobject_ptrs(ptr_batches, error_msg)) {
+        return;
+    }
+
+    UE_LOG(LogSandboxCore, Fatal, TEXT("UObject pointers are invalid:\n%s"), *error_msg.message);
 }
 }

@@ -51,14 +51,17 @@ void ATestStaticTurrets::begin_play() {
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        {
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+            SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        },
+        {
+            {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
+        },
     });
-
-    ensureAlways(IsValid(actor_config->team_visual_data));
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();

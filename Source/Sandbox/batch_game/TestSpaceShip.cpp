@@ -62,14 +62,17 @@ void ATestSpaceShip::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
+        {
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+            SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+            SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
+            SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
+        },
+        {
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
+        },
     });
-
-    ensureAlways(IsValid(actor_config->team_visual_data));
 
     velocity = GetActorForwardVector() * actor_config->cruise_speed;
     thrust_energy = actor_config->thrust_energy_max;

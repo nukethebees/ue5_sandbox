@@ -58,18 +58,20 @@ void ATestCapitalShips::begin_play() {
 
     auto* world{GetWorld()};
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        SANDBOX_NAMED_UOBJECT_PTR(world),
-    });
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
+        {
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+            SANDBOX_NAMED_UOBJECT_PTR(world),
+        },
+        {
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
+            SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
+        },
     });
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = world;
 
-    ensureAlways(IsValid(actor_config->team_visual_data));
     ensureAlways(actor_config->fighter_spawn_slots ==
                  actor_config->fighter_spawn_slots_relative_transforms.Num());
 

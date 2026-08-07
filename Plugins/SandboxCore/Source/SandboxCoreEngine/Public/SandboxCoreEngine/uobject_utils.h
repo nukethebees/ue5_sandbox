@@ -14,8 +14,6 @@ struct SANDBOXCOREENGINE_API NamedUObjectPtr {
     TCHAR const* name{nullptr};
 };
 
-SANDBOXCOREENGINE_API void
-    fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs);
 SANDBOXCOREENGINE_API auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs)
     -> FString;
 SANDBOXCOREENGINE_API bool report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs,
@@ -27,6 +25,11 @@ SANDBOXCOREENGINE_API bool report_invalid_uobject_ptrs(std::initializer_list<Nam
 SANDBOXCOREENGINE_API bool report_invalid_uobject_ptrs(
     std::initializer_list<std::initializer_list<NamedUObjectPtr>> ptr_batches,
     FErrorMsg& error_msg);
+
+SANDBOXCOREENGINE_API void
+    fatal_if_uobject_ptrs_invalid(std::initializer_list<NamedUObjectPtr> ptrs);
+SANDBOXCOREENGINE_API void fatal_if_uobject_ptrs_invalid(
+    std::initializer_list<std::initializer_list<NamedUObjectPtr>> ptr_batches);
 
 #define SANDBOX_NAMED_UOBJECT_PTR(ptr) \
     ml::NamedUObjectPtr {              \
