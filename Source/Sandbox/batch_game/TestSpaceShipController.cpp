@@ -91,12 +91,15 @@ void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* c
 // Life cycle
 void ATestSpaceShipController::BeginPlay() {
     Super::BeginPlay();
-    initialise_hud();
 
     auto* world{GetWorld()};
+    auto* local_player{GetLocalPlayer()};
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(world),
+        SANDBOX_NAMED_UOBJECT_PTR(local_player),
     });
+
+    initialise_hud();
 
     mission_manager = ml::get_first_actor<ATestMissionManager>(*world);
 
@@ -164,19 +167,7 @@ void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
 void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     Super::OnPossess(in_pawn);
 
-    TRY_INIT_PTR(local_player, GetLocalPlayer());
-    TRY_INIT_PTR(subsystem,
-                 ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
-
-    auto const n_contexts{input.mapping_contexts.Num()};
-
-    check(n_contexts > 0);
-    check(input_mapping_context_index >= 0);
-    check(input_mapping_context_index < n_contexts);
-
     initialise_hud();
-
-    set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
 
     RETURN_IF_NULLPTR(hud_widget);
     auto* ship{Cast<Pawn>(in_pawn)};
@@ -185,21 +176,20 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
         UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShipController::OnPossess: Invalid pawn."));
     }
 
-    auto& health_delegate{ship->on_health_changed};
-    health_delegate.BindUObject(hud_widget, &UShipHudWidget::set_health);
-    hud_widget->set_health(ship->get_health_info());
+    ship->on_health_changed.BindUObject(this, &ThisClass::on_health_changed);
+    on_health_changed(ship->get_health_info());
 
-    ship->on_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_speed);
-    hud_widget->set_speed(ship->get_speed());
+    ship->on_speed_changed.BindUObject(this, &ThisClass::on_speed_changed);
+    on_speed_changed(ship->get_speed());
 
-    ship->on_target_speed_changed.BindUObject(hud_widget, &UShipHudWidget::set_target_speed);
-    hud_widget->set_target_speed(ship->get_target_speed());
+    ship->on_target_speed_changed.BindUObject(this, &ThisClass::on_target_speed_changed);
+    on_target_speed_changed(ship->get_target_speed());
 
-    ship->on_energy_changed.BindUObject(hud_widget, &UShipHudWidget::set_energy);
-    hud_widget->set_energy(1.f);
+    ship->on_energy_changed.BindUObject(this, &ThisClass::on_energy_changed);
+    on_energy_changed(1.f);
 
-    ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
-    hud_widget->set_bombs(ship->get_bombs());
+    ship->on_bombs_changed.BindUObject(this, &ThisClass::on_bombs_changed);
+    on_bombs_changed(ship->get_bombs());
 
     ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
     on_laser_firing_mode_changed(ELaserFiringState::idle);
@@ -210,25 +200,55 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
     ship->on_ship_fire_rate_changed.BindUObject(this, &ThisClass::on_ship_fire_rate_changed);
     on_ship_fire_rate_changed(ship->get_laser_fire_rate());
 
+    ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
+
+    auto const n_contexts{input.mapping_contexts.Num()};
+
+    check(n_contexts > 0);
+    check(input_mapping_context_index >= 0);
+    check(input_mapping_context_index < n_contexts);
+
+    set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
+
 #if WITH_EDITOR
-    ship->on_speed_sampled.BindUObject(hud_widget, &UShipHudWidget::update_sampled_speed);
+    ship->on_speed_sampled.BindUObject(this, &ThisClass::on_speed_sampled);
 #endif
 
+    hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Visible);
+    hud_widget->set_lock_on_widget_visibility(false);
     SetActorTickEnabled(true);
 }
 void ATestSpaceShipController::OnUnPossess() {
-    auto& ship{get_pawn()};
-
-    ship.on_health_changed.Unbind();
-    ship.on_speed_changed.Unbind();
-    ship.on_energy_changed.Unbind();
-    ship.on_bombs_changed.Unbind();
-    ship.on_laser_mode_changed.Unbind();
-    ship.on_lock_on_acquired.Unbind();
+    if (auto* ship{Cast<Pawn>(GetPawn())}) {
+        ship->on_health_changed.Unbind();
+        ship->on_speed_changed.Unbind();
+        ship->on_target_speed_changed.Unbind();
+        ship->on_energy_changed.Unbind();
+        ship->on_bombs_changed.Unbind();
+        ship->on_laser_mode_changed.Unbind();
+        ship->on_lock_on_acquired.Unbind();
+        ship->on_ship_fire_rate_changed.Unbind();
+        ship->on_player_ship_died.Unbind();
 
 #if WITH_EDITOR
-    ship.on_speed_sampled.Unbind();
+        ship->on_speed_sampled.Unbind();
 #endif
+    }
+
+    if (auto* local_player{GetLocalPlayer()}) {
+        if (auto* subsystem{
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
+            if (input.mapping_contexts.IsValidIndex(input_mapping_context_index)) {
+                subsystem->RemoveMappingContext(
+                    input.mapping_contexts[input_mapping_context_index]);
+            }
+        }
+    }
+
+    if (IsValid(hud_widget)) {
+        hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
+        hud_widget->set_lock_on_widget_visibility(false);
+    }
 
     SetActorTickEnabled(false);
 
@@ -236,6 +256,26 @@ void ATestSpaceShipController::OnUnPossess() {
 }
 
 // UI
+void ATestSpaceShipController::on_health_changed(FShipHealth const value) {
+    check(hud_widget);
+    hud_widget->set_health(value);
+}
+void ATestSpaceShipController::on_speed_changed(float const value) {
+    check(hud_widget);
+    hud_widget->set_speed(value);
+}
+void ATestSpaceShipController::on_target_speed_changed(float const value) {
+    check(hud_widget);
+    hud_widget->set_target_speed(value);
+}
+void ATestSpaceShipController::on_energy_changed(float const value) {
+    check(hud_widget);
+    hud_widget->set_energy(value);
+}
+void ATestSpaceShipController::on_bombs_changed(int32 const value) {
+    check(hud_widget);
+    hud_widget->set_bombs(value);
+}
 void ATestSpaceShipController::initialise_hud() {
     if (IsValid(hud_widget)) {
         return;
@@ -365,6 +405,17 @@ void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
     check(hud_widget);
     hud_widget->set_lock_on_widget_visibility(target != nullptr);
 }
+void ATestSpaceShipController::on_player_ship_died() {
+    UnPossess();
+}
+
+#if WITH_EDITOR
+void ATestSpaceShipController::on_speed_sampled(std::span<FVector2d> const samples,
+                                                int32 const oldest_index) {
+    check(hud_widget);
+    hud_widget->update_sampled_speed(samples, oldest_index);
+}
+#endif
 
 // Movement
 void ATestSpaceShipController::set_move_input(FInputActionValue const& value) {

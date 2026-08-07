@@ -35,6 +35,7 @@ public class SandboxTests : ModuleRules
             "FunctionalTesting",
             "UnrealEd",
             "CQTest",
+            "EnhancedInput",
         });
     }
 }

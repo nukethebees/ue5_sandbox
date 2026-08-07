@@ -9,12 +9,15 @@
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>
 
+#include <span>
+
 #include "TestSpaceShipController.generated.h"
 
 class UShipHudWidget;
 class UInputAction;
 class ATestSpaceShip;
 class ATestMissionManager;
+struct FShipHealth;
 
 UCLASS()
 class ATestSpaceShipController
@@ -114,12 +117,22 @@ class ATestSpaceShipController
     void cycle_next_fire_rate();
 
     // UI
+    void on_health_changed(FShipHealth value);
+    void on_speed_changed(float value);
+    void on_target_speed_changed(float value);
+    void on_energy_changed(float value);
+    void on_bombs_changed(int32 value);
     UFUNCTION()
     void on_laser_firing_mode_changed(ELaserFiringState mode);
     UFUNCTION()
     void on_lock_on_acquired(AActor* target);
     UFUNCTION()
     void on_ship_fire_rate_changed(ETestShipFireRate const value);
+    void on_player_ship_died();
+
+#if WITH_EDITOR
+    void on_speed_sampled(std::span<FVector2d> samples, int32 oldest_index);
+#endif
 
     // Mission
     void on_mission_manager_ready(ATestMissionManager const& manager);

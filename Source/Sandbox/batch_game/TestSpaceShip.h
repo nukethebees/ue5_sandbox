@@ -34,13 +34,16 @@ class UShipHealthComponent;
 class ATestEntityRegistry;
 class ATestLasers;
 class UTestSpaceShipData;
+struct EntityDeathInfo;
 
 namespace ml::entity_registry {
 struct EntityData;
 }
 
+DECLARE_DELEGATE(FOnPlayerShipDied);
+
 UCLASS()
-class ATestSpaceShip
+class SANDBOX_API ATestSpaceShip
     : public APawn
     , public ITestEntity {
     GENERATED_BODY()
@@ -180,6 +183,7 @@ class ATestSpaceShip
     FOnLaserModeChanged on_laser_mode_changed;
     FOnLockOnAcquired on_lock_on_acquired;
     FOnShipFireRateChanged on_ship_fire_rate_changed;
+    FOnPlayerShipDied on_player_ship_died;
 
 #if WITH_EDITORONLY_DATA
     FOnSpeedSampled on_speed_sampled;
@@ -196,8 +200,8 @@ class ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     auto GetVelocity() const -> FVector override;
     void set(EBoostBrakeState s);
-    void update_boost_brake(this ATestSpaceShip& self, float const dt);
-    void integrate_velocity(this ATestSpaceShip& self, float const dt);
+    void update_boost_brake(float dt);
+    void integrate_velocity(float dt);
 
     /* ------------------------------------------------------------------------------------------ */
     // Combat
@@ -221,13 +225,15 @@ class ATestSpaceShip
     void configure_boost_engine_effect();
     void configure_ship_mesh();
 
-    void update_actor_rotation(this ATestSpaceShip& self, float const dt);
-    void update_visual_orientation(this ATestSpaceShip& self, float const dt);
+    void update_actor_rotation(float dt);
+    void update_visual_orientation(float dt);
 
     /* ------------------------------------------------------------------------------------------ */
     // Health
     /* ------------------------------------------------------------------------------------------ */
     void set_health(int32 new_health);
+    void die(FRegistryEntityHandle killer);
+    void queue_entity_update(EntityDeathInfo const& death_info);
 
     // Mesh
     auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;

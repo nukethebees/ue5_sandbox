@@ -1,6 +1,7 @@
 #include "TestSpaceShip.h"
 
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
@@ -134,10 +135,19 @@ void ATestSpaceShip::resolve_damage_events() {
     auto const n{view.num()};
 
     auto const original_health{health.health};
+    FRegistryEntityHandle killer{};
+
+    auto const apply_damage{[this, &killer](int32 const damage,
+                                            FRegistryEntityHandle const instigator) {
+        auto const was_alive{is_alive()};
+        health.health -= damage;
+        if (was_alive && !is_alive()) {
+            killer = instigator;
+        }
+    }};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const ismc_index_hit{view.hit_items[i]};
-        health.health -= view.damage_amounts[i];
+        apply_damage(view.damage_amounts[i], view.instigators[i]);
     }
 
     auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
@@ -147,22 +157,28 @@ void ATestSpaceShip::resolve_damage_events() {
             continue;
         }
 
-        health.health -= direct_damage.damage_amounts[i];
+        apply_damage(direct_damage.damage_amounts[i], direct_damage.instigators[i]);
     }
 
     if (health.health != original_health) {
         on_health_changed.ExecuteIfBound(health);
     }
+    if ((original_health > 0) && !is_alive()) {
+        die(killer);
+    }
 }
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
 
+    queue_entity_update(EntityDeathInfo{});
+}
+void ATestSpaceShip::queue_entity_update(EntityDeathInfo const& death_info) {
     entity_registry->queue_entity_updates(
         ATestEntityRegistry::ConstView{
             {&registry_handle, 1},
             get_entity_update_data().get_const_view(),
         },
-        {});
+        death_info);
 }
 void ATestSpaceShip::resolve_damage_targets() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_targets);
@@ -205,7 +221,7 @@ auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
     entity_data.radii.Add(ml::get_mesh_sphere_bounds(*ship_mesh));
     entity_data.healths.Add(health.health);
     entity_data.teams.Add(team);
-    entity_data.alive.Add(1);
+    entity_data.alive.Add(static_cast<uint8>(is_alive()));
     entity_data.entity_types.Add(ETestEntityType::PlayerShip);
 
     return entity_data;
@@ -232,22 +248,22 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 /* ------------------------------------------------------------------------------------------ */
 // Movement
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::integrate_velocity(this ATestSpaceShip& self, float const dt) {
-    switch (self.flight_mode) {
+void ATestSpaceShip::integrate_velocity(float const dt) {
+    switch (flight_mode) {
         case ETestSpaceShipFlightMode::ForwardSpeed: {
-            auto const fwd{self.GetActorForwardVector()};
-            auto const new_speed{self.forward_flight_model.update(dt)};
-            self.velocity = fwd * new_speed;
+            auto const fwd{GetActorForwardVector()};
+            auto const new_speed{forward_flight_model.update(dt)};
+            velocity = fwd * new_speed;
             break;
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
-            self.planar_velocity = self.planar_flight_model.update(dt);
-            self.velocity = self.planar_velocity;
+            planar_velocity = planar_flight_model.update(dt);
+            velocity = planar_velocity;
             break;
         }
     }
 
-    self.on_speed_changed.ExecuteIfBound(self.velocity.Size());
+    on_speed_changed.ExecuteIfBound(velocity.Size());
 }
 auto ATestSpaceShip::get_velocity() const -> FVector {
     return velocity;
@@ -338,35 +354,35 @@ void ATestSpaceShip::turn(FVector2D direction) {
 
     rotation_input = direction;
 }
-void ATestSpaceShip::update_actor_rotation(this ATestSpaceShip& self, float const dt) {
-    auto const rotation_speed{self.actor_config->rotation_speed};
+void ATestSpaceShip::update_actor_rotation(float const dt) {
+    auto const rotation_speed{actor_config->rotation_speed};
     auto const d_rot{rotation_speed * dt};
 
-    if (self.rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(self.roll_input)) {
+    if (rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(roll_input)) {
         auto const drot_pitch{d_rot};
 
-        auto const abs_yaw_strength{FMath::Abs(self.rotation_input.X)};
-        auto const yaw_speed{self.actor_config->rotation_speed * abs_yaw_strength};
+        auto const abs_yaw_strength{FMath::Abs(rotation_input.X)};
+        auto const yaw_speed{actor_config->rotation_speed * abs_yaw_strength};
         auto const drot_yaw{yaw_speed * dt};
 
-        auto const d_pitch{self.rotation_input.Y * drot_pitch};
-        auto const d_yaw{self.rotation_input.X * drot_yaw};
-        auto const d_roll{self.roll_input * d_rot};
+        auto const d_pitch{rotation_input.Y * drot_pitch};
+        auto const d_yaw{rotation_input.X * drot_yaw};
+        auto const d_roll{roll_input * d_rot};
 
         FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
-        self.AddActorLocalRotation(delta_rotation);
+        AddActorLocalRotation(delta_rotation);
 
-        self.time_since_rotation_input = 0.f;
+        time_since_rotation_input = 0.f;
         return;
     }
 
-    if (self.time_since_rotation_input >= self.actor_config->auto_level_roll_delay) {
-        auto const auto_level_speed{self.actor_config->auto_level_speed};
-        auto const rot{self.GetActorRotation()};
+    if (time_since_rotation_input >= actor_config->auto_level_roll_delay) {
+        auto const auto_level_speed{actor_config->auto_level_speed};
+        auto const rot{GetActorRotation()};
 
         auto const roll{FMath::FInterpTo(rot.Roll, 0.0f, dt, auto_level_speed)};
 
-        self.SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
+        SetActorRotation(FRotator{rot.Pitch, rot.Yaw, roll});
     }
 }
 
@@ -433,20 +449,18 @@ void ATestSpaceShip::stop_brake() {
         set(EBoostBrakeState::None);
     }
 }
-void ATestSpaceShip::update_boost_brake(this ATestSpaceShip& self, float const dt) {
-    auto const starting_thrust_energy{self.thrust_energy};
+void ATestSpaceShip::update_boost_brake(float const dt) {
+    auto const starting_thrust_energy{thrust_energy};
 
     if (starting_thrust_energy <= 0.f) {
-        self.set(EBoostBrakeState::None);
+        set(EBoostBrakeState::None);
     }
 
-    self.thrust_energy += dt * self.thrust_change_rate;
-    self.thrust_energy =
-        FMath::Clamp(self.thrust_energy, 0.f, self.actor_config->thrust_energy_max);
+    thrust_energy += dt * thrust_change_rate;
+    thrust_energy = FMath::Clamp(thrust_energy, 0.f, actor_config->thrust_energy_max);
 
-    if (starting_thrust_energy != self.thrust_energy) {
-        self.on_energy_changed.ExecuteIfBound(self.thrust_energy /
-                                              self.actor_config->thrust_energy_max);
+    if (starting_thrust_energy != thrust_energy) {
+        on_energy_changed.ExecuteIfBound(thrust_energy / actor_config->thrust_energy_max);
     }
 }
 
@@ -688,25 +702,25 @@ void ATestSpaceShip::fire_homing_laser() {}
 /* ------------------------------------------------------------------------------------------ */
 // Visuals
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::update_visual_orientation(this ATestSpaceShip& self, float const dt) {
-    auto const current_rotation{self.ship_mesh->GetRelativeRotation()};
+void ATestSpaceShip::update_visual_orientation(float const dt) {
+    auto const current_rotation{ship_mesh->GetRelativeRotation()};
 
-    auto const target_pitch{self.rotation_input.Y * self.actor_config->pitch_angle_max};
+    auto const target_pitch{rotation_input.Y * actor_config->pitch_angle_max};
     auto const new_pitch{
-        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, self.actor_config->pitch_speed)};
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, actor_config->pitch_speed)};
 
-    auto const target_yaw{self.rotation_input.X * self.actor_config->yaw_angle_max};
+    auto const target_yaw{rotation_input.X * actor_config->yaw_angle_max};
     auto const new_yaw{
-        FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, self.actor_config->yaw_speed)};
+        FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, actor_config->yaw_speed)};
 
-    auto const turn_intensity{self.rotation_input.X};
-    auto const turn_target{turn_intensity * self.actor_config->turn_bank_angle_max};
-    auto const turn_speed{turn_intensity * self.actor_config->turn_bank_speed};
+    auto const turn_intensity{rotation_input.X};
+    auto const turn_target{turn_intensity * actor_config->turn_bank_angle_max};
+    auto const turn_speed{turn_intensity * actor_config->turn_bank_speed};
 
-    auto const roll_speed{FMath::Max(self.actor_config->turn_bank_speed, FMath::Abs(turn_speed))};
+    auto const roll_speed{FMath::Max(actor_config->turn_bank_speed, FMath::Abs(turn_speed))};
     auto const new_roll{FMath::FInterpTo(current_rotation.Roll, turn_target, dt, roll_speed)};
 
-    self.ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
+    ship_mesh->SetRelativeRotation(FRotator(new_pitch, new_yaw, new_roll));
 }
 
 void ATestSpaceShip::configure_boost_pulse() {
@@ -764,9 +778,24 @@ void ATestSpaceShip::set_health(int32 new_health) {
         return;
     }
 
-    auto const old_health{health.max_health};
+    auto const was_alive{is_alive()};
     health.health = FMath::Min(new_health, health.max_health);
     on_health_changed.ExecuteIfBound(health);
+
+    if (was_alive && !is_alive()) {
+        die({});
+    }
+}
+void ATestSpaceShip::die(FRegistryEntityHandle const killer) {
+    EntityDeathInfo death_info;
+    auto const reason{killer.is_null() ? ETestDeathReason::Unknown : ETestDeathReason::Combat};
+    death_info.add(reason, registry_handle, killer);
+    queue_entity_update(death_info);
+
+    // The callback unpossesses and unbinds from this actor, so execute a local delegate.
+    auto player_ship_died{MoveTemp(on_player_ship_died)};
+    player_ship_died.ExecuteIfBound();
+    Destroy();
 }
 
 /* ------------------------------------------------------------------------------------------ */

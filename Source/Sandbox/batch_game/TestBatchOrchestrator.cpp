@@ -272,12 +272,12 @@ void ATestBatchOrchestrator::begin_play() {
     auto register_owner{
         [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); }};
 
-    if (player_ship) {
+    if (IsValid(player_ship)) {
         register_owner(player_ship);
     }
     ml::invoke_on_all(register_owner, capital_ships, capital_ship_fighters, turrets, spinners);
 
-    if (player_ship) {
+    if (IsValid(player_ship)) {
         player_ship->begin_play();
     }
     ml::invoke_on_all([this](auto actor) { actor->begin_play(); },
@@ -362,7 +362,7 @@ void ATestBatchOrchestrator::stop_visual_logging() {
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
-    if (player_ship) {
+    if (IsValid(player_ship)) {
         if (!entity_registry->is_valid_handle(player_ship->get_entity_registry_handle())) {
             UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
         }
@@ -403,7 +403,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Assume registry data is stable here
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->begin_tick();
             }
 
@@ -423,7 +423,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->update_timers(tick_period);
             }
             capital_ship_fighters->update_timers(tick_period);
@@ -446,7 +446,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Movement
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->move(tick_period);
             }
 
@@ -459,7 +459,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // e.g. spawning lasers for the next frame
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->queue_commands();
             }
 
@@ -490,7 +490,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->resolve_damage_events();
             }
 
@@ -504,7 +504,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->update_entity_registry();
             }
 
@@ -525,7 +525,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->sync_from_registry();
             }
 
@@ -539,7 +539,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->update_visual_data();
             }
 
@@ -556,7 +556,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
-            if (player_ship) {
+            if (IsValid(player_ship)) {
                 player_ship->end_tick();
             }
 
@@ -587,7 +587,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
-        if (player_ship) {
+        if (IsValid(player_ship)) {
             player_ship->commit_visual_data();
         }
 
@@ -626,7 +626,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ship_fighters->bind_simulation_clock(*this);
     mission_manager->bind_simulation_clock(*this);
 
-    if (player_ship) {
+    if (IsValid(player_ship)) {
         player_ship->set_entity_registry(entity_registry);
         player_ship->set_laser_actor(lasers);
     }

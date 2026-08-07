@@ -12,6 +12,11 @@
 		"Sandbox.FunctionalTests.FightersInterceptCapital.MainTest",
 		"Sandbox.FunctionalTests.PlayerShipVsCapital.Main",
 		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
-		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest"
+		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest",
+		"Sandbox.FunctionalTests.TestMissionManager.DefenceObjective",
+		"Sandbox.FunctionalTests.TestMissionManager.KillEnemies",
+		"Sandbox.FunctionalTests.TestMissionManager.KillEnemiesWithinTime",
+		"Sandbox.FunctionalTests.TestMissionManager.SurviveTime",
+		"Sandbox.FunctionalTests.TestPlayerShipDeath.LethalDamageDestroysAndUnpossessesPlayerShip"
 	]
 }
