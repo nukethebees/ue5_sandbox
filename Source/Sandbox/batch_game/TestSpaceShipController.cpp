@@ -299,20 +299,61 @@ void ATestSpaceShipController::initialise_hud() {
     hud_widget->set_stopwatch_time(0.f);
 
     ui_timers.Reset();
-    if (IsValid(ui_data) && ui_data->entity_count_update_period > 0.f) {
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_hud: UI data is invalid."));
+        return;
+    }
+
+    if (!IsValid(ui_data->team_visual_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_hud: Team visual data is invalid."));
+    } else {
+        hud_widget->set_entity_colours(ui_data->team_visual_data->build_team_colour_cache());
+    }
+
+    if (ui_data->entity_count_update_period <= 0.f) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_hud: Entity count update period must "
+                    "be positive."));
+    } else {
         ui_timers.add_started(ui_data->entity_count_update_period,
                               FTestSpaceShipControllerUiTimerIndices::count);
     }
 }
 
 void ATestSpaceShipController::update_entity_count_table() {
-    if (!IsValid(hud_widget) || !IsValid(entity_registry) || !IsValid(ui_data) ||
-        !IsValid(ui_data->team_visual_data)) {
+    if (!IsValid(hud_widget)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::update_entity_count_table: HUD widget is invalid."));
+        return;
+    }
+    if (!IsValid(entity_registry)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::update_entity_count_table: Entity registry is "
+                    "invalid."));
+        return;
+    }
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::update_entity_count_table: UI data is invalid."));
+        return;
+    }
+    if (!IsValid(ui_data->team_visual_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::update_entity_count_table: Team visual data is "
+                    "invalid."));
         return;
     }
 
-    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type(),
-                                  ui_data->team_visual_data->build_team_colour_cache());
+    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type());
 }
 
 void ATestSpaceShipController::on_health_changed(FShipHealth const value) {

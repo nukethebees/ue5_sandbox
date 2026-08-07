@@ -32,18 +32,23 @@ void UEntityCountTableWidget::NativePreConstruct() {
 }
 
 void UEntityCountTableWidget::set_entity_counts(
-    ATestEntityRegistry::EntityCounts const& new_counts,
-    UTestTeamVisualData::FColourArray const& new_colours) {
+    ATestEntityRegistry::EntityCounts const& new_counts) {
     entity_counts = new_counts;
+    rebuild_table();
+}
+
+void UEntityCountTableWidget::set_team_colours(
+    UTestTeamVisualData::FColourArray const& new_colours) {
     team_colours = new_colours;
     rebuild_table();
 }
 
-void UEntityCountTableWidget::set_text_style(UTextBlock& text) const {
+void UEntityCountTableWidget::set_text_style(UTextBlock& text,
+                                             ETextJustify::Type const alignment) const {
     auto font{text.GetFont()};
     font.Size = font_size;
     text.SetFont(font);
-    text.SetJustification(ETextJustify::Center);
+    text.SetJustification(alignment);
 }
 
 void UEntityCountTableWidget::rebuild_table() {
@@ -69,22 +74,27 @@ void UEntityCountTableWidget::rebuild_table() {
         entity_count_grid->SetColumnFill(first_team_column + team, 1.f);
     }
 
-    auto add_text{[this](FString const& name, int32 row, int32 column, int32 layer) {
+    auto add_text{[this](FString const& name,
+                         int32 row,
+                         int32 column,
+                         int32 layer,
+                         ETextJustify::Type const alignment) {
         auto* text{WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *name)};
-        set_text_style(*text);
+        set_text_style(*text, alignment);
         auto* slot{entity_count_grid->AddChildToGrid(text, row, column)};
         slot->SetLayer(layer);
         return text;
     }};
 
-    add_text(TEXT("entity_type_heading"), row_heading, 0, 1)
+    add_text(TEXT("entity_type_heading"), row_heading, 0, 1, entity_type_alignment)
         ->SetText(FText::FromString(TEXT("Entity")));
     for (int32 team{0}; team < n_teams; ++team) {
         auto const team_value{static_cast<ETestTeam>(team)};
         auto* heading{add_text(FString::Printf(TEXT("team_heading_%d"), team),
                                row_heading,
                                first_team_column + team,
-                               1)};
+                               1,
+                               data_alignment)};
         heading->SetText(FText::FromString(ml::to_string_without_type_prefix(team_value)));
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
@@ -98,13 +108,14 @@ void UEntityCountTableWidget::rebuild_table() {
     for (int32 type{0}; type < n_types; ++type) {
         auto const type_value{static_cast<ETestEntityType>(type)};
         auto const row{type + 1};
-        add_text(FString::Printf(TEXT("entity_type_%d"), type), row, 0, 1)
-            ->SetText(FText::FromString(ml::to_string_without_type_prefix(type_value)));
+        add_text(FString::Printf(TEXT("entity_type_%d"), type), row, 0, 1, entity_type_alignment)
+            ->SetText(FText::FromString(ml::get_entity_short_name(type_value)));
         for (int32 team{0}; team < n_teams; ++team) {
             auto* count{add_text(FString::Printf(TEXT("entity_count_%d_%d"), type, team),
                                  row,
                                  first_team_column + team,
-                                 1)};
+                                 1,
+                                 data_alignment)};
             count->SetText(FText::AsNumber(entity_counts[team][type]));
         }
     }

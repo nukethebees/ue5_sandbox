@@ -176,10 +176,15 @@ void UShipHudWidget::set_flight_mode(FStringView value) {
     flight_mode_widget->update(value);
 }
 
-void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& counts,
-                                       UTestTeamVisualData::FColourArray const& colours) {
+void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& counts) {
     if (entity_count_table) {
-        entity_count_table->set_entity_counts(counts, colours);
+        entity_count_table->set_entity_counts(counts);
+    }
+}
+
+void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const& colours) {
+    if (entity_count_table) {
+        entity_count_table->set_team_colours(colours);
     }
 }
 

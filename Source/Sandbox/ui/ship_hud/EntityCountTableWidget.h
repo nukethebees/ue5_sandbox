@@ -5,6 +5,7 @@
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
+#include <Framework/Text/TextLayout.h>
 
 #include "EntityCountTableWidget.generated.h"
 
@@ -15,8 +16,8 @@ UCLASS()
 class SANDBOX_API UEntityCountTableWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_entity_counts(ATestEntityRegistry::EntityCounts const& new_counts,
-                           UTestTeamVisualData::FColourArray const& new_colours);
+    void set_entity_counts(ATestEntityRegistry::EntityCounts const& new_counts);
+    void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
   protected:
     void NativePreConstruct() override;
 
@@ -25,9 +26,15 @@ class SANDBOX_API UEntityCountTableWidget : public UUserWidget {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     int32 font_size{24};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    TEnumAsByte<ETextJustify::Type> data_alignment{ETextJustify::Center};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    TEnumAsByte<ETextJustify::Type> entity_type_alignment{ETextJustify::Left};
   private:
     void rebuild_table();
-    void set_text_style(UTextBlock& text) const;
+    void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
     ATestEntityRegistry::EntityCounts entity_counts{};
     UTestTeamVisualData::FColourArray team_colours{};

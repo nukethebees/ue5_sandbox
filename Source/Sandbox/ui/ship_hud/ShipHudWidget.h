@@ -82,8 +82,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_target_velocity(FVector value);
     void set_control_mode(FStringView value);
     void set_flight_mode(FStringView value);
-    void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts,
-                           UTestTeamVisualData::FColourArray const& colours);
+    void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
+    void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
