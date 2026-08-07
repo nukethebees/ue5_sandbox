@@ -39,7 +39,7 @@ class UTestCapitalShipsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UMaterialInterface> material;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
@@ -71,35 +71,35 @@ class UTestCapitalShipsConfig : public UDataAsset {
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Collision
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Collision")
     FCollisionSettings collision_settings;
 
     // Fighter spawning
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fighters")
     float spawn_delay{5.f};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fighters")
     int32 fighter_spawn_slots{6};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Fighters")
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
 
     // Health
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Health")
     int32 max_health{5000};
 
     // Debugging
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Debug")
     FDrawDebugConfig debug_drawer;
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Debug")
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
 
-    UPROPERTY(EditDefaultsOnly, Category = "Debugging|Visual Logger")
+    UPROPERTY(EditDefaultsOnly, Category = "Debug")
     TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
 
     // Proxy settings
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Proxy")
     float proxy_arrow_size{5.f};
   private:
     void synchronise_data();

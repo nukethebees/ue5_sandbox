@@ -35,10 +35,10 @@ class UTestStaticTurretsConfig : public UDataAsset {
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 
     // Misc
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Awareness")
     float detection_radius{3000.f};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Combat")
     FTransform fire_point_offset{FTransform::Identity};
 
     // Combat
@@ -54,17 +54,17 @@ class UTestStaticTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Combat")
     float attack_cooldown{0.33f};
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Health")
     int32 max_health{20};
 
     // Proxy settings
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Debug")
     bool show_collision{false};
 
-    // Debugging
-    UPROPERTY(EditAnywhere)
+    // Debug
+    UPROPERTY(EditAnywhere, Category = "Debug")
     FDrawDebugConfig debug_drawer;
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Debug")
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
 };
