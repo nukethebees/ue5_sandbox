@@ -24,6 +24,11 @@
 			"Name": "SandboxCoreEngine",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SandboxCoreEngineTests",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }
