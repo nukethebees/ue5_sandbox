@@ -84,6 +84,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_target_velocity(FVector value);
     void set_control_mode(FStringView value);
     void set_flight_mode(FStringView value);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
     void set_mission_status(ATestMissionManager const& mission_manager);
@@ -92,8 +94,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
+    void NativePreConstruct() override;
     void NativeConstruct() override;
 
+    void set_common_widget_properties();
     void set_widget_visibility_checked(UWidget* const widget,
                                        ESlateVisibility const new_visibility);
 
@@ -142,6 +146,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UMissionStatusWidget* mission_status_panel{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    int32 font_size{24};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

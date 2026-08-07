@@ -16,6 +16,8 @@ class SANDBOX_API UVector2DWidget : public UUserWidget {
     void NativeConstruct() override;
 
     void update(FVector2D const value);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     UPROPERTY(meta = (BindWidget))
     UCanvasPanel* canvas_panel{nullptr};
@@ -32,4 +34,6 @@ class SANDBOX_API UVector2DWidget : public UUserWidget {
     FText name;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     bool show_value{true};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    int32 font_size{24};
 };

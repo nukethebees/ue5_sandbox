@@ -43,6 +43,11 @@ void UEntityCountTableWidget::set_team_colours(
     rebuild_table();
 }
 
+void UEntityCountTableWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+    rebuild_table();
+}
+
 void UEntityCountTableWidget::set_text_style(UTextBlock& text,
                                              ETextJustify::Type const alignment) const {
     auto font{text.GetFont()};

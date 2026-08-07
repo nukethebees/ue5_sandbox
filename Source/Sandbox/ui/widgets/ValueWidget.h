@@ -21,6 +21,8 @@ class SANDBOX_API UValueWidget : public UUserWidget {
     void NativeConstruct() override;
 
     void set_format_spec(FName const new_format_spec);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
 
     template <typename... Ts>
     void update(Ts const... values) {

@@ -26,6 +26,7 @@
 
 void UShipHudWidget::NativeConstruct() {
     Super::NativeConstruct();
+    set_common_widget_properties();
 
     RETURN_IF_NULLPTR(crosshair_material);
     RETURN_IF_NULLPTR(far_crosshair_widget);
@@ -40,6 +41,39 @@ void UShipHudWidget::NativeConstruct() {
 
     near_crosshair_widget->SetBrushFromMaterial(near_crosshair_material_instance);
     far_crosshair_widget->SetBrushFromMaterial(far_crosshair_material_instance);
+}
+
+void UShipHudWidget::NativePreConstruct() {
+    Super::NativePreConstruct();
+    set_common_widget_properties();
+}
+
+void UShipHudWidget::set_common_widget_properties() {
+    speed_widget->set_font_size(font_size);
+    health_widget->set_font_size(font_size);
+    points_widget->set_font_size(font_size);
+    lives_widget->set_font_size(font_size);
+
+    stopwatch_widget->set_font_size(font_size);
+    mission_status_widget->set_font_size(font_size);
+    fire_rate_widget->set_font_size(font_size);
+    target_speed_widget->set_font_size(font_size);
+    selected_imc_widget->set_font_size(font_size);
+    turning_widget->set_font_size(font_size);
+    moving_widget->set_font_size(font_size);
+    desired_velocity_scale_widget->set_font_size(font_size);
+    ship_velocity_widget->set_font_size(font_size);
+    target_velocity_widget->set_font_size(font_size);
+    control_mode_widget->set_font_size(font_size);
+    flight_mode_widget->set_font_size(font_size);
+
+    entity_count_table->set_font_size(font_size);
+    mission_status_panel->set_font_size(font_size);
+}
+
+void UShipHudWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+    set_common_widget_properties();
 }
 
 void UShipHudWidget::set_speed(float value) {

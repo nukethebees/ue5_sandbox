@@ -53,3 +53,19 @@ void UVector2DWidget::update(FVector2D const value) {
     cursor_slot->SetAlignment(FVector2D{0.5, 0.5});
     cursor_slot->SetPosition(FVector2D::ZeroVector);
 }
+
+void UVector2DWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+
+    if (name_text) {
+        auto font{name_text->GetFont()};
+        font.Size = font_size;
+        name_text->SetFont(font);
+    }
+
+    if (value_text) {
+        auto font{value_text->GetFont()};
+        font.Size = font_size;
+        value_text->SetFont(font);
+    }
+}

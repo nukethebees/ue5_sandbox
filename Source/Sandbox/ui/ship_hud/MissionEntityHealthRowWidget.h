@@ -19,6 +19,8 @@ class SANDBOX_API UMissionEntityHealthRowWidget : public UUserWidget {
   public:
     void set_entity(TestEntityUniqueId unique_id, ETestEntityType entity_type);
     void set_health(FShipHealth health);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     void NativeConstruct() override;
 
@@ -30,6 +32,9 @@ class SANDBOX_API UMissionEntityHealthRowWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UShipHealthWidget* health_widget{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "UI")
+    int32 font_size{24};
   private:
     auto check_widget_bindings() const -> bool;
 };

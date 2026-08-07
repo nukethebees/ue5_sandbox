@@ -17,6 +17,8 @@ class SANDBOX_API UShipHealthWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_health(FShipHealth health);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32;
   protected:
     UPROPERTY(meta = (BindWidget))
     UProgressBar* health_bar{nullptr};

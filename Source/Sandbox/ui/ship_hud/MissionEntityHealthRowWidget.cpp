@@ -43,3 +43,12 @@ void UMissionEntityHealthRowWidget::set_entity(TestEntityUniqueId const unique_i
 void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {
     health_widget->set_health(health);
 }
+
+void UMissionEntityHealthRowWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+
+    auto font{entity_name->GetFont()};
+    font.Size = font_size;
+    entity_name->SetFont(font);
+    health_widget->set_font_size(font_size);
+}

@@ -18,6 +18,8 @@ class SANDBOX_API UEntityCountTableWidget : public UUserWidget {
   public:
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& new_counts);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     void NativePreConstruct() override;
 

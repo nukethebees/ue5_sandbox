@@ -85,6 +85,18 @@ void UMissionStatusWidget::update(ATestMissionManager const& mission_manager) {
                   mission_manager.get_entity_health_that_must_survive());
 }
 
+void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+    mission_mode_widget->set_font_size(font_size);
+    mission_time_widget->set_font_size(font_size);
+    enemies_remaining_widget->set_font_size(font_size);
+    time_remaining_widget->set_font_size(font_size);
+
+    for (auto* const row_widget : surviving_entity_widgets) {
+        row_widget->set_font_size(font_size);
+    }
+}
+
 void UMissionStatusWidget::update_values(
     ETestMissionMode const mission_mode,
     ETestMissionState const mission_state,
@@ -167,6 +179,7 @@ void UMissionStatusWidget::reconstruct_surviving_entity_widgets(
             WidgetTree->ConstructWidget<UMissionEntityHealthRowWidget>(widget_class, *name)};
         check(health_widget);
         health_widget->set_entity(entity_ids[i], entity_types[i]);
+        health_widget->set_font_size(font_size);
         health_widget->set_health(health_values[i]);
         surviving_entities_box->AddChild(health_widget);
         surviving_entity_ids.Add(entity_ids[i]);

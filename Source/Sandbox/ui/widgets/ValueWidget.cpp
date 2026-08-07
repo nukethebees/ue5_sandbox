@@ -37,3 +37,8 @@ void UValueWidget::set_format_spec(FName const new_format_spec) {
     format_spec = new_format_spec;
     update_format_spec_text();
 }
+
+void UValueWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+    update_format_spec_text();
+}

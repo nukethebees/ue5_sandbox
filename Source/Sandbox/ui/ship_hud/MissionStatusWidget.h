@@ -21,6 +21,8 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void update(ATestMissionManager const& mission_manager);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     void NativeConstruct() override;
     void NativePreConstruct() override;
@@ -54,6 +56,9 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
 
     UPROPERTY(EditAnywhere, Category = "UI|Format")
     FName time_remaining_format{TEXT("Time remaining: {0}")};
+
+    UPROPERTY(EditAnywhere, Category = "UI")
+    int32 font_size{24};
   private:
     void update_values(ETestMissionMode mission_mode,
                        ETestMissionState mission_state,
