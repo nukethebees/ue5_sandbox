@@ -15,8 +15,6 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "DrawDebugHelpers.h"
 
-#include <limits>
-
 namespace {
 void log_error_once(bool& logged, TCHAR const* context, ml::FErrorMsg const& error) {
     if (logged) {
@@ -65,13 +63,10 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
         ui_data.update_frequencies.mission_status_update_period)};
     auto const player_status_period{new_simulation_clock.duration_to_tick_period(
         ui_data.update_frequencies.player_status_update_period)};
-    if (entity_count_period <= 0 || mission_status_period <= 0 || player_status_period <= 0 ||
-        entity_count_period > std::numeric_limits<int8>::max() ||
-        mission_status_period > std::numeric_limits<int8>::max() ||
-        player_status_period > std::numeric_limits<int8>::max()) {
+    if (entity_count_period <= 0 || mission_status_period <= 0 || player_status_period <= 0) {
         UE_LOG(LogSandboxUI,
                Error,
-               TEXT("FHUDManager::initialise: UI update periods do not fit in the HUD timer."));
+               TEXT("FHUDManager::initialise: Converted UI update periods must be positive."));
         return;
     }
 
@@ -85,9 +80,9 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
     far_cursor_distance = new_far_cursor_distance;
     debug_crosshair = new_debug_crosshair;
 
-    update_timers.add_started(static_cast<int8>(player_status_period));
-    update_timers.add_started(static_cast<int8>(mission_status_period));
-    update_timers.add_started(static_cast<int8>(entity_count_period));
+    update_timers.add_started(player_status_period);
+    update_timers.add_started(mission_status_period);
+    update_timers.add_started(entity_count_period);
 
     new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
 

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <SandboxCore/array_utils.h>
 
 #include <concepts>
+#include <utility>
 
 template <std::signed_integral CounterType>
 class TPeriodicTickCountdown {
@@ -11,6 +13,11 @@ class TPeriodicTickCountdown {
     using counter_type = CounterType;
 
     TPeriodicTickCountdown() = default;
+
+    template <std::integral PeriodType>
+    [[nodiscard]] static constexpr auto valid_period(PeriodType const period) noexcept -> bool {
+        return std::in_range<counter_type>(period) && period > 0;
+    }
 
     [[nodiscard]] auto num() const noexcept -> size_type { return remaining_ticks.Num(); }
 
@@ -43,10 +50,12 @@ class TPeriodicTickCountdown {
         periods.Reset();
     }
 
-    void add_started(counter_type const period) {
-        check(period > 0);
-        remaining_ticks.Add(period);
-        periods.Add(period);
+    template <std::integral PeriodType>
+    void add_started(PeriodType const period) {
+        check(valid_period(period));
+        auto const checked_period{static_cast<counter_type>(period)};
+        remaining_ticks.Add(checked_period);
+        periods.Add(checked_period);
     }
 
     void add_zeroed(counter_type const period) {
@@ -55,18 +64,25 @@ class TPeriodicTickCountdown {
         periods.Add(period);
     }
 
-    void add_started(counter_type const period, size_type const count) {
+    template <std::integral PeriodType>
+    void add_started(PeriodType const period, size_type const count) {
         check(count >= 0);
-        for (size_type i{0}; i < count; ++i) {
-            add_started(period);
-        }
+        check(valid_period(period));
+        auto const checked_period{static_cast<counter_type>(period)};
+        auto const n{count};
+        remaining_ticks.AddUninitialized(n);
+        periods.AddUninitialized(n);
+        ml::fill_last(remaining_ticks, checked_period, n);
+        ml::fill_last(periods, checked_period, n);
     }
 
     void add_zeroed(counter_type const period, size_type const count) {
         check(count >= 0);
-        for (size_type i{0}; i < count; ++i) {
-            add_zeroed(period);
-        }
+        check(period > 0);
+        auto const n{count};
+        remaining_ticks.AddZeroed(n);
+        periods.AddUninitialized(n);
+        ml::fill_last(periods, period, n);
     }
 
     [[nodiscard]] auto counters() const noexcept -> TConstArrayView<counter_type> {
