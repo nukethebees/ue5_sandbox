@@ -10,6 +10,11 @@ class SANDBOX_API SimulationClockInterface {
     using tick_type = uint64;
     using time_type = double;
 
+    SimulationClockInterface() = default;
+    SimulationClockInterface(ATestBatchOrchestrator const& orch);
+
+    bool is_valid() const noexcept;
+
     void bind(ATestBatchOrchestrator const& new_orchestrator) noexcept;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;

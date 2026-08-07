@@ -3,6 +3,13 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 
 namespace ml::test_batch_orchestrator {
+SimulationClockInterface::SimulationClockInterface(ATestBatchOrchestrator const& orch)
+    : orchestrator{&orch} {}
+
+bool SimulationClockInterface::is_valid() const noexcept {
+    return IsValid(orchestrator);
+}
+
 void SimulationClockInterface::bind(ATestBatchOrchestrator const& new_orchestrator) noexcept {
     orchestrator = &new_orchestrator;
 }
