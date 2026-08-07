@@ -42,6 +42,8 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
   public:
     using EntityData = ml::entity_registry::EntityData;
     using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
+    using EntityTypeCounts = TStaticArray<int32, ml::EnumCountTrait<ETestEntityType>::count_value>;
+    using EntityCounts = TStaticArray<EntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }
@@ -134,6 +136,7 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto count_alive() const noexcept -> int32;
     auto count_alive(ETestEntityType type) const noexcept -> int32;
     auto count_alive_per_team() const noexcept -> TeamCounts;
+    auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
     auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
 
     // Unique id queries

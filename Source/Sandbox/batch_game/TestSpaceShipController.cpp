@@ -1,5 +1,7 @@
 #include "TestSpaceShipController.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestBatchGameUiData.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/health/ShipHealthComponent.h>
@@ -113,6 +115,13 @@ void ATestSpaceShipController::BeginPlay() {
         SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
     });
 
+    entity_registry = mission_manager->get_entity_registry();
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+    });
+
+    update_entity_count_table();
+
     on_mission_ended_handle =
         mission_manager->on_mission_ended.AddUObject(this, &ThisClass::on_mission_ended);
 
@@ -141,6 +150,12 @@ void ATestSpaceShipController::Tick(float dt) {
     update_crosshair_positions(*ss);
     update_lock_on_widget(*ss);
     update_input_widgets(*ss);
+
+    ui_timers.tick(dt);
+    if ((ui_timers.Num() > FTestSpaceShipControllerUiTimerIndices::entity_count) &&
+        ui_timers.try_consume(FTestSpaceShipControllerUiTimerIndices::entity_count)) {
+        update_entity_count_table();
+    }
 
     if (mission_manager->mission_running()) {
         hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
@@ -282,6 +297,22 @@ void ATestSpaceShipController::initialise_hud() {
     hud_widget->set_points(0);
 
     hud_widget->set_stopwatch_time(0.f);
+
+    ui_timers.Reset();
+    if (IsValid(ui_data) && ui_data->entity_count_update_period > 0.f) {
+        ui_timers.add_started(ui_data->entity_count_update_period,
+                              FTestSpaceShipControllerUiTimerIndices::count);
+    }
+}
+
+void ATestSpaceShipController::update_entity_count_table() {
+    if (!IsValid(hud_widget) || !IsValid(entity_registry) || !IsValid(ui_data) ||
+        !IsValid(ui_data->team_visual_data)) {
+        return;
+    }
+
+    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type(),
+                                  ui_data->team_visual_data->build_team_colour_cache());
 }
 
 void ATestSpaceShipController::on_health_changed(FShipHealth const value) {

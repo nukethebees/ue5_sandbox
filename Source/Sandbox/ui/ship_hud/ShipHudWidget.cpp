@@ -1,6 +1,8 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
+#include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
 #include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
@@ -14,6 +16,7 @@
 
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/PanelWidget.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 
@@ -25,6 +28,7 @@ void UShipHudWidget::NativeConstruct() {
     RETURN_IF_NULLPTR(crosshair_material);
     RETURN_IF_NULLPTR(far_crosshair_widget);
     RETURN_IF_NULLPTR(near_crosshair_widget);
+    RETURN_IF_NULLPTR(entity_count_table);
 
     near_crosshair_material_instance = UMaterialInstanceDynamic::Create(crosshair_material, this);
     far_crosshair_material_instance = UMaterialInstanceDynamic::Create(crosshair_material, this);
@@ -170,6 +174,13 @@ void UShipHudWidget::set_control_mode(FStringView value) {
 void UShipHudWidget::set_flight_mode(FStringView value) {
     check(IsValid(flight_mode_widget));
     flight_mode_widget->update(value);
+}
+
+void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& counts,
+                                       UTestTeamVisualData::FColourArray const& colours) {
+    if (entity_count_table) {
+        entity_count_table->set_entity_counts(counts, colours);
+    }
 }
 
 void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {

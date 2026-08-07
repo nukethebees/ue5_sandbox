@@ -137,14 +137,14 @@ void ATestSpaceShip::resolve_damage_events() {
     auto const original_health{health.health};
     FRegistryEntityHandle killer{};
 
-    auto const apply_damage{[this, &killer](int32 const damage,
-                                            FRegistryEntityHandle const instigator) {
-        auto const was_alive{is_alive()};
-        health.health -= damage;
-        if (was_alive && !is_alive()) {
-            killer = instigator;
-        }
-    }};
+    auto const apply_damage{
+        [this, &killer](int32 const damage, FRegistryEntityHandle const instigator) {
+            auto const was_alive{is_alive()};
+            health.health -= damage;
+            if (was_alive && !is_alive()) {
+                killer = instigator;
+            }
+        }};
 
     for (int32 i{0}; i < n; ++i) {
         apply_damage(view.damage_amounts[i], view.instigators[i]);

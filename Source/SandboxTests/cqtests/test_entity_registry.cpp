@@ -28,6 +28,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::FSoftTestAssertions checks{};
     ml::TimeSeriesData<ATestEntityRegistry::TeamCounts> alive_per_team;
+    ml::TimeSeriesData<ATestEntityRegistry::EntityCounts> alive_per_team_and_type;
 
     TMap<ETestTeam, int32> expected_teams{
         {ETestTeam::White, 0},
@@ -66,6 +67,8 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
 
     void sample_values(ATestBatchOrchestrator&) {
         alive_per_team.add(test_driver->get_time(), test_driver->registry.count_alive_per_team());
+        alive_per_team_and_type.add(test_driver->get_time(),
+                                    test_driver->registry.count_alive_per_team_and_type());
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_values(orchestrator);
@@ -123,6 +126,17 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
             auto const count{counts[std::to_underlying(team)]};
             checks.are_equal(exp_count, count, [&] -> FString {
                 return FString::Printf(TEXT("Count team %s"),
+                                       *ml::to_string_without_type_prefix(team));
+            }());
+
+            auto const& type_counts{alive_per_team_and_type.value_at(sample_index)};
+            int32 type_count{0};
+            constexpr auto n_types{ml::EnumCountTrait<ETestEntityType>::count_value};
+            for (int32 type{0}; type < n_types; ++type) {
+                type_count += type_counts[std::to_underlying(team)][type];
+            }
+            checks.are_equal(count, type_count, [&] -> FString {
+                return FString::Printf(TEXT("Count team/type matrix for %s"),
                                        *ml::to_string_without_type_prefix(team));
             }());
         }

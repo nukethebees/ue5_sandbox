@@ -5,6 +5,7 @@
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
+#include <SandboxCore/periodic_countdown_timers.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>
@@ -17,7 +18,14 @@ class UShipHudWidget;
 class UInputAction;
 class ATestSpaceShip;
 class ATestMissionManager;
+class ATestEntityRegistry;
+class UTestBatchGameUiData;
 struct FShipHealth;
+
+struct FTestSpaceShipControllerUiTimerIndices {
+    static constexpr int32 entity_count{0};
+    static constexpr int32 count{1};
+};
 
 UCLASS()
 class ATestSpaceShipController
@@ -45,6 +53,7 @@ class ATestSpaceShipController
     void update_crosshair_positions(ATestSpaceShip const& ship);
     void update_lock_on_widget(ATestSpaceShip const& ship);
     void update_input_widgets(ATestSpaceShip const& ship);
+    void update_entity_count_table();
 
     auto get_pawn() -> Pawn&;
 
@@ -147,6 +156,8 @@ class ATestSpaceShipController
     // UI
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TSubclassOf<UShipHudWidget> hud_widget_class;
+    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
+    TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
@@ -180,9 +191,13 @@ class ATestSpaceShipController
     // Mission state
     UPROPERTY(EditAnywhere, Category = "Sandbox|Mission")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Mission")
+    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     FDelegateHandle on_mission_ended_handle;
     FDelegateHandle on_mission_update_handle;
     FDelegateHandle on_mission_manager_ready_handle;
+
+    FPeriodicCountdownTimers ui_timers;
 
     // Player state
     UICache ui_cache;

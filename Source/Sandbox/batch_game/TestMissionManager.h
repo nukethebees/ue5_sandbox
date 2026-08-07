@@ -78,6 +78,7 @@ class SANDBOX_API ATestMissionManager : public AActor {
     auto is_ready() const noexcept -> bool;
 
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    auto get_entity_registry() -> ATestEntityRegistry* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
     FTestMissionEndedDelegate on_mission_ended;

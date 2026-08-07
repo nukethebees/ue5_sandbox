@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
+#include "Sandbox/batch_game/TestTeamVisualData.h"
 #include "Sandbox/health/ShipHealth.h"
 
 #include "CoreMinimal.h"
@@ -24,6 +26,7 @@ class UPlayerLivesWidget;
 class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
+class UEntityCountTableWidget;
 
 UCLASS()
 class SANDBOX_API UShipHudWidget : public UUserWidget {
@@ -79,6 +82,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_target_velocity(FVector value);
     void set_control_mode(FStringView value);
     void set_flight_mode(FStringView value);
+    void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts,
+                           UTestTeamVisualData::FColourArray const& colours);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
@@ -128,6 +133,9 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UValueWidget* control_mode_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* flight_mode_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UEntityCountTableWidget* entity_count_table{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* far_crosshair_widget{nullptr};

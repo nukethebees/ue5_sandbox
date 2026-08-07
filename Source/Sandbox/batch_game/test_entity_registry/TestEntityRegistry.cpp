@@ -567,6 +567,28 @@ auto ATestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 
     return out;
 }
+auto ATestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
+    EntityCounts out{};
+
+    auto const n{get_num_elements()};
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) {
+            continue;
+        }
+
+        auto const team{std::to_underlying(entity_data.teams[i])};
+        auto const type{std::to_underlying(entity_data.entity_types[i])};
+        constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+        constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
+        if ((team < 0) || (team >= team_count) || (type < 0) || (type >= type_count)) {
+            continue;
+        }
+
+        ++out[team][type];
+    }
+
+    return out;
+}
 auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
     auto const n{get_num_elements()};
     int32 count{0};
