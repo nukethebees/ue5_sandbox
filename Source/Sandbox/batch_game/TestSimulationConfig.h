@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationActorClasses.h>
+#include <Sandbox/batch_game/TestSpaceShipController.h>
 
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
@@ -8,6 +9,7 @@
 #include "TestSimulationConfig.generated.h"
 
 class USimulationConfig;
+class ATestSpaceShipController;
 
 UCLASS(BlueprintType)
 class SANDBOX_API UTestSimulationConfig : public UDataAsset {
@@ -17,6 +19,9 @@ class SANDBOX_API UTestSimulationConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TObjectPtr<USimulationConfig> simulation_config{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Simulation")
+    TSubclassOf<ATestSpaceShipController> player_controller_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ShowOnlyInnerProperties))
     FSimulationActorClasses actor_classes;
