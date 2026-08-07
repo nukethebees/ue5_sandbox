@@ -8,6 +8,8 @@
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 
+#include <SandboxCoreEngine/actor_utils.h>
+
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
@@ -121,7 +123,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         auto& world{level_setup.get_world()};
         test_driver = ml::TestSimulationDriver::from_world(world);
 
-        auto* const manager{test_driver->orchestrator.get_mission_manager()};
+        auto* const manager{ml::get_first_actor<ATestMissionManager>(world)};
         check(manager);
 
         TestRunner->TestEqual(TEXT("Mission starts running"),

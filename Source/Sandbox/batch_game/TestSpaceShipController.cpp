@@ -1,19 +1,14 @@
 #include "TestSpaceShipController.h"
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchGameUiData.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
-#include <Sandbox/utilities/enums.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
-#include <Blueprint/WidgetLayoutLibrary.h>
-#include <DrawDebugHelpers.h>
 #include <Engine/Engine.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
@@ -87,50 +82,25 @@ void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* c
     TRY_INIT_PTR(local_player, GetLocalPlayer());
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
-    check(IsValid(context));
+    if (!IsValid(context)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::set_mapping_context: Context is invalid."));
+        return;
+    }
     subsystem->AddMappingContext(context, 0);
 
     auto const context_name{GetNameSafe(context)};
 
     UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *context_name);
-    hud_widget->set_selected_imc(context_name);
+    hud_manager.set_selected_mapping_context(context_name);
 }
 
 // Life cycle
 void ATestSpaceShipController::BeginPlay() {
     Super::BeginPlay();
 
-    auto* world{GetWorld()};
-    auto* local_player{GetLocalPlayer()};
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(world),
-        SANDBOX_NAMED_UOBJECT_PTR(local_player),
-    });
-
     initialise_hud();
-
-    mission_manager = ml::get_first_actor<ATestMissionManager>(*world);
-
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
-    });
-
-    entity_registry = mission_manager->get_entity_registry();
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-    });
-
-    update_entity_count_table();
-
-    on_mission_ended_handle =
-        mission_manager->on_mission_ended.AddUObject(this, &ThisClass::on_mission_ended);
-
-    if (mission_manager->is_ready()) {
-        on_mission_manager_ready(*mission_manager);
-    } else {
-        on_mission_manager_ready_handle =
-            mission_manager->on_ready.AddUObject(this, &ThisClass::on_mission_manager_ready);
-    }
 
     if (!IsValid(GetPawn())) {
         UE_LOG(LogSandbox,
@@ -146,47 +116,16 @@ void ATestSpaceShipController::Tick(float dt) {
 
     screenshot_tick(dt);
 
-    TRY_INIT_PTR(ss, Cast<Pawn>(GetPawn()));
-    update_crosshair_positions(*ss);
-    update_lock_on_widget(*ss);
-    update_input_widgets(*ss);
-
-    ui_timers.tick(dt);
-    if ((ui_timers.Num() > FTestSpaceShipControllerUiTimerIndices::entity_count) &&
-        ui_timers.try_consume(FTestSpaceShipControllerUiTimerIndices::entity_count)) {
-        update_entity_count_table();
-    }
-
-    if ((ui_timers.Num() > FTestSpaceShipControllerUiTimerIndices::mission_status) &&
-        ui_timers.try_consume(FTestSpaceShipControllerUiTimerIndices::mission_status)) {
-        update_mission_status_widget();
-    }
-
-    auto const new_kills{ss->get_kills()};
-    if (new_kills != ui_cache.player_kills) {
-        ui_cache.player_kills = new_kills;
-        hud_widget->set_points(new_kills);
-    }
-
     log_config.on_tick_end();
 }
 
 void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
-    mission_manager->on_mission_ended.Remove(on_mission_ended_handle);
-
-    if (on_mission_started_handle.IsValid()) {
-        mission_manager->on_mission_started.Remove(on_mission_started_handle);
+    if (auto* const world{GetWorld()}; IsValid(world)) {
+        if (auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)}) {
+            orchestrator->unregister_hud_manager(hud_manager);
+        }
     }
-    if (on_enemies_killed_handle.IsValid()) {
-        mission_manager->on_enemies_killed.Remove(on_enemies_killed_handle);
-    }
-    if (on_surviving_entity_health_updated_handle.IsValid()) {
-        mission_manager->on_surviving_entity_health_updated.Remove(
-            on_surviving_entity_health_updated_handle);
-    }
-    if (on_mission_manager_ready_handle.IsValid()) {
-        mission_manager->on_ready.Remove(on_mission_manager_ready_handle);
-    }
+    hud_manager.deactivate();
 
     Super::EndPlay(reason);
 }
@@ -197,70 +136,44 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
 
     initialise_hud();
 
-    RETURN_IF_NULLPTR(hud_widget);
-    auto* ship{Cast<Pawn>(in_pawn)};
-
+    auto* const ship{Cast<Pawn>(in_pawn)};
     if (!IsValid(ship)) {
-        UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShipController::OnPossess: Invalid pawn."));
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("ATestSpaceShipController::OnPossess: Player ship is invalid."));
+        SetActorTickEnabled(false);
+        return;
     }
 
-    ship->on_health_changed.BindUObject(this, &ThisClass::on_health_changed);
-    on_health_changed(ship->get_health_info());
+    if (hud_manager.get_state() == EHUDManagerState::Active) {
+        hud_manager.set_player_ship(ship);
 
-    ship->on_speed_changed.BindUObject(this, &ThisClass::on_speed_changed);
-    on_speed_changed(ship->get_speed());
-
-    ship->on_target_speed_changed.BindUObject(this, &ThisClass::on_target_speed_changed);
-    on_target_speed_changed(ship->get_target_speed());
-
-    ship->on_energy_changed.BindUObject(this, &ThisClass::on_energy_changed);
-    on_energy_changed(1.f);
-
-    ship->on_bombs_changed.BindUObject(this, &ThisClass::on_bombs_changed);
-    on_bombs_changed(ship->get_bombs());
-
-    ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
-    on_laser_firing_mode_changed(ELaserFiringState::idle);
-
-    ship->on_lock_on_acquired.BindUObject(this, &ThisClass::on_lock_on_acquired);
-    on_lock_on_acquired(nullptr);
-
-    ship->on_ship_fire_rate_changed.BindUObject(this, &ThisClass::on_ship_fire_rate_changed);
-    on_ship_fire_rate_changed(ship->get_laser_fire_rate());
+        if (auto* const world{GetWorld()}; IsValid(world)) {
+            if (auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)}) {
+                orchestrator->register_hud_manager(hud_manager);
+            }
+        }
+    }
 
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
 
     auto const n_contexts{input.mapping_contexts.Num()};
+    if (n_contexts <= 0 || !input.mapping_contexts.IsValidIndex(input_mapping_context_index)) {
+        UE_LOG(
+            LogSandbox,
+            Error,
+            TEXT("ATestSpaceShipController::OnPossess: Input mapping context index is invalid."));
+    } else {
+        set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
+    }
 
-    check(n_contexts > 0);
-    check(input_mapping_context_index >= 0);
-    check(input_mapping_context_index < n_contexts);
-
-    set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
-
-#if WITH_EDITOR
-    ship->on_speed_sampled.BindUObject(this, &ThisClass::on_speed_sampled);
-#endif
-
-    hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    hud_widget->set_lock_on_widget_visibility(false);
     SetActorTickEnabled(true);
+
+    UE_LOG(LogSandbox, Display, TEXT("Possessed player ship"));
 }
 void ATestSpaceShipController::OnUnPossess() {
     if (auto* ship{Cast<Pawn>(GetPawn())}) {
-        ship->on_health_changed.Unbind();
-        ship->on_speed_changed.Unbind();
-        ship->on_target_speed_changed.Unbind();
-        ship->on_energy_changed.Unbind();
-        ship->on_bombs_changed.Unbind();
-        ship->on_laser_mode_changed.Unbind();
-        ship->on_lock_on_acquired.Unbind();
-        ship->on_ship_fire_rate_changed.Unbind();
         ship->on_player_ship_died.Unbind();
-
-#if WITH_EDITOR
-        ship->on_speed_sampled.Unbind();
-#endif
     }
 
     if (auto* local_player{GetLocalPlayer()}) {
@@ -273,12 +186,10 @@ void ATestSpaceShipController::OnUnPossess() {
         }
     }
 
-    if (IsValid(hud_widget)) {
-        hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
-        hud_widget->set_lock_on_widget_visibility(false);
-    }
+    hud_manager.clear_player_ship();
 
     SetActorTickEnabled(false);
+    UE_LOG(LogSandbox, Display, TEXT("Unpossessed player ship"));
 
     Super::OnUnPossess();
 }
@@ -287,230 +198,72 @@ void ATestSpaceShipController::OnUnPossess() {
 // UI
 /* ---------------------------------------------------------------------------------------------- */
 void ATestSpaceShipController::initialise_hud() {
-    if (IsValid(hud_widget)) {
+    if (hud_manager.get_state() == EHUDManagerState::Active && IsValid(hud_widget)) {
         return;
     }
 
-    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
+    auto* const world{GetWorld()};
+    auto* const local_player{GetLocalPlayer()};
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(world),
+        SANDBOX_NAMED_UOBJECT_PTR(local_player),
+    });
 
-    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
-    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget)});
-    hud_widget->AddToViewport();
+    auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
+    auto* const mission_manager{orchestrator ? orchestrator->get_mission_manager() : nullptr};
+    auto* const entity_registry{orchestrator ? orchestrator->get_entity_registry() : nullptr};
+    ml::fatal_if_uobject_ptrs_invalid({
+        SANDBOX_NAMED_UOBJECT_PTR(orchestrator),
+        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
+        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        SANDBOX_NAMED_UOBJECT_PTR(ui_data),
+        SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class),
+    });
 
-    hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
-    hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
-    hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
-
-    hud_widget->set_points(0);
-
-    hud_widget->set_stopwatch_time(0.f);
-
-    ui_timers.Reset();
-    ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(ui_data)}, error_msg);
-    if (error_msg) {
-        UE_LOG(LogSandboxController,
+    auto* const team_visual_data{ui_data->team_visual_data.Get()};
+    if (!IsValid(team_visual_data)) {
+        UE_LOG(LogSandbox,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: %s"),
-               *error_msg.message);
+               TEXT("ATestSpaceShipController::initialise_hud: Team visual data is invalid."));
         return;
     }
 
-    ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(ui_data->team_visual_data)},
-                                    error_msg);
-    if (error_msg) {
-        UE_LOG(LogSandboxController,
+    auto* const created_widget{
+        CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"))};
+    if (!IsValid(created_widget)) {
+        UE_LOG(LogSandbox,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: %s"),
-               *error_msg.message);
-    } else {
-        hud_widget->set_entity_colours(ui_data->team_visual_data->build_team_colour_cache());
-    }
-
-    auto const entity_count_period{ui_data->update_frequencies.entity_count_update_period};
-    auto const mission_status_period{ui_data->update_frequencies.mission_status_update_period};
-    if (entity_count_period <= 0.f || mission_status_period <= 0.f) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::initialise_hud: UI update periods must be "
-                    "positive."));
+               TEXT("ATestSpaceShipController::initialise_hud: Failed to create HUD widget."));
         return;
     }
 
-    ui_timers.add_started(entity_count_period);
-    ui_timers.add_started(mission_status_period);
-}
-
-void ATestSpaceShipController::update_mission_status_widget() {
-    if (!mission_manager || !hud_widget) {
-        return;
-    }
-
-    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
-    hud_widget->set_mission_time(mission_manager->get_mission_stopwatch());
-}
-
-void ATestSpaceShipController::update_entity_count_table() {
-    if (ml::report_invalid_uobject_ptrs(
-            {
-                {
-                    SANDBOX_NAMED_UOBJECT_PTR(hud_widget),
-                    SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-                    SANDBOX_NAMED_UOBJECT_PTR(ui_data),
-                },
-                {SANDBOX_NAMED_UOBJECT_PTR(ui_data->team_visual_data)},
-            },
-            error_msg)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::update_entity_count_table: %s"),
-               *error_msg.message);
-        return;
-    }
-
-    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type());
-}
-
-void ATestSpaceShipController::on_health_changed(FShipHealth const value) {
-    check(hud_widget);
-    hud_widget->set_health(value);
-}
-void ATestSpaceShipController::on_speed_changed(float const value) {
-    check(hud_widget);
-    hud_widget->set_speed(value);
-}
-void ATestSpaceShipController::on_target_speed_changed(float const value) {
-    check(hud_widget);
-    hud_widget->set_target_speed(value);
-}
-void ATestSpaceShipController::on_energy_changed(float const value) {
-    check(hud_widget);
-    hud_widget->set_energy(value);
-}
-void ATestSpaceShipController::on_bombs_changed(int32 const value) {
-    check(hud_widget);
-    hud_widget->set_bombs(value);
-}
-void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& ship) {
-    RETURN_IF_NULLPTR(hud_widget);
-
-    auto const ship_socket{ship.get_middle_socket()};
-
-    auto const ship_loc{ship_socket.GetLocation()};
-    auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
-    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
-    FVector2d near_screen_pos{};
-    FVector2d far_screen_pos{};
-
-    constexpr bool bPlayerViewportRelative{false};
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            this, near_world_pos, near_screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project near position."));
-    }
-
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            this, far_world_pos, far_screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project far position."));
-    }
-
-    hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
-
-#if WITH_EDITOR
-    if (debug_crosshair) {
-        TRY_INIT_PTR(world, GetWorld());
-        DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-        DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-
-        if (log_config.can_tick_log(EActorLogVerbosity::Verbose)) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Near (W): %s"),
-                   *near_world_pos.ToCompactString());
-            UE_LOG(
-                LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Far (W): %s"),
-                   *far_world_pos.ToCompactString());
-            UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
-        }
-    }
+    auto* const player_ship{Cast<Pawn>(GetPawn())};
+    hud_widget = created_widget;
+    hud_manager.initialise(*created_widget,
+                           *ui_data,
+                           *mission_manager,
+                           *entity_registry,
+                           {*orchestrator},
+                           *this,
+                           player_ship,
+                           near_cursor_distance,
+                           far_cursor_distance,
+#if WITH_EDITORONLY_DATA
+                           debug_crosshair
+#else
+                           false
 #endif
-}
-void ATestSpaceShipController::update_lock_on_widget(ATestSpaceShip const& ship) {
-    auto const* tgt{ship.get_lock_on_target()};
-    if (!tgt) {
-        return;
+    );
+
+    if (hud_manager.get_state() == EHUDManagerState::Active) {
+        orchestrator->register_hud_manager(hud_manager);
+    } else {
+        hud_widget = nullptr;
     }
-    RETURN_IF_NULLPTR(hud_widget);
-
-    auto const actor_pos{tgt->GetActorLocation()};
-    FVector2d screen_pos{};
-
-    constexpr bool bPlayerViewportRelative{false};
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            this, actor_pos, screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxController, Warning, TEXT("Failed to project actor position."));
-    }
-
-    hud_widget->set_lock_on_widget_position(screen_pos);
-}
-
-void ATestSpaceShipController::update_input_widgets(ATestSpaceShip const& ship) {
-    RETURN_IF_NULLPTR(hud_widget);
-
-    hud_widget->set_turning(ship.get_turn_input());
-    hud_widget->set_moving(ship.get_move_input());
-    hud_widget->set_desired_velocity_scale(ship.get_target_local_planar_velocity_scale());
-    hud_widget->set_ship_velocity(ship.get_velocity());
-    hud_widget->set_target_velocity(ship.get_target_local_planar_velocity());
-    hud_widget->set_control_mode(*ml::to_string_without_type_prefix(ship.get_control_mode()));
-    hud_widget->set_flight_mode(*ml::to_string_without_type_prefix(ship.get_flight_mode()));
-}
-void ATestSpaceShipController::on_ship_fire_rate_changed(ETestShipFireRate const value) {
-    check(hud_widget);
-    hud_widget->set_fire_rate(*ml::to_string_without_type_prefix(value));
-}
-void ATestSpaceShipController::on_laser_firing_mode_changed(ELaserFiringState mode) {
-    check(hud_widget);
-
-    switch (mode) {
-        case ELaserFiringState::lock_on_searching: {
-            hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
-            break;
-        }
-        case ELaserFiringState::lock_on_acquired: {
-            break;
-        }
-        default: {
-            UE_LOG(LogSandboxController, Warning, TEXT("Unhandled laser firing mode."));
-            [[fallthrough]];
-        }
-        case ELaserFiringState::idle:
-            [[fallthrough]];
-        case ELaserFiringState::lock_on_transition:
-            [[fallthrough]];
-        case ELaserFiringState::burst: {
-            hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
-            break;
-        }
-    }
-}
-void ATestSpaceShipController::on_lock_on_acquired(AActor* target) {
-    check(hud_widget);
-    hud_widget->set_lock_on_widget_visibility(target != nullptr);
 }
 void ATestSpaceShipController::on_player_ship_died() {
     UnPossess();
 }
-
-#if WITH_EDITOR
-void ATestSpaceShipController::on_speed_sampled(std::span<FVector2d> const samples,
-                                                int32 const oldest_index) {
-    check(hud_widget);
-    hud_widget->update_sampled_speed(samples, oldest_index);
-}
-#endif
 
 /* ---------------------------------------------------------------------------------------------- */
 // Input
@@ -601,9 +354,16 @@ void ATestSpaceShipController::cycle_input_mapping_context() {
     TRY_INIT_PTR(subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
 
-    subsystem->RemoveMappingContext(input.mapping_contexts[input_mapping_context_index]);
-
     auto const n_contexts{input.mapping_contexts.Num()};
+    if (n_contexts <= 0 || !input.mapping_contexts.IsValidIndex(input_mapping_context_index)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::cycle_input_mapping_context: Input mapping "
+                    "context index is invalid."));
+        return;
+    }
+
+    subsystem->RemoveMappingContext(input.mapping_contexts[input_mapping_context_index]);
     input_mapping_context_index = (input_mapping_context_index + 1) % n_contexts;
 
     set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
@@ -627,94 +387,6 @@ void ATestSpaceShipController::cycle_next_fire_rate() {
 // Bomb
 void ATestSpaceShipController::fire_bomb(FInputActionValue const& value) {
     get_pawn().fire_bomb();
-}
-
-// Mission
-void ATestSpaceShipController::on_mission_manager_ready(ATestMissionManager const& manager) {
-    check(&manager == mission_manager.Get());
-
-    initialise_from_mission_manager(manager);
-}
-void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManager const& manager) {
-    FString const mission_status{make_mission_status_message(manager)};
-    hud_widget->set_mission_status(mission_status);
-    on_mission_started_handle =
-        mission_manager->on_mission_started.AddUObject(this, &ThisClass::on_mission_started);
-    on_enemies_killed_handle =
-        mission_manager->on_enemies_killed.AddUObject(this, &ThisClass::on_enemies_killed);
-    on_surviving_entity_health_updated_handle =
-        mission_manager->on_surviving_entity_health_updated.AddUObject(
-            this, &ThisClass::on_surviving_entity_health_updated);
-
-    on_mission_started(manager);
-}
-void ATestSpaceShipController::on_mission_started(ATestMissionManager const& manager) {
-    check(&manager == mission_manager.Get());
-    hud_widget->set_mission_status(manager);
-    hud_widget->set_stopwatch_time(manager.get_mission_stopwatch());
-    hud_widget->set_mission_time(manager.get_mission_stopwatch());
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-}
-void ATestSpaceShipController::on_enemies_killed(ATestMissionManager const& manager) {
-    check(&manager == mission_manager.Get());
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-    hud_widget->set_points(manager.get_mission_kills());
-}
-void ATestSpaceShipController::on_surviving_entity_health_updated(
-    ATestMissionManager const& manager) {
-    check(&manager == mission_manager.Get());
-    hud_widget->update_mission_surviving_entity_health(manager);
-}
-void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
-    check(&manager == mission_manager.Get());
-
-    // Do final update
-    update_mission_status_widget();
-    hud_widget->set_mission_state(manager.get_mission_state());
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-    hud_widget->update_mission_surviving_entity_health(manager);
-
-    FString const mission_status{make_mission_status_message(manager)};
-    hud_widget->set_mission_status(mission_status);
-}
-auto ATestSpaceShipController::make_mission_status_message(ATestMissionManager const& manager) const
-    -> FString {
-    auto const mission_mode{manager.get_mission_mode()};
-    auto const mission_state{manager.get_mission_state()};
-
-    FString status_msg;
-
-    switch (mission_mode) {
-        case ETestMissionMode::None: {
-            status_msg = TEXT("No mission running");
-            break;
-        }
-        case ETestMissionMode::SurviveTime: {
-            status_msg = FString::Printf(TEXT("Survive for %d seconds"),
-                                         static_cast<int32>(manager.get_survive_seconds()));
-            break;
-        }
-        case ETestMissionMode::KillEnemies: {
-            status_msg =
-                FString::Printf(TEXT("Kill enemies (%d remaining)"), manager.get_kills_remaining());
-            break;
-        }
-        case ETestMissionMode::KillEnemiesWithinTime: {
-            status_msg = FString::Printf(TEXT("Kill %d enemies within %.2f seconds (%d remaining)"),
-                                         manager.get_kill_target(),
-                                         manager.get_target_time(),
-                                         manager.get_kills_remaining());
-            break;
-        }
-        default: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
-            break;
-        }
-    }
-
-    status_msg += FString::Printf(TEXT(" (%s)"), *ml::to_string_without_type_prefix(mission_state));
-
-    return status_msg;
 }
 
 auto ATestSpaceShipController::get_pawn() -> Pawn& {

@@ -15,6 +15,7 @@
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
@@ -107,6 +108,7 @@ void ATestBatchOrchestrator::BeginPlay() {
     begin_play();
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
+    registered_hud_manager = nullptr;
     state = EOrchestratorState::Stopped;
     SetActorTickEnabled(false);
     stop_visual_logging();
@@ -579,6 +581,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         ++completed_ticks;
         end_tick_test_hook.ExecuteIfBound(*this);
+        if (registered_hud_manager) {
+            registered_hud_manager->tick();
+        }
     }
 
     /* -------------------------------------------------------------------------------- */
@@ -599,6 +604,18 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         niagara_spawner->update_spawns(dt);
     }
+}
+
+void ATestBatchOrchestrator::register_hud_manager(FHUDManager& manager) {
+    registered_hud_manager = &manager;
+}
+
+void ATestBatchOrchestrator::unregister_hud_manager(FHUDManager& manager) {
+    if (registered_hud_manager != &manager) {
+        return;
+    }
+
+    registered_hud_manager = nullptr;
 }
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {

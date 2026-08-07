@@ -12,6 +12,9 @@ struct FTestBatchGameUiUpdateFrequencies {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "UI")
+    float player_status_update_period{0.25f};
+
+    UPROPERTY(EditAnywhere, Category = "UI")
     float entity_count_update_period{0.25f};
 
     UPROPERTY(EditAnywhere, Category = "UI")

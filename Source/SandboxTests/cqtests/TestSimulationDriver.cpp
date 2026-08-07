@@ -8,9 +8,9 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/constants/collision_channels.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
-#include <Sandbox/utilities/actor_utils.h>
+
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/PrimitiveComponent.h>
 #include <Engine/HitResult.h>
@@ -30,18 +30,13 @@ TestSimulationDriver::TestSimulationDriver(UWorld& world,
 }
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
-    ATestBatchOrchestrator* orchestrator{nullptr};
-    ATestEntityRegistry* registry{nullptr};
+    auto* orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(world)};
+    auto* registry{ml::get_first_actor<ATestEntityRegistry>(world)};
 
-    for (TActorIterator<ATestBatchOrchestrator> it(&world); it; ++it) {
-        orchestrator = *it;
-        break;
-    }
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
     }
 
-    registry = orchestrator->get_entity_registry();
     if (!IsValid(registry)) {
         UE_LOG(LogSandboxTest, Fatal, TEXT("registry is nullptr"));
     }

@@ -21,6 +21,7 @@ class ATestEntityRegistry;
 class ATestMissionManager;
 class ADelayedNiagaraSpawner;
 class UTestSimulationConfig;
+struct FHUDManager;
 
 class ATestBatchOrchestrator;
 
@@ -80,7 +81,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_turrets() const -> auto const* { return turrets.Get(); }
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
-    auto get_entity_registry() const -> ATestEntityRegistry* { return entity_registry; }
+    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
 
@@ -88,6 +89,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void clear_end_tick_test_hook();
 
     void spawn_missing_actors();
+    void register_hud_manager(FHUDManager& manager);
+    void unregister_hud_manager(FHUDManager& manager);
 
     static FOnProxyEntitiesBound on_proxy_entities_bound;
   protected:
@@ -129,6 +132,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     time_type accumulator{0.f};
 
     tick_type completed_ticks{0};
+
+    FHUDManager* registered_hud_manager{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
