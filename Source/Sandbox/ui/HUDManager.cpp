@@ -43,30 +43,21 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
             SANDBOX_NAMED_UOBJECT_PTR(&new_hud_widget),
             SANDBOX_NAMED_UOBJECT_PTR(team_visual_data),
         })}) {
-        UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager::initialise: %s."), *error);
-        return;
+        UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: %s."), *error);
     }
 
-    if (!ml::valid_periods(ui_data.update_frequencies.player_status_update_period,
-                           ui_data.update_frequencies.entity_count_update_period,
-                           ui_data.update_frequencies.mission_status_update_period)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("FHUDManager::initialise: UI update periods must be positive."));
-        return;
-    }
+    auto const update_frequencies{ui_data.update_frequencies.to_array()};
+    auto const n_freqs{update_frequencies.Num()};
 
-    auto const entity_count_period{new_simulation_clock.duration_to_tick_period(
-        ui_data.update_frequencies.entity_count_update_period)};
-    auto const mission_status_period{new_simulation_clock.duration_to_tick_period(
-        ui_data.update_frequencies.mission_status_update_period)};
-    auto const player_status_period{new_simulation_clock.duration_to_tick_period(
-        ui_data.update_frequencies.player_status_update_period)};
-    if (!ml::valid_periods(entity_count_period, mission_status_period, player_status_period)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("FHUDManager::initialise: Converted UI update periods must be positive."));
-        return;
+    for (int32 i{0}; i < n_freqs; ++i) {
+        if (!ml::valid_periods(update_frequencies[i])) {
+            UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
+        }
+        auto const tick_period{new_simulation_clock.duration_to_tick_period(update_frequencies[i])};
+        if (!ml::valid_periods(tick_period)) {
+            UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
+        }
+        update_timers.add_started(tick_period);
     }
 
     new_hud_widget.AddToViewport();
@@ -77,10 +68,6 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
     simulation_clock = new_simulation_clock;
     near_cursor_distance = new_near_cursor_distance;
     far_cursor_distance = new_far_cursor_distance;
-
-    update_timers.add_started(player_status_period);
-    update_timers.add_started(mission_status_period);
-    update_timers.add_started(entity_count_period);
 
     new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
 

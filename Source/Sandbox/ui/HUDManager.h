@@ -56,8 +56,8 @@ enum class EHUDManagerState : uint8 {
 
 struct FHUDUpdateTimerIndex {
     static constexpr int32 player_status{0};
-    static constexpr int32 mission_status{1};
-    static constexpr int32 entity_counts{2};
+    static constexpr int32 entity_counts{1};
+    static constexpr int32 mission_status{2};
     static constexpr int32 count{3};
 };
 
