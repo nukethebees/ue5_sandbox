@@ -1,7 +1,7 @@
 #pragma once
 
-#include <CoreMinimal.h>
 #include <Containers/StaticArray.h>
+#include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
 
 #include "TestBatchGameUiData.generated.h"
@@ -13,9 +13,8 @@ struct FTestBatchGameUiUpdateFrequencies {
     GENERATED_BODY()
 
     [[nodiscard]] auto to_array() const -> TStaticArray<float, 3> {
-        return {player_status_update_period,
-                entity_count_update_period,
-                mission_status_update_period};
+        return {
+            player_status_update_period, entity_count_update_period, mission_status_update_period};
     }
 
     UPROPERTY(EditAnywhere, Category = "UI")

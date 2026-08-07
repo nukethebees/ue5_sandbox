@@ -86,8 +86,6 @@ void ASpaceShipController::OnPossess(APawn* in_pawn) {
     hud_widget->set_energy(1.f);
     ship->on_bombs_changed.BindUObject(hud_widget, &UShipHudWidget::set_bombs);
     hud_widget->set_bombs(ship->get_bombs());
-    ship->on_gold_rings_changed.BindUObject(hud_widget, &UShipHudWidget::set_gold_rings);
-    hud_widget->set_gold_rings(ship->get_gold_rings());
     ship->on_points_changed.BindUObject(hud_widget, &UShipHudWidget::set_points);
     hud_widget->set_points(ship->get_points());
     ship->on_laser_mode_changed.BindUObject(this, &ThisClass::on_laser_firing_mode_changed);
@@ -109,7 +107,6 @@ void ASpaceShipController::OnUnPossess() {
         ship->on_speed_changed.Unbind();
         ship->on_energy_changed.Unbind();
         ship->on_bombs_changed.Unbind();
-        ship->on_gold_rings_changed.Unbind();
         ship->on_points_changed.Unbind();
         ship->on_laser_mode_changed.Unbind();
         ship->on_lock_on_acquired.Unbind();

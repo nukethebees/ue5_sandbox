@@ -21,7 +21,6 @@ class UShipHealthWidget;
 class UShipThrusterEnergyWidget;
 class UShipPointsWidget;
 class UShipBombCountWidget;
-class UShipGoldRingCountWidget;
 
 class UValueWidget;
 class UVector2DWidget;
@@ -49,9 +48,6 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     void set_bombs(int32 value);
     void set_bombs_widget_visibility(ESlateVisibility const new_visibility);
-
-    void set_gold_rings(int32 value);
-    void set_gold_rings_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_stopwatch_time(float const time_s);
     void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
@@ -113,8 +109,6 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UShipPointsWidget* points_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UShipBombCountWidget* bombs_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UShipGoldRingCountWidget* gold_rings_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* stopwatch_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
