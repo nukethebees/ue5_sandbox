@@ -5,7 +5,6 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
-#include "Sandbox/ui/ship_hud/PlayerLivesWidget.h"
 #include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipGoldRingCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
@@ -54,7 +53,6 @@ void UShipHudWidget::set_common_widget_properties() {
     speed_widget->set_font_size(font_size);
     health_widget->set_font_size(font_size);
     points_widget->set_font_size(font_size);
-    lives_widget->set_font_size(font_size);
 
     stopwatch_widget->set_font_size(font_size);
     mission_status_widget->set_font_size(font_size);
@@ -164,14 +162,6 @@ void UShipHudWidget::set_fire_rate(FStringView const value) {
 }
 void UShipHudWidget::set_fire_rate_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(fire_rate_widget, new_visibility);
-}
-
-void UShipHudWidget::set_lives(int32 value) {
-    RETURN_IF_NULLPTR(lives_widget);
-    lives_widget->set_value(value);
-}
-void UShipHudWidget::set_lives_widget_visibility(ESlateVisibility const new_visibility) {
-    set_widget_visibility_checked(lives_widget, new_visibility);
 }
 
 void UShipHudWidget::set_target_speed(float value) {
