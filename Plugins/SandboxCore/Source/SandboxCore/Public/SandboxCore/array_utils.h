@@ -126,13 +126,32 @@ void fill(Container&& values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());
 }
 
+template <typename Container, typename T>
+    requires requires(Container& values) {
+        { values.GetData() } -> std::same_as<T*>;
+        { values.Num() } -> std::same_as<int32>;
+    }
+void fill_first(Container&& values, T const value, int32 const count) {
+    check(count >= 0);
+    check(count <= values.Num());
+    fill(TArrayView<T>{values}.Left(count), value);
+}
+
+template <typename Container, typename T>
+    requires requires(Container& values) {
+        { values.GetData() } -> std::same_as<T*>;
+        { values.Num() } -> std::same_as<int32>;
+    }
+void fill_last(Container&& values, T const value, int32 const count) {
+    check(count >= 0);
+    check(count <= values.Num());
+    fill(TArrayView<T>{values}.Right(count), value);
+}
+
 template <typename T>
 void append_n(TArray<T>& values, T const value, int32 const count) {
-    auto const old_num{values.Num()};
-
     values.AddUninitialized(count);
-
-    fill(TArrayView<T>{values}.Right(count), value);
+    fill_last(values, value, count);
 }
 
 template <typename KeysType, typename SearchKeysType>
