@@ -479,7 +479,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
             lasers->simulate(tick_period);
-
             lasers->commit_spawns();
         }
 
