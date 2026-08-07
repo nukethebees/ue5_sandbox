@@ -299,6 +299,7 @@ void ATestStaticTurrets::fire_at_enemies() {
 
         ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
         ml::append(new_lasers.rotations, fire_dir);
+        ml::append(new_lasers.base_velocities, 0.f, 0.f, 0.f);
         new_lasers.damages.Add(laser_damage);
         new_lasers.speeds.Add(laser_speed);
         new_lasers.max_distances.Add(laser_max_distance);

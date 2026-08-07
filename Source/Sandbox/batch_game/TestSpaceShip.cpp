@@ -608,14 +608,11 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
     for (int32 i{0}; i < n; ++i) {
         ml::assign(new_lasers.locations, i, fire_points[i].GetLocation());
         ml::assign(new_lasers.rotations, i, fire_points[i].Rotator());
+        ml::assign(new_lasers.base_velocities, i, FVector3f{get_velocity()});
     }
 
-    auto const cur_speed{get_speed()};
-    auto const laser_base_speed{actor_config->laser_speed};
-    auto const laser_speed{cur_speed + laser_base_speed};
-
     new_lasers.set_damages(actor_config->laser_damage);
-    new_lasers.set_speeds(laser_speed);
+    new_lasers.set_speeds(actor_config->laser_speed);
     new_lasers.set_max_distances(actor_config->laser_max_distance);
     new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);

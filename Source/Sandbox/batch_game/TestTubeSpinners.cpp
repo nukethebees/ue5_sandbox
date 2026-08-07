@@ -272,6 +272,7 @@ void ATestTubeSpinners::fire_lasers() {
                    fire_point_rotation.Pitch,
                    fire_point_rotation.Yaw + yaws[index],
                    fire_point_rotation.Roll);
+        ml::assign(new_lasers.base_velocities, i, FVector3f::ZeroVector);
 
         new_lasers.damages[i] = laser_damage;
         new_lasers.speeds[i] = laser_speed;

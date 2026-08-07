@@ -28,6 +28,7 @@ namespace ml::test_lasers {
 struct SpawnRequests : public ml::FSoAArrayMixin {
     FVectors3f locations;
     FRotatorsf rotations;
+    FVectors3f base_velocities;
     TArray<int32> damages;
     TArray<float> speeds;
     TArray<float> max_distances;
@@ -42,6 +43,7 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
 #define SANDBOX_PACK(STAMPER, NON_FINAL)   \
     NON_FINAL(STAMPER(locations))          \
     NON_FINAL(STAMPER(rotations))          \
+    NON_FINAL(STAMPER(base_velocities))    \
     NON_FINAL(STAMPER(damages))            \
     NON_FINAL(STAMPER(speeds))             \
     NON_FINAL(STAMPER(max_distances))      \

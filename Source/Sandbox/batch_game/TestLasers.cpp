@@ -166,7 +166,10 @@ void ATestLasers::process_pending_spawns() {
 
         auto const index{offset + i};
 
-        auto const velocity{ml::get_rotator3f(entities.rotations, index).Vector() * speed};
+        auto const forward_velocity{
+            ml::get_rotator3f(entities.rotations, index).Vector() * speed};
+        auto const base_velocity{ml::get_vector3f(pending_spawns.base_velocities, i)};
+        auto const velocity{base_velocity + forward_velocity};
 
         ml::assign(entities.velocities, index, velocity);
         entities.lifetimes_remaining[index] = lifetime;

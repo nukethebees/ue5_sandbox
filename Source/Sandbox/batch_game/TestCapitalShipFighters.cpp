@@ -1030,6 +1030,9 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
 
         ml::assign(new_lasers.locations, i, laser_location);
         ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());
+        auto const base_velocity{
+            ml::get_vector3f(data.movement_directions, ship_index) * data.speeds[ship_index]};
+        ml::assign(new_lasers.base_velocities, i, base_velocity);
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
 
