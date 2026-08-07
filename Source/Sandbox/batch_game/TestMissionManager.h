@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestMissionFailReason.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
@@ -79,6 +80,12 @@ class SANDBOX_API ATestMissionManager : public AActor {
     auto get_entity_health_that_must_survive() const noexcept -> TConstArrayView<FShipHealth> {
         return entity_health_that_must_survive;
     }
+    auto get_entity_ids_that_must_survive() const noexcept -> TConstArrayView<TestEntityUniqueId> {
+        return entity_ids_that_must_survive;
+    }
+    auto get_entity_types_that_must_survive() const noexcept -> TConstArrayView<ETestEntityType> {
+        return entity_types_that_must_survive;
+    }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
     auto mission_running() const noexcept -> bool {
@@ -118,6 +125,8 @@ class SANDBOX_API ATestMissionManager : public AActor {
     TArray<FRegistryEntityHandle> hero_entity_handles{};
     TArray<TestEntityUniqueId> hero_entity_ids{};
     TArray<FRegistryEntityHandle> entity_handles_that_must_survive{};
+    TArray<TestEntityUniqueId> entity_ids_that_must_survive{};
+    TArray<ETestEntityType> entity_types_that_must_survive{};
     TArray<FShipHealth> entity_health_that_must_survive{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

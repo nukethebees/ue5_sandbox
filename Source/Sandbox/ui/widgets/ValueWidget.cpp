@@ -26,9 +26,10 @@ void UValueWidget::update_format_spec_text() {
         auto font{value_text->GetFont()};
         font.Size = font_size;
         value_text->SetFont(font);
-    }
-    if (value_text->GetText().IsEmpty()) {
-        value_text->SetText(format_spec_text);
+
+        if (value_text->GetText().IsEmpty()) {
+            value_text->SetText(format_spec_text);
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
 #include <Sandbox/health/ShipHealth.h>
@@ -10,7 +12,7 @@
 #include "MissionStatusWidget.generated.h"
 
 class ATestMissionManager;
-class UShipHealthWidget;
+class UMissionEntityHealthRowWidget;
 class UValueWidget;
 class UVerticalBox;
 
@@ -39,7 +41,7 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     UVerticalBox* surviving_entities_box{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "UI")
-    TSubclassOf<UShipHealthWidget> surviving_entity_health_widget_class;
+    TSubclassOf<UMissionEntityHealthRowWidget> surviving_entity_health_row_widget_class;
 
     UPROPERTY(EditAnywhere, Category = "UI|Format")
     FName mission_mode_format{TEXT("{0} ({1})")};
@@ -58,6 +60,14 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
                        float mission_time,
                        float time_remaining,
                        int32 enemies_remaining,
+                       TConstArrayView<TestEntityUniqueId> surviving_entity_ids,
+                       TConstArrayView<ETestEntityType> surviving_entity_types,
                        TConstArrayView<FShipHealth> surviving_entity_health);
-    void rebuild_surviving_entity_widgets(TConstArrayView<FShipHealth> health_values);
+    auto check_widget_bindings() const -> bool;
+    void reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId> entity_ids,
+                                              TConstArrayView<ETestEntityType> entity_types,
+                                              TConstArrayView<FShipHealth> health_values);
+
+    TArray<TestEntityUniqueId> surviving_entity_ids{};
+    TArray<TObjectPtr<UMissionEntityHealthRowWidget>> surviving_entity_widgets{};
 };

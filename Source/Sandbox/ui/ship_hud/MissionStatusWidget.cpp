@@ -1,9 +1,11 @@
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
 
 #include <Sandbox/batch_game/TestMissionManager.h>
-#include <Sandbox/ui/ship_hud/ShipHealthWidget.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/ui/ship_hud/MissionEntityHealthRowWidget.h>
 #include <Sandbox/ui/widgets/ValueWidget.h>
 #include <Sandbox/utilities/enums.h>
+#include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Blueprint/WidgetTree.h>
@@ -11,21 +13,40 @@
 
 void UMissionStatusWidget::NativeConstruct() {
     Super::NativeConstruct();
+    check(check_widget_bindings());
+    reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId>{},
+                                         TConstArrayView<ETestEntityType>{},
+                                         TConstArrayView<FShipHealth>{});
+}
 
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(mission_mode_widget),
-        SANDBOX_NAMED_UOBJECT_PTR(mission_time_widget),
-        SANDBOX_NAMED_UOBJECT_PTR(enemies_remaining_widget),
-        SANDBOX_NAMED_UOBJECT_PTR(time_remaining_widget),
-        SANDBOX_NAMED_UOBJECT_PTR(surviving_entities_box),
-        SANDBOX_NAMED_UOBJECT_PTR(surviving_entity_health_widget_class),
-    });
+auto UMissionStatusWidget::check_widget_bindings() const -> bool {
+    ml::FErrorMsg error_msg;
+    if (ml::report_invalid_uobject_ptrs(
+            {
+                SANDBOX_NAMED_UOBJECT_PTR(mission_mode_widget),
+                SANDBOX_NAMED_UOBJECT_PTR(mission_time_widget),
+                SANDBOX_NAMED_UOBJECT_PTR(enemies_remaining_widget),
+                SANDBOX_NAMED_UOBJECT_PTR(time_remaining_widget),
+                SANDBOX_NAMED_UOBJECT_PTR(surviving_entities_box),
+                SANDBOX_NAMED_UOBJECT_PTR(surviving_entity_health_row_widget_class),
+                SANDBOX_NAMED_UOBJECT_PTR(WidgetTree),
+            },
+            error_msg)) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionStatusWidget: Invalid widget bindings: %s"),
+               *error_msg.message);
+        return false;
+    }
 
-    check(WidgetTree);
+    return true;
 }
 
 void UMissionStatusWidget::NativePreConstruct() {
     Super::NativePreConstruct();
+    if (!check_widget_bindings()) {
+        return;
+    }
 
     mission_mode_widget->set_format_spec(mission_mode_format);
     mission_time_widget->set_format_spec(mission_time_format);
@@ -35,12 +56,21 @@ void UMissionStatusWidget::NativePreConstruct() {
     if (IsDesignTime()) {
         TArray<FShipHealth> const preview_surviving_entity_health{FShipHealth{850, 1000},
                                                                   FShipHealth{420, 500}};
+        TArray<TestEntityUniqueId> const preview_surviving_entity_ids{{.id = 12}, {.id = 24}};
+        TArray<ETestEntityType> const preview_surviving_entity_types{
+            ETestEntityType::CapitalShip, ETestEntityType::CapitalShipFighter};
         update_values(ETestMissionMode::KillEnemiesWithinTime,
                       ETestMissionState::Running,
                       37.5f,
                       82.5f,
                       12,
+                      preview_surviving_entity_ids,
+                      preview_surviving_entity_types,
                       preview_surviving_entity_health);
+    } else {
+        reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId>{},
+                                             TConstArrayView<ETestEntityType>{},
+                                             TConstArrayView<FShipHealth>{});
     }
 }
 
@@ -50,6 +80,8 @@ void UMissionStatusWidget::update(ATestMissionManager const& mission_manager) {
                   mission_manager.get_mission_stopwatch(),
                   mission_manager.get_time_remaining(),
                   mission_manager.get_kills_remaining(),
+                  mission_manager.get_entity_ids_that_must_survive(),
+                  mission_manager.get_entity_types_that_must_survive(),
                   mission_manager.get_entity_health_that_must_survive());
 }
 
@@ -59,6 +91,8 @@ void UMissionStatusWidget::update_values(
     float const mission_time,
     float const time_remaining,
     int32 const enemies_remaining,
+    TConstArrayView<TestEntityUniqueId> const entity_ids,
+    TConstArrayView<ETestEntityType> const entity_types,
     TConstArrayView<FShipHealth> const surviving_entity_health) {
     auto const mode_name{ml::to_string_without_type_prefix(mission_mode)};
     auto const state_name{ml::to_string_without_type_prefix(mission_state)};
@@ -81,23 +115,61 @@ void UMissionStatusWidget::update_values(
         time_remaining_widget->update(time_remaining);
     }
 
-    rebuild_surviving_entity_widgets(surviving_entity_health);
+    auto entity_list_changed{surviving_entity_ids.Num() != entity_ids.Num()};
+    if (!entity_list_changed) {
+        auto const n_entities{entity_ids.Num()};
+        for (int32 i{0}; i < n_entities; ++i) {
+            if (surviving_entity_ids[i] != entity_ids[i]) {
+                entity_list_changed = true;
+                break;
+            }
+        }
+    }
+
+    if (entity_list_changed) {
+        reconstruct_surviving_entity_widgets(entity_ids, entity_types, surviving_entity_health);
+    }
+
+    for (auto const unique_id : entity_ids) {
+        auto const health_index{entity_ids.Find(unique_id)};
+        auto const row_index{surviving_entity_ids.Find(unique_id)};
+        check(health_index != INDEX_NONE);
+        check(row_index != INDEX_NONE);
+        surviving_entity_widgets[row_index]->set_health(surviving_entity_health[health_index]);
+    }
 }
 
-void UMissionStatusWidget::rebuild_surviving_entity_widgets(
+void UMissionStatusWidget::reconstruct_surviving_entity_widgets(
+    TConstArrayView<TestEntityUniqueId> const entity_ids,
+    TConstArrayView<ETestEntityType> const entity_types,
     TConstArrayView<FShipHealth> const health_values) {
-    surviving_entities_box->ClearChildren();
-    surviving_entities_box->SetVisibility(health_values.IsEmpty() ? ESlateVisibility::Collapsed
-                                                                  : ESlateVisibility::Visible);
+    check(entity_ids.Num() == entity_types.Num());
+    check(entity_ids.Num() == health_values.Num());
 
-    auto* const widget_class{surviving_entity_health_widget_class.Get()};
-    auto const n_health_values{health_values.Num()};
-    for (int32 i{0}; i < n_health_values; ++i) {
+    surviving_entities_box->ClearChildren();
+    surviving_entity_ids.Reset(entity_ids.Num());
+    surviving_entity_widgets.Reset(entity_ids.Num());
+    surviving_entities_box->SetVisibility(entity_ids.IsEmpty() ? ESlateVisibility::Collapsed
+                                                               : ESlateVisibility::Visible);
+
+    if (!surviving_entity_health_row_widget_class) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionStatusWidget: Surviving entity health row widget class is null."));
+        return;
+    }
+
+    auto* const widget_class{surviving_entity_health_row_widget_class.Get()};
+    auto const n_entities{entity_ids.Num()};
+    for (int32 i{0}; i < n_entities; ++i) {
         auto const name{FString::Printf(TEXT("surviving_entity_health_%d"), i)};
         auto* const health_widget{
-            WidgetTree->ConstructWidget<UShipHealthWidget>(widget_class, *name)};
+            WidgetTree->ConstructWidget<UMissionEntityHealthRowWidget>(widget_class, *name)};
         check(health_widget);
+        health_widget->set_entity(entity_ids[i], entity_types[i]);
         health_widget->set_health(health_values[i]);
         surviving_entities_box->AddChild(health_widget);
+        surviving_entity_ids.Add(entity_ids[i]);
+        surviving_entity_widgets.Add(health_widget);
     }
 }

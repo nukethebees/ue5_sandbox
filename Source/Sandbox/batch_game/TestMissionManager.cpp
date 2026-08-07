@@ -146,6 +146,8 @@ void ATestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_e
 
     auto const& entities_must_survive{startup_data.entities_must_survive};
     entity_handles_that_must_survive.Reset(entities_must_survive.Num());
+    entity_ids_that_must_survive.Reset(entities_must_survive.Num());
+    entity_types_that_must_survive.Reset(entities_must_survive.Num());
 
     for (auto const& actor : entities_must_survive) {
         if (!IsValid(actor)) {
@@ -153,7 +155,12 @@ void ATestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_e
         }
 
         auto const identifiers{resolve_identifiers(*actor)};
-        entity_handles_that_must_survive.AddUnique(identifiers.handle);
+        if (!entity_handles_that_must_survive.Contains(identifiers.handle)) {
+            entity_handles_that_must_survive.Add(identifiers.handle);
+            entity_ids_that_must_survive.Add(identifiers.unique_id);
+            entity_types_that_must_survive.Add(
+                entity_registry->get_unique_entities().entity_types[identifiers.unique_id.id]);
+        }
     }
 
     if (mission_state == ETestMissionState::NotStarted) {
@@ -299,6 +306,8 @@ void ATestMissionManager::update_mission_kills() {
 
 void ATestMissionManager::initialise_entity_health_that_must_survive() {
     entity_health_that_must_survive.Reset(entity_handles_that_must_survive.Num());
+    check(entity_ids_that_must_survive.Num() == entity_handles_that_must_survive.Num());
+    check(entity_types_that_must_survive.Num() == entity_handles_that_must_survive.Num());
 
     for (auto const handle : entity_handles_that_must_survive) {
         auto const health{entity_registry->get_health(handle)};

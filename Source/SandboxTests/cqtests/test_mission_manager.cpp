@@ -134,6 +134,12 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         TestRunner->TestEqual(TEXT("Survival health data matches objective handles"),
                               surviving_health.Num(),
                               manager->get_entity_handles_that_must_survive().Num());
+        TestRunner->TestEqual(TEXT("Survival IDs match objective handles"),
+                              manager->get_entity_ids_that_must_survive().Num(),
+                              manager->get_entity_handles_that_must_survive().Num());
+        TestRunner->TestEqual(TEXT("Survival types match objective handles"),
+                              manager->get_entity_types_that_must_survive().Num(),
+                              manager->get_entity_handles_that_must_survive().Num());
         if (!surviving_health.IsEmpty()) {
             TestRunner->TestTrue(TEXT("Survival health captures a positive maximum"),
                                  surviving_health[0].max_health > 0);
