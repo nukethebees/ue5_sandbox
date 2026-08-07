@@ -52,6 +52,10 @@ ATestLasers::ATestLasers()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
+void ATestLasers::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
+    simulation_clock.bind(orchestrator);
+}
+
 // Actor lifecycle
 void ATestLasers::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_play);
@@ -140,6 +144,10 @@ void ATestLasers::process_pending_spawns() {
         return;
     }
 
+    constexpr double spawn_offset_ticks{2.0};
+    auto const forward_spawn_offset_time{
+        static_cast<float>(simulation_clock.get_tick_period() * spawn_offset_ticks)};
+
     auto const offset{get_num_instances()};
     auto const new_total{offset + n_to_add};
 
@@ -170,7 +178,11 @@ void ATestLasers::process_pending_spawns() {
             ml::get_rotator3f(entities.rotations, index).Vector() * speed};
         auto const base_velocity{ml::get_vector3f(pending_spawns.base_velocities, i)};
         auto const velocity{base_velocity + forward_velocity};
+        auto const spawn_location{
+            ml::get_vector3f(entities.locations, index) +
+            forward_velocity * forward_spawn_offset_time};
 
+        ml::assign(entities.locations, index, spawn_location);
         ml::assign(entities.velocities, index, velocity);
         entities.lifetimes_remaining[index] = lifetime;
 

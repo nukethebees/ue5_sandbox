@@ -71,6 +71,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_simulation_time() const noexcept -> time_type {
         return static_cast<time_type>(completed_ticks) * tick_period;
     }
+    auto get_tick_period() const noexcept -> time_type { return tick_period; }
 
     auto get_player_ship() const -> auto const* { return player_ship.Get(); }
     auto get_lasers() const -> auto const* { return lasers.Get(); }

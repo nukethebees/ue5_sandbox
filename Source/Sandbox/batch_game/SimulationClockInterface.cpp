@@ -28,4 +28,8 @@ auto SimulationClockInterface::get_simulation_time() const noexcept -> time_type
     check(IsValid(orchestrator));
     return orchestrator->get_simulation_time();
 }
+auto SimulationClockInterface::get_tick_period() const noexcept -> time_type {
+    check(IsValid(orchestrator));
+    return orchestrator->get_tick_period();
+}
 }

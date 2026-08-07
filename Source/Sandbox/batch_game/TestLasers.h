@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -23,6 +24,7 @@ class UWorld;
 
 class UTestLasersConfig;
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
 
 namespace ml::test_lasers {
 struct SpawnRequests : public ml::FSoAArrayMixin {
@@ -111,6 +113,7 @@ class ATestLasers : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
 
     void begin_tick();
     void commit_spawns();
@@ -170,6 +173,7 @@ class ATestLasers : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestLasersConfig> actor_config{nullptr};
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 n_preallocated_instances{5000};
 

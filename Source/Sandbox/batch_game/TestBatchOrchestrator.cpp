@@ -478,8 +478,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
-            lasers->commit_spawns();
             lasers->simulate(tick_period);
+
+            lasers->commit_spawns();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -624,6 +625,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);
     capital_ship_fighters->bind_simulation_clock(*this);
+    lasers->bind_simulation_clock(*this);
     mission_manager->bind_simulation_clock(*this);
 
     if (IsValid(player_ship)) {

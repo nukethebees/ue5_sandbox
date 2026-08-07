@@ -18,6 +18,7 @@ class SANDBOX_API SimulationClockInterface {
 
     auto get_completed_ticks() const noexcept -> tick_type;
     auto get_simulation_time() const noexcept -> time_type;
+    auto get_tick_period() const noexcept -> time_type;
   private:
     ATestBatchOrchestrator const* orchestrator{nullptr};
 };
