@@ -45,7 +45,7 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
     bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
     bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
-    
+
     bind(ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
     bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
@@ -56,13 +56,13 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(ship_1d_control_y, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_1d_control_y, Triggered, &ThisClass::set_ship_1d_control_y);
     bind(ship_1d_control_y, Completed, &ThisClass::ship_2d_control_completed);
-    
+
     bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
     bind(cycle_previous_control_mode_input, Started, &ThisClass::cycle_previous_control_mode);
-    
+
     bind(sample_and_hold_input, Started, &ThisClass::start_sampling);
     bind(sample_and_hold_input, Completed, &ThisClass::stop_sampling);
-    
+
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.roll, Started, &ThisClass::start_roll);
@@ -264,6 +264,26 @@ void ATestSpaceShipController::OnUnPossess() {
 /* ---------------------------------------------------------------------------------------------- */
 // UI
 /* ---------------------------------------------------------------------------------------------- */
+void ATestSpaceShipController::initialise_hud() {
+    if (IsValid(hud_widget)) {
+        return;
+    }
+
+    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
+
+    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
+    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget)});
+    hud_widget->AddToViewport();
+
+    hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
+    hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
+    hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
+
+    hud_widget->set_points(0);
+
+    hud_widget->set_stopwatch_time(0.f);
+}
+
 void ATestSpaceShipController::on_health_changed(FShipHealth const value) {
     check(hud_widget);
     hud_widget->set_health(value);
@@ -283,25 +303,6 @@ void ATestSpaceShipController::on_energy_changed(float const value) {
 void ATestSpaceShipController::on_bombs_changed(int32 const value) {
     check(hud_widget);
     hud_widget->set_bombs(value);
-}
-void ATestSpaceShipController::initialise_hud() {
-    if (IsValid(hud_widget)) {
-        return;
-    }
-
-    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class)});
-
-    hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
-    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(hud_widget)});
-    hud_widget->AddToViewport();
-
-    hud_widget->set_gold_rings_widget_visibility(ESlateVisibility::Collapsed);
-    hud_widget->set_lives_widget_visibility(ESlateVisibility::Collapsed);
-    hud_widget->set_bombs_widget_visibility(ESlateVisibility::Collapsed);
-
-    hud_widget->set_points(0);
-
-    hud_widget->set_stopwatch_time(0.f);
 }
 void ATestSpaceShipController::update_crosshair_positions(ATestSpaceShip const& ship) {
     RETURN_IF_NULLPTR(hud_widget);
