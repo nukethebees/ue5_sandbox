@@ -5,6 +5,7 @@
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
+#include <SandboxCore/error_msg.h>
 #include <SandboxCore/periodic_countdown_timers.h>
 
 #include <CoreMinimal.h>
@@ -198,6 +199,7 @@ class ATestSpaceShipController
     FDelegateHandle on_mission_manager_ready_handle;
 
     FPeriodicCountdownTimers ui_timers;
+    ml::FErrorMsg error_msg;
 
     // Player state
     UICache ui_cache;

@@ -56,11 +56,7 @@ auto get_entity_class_name(ETestEntityType const type) -> FString const& {
 }
 
 auto get_entity_short_name(ETestEntityType const type) -> FString const& {
-    return get_entity_name(type,
-                           TEXT("Player"),
-                           TEXT("Turret"),
-                           TEXT("Capital"),
-                           TEXT("Fighter"),
-                           TEXT("Spinner"));
+    return get_entity_name(
+        type, TEXT("Player"), TEXT("Turret"), TEXT("Capital"), TEXT("Fighter"), TEXT("Spinner"));
 }
 }

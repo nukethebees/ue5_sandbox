@@ -299,17 +299,22 @@ void ATestSpaceShipController::initialise_hud() {
     hud_widget->set_stopwatch_time(0.f);
 
     ui_timers.Reset();
-    if (!IsValid(ui_data)) {
+    ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(ui_data)}, error_msg);
+    if (error_msg) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: UI data is invalid."));
+               TEXT("ATestSpaceShipController::initialise_hud: %s"),
+               *error_msg.message);
         return;
     }
 
-    if (!IsValid(ui_data->team_visual_data)) {
+    ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(ui_data->team_visual_data)},
+                                    error_msg);
+    if (error_msg) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: Team visual data is invalid."));
+               TEXT("ATestSpaceShipController::initialise_hud: %s"),
+               *error_msg.message);
     } else {
         hud_widget->set_entity_colours(ui_data->team_visual_data->build_team_colour_cache());
     }
@@ -326,30 +331,20 @@ void ATestSpaceShipController::initialise_hud() {
 }
 
 void ATestSpaceShipController::update_entity_count_table() {
-    if (!IsValid(hud_widget)) {
+    if (ml::report_invalid_uobject_ptrs(
+            {
+                {
+                    SANDBOX_NAMED_UOBJECT_PTR(hud_widget),
+                    SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+                    SANDBOX_NAMED_UOBJECT_PTR(ui_data),
+                },
+                {SANDBOX_NAMED_UOBJECT_PTR(ui_data->team_visual_data)},
+            },
+            error_msg)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::update_entity_count_table: HUD widget is invalid."));
-        return;
-    }
-    if (!IsValid(entity_registry)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::update_entity_count_table: Entity registry is "
-                    "invalid."));
-        return;
-    }
-    if (!IsValid(ui_data)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::update_entity_count_table: UI data is invalid."));
-        return;
-    }
-    if (!IsValid(ui_data->team_visual_data)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::update_entity_count_table: Team visual data is "
-                    "invalid."));
+               TEXT("ATestSpaceShipController::update_entity_count_table: %s"),
+               *error_msg.message);
         return;
     }
 
