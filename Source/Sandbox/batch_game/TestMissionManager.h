@@ -100,11 +100,11 @@ class SANDBOX_API ATestMissionManager : public AActor {
     auto get_entity_registry() -> ATestEntityRegistry* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
 
-    FTestMissionEndedDelegate on_mission_ended;
-    FOnMissionManagerReady on_ready;
-    FOnMissionStarted on_mission_started;
-    FOnMissionEnemiesKilled on_enemies_killed;
-    FOnMissionSurvivingEntityHealthUpdated on_surviving_entity_health_updated;
+    mutable FTestMissionEndedDelegate on_mission_ended;
+    mutable FOnMissionManagerReady on_ready;
+    mutable FOnMissionStarted on_mission_started;
+    mutable FOnMissionEnemiesKilled on_enemies_killed;
+    mutable FOnMissionSurvivingEntityHealthUpdated on_surviving_entity_health_updated;
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
