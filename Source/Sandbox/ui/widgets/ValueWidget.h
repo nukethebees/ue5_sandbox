@@ -16,6 +16,7 @@ UCLASS()
 class SANDBOX_API UValueWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    bool Initialize() override;
     void NativePreConstruct() override;
     void NativeConstruct() override;
 
