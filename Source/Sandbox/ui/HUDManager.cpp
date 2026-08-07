@@ -9,6 +9,7 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
+#include <SandboxCore/timing.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include "Blueprint/UserWidget.h"
@@ -48,9 +49,9 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
         return;
     }
 
-    if (ui_data.update_frequencies.player_status_update_period <= 0.f ||
-        ui_data.update_frequencies.entity_count_update_period <= 0.f ||
-        ui_data.update_frequencies.mission_status_update_period <= 0.f) {
+    if (!ml::valid_periods(ui_data.update_frequencies.player_status_update_period,
+                           ui_data.update_frequencies.entity_count_update_period,
+                           ui_data.update_frequencies.mission_status_update_period)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("FHUDManager::initialise: UI update periods must be positive."));
@@ -63,7 +64,7 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
         ui_data.update_frequencies.mission_status_update_period)};
     auto const player_status_period{new_simulation_clock.duration_to_tick_period(
         ui_data.update_frequencies.player_status_update_period)};
-    if (entity_count_period <= 0 || mission_status_period <= 0 || player_status_period <= 0) {
+    if (!ml::valid_periods(entity_count_period, mission_status_period, player_status_period)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("FHUDManager::initialise: Converted UI update periods must be positive."));
@@ -140,9 +141,7 @@ void FHUDManager::tick() {
             SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
-        log_error_once(has_logged.tick_dependencies_error_logged,
-                       TEXT("FHUDManager::tick"),
-                       error);
+        log_error_once(has_logged.tick_dependencies_error_logged, TEXT("FHUDManager::tick"), error);
         return;
     }
 
@@ -232,10 +231,9 @@ bool FHUDManager::validate_player_ship_for_update() {
             SANDBOX_NAMED_UOBJECT_PTR(ship),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
-        log_error_once(
-            has_logged.player_ship_error_logged,
-            TEXT("FHUDManager: Cannot update player HUD"),
-            error);
+        log_error_once(has_logged.player_ship_error_logged,
+                       TEXT("FHUDManager: Cannot update player HUD"),
+                       error);
         return false;
     }
 
@@ -263,10 +261,9 @@ void FHUDManager::update_player_hud() {
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
             SANDBOX_NAMED_UOBJECT_PTR(player_controller.Get()),
         })}) {
-        log_error_once(
-            has_logged.player_hud_dependencies_error_logged,
-            TEXT("FHUDManager::update_player_hud"),
-            error);
+        log_error_once(has_logged.player_hud_dependencies_error_logged,
+                       TEXT("FHUDManager::update_player_hud"),
+                       error);
         return;
     }
 
@@ -393,10 +390,9 @@ void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {
             SANDBOX_NAMED_UOBJECT_PTR(controller),
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
         })}) {
-        log_error_once(
-            has_logged.lock_on_dependencies_error_logged,
-            TEXT("FHUDManager::update_lock_on_widget"),
-            error);
+        log_error_once(has_logged.lock_on_dependencies_error_logged,
+                       TEXT("FHUDManager::update_lock_on_widget"),
+                       error);
         return;
     }
 
