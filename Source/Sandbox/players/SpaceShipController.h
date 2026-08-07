@@ -6,6 +6,7 @@
 #include "Sandbox/players/BarrelRollInputData.h"
 #include "Sandbox/players/LaserFiringState.h"
 #include "Sandbox/players/SpaceShipControllerInputs.h"
+#include "Sandbox/ui/HudCrosshairDistances.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
@@ -14,6 +15,7 @@
 
 class UShipHudWidget;
 class ASpaceShip;
+class UTestBatchGameUiData;
 
 UCLASS()
 class ASpaceShipController
@@ -81,9 +83,7 @@ class ASpaceShipController
     UPROPERTY(VisibleAnywhere, Category = "UI")
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "UI")
-    float near_cursor_distance{3000.f};
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float far_cursor_distance{6000.f};
+    TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Input")
     FBarrelRollInputData barrel_roll_input{};

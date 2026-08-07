@@ -4,6 +4,8 @@
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
 
+#include "Sandbox/ui/HudCrosshairDistances.h"
+
 #include "TestBatchGameUiData.generated.h"
 
 class UTestTeamVisualData;
@@ -36,4 +38,7 @@ class SANDBOX_API UTestBatchGameUiData : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Colours")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Crosshair")
+    FHudCrosshairDistances crosshair_distances{};
 };

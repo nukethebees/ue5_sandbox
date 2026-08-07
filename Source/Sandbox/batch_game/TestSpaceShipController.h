@@ -120,10 +120,6 @@ class ATestSpaceShipController
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
-    float near_cursor_distance{3000.f};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
-    float far_cursor_distance{6000.f};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;

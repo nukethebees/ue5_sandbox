@@ -1,5 +1,6 @@
 #include "Sandbox/players/SpaceShipController.h"
 
+#include "Sandbox/batch_game/TestBatchGameUiData.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/SpaceShip.h"
@@ -130,13 +131,14 @@ void ASpaceShipController::initialise_hud() {
 }
 void ASpaceShipController::update_crosshair_positions(ASpaceShip const& ship) {
     RETURN_IF_NULLPTR(hud_widget);
+    RETURN_IF_NULLPTR(ui_data);
 
     auto const ship_socket{ship.get_middle_socket()};
 
     auto const ship_loc{ship_socket.GetLocation()};
     auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
-    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
+    auto const near_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.near};
+    auto const far_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.far};
     FVector2d near_screen_pos{};
     FVector2d far_screen_pos{};
 

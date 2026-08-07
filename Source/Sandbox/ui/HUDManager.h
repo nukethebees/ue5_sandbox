@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/health/ShipHealth.h>
 #include <Sandbox/players/LaserFiringState.h>
+#include <Sandbox/ui/HudCrosshairDistances.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 
 #include <CoreMinimal.h>
@@ -65,14 +66,12 @@ struct SANDBOX_API FHUDManager {
     using SimulationClockInterface = ml::test_batch_orchestrator::SimulationClockInterface;
 
     void initialise(UShipHudWidget& new_hud_widget,
-                    UTestBatchGameUiData const& ui_data,
+                    UTestBatchGameUiData const& new_ui_data,
                     ATestMissionManager const& new_mission_manager,
                     ATestEntityRegistry const& new_entity_registry,
                     SimulationClockInterface const simulation_clock,
                     ATestSpaceShipController& new_player_controller,
-                    ATestSpaceShip* new_player_ship,
-                    float new_near_cursor_distance,
-                    float new_far_cursor_distance);
+                    ATestSpaceShip* new_player_ship);
     void deactivate();
     void tick();
 
@@ -112,11 +111,10 @@ struct SANDBOX_API FHUDManager {
     TWeakObjectPtr<UShipHudWidget> hud_widget;
     TWeakObjectPtr<ATestSpaceShipController> player_controller;
     TWeakObjectPtr<ATestSpaceShip> player_ship;
+    UTestBatchGameUiData const* ui_data{nullptr};
     ATestMissionManager const* mission_manager{nullptr};
     ATestEntityRegistry const* entity_registry{nullptr};
     SimulationClockInterface simulation_clock{};
-    float near_cursor_distance{0.f};
-    float far_cursor_distance{0.f};
     FPeriodicTickCountdown8 update_timers;
     FDelegateHandle on_mission_started_handle;
     FDelegateHandle on_enemies_killed_handle;

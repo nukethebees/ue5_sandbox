@@ -245,9 +245,7 @@ void ATestSpaceShipController::initialise_hud() {
                            *entity_registry,
                            {*orchestrator},
                            *this,
-                           player_ship,
-                           near_cursor_distance,
-                           far_cursor_distance);
+                           player_ship);
 
     if (hud_manager.get_state() == EHUDManagerState::Active) {
         orchestrator->register_hud_manager(hud_manager);

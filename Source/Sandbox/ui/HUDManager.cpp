@@ -27,17 +27,15 @@ void log_error_once(bool& logged, TCHAR const* context, ml::FErrorMsg const& err
 }
 
 void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
-                             UTestBatchGameUiData const& ui_data,
+                             UTestBatchGameUiData const& new_ui_data,
                              ATestMissionManager const& new_mission_manager,
                              ATestEntityRegistry const& new_entity_registry,
                              SimulationClockInterface const new_simulation_clock,
                              ATestSpaceShipController& new_player_controller,
-                             ATestSpaceShip* const new_player_ship,
-                             float const new_near_cursor_distance,
-                             float const new_far_cursor_distance) {
+                             ATestSpaceShip* const new_player_ship) {
     deactivate();
 
-    auto* const team_visual_data{ui_data.team_visual_data.Get()};
+    auto* const team_visual_data{new_ui_data.team_visual_data.Get()};
 
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(&new_hud_widget),
@@ -46,7 +44,7 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
         UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: %s."), *error);
     }
 
-    auto const update_frequencies{ui_data.update_frequencies.to_array()};
+    auto const update_frequencies{new_ui_data.update_frequencies.to_array()};
     auto const n_freqs{update_frequencies.Num()};
 
     for (int32 i{0}; i < n_freqs; ++i) {
@@ -63,11 +61,10 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
     new_hud_widget.AddToViewport();
     hud_widget = &new_hud_widget;
     player_controller = &new_player_controller;
+    ui_data = &new_ui_data;
     mission_manager = &new_mission_manager;
     entity_registry = &new_entity_registry;
     simulation_clock = new_simulation_clock;
-    near_cursor_distance = new_near_cursor_distance;
-    far_cursor_distance = new_far_cursor_distance;
 
     new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
 
@@ -101,11 +98,10 @@ void FHUDManager::deactivate() {
     hud_widget.Reset();
     player_controller.Reset();
     player_ship.Reset();
+    ui_data = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
     simulation_clock = {};
-    near_cursor_distance = 0.f;
-    far_cursor_distance = 0.f;
     state = EHUDManagerState::Disabled;
     has_logged.reset();
 }
@@ -117,6 +113,7 @@ void FHUDManager::tick() {
 
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
+            SANDBOX_NAMED_UOBJECT_PTR(ui_data),
             SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
@@ -283,6 +280,7 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(controller),
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
+            SANDBOX_NAMED_UOBJECT_PTR(ui_data),
         })}) {
         log_error_once(has_logged.crosshair_dependencies_error_logged,
                        TEXT("FHUDManager::update_crosshair_positions"),
@@ -293,8 +291,8 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
     auto const ship_socket{ship.get_middle_socket()};
     auto const ship_loc{ship_socket.GetLocation()};
     auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * near_cursor_distance};
-    auto const far_world_pos{ship_loc + ship_fwd * far_cursor_distance};
+    auto const near_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.near};
+    auto const far_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.far};
     FVector2d near_screen_pos{};
     FVector2d far_screen_pos{};
 
