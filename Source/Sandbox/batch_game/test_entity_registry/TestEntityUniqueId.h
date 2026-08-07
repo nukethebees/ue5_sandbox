@@ -19,5 +19,7 @@ struct TestEntityUniqueId {
 
     constexpr bool is_valid() const { return id != ThisClass::NULL_ID; }
 
+    constexpr bool operator==(ThisClass const&) const = default;
+
     value_type id{NULL_ID};
 };
