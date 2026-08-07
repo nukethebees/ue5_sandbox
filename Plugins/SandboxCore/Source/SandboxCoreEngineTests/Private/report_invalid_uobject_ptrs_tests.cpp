@@ -47,7 +47,7 @@ TEST_CLASS(ReportInvalidUObjectPtrs, "SandboxCoreEngine.UnitTests")
             ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(first_invalid_object)})};
 
         TestRunner->TestTrue(TEXT("The string overload reports the invalid pointer"),
-                             message.Contains(TEXT("first_invalid_object")));
+                             message.message.Contains(TEXT("first_invalid_object")));
     }
 
     TEST_METHOD(BatchedChecksStopAtTheFirstInvalidBatch)

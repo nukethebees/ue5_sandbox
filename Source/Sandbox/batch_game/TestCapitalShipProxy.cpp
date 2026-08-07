@@ -35,8 +35,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
-        })};
-        !msg.IsEmpty()) {
+        })}) {
         UE_LOG(LogSandbox,
                Warning,
                TEXT("ATestCapitalShipProxy::OnConstruction Uobject ptrs are invalid: %s"),
@@ -47,8 +46,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
-        })};
-        !msg.IsEmpty()) {
+        })}) {
         UE_LOG(LogSandbox,
                Warning,
                TEXT("ATestCapitalShipProxy::OnConstruction Uobject ptrs are invalid: %s"),

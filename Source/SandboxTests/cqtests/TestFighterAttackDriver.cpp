@@ -17,7 +17,7 @@ void ATestFighterAttackDriver::PostInitializeComponents() {
         SANDBOX_NAMED_UOBJECT_PTR(enemy),
     })};
 
-    if (!check_msg.IsEmpty()) {
+    if (check_msg) {
         setup_error = FString::Printf(
             TEXT("ATestFighterAttackDriver::PostInitializeComponents Uobject ptrs are invalid: %s"),
             *check_msg);

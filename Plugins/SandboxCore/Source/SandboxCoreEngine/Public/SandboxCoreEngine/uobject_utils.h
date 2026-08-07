@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SandboxCore/error_msg.h>
+
 #include "Containers/UnrealString.h"
 
 #include <initializer_list>
@@ -7,15 +9,13 @@
 class UObject;
 
 namespace ml {
-struct FErrorMsg;
-
 struct SANDBOXCOREENGINE_API NamedUObjectPtr {
     UObject const* object{nullptr};
     TCHAR const* name{nullptr};
 };
 
 SANDBOXCOREENGINE_API auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs)
-    -> FString;
+    -> FErrorMsg;
 SANDBOXCOREENGINE_API bool report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs,
                                                        FErrorMsg& error_msg);
 

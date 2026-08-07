@@ -208,8 +208,7 @@ void ATestCapitalShips::visual_log_state() const {
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        })};
-        !msg.IsEmpty()) {
+        })}) {
         UE_LOG(LogSandboxEntities,
                Error,
                TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),
@@ -219,8 +218,7 @@ void ATestCapitalShips::visual_log_state() const {
 
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->visual_logger_style),
-        })};
-        !msg.IsEmpty()) {
+        })}) {
         UE_LOG(LogSandboxEntities,
                Error,
                TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),

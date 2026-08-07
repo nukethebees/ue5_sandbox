@@ -7,10 +7,10 @@
 #include "UObject/UObjectGlobals.h"
 
 namespace ml {
-auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs) -> FString {
+auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs) -> FErrorMsg {
     FErrorMsg error_msg;
     report_invalid_uobject_ptrs(ptrs, error_msg);
-    return MoveTemp(error_msg.message);
+    return MoveTemp(error_msg);
 }
 
 bool report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs,
