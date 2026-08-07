@@ -16,11 +16,13 @@
 #include "Sandbox/ui/widgets/ValueWidget.h"
 #include "Sandbox/ui/widgets/Vector2DWidget.h"
 
-#include "Components/CanvasPanelSlot.h"
-#include "Components/Image.h"
-#include "Components/PanelWidget.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "Materials/MaterialInterface.h"
+#include <Blueprint/WidgetTree.h>
+#include <Components/CanvasPanelSlot.h>
+#include <Components/Image.h>
+#include <Components/PanelWidget.h>
+#include <Components/Widget.h>
+#include <Materials/MaterialInstanceDynamic.h>
+#include <Materials/MaterialInterface.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -247,14 +249,19 @@ void UShipHudWidget::set_mission_time(float const mission_time) {
     }
 }
 
+void UShipHudWidget::set_mission_time_remaining(float const time_remaining) {
+    if (mission_status_panel) {
+        mission_status_panel->set_time_remaining(time_remaining);
+    }
+}
+
 void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining) {
     if (mission_status_panel) {
         mission_status_panel->set_enemies_remaining(enemies_remaining);
     }
 }
 
-void UShipHudWidget::update_mission_surviving_entity_health(
-    ATestMissionManager const& manager) {
+void UShipHudWidget::update_mission_surviving_entity_health(ATestMissionManager const& manager) {
     if (mission_status_panel) {
         mission_status_panel->update_surviving_entity_health(manager);
     }
