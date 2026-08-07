@@ -8,6 +8,7 @@
 - prefer auto where type is obvious
 - prefer simple C++ over template metaprogramming
 - save loop bounds as const local variables
+- Log warnings/errors when null checks fail instead of returning silently
 
 # UI design
 
