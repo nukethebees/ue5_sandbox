@@ -30,7 +30,7 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
                              UTestBatchGameUiData const& new_ui_data,
                              ATestMissionManager const& new_mission_manager,
                              ATestEntityRegistry const& new_entity_registry,
-                             SimulationClockInterface const new_simulation_clock,
+                             SimulationClockInterface const simulation_clock,
                              ATestSpaceShipController& new_player_controller,
                              ATestSpaceShip* const new_player_ship) {
     deactivate();
@@ -51,7 +51,7 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
         if (!ml::valid_periods(update_frequencies[i])) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
         }
-        auto const tick_period{new_simulation_clock.duration_to_tick_period(update_frequencies[i])};
+        auto const tick_period{simulation_clock.duration_to_tick_period(update_frequencies[i])};
         if (!ml::valid_periods(tick_period)) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
         }
@@ -64,7 +64,6 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
     ui_data = &new_ui_data;
     mission_manager = &new_mission_manager;
     entity_registry = &new_entity_registry;
-    simulation_clock = new_simulation_clock;
 
     new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
 
@@ -101,7 +100,6 @@ void FHUDManager::deactivate() {
     ui_data = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
-    simulation_clock = {};
     state = EHUDManagerState::Disabled;
     has_logged.reset();
 }

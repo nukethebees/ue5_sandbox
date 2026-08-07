@@ -114,7 +114,6 @@ struct SANDBOX_API FHUDManager {
     UTestBatchGameUiData const* ui_data{nullptr};
     ATestMissionManager const* mission_manager{nullptr};
     ATestEntityRegistry const* entity_registry{nullptr};
-    SimulationClockInterface simulation_clock{};
     FPeriodicTickCountdown8 update_timers;
     FDelegateHandle on_mission_started_handle;
     FDelegateHandle on_enemies_killed_handle;
