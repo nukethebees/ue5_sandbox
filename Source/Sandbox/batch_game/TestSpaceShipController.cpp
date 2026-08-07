@@ -40,23 +40,29 @@ void ATestSpaceShipController::SetupInputComponent() {
     // Movement
     bind(input.move, Triggered, &ThisClass::set_move_input);
     bind(input.move, Completed, &ThisClass::move_completed);
+
     bind(lateral_move_input, Triggered, &ThisClass::set_lateral_move_input);
     bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
     bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
     bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
+    
     bind(ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
     bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
+
     bind(ship_1d_control_x, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_1d_control_x, Triggered, &ThisClass::set_ship_1d_control_x);
     bind(ship_1d_control_x, Completed, &ThisClass::ship_2d_control_completed);
     bind(ship_1d_control_y, Started, &ThisClass::set_ship_2d_control_started);
     bind(ship_1d_control_y, Triggered, &ThisClass::set_ship_1d_control_y);
     bind(ship_1d_control_y, Completed, &ThisClass::ship_2d_control_completed);
+    
     bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
     bind(cycle_previous_control_mode_input, Started, &ThisClass::cycle_previous_control_mode);
+    
     bind(sample_and_hold_input, Started, &ThisClass::start_sampling);
     bind(sample_and_hold_input, Completed, &ThisClass::stop_sampling);
+    
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
     bind(input.roll, Started, &ThisClass::start_roll);
@@ -255,7 +261,9 @@ void ATestSpaceShipController::OnUnPossess() {
     Super::OnUnPossess();
 }
 
+/* ---------------------------------------------------------------------------------------------- */
 // UI
+/* ---------------------------------------------------------------------------------------------- */
 void ATestSpaceShipController::on_health_changed(FShipHealth const value) {
     check(hud_widget);
     hud_widget->set_health(value);
@@ -417,6 +425,9 @@ void ATestSpaceShipController::on_speed_sampled(std::span<FVector2d> const sampl
 }
 #endif
 
+/* ---------------------------------------------------------------------------------------------- */
+// Input
+/* ---------------------------------------------------------------------------------------------- */
 // Movement
 void ATestSpaceShipController::set_move_input(FInputActionValue const& value) {
     get_pawn().set_move_input(value.Get<FVector2D>());
@@ -436,6 +447,7 @@ void ATestSpaceShipController::set_vertical_move_input(FInputActionValue const& 
 void ATestSpaceShipController::vertical_move_completed() {
     get_pawn().set_vertical_move_input(0.f);
 }
+
 void ATestSpaceShipController::set_ship_2d_control_started() {
     start_sampling();
 }
@@ -451,18 +463,21 @@ void ATestSpaceShipController::set_ship_1d_control_x(FInputActionValue const& va
 void ATestSpaceShipController::set_ship_1d_control_y(FInputActionValue const& value) {
     get_pawn().set_ship_1d_control_y(value.Get<float>());
 }
+
 void ATestSpaceShipController::cycle_next_control_mode() {
     get_pawn().select_next_control_mode();
 }
 void ATestSpaceShipController::cycle_previous_control_mode() {
     get_pawn().select_previous_control_mode();
 }
+
 void ATestSpaceShipController::start_sampling() {
     get_pawn().start_sampling();
 }
 void ATestSpaceShipController::stop_sampling() {
     get_pawn().stop_sampling();
 }
+
 void ATestSpaceShipController::turn(FInputActionValue const& value) {
     get_pawn().turn(value.Get<FVector2D>());
 }

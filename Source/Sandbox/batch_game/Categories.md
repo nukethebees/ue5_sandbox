@@ -1,0 +1,5 @@
+# PROPERTY Categories
+
+* Health
+* Movement
+* 
