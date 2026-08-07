@@ -2,6 +2,7 @@
 
 #include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
 #include "Sandbox/batch_game/TestTeamVisualData.h"
+#include "Sandbox/batch_game/TestMissionState.h"
 #include "Sandbox/health/ShipHealth.h"
 
 #include "CoreMinimal.h"
@@ -89,6 +90,10 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
     void set_mission_status(ATestMissionManager const& mission_manager);
+    void set_mission_state(ETestMissionState const new_state);
+    void set_mission_time(float const mission_time);
+    void set_mission_enemies_remaining(int32 const enemies_remaining);
+    void update_mission_surviving_entity_health(ATestMissionManager const& mission_manager);
 
 #if WITH_EDITOR
     void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);

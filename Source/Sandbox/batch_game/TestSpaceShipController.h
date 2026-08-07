@@ -149,7 +149,9 @@ class ATestSpaceShipController
     // Mission
     void on_mission_manager_ready(ATestMissionManager const& manager);
     void initialise_from_mission_manager(ATestMissionManager const& manager);
-    void on_mission_update(ATestMissionManager const& manager);
+    void on_mission_started(ATestMissionManager const& manager);
+    void on_enemies_killed(ATestMissionManager const& manager);
+    void on_surviving_entity_health_updated(ATestMissionManager const& manager);
     void on_mission_ended(ATestMissionManager const& manager);
     auto make_mission_status_message(ATestMissionManager const& manager) const -> FString;
 
@@ -197,7 +199,9 @@ class ATestSpaceShipController
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Mission")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
     FDelegateHandle on_mission_ended_handle;
-    FDelegateHandle on_mission_update_handle;
+    FDelegateHandle on_mission_started_handle;
+    FDelegateHandle on_enemies_killed_handle;
+    FDelegateHandle on_surviving_entity_health_updated_handle;
     FDelegateHandle on_mission_manager_ready_handle;
 
     FPeriodicCountdownTimers ui_timers;

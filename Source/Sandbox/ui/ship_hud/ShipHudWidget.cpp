@@ -231,7 +231,32 @@ void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const&
 
 void UShipHudWidget::set_mission_status(ATestMissionManager const& manager) {
     if (mission_status_panel) {
-        mission_status_panel->update(manager);
+        mission_status_panel->set_mission_started(manager);
+    }
+}
+
+void UShipHudWidget::set_mission_state(ETestMissionState const new_state) {
+    if (mission_status_panel) {
+        mission_status_panel->set_mission_state(new_state);
+    }
+}
+
+void UShipHudWidget::set_mission_time(float const mission_time) {
+    if (mission_status_panel) {
+        mission_status_panel->set_mission_time(mission_time);
+    }
+}
+
+void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining) {
+    if (mission_status_panel) {
+        mission_status_panel->set_enemies_remaining(enemies_remaining);
+    }
+}
+
+void UShipHudWidget::update_mission_surviving_entity_health(
+    ATestMissionManager const& manager) {
+    if (mission_status_panel) {
+        mission_status_panel->update_surviving_entity_health(manager);
     }
 }
 

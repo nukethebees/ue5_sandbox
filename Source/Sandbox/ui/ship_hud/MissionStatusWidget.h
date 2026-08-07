@@ -21,6 +21,12 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void update(ATestMissionManager const& mission_manager);
+    void set_mission_started(ATestMissionManager const& mission_manager);
+    void set_mission_state(ETestMissionState const new_state);
+    void set_mission_time(float const mission_time);
+    void set_enemies_remaining(int32 const enemies_remaining);
+    void set_time_remaining(float const time_remaining);
+    void update_surviving_entity_health(ATestMissionManager const& mission_manager);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
@@ -60,14 +66,16 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, Category = "UI")
     int32 font_size{24};
   private:
-    void update_values(ETestMissionMode mission_mode,
-                       ETestMissionState mission_state,
-                       float mission_time,
-                       float time_remaining,
-                       int32 enemies_remaining,
-                       TConstArrayView<TestEntityUniqueId> surviving_entity_ids,
-                       TConstArrayView<ETestEntityType> surviving_entity_types,
-                       TConstArrayView<FShipHealth> surviving_entity_health);
+    void set_mission_mode(ETestMissionMode const new_mode,
+                          ETestMissionState const initial_state);
+    void set_mission_values(ETestMissionMode const mission_mode,
+                            ETestMissionState const mission_state,
+                            float const mission_time,
+                            float const time_remaining,
+                            int32 const enemies_remaining,
+                            TConstArrayView<TestEntityUniqueId> const entity_ids,
+                            TConstArrayView<ETestEntityType> const entity_types,
+                            TConstArrayView<FShipHealth> const health_values);
     auto check_widget_bindings() const -> bool;
     void reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId> entity_ids,
                                               TConstArrayView<ETestEntityType> entity_types,
@@ -75,4 +83,5 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
 
     TArray<TestEntityUniqueId> surviving_entity_ids{};
     TArray<TObjectPtr<UMissionEntityHealthRowWidget>> surviving_entity_widgets{};
+    ETestMissionMode current_mission_mode{ETestMissionMode::None};
 };

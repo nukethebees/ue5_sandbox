@@ -59,14 +59,14 @@ void UMissionStatusWidget::NativePreConstruct() {
         TArray<TestEntityUniqueId> const preview_surviving_entity_ids{{.id = 12}, {.id = 24}};
         TArray<ETestEntityType> const preview_surviving_entity_types{
             ETestEntityType::CapitalShip, ETestEntityType::CapitalShipFighter};
-        update_values(ETestMissionMode::KillEnemiesWithinTime,
-                      ETestMissionState::Running,
-                      37.5f,
-                      82.5f,
-                      12,
-                      preview_surviving_entity_ids,
-                      preview_surviving_entity_types,
-                      preview_surviving_entity_health);
+        set_mission_values(ETestMissionMode::KillEnemiesWithinTime,
+                           ETestMissionState::Running,
+                           37.5f,
+                           82.5f,
+                           12,
+                           preview_surviving_entity_ids,
+                           preview_surviving_entity_types,
+                           preview_surviving_entity_health);
     } else {
         reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId>{},
                                              TConstArrayView<ETestEntityType>{},
@@ -75,14 +75,69 @@ void UMissionStatusWidget::NativePreConstruct() {
 }
 
 void UMissionStatusWidget::update(ATestMissionManager const& mission_manager) {
-    update_values(mission_manager.get_mission_mode(),
-                  mission_manager.get_mission_state(),
-                  mission_manager.get_mission_stopwatch(),
-                  mission_manager.get_time_remaining(),
-                  mission_manager.get_kills_remaining(),
-                  mission_manager.get_entity_ids_that_must_survive(),
-                  mission_manager.get_entity_types_that_must_survive(),
-                  mission_manager.get_entity_health_that_must_survive());
+    set_mission_started(mission_manager);
+}
+
+void UMissionStatusWidget::set_mission_started(ATestMissionManager const& mission_manager) {
+    set_mission_values(mission_manager.get_mission_mode(),
+                       mission_manager.get_mission_state(),
+                       mission_manager.get_mission_stopwatch(),
+                       mission_manager.get_time_remaining(),
+                       mission_manager.get_kills_remaining(),
+                       mission_manager.get_entity_ids_that_must_survive(),
+                       mission_manager.get_entity_types_that_must_survive(),
+                       mission_manager.get_entity_health_that_must_survive());
+}
+
+void UMissionStatusWidget::set_mission_mode(ETestMissionMode const new_mode,
+                                            ETestMissionState const initial_state) {
+    current_mission_mode = new_mode;
+    auto const mode_name{ml::to_string_without_type_prefix(new_mode)};
+    auto const state_name{ml::to_string_without_type_prefix(initial_state)};
+    mission_mode_widget->update(FStringView{mode_name}, FStringView{state_name});
+}
+
+void UMissionStatusWidget::set_mission_state(ETestMissionState const new_state) {
+    auto const mode_name{ml::to_string_without_type_prefix(current_mission_mode)};
+    auto const state_name{ml::to_string_without_type_prefix(new_state)};
+    mission_mode_widget->update(FStringView{mode_name}, FStringView{state_name});
+}
+
+void UMissionStatusWidget::set_mission_time(float const mission_time) {
+    mission_time_widget->update(mission_time);
+}
+
+void UMissionStatusWidget::set_enemies_remaining(int32 const enemies_remaining) {
+    auto const show_enemies{current_mission_mode == ETestMissionMode::KillEnemies ||
+                            current_mission_mode == ETestMissionMode::KillEnemiesWithinTime};
+    enemies_remaining_widget->SetVisibility(show_enemies ? ESlateVisibility::Visible
+                                                         : ESlateVisibility::Collapsed);
+    if (show_enemies) {
+        enemies_remaining_widget->update(enemies_remaining);
+    }
+}
+
+void UMissionStatusWidget::set_time_remaining(float const time_remaining) {
+    auto const show_time{current_mission_mode == ETestMissionMode::SurviveTime ||
+                         current_mission_mode == ETestMissionMode::KillEnemiesWithinTime};
+    time_remaining_widget->SetVisibility(show_time ? ESlateVisibility::Visible
+                                                   : ESlateVisibility::Collapsed);
+    if (show_time) {
+        time_remaining_widget->update(time_remaining);
+    }
+}
+
+void UMissionStatusWidget::update_surviving_entity_health(
+    ATestMissionManager const& mission_manager) {
+    auto const entity_ids{mission_manager.get_entity_ids_that_must_survive()};
+    auto const health_values{mission_manager.get_entity_health_that_must_survive()};
+    for (auto const unique_id : entity_ids) {
+        auto const health_index{entity_ids.Find(unique_id)};
+        auto const row_index{surviving_entity_ids.Find(unique_id)};
+        check(health_index != INDEX_NONE);
+        check(row_index != INDEX_NONE);
+        surviving_entity_widgets[row_index]->set_health(health_values[health_index]);
+    }
 }
 
 void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
@@ -92,12 +147,12 @@ void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
     enemies_remaining_widget->set_font_size(font_size);
     time_remaining_widget->set_font_size(font_size);
 
-    for (auto* const row_widget : surviving_entity_widgets) {
+    for (auto const row_widget : surviving_entity_widgets) {
         row_widget->set_font_size(font_size);
     }
 }
 
-void UMissionStatusWidget::update_values(
+void UMissionStatusWidget::set_mission_values(
     ETestMissionMode const mission_mode,
     ETestMissionState const mission_state,
     float const mission_time,
@@ -106,26 +161,10 @@ void UMissionStatusWidget::update_values(
     TConstArrayView<TestEntityUniqueId> const entity_ids,
     TConstArrayView<ETestEntityType> const entity_types,
     TConstArrayView<FShipHealth> const surviving_entity_health) {
-    auto const mode_name{ml::to_string_without_type_prefix(mission_mode)};
-    auto const state_name{ml::to_string_without_type_prefix(mission_state)};
-    mission_mode_widget->update(FStringView{mode_name}, FStringView{state_name});
-    mission_time_widget->update(mission_time);
-
-    auto const show_enemies{mission_mode == ETestMissionMode::KillEnemies ||
-                            mission_mode == ETestMissionMode::KillEnemiesWithinTime};
-    enemies_remaining_widget->SetVisibility(show_enemies ? ESlateVisibility::Visible
-                                                         : ESlateVisibility::Collapsed);
-    if (show_enemies) {
-        enemies_remaining_widget->update(enemies_remaining);
-    }
-
-    auto const show_time{mission_mode == ETestMissionMode::SurviveTime ||
-                         mission_mode == ETestMissionMode::KillEnemiesWithinTime};
-    time_remaining_widget->SetVisibility(show_time ? ESlateVisibility::Visible
-                                                   : ESlateVisibility::Collapsed);
-    if (show_time) {
-        time_remaining_widget->update(time_remaining);
-    }
+    set_mission_mode(mission_mode, mission_state);
+    set_mission_time(mission_time);
+    set_enemies_remaining(enemies_remaining);
+    set_time_remaining(time_remaining);
 
     auto entity_list_changed{surviving_entity_ids.Num() != entity_ids.Num()};
     if (!entity_list_changed) {
@@ -142,12 +181,11 @@ void UMissionStatusWidget::update_values(
         reconstruct_surviving_entity_widgets(entity_ids, entity_types, surviving_entity_health);
     }
 
-    for (auto const unique_id : entity_ids) {
-        auto const health_index{entity_ids.Find(unique_id)};
-        auto const row_index{surviving_entity_ids.Find(unique_id)};
-        check(health_index != INDEX_NONE);
+    auto const n_entities{entity_ids.Num()};
+    for (int32 i{0}; i < n_entities; ++i) {
+        auto const row_index{surviving_entity_ids.Find(entity_ids[i])};
         check(row_index != INDEX_NONE);
-        surviving_entity_widgets[row_index]->set_health(surviving_entity_health[health_index]);
+        surviving_entity_widgets[row_index]->set_health(surviving_entity_health[i]);
     }
 }
 

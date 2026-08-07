@@ -20,7 +20,10 @@ class ATestBatchOrchestrator;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerUpdate, ATestMissionManager const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionStarted, ATestMissionManager const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionEnemiesKilled, ATestMissionManager const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionSurvivingEntityHealthUpdated,
+                                    ATestMissionManager const&);
 
 USTRUCT()
 struct FTestMissionStartupData {
@@ -99,7 +102,9 @@ class SANDBOX_API ATestMissionManager : public AActor {
 
     FTestMissionEndedDelegate on_mission_ended;
     FOnMissionManagerReady on_ready;
-    FOnMissionManagerUpdate on_mission_update;
+    FOnMissionStarted on_mission_started;
+    FOnMissionEnemiesKilled on_enemies_killed;
+    FOnMissionSurvivingEntityHealthUpdated on_surviving_entity_health_updated;
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);

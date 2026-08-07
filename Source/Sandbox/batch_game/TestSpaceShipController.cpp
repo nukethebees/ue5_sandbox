@@ -174,12 +174,18 @@ void ATestSpaceShipController::Tick(float dt) {
 void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
     mission_manager->on_mission_ended.Remove(on_mission_ended_handle);
 
+    if (on_mission_started_handle.IsValid()) {
+        mission_manager->on_mission_started.Remove(on_mission_started_handle);
+    }
+    if (on_enemies_killed_handle.IsValid()) {
+        mission_manager->on_enemies_killed.Remove(on_enemies_killed_handle);
+    }
+    if (on_surviving_entity_health_updated_handle.IsValid()) {
+        mission_manager->on_surviving_entity_health_updated.Remove(
+            on_surviving_entity_health_updated_handle);
+    }
     if (on_mission_manager_ready_handle.IsValid()) {
         mission_manager->on_ready.Remove(on_mission_manager_ready_handle);
-    }
-
-    if (on_mission_update_handle.IsValid()) {
-        mission_manager->on_mission_update.Remove(on_mission_update_handle);
     }
 
     Super::EndPlay(reason);
@@ -339,8 +345,8 @@ void ATestSpaceShipController::update_mission_status_widget() {
         return;
     }
 
-    hud_widget->set_mission_status(*mission_manager);
     hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
+    hud_widget->set_mission_time(mission_manager->get_mission_stopwatch());
 }
 
 void ATestSpaceShipController::update_entity_count_table() {
@@ -632,23 +638,41 @@ void ATestSpaceShipController::on_mission_manager_ready(ATestMissionManager cons
 void ATestSpaceShipController::initialise_from_mission_manager(ATestMissionManager const& manager) {
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);
+    on_mission_started_handle =
+        mission_manager->on_mission_started.AddUObject(this, &ThisClass::on_mission_started);
+    on_enemies_killed_handle =
+        mission_manager->on_enemies_killed.AddUObject(this, &ThisClass::on_enemies_killed);
+    on_surviving_entity_health_updated_handle =
+        mission_manager->on_surviving_entity_health_updated.AddUObject(
+            this, &ThisClass::on_surviving_entity_health_updated);
+
+    on_mission_started(manager);
+}
+void ATestSpaceShipController::on_mission_started(ATestMissionManager const& manager) {
+    check(&manager == mission_manager.Get());
     hud_widget->set_mission_status(manager);
     hud_widget->set_stopwatch_time(manager.get_mission_stopwatch());
-
-    on_mission_update_handle =
-        mission_manager->on_mission_update.AddUObject(this, &ThisClass::on_mission_update);
+    hud_widget->set_mission_time(manager.get_mission_stopwatch());
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
 }
-void ATestSpaceShipController::on_mission_update(ATestMissionManager const& manager) {
-    FString const mission_status{make_mission_status_message(manager)};
-    hud_widget->set_mission_status(mission_status);
-    hud_widget->set_mission_status(manager);
+void ATestSpaceShipController::on_enemies_killed(ATestMissionManager const& manager) {
+    check(&manager == mission_manager.Get());
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
     hud_widget->set_points(manager.get_mission_kills());
+}
+void ATestSpaceShipController::on_surviving_entity_health_updated(
+    ATestMissionManager const& manager) {
+    check(&manager == mission_manager.Get());
+    hud_widget->update_mission_surviving_entity_health(manager);
 }
 void ATestSpaceShipController::on_mission_ended(ATestMissionManager const& manager) {
     check(&manager == mission_manager.Get());
 
     // Do final update
     update_mission_status_widget();
+    hud_widget->set_mission_state(manager.get_mission_state());
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
+    hud_widget->update_mission_surviving_entity_health(manager);
 
     FString const mission_status{make_mission_status_message(manager)};
     hud_widget->set_mission_status(mission_status);

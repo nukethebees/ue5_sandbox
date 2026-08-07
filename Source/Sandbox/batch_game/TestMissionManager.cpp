@@ -233,6 +233,7 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
     check((new_state == ETestMissionState::Failed) ==
           (fail_reason != ETestMissionFailReason::None));
 
+    auto const old_state{mission_state};
     mission_state = new_state;
     mission_fail_reason = fail_reason;
 
@@ -241,6 +242,9 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
             break;
         }
         case ETestMissionState::Running: {
+            if (old_state != ETestMissionState::Running) {
+                on_mission_started.Broadcast(*this);
+            }
             break;
         }
         case ETestMissionState::Succeeded: {
@@ -300,7 +304,7 @@ void ATestMissionManager::update_mission_kills() {
     }
 
     if (mission_kills != old_kills) {
-        on_mission_update.Broadcast(*this);
+        on_enemies_killed.Broadcast(*this);
     }
 }
 
@@ -332,7 +336,7 @@ void ATestMissionManager::update_entity_health_that_must_survive() {
     }
 
     if (has_changed) {
-        on_mission_update.Broadcast(*this);
+        on_surviving_entity_health_updated.Broadcast(*this);
     }
 }
 
