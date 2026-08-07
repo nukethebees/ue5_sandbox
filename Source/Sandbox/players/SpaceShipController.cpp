@@ -6,7 +6,6 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
-#include "DrawDebugHelpers.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -159,28 +158,6 @@ void ASpaceShipController::update_crosshair_positions(ASpaceShip const& ship) {
     }
 
     hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
-
-#if WITH_EDITOR
-    if (debug_crosshair) {
-        TRY_INIT_PTR(world, GetWorld());
-        DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-        DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-
-        if (can_log()) {
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Near (W): %s"),
-                   *near_world_pos.ToCompactString());
-            UE_LOG(
-                LogSandboxController, Verbose, TEXT("Near (S): %s"), *near_screen_pos.ToString());
-            UE_LOG(LogSandboxController,
-                   Verbose,
-                   TEXT("Far (W): %s"),
-                   *far_world_pos.ToCompactString());
-            UE_LOG(LogSandboxController, Verbose, TEXT("Far (S): %s"), *far_screen_pos.ToString());
-        }
-    }
-#endif
 }
 void ASpaceShipController::update_lock_on_widget(ASpaceShip const& ship) {
     auto const* tgt{ship.get_lock_on_target()};

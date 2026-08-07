@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include <SandboxCore/array_utils.h>
+#include "CoreMinimal.h"
 
 #include <concepts>
 #include <utility>

@@ -14,7 +14,6 @@
 
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
-#include "DrawDebugHelpers.h"
 
 namespace {
 void log_error_once(bool& logged, TCHAR const* context, ml::FErrorMsg const& error) {
@@ -35,8 +34,7 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
                              ATestSpaceShipController& new_player_controller,
                              ATestSpaceShip* const new_player_ship,
                              float const new_near_cursor_distance,
-                             float const new_far_cursor_distance,
-                             bool const new_debug_crosshair) {
+                             float const new_far_cursor_distance) {
     deactivate();
 
     auto* const team_visual_data{ui_data.team_visual_data.Get()};
@@ -79,7 +77,6 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
     simulation_clock = new_simulation_clock;
     near_cursor_distance = new_near_cursor_distance;
     far_cursor_distance = new_far_cursor_distance;
-    debug_crosshair = new_debug_crosshair;
 
     update_timers.add_started(player_status_period);
     update_timers.add_started(mission_status_period);
@@ -122,7 +119,6 @@ void FHUDManager::deactivate() {
     simulation_clock = {};
     near_cursor_distance = 0.f;
     far_cursor_distance = 0.f;
-    debug_crosshair = false;
     state = EHUDManagerState::Disabled;
     mission_started_pending = false;
     enemies_killed_pending = false;
@@ -354,29 +350,6 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
     }
 
     hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
-
-#if WITH_EDITOR
-    if (debug_crosshair) {
-        auto* const world{controller->GetWorld()};
-        if (auto error{ml::report_invalid_uobject_ptrs({
-                SANDBOX_NAMED_UOBJECT_PTR(world),
-            })}) {
-            log_error_once(has_logged.crosshair_dependencies_error_logged,
-                           TEXT("FHUDManager::update_crosshair_positions"),
-                           error);
-        } else {
-            DrawDebugSphere(world, near_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-            DrawDebugSphere(world, far_world_pos, 50.f, 12, FColor::Green, false, 0.f);
-        }
-        UE_LOG(LogSandboxUI,
-               Verbose,
-               TEXT("Crosshair near (W): %s, near (S): %s, far (W): %s, far (S): %s"),
-               *near_world_pos.ToCompactString(),
-               *near_screen_pos.ToString(),
-               *far_world_pos.ToCompactString(),
-               *far_screen_pos.ToString());
-    }
-#endif
 }
 
 void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {

@@ -72,8 +72,7 @@ struct SANDBOX_API FHUDManager {
                     ATestSpaceShipController& new_player_controller,
                     ATestSpaceShip* new_player_ship,
                     float new_near_cursor_distance,
-                    float new_far_cursor_distance,
-                    bool new_debug_crosshair);
+                    float new_far_cursor_distance);
     void deactivate();
     void tick();
 
@@ -118,7 +117,6 @@ struct SANDBOX_API FHUDManager {
     SimulationClockInterface simulation_clock{};
     float near_cursor_distance{0.f};
     float far_cursor_distance{0.f};
-    bool debug_crosshair{false};
     FPeriodicTickCountdown8 update_timers;
     FDelegateHandle on_mission_started_handle;
     FDelegateHandle on_enemies_killed_handle;

@@ -96,7 +96,5 @@ class ASpaceShipController
     float seconds_since_last_log{0};
     UPROPERTY(EditAnywhere, Category = "Debug")
     float seconds_per_log{0.75f};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool debug_crosshair{false};
 #endif
 };
