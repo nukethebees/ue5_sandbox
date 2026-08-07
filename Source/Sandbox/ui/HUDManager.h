@@ -122,9 +122,5 @@ struct SANDBOX_API FHUDManager {
     FDelegateHandle on_enemies_killed_handle;
     FDelegateHandle on_surviving_entity_health_updated_handle;
     FDelegateHandle on_mission_ended_handle;
-    bool mission_started_pending{false};
-    bool enemies_killed_pending{false};
-    bool surviving_entity_health_pending{false};
-    bool mission_ended_pending{false};
     ml::hud_manager::FLogOnceFlags has_logged;
 };

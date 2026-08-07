@@ -107,10 +107,6 @@ void FHUDManager::deactivate() {
     near_cursor_distance = 0.f;
     far_cursor_distance = 0.f;
     state = EHUDManagerState::Disabled;
-    mission_started_pending = false;
-    enemies_killed_pending = false;
-    surviving_entity_health_pending = false;
-    mission_ended_pending = false;
     has_logged.reset();
 }
 
@@ -130,28 +126,6 @@ void FHUDManager::tick() {
 
     update_player_hud();
     update_timers.tick();
-    if (mission_started_pending) {
-        mission_started_pending = false;
-        hud_widget->set_mission_status(*mission_manager);
-        hud_widget->set_mission_enemies_remaining(mission_manager->get_kills_remaining());
-        update_mission_status();
-        hud_widget->update_mission_surviving_entity_health(*mission_manager);
-    }
-    if (enemies_killed_pending) {
-        enemies_killed_pending = false;
-        hud_widget->set_mission_enemies_remaining(mission_manager->get_kills_remaining());
-    }
-    if (surviving_entity_health_pending) {
-        surviving_entity_health_pending = false;
-        hud_widget->update_mission_surviving_entity_health(*mission_manager);
-    }
-    if (mission_ended_pending) {
-        mission_ended_pending = false;
-        hud_widget->set_mission_state(mission_manager->get_mission_state());
-        hud_widget->set_mission_enemies_remaining(mission_manager->get_kills_remaining());
-        hud_widget->update_mission_surviving_entity_health(*mission_manager);
-        update_mission_status();
-    }
     if (update_timers.try_consume(FHUDUpdateTimerIndex::player_status)) {
         update_player_status();
     }
@@ -504,7 +478,10 @@ void FHUDManager::on_mission_started(ATestMissionManager const& manager) {
         return;
     }
 
-    mission_started_pending = true;
+    hud_widget->set_mission_status(manager);
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
+    update_mission_status();
+    hud_widget->update_mission_surviving_entity_health(manager);
 }
 
 void FHUDManager::on_enemies_killed(ATestMissionManager const& manager) {
@@ -512,7 +489,7 @@ void FHUDManager::on_enemies_killed(ATestMissionManager const& manager) {
         return;
     }
 
-    enemies_killed_pending = true;
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
 }
 
 void FHUDManager::on_surviving_entity_health_updated(ATestMissionManager const& manager) {
@@ -520,7 +497,7 @@ void FHUDManager::on_surviving_entity_health_updated(ATestMissionManager const& 
         return;
     }
 
-    surviving_entity_health_pending = true;
+    hud_widget->update_mission_surviving_entity_health(manager);
 }
 
 void FHUDManager::on_mission_ended(ATestMissionManager const& manager) {
@@ -528,7 +505,10 @@ void FHUDManager::on_mission_ended(ATestMissionManager const& manager) {
         return;
     }
 
-    mission_ended_pending = true;
+    hud_widget->set_mission_state(manager.get_mission_state());
+    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
+    hud_widget->update_mission_surviving_entity_health(manager);
+    update_mission_status();
 }
 
 void FHUDManager::remove_mission_delegates() {
