@@ -21,6 +21,34 @@ class AActor;
 class UTestBatchGameUiData;
 class UShipHudWidget;
 
+namespace ml::hud_manager {
+struct FLogOnceFlags {
+    void reset() noexcept {
+        tick_dependencies_error_logged = false;
+        player_ship_error_logged = false;
+        player_ship_unique_id_error_logged = false;
+        player_hud_dependencies_error_logged = false;
+        mission_status_dependencies_error_logged = false;
+        player_status_dependencies_error_logged = false;
+        entity_counts_dependencies_error_logged = false;
+        crosshair_dependencies_error_logged = false;
+        lock_on_dependencies_error_logged = false;
+        input_widgets_dependencies_error_logged = false;
+    }
+
+    bool tick_dependencies_error_logged{false};
+    bool player_ship_error_logged{false};
+    bool player_ship_unique_id_error_logged{false};
+    bool player_hud_dependencies_error_logged{false};
+    bool mission_status_dependencies_error_logged{false};
+    bool player_status_dependencies_error_logged{false};
+    bool entity_counts_dependencies_error_logged{false};
+    bool crosshair_dependencies_error_logged{false};
+    bool lock_on_dependencies_error_logged{false};
+    bool input_widgets_dependencies_error_logged{false};
+};
+}
+
 enum class EHUDManagerState : uint8 {
     Disabled,
     Active,
@@ -100,14 +128,5 @@ struct SANDBOX_API FHUDManager {
     bool enemies_killed_pending{false};
     bool surviving_entity_health_pending{false};
     bool mission_ended_pending{false};
-    bool tick_dependencies_error_logged{false};
-    bool player_ship_error_logged{false};
-    bool player_ship_unique_id_error_logged{false};
-    bool player_hud_dependencies_error_logged{false};
-    bool mission_status_dependencies_error_logged{false};
-    bool player_status_dependencies_error_logged{false};
-    bool entity_counts_dependencies_error_logged{false};
-    bool crosshair_dependencies_error_logged{false};
-    bool lock_on_dependencies_error_logged{false};
-    bool input_widgets_dependencies_error_logged{false};
+    ml::hud_manager::FLogOnceFlags has_logged;
 };

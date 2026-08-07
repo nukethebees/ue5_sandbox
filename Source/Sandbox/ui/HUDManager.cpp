@@ -132,16 +132,7 @@ void FHUDManager::deactivate() {
     enemies_killed_pending = false;
     surviving_entity_health_pending = false;
     mission_ended_pending = false;
-    tick_dependencies_error_logged = false;
-    player_ship_error_logged = false;
-    player_ship_unique_id_error_logged = false;
-    player_hud_dependencies_error_logged = false;
-    mission_status_dependencies_error_logged = false;
-    player_status_dependencies_error_logged = false;
-    entity_counts_dependencies_error_logged = false;
-    crosshair_dependencies_error_logged = false;
-    lock_on_dependencies_error_logged = false;
-    input_widgets_dependencies_error_logged = false;
+    has_logged.reset();
 }
 
 void FHUDManager::tick() {
@@ -154,7 +145,9 @@ void FHUDManager::tick() {
             SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
-        log_error_once(tick_dependencies_error_logged, TEXT("FHUDManager::tick"), error);
+        log_error_once(has_logged.tick_dependencies_error_logged,
+                       TEXT("FHUDManager::tick"),
+                       error);
         return;
     }
 
@@ -245,18 +238,20 @@ bool FHUDManager::validate_player_ship_for_update() {
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
         log_error_once(
-            player_ship_error_logged, TEXT("FHUDManager: Cannot update player HUD"), error);
+            has_logged.player_ship_error_logged,
+            TEXT("FHUDManager: Cannot update player HUD"),
+            error);
         return false;
     }
 
     auto const unique_id{ship->get_unique_id()};
     if (!unique_id.is_valid() || !entity_registry->is_valid_unique_id(unique_id)) {
-        if (!player_ship_unique_id_error_logged) {
+        if (!has_logged.player_ship_unique_id_error_logged) {
             UE_LOG(LogSandboxUI,
                    Warning,
                    TEXT("FHUDManager: Player ship unique_id is invalid (%d)."),
                    unique_id.id);
-            player_ship_unique_id_error_logged = true;
+            has_logged.player_ship_unique_id_error_logged = true;
         }
         return false;
     }
@@ -274,7 +269,9 @@ void FHUDManager::update_player_hud() {
             SANDBOX_NAMED_UOBJECT_PTR(player_controller.Get()),
         })}) {
         log_error_once(
-            player_hud_dependencies_error_logged, TEXT("FHUDManager::update_player_hud"), error);
+            has_logged.player_hud_dependencies_error_logged,
+            TEXT("FHUDManager::update_player_hud"),
+            error);
         return;
     }
 
@@ -288,7 +285,7 @@ void FHUDManager::update_mission_status() {
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
             SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
         })}) {
-        log_error_once(mission_status_dependencies_error_logged,
+        log_error_once(has_logged.mission_status_dependencies_error_logged,
                        TEXT("FHUDManager::update_mission_status"),
                        error);
         return;
@@ -306,7 +303,7 @@ void FHUDManager::update_player_status() {
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
         })}) {
-        log_error_once(player_status_dependencies_error_logged,
+        log_error_once(has_logged.player_status_dependencies_error_logged,
                        TEXT("FHUDManager::update_player_status"),
                        error);
         return;
@@ -323,7 +320,7 @@ void FHUDManager::update_entity_counts() {
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
             SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
-        log_error_once(entity_counts_dependencies_error_logged,
+        log_error_once(has_logged.entity_counts_dependencies_error_logged,
                        TEXT("FHUDManager::update_entity_counts"),
                        error);
         return;
@@ -338,7 +335,7 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
             SANDBOX_NAMED_UOBJECT_PTR(controller),
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
         })}) {
-        log_error_once(crosshair_dependencies_error_logged,
+        log_error_once(has_logged.crosshair_dependencies_error_logged,
                        TEXT("FHUDManager::update_crosshair_positions"),
                        error);
         return;
@@ -372,7 +369,7 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
         if (auto error{ml::report_invalid_uobject_ptrs({
                 SANDBOX_NAMED_UOBJECT_PTR(world),
             })}) {
-            log_error_once(crosshair_dependencies_error_logged,
+            log_error_once(has_logged.crosshair_dependencies_error_logged,
                            TEXT("FHUDManager::update_crosshair_positions"),
                            error);
         } else {
@@ -402,7 +399,9 @@ void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
         })}) {
         log_error_once(
-            lock_on_dependencies_error_logged, TEXT("FHUDManager::update_lock_on_widget"), error);
+            has_logged.lock_on_dependencies_error_logged,
+            TEXT("FHUDManager::update_lock_on_widget"),
+            error);
         return;
     }
 
@@ -420,7 +419,7 @@ void FHUDManager::update_input_widgets(ATestSpaceShip const& ship) {
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
         })}) {
-        log_error_once(input_widgets_dependencies_error_logged,
+        log_error_once(has_logged.input_widgets_dependencies_error_logged,
                        TEXT("FHUDManager::update_input_widgets"),
                        error);
         return;
