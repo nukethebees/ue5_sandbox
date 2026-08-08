@@ -5,7 +5,6 @@
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
-#include "Sandbox/ui/ship_hud/ShipBombCountWidget.h"
 #include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
 #include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
@@ -105,14 +104,6 @@ void UShipHudWidget::set_points(int32 value) {
 }
 void UShipHudWidget::set_points_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(points_widget, new_visibility);
-}
-
-void UShipHudWidget::set_bombs(int32 value) {
-    RETURN_IF_NULLPTR(bombs_widget);
-    bombs_widget->set_count(value);
-}
-void UShipHudWidget::set_bombs_widget_visibility(ESlateVisibility const new_visibility) {
-    set_widget_visibility_checked(bombs_widget, new_visibility);
 }
 
 void UShipHudWidget::set_stopwatch_time(float const time_s) {

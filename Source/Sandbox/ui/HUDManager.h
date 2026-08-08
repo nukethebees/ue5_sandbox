@@ -124,7 +124,6 @@ struct SANDBOX_API FHUDManager {
     void on_speed_changed(float value);
     void on_target_speed_changed(float value);
     void on_energy_changed(float value);
-    void on_bombs_changed(int32 value);
     void on_ship_fire_rate_changed(ETestShipFireRate value);
     void on_laser_firing_mode_changed(ELaserFiringState mode);
     void on_lock_on_acquired(AActor* target);

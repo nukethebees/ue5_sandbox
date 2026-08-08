@@ -134,7 +134,6 @@ void FHUDManager::set_player_ship(ATestSpaceShip* const new_player_ship) noexcep
         on_speed_changed(player_ship->get_speed());
         on_target_speed_changed(player_ship->get_target_speed());
         on_energy_changed(1.f);
-        on_bombs_changed(player_ship->get_bombs());
         on_laser_firing_mode_changed(ELaserFiringState::idle);
         on_lock_on_acquired(nullptr);
         on_ship_fire_rate_changed(player_ship->get_laser_fire_rate());
@@ -416,11 +415,6 @@ void FHUDManager::on_energy_changed(float const value) {
         hud_widget->set_energy(value);
     }
 }
-void FHUDManager::on_bombs_changed(int32 const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_bombs(value);
-    }
-}
 void FHUDManager::on_ship_fire_rate_changed(ETestShipFireRate const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_fire_rate(*ml::to_string_without_type_prefix(value));
@@ -476,7 +470,6 @@ void FHUDManager::bind_player_ship_delegates() {
     player_ship->on_speed_changed.BindRaw(this, &FHUDManager::on_speed_changed);
     player_ship->on_target_speed_changed.BindRaw(this, &FHUDManager::on_target_speed_changed);
     player_ship->on_energy_changed.BindRaw(this, &FHUDManager::on_energy_changed);
-    player_ship->on_bombs_changed.BindRaw(this, &FHUDManager::on_bombs_changed);
     player_ship->on_laser_mode_changed.BindRaw(this, &FHUDManager::on_laser_firing_mode_changed);
     player_ship->on_lock_on_acquired.BindRaw(this, &FHUDManager::on_lock_on_acquired);
     player_ship->on_ship_fire_rate_changed.BindRaw(this, &FHUDManager::on_ship_fire_rate_changed);
@@ -493,7 +486,6 @@ void FHUDManager::remove_player_ship_delegates() {
     player_ship->on_speed_changed.Unbind();
     player_ship->on_target_speed_changed.Unbind();
     player_ship->on_energy_changed.Unbind();
-    player_ship->on_bombs_changed.Unbind();
     player_ship->on_laser_mode_changed.Unbind();
     player_ship->on_lock_on_acquired.Unbind();
     player_ship->on_ship_fire_rate_changed.Unbind();
