@@ -18,13 +18,6 @@
 class ATestEntityRegistry;
 class ATestBatchOrchestrator;
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FTestMissionEndedDelegate, ATestMissionManager const&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionManagerReady, ATestMissionManager const&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionStarted, ATestMissionManager const&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionEnemiesKilled, ATestMissionManager const&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionSurvivingEntityHealthUpdated,
-                                    ATestMissionManager const&);
-
 USTRUCT()
 struct FTestMissionStartupData {
     GENERATED_BODY()
@@ -99,12 +92,6 @@ class SANDBOX_API ATestMissionManager : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     auto get_entity_registry() -> ATestEntityRegistry* { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
-
-    mutable FTestMissionEndedDelegate on_mission_ended;
-    mutable FOnMissionManagerReady on_ready;
-    mutable FOnMissionStarted on_mission_started;
-    mutable FOnMissionEnemiesKilled on_enemies_killed;
-    mutable FOnMissionSurvivingEntityHealthUpdated on_surviving_entity_health_updated;
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);

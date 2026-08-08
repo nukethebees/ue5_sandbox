@@ -73,8 +73,6 @@ void ATestMissionManager::begin_play() {
     }
 
     mission_elapsed_seconds = 0.f;
-
-    on_ready.Broadcast(*this);
 }
 
 void ATestMissionManager::bind_simulation_clock(
@@ -233,7 +231,6 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
     check((new_state == ETestMissionState::Failed) ==
           (fail_reason != ETestMissionFailReason::None));
 
-    auto const old_state{mission_state};
     mission_state = new_state;
     mission_fail_reason = fail_reason;
 
@@ -242,9 +239,6 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
             break;
         }
         case ETestMissionState::Running: {
-            if (old_state != ETestMissionState::Running) {
-                on_mission_started.Broadcast(*this);
-            }
             break;
         }
         case ETestMissionState::Succeeded: {
@@ -296,15 +290,9 @@ void ATestMissionManager::mission_tick_kill_enemies_within_time() {
 void ATestMissionManager::update_mission_kills() {
     check(hero_entity_handles.Num() == hero_entity_ids.Num());
 
-    auto const old_kills{mission_kills};
-
     mission_kills = 0;
     for (auto const id : hero_entity_ids) {
         mission_kills += entity_registry->get_kills(id);
-    }
-
-    if (mission_kills != old_kills) {
-        on_enemies_killed.Broadcast(*this);
     }
 }
 
@@ -322,21 +310,12 @@ void ATestMissionManager::initialise_entity_health_that_must_survive() {
 void ATestMissionManager::update_entity_health_that_must_survive() {
     check(entity_health_that_must_survive.Num() == entity_handles_that_must_survive.Num());
 
-    auto has_changed{false};
     auto const n_handles{entity_handles_that_must_survive.Num()};
     for (int32 i{0}; i < n_handles; ++i) {
         auto& health{entity_health_that_must_survive[i]};
         auto const handle{entity_handles_that_must_survive[i]};
-        auto const new_health{
-            entity_registry->is_valid_handle(handle) ? entity_registry->get_health(handle) : 0};
-        if (health.health != new_health) {
-            health.health = new_health;
-            has_changed = true;
-        }
-    }
-
-    if (has_changed) {
-        on_surviving_entity_health_updated.Broadcast(*this);
+        health.health =
+            entity_registry->is_valid_handle(handle) ? entity_registry->get_health(handle) : 0;
     }
 }
 
@@ -379,13 +358,9 @@ void ATestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));
 
     handle_mission_ended(ETestMissionFailReason::None);
-
-    on_mission_ended.Broadcast(*this);
 }
 void ATestMissionManager::handle_mission_failure(ETestMissionFailReason const fail_reason) {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
 
     handle_mission_ended(fail_reason);
-
-    on_mission_ended.Broadcast(*this);
 }

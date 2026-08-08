@@ -21,6 +21,8 @@ struct SANDBOX_API FShipHealth {
         : health(max_health)
         , max_health(max_health) {}
 
+    bool operator==(FShipHealth const& other) const noexcept = default;
+
     void upgrade_max_health() { max_health = upgraded_max_health; }
     bool is_alive() const noexcept { return health > 0; }
     void clamp_to_max() noexcept;

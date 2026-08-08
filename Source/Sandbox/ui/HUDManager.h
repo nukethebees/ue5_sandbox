@@ -1,14 +1,18 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/TestEntityType.h>
+#include <Sandbox/batch_game/TestMissionMode.h>
+#include <Sandbox/batch_game/TestMissionState.h>
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/health/ShipHealth.h>
 #include <Sandbox/players/LaserFiringState.h>
 #include <Sandbox/ui/HudCrosshairDistances.h>
+#include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 
 #include <CoreMinimal.h>
-#include <Delegates/IDelegateInstance.h>
 #include <HAL/Platform.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
@@ -62,6 +66,33 @@ struct FHUDUpdateTimerIndex {
     static constexpr int32 count{3};
 };
 
+namespace ml::hud_manager {
+struct FMissionStaticDataCache {
+    bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
+
+    ETestMissionMode mission_mode{ETestMissionMode::None};
+    TArray<TestEntityUniqueId> surviving_entity_ids;
+    TArray<ETestEntityType> surviving_entity_types;
+};
+
+struct FMissionStatusDataCache {
+    bool operator==(FMissionStatusDataCache const& other) const noexcept = default;
+
+    ETestMissionState mission_state{ETestMissionState::NotStarted};
+    float mission_stopwatch{0.f};
+    float time_remaining{0.f};
+    int32 enemies_remaining{0};
+    TArray<FShipHealth> surviving_entity_health;
+};
+
+struct FMissionDataCache {
+    bool operator==(FMissionDataCache const& other) const noexcept = default;
+
+    FMissionStaticDataCache static_data;
+    FMissionStatusDataCache status_data;
+};
+}
+
 struct SANDBOX_API FHUDManager {
     using SimulationClockInterface = ml::test_batch_orchestrator::SimulationClockInterface;
 
@@ -83,6 +114,7 @@ struct SANDBOX_API FHUDManager {
     bool validate_player_ship_for_update();
     void update_player_hud();
     void update_mission_status();
+    void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
     void update_entity_counts();
     void update_player_status();
     void update_crosshair_positions(ATestSpaceShip const& ship);
@@ -101,11 +133,6 @@ struct SANDBOX_API FHUDManager {
 #endif
     void bind_player_ship_delegates();
     void remove_player_ship_delegates();
-    void on_mission_started(ATestMissionManager const& manager);
-    void on_enemies_killed(ATestMissionManager const& manager);
-    void on_surviving_entity_health_updated(ATestMissionManager const& manager);
-    void on_mission_ended(ATestMissionManager const& manager);
-    void remove_mission_delegates();
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TWeakObjectPtr<UShipHudWidget> hud_widget;
@@ -115,9 +142,7 @@ struct SANDBOX_API FHUDManager {
     ATestMissionManager const* mission_manager{nullptr};
     ATestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;
-    FDelegateHandle on_mission_started_handle;
-    FDelegateHandle on_enemies_killed_handle;
-    FDelegateHandle on_surviving_entity_health_updated_handle;
-    FDelegateHandle on_mission_ended_handle;
+    ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
+    bool has_mission_data{false};
     ml::hud_manager::FLogOnceFlags has_logged;
 };

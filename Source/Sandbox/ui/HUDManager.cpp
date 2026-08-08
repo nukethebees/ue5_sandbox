@@ -67,28 +67,13 @@ void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
 
     new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
 
-    on_mission_started_handle =
-        mission_manager->on_mission_started.AddRaw(this, &FHUDManager::on_mission_started);
-    on_enemies_killed_handle =
-        mission_manager->on_enemies_killed.AddRaw(this, &FHUDManager::on_enemies_killed);
-    on_surviving_entity_health_updated_handle =
-        mission_manager->on_surviving_entity_health_updated.AddRaw(
-            this, &FHUDManager::on_surviving_entity_health_updated);
-    on_mission_ended_handle =
-        mission_manager->on_mission_ended.AddRaw(this, &FHUDManager::on_mission_ended);
-
     state = EHUDManagerState::Active;
     set_player_ship(new_player_ship);
     update_player_status();
     update_entity_counts();
-    if (mission_manager->is_ready()) {
-        on_mission_started(*mission_manager);
-    }
 }
-
 void FHUDManager::deactivate() {
     remove_player_ship_delegates();
-    remove_mission_delegates();
     if (IsValid(hud_widget.Get())) {
         hud_widget->RemoveFromParent();
     }
@@ -100,6 +85,8 @@ void FHUDManager::deactivate() {
     ui_data = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
+    mission_data_buffers = {};
+    has_mission_data = false;
     state = EHUDManagerState::Disabled;
     has_logged.reset();
 }
@@ -132,6 +119,7 @@ void FHUDManager::tick() {
     }
 }
 
+// Accessors
 void FHUDManager::set_player_ship(ATestSpaceShip* const new_player_ship) noexcept {
     remove_player_ship_delegates();
     player_ship = new_player_ship;
@@ -156,7 +144,6 @@ void FHUDManager::set_player_ship(ATestSpaceShip* const new_player_ship) noexcep
         hud_widget->set_lock_on_widget_visibility(false);
     }
 }
-
 void FHUDManager::clear_player_ship() noexcept {
     remove_player_ship_delegates();
     player_ship.Reset();
@@ -165,7 +152,6 @@ void FHUDManager::clear_player_ship() noexcept {
         hud_widget->set_lock_on_widget_visibility(false);
     }
 }
-
 void FHUDManager::set_selected_mapping_context(FString const& context_name) {
     if (!IsValid(hud_widget.Get())) {
         UE_LOG(LogSandboxUI,
@@ -177,6 +163,96 @@ void FHUDManager::set_selected_mapping_context(FString const& context_name) {
     hud_widget->set_selected_imc(FStringView{context_name});
 }
 
+// Mission
+void FHUDManager::update_mission_status() {
+    if (auto error{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
+            SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
+        })}) {
+        log_error_once(has_logged.mission_status_dependencies_error_logged,
+                       TEXT("FHUDManager::update_mission_status"),
+                       error);
+        return;
+    }
+
+    if (!mission_manager->is_ready()) {
+        return;
+    }
+
+    auto& next_data{mission_data_buffers.next()};
+    read_mission_data(next_data);
+
+    if (!has_mission_data) {
+        hud_widget->set_mission_status(*mission_manager);
+        hud_widget->set_stopwatch_time(next_data.status_data.mission_stopwatch);
+        has_mission_data = true;
+        mission_data_buffers.cycle();
+        return;
+    }
+
+    auto const& current_data{mission_data_buffers.current()};
+    if (next_data == current_data) {
+        return;
+    }
+
+    if (next_data.static_data != current_data.static_data) {
+        hud_widget->set_mission_status(*mission_manager);
+        hud_widget->set_stopwatch_time(next_data.status_data.mission_stopwatch);
+        mission_data_buffers.cycle();
+        return;
+    }
+
+    auto const& next_status{next_data.status_data};
+    auto const& current_status{current_data.status_data};
+    if (next_status.mission_state != current_status.mission_state) {
+        hud_widget->set_mission_state(next_status.mission_state);
+    }
+    if (next_status.mission_stopwatch != current_status.mission_stopwatch) {
+        hud_widget->set_stopwatch_time(next_status.mission_stopwatch);
+        hud_widget->set_mission_time(next_status.mission_stopwatch);
+    }
+    if (next_status.time_remaining != current_status.time_remaining) {
+        hud_widget->set_mission_time_remaining(next_status.time_remaining);
+    }
+    if (next_status.enemies_remaining != current_status.enemies_remaining) {
+        hud_widget->set_mission_enemies_remaining(next_status.enemies_remaining);
+    }
+    if (next_status.surviving_entity_health != current_status.surviving_entity_health) {
+        hud_widget->update_mission_surviving_entity_health(*mission_manager);
+    }
+
+    mission_data_buffers.cycle();
+}
+void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) const {
+    check(mission_manager);
+
+    auto& static_data{out.static_data};
+    static_data.mission_mode = mission_manager->get_mission_mode();
+    static_data.surviving_entity_ids = mission_manager->get_entity_ids_that_must_survive();
+    static_data.surviving_entity_types = mission_manager->get_entity_types_that_must_survive();
+
+    auto& status_data{out.status_data};
+    status_data.mission_state = mission_manager->get_mission_state();
+    status_data.mission_stopwatch = mission_manager->get_mission_stopwatch();
+    status_data.time_remaining = mission_manager->get_time_remaining();
+    status_data.enemies_remaining = mission_manager->get_kills_remaining();
+    status_data.surviving_entity_health = mission_manager->get_entity_health_that_must_survive();
+}
+void FHUDManager::update_entity_counts() {
+    if (auto error{ml::report_invalid_uobject_ptrs({
+            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
+            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
+        })}) {
+        log_error_once(has_logged.entity_counts_dependencies_error_logged,
+                       TEXT("FHUDManager::update_entity_counts"),
+                       error);
+        return;
+    }
+
+    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type());
+}
+
+// Player
 bool FHUDManager::validate_player_ship_for_update() {
     auto* const ship{player_ship.Get()};
     if (auto error{ml::report_invalid_uobject_ptrs({
@@ -203,7 +279,6 @@ bool FHUDManager::validate_player_ship_for_update() {
 
     return true;
 }
-
 void FHUDManager::update_player_hud() {
     if (!validate_player_ship_for_update()) {
         return;
@@ -224,22 +299,6 @@ void FHUDManager::update_player_hud() {
     update_input_widgets(*player_ship);
 }
 
-void FHUDManager::update_mission_status() {
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
-        })}) {
-        log_error_once(has_logged.mission_status_dependencies_error_logged,
-                       TEXT("FHUDManager::update_mission_status"),
-                       error);
-        return;
-    }
-
-    hud_widget->set_stopwatch_time(mission_manager->get_mission_stopwatch());
-    hud_widget->set_mission_time(mission_manager->get_mission_stopwatch());
-    hud_widget->set_mission_time_remaining(mission_manager->get_time_remaining());
-}
-
 void FHUDManager::update_player_status() {
     if (!validate_player_ship_for_update()) {
         return;
@@ -258,21 +317,6 @@ void FHUDManager::update_player_status() {
     hud_widget->set_target_speed(player_ship->get_target_speed());
     hud_widget->set_points(player_ship->get_kills());
 }
-
-void FHUDManager::update_entity_counts() {
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        })}) {
-        log_error_once(has_logged.entity_counts_dependencies_error_logged,
-                       TEXT("FHUDManager::update_entity_counts"),
-                       error);
-        return;
-    }
-
-    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type());
-}
-
 void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
     auto* const controller{player_controller.Get()};
     if (auto error{ml::report_invalid_uobject_ptrs({
@@ -308,7 +352,6 @@ void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
 
     hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
 }
-
 void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {
     auto const* const target{ship.get_lock_on_target()};
     if (!target) {
@@ -335,7 +378,6 @@ void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {
 
     hud_widget->set_lock_on_widget_position(screen_pos);
 }
-
 void FHUDManager::update_input_widgets(ATestSpaceShip const& ship) {
     if (auto error{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
@@ -354,43 +396,36 @@ void FHUDManager::update_input_widgets(ATestSpaceShip const& ship) {
     hud_widget->set_control_mode(*ml::to_string_without_type_prefix(ship.get_control_mode()));
     hud_widget->set_flight_mode(*ml::to_string_without_type_prefix(ship.get_flight_mode()));
 }
-
 void FHUDManager::on_health_changed(FShipHealth const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_health(value);
     }
 }
-
 void FHUDManager::on_speed_changed(float const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_speed(value);
     }
 }
-
 void FHUDManager::on_target_speed_changed(float const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_target_speed(value);
     }
 }
-
 void FHUDManager::on_energy_changed(float const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_energy(value);
     }
 }
-
 void FHUDManager::on_bombs_changed(int32 const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_bombs(value);
     }
 }
-
 void FHUDManager::on_ship_fire_rate_changed(ETestShipFireRate const value) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_fire_rate(*ml::to_string_without_type_prefix(value));
     }
 }
-
 void FHUDManager::on_laser_firing_mode_changed(ELaserFiringState const mode) {
     if (!IsValid(hud_widget.Get())) {
         return;
@@ -418,7 +453,6 @@ void FHUDManager::on_laser_firing_mode_changed(ELaserFiringState const mode) {
         }
     }
 }
-
 void FHUDManager::on_lock_on_acquired(AActor* const target) {
     if (IsValid(hud_widget.Get())) {
         hud_widget->set_lock_on_widget_visibility(target != nullptr);
@@ -450,7 +484,6 @@ void FHUDManager::bind_player_ship_delegates() {
     player_ship->on_speed_sampled.BindRaw(this, &FHUDManager::on_speed_sampled);
 #endif
 }
-
 void FHUDManager::remove_player_ship_delegates() {
     if (!player_ship.IsValid()) {
         return;
@@ -467,66 +500,4 @@ void FHUDManager::remove_player_ship_delegates() {
 #if WITH_EDITOR
     player_ship->on_speed_sampled.Unbind();
 #endif
-}
-
-void FHUDManager::on_mission_started(ATestMissionManager const& manager) {
-    if (&manager != mission_manager || !IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    hud_widget->set_mission_status(manager);
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-    update_mission_status();
-    hud_widget->update_mission_surviving_entity_health(manager);
-}
-
-void FHUDManager::on_enemies_killed(ATestMissionManager const& manager) {
-    if (&manager != mission_manager || !IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-}
-
-void FHUDManager::on_surviving_entity_health_updated(ATestMissionManager const& manager) {
-    if (&manager != mission_manager || !IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    hud_widget->update_mission_surviving_entity_health(manager);
-}
-
-void FHUDManager::on_mission_ended(ATestMissionManager const& manager) {
-    if (&manager != mission_manager || !IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    hud_widget->set_mission_state(manager.get_mission_state());
-    hud_widget->set_mission_enemies_remaining(manager.get_kills_remaining());
-    hud_widget->update_mission_surviving_entity_health(manager);
-    update_mission_status();
-}
-
-void FHUDManager::remove_mission_delegates() {
-    if (!mission_manager) {
-        return;
-    }
-
-    if (on_mission_started_handle.IsValid()) {
-        mission_manager->on_mission_started.Remove(on_mission_started_handle);
-    }
-    if (on_enemies_killed_handle.IsValid()) {
-        mission_manager->on_enemies_killed.Remove(on_enemies_killed_handle);
-    }
-    if (on_surviving_entity_health_updated_handle.IsValid()) {
-        mission_manager->on_surviving_entity_health_updated.Remove(
-            on_surviving_entity_health_updated_handle);
-    }
-    if (on_mission_ended_handle.IsValid()) {
-        mission_manager->on_mission_ended.Remove(on_mission_ended_handle);
-    }
-    on_mission_started_handle.Reset();
-    on_enemies_killed_handle.Reset();
-    on_surviving_entity_health_updated_handle.Reset();
-    on_mission_ended_handle.Reset();
 }
