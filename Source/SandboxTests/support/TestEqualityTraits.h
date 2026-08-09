@@ -12,9 +12,8 @@ template <>
 struct TestEqualityTraits<float> {
     static bool is_equal(float const expected, float const actual) { return expected == actual; }
 
-    static bool is_equal_with_tolerance(float const expected,
-                                        float const actual,
-                                        float const tolerance) {
+    static bool
+        is_equal_with_tolerance(float const expected, float const actual, float const tolerance) {
         return FMath::IsNearlyEqual(expected, actual, tolerance);
     }
 };

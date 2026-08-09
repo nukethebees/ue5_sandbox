@@ -39,7 +39,6 @@ struct FSoftTestAssertions {
         }
     }
 
-    auto start_msg(int32 i = INDEX_NONE) const -> FString;
     void store_result(bool result) noexcept;
 
     /* ---------------------------------------------------------------------------- */
@@ -53,12 +52,10 @@ struct FSoftTestAssertions {
         auto const result{exp == got};
         store_result(result);
 
-        FString msg{start_msg(i)};
-
-        msg += FString::Printf(
+        reset_message(i);
+        message.Appendf(
             TEXT("%s (Exp %s, Got %s)"), *description, *to_string(exp), *to_string(got));
-
-        display_result(result, msg);
+        display_result(result, message);
 
         return result;
     }
@@ -71,15 +68,13 @@ struct FSoftTestAssertions {
         auto const result{FMath::IsNearlyEqual(exp, got, tolerance)};
         store_result(result);
 
-        FString msg{start_msg(i)};
-
-        msg += FString::Printf(TEXT("%s (Exp %s, Got %s (tolerance=%f))"),
-                               *description,
-                               *to_string(exp),
-                               *to_string(got),
-                               tolerance);
-
-        display_result(result, msg);
+        reset_message(i);
+        message.Appendf(TEXT("%s (Exp %s, Got %s (tolerance=%f))"),
+                        *description,
+                        *to_string(exp),
+                        *to_string(got),
+                        tolerance);
+        display_result(result, message);
 
         return result;
     }
@@ -93,15 +88,13 @@ struct FSoftTestAssertions {
         auto const result{!FMath::IsNearlyEqual(a, b, tolerance)};
         store_result(result);
 
-        FString msg{start_msg(i)};
-
-        msg += FString::Printf(TEXT("%s (Expect %s != %s, (tolerance=%f)"),
-                               *description,
-                               *to_string(a),
-                               *to_string(b),
-                               tolerance);
-
-        display_result(result, msg);
+        reset_message(i);
+        message.Appendf(TEXT("%s (Expect %s != %s, (tolerance=%f)"),
+                        *description,
+                        *to_string(a),
+                        *to_string(b),
+                        tolerance);
+        display_result(result, message);
 
         return result;
     }
@@ -113,12 +106,9 @@ struct FSoftTestAssertions {
                    int32 const i = INDEX_NONE) {
         auto const result{not_exp != got};
         store_result(result);
-        display_result(result,
-                       FString::Printf(TEXT("%s%s (%s vs %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       *to_string(not_exp),
-                                       *to_string(got)));
+        reset_message(i);
+        message.Appendf(TEXT("%s (%s vs %s)"), *description, *to_string(not_exp), *to_string(got));
+        display_result(result, message);
 
         return result;
     }
@@ -172,19 +162,19 @@ struct FSoftTestAssertions {
         auto const dist{T::Dist(lhs, rhs)};
         auto const result{FMath::IsNearlyZero(dist, tolerance)};
         store_result(result);
-        display_result(result,
-                       FString::Printf(TEXT(R"(%s%s 
+        reset_message(i);
+        message.Appendf(TEXT(R"(%s 
 Check non-zero dist:
     Distance : %f
     From     : %s
     To       : %s 
     Tolerance: %f)"),
-                                       *start_msg(i),
-                                       *description,
-                                       dist,
-                                       *lhs.ToCompactString(),
-                                       *rhs.ToCompactString(),
-                                       tolerance));
+                        *description,
+                        dist,
+                        *lhs.ToCompactString(),
+                        *rhs.ToCompactString(),
+                        tolerance);
+        display_result(result, message);
 
         return result;
     }
@@ -197,19 +187,19 @@ Check non-zero dist:
         auto const dist{T::Dist(lhs, rhs)};
         auto const result{!FMath::IsNearlyZero(dist, tolerance)};
         store_result(result);
-        display_result(result,
-                       FString::Printf(TEXT(R"(%s%s 
+        reset_message(i);
+        message.Appendf(TEXT(R"(%s 
 Check non-zero dist:
     Distance : %f
     From     : %s
     To       : %s 
     Tolerance: %f)"),
-                                       *start_msg(i),
-                                       *description,
-                                       dist,
-                                       *lhs.ToCompactString(),
-                                       *rhs.ToCompactString(),
-                                       tolerance));
+                        *description,
+                        dist,
+                        *lhs.ToCompactString(),
+                        *rhs.ToCompactString(),
+                        tolerance);
+        display_result(result, message);
 
         return result;
     }
@@ -223,18 +213,18 @@ Check non-zero dist:
         auto const dist{T::Dist(lhs, rhs)};
         auto const result{dist > threshold};
         store_result(result);
-        display_result(result,
-                       FString::Printf(TEXT(R"(%s%s 
+        reset_message(i);
+        message.Appendf(TEXT(R"(%s 
 Check dist > %f:
     Distance : %f
     From     : %s
     To       : %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       threshold,
-                                       dist,
-                                       *lhs.ToCompactString(),
-                                       *rhs.ToCompactString()));
+                        *description,
+                        threshold,
+                        dist,
+                        *lhs.ToCompactString(),
+                        *rhs.ToCompactString());
+        display_result(result, message);
 
         return result;
     }
@@ -283,10 +273,12 @@ Check dist > %f:
     bool log_successful_assertions{false};
     bool all_passed{true};
   private:
+    void reset_message(int32 i = INDEX_NONE);
+
     template <auto is_equal, typename T>
     bool all_equal_impl(T const& exp, T const& got, FString const& description) {
         indices.Reset();
-        message.Reset();
+        reset_message();
 
         auto const n_exp{ml::num(exp)};
         auto const n_got{ml::num(got)};
@@ -312,7 +304,7 @@ Check dist > %f:
                         Tolerance const tolerance,
                         FString const& description) {
         indices.Reset();
-        message.Reset();
+        reset_message();
 
         auto const n_exp{ml::num(exp)};
         auto const n_got{ml::num(got)};
@@ -365,13 +357,13 @@ Check dist > %f:
         auto const result{comparison(lhs, rhs)};
         store_result(result);
 
-        display_result(result,
-                       FString::Printf(TEXT("%s%s (Expect: %s %s %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       *to_string(lhs),
-                                       operator_text,
-                                       *to_string(rhs)));
+        reset_message(i);
+        message.Appendf(TEXT("%s (Expect: %s %s %s)"),
+                        *description,
+                        *to_string(lhs),
+                        operator_text,
+                        *to_string(rhs));
+        display_result(result, message);
 
         return result;
     }

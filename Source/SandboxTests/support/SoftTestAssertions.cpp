@@ -12,11 +12,11 @@ void FSoftTestAssertions::display_result(bool const passed, FString const& msg) 
     }
 }
 
-auto FSoftTestAssertions::start_msg(int32 const i) const -> FString {
+void FSoftTestAssertions::reset_message(int32 const i) {
+    message.Reset();
     if (i != INDEX_NONE) {
-        return FString::Printf(TEXT("[%d] "), i);
+        message.Appendf(TEXT("[%d] "), i);
     }
-    return {};
 }
 
 void FSoftTestAssertions::store_result(bool const result) noexcept {
@@ -26,10 +26,9 @@ void FSoftTestAssertions::store_result(bool const result) noexcept {
 bool FSoftTestAssertions::is_true(bool result, FString const& description, int32 const i) {
     store_result(result);
 
-    FString msg{start_msg(i)};
-    msg += FString::Printf(TEXT("%s (%s)"), *description, to_string(result));
-
-    display_result(result, msg);
+    reset_message(i);
+    message.Appendf(TEXT("%s (%s)"), *description, to_string(result));
+    display_result(result, message);
 
     return result;
 }
