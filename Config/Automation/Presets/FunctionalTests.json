@@ -14,6 +14,8 @@
 		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
 		"Sandbox.FunctionalTests.TestCapitalShipProxy.SpawnsWithConfiguredHealth",
 		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest",
+		"Sandbox.FunctionalTests.TestEntityRegistry.OnePlayerKill",
+		"Sandbox.FunctionalTests.TestEntityRegistry.TwoPlayerKills",
 		"Sandbox.FunctionalTests.TestHUDManager.EntityCountPollingContinuesWithoutHUD",
 		"Sandbox.FunctionalTests.TestHUDManager.InitialCachesPopulateWithoutHUD",
 		"Sandbox.FunctionalTests.TestHUDManager.LateHUDRegistrationSynchronisesAndUnregisters",

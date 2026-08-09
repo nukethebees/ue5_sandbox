@@ -117,12 +117,8 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
     // Fight phase
     /* ---------------------------------------------------------------------------- */
     void check_fighters_team(FSimulationSample const& sample) {
-        auto const& teams{sample.fighter_teams};
-
-        auto const n{teams.Num()};
-        for (int32 i{0}; i < n; ++i) {
-            checks.are_equal(hero_team, teams[i], TEXT("Fighters are on hero team."));
-        }
+        ml::check_all_teams_are(
+            sample.fighter_teams, hero_team, checks, TEXT("Fighters are on hero team."));
     }
     void full_checks() {
         auto const& pre_fight{samples.nearest_value(t_pre_fight)};
@@ -131,7 +127,8 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         check_fighters_team(pre_fight);
         ml::check_radii(TConstArrayView<float>{pre_fight.radii}, checks, 0.05f);
 
-        checks.is_true(post_fight.enemy_health < pre_fight.enemy_health, TEXT("Enemy lost health"));
+        ml::check_health_decreased(
+            pre_fight.enemy_health, post_fight.enemy_health, checks, TEXT("Enemy lost health"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }

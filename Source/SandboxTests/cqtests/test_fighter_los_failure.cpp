@@ -2,6 +2,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 
+#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
@@ -83,19 +84,14 @@ TEST_CLASS(FighterLosFailureHandling, "Sandbox.FunctionalTests")
         auto const sample_count{sample_values.Num()};
         for (int32 sample_index{0}; sample_index < sample_count; ++sample_index) {
             auto const& fighter_teams{sample_values[sample_index].fighter_teams};
-            auto const fighter_count{fighter_teams.Num()};
 
-            for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
-                checks.are_equal(hero_team,
-                                 fighter_teams[fighter_index],
-                                 TEXT("Only the blue hero team has fighters"),
-                                 fighter_index);
-            }
+            ml::check_all_teams_are(
+                fighter_teams, hero_team, checks, TEXT("Only the blue hero team has fighters"));
         }
     }
 
     void full_checks() {
-        checks.is_greater_than(samples.num(), int32{0}, TEXT("Simulation produced samples"));
+        ml::check_samples_recorded(samples.num(), checks, TEXT("Simulation produced samples"));
         if (samples.is_empty()) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
@@ -103,8 +99,11 @@ TEST_CLASS(FighterLosFailureHandling, "Sandbox.FunctionalTests")
 
         check_fighter_spawns_and_survival();
         auto const final_enemy_health{test_driver->get_capital_ships().get_health(enemy)};
-        checks.is_true(final_enemy_health < initial_enemy_health,
-                       TEXT("Enemy capital has sustained damage by the end of the test"));
+        ml::check_health_decreased(
+            initial_enemy_health,
+            final_enemy_health,
+            checks,
+            TEXT("Enemy capital has sustained damage by the end of the test"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }

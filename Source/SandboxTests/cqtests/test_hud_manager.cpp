@@ -1,6 +1,7 @@
 #include "test_setup.h"
 #include "TestSimulationDriver.h"
 
+#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
 
 #include <SandboxCore/time_series_data.h>
@@ -254,11 +255,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
     void check_defence_result() {
-        checks.is_greater_than(defence_samples.num(), int32{0}, TEXT("Defence samples recorded"));
-        if (defence_samples.is_empty()) {
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-            return;
-        }
+        ml::check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         auto const& sample{defence_samples.nearest_value(test_duration)};
         checks.are_equal(ETestMissionState::Failed,
@@ -305,8 +303,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
     void check_mission_time() {
-        checks.is_greater_than(
-            mission_time_samples.num(), int32{0}, TEXT("Mission-time samples recorded"));
+        ml::check_samples_recorded(
+            mission_time_samples.num(), checks, TEXT("Mission-time samples recorded"));
         if (mission_time_samples.is_empty()) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
@@ -352,7 +350,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
     void check_player_kill_result() {
-        checks.is_greater_than(player_samples.num(), int32{0}, TEXT("Player samples recorded"));
+        ml::check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
         if (player_samples.is_empty()) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
@@ -441,8 +439,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->orchestrator.start_simulation();
     }
     void check_entity_count_polling_result() {
-        checks.is_greater_than(
-            entity_count_samples.num(), int32{0}, TEXT("Entity-count samples recorded"));
+        ml::check_samples_recorded(
+            entity_count_samples.num(), checks, TEXT("Entity-count samples recorded"));
         if (entity_count_samples.is_empty()) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
