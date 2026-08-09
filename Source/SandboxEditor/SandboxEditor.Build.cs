@@ -15,6 +15,8 @@ public class SandboxEditor : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "UMG",
+            "UMGEditor",
             "UnrealEd", // Must be public for class inheritance
             "EditorFramework" // Required by UnrealEd, must be public
         });
