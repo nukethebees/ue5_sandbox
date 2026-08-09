@@ -142,19 +142,23 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
             continue;
         }
 
+        auto const property_name{property->GetFName()};
+        auto const property_name_string{property_name.ToString()};
+
         auto* const object_property{CastField<FObjectPropertyBase>(property)};
         if (object_property == nullptr || object_property->PropertyClass == nullptr ||
             !object_property->PropertyClass->IsChildOf(UWidget::StaticClass())) {
             LOG_WARN("Widget generation row %d skipped binding '%s': property is not a UWidget "
                      "object property.",
                      entry_index,
-                     *property->GetName());
+                     *property_name_string);
             continue;
         }
 
         auto* const required_widget_class{object_property->PropertyClass.Get()};
+        auto const is_project_widget{is_project_widget_class(*required_widget_class)};
         auto* widget_class_to_construct{required_widget_class};
-        if (is_project_widget_class(*required_widget_class)) {
+        if (is_project_widget) {
             if (!IsValid(ui_data)) {
                 ui_data = ml::test_batch_game_ui_data::get_data_asset();
             }
@@ -170,7 +174,7 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
                 LOG_ERR("Widget generation row %d requires a configured WBP mapping for "
                         "binding '%s' (%s).",
                         entry_index,
-                        *property->GetName(),
+                        *property_name_string,
                         *required_widget_class->GetPathName());
                 return false;
             }
@@ -182,22 +186,22 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
             LOG_WARN("Widget generation row %d skipped binding '%s': widget class '%s' cannot "
                      "be instantiated.",
                      entry_index,
-                     *property->GetName(),
+                     *property_name_string,
                      *widget_class_to_construct->GetPathName());
-            if (is_project_widget_class(*required_widget_class)) {
+            if (is_project_widget) {
                 return false;
             }
             continue;
         }
 
         auto* const generated_widget{
-            widget_tree->ConstructWidget<UWidget>(widget_class_to_construct, property->GetFName())};
+            widget_tree->ConstructWidget<UWidget>(widget_class_to_construct, property_name)};
         if (generated_widget == nullptr) {
             LOG_ERR("Widget generation row %d could not construct binding '%s' as '%s'.",
                     entry_index,
-                    *property->GetName(),
+                    *property_name_string,
                     *widget_class_to_construct->GetPathName());
-            if (is_project_widget_class(*required_widget_class)) {
+            if (is_project_widget) {
                 return false;
             }
             continue;
@@ -206,17 +210,17 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
         if (root_canvas.AddChild(generated_widget) == nullptr) {
             LOG_WARN("Widget generation row %d could not attach binding '%s' to RootCanvas.",
                      entry_index,
-                     *property->GetName());
-            if (is_project_widget_class(*required_widget_class)) {
+                     *property_name_string);
+            if (is_project_widget) {
                 return false;
             }
             continue;
         }
 
-        widget_blueprint.OnVariableAdded(generated_widget->GetFName());
+        widget_blueprint.OnVariableAdded(property_name);
         LOG_LOG("Widget generation row %d added binding '%s' as '%s'.",
                 entry_index,
-                *property->GetName(),
+                *property_name_string,
                 *widget_class_to_construct->GetName());
     }
 
@@ -243,7 +247,8 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
                                                               nullptr,
                                                               generation_context,
                                                               false)};
-    if (widget_blueprint == nullptr || widget_blueprint->WidgetTree == nullptr) {
+    auto* const widget_tree{widget_blueprint ? widget_blueprint->WidgetTree.Get() : nullptr};
+    if (widget_tree == nullptr) {
         LOG_ERR("Widget generation row %d could not create Widget Blueprint '%s'.",
                 entry_index,
                 *package_path);
@@ -252,10 +257,10 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
 
     FAssetRegistryModule::AssetCreated(widget_blueprint);
     widget_blueprint->Modify();
-    widget_blueprint->WidgetTree->Modify();
+    widget_tree->Modify();
 
-    auto* const root_canvas{widget_blueprint->WidgetTree->ConstructWidget<UCanvasPanel>(
-        UCanvasPanel::StaticClass(), TEXT("RootCanvas"))};
+    auto* const root_canvas{widget_tree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(),
+                                                                       TEXT("RootCanvas"))};
     if (root_canvas == nullptr) {
         LOG_ERR("Widget generation row %d could not create RootCanvas for '%s'.",
                 entry_index,
@@ -264,7 +269,7 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
         return nullptr;
     }
 
-    widget_blueprint->WidgetTree->RootWidget = root_canvas;
+    widget_tree->RootWidget = root_canvas;
     widget_blueprint->OnVariableAdded(root_canvas->GetFName());
     LOG_LOG("Widget generation row %d created RootCanvas.", entry_index);
     if (!add_bind_widgets(
