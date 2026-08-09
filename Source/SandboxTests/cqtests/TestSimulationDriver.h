@@ -32,6 +32,9 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> ATestCapitalShips const&;
     auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
 
+    void queue_damage(TConstArrayView<FRegistryEntityHandle> targets,
+                      int32 damage,
+                      FRegistryEntityHandle instigator = {});
     void queue_kills(TConstArrayView<FRegistryEntityHandle> targets,
                      FRegistryEntityHandle instigator = {});
     bool should_export_results() const;
