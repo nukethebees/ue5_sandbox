@@ -253,6 +253,43 @@ Check dist > %f:
 
         return result;
     }
+    /* ---------------------------------------------------------------------------- */
+    // Less than
+    /* ---------------------------------------------------------------------------- */
+    template <typename T>
+    bool is_less_than(T const& lhs,
+                      T const& rhs,
+                      FString const& description,
+                      int32 const i = INDEX_NONE) {
+        auto const result{lhs < rhs};
+        store_result(result);
+
+        display_result(result,
+                       FString::Printf(TEXT("%s%s (Expect: %s < %s)"),
+                                       *start_msg(i),
+                                       *description,
+                                       *to_string(lhs),
+                                       *to_string(rhs)));
+
+        return result;
+    }
+    template <typename T>
+    bool is_less_equal_than(T const& lhs,
+                            T const& rhs,
+                            FString const& description,
+                            int32 const i = INDEX_NONE) {
+        auto const result{lhs <= rhs};
+        store_result(result);
+
+        display_result(result,
+                       FString::Printf(TEXT("%s%s (Expect: %s <= %s)"),
+                                       *start_msg(i),
+                                       *description,
+                                       *to_string(lhs),
+                                       *to_string(rhs)));
+
+        return result;
+    }
 
     /* ---------------------------------------------------------------------------- */
     // Bool

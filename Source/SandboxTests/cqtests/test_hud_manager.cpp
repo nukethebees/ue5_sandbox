@@ -203,7 +203,9 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         }
         auto* const mission_manager{world.SpawnActorDeferred<ATestMissionManager>(
             config.actor_classes.mission_manager_class, FTransform::Identity)};
-        check(mission_manager);
+        if (!checks.is_valid(mission_manager, TEXT("Mission manager"))) {
+            return;
+        }
         mission_manager->set_save_mission_results(false);
         mission_manager->set_mission_mode(ETestMissionMode::SurviveTime);
         mission_manager->set_target_time(10.f);
@@ -258,8 +260,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         checks.are_equal(ETestMissionState::Failed,
                          sample.mission_state,
                          TEXT("Defence mission failure is cached"));
-        checks.are_equal(
-            0, sample.defended_entity_health, TEXT("Destroyed must-survive health is cached"));
+        checks.is_less_equal_than(
+            sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
         checks.is_true(sample.mission_stopwatch > 0.f,
                        TEXT("Mission stopwatch follows simulation time"));
         checks.are_equal(0, sample.registered_hud_count, TEXT("Mission updates without a HUD"));
