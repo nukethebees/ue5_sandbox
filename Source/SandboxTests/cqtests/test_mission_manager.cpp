@@ -186,7 +186,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         check(defended_handles.Num() == 1);
 
         TArray<FRegistryEntityHandle> const targets{defended_handles[0]};
-        test_driver->queue_kills(targets);
+        auto const damage{test_driver->get_capital_ships().get_health(defended_handles[0])};
+        test_driver->queue_damage(targets, damage);
     }
 
     auto mission_has_ended() const -> bool {
