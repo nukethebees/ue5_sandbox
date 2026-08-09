@@ -8,6 +8,8 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
+#include "Sandbox/ui/ship_hud/TeamKillMatrixWidget.h"
+#include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 #include "Sandbox/ui/widgets/ValueWidget.h"
 
@@ -40,6 +42,8 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UShipHudWidget::StaticClass(),
         UShipSpeedWidget::StaticClass(),
         UShipThrusterEnergyWidget::StaticClass(),
+        UTeamKillMatrixWidget::StaticClass(),
+        UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
         UValueWidget::StaticClass(),
     };
