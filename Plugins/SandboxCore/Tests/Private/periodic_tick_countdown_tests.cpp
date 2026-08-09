@@ -40,3 +40,25 @@ TEST_CASE("SandboxCore.PeriodicTickCountdown.StartedPeriodIsNotReady") {
     countdown.tick();
     CHECK(countdown.try_consume(0));
 }
+
+TEST_CASE("SandboxCore.PeriodicTickCountdown.AdvancesMultipleTicks") {
+    FPeriodicTickCountdown8 countdown;
+    countdown.add_started(3);
+    countdown.add_started(7);
+
+    countdown.tick(2);
+    CHECK((countdown.remaining_ticks == TArray<int8>{1, 5}));
+
+    countdown.tick(3);
+    CHECK((countdown.remaining_ticks == TArray<int8>{0, 2}));
+}
+
+TEST_CASE("SandboxCore.PeriodicTickCountdown.ClampsLargeAdvancesToZero") {
+    FPeriodicTickCountdown8 countdown;
+    countdown.add_started(1);
+    countdown.add_started(TNumericLimits<int8>::Max());
+
+    countdown.tick(TNumericLimits<int8>::Max());
+
+    CHECK((countdown.remaining_ticks == TArray<int8>{0, 0}));
+}

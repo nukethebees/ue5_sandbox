@@ -32,6 +32,22 @@ class TPeriodicTickCountdown {
         }
     }
 
+    void tick(counter_type const num_ticks) noexcept {
+        check(num_ticks >= counter_type{0});
+        if (num_ticks <= counter_type{0}) {
+            return;
+        }
+
+        for (auto& remaining_tick : remaining_ticks) {
+            if (remaining_tick <= num_ticks) {
+                remaining_tick = counter_type{0};
+                continue;
+            }
+
+            remaining_tick -= num_ticks;
+        }
+    }
+
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
         return remaining_ticks[index] <= 0;
     }
