@@ -18,6 +18,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                              ATestEntityRegistry const& new_entity_registry,
                              SimulationClockInterface const simulation_clock,
                              ATestSpaceShip* const new_player_ship) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
     mission_data_buffers = {};
     entity_count_data_buffers = {};
@@ -69,6 +70,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     }
 }
 void FHUDManager::deactivate() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::deactivate);
     update_timers.reset();
     registered_huds.Reset();
     player_ship.Reset();
@@ -89,6 +91,7 @@ void FHUDManager::deactivate() {
 }
 
 void FHUDManager::tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::tick);
     if (state != EHUDManagerState::Active) {
         return;
     }
@@ -101,6 +104,7 @@ void FHUDManager::tick() {
 }
 
 void FHUDManager::register_hud(UShipHudWidget& hud) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::register_hud);
     check(IsValid(&hud));
     check(!registered_huds.ContainsByPredicate(
         [&hud](TWeakObjectPtr<UShipHudWidget> const existing) { return existing.Get() == &hud; }));
@@ -111,6 +115,7 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
     }
 }
 void FHUDManager::unregister_hud(UShipHudWidget& hud) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::unregister_hud);
     check(IsValid(&hud));
 
     auto const index{registered_huds.IndexOfByPredicate(
@@ -120,6 +125,7 @@ void FHUDManager::unregister_hud(UShipHudWidget& hud) {
 }
 
 void FHUDManager::set_selected_mapping_context(FString const& context_name) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::set_selected_mapping_context);
     if (selected_mapping_context == context_name) {
         return;
     }
@@ -128,6 +134,7 @@ void FHUDManager::set_selected_mapping_context(FString const& context_name) {
 }
 
 auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_data);
     ml::hud_manager::FDataChanges changes;
     changes.player_flight = collect_player_flight_data();
 #if WITH_EDITOR
@@ -148,6 +155,7 @@ auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
     return changes;
 }
 bool FHUDManager::collect_mission_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);
     check(IsValid(mission_manager));
     if (!mission_manager->is_ready()) {
         return false;
@@ -160,6 +168,7 @@ bool FHUDManager::collect_mission_data() {
     return mission_data_buffers.current() != mission_data_buffers.previous();
 }
 void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::read_mission_data);
     check(IsValid(mission_manager));
 
     auto& static_data{out.static_data};
@@ -175,6 +184,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     status_data.surviving_entity_health = mission_manager->get_entity_health_that_must_survive();
 }
 bool FHUDManager::collect_entity_count_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_entity_count_data);
     check(IsValid(entity_registry));
 
     auto& next_data{entity_count_data_buffers.next()};
@@ -183,6 +193,7 @@ bool FHUDManager::collect_entity_count_data() {
     return entity_count_data_buffers.current() != entity_count_data_buffers.previous();
 }
 bool FHUDManager::collect_kill_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_kill_data);
     check(IsValid(entity_registry));
 
     auto& next_data{kill_data_buffers.next()};
@@ -237,6 +248,7 @@ bool FHUDManager::collect_kill_data() {
     return kill_data_buffers.current() != kill_data_buffers.previous();
 }
 bool FHUDManager::collect_player_status_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_player_status_data);
     auto& next_data{player_status_data_buffers.next()};
     next_data = {};
 
@@ -261,6 +273,7 @@ bool FHUDManager::collect_player_status_data() {
     return player_status_data_buffers.current() != player_status_data_buffers.previous();
 }
 bool FHUDManager::collect_player_flight_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_player_flight_data);
     auto& next_data{player_flight_data_buffers.next()};
     next_data = {};
     next_data.selected_mapping_context = selected_mapping_context;
@@ -290,6 +303,7 @@ bool FHUDManager::collect_player_flight_data() {
 }
 #if WITH_EDITOR
 bool FHUDManager::collect_sampled_speed_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_sampled_speed_data);
     auto& next_data{sampled_speed_data_buffers.next()};
     next_data = {};
     if (player_ship.IsValid()) {
@@ -305,6 +319,7 @@ bool FHUDManager::collect_sampled_speed_data() {
 #endif
 
 void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_huds);
     if (registered_huds.IsEmpty()) {
         return;
     }
@@ -336,6 +351,7 @@ void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
     }
 }
 void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::synchronise_hud);
     check(IsValid(&hud));
 
     if (has_mission_data) {
@@ -353,20 +369,24 @@ void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
 }
 
 void FHUDManager::update_mission_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_mission_hud);
     check(has_mission_data);
     auto const& data{mission_data_buffers.current()};
     hud.set_mission_data(data);
     hud.set_stopwatch_time(data.status_data.mission_stopwatch);
 }
 void FHUDManager::update_entity_count_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_count_hud);
     hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
 }
 void FHUDManager::update_kill_data_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_kill_data_hud);
     auto const& data{kill_data_buffers.current()};
     hud.set_top_killers(data.top_killers);
     hud.set_team_kill_matrix(data.team_kill_matrix);
 }
 void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_status_hud);
     auto const& data{player_status_data_buffers.current()};
     if (!data.has_player_ship) {
         return;
@@ -381,6 +401,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_crosshair_colours(data.near_crosshair_colour, data.far_crosshair_colour);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);
     auto const& data{player_flight_data_buffers.current()};
     if (!data.has_player_ship) {
         hud.set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
@@ -435,6 +456,7 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
 }
 #if WITH_EDITOR
 void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_sampled_speed_hud);
     check(has_sampled_speed_data);
     auto const& data{sampled_speed_data_buffers.current()};
     hud.update_sampled_speed(TConstArrayView<FVector2d>{data.samples}, data.oldest_index);
@@ -442,6 +464,7 @@ void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
 #endif
 
 bool FHUDManager::validate_player_ship_for_collection() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::validate_player_ship_for_collection);
     auto const* const ship{player_ship.Get()};
     if (!IsValid(ship)) {
         return false;
