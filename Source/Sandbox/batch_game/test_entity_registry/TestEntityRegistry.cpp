@@ -50,7 +50,49 @@ void ATestEntityRegistry::reset() {
               free_indices);
 }
 
-// Owners
+// Lifecycle
+void ATestEntityRegistry::commit_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
+
+    commit_entity_updates();
+    commit_death_updates();
+
+    validate_array_sizes();
+}
+void ATestEntityRegistry::refresh_free_indices() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::refresh_free_indices);
+
+    free_indices.Reset();
+    auto const n{entity_data.num()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] == 0u) {
+            free_indices.Add(i);
+        }
+    }
+}
+void ATestEntityRegistry::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::end_tick);
+
+    refresh_free_indices();
+
+    ml::reset(queued_entity_data,
+              queued_entity_update_handles,
+              queued_entity_update_handles,
+              queued_death_infos,
+              queued_direct_damage_events,
+              dead_entities_this_frame);
+
+    auto const n_owners{entity_owners.Num()};
+    for (int32 i{0}; i < n_owners; ++i) {
+        ml::reset(queued_collision_damage_events[i]);
+    }
+
+    validate_array_sizes();
+    validate_unique_ids();
+    validate_unique_entity_data();
+}
+
+// Owner registration
 auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Add(&actor)};
 
@@ -145,42 +187,7 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
     return new_entities;
 }
 
-// Damage updates
-void ATestEntityRegistry::queue_collision_damage_events(
-    UnresolvedCollisionDamageEvents const& collision_damage_events) {
-    collision_damage_events.validate_array_sizes();
-
-    auto const n{ml::num(collision_damage_events)};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const id{get_owner(collision_damage_events.damaged_actors[i])};
-        if (!id.is_valid()) {
-            continue;
-        }
-
-        auto& actor_collision_damage_events{queued_collision_damage_events[id.id]};
-        actor_collision_damage_events.damage_amounts.Add(collision_damage_events.damage_amounts[i]);
-        actor_collision_damage_events.actor_components.Add(
-            collision_damage_events.actor_components[i]);
-        actor_collision_damage_events.hit_items.Add(collision_damage_events.hit_items[i]);
-        actor_collision_damage_events.instigators.Add(collision_damage_events.instigators[i]);
-    }
-}
-auto ATestEntityRegistry::get_collision_damage_queue_view(TestEntityOwnerId const id) const
-    -> CollisionDamageEvents const& {
-    check(is_valid_owner(id));
-    return queued_collision_damage_events[id.id];
-}
-void ATestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
-    damage_events.validate_array_sizes();
-
-    queued_direct_damage_events.append_from(damage_events);
-}
-auto ATestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
-    return queued_direct_damage_events;
-}
-
-// Entity updates
+// Queued updates
 void ATestEntityRegistry::queue_entity_updates(ConstView const view,
                                                EntityDeathInfo const& death_info) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::queue_entity_updates);
@@ -240,46 +247,39 @@ void ATestEntityRegistry::commit_death_updates() {
     }
 }
 
-// Frame events
-void ATestEntityRegistry::commit_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
+// Damage events
+void ATestEntityRegistry::queue_collision_damage_events(
+    UnresolvedCollisionDamageEvents const& collision_damage_events) {
+    collision_damage_events.validate_array_sizes();
 
-    commit_entity_updates();
-    commit_death_updates();
+    auto const n{ml::num(collision_damage_events)};
 
-    validate_array_sizes();
-}
-void ATestEntityRegistry::refresh_free_indices() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::refresh_free_indices);
-
-    free_indices.Reset();
-    auto const n{entity_data.num()};
     for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] == 0u) {
-            free_indices.Add(i);
+        auto const id{get_owner(collision_damage_events.damaged_actors[i])};
+        if (!id.is_valid()) {
+            continue;
         }
+
+        auto& actor_collision_damage_events{queued_collision_damage_events[id.id]};
+        actor_collision_damage_events.damage_amounts.Add(collision_damage_events.damage_amounts[i]);
+        actor_collision_damage_events.actor_components.Add(
+            collision_damage_events.actor_components[i]);
+        actor_collision_damage_events.hit_items.Add(collision_damage_events.hit_items[i]);
+        actor_collision_damage_events.instigators.Add(collision_damage_events.instigators[i]);
     }
 }
-void ATestEntityRegistry::end_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::end_tick);
+auto ATestEntityRegistry::get_collision_damage_queue_view(TestEntityOwnerId const id) const
+    -> CollisionDamageEvents const& {
+    check(is_valid_owner(id));
+    return queued_collision_damage_events[id.id];
+}
+void ATestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
+    damage_events.validate_array_sizes();
 
-    refresh_free_indices();
-
-    ml::reset(queued_entity_data,
-              queued_entity_update_handles,
-              queued_entity_update_handles,
-              queued_death_infos,
-              queued_direct_damage_events,
-              dead_entities_this_frame);
-
-    auto const n_owners{entity_owners.Num()};
-    for (int32 i{0}; i < n_owners; ++i) {
-        ml::reset(queued_collision_damage_events[i]);
-    }
-
-    validate_array_sizes();
-    validate_unique_ids();
-    validate_unique_entity_data();
+    queued_direct_damage_events.append_from(damage_events);
+}
+auto ATestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
+    return queued_direct_damage_events;
 }
 
 // Handle queries
@@ -305,7 +305,7 @@ auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> b
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }
 
-// Handle updates
+// Entity data updates
 void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
     for (auto& handle : handles) {
         auto const handle_state{analyse_handle(handle)};
@@ -332,7 +332,6 @@ void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> cons
     }
 }
 
-// Entity data updates
 void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
                                             FVectors3f::View const& locations) {
     auto const n{handles.Num()};
@@ -407,53 +406,7 @@ void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> 
     }
 }
 
-// Unique id queries
-auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
-    return id.is_valid() && (id.id < get_num_unique_ids_issued());
-}
-auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
-    -> TestEntityUniqueId {
-    auto const handle_state{analyse_handle(handle)};
-
-    switch (handle_state) {
-        case ERegistryHandleState::Null:
-            [[fallthrough]];
-        case ERegistryHandleState::Invalid: {
-            check(false);
-            return {};
-        }
-        case ERegistryHandleState::Active: {
-            return unique_ids[handle.index];
-        }
-        case ERegistryHandleState::Stale: {
-            break;
-        }
-        default: {
-            check(false);
-            return {};
-        }
-    }
-
-    auto const n_unique{unique_entities.num()};
-
-    for (int32 i{0}; i < n_unique; ++i) {
-        if ((unique_entities.registry_indices[i] == handle.index) &&
-            (unique_entities.registry_generations[i] == handle.generation)) {
-            return {.id = i};
-        }
-    }
-
-    checkf(false, TEXT("A missing unique ID should be impossible here."));
-    return {};
-}
-
-auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
-    -> TestEntityUniqueEntityData::kills_type {
-    check(is_valid_unique_id(id));
-    return unique_entities.kills[id.id];
-}
-
-// Entity queries
+// Entity data queries
 auto ATestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
     check(is_valid_handle(index));
     return ml::get_vector3f(entity_data.locations, index.index);
@@ -474,26 +427,12 @@ auto ATestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> 
     check(is_valid_handle(index));
     return static_cast<bool>(entity_data.alive[index.index]);
 }
+
+// Entity collection queries
 auto ATestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
 }
-
-auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
-    return entity_data.num();
-}
-auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
-    int32 total{0};
-
-    for (auto const& alive : entity_data.alive) {
-        if (alive) {
-            ++total;
-        }
-    }
-
-    return total;
-}
-
 auto ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
     -> TArray<FRegistryEntityHandle> {
     TArray<FRegistryEntityHandle> out;
@@ -517,7 +456,22 @@ void ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
     }
 }
 
-// Total queries
+// Aggregate queries
+auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
+    return entity_data.num();
+}
+auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
+    int32 total{0};
+
+    for (auto const& alive : entity_data.alive) {
+        if (alive) {
+            ++total;
+        }
+    }
+
+    return total;
+}
+
 auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
 
@@ -602,7 +556,53 @@ auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const no
     return count;
 }
 
-// Area queries
+// Unique entity queries
+auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
+    return id.is_valid() && (id.id < get_num_unique_ids_issued());
+}
+auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
+    -> TestEntityUniqueId {
+    auto const handle_state{analyse_handle(handle)};
+
+    switch (handle_state) {
+        case ERegistryHandleState::Null:
+            [[fallthrough]];
+        case ERegistryHandleState::Invalid: {
+            check(false);
+            return {};
+        }
+        case ERegistryHandleState::Active: {
+            return unique_ids[handle.index];
+        }
+        case ERegistryHandleState::Stale: {
+            break;
+        }
+        default: {
+            check(false);
+            return {};
+        }
+    }
+
+    auto const n_unique{unique_entities.num()};
+
+    for (int32 i{0}; i < n_unique; ++i) {
+        if ((unique_entities.registry_indices[i] == handle.index) &&
+            (unique_entities.registry_generations[i] == handle.generation)) {
+            return {.id = i};
+        }
+    }
+
+    checkf(false, TEXT("A missing unique ID should be impossible here."));
+    return {};
+}
+
+auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
+    -> TestEntityUniqueEntityData::kills_type {
+    check(is_valid_unique_id(id));
+    return unique_entities.kills[id.id];
+}
+
+// Spatial queries
 auto ATestEntityRegistry::collect_entities_in_range(
     FVector3f const& origin,
     float const radius,
@@ -740,7 +740,7 @@ auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team,
     return {};
 }
 
-// Checks
+// Validation
 void ATestEntityRegistry::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_data),

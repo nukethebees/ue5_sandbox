@@ -6,7 +6,6 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryHandleState.h>
-#include <Sandbox/batch_game/test_entity_registry/TestDeathReason.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueEntityData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
@@ -60,16 +59,13 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
 
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
 
+    // Lifecycle
     ATestEntityRegistry();
-
     void reset();
+    void commit_updates();
+    void end_tick();
 
-    // Getters
-    auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData const& {
-        return unique_entities;
-    }
-
-    // Registration
+    // Owner registration
     auto register_owner(AActor const& actor) -> TestEntityOwnerId;
     auto is_owner(AActor const* const actor) const -> bool;
     auto is_valid_owner(TestEntityOwnerId const id) const -> bool;
@@ -78,7 +74,10 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     // Entity creation
     auto add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles;
 
-    // Damage updates
+    // Queued updates
+    void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
+
+    // Damage events
     void queue_collision_damage_events(
         UnresolvedCollisionDamageEvents const& collision_damage_events);
     auto get_collision_damage_queue_view(TestEntityOwnerId const id) const
@@ -86,16 +85,11 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     void queue_direct_damage_events(DirectDamageEvents const& damage_events);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 
-    // General entity updates
-    void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
-
-    // Frame events
-    void commit_updates();
-    void end_tick();
-
     // Handle queries
     auto analyse_handle(FRegistryEntityHandle const handle) const -> ERegistryHandleState;
     auto is_valid_handle(FRegistryEntityHandle const index) const -> bool;
+    auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
+    auto is_valid_dead(FRegistryEntityHandle const handle) const -> bool;
     auto is_stale(FRegistryEntityHandle const index) const -> bool;
 
     // Entity data updates
@@ -108,30 +102,23 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
                              FVectors3f::View const& velocities,
                              TArrayView<float> radii);
 
-    // Entity queries
-    auto get_num_elements() const noexcept -> int32;
-    auto get_num_alive_active_entities() const noexcept -> int32;
-
+    // Entity data queries
     auto get_entity_data() const noexcept -> EntityData const& { return entity_data; }
-    auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
-        return unique_ids;
-    }
-
     auto get_generations() const noexcept -> TConstArrayView<int> { return generations; }
     auto get_location(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_velocity(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_health(FRegistryEntityHandle const index) const -> int32;
     auto get_team(FRegistryEntityHandle const index) const -> ETestTeam;
     auto get_alive(FRegistryEntityHandle const index) const -> bool;
+
+    // Entity collection queries
     auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
-
-    auto is_valid_alive(FRegistryEntityHandle const handle) const -> bool;
-    auto is_valid_dead(FRegistryEntityHandle const handle) const -> bool;
-
     auto get_handles_not_in_team(ETestTeam const team) const -> TArray<FRegistryEntityHandle>;
     void get_handles_not_in_team(ETestTeam const team, TArray<FRegistryEntityHandle>& out) const;
 
-    // Total queries
+    // Aggregate queries
+    auto get_num_elements() const noexcept -> int32;
+    auto get_num_alive_active_entities() const noexcept -> int32;
     auto count_kills() const noexcept -> int32;
     auto count_alive() const noexcept -> int32;
     auto count_alive(ETestEntityType type) const noexcept -> int32;
@@ -139,14 +126,19 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
     auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
 
-    // Unique id queries
+    // Unique entity queries
+    auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData const& {
+        return unique_entities;
+    }
+    auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
+        return unique_ids;
+    }
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
     auto find_unique_id(FRegistryEntityHandle const handle) const -> TestEntityUniqueId;
-
     auto get_kills(TestEntityUniqueId const id) const -> TestEntityUniqueEntityData::kills_type;
 
-    // Area queries
+    // Spatial queries
     auto collect_entities_in_range(FVector3f const& origin,
                                    float const radius,
                                    TArrayView<FRegistryEntityHandle> const out_entities) const
@@ -163,22 +155,28 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
                                      FVectors3f const& locations,
                                      TArrayView<bool> results);
 
-    // Checks
+    // Validation
     void validate_array_sizes() const;
     void validate_handles(TConstArrayView<FRegistryEntityHandle> const handles);
   private:
-    void commit_entity_updates();
-    void commit_death_updates();
+    // Lifecycle
     void refresh_free_indices();
 
+    // Queued updates
+    void commit_entity_updates();
+    void commit_death_updates();
+
+    // Validation
     void validate_unique_ids() const;
     void validate_unique_entity_data() const;
 
+    // Entity data
     EntityData entity_data;
     TArray<int32> generations;
     TArray<TestEntityUniqueId> unique_ids;
     TArray<AActor const*> entity_owners;
 
+    // Unique entity data
     TestEntityUniqueEntityData unique_entities;
 
     // Queued updates
