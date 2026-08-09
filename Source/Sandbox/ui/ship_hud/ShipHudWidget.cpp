@@ -231,16 +231,15 @@ void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const&
     }
 }
 
-void UShipHudWidget::set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> const entries) {
+void UShipHudWidget::set_top_killers(ml::ship_hud::FTopKillerEntries const& entries) {
     if (top_killers_widget) {
         top_killers_widget->set_top_killers(entries);
     }
 }
 
-void UShipHudWidget::set_team_kill_matrix(
-    TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> const rows) {
+void UShipHudWidget::set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& matrix) {
     if (team_kill_matrix_widget) {
-        team_kill_matrix_widget->set_team_kill_matrix(rows);
+        team_kill_matrix_widget->set_team_kill_matrix(matrix);
     }
 }
 

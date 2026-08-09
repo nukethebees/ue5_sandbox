@@ -18,7 +18,7 @@ class SANDBOX_API UTopKillersWidget : public UUserWidget {
   public:
     static constexpr int32 max_entries{5};
 
-    void set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> const new_entries);
+    void set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -40,6 +40,6 @@ class SANDBOX_API UTopKillersWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    TArray<ml::ship_hud::FTopKillerEntry> top_killers{};
+    ml::ship_hud::FTopKillerEntries top_killers{};
     UTestTeamVisualData::FColourArray team_colours{};
 };

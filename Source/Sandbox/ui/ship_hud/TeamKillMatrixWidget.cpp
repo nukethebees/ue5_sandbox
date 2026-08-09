@@ -17,23 +17,23 @@ void UTeamKillMatrixWidget::NativePreConstruct() {
         team_colours[ETestTeam::Orange] = FLinearColor(1.f, 0.35f, 0.f, 1.f);
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
-        team_kill_matrix = {
-            {ETestTeam::Green, {45, 7, 1, 21, 3}},
-            {ETestTeam::Red, {39, 12, 0, 18, 2}},
-        };
+        team_kill_matrix = {};
+        team_kill_matrix.set(ETestTeam::Green, ETestEntityType::PlayerShip, 45);
+        team_kill_matrix.set(ETestTeam::Green, ETestEntityType::Turret, 7);
+        team_kill_matrix.set(ETestTeam::Green, ETestEntityType::CapitalShip, 1);
+        team_kill_matrix.set(ETestTeam::Green, ETestEntityType::CapitalShipFighter, 21);
+        team_kill_matrix.set(ETestTeam::Green, ETestEntityType::TubeSpinner, 3);
+        team_kill_matrix.set(ETestTeam::Red, ETestEntityType::PlayerShip, 39);
+        team_kill_matrix.set(ETestTeam::Red, ETestEntityType::Turret, 12);
+        team_kill_matrix.set(ETestTeam::Red, ETestEntityType::CapitalShipFighter, 18);
+        team_kill_matrix.set(ETestTeam::Red, ETestEntityType::TubeSpinner, 2);
     }
 
     rebuild_table();
 }
 
-void UTeamKillMatrixWidget::set_team_kill_matrix(
-    TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> const new_rows) {
-    team_kill_matrix.Reset(new_rows.Num());
-
-    auto const n_rows{new_rows.Num()};
-    for (int32 row_index{0}; row_index < n_rows; ++row_index) {
-        team_kill_matrix.Add(new_rows[row_index]);
-    }
+void UTeamKillMatrixWidget::set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix) {
+    team_kill_matrix = new_matrix;
 
     rebuild_table();
 }
@@ -72,7 +72,7 @@ void UTeamKillMatrixWidget::rebuild_table() {
     constexpr auto row_heading{0};
     constexpr auto column_team{0};
     constexpr auto first_victim_type_column{1};
-    constexpr auto n_types{ml::ship_hud::FTeamKillMatrixRow::entity_type_count};
+    constexpr auto n_types{ml::ship_hud::FTeamKillMatrix::entity_type_count};
     auto const column_total{first_victim_type_column + n_types};
 
     for (int32 column{column_team}; column <= column_total; ++column) {
@@ -105,17 +105,18 @@ void UTeamKillMatrixWidget::rebuild_table() {
     add_text(TEXT("total_heading"), row_heading, column_total, 1, data_alignment)
         ->SetText(INVTEXT("Total"));
 
-    auto const n_rows{team_kill_matrix.Num()};
+    constexpr auto n_rows{ml::ship_hud::FTeamKillMatrix::team_count};
     for (int32 row_index{0}; row_index < n_rows; ++row_index) {
-        auto const& row_data{team_kill_matrix[row_index]};
+        auto const team{static_cast<ETestTeam>(row_index)};
         auto const row{row_index + 1};
 
         add_text(FString::Printf(TEXT("team_%d"), row_index), row, column_team, 1, team_alignment)
-            ->SetText(FText::FromString(ml::to_string_without_type_prefix(row_data.killer_team)));
+            ->SetText(FText::FromString(ml::to_string_without_type_prefix(team)));
 
         int32 total_kills{0};
         for (int32 type_index{0}; type_index < n_types; ++type_index) {
-            auto const kills{row_data.kills_by_victim_type[type_index]};
+            auto const type{static_cast<ETestEntityType>(type_index)};
+            auto const kills{team_kill_matrix.get(team, type)};
             total_kills += kills;
             add_text(FString::Printf(TEXT("kill_count_%d_%d"), row_index, type_index),
                      row,
@@ -129,7 +130,7 @@ void UTeamKillMatrixWidget::rebuild_table() {
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
             UBorder::StaticClass(), *FString::Printf(TEXT("team_border_%d"), row_index))};
-        border->SetBrushColor(team_colours[row_data.killer_team].CopyWithNewOpacity(0.3f));
+        border->SetBrushColor(team_colours[team].CopyWithNewOpacity(0.3f));
         auto* border_slot{team_kill_matrix_grid->AddChildToGrid(border, row, column_team)};
         border_slot->SetLayer(0);
     }

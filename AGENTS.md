@@ -32,6 +32,7 @@ Unreal Engine 5.8 project.
 * always use braces
 * prefer auto where the type is obvious
 * prefer simple C++ over template metaprogramming
+* Prefer SOA layouts for related, performance-sensitive collections.
 * save loop bounds as const local variables
 * log warnings/errors when null checks fail instead of returning silently
 * Group functions by category

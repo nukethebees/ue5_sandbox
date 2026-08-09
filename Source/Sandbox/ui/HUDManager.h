@@ -84,8 +84,8 @@ struct FEntityCountDataCache {
 struct FKillDataCache {
     bool operator==(FKillDataCache const& other) const noexcept = default;
 
-    TArray<ml::ship_hud::FTopKillerEntry> top_killers;
-    TArray<ml::ship_hud::FTeamKillMatrixRow> team_kill_matrix;
+    ml::ship_hud::FTopKillerEntries top_killers;
+    ml::ship_hud::FTeamKillMatrix team_kill_matrix;
 };
 
 struct FPlayerStatusDataCache {
@@ -211,6 +211,8 @@ struct SANDBOX_API FHUDManager {
     ml::MultiBuffer<ml::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
+    TArray<TestEntityUniqueId, TInlineAllocator<ml::ship_hud::FTopKillerEntries::minimum_size>>
+        top_killer_ids_buffer;
 
     bool has_mission_data{false};
     FString selected_mapping_context;

@@ -19,24 +19,17 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Orange] = FLinearColor(1.f, 0.35f, 0.f, 1.f);
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
-        top_killers = {
-            {{.id = 14}, ETestEntityType::CapitalShipFighter, ETestTeam::Green, 18},
-            {{.id = 7}, ETestEntityType::Turret, ETestTeam::Red, 13},
-            {{.id = 2}, ETestEntityType::CapitalShip, ETestTeam::Blue, 9},
-        };
+        top_killers.reset();
+        top_killers.add({.id = 14}, ETestEntityType::CapitalShipFighter, ETestTeam::Green, 18);
+        top_killers.add({.id = 7}, ETestEntityType::Turret, ETestTeam::Red, 13);
+        top_killers.add({.id = 2}, ETestEntityType::CapitalShip, ETestTeam::Blue, 9);
     }
 
     rebuild_table();
 }
 
-void UTopKillersWidget::set_top_killers(
-    TConstArrayView<ml::ship_hud::FTopKillerEntry> const new_entries) {
-    top_killers.Reset(FMath::Min(new_entries.Num(), max_entries));
-
-    auto const n_entries{FMath::Min(new_entries.Num(), max_entries)};
-    for (int32 entry_index{0}; entry_index < n_entries; ++entry_index) {
-        top_killers.Add(new_entries[entry_index]);
-    }
+void UTopKillersWidget::set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries) {
+    top_killers = new_entries;
 
     rebuild_table();
 }
@@ -105,9 +98,8 @@ void UTopKillersWidget::rebuild_table() {
     add_text(TEXT("kills_heading"), row_heading, column_kills, 1, data_alignment)
         ->SetText(INVTEXT("Kills"));
 
-    auto const n_entries{top_killers.Num()};
+    auto const n_entries{FMath::Min(top_killers.num(), max_entries)};
     for (int32 entry_index{0}; entry_index < n_entries; ++entry_index) {
-        auto const& entry{top_killers[entry_index]};
         auto const row{entry_index + 1};
 
         add_text(FString::Printf(TEXT("rank_%d"), entry_index), row, column_rank, 1, data_alignment)
@@ -117,21 +109,25 @@ void UTopKillersWidget::rebuild_table() {
                  column_entity,
                  1,
                  entity_alignment)
-            ->SetText(FText::Format(INVTEXT("{0} {1}"),
-                                    FText::FromString(ml::get_entity_class_name(entry.entity_type)),
-                                    entry.entity_id.id));
+            ->SetText(FText::Format(
+                INVTEXT("{0} {1}"),
+                FText::FromString(ml::get_entity_class_name(top_killers.entity_types[entry_index])),
+                top_killers.entity_ids[entry_index].id));
         add_text(
             FString::Printf(TEXT("type_%d"), entry_index), row, column_type, 1, entity_alignment)
-            ->SetText(FText::FromString(ml::get_entity_display_name(entry.entity_type)));
+            ->SetText(FText::FromString(
+                ml::get_entity_display_name(top_killers.entity_types[entry_index])));
         add_text(FString::Printf(TEXT("team_%d"), entry_index), row, column_team, 1, data_alignment)
-            ->SetText(FText::FromString(ml::to_string_without_type_prefix(entry.team)));
+            ->SetText(FText::FromString(
+                ml::to_string_without_type_prefix(top_killers.teams[entry_index])));
         add_text(
             FString::Printf(TEXT("kills_%d"), entry_index), row, column_kills, 1, data_alignment)
-            ->SetText(FText::AsNumber(entry.kills));
+            ->SetText(FText::AsNumber(top_killers.kills[entry_index]));
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
             UBorder::StaticClass(), *FString::Printf(TEXT("team_border_%d"), entry_index))};
-        border->SetBrushColor(team_colours[entry.team].CopyWithNewOpacity(0.3f));
+        border->SetBrushColor(
+            team_colours[top_killers.teams[entry_index]].CopyWithNewOpacity(0.3f));
         auto* border_slot{top_killers_grid->AddChildToGrid(border, row, column_team)};
         border_slot->SetLayer(0);
     }

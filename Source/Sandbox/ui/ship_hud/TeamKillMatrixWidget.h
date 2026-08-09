@@ -18,7 +18,7 @@ UCLASS()
 class SANDBOX_API UTeamKillMatrixWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_team_kill_matrix(TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> const new_rows);
+    void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -40,6 +40,6 @@ class SANDBOX_API UTeamKillMatrixWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    TArray<ml::ship_hud::FTeamKillMatrixRow> team_kill_matrix{};
+    ml::ship_hud::FTeamKillMatrix team_kill_matrix{};
     UTestTeamVisualData::FColourArray team_colours{};
 };

@@ -352,24 +352,25 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         auto const& data{hud_manager.get_player_status_data()};
         auto const& player_ship{test_driver->get_player_ship()};
         auto const& kill_data{hud_manager.get_kill_data()};
-        auto const top_killer{kill_data.top_killers.FindByPredicate(
-            [&player_ship](ml::ship_hud::FTopKillerEntry const& entry) {
-                return entry.entity_id == player_ship.get_unique_id();
-            })};
-        auto const player_team_row{kill_data.team_kill_matrix.FindByPredicate(
-            [&player_ship](ml::ship_hud::FTeamKillMatrixRow const& row) {
-                return row.killer_team == player_ship.get_team();
-            })};
-        int32 player_team_matrix_kills{0};
-        if (player_team_row) {
-            for (int32 const kills : player_team_row->kills_by_victim_type) {
-                player_team_matrix_kills += kills;
+        int32 top_killer_kills{0};
+        auto const n_top_killers{kill_data.top_killers.num()};
+        for (int32 i{0}; i < n_top_killers; ++i) {
+            if (kill_data.top_killers.entity_ids[i] == player_ship.get_unique_id()) {
+                top_killer_kills = kill_data.top_killers.kills[i];
+                break;
             }
+        }
+
+        auto const player_team_row{
+            kill_data.team_kill_matrix.get_team_kills(player_ship.get_team())};
+        int32 player_team_matrix_kills{0};
+        for (int32 const kills : player_team_row) {
+            player_team_matrix_kills += kills;
         }
 
         player_samples.add(test_driver->get_time(),
                            FPlayerSample{data.points,
-                                         top_killer ? top_killer->kills : 0,
+                                         top_killer_kills,
                                          player_team_matrix_kills,
                                          hud_manager.get_registered_hud_count()});
         test_driver->timeline.tick(test_driver->get_time());

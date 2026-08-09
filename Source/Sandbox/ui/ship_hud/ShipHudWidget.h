@@ -87,8 +87,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> entries);
-    void set_team_kill_matrix(TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> rows);
+    void set_top_killers(ml::ship_hud::FTopKillerEntries const& entries);
+    void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& matrix);
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
