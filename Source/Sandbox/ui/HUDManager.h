@@ -27,6 +27,20 @@ enum class EHUDManagerState : uint8 {
     Active,
 };
 
+inline auto LexToString(EHUDManagerState const value) -> FString {
+    switch (value) {
+        case EHUDManagerState::Active: {
+            return TEXT("Active");
+        }
+        case EHUDManagerState::Disabled: {
+            return TEXT("Disabled");
+        }
+        default:
+            break;
+    }
+    return TEXT("???");
+}
+
 struct FHUDUpdateTimerIndex {
     static constexpr int32 player_status{0};
     static constexpr int32 entity_counts{1};
