@@ -1,20 +1,45 @@
+Unreal Engine 5.8 project.
+
+# Project Context
+
+* Simulation-heavy space combat game written primarily in C++.
+* Prefer simple, explicit systems over speculative abstraction.
+* The orchestrator coordinates the main simulation tick and major gameplay systems.
+* Entity data is largely stored in cache-friendly arrays / SOA-style structures rather than represented entirely by Actors.
+* UI is a presentation layer over simulation state and should not own gameplay logic.
+* Determinism, debuggability, simple control flow, and performance are important.
+
+# Agent Behaviour
+
+* Default to clarification over interpretation.
+* If requirements, architecture, ownership, scope, naming, or intended behaviour are ambiguous, ask the user rather than guessing.
+* Prefer concise questions over broad repository exploration when the user can provide the missing context directly.
+* Ask as many questions as materially improve the plan; group related questions together.
+* Use repository inspection to establish implementation facts, not to infer user preferences.
+* Keep exploration targeted to directly relevant files and dependencies. Do not launch broad or parallel repository searches by default.
+* Do not inspect Unreal Engine source unless necessary to resolve an API or engine-behaviour question.
+* Once enough context exists to proceed safely, stop exploring and implement.
+* Prefer the smallest change that satisfies the request. Do not perform unrelated refactors.
+* If the user says "engage in freedom", "use your judgement", or otherwise grants autonomy, resolve reasonable ambiguities yourself while keeping scope controlled.
+
 # Coding Style
 
-- Unreal Engine C++
-- snake_case for functions and variables
-- TitleCase for types
-- east const
-- always use braces
-- prefer auto where type is obvious
-- prefer simple C++ over template metaprogramming
-- save loop bounds as const local variables
-- Log warnings/errors when null checks fail instead of returning silently
+* Unreal Engine C++
+* snake_case for functions and variables
+* TitleCase for types
+* east const
+* always use braces
+* prefer auto where the type is obvious
+* prefer simple C++ over template metaprogramming
+* save loop bounds as const local variables
+* log warnings/errors when null checks fail instead of returning silently
 
-# UI design
+# UI Design
 
-- Use BindWidget for UPROPERTY widgets, never BindWidget
+* Use BindWidget for UPROPERTY widgets.
+* Keep gameplay logic out of UI widgets.
 
 # Testing
 
-- When adding tests, do not compile or run them; ask the user to compile and check them.
-- Only create tests when explicitly asked
+* Only create tests when explicitly asked.
+* When adding tests, do not compile or run them; ask the user to compile and check them.
