@@ -129,7 +129,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(MissionTimeUsesSimulationClockWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder, *TestRunner, &ThisClass::configure_timed_mission);
+        level_setup.setup(TestCommandBuilder,
+                          *TestRunner,
+                          [this](UWorld& world, UTestSimulationConfig const& config) {
+                              configure_defence_mission(world, config);
+                          });
         TestCommandBuilder.Do([this] { begin_mission_time_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_mission_time(); });
@@ -272,15 +276,6 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Timed mission
     /* ------------------------------------------------------------------------------------------ */
-    static void configure_timed_mission(UWorld & world, UTestSimulationConfig const& config) {
-        auto* const mission_manager{world.SpawnActorDeferred<ATestMissionManager>(
-            config.actor_classes.mission_manager_class, FTransform::Identity)};
-        check(mission_manager);
-        mission_manager->set_save_mission_results(false);
-        mission_manager->set_mission_mode(ETestMissionMode::SurviveTime);
-        mission_manager->set_target_time(10.f);
-        UGameplayStatics::FinishSpawningActor(mission_manager, FTransform::Identity);
-    }
     void begin_mission_time_scenario() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
         test_driver->orchestrator.set_end_tick_test_hook(
