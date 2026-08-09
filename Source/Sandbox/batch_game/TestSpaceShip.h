@@ -64,6 +64,7 @@ class SANDBOX_API ATestSpaceShip
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return registry_handle;
     }
+    auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
 
     // Life cycle
     void begin_play();

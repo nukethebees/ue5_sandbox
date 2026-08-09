@@ -115,6 +115,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 
     Super::EndPlay(end_play_reason);
 }
+
 void ATestBatchOrchestrator::start_simulation() {
     if (state != EOrchestratorState::Paused) {
         UE_LOG(LogSandbox,
@@ -142,7 +143,6 @@ void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config
                ESimulationAssetActorScope::OrchestratorActors,
                ESimulationAssetProxyMode::Include);
 }
-
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (state != EOrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox,
@@ -153,7 +153,6 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
 
     start_mode = mode;
 }
-
 void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
                                         ESimulationAssetActorScope const actor_scope,
                                         ESimulationAssetProxyMode const proxy_mode) {
@@ -224,6 +223,14 @@ void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
                                                           assets->tube_spinners_config.Get());
     }
 }
+
+auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
+    return player_ship.Get();
+}
+void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
+    player_ship = &new_player_ship;
+}
+
 void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 

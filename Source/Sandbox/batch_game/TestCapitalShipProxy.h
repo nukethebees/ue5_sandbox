@@ -45,10 +45,13 @@ class ATestCapitalShipProxy
 
     void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
 
+    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
+
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return entity_handle;
     }
+    auto get_test_name() const noexcept -> FName override { return test_name; }
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
 #endif
   protected:
@@ -75,6 +78,11 @@ class ATestCapitalShipProxy
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TOptional<float> spawn_cooldown{NullOpt};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Test")
+    FName test_name{NAME_None};
+#endif
 
     FRegistryEntityHandle entity_handle;
 };

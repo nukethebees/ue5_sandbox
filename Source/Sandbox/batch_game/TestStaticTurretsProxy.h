@@ -36,6 +36,10 @@ class ATestStaticTurretsProxy
         return entity_handle;
     }
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
+#if WITH_EDITOR
+    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
+    auto get_test_name() const noexcept -> FName override { return test_name; }
+#endif
   protected:
     void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
@@ -66,6 +70,11 @@ class ATestStaticTurretsProxy
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     ETestTeam team{ETestTeam::White};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Test")
+    FName test_name{NAME_None};
+#endif
 
     FRegistryEntityHandle entity_handle;
 };

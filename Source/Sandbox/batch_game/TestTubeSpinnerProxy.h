@@ -36,6 +36,10 @@ class ATestTubeSpinnerProxy
         return entity_handle;
     }
     void set_entity_handle(FRegistryEntityHandle const handle) noexcept { entity_handle = handle; }
+#if WITH_EDITOR
+    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
+    auto get_test_name() const noexcept -> FName override { return test_name; }
+#endif
   private:
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy|Add Points")
@@ -74,6 +78,11 @@ class ATestTubeSpinnerProxy
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     int32 initial_active_fire_point{0};
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Test")
+    FName test_name{NAME_None};
+#endif
 
     FRegistryEntityHandle entity_handle;
 };

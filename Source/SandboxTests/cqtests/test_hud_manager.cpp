@@ -95,7 +95,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(world, config, checks, FVector::ZeroVector);
+                              ml::spawn_capital_proxy(world,
+                                                      config,
+                                                      checks,
+                                                      FName{TEXT("entity_count_capital")},
+                                                      FVector::ZeroVector);
                           });
         TestCommandBuilder.Do([this] { begin_entity_count_polling_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -119,8 +123,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(
-                                  world, config, checks, FVector{2000.f, 0.f, 0.f});
+                              ml::spawn_capital_proxy(world,
+                                                      config,
+                                                      checks,
+                                                      FName{TEXT("player_kill_target_capital")},
+                                                      FVector{2000.f, 0.f, 0.f});
                           });
         TestCommandBuilder.Do([this] { begin_player_kill_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -201,7 +208,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Defence mission
     /* ------------------------------------------------------------------------------------------ */
     void configure_defence_mission(UWorld & world, UTestSimulationConfig const& config) {
-        auto* const defended{ml::spawn_capital_proxy(world, config, checks, FVector::ZeroVector)};
+        auto* const defended{ml::spawn_capital_proxy(
+            world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
         if (!IsValid(defended)) {
             return;
         }

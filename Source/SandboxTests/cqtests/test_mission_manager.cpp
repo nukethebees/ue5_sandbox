@@ -62,8 +62,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
                                 UTestSimulationConfig const& config,
                                 ml::FSoftTestAssertions& checks,
                                 EScenario const scenario) {
-        auto* const first_capital{
-            ml::spawn_capital_proxy(world, config, checks, FVector{-2000.f, 0.f, 0.f})};
+        auto* const first_capital{ml::spawn_capital_proxy(
+            world, config, checks, FName{TEXT("hero_capital")}, FVector{-2000.f, 0.f, 0.f})};
         if (!IsValid(first_capital)) {
             return;
         }
@@ -79,14 +79,16 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
                 break;
             }
             case EScenario::KillEnemies: {
-                ml::spawn_capital_proxy(world, config, checks, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(
+                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemies);
                 manager.set_kill_target(1);
                 manager.add_hero_entity(*first_capital);
                 break;
             }
             case EScenario::KillEnemiesWithinTime: {
-                ml::spawn_capital_proxy(world, config, checks, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(
+                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
                 manager.set_target_time(short_mission_time);
                 manager.set_kill_target(1);
