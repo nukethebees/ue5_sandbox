@@ -9,7 +9,7 @@
 class UWidgetBlueprint;
 
 USTRUCT()
-struct FWidgetBlueprintGenerationEntry {
+struct SANDBOXEDITOR_API FWidgetBlueprintGenerationEntry {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Generation")
@@ -29,7 +29,7 @@ struct FWidgetBlueprintGenerationEntry {
 };
 
 UCLASS(BlueprintType)
-class UWidgetBlueprintGenerationDataAsset : public UDataAsset {
+class SANDBOXEDITOR_API UWidgetBlueprintGenerationDataAsset : public UDataAsset {
     GENERATED_BODY()
   public:
     UPROPERTY(EditAnywhere, Category = "Generation")
