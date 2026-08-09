@@ -48,3 +48,4 @@ Unreal Engine 5.8 project.
 * Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
 * All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
 * To avoid time-zero ordering issues, schedule simulation-test damage and kills through `TestSimulationDriver::timeline` at a positive simulation time.
+* Group each test's data and functions together, using `/* ------------------------------------------------------------------------------------------ */` banners to separate test-specific sections.
