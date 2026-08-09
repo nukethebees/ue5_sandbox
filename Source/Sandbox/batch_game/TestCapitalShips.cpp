@@ -819,6 +819,7 @@ void ATestCapitalShips::clear_tick_buffers() {
     ml::reset(local_indices_to_remove,
               tick_buffers.current(),
               entity_update_data,
+              entity_death_info,
               fighter_handles_scratch);
 }
 
