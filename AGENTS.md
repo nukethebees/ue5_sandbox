@@ -39,6 +39,7 @@ Unreal Engine 5.8 project.
 # UI Design
 
 * Use BindWidget for UPROPERTY widgets.
+* When generating a UMG widget whose root node is a panel widget (for example, `UGridPanel`), use `meta=(GeneratorRoot)`.
 * Keep gameplay logic out of UI widgets.
 
 # Testing
