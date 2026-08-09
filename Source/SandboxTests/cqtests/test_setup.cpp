@@ -9,6 +9,8 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <SandboxCore/error_msg.h>
+
 #include <Commands/TestCommandBuilder.h>
 #include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
@@ -17,6 +19,19 @@
 #include <Kismet/GameplayStatics.h>
 
 namespace ml {
+auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
+    if (!GEditor) {
+        return std::unexpected(FErrorMsg{TEXT("GEditor is nullptr")});
+    }
+
+    auto* const world{GEditor->GetEditorWorldContext().World()};
+    if (!IsValid(world)) {
+        return std::unexpected(FErrorMsg{TEXT("Editor world is invalid")});
+    }
+
+    return world;
+}
+
 FTestBatchOrchestratorLevelSetup::~FTestBatchOrchestratorLevelSetup() = default;
 
 void FTestBatchOrchestratorLevelSetup::setup(FTestCommandBuilder& command_builder,

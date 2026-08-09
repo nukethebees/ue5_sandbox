@@ -28,6 +28,7 @@ struct TestSimulationDriver {
 
     static auto from_world(UWorld& world) -> TestSimulationDriver;
 
+    auto get_world() const -> UWorld* { return &world; }
     auto get_player_ship() const -> ATestSpaceShip const&;
     auto get_capital_ships() const -> ATestCapitalShips const&;
     auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;

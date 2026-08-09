@@ -8,8 +8,8 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/level_checks.h>
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 

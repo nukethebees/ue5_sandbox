@@ -1,7 +1,11 @@
 #pragma once
 
+#include <SandboxCore/error_msg.h>
+
 #include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
+
+#include <expected>
 
 struct FMapTestSpawner;
 class FAutomationTestBase;
@@ -53,4 +57,6 @@ auto level_test_setup(FString const& map_directory,
 auto level_test_setup(FString const& map_name,
                       FAutomationTestBase* test_runner,
                       FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner>;
+
+auto get_editor_world() -> std::expected<UWorld*, FErrorMsg>;
 }
