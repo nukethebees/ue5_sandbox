@@ -49,54 +49,29 @@ struct FSoftTestAssertions {
                    T const& got,
                    FString const& description,
                    int32 const i = INDEX_NONE) {
-        auto const result{exp == got};
-        store_result(result);
-
-        reset_message(i);
-        message.Appendf(
-            TEXT("%s (Exp %s, Got %s)"), *description, *to_string(exp), *to_string(got));
-        display_result(result, message);
-
-        return result;
+        using Traits = TestEqualityTraits<std::remove_cvref_t<T>>;
+        return check_equality<&Traits::is_equal, true>(exp, got, description, i);
     }
-    template <std::floating_point T>
-    bool are_equal(T const exp,
-                   T const got,
-                   T const tolerance,
+    template <typename T, typename Tolerance>
+    bool are_equal(T const& exp,
+                   T const& got,
+                   Tolerance const tolerance,
                    FString const& description,
                    int32 const i = INDEX_NONE) {
-        auto const result{FMath::IsNearlyEqual(exp, got, tolerance)};
-        store_result(result);
-
-        reset_message(i);
-        message.Appendf(TEXT("%s (Exp %s, Got %s (tolerance=%f))"),
-                        *description,
-                        *to_string(exp),
-                        *to_string(got),
-                        tolerance);
-        display_result(result, message);
-
-        return result;
+        using Traits = TestEqualityTraits<std::remove_cvref_t<T>>;
+        return check_equality<&Traits::is_equal_with_tolerance, true>(
+            exp, got, tolerance, description, i);
     }
 
-    template <std::floating_point T>
-    bool not_equal(T const a,
-                   T const b,
-                   T const tolerance,
+    template <typename T, typename Tolerance>
+    bool not_equal(T const& a,
+                   T const& b,
+                   Tolerance const tolerance,
                    FString const& description,
                    int32 const i = INDEX_NONE) {
-        auto const result{!FMath::IsNearlyEqual(a, b, tolerance)};
-        store_result(result);
-
-        reset_message(i);
-        message.Appendf(TEXT("%s (Expect %s != %s, (tolerance=%f)"),
-                        *description,
-                        *to_string(a),
-                        *to_string(b),
-                        tolerance);
-        display_result(result, message);
-
-        return result;
+        using Traits = TestEqualityTraits<std::remove_cvref_t<T>>;
+        return check_equality<&Traits::is_equal_with_tolerance, false>(
+            a, b, tolerance, description, i);
     }
 
     template <typename T>
@@ -104,13 +79,8 @@ struct FSoftTestAssertions {
                    T const& got,
                    FString const& description,
                    int32 const i = INDEX_NONE) {
-        auto const result{not_exp != got};
-        store_result(result);
-        reset_message(i);
-        message.Appendf(TEXT("%s (%s vs %s)"), *description, *to_string(not_exp), *to_string(got));
-        display_result(result, message);
-
-        return result;
+        using Traits = TestEqualityTraits<std::remove_cvref_t<T>>;
+        return check_equality<&Traits::is_equal, false>(not_exp, got, description, i);
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -274,6 +244,52 @@ Check dist > %f:
     bool all_passed{true};
   private:
     void reset_message(int32 i = INDEX_NONE);
+
+    template <auto is_equal, bool expect_equal, typename T>
+    bool check_equality(T const& exp, T const& got, FString const& description, int32 const i) {
+        auto const result{is_equal(exp, got) == expect_equal};
+        store_result(result);
+
+        reset_message(i);
+        if constexpr (expect_equal) {
+            message.Appendf(
+                TEXT("%s (Exp %s, Got %s)"), *description, *to_string(exp), *to_string(got));
+        } else {
+            message.Appendf(
+                TEXT("%s (Expect %s != %s)"), *description, *to_string(exp), *to_string(got));
+        }
+        display_result(result, message);
+
+        return result;
+    }
+
+    template <auto is_equal, bool expect_equal, typename T, typename Tolerance>
+    bool check_equality(T const& exp,
+                        T const& got,
+                        Tolerance const tolerance,
+                        FString const& description,
+                        int32 const i) {
+        auto const result{is_equal(exp, got, tolerance) == expect_equal};
+        store_result(result);
+
+        reset_message(i);
+        if constexpr (expect_equal) {
+            message.Appendf(TEXT("%s (Exp %s, Got %s (tolerance=%f))"),
+                            *description,
+                            *to_string(exp),
+                            *to_string(got),
+                            tolerance);
+        } else {
+            message.Appendf(TEXT("%s (Expect %s != %s, tolerance=%f)"),
+                            *description,
+                            *to_string(exp),
+                            *to_string(got),
+                            tolerance);
+        }
+        display_result(result, message);
+
+        return result;
+    }
 
     template <auto is_equal, typename T>
     bool all_equal_impl(T const& exp, T const& got, FString const& description) {
