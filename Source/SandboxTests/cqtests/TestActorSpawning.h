@@ -7,7 +7,10 @@ class UTestSimulationConfig;
 class UWorld;
 
 namespace ml {
+struct FSoftTestAssertions;
+
 auto spawn_capital_proxy(UWorld& world,
                          UTestSimulationConfig const& config,
-                         FVector const& location) -> ATestCapitalShipProxy&;
+                         FSoftTestAssertions& checks,
+                         FVector const& location) -> ATestCapitalShipProxy*;
 }

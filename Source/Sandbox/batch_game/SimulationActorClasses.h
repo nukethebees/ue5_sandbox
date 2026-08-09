@@ -2,6 +2,7 @@
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
@@ -26,6 +27,9 @@ struct SANDBOX_API FSimulationActorClasses {
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestCapitalShips> capital_ships_class{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Simulation")
+    TSubclassOf<ATestCapitalShipProxy> capital_ship_proxy_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestCapitalShipFighters> capital_ship_fighters_class{nullptr};

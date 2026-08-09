@@ -20,8 +20,6 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.FunctionalTests")
 
     ml::FTestBatchOrchestratorLevelSetup level_setup;
     ml::FSoftTestAssertions checks{};
-    ATestCapitalShipProxy* default_health_proxy{nullptr};
-    ATestCapitalShipProxy* overridden_health_proxy{nullptr};
     FRegistryEntityHandle default_health_handle;
     FRegistryEntityHandle overridden_health_handle;
     int32 default_health{0};
@@ -32,8 +30,6 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.FunctionalTests")
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
-        default_health_proxy = nullptr;
-        overridden_health_proxy = nullptr;
         default_health_handle = {};
         overridden_health_handle = {};
         default_health = 0;
@@ -68,10 +64,13 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.FunctionalTests")
         default_health = capital_config->max_health;
         overridden_health = default_health + 1234;
 
-        default_health_proxy = &ml::spawn_capital_proxy(world, config, FVector::ZeroVector);
-        default_health_proxy->set_health(NullOpt);
-        overridden_health_proxy =
-            &ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+        ml::spawn_capital_proxy(world, config, checks, FVector::ZeroVector);
+
+        auto* const overridden_health_proxy{
+            ml::spawn_capital_proxy(world, config, checks, FVector{2000.f, 0.f, 0.f})};
+        if (!IsValid(overridden_health_proxy)) {
+            return;
+        }
         overridden_health_proxy->set_health(overridden_health);
 
         ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this,
@@ -79,24 +78,30 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.FunctionalTests")
     }
 
     void resolve_proxy_handles(FProxyEntityMap const& proxy_entities) {
-        auto const default_proxy_available{
-            checks.is_valid(default_health_proxy, TEXT("Default-health proxy is available"))};
-        auto const overridden_proxy_available{
-            checks.is_valid(overridden_health_proxy, TEXT("Overridden-health proxy is available"))};
+        checks.are_equal(proxy_entities.Num(), 2, TEXT("Correct number of proxies"));
+
+        for (auto const& [actor, identifiers] : proxy_entities) {
+            auto const* const proxy{Cast<ATestCapitalShipProxy>(actor)};
+            if (!IsValid(proxy)) {
+                continue;
+            }
+
+            auto const health{proxy->get_health()};
+            if (!health.IsSet()) {
+                default_health_handle = identifiers.handle;
+            }
+            if (health.IsSet() && health.GetValue() == overridden_health) {
+                overridden_health_handle = identifiers.handle;
+            }
+        }
+
+        checks.is_true(default_health_handle.is_valid(),
+                       TEXT("Nullopt-health capital proxy is bound"));
+        checks.is_true(overridden_health_handle.is_valid(),
+                       TEXT("Overridden-health capital proxy is bound"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-        auto const* const default_identifiers{proxy_entities.Find(default_health_proxy)};
-        auto const* const overridden_identifiers{proxy_entities.Find(overridden_health_proxy)};
-        auto const default_bound{
-            checks.not_nullptr(default_identifiers, TEXT("Default-health proxy is bound"))};
-        auto const overridden_bound{
-            checks.not_nullptr(overridden_identifiers, TEXT("Overridden-health proxy is bound"))};
-
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-
-        default_health_handle = default_identifiers->handle;
-        overridden_health_handle = overridden_identifiers->handle;
         proxy_handles_bound = true;
     }
 

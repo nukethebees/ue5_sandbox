@@ -301,7 +301,7 @@ auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> boo
         return false;
     }
 
-    if (!entities.locations.xs.IsValidIndex(index.index)) {
+    if (entities.handles.Find(index) == INDEX_NONE) {
         return false;
     }
 

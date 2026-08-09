@@ -94,8 +94,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     {
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
-                          [](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(world, config, FVector::ZeroVector);
+                          [this](UWorld& world, UTestSimulationConfig const& config) {
+                              ml::spawn_capital_proxy(world, config, checks, FVector::ZeroVector);
                           });
         TestCommandBuilder.Do([this] { begin_entity_count_polling_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -104,7 +104,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(MissionAndDefenceDataUpdateWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder, *TestRunner, &ThisClass::configure_defence_mission);
+        level_setup.setup(TestCommandBuilder,
+                          *TestRunner,
+                          [this](UWorld& world, UTestSimulationConfig const& config) {
+                              configure_defence_mission(world, config);
+                          });
         TestCommandBuilder.Do([this] { begin_defence_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_defence_result(); });
@@ -114,8 +118,9 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     {
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
-                          [](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+                          [this](UWorld& world, UTestSimulationConfig const& config) {
+                              ml::spawn_capital_proxy(
+                                  world, config, checks, FVector{2000.f, 0.f, 0.f});
                           });
         TestCommandBuilder.Do([this] { begin_player_kill_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -191,15 +196,18 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Defence mission
     /* ------------------------------------------------------------------------------------------ */
-    static void configure_defence_mission(UWorld & world, UTestSimulationConfig const& config) {
-        auto& defended{ml::spawn_capital_proxy(world, config, FVector::ZeroVector)};
+    void configure_defence_mission(UWorld & world, UTestSimulationConfig const& config) {
+        auto* const defended{ml::spawn_capital_proxy(world, config, checks, FVector::ZeroVector)};
+        if (!IsValid(defended)) {
+            return;
+        }
         auto* const mission_manager{world.SpawnActorDeferred<ATestMissionManager>(
             config.actor_classes.mission_manager_class, FTransform::Identity)};
         check(mission_manager);
         mission_manager->set_save_mission_results(false);
         mission_manager->set_mission_mode(ETestMissionMode::SurviveTime);
         mission_manager->set_target_time(10.f);
-        mission_manager->add_entity_that_must_survive(defended);
+        mission_manager->add_entity_that_must_survive(*defended);
         UGameplayStatics::FinishSpawningActor(mission_manager, FTransform::Identity);
     }
     void begin_defence_scenario() {

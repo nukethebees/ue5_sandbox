@@ -2,6 +2,8 @@
 #include "TestActorSpawning.h"
 #include "TestSimulationDriver.h"
 
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
+
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
@@ -30,11 +32,16 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
     inline static FTimespan const timeout{0, 0, 2};
 
     ml::FTestBatchOrchestratorLevelSetup level_setup;
+    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     EScenario scenario{EScenario::SurviveTime};
 
     BEFORE_EACH()
-    { test_driver.Reset(); }
+    {
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
+        test_driver.Reset();
+    }
 
     AFTER_EACH()
     { level_setup.teardown(); }
@@ -51,9 +58,15 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         UGameplayStatics::FinishSpawningActor(&manager, FTransform::Identity);
     }
 
-    static void configure_level(
-        UWorld & world, UTestSimulationConfig const& config, EScenario const scenario) {
-        auto& first_capital{ml::spawn_capital_proxy(world, config, FVector{-2000.f, 0.f, 0.f})};
+    static void configure_level(UWorld & world,
+                                UTestSimulationConfig const& config,
+                                ml::FSoftTestAssertions& checks,
+                                EScenario const scenario) {
+        auto* const first_capital{
+            ml::spawn_capital_proxy(world, config, checks, FVector{-2000.f, 0.f, 0.f})};
+        if (!IsValid(first_capital)) {
+            return;
+        }
         auto& manager{spawn_mission_manager(world, config)};
 
         manager.set_save_mission_results(false);
@@ -62,28 +75,28 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
             case EScenario::SurviveTime: {
                 manager.set_mission_mode(ETestMissionMode::SurviveTime);
                 manager.set_target_time(short_mission_time);
-                manager.add_entity_that_must_survive(first_capital);
+                manager.add_entity_that_must_survive(*first_capital);
                 break;
             }
             case EScenario::KillEnemies: {
-                ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(world, config, checks, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemies);
                 manager.set_kill_target(1);
-                manager.add_hero_entity(first_capital);
+                manager.add_hero_entity(*first_capital);
                 break;
             }
             case EScenario::KillEnemiesWithinTime: {
-                ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(world, config, checks, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
                 manager.set_target_time(short_mission_time);
                 manager.set_kill_target(1);
-                manager.add_hero_entity(first_capital);
+                manager.add_hero_entity(*first_capital);
                 break;
             }
             case EScenario::DefenceObjective: {
                 manager.set_mission_mode(ETestMissionMode::SurviveTime);
                 manager.set_target_time(long_mission_time);
-                manager.add_entity_that_must_survive(first_capital);
+                manager.add_entity_that_must_survive(*first_capital);
                 break;
             }
             default: {
@@ -99,8 +112,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         scenario = new_scenario;
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
-                          [new_scenario](UWorld& world, UTestSimulationConfig const& config) {
-                              configure_level(world, config, new_scenario);
+                          [this, new_scenario](UWorld& world, UTestSimulationConfig const& config) {
+                              configure_level(world, config, checks, new_scenario);
                           });
 
         TestCommandBuilder.Do([this] { start_scenario(); })

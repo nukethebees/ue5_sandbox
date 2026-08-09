@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SoftTestAssertions.h"
+
 #include <SandboxCore/error_msg.h>
 
 #include <Components/MapTestSpawner.h>
@@ -15,8 +17,6 @@ class UWorld;
 class ATestBatchOrchestrator;
 
 namespace ml {
-struct FSoftTestAssertions;
-
 using FConfigureBatchTestLevel = TFunction<void(UWorld&, UTestSimulationConfig const&)>;
 
 class FTestBatchOrchestratorLevelSetup {
@@ -44,6 +44,7 @@ class FTestBatchOrchestratorLevelSetup {
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     FAutomationTestBase* test_runner{nullptr};
+    FSoftTestAssertions checks{};
     ATestBatchOrchestrator* orchestrator{nullptr};
     FDelegateHandle map_change_handle{};
     FConfigureBatchTestLevel configure_level{};
