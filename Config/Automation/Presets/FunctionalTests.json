@@ -12,11 +12,18 @@
 		"Sandbox.FunctionalTests.FightersInterceptCapital.MainTest",
 		"Sandbox.FunctionalTests.PlayerShipVsCapital.Main",
 		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
+		"Sandbox.FunctionalTests.TestCapitalShipProxy.SpawnsWithConfiguredHealth",
 		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest",
+		"Sandbox.FunctionalTests.TestHUDManager.EntityCountPollingContinuesWithoutHUD",
+		"Sandbox.FunctionalTests.TestHUDManager.InitialCachesPopulateWithoutHUD",
+		"Sandbox.FunctionalTests.TestHUDManager.LateHUDRegistrationSynchronisesAndUnregisters",
+		"Sandbox.FunctionalTests.TestHUDManager.MissionAndDefenceDataUpdateWithoutHUD",
+		"Sandbox.FunctionalTests.TestHUDManager.MissionTimeUsesSimulationClockWithoutHUD",
+		"Sandbox.FunctionalTests.TestHUDManager.PlayerStateAndKillsUpdateWithoutHUD",
 		"Sandbox.FunctionalTests.TestMissionManager.DefenceObjective",
 		"Sandbox.FunctionalTests.TestMissionManager.KillEnemies",
 		"Sandbox.FunctionalTests.TestMissionManager.KillEnemiesWithinTime",
 		"Sandbox.FunctionalTests.TestMissionManager.SurviveTime",
-		"Sandbox.FunctionalTests.TestPlayerShipDeath.LethalDamageDestroysAndUnpossessesPlayerShip"
+		"Sandbox.FunctionalTests.TestPlayerShipDeath.LethalDamageDestroysPlayerShip"
 	]
 }
