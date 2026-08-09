@@ -1,4 +1,5 @@
 #include "test_setup.h"
+#include "TestActorSpawning.h"
 #include "TestSimulationDriver.h"
 
 #include <SandboxTests/cqtests/level_checks.h>
@@ -94,7 +95,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
                           [](UWorld& world, UTestSimulationConfig const& config) {
-                              ThisClass::spawn_capital_proxy(world, config, FVector::ZeroVector);
+                              ml::spawn_capital_proxy(world, config, FVector::ZeroVector);
                           });
         TestCommandBuilder.Do([this] { begin_entity_count_polling_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -114,8 +115,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         level_setup.setup(TestCommandBuilder,
                           *TestRunner,
                           [](UWorld& world, UTestSimulationConfig const& config) {
-                              ThisClass::spawn_capital_proxy(
-                                  world, config, FVector{2000.f, 0.f, 0.f});
+                              ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
                           });
         TestCommandBuilder.Do([this] { begin_player_kill_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
@@ -136,18 +136,6 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         TestCommandBuilder.Do([this] { check_hud_registration_lifecycle(); });
     }
   private:
-    // Spawning
-    static auto spawn_capital_proxy(UWorld & world,
-                                    UTestSimulationConfig const& config,
-                                    FVector const& location) -> ATestCapitalShipProxy& {
-        auto* const proxy{world.SpawnActorDeferred<ATestCapitalShipProxy>(
-            ATestCapitalShipProxy::StaticClass(), FTransform{FRotator::ZeroRotator, location})};
-        check(proxy);
-        proxy->set_actor_config(config.simulation_config->capital_ships_config.Get());
-        UGameplayStatics::FinishSpawningActor(proxy, FTransform{FRotator::ZeroRotator, location});
-        return *proxy;
-    }
-
     /* ------------------------------------------------------------------------------------------ */
     // Initial cache
     /* ------------------------------------------------------------------------------------------ */
@@ -204,7 +192,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Defence mission
     /* ------------------------------------------------------------------------------------------ */
     static void configure_defence_mission(UWorld & world, UTestSimulationConfig const& config) {
-        auto& defended{spawn_capital_proxy(world, config, FVector::ZeroVector)};
+        auto& defended{ml::spawn_capital_proxy(world, config, FVector::ZeroVector)};
         auto* const mission_manager{world.SpawnActorDeferred<ATestMissionManager>(
             config.actor_classes.mission_manager_class, FTransform::Identity)};
         check(mission_manager);

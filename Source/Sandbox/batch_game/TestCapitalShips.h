@@ -42,6 +42,7 @@ struct SpawnData : public ml::FSoAArrayMixin {
     FVectors3f locations;
     FRotatorsf rotations;
     TArray<ETestTeam> teams;
+    TArray<int32> healths;
 
     TArray<float> initial_spawn_delays;
     TArray<float> spawn_cooldowns;
@@ -52,6 +53,7 @@ struct SpawnData : public ml::FSoAArrayMixin {
                                          self.locations,
                                          self.rotations,
                                          self.teams,
+                                         self.healths,
                                          self.initial_spawn_delays,
                                          self.spawn_cooldowns);
     }

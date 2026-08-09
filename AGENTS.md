@@ -46,6 +46,7 @@ Unreal Engine 5.8 project.
 * Only create tests when explicitly asked.
 * When adding tests, do not compile or run them; ask the user to compile and check them.
 * Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
+* `SANDBOX_TESTS_ASSERT_ALL_PASSED` returns when a soft assertion has failed; use it to end assertion stages instead of adding duplicate failure branches.
 * All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
 * To avoid time-zero ordering issues, schedule simulation-test damage and kills through `TestSimulationDriver::timeline` at a positive simulation time.
 * Group each test's data and functions together, using `/* ------------------------------------------------------------------------------------------ */` banners to separate test-specific sections.

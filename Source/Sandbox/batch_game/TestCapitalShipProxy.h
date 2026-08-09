@@ -39,8 +39,11 @@ class ATestCapitalShipProxy
 
     auto get_team() const noexcept { return team; }
     auto get_target_ship() const noexcept { return target_ship; }
+    auto get_health() const noexcept { return health; }
     auto get_initial_spawn_delay() const noexcept { return initial_spawn_delay; }
     auto get_spawn_cooldown() const noexcept { return spawn_cooldown; }
+
+    void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
@@ -63,6 +66,9 @@ class ATestCapitalShipProxy
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     ETestTeam team{ETestTeam::White};
+
+    UPROPERTY(EditAnywhere, Category = "Ship")
+    TOptional<int32> health{NullOpt};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TOptional<float> initial_spawn_delay{NullOpt};

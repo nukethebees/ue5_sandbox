@@ -351,7 +351,6 @@ void ATestBatchOrchestrator::start_visual_logging() {
     visual_logger.SetIsRecording(true);
 #endif
 }
-
 void ATestBatchOrchestrator::stop_visual_logging() {
 #if ENABLE_VISUAL_LOG
     if (!enable_visual_logging) {
@@ -611,14 +610,12 @@ void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
     time_scale = scale;
 }
-
 auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
     -> tick_type {
     check(frequency > time_type{0});
     check(tick_rate > time_type{0});
     return static_cast<tick_type>(FMath::CeilToInt64(tick_rate / frequency));
 }
-
 auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
     -> tick_type {
     check(duration >= time_type{0});

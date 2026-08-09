@@ -379,6 +379,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
         ml::assign(spawn_data.locations, i, proxy_transform.GetLocation());
         ml::assign(spawn_data.rotations, i, proxy_transform.Rotator());
         spawn_data.teams[i] = proxies[i]->get_team();
+        spawn_data.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
 
         spawn_data.initial_spawn_delays[i] = proxies[i]->get_initial_spawn_delay().Get(0.f);
         spawn_data.spawn_cooldowns[i] =
@@ -414,7 +415,7 @@ void ATestCapitalShips::spawn_ships(SpawnData const& spawn_data) {
     entities.fighter_spawn_cooldowns.Append(spawn_data.spawn_cooldowns);
 
     entities.teams.Append(spawn_data.teams);
-    ml::append_n(entities.healths, actor_config->max_health, n_to_add);
+    entities.healths.Append(spawn_data.healths);
     entities.capital_fighter_handle_spans.AddZeroed(n_to_add);
     entities.target_handles.Append(spawn_data.target_handles);
 

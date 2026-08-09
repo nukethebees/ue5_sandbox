@@ -1,4 +1,5 @@
 #include "test_setup.h"
+#include "TestActorSpawning.h"
 #include "TestSimulationDriver.h"
 
 #include <Sandbox/batch_game/SimulationConfig.h>
@@ -38,18 +39,6 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
     AFTER_EACH()
     { level_setup.teardown(); }
   private:
-    static auto spawn_capital_proxy(UWorld & world,
-                                    UTestSimulationConfig const& config,
-                                    FVector const& location) -> ATestCapitalShipProxy& {
-        auto* const proxy{world.SpawnActorDeferred<ATestCapitalShipProxy>(
-            ATestCapitalShipProxy::StaticClass(), FTransform{FRotator::ZeroRotator, location})};
-        check(proxy);
-
-        proxy->set_actor_config(config.simulation_config->capital_ships_config.Get());
-        UGameplayStatics::FinishSpawningActor(proxy, FTransform{FRotator::ZeroRotator, location});
-        return *proxy;
-    }
-
     static auto spawn_mission_manager(UWorld & world, UTestSimulationConfig const& config)
         -> ATestMissionManager& {
         auto* const manager{world.SpawnActorDeferred<ATestMissionManager>(
@@ -64,7 +53,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
 
     static void configure_level(
         UWorld & world, UTestSimulationConfig const& config, EScenario const scenario) {
-        auto& first_capital{spawn_capital_proxy(world, config, FVector{-2000.f, 0.f, 0.f})};
+        auto& first_capital{ml::spawn_capital_proxy(world, config, FVector{-2000.f, 0.f, 0.f})};
         auto& manager{spawn_mission_manager(world, config)};
 
         manager.set_save_mission_results(false);
@@ -77,14 +66,14 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
                 break;
             }
             case EScenario::KillEnemies: {
-                spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemies);
                 manager.set_kill_target(1);
                 manager.add_hero_entity(first_capital);
                 break;
             }
             case EScenario::KillEnemiesWithinTime: {
-                spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(world, config, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
                 manager.set_target_time(short_mission_time);
                 manager.set_kill_target(1);
