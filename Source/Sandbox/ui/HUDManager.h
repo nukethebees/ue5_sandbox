@@ -10,6 +10,7 @@
 #include <Sandbox/batch_game/TestSpaceShipControlMode.h>
 #include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
 #include <Sandbox/health/ShipHealth.h>
+#include <Sandbox/ui/ship_hud/ShipHudKillData.h>
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 
@@ -80,6 +81,13 @@ struct FEntityCountDataCache {
     ATestEntityRegistry::EntityCounts alive_per_team_and_type{};
 };
 
+struct FKillDataCache {
+    bool operator==(FKillDataCache const& other) const noexcept = default;
+
+    TArray<ml::ship_hud::FTopKillerEntry> top_killers;
+    TArray<ml::ship_hud::FTeamKillMatrixRow> team_kill_matrix;
+};
+
 struct FPlayerStatusDataCache {
     bool operator==(FPlayerStatusDataCache const& other) const noexcept = default;
 
@@ -124,6 +132,7 @@ struct FSampledSpeedDataCache {
 struct FDataChanges {
     bool mission{false};
     bool entity_counts{false};
+    bool kill_data{false};
     bool player_status{false};
     bool player_flight{false};
 #if WITH_EDITOR
@@ -156,6 +165,9 @@ struct SANDBOX_API FHUDManager {
     auto get_entity_count_data() const noexcept -> ml::hud_manager::FEntityCountDataCache const& {
         return entity_count_data_buffers.current();
     }
+    auto get_kill_data() const noexcept -> ml::hud_manager::FKillDataCache const& {
+        return kill_data_buffers.current();
+    }
     auto get_player_status_data() const noexcept -> ml::hud_manager::FPlayerStatusDataCache const& {
         return player_status_data_buffers.current();
     }
@@ -167,6 +179,7 @@ struct SANDBOX_API FHUDManager {
     bool collect_mission_data();
     void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
     bool collect_entity_count_data();
+    bool collect_kill_data();
     bool collect_player_status_data();
     bool collect_player_flight_data();
 #if WITH_EDITOR
@@ -177,6 +190,7 @@ struct SANDBOX_API FHUDManager {
     void synchronise_hud(UShipHudWidget& hud) const;
     void update_mission_hud(UShipHudWidget& hud) const;
     void update_entity_count_hud(UShipHudWidget& hud) const;
+    void update_kill_data_hud(UShipHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;
 #if WITH_EDITOR
@@ -194,6 +208,7 @@ struct SANDBOX_API FHUDManager {
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
+    ml::MultiBuffer<ml::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
 

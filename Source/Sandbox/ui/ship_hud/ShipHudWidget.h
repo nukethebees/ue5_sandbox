@@ -5,6 +5,7 @@
 #include "Sandbox/batch_game/TestTeamVisualData.h"
 #include "Sandbox/health/ShipHealth.h"
 #include "Sandbox/ui/HudCrosshairDistances.h"
+#include "Sandbox/ui/ship_hud/ShipHudKillData.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -25,6 +26,8 @@ class UVector2DWidget;
 class UDebugGraphWidget;
 class UEntityCountTableWidget;
 class UMissionStatusWidget;
+class UTeamKillMatrixWidget;
+class UTopKillersWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
 }
@@ -84,6 +87,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
+    void set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> entries);
+    void set_team_kill_matrix(TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> rows);
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
@@ -137,6 +142,12 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UEntityCountTableWidget* entity_count_table{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UTopKillersWidget* top_killers_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UTeamKillMatrixWidget* team_kill_matrix_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UMissionStatusWidget* mission_status_panel{nullptr};

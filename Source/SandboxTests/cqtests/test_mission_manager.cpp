@@ -13,6 +13,7 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
@@ -31,7 +32,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
     static constexpr float long_mission_time{10.f};
     inline static FTimespan const timeout{0, 0, 2};
 
-    ml::FTestBatchOrchestratorLevelSetup level_setup;
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     EScenario scenario{EScenario::SurviveTime};
@@ -41,10 +43,16 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
         checks.test_runner = TestRunner;
         checks.all_passed = true;
         test_driver.Reset();
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
     }
 
     AFTER_EACH()
-    { level_setup.teardown(); }
+    {
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
+    }
   private:
     static auto spawn_mission_manager(UWorld & world, UTestSimulationConfig const& config)
         -> ATestMissionManager& {
@@ -112,11 +120,11 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
 
     void setup_scenario(EScenario const new_scenario) {
         scenario = new_scenario;
-        level_setup.setup(TestCommandBuilder,
-                          *TestRunner,
-                          [this, new_scenario](UWorld& world, UTestSimulationConfig const& config) {
-                              configure_level(world, config, checks, new_scenario);
-                          });
+        level_setup->setup(
+            TestCommandBuilder,
+            [this, new_scenario](UWorld& world, UTestSimulationConfig const& config) {
+                configure_level(world, config, checks, new_scenario);
+            });
 
         TestCommandBuilder.Do([this] { start_scenario(); })
             .Until([this] { return mission_has_ended(); }, timeout)
@@ -124,7 +132,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.FunctionalTests")
     }
 
     void start_scenario() {
-        auto& world{level_setup.get_world()};
+        auto& world{level_setup->get_world()};
         test_driver = ml::TestSimulationDriver::from_world(world);
 
         auto* const manager{ml::get_first_actor<ATestMissionManager>(world)};

@@ -27,7 +27,7 @@ void UTeamKillMatrixWidget::NativePreConstruct() {
 }
 
 void UTeamKillMatrixWidget::set_team_kill_matrix(
-    TConstArrayView<FTeamKillMatrixRow> const new_rows) {
+    TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> const new_rows) {
     team_kill_matrix.Reset(new_rows.Num());
 
     auto const n_rows{new_rows.Num()};
@@ -72,7 +72,7 @@ void UTeamKillMatrixWidget::rebuild_table() {
     constexpr auto row_heading{0};
     constexpr auto column_team{0};
     constexpr auto first_victim_type_column{1};
-    constexpr auto n_types{FTeamKillMatrixRow::entity_type_count};
+    constexpr auto n_types{ml::ship_hud::FTeamKillMatrixRow::entity_type_count};
     auto const column_total{first_victim_type_column + n_types};
 
     for (int32 column{column_team}; column <= column_total; ++column) {

@@ -33,12 +33,20 @@ auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
 
 FTestBatchOrchestratorLevelSetup::~FTestBatchOrchestratorLevelSetup() = default;
 
+FTestBatchOrchestratorLevelSetup::FTestBatchOrchestratorLevelSetup(
+    FMapTestSpawner& new_spawner,
+    FAutomationTestBase& new_test_runner,
+    FSoftTestAssertions& new_checks)
+    : spawner{&new_spawner}
+    , test_runner{&new_test_runner}
+    , checks{&new_checks} {}
+
 void FTestBatchOrchestratorLevelSetup::setup(FTestCommandBuilder& command_builder,
-                                             FAutomationTestBase& new_test_runner,
                                              FConfigureBatchTestLevel new_configure_level) {
-    test_runner = &new_test_runner;
-    checks.test_runner = test_runner;
-    checks.all_passed = true;
+    check(spawner);
+    check(test_runner);
+    check(checks);
+
     configure_level = MoveTemp(new_configure_level);
     orchestrator = nullptr;
     actors_spawned = false;
@@ -48,22 +56,17 @@ void FTestBatchOrchestratorLevelSetup::setup(FTestCommandBuilder& command_builde
             return;
         }
 
-        if (!checks.not_nullptr(GEditor, TEXT("Editor is available"))) {
+        if (!checks->not_nullptr(GEditor, TEXT("Editor is available"))) {
             return;
         }
 
         auto* const world{GEditor->GetEditorWorldContext().World()};
-        if (!checks.not_nullptr(world, TEXT("Editor world is available"))) {
+        if (!checks->not_nullptr(world, TEXT("Editor world is available"))) {
             return;
         }
 
         actors_spawned = spawn_orchestrator(*world);
     });
-
-    spawner = FMapTestSpawner::CreateFromTempLevel(command_builder);
-    if (!checks.not_nullptr(spawner.Get(), TEXT("Temporary level spawner is available"))) {
-        return;
-    }
 
     spawner->AddWaitUntilLoadedCommand(test_runner);
     command_builder.Do([this] { resolve_orchestrator(); });
@@ -81,7 +84,6 @@ void FTestBatchOrchestratorLevelSetup::teardown() {
 
     orchestrator = nullptr;
     test_runner = nullptr;
-    checks.test_runner = nullptr;
     configure_level = {};
     actors_spawned = false;
 }
@@ -93,10 +95,10 @@ auto FTestBatchOrchestratorLevelSetup::get_world() const -> UWorld& {
 
 auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool {
     auto const* const config{load_default_test_simulation_config()};
-    if (!checks.not_nullptr(config, TEXT("Default test simulation config loads"))) {
+    if (!checks->not_nullptr(config, TEXT("Default test simulation config loads"))) {
         return false;
     }
-    if (!checks.is_true(config->is_valid(), TEXT("Default test simulation config is valid"))) {
+    if (!checks->is_true(config->is_valid(), TEXT("Default test simulation config is valid"))) {
         return false;
     }
 
@@ -106,7 +108,7 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 
     auto* const new_orchestrator{world.SpawnActorDeferred<ATestBatchOrchestrator>(
         ATestBatchOrchestrator::StaticClass(), FTransform::Identity)};
-    if (!checks.is_valid(new_orchestrator, TEXT("Deferred orchestrator is spawned"))) {
+    if (!checks->is_valid(new_orchestrator, TEXT("Deferred orchestrator is spawned"))) {
         return false;
     }
 
@@ -119,12 +121,12 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 }
 
 void FTestBatchOrchestratorLevelSetup::resolve_orchestrator() {
-    if (!checks.is_true(actors_spawned, TEXT("Actors are spawned from the map-change callback"))) {
+    if (!checks->is_true(actors_spawned, TEXT("Actors are spawned from the map-change callback"))) {
         return;
     }
 
     orchestrator = ml::get_first_actor<ATestBatchOrchestrator>(spawner->GetWorld());
-    checks.is_valid(orchestrator, TEXT("PIE orchestrator is available"));
+    checks->is_valid(orchestrator, TEXT("PIE orchestrator is available"));
 }
 
 auto level_test_setup(FString const& map_directory,

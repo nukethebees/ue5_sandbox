@@ -10,6 +10,8 @@
 #include "Sandbox/ui/ship_hud/ShipPointsWidget.h"
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
+#include "Sandbox/ui/ship_hud/TeamKillMatrixWidget.h"
+#include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 #include "Sandbox/ui/widgets/ValueWidget.h"
 #include "Sandbox/ui/widgets/Vector2DWidget.h"
@@ -23,6 +25,24 @@
 #include <Materials/MaterialInterface.h>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
+
+namespace {
+template <typename... WidgetTypes>
+void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widgets) {
+    auto const set_font_size{[font_size](auto* const widget) {
+        if (IsValid(widget)) {
+            widget->set_font_size(font_size);
+            return;
+        }
+
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UShipHudWidget::set_common_widget_properties: Widget is invalid: %s"),
+               *GetNameSafe(widget));
+    }};
+    (set_font_size(widgets), ...);
+}
+}
 
 void UShipHudWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -49,25 +69,26 @@ void UShipHudWidget::NativePreConstruct() {
 }
 
 void UShipHudWidget::set_common_widget_properties() {
-    speed_widget->set_font_size(font_size);
-    health_widget->set_font_size(font_size);
-    points_widget->set_font_size(font_size);
-
-    stopwatch_widget->set_font_size(font_size);
-    mission_status_widget->set_font_size(font_size);
-    fire_rate_widget->set_font_size(font_size);
-    target_speed_widget->set_font_size(font_size);
-    selected_imc_widget->set_font_size(font_size);
-    turning_widget->set_font_size(font_size);
-    moving_widget->set_font_size(font_size);
-    desired_velocity_scale_widget->set_font_size(font_size);
-    ship_velocity_widget->set_font_size(font_size);
-    target_velocity_widget->set_font_size(font_size);
-    control_mode_widget->set_font_size(font_size);
-    flight_mode_widget->set_font_size(font_size);
-
-    entity_count_table->set_font_size(font_size);
-    mission_status_panel->set_font_size(font_size);
+    set_font_size_on_widgets(font_size,
+                             speed_widget,
+                             health_widget,
+                             points_widget,
+                             stopwatch_widget,
+                             mission_status_widget,
+                             fire_rate_widget,
+                             target_speed_widget,
+                             selected_imc_widget,
+                             turning_widget,
+                             moving_widget,
+                             desired_velocity_scale_widget,
+                             ship_velocity_widget,
+                             target_velocity_widget,
+                             control_mode_widget,
+                             flight_mode_widget,
+                             entity_count_table,
+                             top_killers_widget,
+                             team_kill_matrix_widget,
+                             mission_status_panel);
 }
 
 void UShipHudWidget::set_font_size(int32 const new_font_size) {
@@ -201,6 +222,25 @@ void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& 
 void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const& colours) {
     if (entity_count_table) {
         entity_count_table->set_team_colours(colours);
+    }
+    if (top_killers_widget) {
+        top_killers_widget->set_team_colours(colours);
+    }
+    if (team_kill_matrix_widget) {
+        team_kill_matrix_widget->set_team_colours(colours);
+    }
+}
+
+void UShipHudWidget::set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> const entries) {
+    if (top_killers_widget) {
+        top_killers_widget->set_top_killers(entries);
+    }
+}
+
+void UShipHudWidget::set_team_kill_matrix(
+    TConstArrayView<ml::ship_hud::FTeamKillMatrixRow> const rows) {
+    if (team_kill_matrix_widget) {
+        team_kill_matrix_widget->set_team_kill_matrix(rows);
     }
 }
 

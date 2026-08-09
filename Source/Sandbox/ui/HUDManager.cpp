@@ -7,8 +7,11 @@
 
 #include <SandboxCore/timing.h>
 
+#include <Algo/Sort.h>
 #include <Blueprint/WidgetLayoutLibrary.h>
 #include <GameFramework/PlayerController.h>
+
+#include <utility>
 
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ATestMissionManager const& new_mission_manager,
@@ -18,6 +21,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     update_timers.reset();
     mission_data_buffers = {};
     entity_count_data_buffers = {};
+    kill_data_buffers = {};
     player_status_data_buffers = {};
     player_flight_data_buffers = {};
     has_mission_data = false;
@@ -49,6 +53,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
 
     collect_mission_data();
     collect_entity_count_data();
+    collect_kill_data();
     collect_player_status_data();
     collect_player_flight_data();
 #if WITH_EDITOR
@@ -69,6 +74,7 @@ void FHUDManager::deactivate() {
     entity_registry = nullptr;
     mission_data_buffers = {};
     entity_count_data_buffers = {};
+    kill_data_buffers = {};
     player_status_data_buffers = {};
     player_flight_data_buffers = {};
     has_mission_data = false;
@@ -134,6 +140,7 @@ auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
     }
     if (update_timers.try_consume(FHUDUpdateTimerIndex::entity_counts)) {
         changes.entity_counts = collect_entity_count_data();
+        changes.kill_data = collect_kill_data();
     }
     return changes;
 }
@@ -171,6 +178,67 @@ bool FHUDManager::collect_entity_count_data() {
     next_data.alive_per_team_and_type = entity_registry->count_alive_per_team_and_type();
     entity_count_data_buffers.cycle();
     return entity_count_data_buffers.current() != entity_count_data_buffers.previous();
+}
+bool FHUDManager::collect_kill_data() {
+    check(IsValid(entity_registry));
+
+    auto& next_data{kill_data_buffers.next()};
+    auto const& unique_entities{entity_registry->get_unique_entities()};
+    auto const n_unique_entities{unique_entities.num()};
+
+    next_data.top_killers.Reset();
+    next_data.top_killers.Reserve(n_unique_entities);
+    for (int32 entity_index{0}; entity_index < n_unique_entities; ++entity_index) {
+        auto const kills{unique_entities.kills[entity_index]};
+        if (kills == 0) {
+            continue;
+        }
+
+        next_data.top_killers.Add({.entity_id = {.id = entity_index},
+                                   .entity_type = unique_entities.entity_types[entity_index],
+                                   .team = unique_entities.teams[entity_index],
+                                   .kills = static_cast<int32>(kills)});
+    }
+    Algo::Sort(
+        next_data.top_killers,
+        [](ml::ship_hud::FTopKillerEntry const& lhs, ml::ship_hud::FTopKillerEntry const& rhs) {
+            return lhs.kills != rhs.kills ? lhs.kills > rhs.kills
+                                          : lhs.entity_id.id < rhs.entity_id.id;
+        });
+
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    TStaticArray<ml::ship_hud::FTeamKillMatrixRow, team_count> matrix_rows{};
+    for (int32 team_index{0}; team_index < team_count; ++team_index) {
+        matrix_rows[team_index].killer_team = static_cast<ETestTeam>(team_index);
+    }
+    for (int32 victim_index{0}; victim_index < n_unique_entities; ++victim_index) {
+        if (!unique_entities.killed_by[victim_index].is_valid()) {
+            continue;
+        }
+
+        auto const killer_id{unique_entities.killed_by[victim_index]};
+        check(killer_id.is_valid());
+        auto const team_index{std::to_underlying(unique_entities.teams[killer_id.id])};
+        auto const type_index{std::to_underlying(unique_entities.entity_types[victim_index])};
+        if (team_index >= team_count ||
+            type_index >= ml::ship_hud::FTeamKillMatrixRow::entity_type_count) {
+            continue;
+        }
+        ++matrix_rows[team_index].kills_by_victim_type[type_index];
+    }
+
+    next_data.team_kill_matrix.Reset();
+    for (ml::ship_hud::FTeamKillMatrixRow const& row : matrix_rows) {
+        int32 total_kills{0};
+        for (int32 const kills : row.kills_by_victim_type) {
+            total_kills += kills;
+        }
+        if (total_kills > 0) {
+            next_data.team_kill_matrix.Add(row);
+        }
+    }
+    kill_data_buffers.cycle();
+    return kill_data_buffers.current() != kill_data_buffers.previous();
 }
 bool FHUDManager::collect_player_status_data() {
     auto& next_data{player_status_data_buffers.next()};
@@ -255,6 +323,9 @@ void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
         if (changes.entity_counts) {
             update_entity_count_hud(*hud);
         }
+        if (changes.kill_data) {
+            update_kill_data_hud(*hud);
+        }
         if (changes.player_status) {
             update_player_status_hud(*hud);
         }
@@ -275,6 +346,7 @@ void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
         update_mission_hud(hud);
     }
     update_entity_count_hud(hud);
+    update_kill_data_hud(hud);
     update_player_status_hud(hud);
     update_player_flight_hud(hud);
 #if WITH_EDITOR
@@ -292,6 +364,11 @@ void FHUDManager::update_mission_hud(UShipHudWidget& hud) const {
 }
 void FHUDManager::update_entity_count_hud(UShipHudWidget& hud) const {
     hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
+}
+void FHUDManager::update_kill_data_hud(UShipHudWidget& hud) const {
+    auto const& data{kill_data_buffers.current()};
+    hud.set_top_killers(data.top_killers);
+    hud.set_team_kill_matrix(data.team_kill_matrix);
 }
 void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     auto const& data{player_status_data_buffers.current()};

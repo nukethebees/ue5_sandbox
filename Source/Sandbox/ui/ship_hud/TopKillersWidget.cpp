@@ -29,7 +29,8 @@ void UTopKillersWidget::NativePreConstruct() {
     rebuild_table();
 }
 
-void UTopKillersWidget::set_top_killers(TConstArrayView<FTopKillerEntry> const new_entries) {
+void UTopKillersWidget::set_top_killers(
+    TConstArrayView<ml::ship_hud::FTopKillerEntry> const new_entries) {
     top_killers.Reset(FMath::Min(new_entries.Num(), max_entries));
 
     auto const n_entries{FMath::Min(new_entries.Num(), max_entries)};

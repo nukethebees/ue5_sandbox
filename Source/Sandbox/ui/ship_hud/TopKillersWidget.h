@@ -1,9 +1,7 @@
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
-#include <Sandbox/batch_game/TestEntityType.h>
-#include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/batch_game/TestTeamVisualData.h>
+#include <Sandbox/ui/ship_hud/ShipHudKillData.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -14,20 +12,13 @@
 class UGridPanel;
 class UTextBlock;
 
-struct FTopKillerEntry {
-    TestEntityUniqueId entity_id{};
-    ETestEntityType entity_type{ETestEntityType::PlayerShip};
-    ETestTeam team{ETestTeam::White};
-    int32 kills{0};
-};
-
 UCLASS()
 class SANDBOX_API UTopKillersWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     static constexpr int32 max_entries{5};
 
-    void set_top_killers(TConstArrayView<FTopKillerEntry> const new_entries);
+    void set_top_killers(TConstArrayView<ml::ship_hud::FTopKillerEntry> const new_entries);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -49,6 +40,6 @@ class SANDBOX_API UTopKillersWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    TArray<FTopKillerEntry> top_killers{};
+    TArray<ml::ship_hud::FTopKillerEntry> top_killers{};
     UTestTeamVisualData::FColourArray team_colours{};
 };

@@ -147,6 +147,7 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         unique_entities.registry_generations[i] = generations[entity_index];
         unique_entities.alive[i] = view.alive[view_index];
         unique_entities.entity_types[i] = view.entity_types[view_index];
+        unique_entities.teams[i] = view.teams[view_index];
 
         new_entity_index++;
     }};
@@ -555,7 +556,6 @@ auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const no
 
     return count;
 }
-
 // Unique entity queries
 auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());

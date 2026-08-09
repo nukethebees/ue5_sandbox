@@ -20,6 +20,7 @@
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
 #include <Sandbox/utilities/enums.h>
 
+#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
@@ -47,6 +48,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     };
     struct FPlayerSample {
         int32 points{0};
+        int32 top_killer_kills{0};
+        int32 player_team_matrix_kills{0};
         int32 registered_hud_count{0};
     };
     struct FMissionTimeSample {
@@ -55,7 +58,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         int32 registered_hud_count{0};
     };
 
-    ml::FTestBatchOrchestratorLevelSetup level_setup;
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     int32 initial_alive_count{0};
@@ -68,6 +72,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
         test_driver.Reset();
         initial_alive_count = 0;
         entity_count_samples = {};
@@ -78,29 +84,30 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     AFTER_EACH()
     {
-        if (auto* const orchestrator{level_setup.get_orchestrator()}; IsValid(orchestrator)) {
+        if (auto* const orchestrator{level_setup->get_orchestrator()}; IsValid(orchestrator)) {
             orchestrator->clear_end_tick_test_hook();
         }
-        level_setup.teardown();
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
     }
 
     TEST_METHOD(InitialCachesPopulateWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder, *TestRunner);
+        level_setup->setup(TestCommandBuilder);
         TestCommandBuilder.Do([this] { check_initial_caches(); });
     }
 
     TEST_METHOD(EntityCountPollingContinuesWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder,
-                          *TestRunner,
-                          [this](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(world,
-                                                      config,
-                                                      checks,
-                                                      FName{TEXT("entity_count_capital")},
-                                                      FVector::ZeroVector);
-                          });
+        level_setup->setup(TestCommandBuilder,
+                           [this](UWorld& world, UTestSimulationConfig const& config) {
+                               ml::spawn_capital_proxy(world,
+                                                       config,
+                                                       checks,
+                                                       FName{TEXT("entity_count_capital")},
+                                                       FVector::ZeroVector);
+                           });
         TestCommandBuilder.Do([this] { begin_entity_count_polling_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_entity_count_polling_result(); });
@@ -108,11 +115,10 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(MissionAndDefenceDataUpdateWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder,
-                          *TestRunner,
-                          [this](UWorld& world, UTestSimulationConfig const& config) {
-                              configure_defence_mission(world, config);
-                          });
+        level_setup->setup(TestCommandBuilder,
+                           [this](UWorld& world, UTestSimulationConfig const& config) {
+                               configure_defence_mission(world, config);
+                           });
         TestCommandBuilder.Do([this] { begin_defence_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_defence_result(); });
@@ -120,15 +126,14 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(PlayerStateAndKillsUpdateWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder,
-                          *TestRunner,
-                          [this](UWorld& world, UTestSimulationConfig const& config) {
-                              ml::spawn_capital_proxy(world,
-                                                      config,
-                                                      checks,
-                                                      FName{TEXT("player_kill_target_capital")},
-                                                      FVector{2000.f, 0.f, 0.f});
-                          });
+        level_setup->setup(TestCommandBuilder,
+                           [this](UWorld& world, UTestSimulationConfig const& config) {
+                               ml::spawn_capital_proxy(world,
+                                                       config,
+                                                       checks,
+                                                       FName{TEXT("player_kill_target_capital")},
+                                                       FVector{2000.f, 0.f, 0.f});
+                           });
         TestCommandBuilder.Do([this] { begin_player_kill_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_player_kill_result(); });
@@ -136,11 +141,10 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(MissionTimeUsesSimulationClockWithoutHUD)
     {
-        level_setup.setup(TestCommandBuilder,
-                          *TestRunner,
-                          [this](UWorld& world, UTestSimulationConfig const& config) {
-                              configure_defence_mission(world, config);
-                          });
+        level_setup->setup(TestCommandBuilder,
+                           [this](UWorld& world, UTestSimulationConfig const& config) {
+                               configure_defence_mission(world, config);
+                           });
         TestCommandBuilder.Do([this] { begin_mission_time_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_mission_time(); });
@@ -148,7 +152,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
     TEST_METHOD(LateHUDRegistrationSynchronisesAndUnregisters)
     {
-        level_setup.setup(TestCommandBuilder, *TestRunner);
+        level_setup->setup(TestCommandBuilder);
         TestCommandBuilder.Do([this] { check_hud_registration_lifecycle(); });
     }
   private:
@@ -156,7 +160,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Initial cache
     /* ------------------------------------------------------------------------------------------ */
     void check_initial_caches() {
-        auto* const orchestrator{level_setup.get_orchestrator()};
+        auto* const orchestrator{level_setup->get_orchestrator()};
         if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
             return;
         }
@@ -225,7 +229,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         UGameplayStatics::FinishSpawningActor(mission_manager, FTransform::Identity);
     }
     void begin_defence_scenario() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         auto const* const mission_manager{test_driver->orchestrator.get_mission_manager()};
         check(mission_manager);
 
@@ -285,7 +289,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Timed mission
     /* ------------------------------------------------------------------------------------------ */
     void begin_mission_time_scenario() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_mission_time_tick));
         test_driver->timeline.finish_at(test_duration);
@@ -328,7 +332,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Player kill
     /* ------------------------------------------------------------------------------------------ */
     void begin_player_kill_scenario() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         auto const& player_ship{test_driver->get_player_ship()};
         auto const& capitals{test_driver->get_capital_ships()};
         check(capitals.get_num_instances() == 1);
@@ -346,8 +350,28 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     void on_player_tick(ATestBatchOrchestrator & orchestrator) {
         auto const& hud_manager{orchestrator.get_hud_manager()};
         auto const& data{hud_manager.get_player_status_data()};
+        auto const& player_ship{test_driver->get_player_ship()};
+        auto const& kill_data{hud_manager.get_kill_data()};
+        auto const top_killer{kill_data.top_killers.FindByPredicate(
+            [&player_ship](ml::ship_hud::FTopKillerEntry const& entry) {
+                return entry.entity_id == player_ship.get_unique_id();
+            })};
+        auto const player_team_row{kill_data.team_kill_matrix.FindByPredicate(
+            [&player_ship](ml::ship_hud::FTeamKillMatrixRow const& row) {
+                return row.killer_team == player_ship.get_team();
+            })};
+        int32 player_team_matrix_kills{0};
+        if (player_team_row) {
+            for (int32 const kills : player_team_row->kills_by_victim_type) {
+                player_team_matrix_kills += kills;
+            }
+        }
+
         player_samples.add(test_driver->get_time(),
-                           FPlayerSample{data.points, hud_manager.get_registered_hud_count()});
+                           FPlayerSample{data.points,
+                                         top_killer ? top_killer->kills : 0,
+                                         player_team_matrix_kills,
+                                         hud_manager.get_registered_hud_count()});
         test_driver->timeline.tick(test_driver->get_time());
     }
     void check_player_kill_result() {
@@ -357,8 +381,14 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
             return;
         }
 
+        auto const& before_sample{player_samples.nearest_value(early_sample_time)};
         auto const& sample{player_samples.nearest_value(test_duration)};
+        checks.are_equal(0, before_sample.top_killer_kills, TEXT("Top killers start empty"));
+        checks.are_equal(
+            0, before_sample.player_team_matrix_kills, TEXT("Kill matrix starts empty"));
         checks.are_equal(1, sample.points, TEXT("Player kill count is cached"));
+        checks.are_equal(1, sample.top_killer_kills, TEXT("Top-killer data is cached"));
+        checks.are_equal(1, sample.player_team_matrix_kills, TEXT("Kill matrix is cached"));
         checks.are_equal(0, sample.registered_hud_count, TEXT("Player data updates without a HUD"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -368,7 +398,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Registration
     /* ------------------------------------------------------------------------------------------ */
     void check_hud_registration_lifecycle() {
-        auto* const orchestrator{level_setup.get_orchestrator()};
+        auto* const orchestrator{level_setup->get_orchestrator()};
         if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
             return;
         }
@@ -378,7 +408,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
                          TEXT("Cache exists before HUD registration"));
 
         auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
-        auto* const player_controller{level_setup.get_world().GetFirstPlayerController()};
+        auto* const player_controller{level_setup->get_world().GetFirstPlayerController()};
         auto const ui_data_loaded{checks.not_nullptr(ui_data, TEXT("HUD UI data loads"))};
         auto const player_controller_available{
             checks.not_nullptr(player_controller, TEXT("Player controller is available"))};
@@ -422,7 +452,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     // Polling scenario
     /* ------------------------------------------------------------------------------------------ */
     void begin_entity_count_polling_scenario() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         auto const& hud_manager{test_driver->orchestrator.get_hud_manager()};
         initial_alive_count = count_cached_entities(hud_manager);
         checks.are_equal(0,

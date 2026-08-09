@@ -21,7 +21,9 @@ using FConfigureBatchTestLevel = TFunction<void(UWorld&, UTestSimulationConfig c
 
 class FTestBatchOrchestratorLevelSetup {
   public:
-    FTestBatchOrchestratorLevelSetup() = default;
+    FTestBatchOrchestratorLevelSetup(FMapTestSpawner& spawner,
+                                     FAutomationTestBase& test_runner,
+                                     FSoftTestAssertions& checks);
     ~FTestBatchOrchestratorLevelSetup();
 
     FTestBatchOrchestratorLevelSetup(FTestBatchOrchestratorLevelSetup const&) = delete;
@@ -31,9 +33,7 @@ class FTestBatchOrchestratorLevelSetup {
     auto operator=(FTestBatchOrchestratorLevelSetup&&)
         -> FTestBatchOrchestratorLevelSetup& = delete;
 
-    void setup(FTestCommandBuilder& command_builder,
-               FAutomationTestBase& test_runner,
-               FConfigureBatchTestLevel configure_level = {});
+    void setup(FTestCommandBuilder& command_builder, FConfigureBatchTestLevel configure_level = {});
     void teardown();
 
     auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator; }
@@ -42,9 +42,9 @@ class FTestBatchOrchestratorLevelSetup {
     auto spawn_orchestrator(UWorld& world) -> bool;
     void resolve_orchestrator();
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    FMapTestSpawner* spawner{nullptr};
     FAutomationTestBase* test_runner{nullptr};
-    FSoftTestAssertions checks{};
+    FSoftTestAssertions* checks{nullptr};
     ATestBatchOrchestrator* orchestrator{nullptr};
     FDelegateHandle map_change_handle{};
     FConfigureBatchTestLevel configure_level{};

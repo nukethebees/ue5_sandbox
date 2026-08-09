@@ -1,5 +1,7 @@
 #include "test_setup.h"
 
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
+
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -14,27 +16,41 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
+#include <Misc/Optional.h>
 
 TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
 {
-    ml::FTestBatchOrchestratorLevelSetup level_setup;
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
+    ml::FSoftTestAssertions checks{};
 
     BEFORE_EACH()
-    { level_setup.setup(TestCommandBuilder, *TestRunner); }
+    {
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
+        level_setup->setup(TestCommandBuilder);
+    }
 
     AFTER_EACH()
-    { level_setup.teardown(); }
+    {
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
+    }
 
     TEST_METHOD(SpawnMissingActors)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
+            auto* const orchestrator{level_setup->get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
-            auto& world{level_setup.get_world()};
+            auto& world{level_setup->get_world()};
 
             TestRunner->TestTrue(TEXT("Orchestrator begins paused in an automation test"),
                                  orchestrator->get_state() == EOrchestratorState::Paused);
@@ -93,7 +109,7 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
     TEST_METHOD(SimulationClockConversions)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
+            auto* const orchestrator{level_setup->get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }

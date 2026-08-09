@@ -1,12 +1,15 @@
 #include "test_setup.h"
 #include "TestSimulationDriver.h"
 
+#include <SandboxTests/cqtests/SoftTestAssertions.h>
+
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestSpaceShipController.h>
 
+#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
@@ -20,7 +23,9 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.FunctionalTests")
 
     inline static FTimespan const timeout{0, 0, 2};
 
-    ml::FTestBatchOrchestratorLevelSetup level_setup;
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
+    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
     FRegistryEntityHandle player_ship_handle{};
@@ -29,15 +34,21 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.FunctionalTests")
     BEFORE_EACH()
     {
         test_driver.Reset();
-        level_setup.setup(TestCommandBuilder, *TestRunner);
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
+        level_setup->setup(TestCommandBuilder);
     }
 
     AFTER_EACH()
     {
-        if (auto* orchestrator{level_setup.get_orchestrator()}; IsValid(orchestrator)) {
+        if (auto* orchestrator{level_setup->get_orchestrator()}; IsValid(orchestrator)) {
             orchestrator->clear_end_tick_test_hook();
         }
-        level_setup.teardown();
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
     }
 
     TEST_METHOD(LethalDamageDestroysPlayerShip)
@@ -48,7 +59,7 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.FunctionalTests")
     }
   private:
     void queue_player_ship_death() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         test_driver->timeline.finish_at(0.5);
 
         auto* const ship{const_cast<ATestSpaceShip*>(&test_driver->get_player_ship())};

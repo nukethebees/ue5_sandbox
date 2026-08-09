@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestDeathReason.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntityType.h>
+#include <Sandbox/batch_game/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>
 
@@ -16,6 +17,7 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle::index_type> registry_indices;
     TArray<FRegistryEntityHandle::generation_type> registry_generations;
     TArray<ETestEntityType> entity_types;
+    TArray<ETestTeam> teams;
     TArray<kills_type> kills;
     TArray<uint8> alive;
     TArray<TestEntityUniqueId> killed_by;
@@ -26,6 +28,7 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
         return std::forward<TFunc>(func)(self.registry_indices,
                                          self.registry_generations,
                                          self.entity_types,
+                                         self.teams,
                                          self.kills,
                                          self.alive,
                                          self.killed_by,
