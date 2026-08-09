@@ -12,7 +12,7 @@
 		"Sandbox.FunctionalTests.FightersInterceptCapital.MainTest",
 		"Sandbox.FunctionalTests.PlayerShipVsCapital.Main",
 		"Sandbox.FunctionalTests.SimpleBatch.FuncT_simple_batch",
-		"Sandbox.FunctionalTests.TestCapitalShipProxy.SpawnsWithConfiguredHealth",
+		"Sandbox.FunctionalTests.TestCapitalShipProxy.ProxyHealthOverridesConfig",
 		"Sandbox.FunctionalTests.TestEntityRegistry.MainTest",
 		"Sandbox.FunctionalTests.TestEntityRegistry.OnePlayerKill",
 		"Sandbox.FunctionalTests.TestEntityRegistry.TwoPlayerKills",
