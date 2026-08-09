@@ -114,8 +114,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
                                      root_widget->IsA<UVerticalBox>());
 
                 auto* const text_widget{widget_tree->FindWidget(TEXT("text_widget"))};
-                TestRunner->TestTrue(TEXT("Generated text_widget exists"),
-                                     IsValid(text_widget));
+                TestRunner->TestTrue(TEXT("Generated text_widget exists"), IsValid(text_widget));
 
                 TArray<UWidget*> generated_widgets;
                 widget_tree->GetAllWidgets(generated_widgets);

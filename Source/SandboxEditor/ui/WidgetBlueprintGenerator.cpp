@@ -10,7 +10,6 @@
 #include "Components/PanelWidget.h"
 #include "Misc/PackageName.h"
 #include "ObjectTools.h"
-#include "ScopedTransaction.h"
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
 #include "WidgetBlueprint.h"
@@ -125,11 +124,11 @@ bool validate_entry(FWidgetBlueprintGenerationEntry const& entry,
         }
 
         auto* const object_property{CastField<FObjectPropertyBase>(property)};
-        auto* const property_class{
-            object_property != nullptr ? object_property->PropertyClass.Get() : nullptr};
+        auto* const property_class{object_property != nullptr ? object_property->PropertyClass.Get()
+                                                              : nullptr};
         if (property_class == nullptr || !property_class->IsChildOf(UPanelWidget::StaticClass())) {
-            auto const property_class_name{
-                property_class != nullptr ? property_class->GetPathName() : TEXT("non-widget property")};
+            auto const property_class_name{property_class != nullptr ? property_class->GetPathName()
+                                                                     : TEXT("non-widget property")};
             LOG_ERR("Cannot generate '%s': property '%s' is marked GeneratorRoot but has type "
                     "'%s'. GeneratorRoot properties must derive from UPanelWidget.",
                     *widget_class_name,
@@ -153,8 +152,8 @@ bool validate_entry(FWidgetBlueprintGenerationEntry const& entry,
         }
 
         auto* const object_property{CastField<FObjectPropertyBase>(property)};
-        auto* const property_class{
-            object_property != nullptr ? object_property->PropertyClass.Get() : nullptr};
+        auto* const property_class{object_property != nullptr ? object_property->PropertyClass.Get()
+                                                              : nullptr};
         if (property_class == nullptr || !property_class->IsChildOf(UWidget::StaticClass()) ||
             !is_project_widget_class(*property_class)) {
             continue;
@@ -200,11 +199,56 @@ bool delete_existing_asset(FWidgetBlueprintGenerationEntry& entry,
     LOG_LOG("Widget generation row %d is deleting existing asset '%s'.",
             entry_index,
             *object_path.ToString());
+    LOG_LOG("Widget generation row %d stored existing_widget before clear: '%s'.",
+            entry_index,
+            *GetPathNameSafe(entry.existing_widget.Get()));
     entry.existing_widget = nullptr;
+    LOG_LOG("Widget generation row %d stored existing_widget after clear: '%s'.",
+            entry_index,
+            *GetPathNameSafe(entry.existing_widget.Get()));
+
+    TWeakObjectPtr<UObject> asset_to_delete{asset_data.GetAsset()};
+    if (!asset_to_delete.IsValid()) {
+        LOG_ERR("Widget generation row %d could not load existing asset '%s' for deletion.",
+                entry_index,
+                *object_path.ToString());
+        return false;
+    }
+
+    bool is_referenced{false};
+    bool is_referenced_by_undo{false};
+    FReferencerInformationList referencers;
+    ObjectTools::GatherObjectReferencersForDeletion(
+        asset_to_delete.Get(), is_referenced, is_referenced_by_undo, &referencers);
+    LOG_LOG("Widget generation row %d delete preflight: stored existing_widget='%s', "
+            "referenced=%s, referenced_by_undo=%s, external_referencers=%d.",
+            entry_index,
+            *GetPathNameSafe(entry.existing_widget.Get()),
+            is_referenced ? TEXT("true") : TEXT("false"),
+            is_referenced_by_undo ? TEXT("true") : TEXT("false"),
+            referencers.ExternalReferences.Num());
+
+    auto const external_referencer_count{referencers.ExternalReferences.Num()};
+    for (int32 referencer_index{0}; referencer_index < external_referencer_count;
+         ++referencer_index) {
+        auto const& referencer{referencers.ExternalReferences[referencer_index]};
+        LOG_LOG("Widget generation row %d old asset is referenced by '%s'.",
+                entry_index,
+                *GetPathNameSafe(referencer.Referencer));
+    }
+
+    asset_to_delete.Reset();
     TArray<FAssetData> assets_to_delete{asset_data};
     auto const deleted_asset_count{ObjectTools::DeleteAssets(assets_to_delete, false)};
-    if (deleted_asset_count != assets_to_delete.Num() ||
-        asset_registry.GetAssetByObjectPath(object_path).IsValid()) {
+    auto const asset_still_registered{asset_registry.GetAssetByObjectPath(object_path).IsValid()};
+    LOG_LOG("Widget generation row %d delete result: deleted=%d, requested=%d, "
+            "asset_still_registered=%s, stored existing_widget='%s'.",
+            entry_index,
+            deleted_asset_count,
+            assets_to_delete.Num(),
+            asset_still_registered ? TEXT("true") : TEXT("false"),
+            *GetPathNameSafe(entry.existing_widget.Get()));
+    if (deleted_asset_count != assets_to_delete.Num() || asset_still_registered) {
         LOG_ERR("Widget generation row %d could not delete existing asset '%s'.",
                 entry_index,
                 *object_path.ToString());
@@ -221,10 +265,10 @@ enum class EBindWidgetConstructionResult {
 };
 
 EBindWidgetConstructionResult construct_bind_widget(UWidgetTree& widget_tree,
-                                                     FProperty& property,
-                                                     int32 const entry_index,
-                                                     UTestBatchGameUiData*& ui_data,
-                                                     UWidget*& generated_widget) {
+                                                    FProperty& property,
+                                                    int32 const entry_index,
+                                                    UTestBatchGameUiData*& ui_data,
+                                                    UWidget*& generated_widget) {
     generated_widget = nullptr;
     auto const property_name{property.GetFName()};
     auto const property_name_string{property_name.ToString()};
@@ -275,7 +319,8 @@ EBindWidgetConstructionResult construct_bind_widget(UWidgetTree& widget_tree,
                                  : EBindWidgetConstructionResult::skipped;
     }
 
-    generated_widget = widget_tree.ConstructWidget<UWidget>(widget_class_to_construct, property_name);
+    generated_widget =
+        widget_tree.ConstructWidget<UWidget>(widget_class_to_construct, property_name);
     if (generated_widget == nullptr) {
         LOG_ERR("Widget generation row %d could not construct binding '%s' as '%s'.",
                 entry_index,
@@ -384,11 +429,8 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
     if (generator_root_property != nullptr) {
         UTestBatchGameUiData* ui_data{nullptr};
         UWidget* generated_root_widget{nullptr};
-        auto const construction_result{construct_bind_widget(*widget_tree,
-                                                             *generator_root_property,
-                                                             entry_index,
-                                                             ui_data,
-                                                             generated_root_widget)};
+        auto const construction_result{construct_bind_widget(
+            *widget_tree, *generator_root_property, entry_index, ui_data, generated_root_widget)};
         root_widget = Cast<UPanelWidget>(generated_root_widget);
         if (construction_result != EBindWidgetConstructionResult::constructed ||
             root_widget == nullptr) {
@@ -476,10 +518,10 @@ void UWidgetBlueprintGenerationDataAsset::generate_widgets() {
     }
 
     LOG_LOG("Preparing to generate %d Widget Blueprint row(s).", selected_widget_count);
-    FScopedTransaction const transaction{
-        NSLOCTEXT("SandboxEditor", "GenerateWidgetBlueprints", "Generate Widget Blueprints")};
-    Modify();
-    refresh_existing_widgets();
+    for (auto& entry : widgets) {
+        entry.existing_widget = nullptr;
+    }
+    LOG_LOG("Cleared derived ExistingWidget references before generation.");
 
     auto const widget_count{widgets.Num()};
     for (int32 widget_index{0}; widget_index < widget_count; ++widget_index) {
@@ -509,6 +551,7 @@ void UWidgetBlueprintGenerationDataAsset::generate_widgets() {
             continue;
         }
 
+        Modify();
         entry.existing_widget = widget_blueprint;
         entry.generate = false;
         LOG_LOG("Widget generation row %d completed successfully.", widget_index);
@@ -560,8 +603,15 @@ void UWidgetBlueprintGenerationDataAsset::refresh_existing_widgets() {
         }
 
         auto const asset_data{asset_registry.GetAssetByObjectPath(object_path)};
-        entry.existing_widget =
-            asset_data.IsValid() ? Cast<UWidgetBlueprint>(asset_data.GetAsset()) : nullptr;
+        auto* const refreshed_widget{
+            asset_data.IsValid() ? Cast<UWidgetBlueprint>(asset_data.GetAsset()) : nullptr};
+        if (entry.existing_widget != refreshed_widget) {
+            LOG_LOG("Refreshing stored existing_widget for '%s' from '%s' to '%s'.",
+                    *object_path.ToString(),
+                    *GetPathNameSafe(entry.existing_widget.Get()),
+                    *GetPathNameSafe(refreshed_widget));
+        }
+        entry.existing_widget = refreshed_widget;
     }
 }
 
