@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lex_to_string.h"
+#include "TestEqualityTraits.h"
 
 #include <Sandbox/utilities/enums.h>
 
@@ -13,6 +14,7 @@
 
 #include <concepts>
 #include <functional>
+#include <type_traits>
 
 class AActor;
 
@@ -21,6 +23,9 @@ struct FSoftTestAssertions {
     static constexpr auto to_string(bool b) -> TCHAR const* {
         return b ? TEXT("true") : TEXT("false");
     }
+
+    static auto to_string(FVector2D const& value) -> FString { return value.ToString(); }
+    static auto to_string(FVector3d const& value) -> FString { return value.ToCompactString(); }
 
     void display_result(bool const passed, FString const& msg);
 
@@ -123,18 +128,18 @@ struct FSoftTestAssertions {
     /* ---------------------------------------------------------------------------- */
     template <typename T>
     bool all_equal(T const& exp, T const& got, FString const& description) {
-        auto const n_exp{ml::num(exp)};
-        auto const n_got{ml::num(got)};
+        using Element = std::remove_cvref_t<decltype(exp[0])>;
+        return all_equal_impl<&TestEqualityTraits<Element>::is_equal>(exp, got, description);
+    }
 
-        if (!are_equal(n_exp, n_got, description)) {
-            return false;
-        }
-
-        for (int32 i{0}; i < n_exp; ++i) {
-            are_equal(exp[i], got[i], FString::Printf(TEXT("[%d] %s"), i, *description));
-        }
-
-        return true;
+    template <typename T, typename Tolerance>
+    bool all_equal(T const& exp,
+                   T const& got,
+                   Tolerance const tolerance,
+                   FString const& description) {
+        using Element = std::remove_cvref_t<decltype(exp[0])>;
+        return all_equal_impl<&TestEqualityTraits<Element>::is_equal_with_tolerance>(
+            exp, got, tolerance, description);
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -278,6 +283,79 @@ Check dist > %f:
     bool log_successful_assertions{false};
     bool all_passed{true};
   private:
+    template <auto is_equal, typename T>
+    bool all_equal_impl(T const& exp, T const& got, FString const& description) {
+        indices.Reset();
+        message.Reset();
+
+        auto const n_exp{ml::num(exp)};
+        auto const n_got{ml::num(got)};
+        if (n_exp != n_got) {
+            store_result(false);
+            message.Appendf(TEXT("%s (Expected %d elements, got %d)"), *description, n_exp, n_got);
+            display_result(false, message);
+            return false;
+        }
+
+        for (int32 i{0}; i < n_exp; ++i) {
+            if (!is_equal(exp[i], got[i])) {
+                indices.Add(i);
+            }
+        }
+
+        return display_all_equal_result(exp, got, description);
+    }
+
+    template <auto is_equal, typename T, typename Tolerance>
+    bool all_equal_impl(T const& exp,
+                        T const& got,
+                        Tolerance const tolerance,
+                        FString const& description) {
+        indices.Reset();
+        message.Reset();
+
+        auto const n_exp{ml::num(exp)};
+        auto const n_got{ml::num(got)};
+        if (n_exp != n_got) {
+            store_result(false);
+            message.Appendf(TEXT("%s (Expected %d elements, got %d)"), *description, n_exp, n_got);
+            display_result(false, message);
+            return false;
+        }
+
+        for (int32 i{0}; i < n_exp; ++i) {
+            if (!is_equal(exp[i], got[i], tolerance)) {
+                indices.Add(i);
+            }
+        }
+
+        return display_all_equal_result(exp, got, description);
+    }
+
+    template <typename T>
+    bool display_all_equal_result(T const& exp, T const& got, FString const& description) {
+
+        auto const result{indices.IsEmpty()};
+        store_result(result);
+        if (result) {
+            display_result(true, description);
+            return true;
+        }
+
+        message.Appendf(TEXT("%s (%d mismatched elements):"), *description, indices.Num());
+        auto const num_indices{indices.Num()};
+        for (int32 i{0}; i < num_indices; ++i) {
+            auto const index{indices[i]};
+            message.Appendf(TEXT("\n[%d] (Exp %s, Got %s)"),
+                            index,
+                            *to_string(exp[index]),
+                            *to_string(got[index]));
+        }
+        display_result(false, message);
+
+        return false;
+    }
+
     template <auto comparison, typename T>
     bool compare(T const& lhs,
                  T const& rhs,
@@ -297,6 +375,9 @@ Check dist > %f:
 
         return result;
     }
+
+    TArray<int32> indices;
+    FString message;
 };
 
 #define SANDBOX_TESTS_ASSERT_ALL_PASSED(CHECKS_INSTANCE)                     \

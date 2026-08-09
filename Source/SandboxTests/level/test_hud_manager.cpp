@@ -673,22 +673,10 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         checks.are_equal(local.oldest_index,
                          simulation.oldest_index,
                          TEXT("Headless and simulation sampled-speed cache indices match"));
-
-        auto const sample_count{FMath::Min(local_sample_count, simulation_sample_count)};
-        for (int32 i{0}; i < sample_count; ++i) {
-            auto const& local_sample{local.samples[i]};
-            auto const& simulation_sample{simulation.samples[i]};
-            checks.are_equal(local_sample.X,
-                             simulation_sample.X,
-                             sampled_speed_tolerance,
-                             TEXT("Headless and simulation sampled-speed times match"),
-                             i);
-            checks.are_equal(local_sample.Y,
-                             simulation_sample.Y,
-                             sampled_speed_tolerance,
-                             TEXT("Headless and simulation sampled-speed values match"),
-                             i);
-        }
+        checks.all_equal(local.samples,
+                         simulation.samples,
+                         sampled_speed_tolerance,
+                         TEXT("Headless and simulation sampled-speed samples match"));
     }
 #endif
 
