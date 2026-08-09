@@ -3,7 +3,6 @@
 #include <Sandbox/input/EnhancedInputMixin.hpp>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
-#include <Sandbox/ui/HUDManager.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>
@@ -14,6 +13,7 @@ class UShipHudWidget;
 class UTestBatchGameUiData;
 class UInputAction;
 class ATestSpaceShip;
+class ATestBatchOrchestrator;
 
 UCLASS()
 class ATestSpaceShipController
@@ -31,7 +31,7 @@ class ATestSpaceShipController
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
     void OnUnPossess() override;
-    void EndPlay(EEndPlayReason::Type const reason);
+    void EndPlay(EEndPlayReason::Type const reason) override;
 
     void initialise_hud();
 
@@ -113,7 +113,7 @@ class ATestSpaceShipController
     void screenshot_tick(float dt);
 
     // UI
-    FHUDManager hud_manager;
+    TWeakObjectPtr<ATestBatchOrchestrator> hud_orchestrator;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")

@@ -4,11 +4,10 @@
 #include "Sandbox/batch_game/TestMissionState.h"
 #include "Sandbox/batch_game/TestTeamVisualData.h"
 #include "Sandbox/health/ShipHealth.h"
+#include "Sandbox/ui/HudCrosshairDistances.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-
-#include <span>
 
 #include "ShipHudWidget.generated.h"
 
@@ -26,7 +25,9 @@ class UVector2DWidget;
 class UDebugGraphWidget;
 class UEntityCountTableWidget;
 class UMissionStatusWidget;
-class ATestMissionManager;
+namespace ml::hud_manager {
+struct FMissionDataCache;
+}
 
 UCLASS()
 class SANDBOX_API UShipHudWidget : public UUserWidget {
@@ -57,6 +58,12 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     void set_crosshair_positions(FVector2d near, FVector2d far);
     void set_crosshair_colours(FLinearColor near, FLinearColor far);
     void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
+    void set_crosshair_distances(FHudCrosshairDistances const& value) {
+        crosshair_distances = value;
+    }
+    auto get_crosshair_distances() const noexcept -> FHudCrosshairDistances const& {
+        return crosshair_distances;
+    }
 
     void set_lock_on_widget_position(FVector2d pos);
     void set_lock_on_widget_visibility(bool const new_visibility);
@@ -77,15 +84,14 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_entity_counts(ATestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_mission_status(ATestMissionManager const& mission_manager);
+    void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);
-    void update_mission_surviving_entity_health(ATestMissionManager const& mission_manager);
 
 #if WITH_EDITOR
-    void update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index);
+    void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
     void NativePreConstruct() override;
@@ -148,6 +154,8 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UMaterialInstanceDynamic* near_crosshair_material_instance{nullptr};
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
+
+    FHudCrosshairDistances crosshair_distances{};
 
     UPROPERTY(meta = (BindWidget))
     UImage* lock_on_widget{nullptr};

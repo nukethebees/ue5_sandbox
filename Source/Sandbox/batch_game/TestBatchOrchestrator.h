@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
+#include <Sandbox/ui/HUDManager.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -21,7 +22,6 @@ class ATestEntityRegistry;
 class ATestMissionManager;
 class ADelayedNiagaraSpawner;
 class UTestSimulationConfig;
-struct FHUDManager;
 
 class ATestBatchOrchestrator;
 
@@ -84,13 +84,13 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
     auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
+    auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
+    auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
 
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
 
     void spawn_missing_actors();
-    void register_hud_manager(FHUDManager& manager);
-    void unregister_hud_manager(FHUDManager& manager);
 
     static FOnProxyEntitiesBound on_proxy_entities_bound;
   protected:
@@ -133,7 +133,10 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     tick_type completed_ticks{0};
 
-    FHUDManager* registered_hud_manager{nullptr};
+    FHUDManager hud_manager;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
+    FTestBatchGameUiUpdateFrequencies hud_update_frequencies{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

@@ -580,6 +580,5 @@ void ASpaceShip::sample_speed() {
         speed_sample_index = 0;
     }
 
-    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
-                                    speed_sample_index);
+    on_speed_sampled.ExecuteIfBound(TConstArrayView<FVector2d>{speed_samples}, speed_sample_index);
 }

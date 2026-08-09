@@ -1,94 +1,82 @@
 #include "Sandbox/ui/HUDManager.h"
 
-#include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
-#include "Sandbox/batch_game/TestBatchGameUiData.h"
 #include "Sandbox/batch_game/TestMissionManager.h"
 #include "Sandbox/batch_game/TestSpaceShip.h"
-#include "Sandbox/batch_game/TestSpaceShipController.h"
-#include "Sandbox/batch_game/TestTeamVisualData.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
 #include <SandboxCore/timing.h>
-#include <SandboxCoreEngine/uobject_utils.h>
 
-#include "Blueprint/UserWidget.h"
-#include "Blueprint/WidgetLayoutLibrary.h"
+#include <Blueprint/WidgetLayoutLibrary.h>
+#include <GameFramework/PlayerController.h>
 
-namespace {
-void log_error_once(bool& logged, TCHAR const* context, ml::FErrorMsg const& error) {
-    if (logged) {
-        return;
-    }
-
-    UE_LOG(LogSandboxUI, Warning, TEXT("%s: %s."), context, *error);
-    logged = true;
-}
-}
-
-void FHUDManager::initialise(UShipHudWidget& new_hud_widget,
-                             UTestBatchGameUiData const& new_ui_data,
+void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ATestMissionManager const& new_mission_manager,
                              ATestEntityRegistry const& new_entity_registry,
                              SimulationClockInterface const simulation_clock,
-                             ATestSpaceShipController& new_player_controller,
                              ATestSpaceShip* const new_player_ship) {
-    deactivate();
+    update_timers.reset();
+    mission_data_buffers = {};
+    entity_count_data_buffers = {};
+    player_status_data_buffers = {};
+    player_flight_data_buffers = {};
+    has_mission_data = false;
+#if WITH_EDITOR
+    sampled_speed_data_buffers = {};
+    has_sampled_speed_data = false;
+#endif
 
-    auto* const team_visual_data{new_ui_data.team_visual_data.Get()};
-
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(&new_hud_widget),
-            SANDBOX_NAMED_UOBJECT_PTR(team_visual_data),
-        })}) {
-        UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: %s."), *error);
-    }
-
-    auto const update_frequencies{new_ui_data.update_frequencies.to_array()};
-    auto const n_freqs{update_frequencies.Num()};
-
-    for (int32 i{0}; i < n_freqs; ++i) {
-        if (!ml::valid_periods(update_frequencies[i])) {
-            UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
+    auto const periods{update_frequencies.to_array()};
+    auto const n_periods{periods.Num()};
+    for (int32 i{0}; i < n_periods; ++i) {
+        if (!ml::valid_periods(periods[i])) {
+            UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
-        auto const tick_period{simulation_clock.duration_to_tick_period(update_frequencies[i])};
+
+        auto const tick_period{simulation_clock.duration_to_tick_period(periods[i])};
         if (!ml::valid_periods(tick_period)) {
-            UE_LOG(LogSandboxUI, Fatal, TEXT("Invalid period."));
+            UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid tick period."));
         }
         update_timers.add_started(tick_period);
     }
 
-    new_hud_widget.AddToViewport();
-    hud_widget = &new_hud_widget;
-    player_controller = &new_player_controller;
-    ui_data = &new_ui_data;
     mission_manager = &new_mission_manager;
     entity_registry = &new_entity_registry;
-
-    new_hud_widget.set_entity_colours(team_visual_data->build_team_colour_cache());
-
+    player_ship = new_player_ship;
+    check(IsValid(mission_manager));
+    check(IsValid(entity_registry));
     state = EHUDManagerState::Active;
-    set_player_ship(new_player_ship);
-    update_player_status();
-    update_entity_counts();
+
+    collect_mission_data();
+    collect_entity_count_data();
+    collect_player_status_data();
+    collect_player_flight_data();
+#if WITH_EDITOR
+    collect_sampled_speed_data();
+#endif
+
+    for (auto const hud_ptr : registered_huds) {
+        auto* const hud{hud_ptr.Get()};
+        check(IsValid(hud));
+        synchronise_hud(*hud);
+    }
 }
 void FHUDManager::deactivate() {
-    remove_player_ship_delegates();
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->RemoveFromParent();
-    }
-
     update_timers.reset();
-    hud_widget.Reset();
-    player_controller.Reset();
+    registered_huds.Reset();
     player_ship.Reset();
-    ui_data = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
     mission_data_buffers = {};
+    entity_count_data_buffers = {};
+    player_status_data_buffers = {};
+    player_flight_data_buffers = {};
     has_mission_data = false;
     state = EHUDManagerState::Disabled;
-    has_logged.reset();
+#if WITH_EDITOR
+    sampled_speed_data_buffers = {};
+    has_sampled_speed_data = false;
+#endif
 }
 
 void FHUDManager::tick() {
@@ -96,134 +84,73 @@ void FHUDManager::tick() {
         return;
     }
 
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(ui_data),
-            SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        })}) {
-        log_error_once(has_logged.tick_dependencies_error_logged, TEXT("FHUDManager::tick"), error);
+    check(IsValid(mission_manager));
+    check(IsValid(entity_registry));
+
+    auto const changes{collect_data()};
+    update_huds(changes);
+}
+
+void FHUDManager::register_hud(UShipHudWidget& hud) {
+    check(IsValid(&hud));
+    check(!registered_huds.ContainsByPredicate(
+        [&hud](TWeakObjectPtr<UShipHudWidget> const existing) { return existing.Get() == &hud; }));
+
+    registered_huds.Emplace(&hud);
+    if (state == EHUDManagerState::Active) {
+        synchronise_hud(hud);
+    }
+}
+void FHUDManager::unregister_hud(UShipHudWidget& hud) {
+    check(IsValid(&hud));
+
+    auto const index{registered_huds.IndexOfByPredicate(
+        [&hud](TWeakObjectPtr<UShipHudWidget> const existing) { return existing.Get() == &hud; })};
+    check(index != INDEX_NONE);
+    registered_huds.RemoveAt(index);
+}
+
+void FHUDManager::set_selected_mapping_context(FString const& context_name) {
+    if (selected_mapping_context == context_name) {
         return;
     }
 
-    update_player_hud();
+    selected_mapping_context = context_name;
+}
+
+auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
+    ml::hud_manager::FDataChanges changes;
+    changes.player_flight = collect_player_flight_data();
+#if WITH_EDITOR
+    changes.sampled_speed = collect_sampled_speed_data();
+#endif
+
     update_timers.tick();
     if (update_timers.try_consume(FHUDUpdateTimerIndex::player_status)) {
-        update_player_status();
+        changes.player_status = collect_player_status_data();
     }
     if (update_timers.try_consume(FHUDUpdateTimerIndex::mission_status)) {
-        update_mission_status();
+        changes.mission = collect_mission_data();
     }
     if (update_timers.try_consume(FHUDUpdateTimerIndex::entity_counts)) {
-        update_entity_counts();
+        changes.entity_counts = collect_entity_count_data();
     }
+    return changes;
 }
-
-// Accessors
-void FHUDManager::set_player_ship(ATestSpaceShip* const new_player_ship) noexcept {
-    remove_player_ship_delegates();
-    player_ship = new_player_ship;
-    bind_player_ship_delegates();
-
-    if (!IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    if (player_ship.IsValid()) {
-        on_health_changed(player_ship->get_health_info());
-        on_speed_changed(player_ship->get_speed());
-        on_target_speed_changed(player_ship->get_target_speed());
-        on_energy_changed(1.f);
-        on_laser_firing_mode_changed(ELaserFiringState::idle);
-        on_lock_on_acquired(nullptr);
-        on_ship_fire_rate_changed(player_ship->get_laser_fire_rate());
-        hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    } else {
-        hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
-        hud_widget->set_lock_on_widget_visibility(false);
-    }
-}
-void FHUDManager::clear_player_ship() noexcept {
-    remove_player_ship_delegates();
-    player_ship.Reset();
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
-        hud_widget->set_lock_on_widget_visibility(false);
-    }
-}
-void FHUDManager::set_selected_mapping_context(FString const& context_name) {
-    if (!IsValid(hud_widget.Get())) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("FHUDManager::set_selected_mapping_context: HUD widget is invalid."));
-        return;
-    }
-
-    hud_widget->set_selected_imc(FStringView{context_name});
-}
-
-// Mission
-void FHUDManager::update_mission_status() {
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
-        })}) {
-        log_error_once(has_logged.mission_status_dependencies_error_logged,
-                       TEXT("FHUDManager::update_mission_status"),
-                       error);
-        return;
-    }
-
+bool FHUDManager::collect_mission_data() {
+    check(IsValid(mission_manager));
     if (!mission_manager->is_ready()) {
-        return;
+        return false;
     }
 
     auto& next_data{mission_data_buffers.next()};
     read_mission_data(next_data);
-
-    if (!has_mission_data) {
-        hud_widget->set_mission_status(*mission_manager);
-        hud_widget->set_stopwatch_time(next_data.status_data.mission_stopwatch);
-        has_mission_data = true;
-        mission_data_buffers.cycle();
-        return;
-    }
-
-    auto const& current_data{mission_data_buffers.current()};
-    if (next_data == current_data) {
-        return;
-    }
-
-    if (next_data.static_data != current_data.static_data) {
-        hud_widget->set_mission_status(*mission_manager);
-        hud_widget->set_stopwatch_time(next_data.status_data.mission_stopwatch);
-        mission_data_buffers.cycle();
-        return;
-    }
-
-    auto const& next_status{next_data.status_data};
-    auto const& current_status{current_data.status_data};
-    if (next_status.mission_state != current_status.mission_state) {
-        hud_widget->set_mission_state(next_status.mission_state);
-    }
-    if (next_status.mission_stopwatch != current_status.mission_stopwatch) {
-        hud_widget->set_stopwatch_time(next_status.mission_stopwatch);
-        hud_widget->set_mission_time(next_status.mission_stopwatch);
-    }
-    if (next_status.time_remaining != current_status.time_remaining) {
-        hud_widget->set_mission_time_remaining(next_status.time_remaining);
-    }
-    if (next_status.enemies_remaining != current_status.enemies_remaining) {
-        hud_widget->set_mission_enemies_remaining(next_status.enemies_remaining);
-    }
-    if (next_status.surviving_entity_health != current_status.surviving_entity_health) {
-        hud_widget->update_mission_surviving_entity_health(*mission_manager);
-    }
-
     mission_data_buffers.cycle();
+    has_mission_data = true;
+    return mission_data_buffers.current() != mission_data_buffers.previous();
 }
 void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) const {
-    check(mission_manager);
+    check(IsValid(mission_manager));
 
     auto& static_data{out.static_data};
     static_data.mission_mode = mission_manager->get_mission_mode();
@@ -237,259 +164,217 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     status_data.enemies_remaining = mission_manager->get_kills_remaining();
     status_data.surviving_entity_health = mission_manager->get_entity_health_that_must_survive();
 }
-void FHUDManager::update_entity_counts() {
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        })}) {
-        log_error_once(has_logged.entity_counts_dependencies_error_logged,
-                       TEXT("FHUDManager::update_entity_counts"),
-                       error);
-        return;
-    }
+bool FHUDManager::collect_entity_count_data() {
+    check(IsValid(entity_registry));
 
-    hud_widget->set_entity_counts(entity_registry->count_alive_per_team_and_type());
+    auto& next_data{entity_count_data_buffers.next()};
+    next_data.alive_per_team_and_type = entity_registry->count_alive_per_team_and_type();
+    entity_count_data_buffers.cycle();
+    return entity_count_data_buffers.current() != entity_count_data_buffers.previous();
 }
+bool FHUDManager::collect_player_status_data() {
+    auto& next_data{player_status_data_buffers.next()};
+    next_data = {};
 
-// Player
-bool FHUDManager::validate_player_ship_for_update() {
-    auto* const ship{player_ship.Get()};
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(ship),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-        })}) {
-        log_error_once(has_logged.player_ship_error_logged,
-                       TEXT("FHUDManager: Cannot update player HUD"),
-                       error);
-        return false;
-    }
+    if (validate_player_ship_for_collection()) {
+        next_data.has_player_ship = true;
+        next_data.health = player_ship->get_health_info();
+        next_data.speed = player_ship->get_speed();
+        next_data.target_speed = player_ship->get_target_speed();
+        next_data.energy = player_ship->get_energy();
+        next_data.points = player_ship->get_kills();
+        next_data.fire_rate = player_ship->get_laser_fire_rate();
 
-    auto const unique_id{ship->get_unique_id()};
-    if (!unique_id.is_valid() || !entity_registry->is_valid_unique_id(unique_id)) {
-        if (!has_logged.player_ship_unique_id_error_logged) {
-            UE_LOG(LogSandboxUI,
-                   Warning,
-                   TEXT("FHUDManager: Player ship unique_id is invalid (%d)."),
-                   unique_id.id);
-            has_logged.player_ship_unique_id_error_logged = true;
+        auto const firing_mode{player_ship->get_laser_firing_mode()};
+        if (firing_mode == ELaserFiringState::lock_on_searching ||
+            firing_mode == ELaserFiringState::lock_on_acquired) {
+            next_data.near_crosshair_colour = FLinearColor::Yellow;
+            next_data.far_crosshair_colour = FLinearColor::Red;
         }
-        return false;
     }
 
-    return true;
+    player_status_data_buffers.cycle();
+    return player_status_data_buffers.current() != player_status_data_buffers.previous();
 }
-void FHUDManager::update_player_hud() {
-    if (!validate_player_ship_for_update()) {
+bool FHUDManager::collect_player_flight_data() {
+    auto& next_data{player_flight_data_buffers.next()};
+    next_data = {};
+    next_data.selected_mapping_context = selected_mapping_context;
+
+    if (validate_player_ship_for_collection()) {
+        auto const ship_socket{player_ship->get_middle_socket()};
+        auto const* const lock_on_target{player_ship->get_lock_on_target()};
+
+        next_data.has_player_ship = true;
+        next_data.turning = player_ship->get_turn_input();
+        next_data.moving = player_ship->get_move_input();
+        next_data.desired_velocity_scale = player_ship->get_target_local_planar_velocity_scale();
+        next_data.ship_velocity = player_ship->get_velocity();
+        next_data.target_velocity = player_ship->get_target_local_planar_velocity();
+        next_data.control_mode = player_ship->get_control_mode();
+        next_data.flight_mode = player_ship->get_flight_mode();
+        next_data.crosshair_origin = ship_socket.GetLocation();
+        next_data.crosshair_direction = ship_socket.GetUnitAxis(EAxis::X);
+        next_data.has_lock_on_target = IsValid(lock_on_target);
+        if (next_data.has_lock_on_target) {
+            next_data.lock_on_target_position = lock_on_target->GetActorLocation();
+        }
+    }
+
+    player_flight_data_buffers.cycle();
+    return player_flight_data_buffers.current() != player_flight_data_buffers.previous();
+}
+#if WITH_EDITOR
+bool FHUDManager::collect_sampled_speed_data() {
+    auto& next_data{sampled_speed_data_buffers.next()};
+    next_data = {};
+    if (player_ship.IsValid()) {
+        auto const samples{player_ship->get_speed_samples()};
+        next_data.samples.Append(samples.GetData(), samples.Num());
+        next_data.oldest_index = player_ship->get_speed_sample_index();
+        has_sampled_speed_data = true;
+    }
+
+    sampled_speed_data_buffers.cycle();
+    return sampled_speed_data_buffers.current() != sampled_speed_data_buffers.previous();
+}
+#endif
+
+void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
+    if (registered_huds.IsEmpty()) {
         return;
     }
 
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(player_controller.Get()),
-        })}) {
-        log_error_once(has_logged.player_hud_dependencies_error_logged,
-                       TEXT("FHUDManager::update_player_hud"),
-                       error);
-        return;
-    }
+    for (auto const hud_ptr : registered_huds) {
+        auto* const hud{hud_ptr.Get()};
+        check(IsValid(hud));
 
-    update_crosshair_positions(*player_ship);
-    update_lock_on_widget(*player_ship);
-    update_input_widgets(*player_ship);
+        if (changes.mission) {
+            update_mission_hud(*hud);
+        }
+        if (changes.entity_counts) {
+            update_entity_count_hud(*hud);
+        }
+        if (changes.player_status) {
+            update_player_status_hud(*hud);
+        }
+        if (changes.player_flight) {
+            update_player_flight_hud(*hud);
+        }
+#if WITH_EDITOR
+        if (changes.sampled_speed) {
+            update_sampled_speed_hud(*hud);
+        }
+#endif
+    }
+}
+void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
+    check(IsValid(&hud));
+
+    if (has_mission_data) {
+        update_mission_hud(hud);
+    }
+    update_entity_count_hud(hud);
+    update_player_status_hud(hud);
+    update_player_flight_hud(hud);
+#if WITH_EDITOR
+    if (has_sampled_speed_data) {
+        update_sampled_speed_hud(hud);
+    }
+#endif
 }
 
-void FHUDManager::update_player_status() {
-    if (!validate_player_ship_for_update()) {
-        return;
-    }
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-        })}) {
-        log_error_once(has_logged.player_status_dependencies_error_logged,
-                       TEXT("FHUDManager::update_player_status"),
-                       error);
-        return;
-    }
-
-    hud_widget->set_health(player_ship->get_health_info());
-    hud_widget->set_speed(player_ship->get_speed());
-    hud_widget->set_target_speed(player_ship->get_target_speed());
-    hud_widget->set_points(player_ship->get_kills());
+void FHUDManager::update_mission_hud(UShipHudWidget& hud) const {
+    check(has_mission_data);
+    auto const& data{mission_data_buffers.current()};
+    hud.set_mission_data(data);
+    hud.set_stopwatch_time(data.status_data.mission_stopwatch);
 }
-void FHUDManager::update_crosshair_positions(ATestSpaceShip const& ship) {
-    auto* const controller{player_controller.Get()};
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(controller),
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-            SANDBOX_NAMED_UOBJECT_PTR(ui_data),
-        })}) {
-        log_error_once(has_logged.crosshair_dependencies_error_logged,
-                       TEXT("FHUDManager::update_crosshair_positions"),
-                       error);
+void FHUDManager::update_entity_count_hud(UShipHudWidget& hud) const {
+    hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
+}
+void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
+    auto const& data{player_status_data_buffers.current()};
+    if (!data.has_player_ship) {
         return;
     }
 
-    auto const ship_socket{ship.get_middle_socket()};
-    auto const ship_loc{ship_socket.GetLocation()};
-    auto const ship_fwd{ship_socket.GetUnitAxis(EAxis::X)};
-    auto const near_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.near};
-    auto const far_world_pos{ship_loc + ship_fwd * ui_data->crosshair_distances.far};
-    FVector2d near_screen_pos{};
-    FVector2d far_screen_pos{};
+    hud.set_health(data.health);
+    hud.set_speed(data.speed);
+    hud.set_target_speed(data.target_speed);
+    hud.set_energy(data.energy);
+    hud.set_points(data.points);
+    hud.set_fire_rate(*ml::to_string_without_type_prefix(data.fire_rate));
+    hud.set_crosshair_colours(data.near_crosshair_colour, data.far_crosshair_colour);
+}
+void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
+    auto const& data{player_flight_data_buffers.current()};
+    if (!data.has_player_ship) {
+        hud.set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
+        hud.set_lock_on_widget_visibility(false);
+        return;
+    }
 
-    constexpr bool bPlayerViewportRelative{false};
+    hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
+    hud.set_lock_on_widget_visibility(data.has_lock_on_target);
+    hud.set_selected_imc(FStringView{data.selected_mapping_context});
+    hud.set_turning(data.turning);
+    hud.set_moving(data.moving);
+    hud.set_desired_velocity_scale(data.desired_velocity_scale);
+    hud.set_ship_velocity(data.ship_velocity);
+    hud.set_target_velocity(data.target_velocity);
+    hud.set_control_mode(*ml::to_string_without_type_prefix(data.control_mode));
+    hud.set_flight_mode(*ml::to_string_without_type_prefix(data.flight_mode));
+
+    auto* const controller{hud.GetOwningPlayer()};
+    check(IsValid(controller));
+
+    auto const& distances{hud.get_crosshair_distances()};
+    auto const near_world_position{data.crosshair_origin +
+                                   data.crosshair_direction * distances.near};
+    auto const far_world_position{data.crosshair_origin + data.crosshair_direction * distances.far};
+    FVector2d near_screen_position{};
+    FVector2d far_screen_position{};
+    constexpr bool player_viewport_relative{false};
     if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            controller, near_world_pos, near_screen_pos, bPlayerViewportRelative)) {
+            controller, near_world_position, near_screen_position, player_viewport_relative)) {
         UE_LOG(
             LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project near crosshair position."));
     }
     if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            controller, far_world_pos, far_screen_pos, bPlayerViewportRelative)) {
+            controller, far_world_position, far_screen_position, player_viewport_relative)) {
         UE_LOG(
             LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project far crosshair position."));
     }
+    hud.set_crosshair_positions(near_screen_position, far_screen_position);
 
-    hud_widget->set_crosshair_positions(near_screen_pos, far_screen_pos);
-}
-void FHUDManager::update_lock_on_widget(ATestSpaceShip const& ship) {
-    auto const* const target{ship.get_lock_on_target()};
-    if (!target) {
-        return;
-    }
-    auto* const controller{player_controller.Get()};
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(target),
-            SANDBOX_NAMED_UOBJECT_PTR(controller),
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-        })}) {
-        log_error_once(has_logged.lock_on_dependencies_error_logged,
-                       TEXT("FHUDManager::update_lock_on_widget"),
-                       error);
-        return;
-    }
-
-    FVector2d screen_pos{};
-    constexpr bool bPlayerViewportRelative{false};
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            controller, target->GetActorLocation(), screen_pos, bPlayerViewportRelative)) {
-        UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project lock-on position."));
-    }
-
-    hud_widget->set_lock_on_widget_position(screen_pos);
-}
-void FHUDManager::update_input_widgets(ATestSpaceShip const& ship) {
-    if (auto error{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(hud_widget.Get()),
-        })}) {
-        log_error_once(has_logged.input_widgets_dependencies_error_logged,
-                       TEXT("FHUDManager::update_input_widgets"),
-                       error);
-        return;
-    }
-
-    hud_widget->set_turning(ship.get_turn_input());
-    hud_widget->set_moving(ship.get_move_input());
-    hud_widget->set_desired_velocity_scale(ship.get_target_local_planar_velocity_scale());
-    hud_widget->set_ship_velocity(ship.get_velocity());
-    hud_widget->set_target_velocity(ship.get_target_local_planar_velocity());
-    hud_widget->set_control_mode(*ml::to_string_without_type_prefix(ship.get_control_mode()));
-    hud_widget->set_flight_mode(*ml::to_string_without_type_prefix(ship.get_flight_mode()));
-}
-void FHUDManager::on_health_changed(FShipHealth const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_health(value);
-    }
-}
-void FHUDManager::on_speed_changed(float const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_speed(value);
-    }
-}
-void FHUDManager::on_target_speed_changed(float const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_target_speed(value);
-    }
-}
-void FHUDManager::on_energy_changed(float const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_energy(value);
-    }
-}
-void FHUDManager::on_ship_fire_rate_changed(ETestShipFireRate const value) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_fire_rate(*ml::to_string_without_type_prefix(value));
-    }
-}
-void FHUDManager::on_laser_firing_mode_changed(ELaserFiringState const mode) {
-    if (!IsValid(hud_widget.Get())) {
-        return;
-    }
-
-    switch (mode) {
-        case ELaserFiringState::lock_on_searching: {
-            hud_widget->set_crosshair_colours(FLinearColor::Yellow, FLinearColor::Red);
-            break;
+    if (data.has_lock_on_target) {
+        FVector2d lock_on_screen_position{};
+        if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+                controller,
+                data.lock_on_target_position,
+                lock_on_screen_position,
+                player_viewport_relative)) {
+            UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project lock-on position."));
         }
-        case ELaserFiringState::lock_on_acquired: {
-            break;
-        }
-        default: {
-            UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Unhandled laser firing mode."));
-            [[fallthrough]];
-        }
-        case ELaserFiringState::idle:
-            [[fallthrough]];
-        case ELaserFiringState::lock_on_transition:
-            [[fallthrough]];
-        case ELaserFiringState::burst: {
-            hud_widget->set_crosshair_colours(FLinearColor::Green, FLinearColor::Green);
-            break;
-        }
+        hud.set_lock_on_widget_position(lock_on_screen_position);
     }
 }
-void FHUDManager::on_lock_on_acquired(AActor* const target) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->set_lock_on_widget_visibility(target != nullptr);
-    }
-}
-
 #if WITH_EDITOR
-void FHUDManager::on_speed_sampled(std::span<FVector2d> const samples, int32 const oldest_index) {
-    if (IsValid(hud_widget.Get())) {
-        hud_widget->update_sampled_speed(samples, oldest_index);
-    }
+void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
+    check(has_sampled_speed_data);
+    auto const& data{sampled_speed_data_buffers.current()};
+    hud.update_sampled_speed(TConstArrayView<FVector2d>{data.samples}, data.oldest_index);
 }
 #endif
 
-void FHUDManager::bind_player_ship_delegates() {
-    if (!player_ship.IsValid()) {
-        return;
+bool FHUDManager::validate_player_ship_for_collection() const {
+    auto const* const ship{player_ship.Get()};
+    if (!IsValid(ship)) {
+        return false;
     }
 
-    player_ship->on_health_changed.BindRaw(this, &FHUDManager::on_health_changed);
-    player_ship->on_speed_changed.BindRaw(this, &FHUDManager::on_speed_changed);
-    player_ship->on_target_speed_changed.BindRaw(this, &FHUDManager::on_target_speed_changed);
-    player_ship->on_energy_changed.BindRaw(this, &FHUDManager::on_energy_changed);
-    player_ship->on_laser_mode_changed.BindRaw(this, &FHUDManager::on_laser_firing_mode_changed);
-    player_ship->on_lock_on_acquired.BindRaw(this, &FHUDManager::on_lock_on_acquired);
-    player_ship->on_ship_fire_rate_changed.BindRaw(this, &FHUDManager::on_ship_fire_rate_changed);
-#if WITH_EDITOR
-    player_ship->on_speed_sampled.BindRaw(this, &FHUDManager::on_speed_sampled);
-#endif
-}
-void FHUDManager::remove_player_ship_delegates() {
-    if (!player_ship.IsValid()) {
-        return;
-    }
-
-    player_ship->on_health_changed.Unbind();
-    player_ship->on_speed_changed.Unbind();
-    player_ship->on_target_speed_changed.Unbind();
-    player_ship->on_energy_changed.Unbind();
-    player_ship->on_laser_mode_changed.Unbind();
-    player_ship->on_lock_on_acquired.Unbind();
-    player_ship->on_ship_fire_rate_changed.Unbind();
-#if WITH_EDITOR
-    player_ship->on_speed_sampled.Unbind();
-#endif
+    check(IsValid(entity_registry));
+    auto const unique_id{ship->get_unique_id()};
+    return unique_id.is_valid() && entity_registry->is_valid_unique_id(unique_id);
 }

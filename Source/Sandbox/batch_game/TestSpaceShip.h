@@ -135,6 +135,7 @@ class SANDBOX_API ATestSpaceShip
 
     // Energy
     bool energy_is_full() const;
+    auto get_energy() const -> float;
 
     /* ------------------------------------------------------------------------------------------ */
     // Combat
@@ -147,6 +148,7 @@ class SANDBOX_API ATestSpaceShip
     void upgrade_laser();
 
     auto get_laser_fire_rate() const noexcept -> ETestShipFireRate { return laser_fire_rate; }
+    auto get_laser_firing_mode() const noexcept -> ELaserFiringState { return laser_firing_mode; }
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate const value) noexcept;
@@ -187,6 +189,11 @@ class SANDBOX_API ATestSpaceShip
 
 #if WITH_EDITORONLY_DATA
     FOnSpeedSampled on_speed_sampled;
+#endif
+
+#if WITH_EDITOR
+    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d> { return speed_samples; }
+    auto get_speed_sample_index() const noexcept -> int32 { return speed_sample_index; }
 #endif
   protected:
     /* ------------------------------------------------------------------------------------------ */

@@ -804,6 +804,11 @@ void ATestSpaceShip::die(FRegistryEntityHandle const killer) {
 bool ATestSpaceShip::energy_is_full() const {
     return thrust_energy == actor_config->thrust_energy_max;
 }
+auto ATestSpaceShip::get_energy() const -> float {
+    check(IsValid(actor_config));
+    check(actor_config->thrust_energy_max > 0.f);
+    return thrust_energy / actor_config->thrust_energy_max;
+}
 
 /* ------------------------------------------------------------------------------------------ */
 // Debugging
@@ -817,8 +822,7 @@ void ATestSpaceShip::sample_speed() {
         speed_sample_index = 0;
     }
 
-    on_speed_sampled.ExecuteIfBound(std::span(speed_samples.GetData(), speed_samples.Num()),
-                                    speed_sample_index);
+    on_speed_sampled.ExecuteIfBound(TConstArrayView<FVector2d>{speed_samples}, speed_sample_index);
 }
 #endif
 void ATestSpaceShip::draw_debug_shapes() {

@@ -72,9 +72,6 @@ class SANDBOX_API UTestBatchGameUiData : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Widget Classes")
     FBatchGameUiClasses widget_classes{};
 
-    UPROPERTY(EditAnywhere, Category = "Update Frequencies")
-    FTestBatchGameUiUpdateFrequencies update_frequencies{};
-
     UPROPERTY(EditAnywhere, Category = "Colours")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
 

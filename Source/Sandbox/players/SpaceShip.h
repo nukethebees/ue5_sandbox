@@ -14,8 +14,6 @@
 #include "GameFramework/Pawn.h"
 #include "Math/Color.h"
 
-#include <span>
-
 #include "SpaceShip.generated.h"
 
 class UCameraComponent;

@@ -4,8 +4,6 @@
 
 #include <CoreMinimal.h>
 
-#include <span>
-
 #include "SpaceShipCommon.generated.h"
 
 class AActor;
@@ -20,6 +18,6 @@ DECLARE_DELEGATE_OneParam(FOnShipBombsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
 DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
-DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, std::span<FVector2d>, int32);
+DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, TConstArrayView<FVector2d>, int32);
 DECLARE_DELEGATE_OneParam(FOnLaserModeChanged, ELaserFiringState);
 DECLARE_DELEGATE_OneParam(FOnLockOnAcquired, AActor*);

@@ -93,7 +93,14 @@ void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* c
     auto const context_name{GetNameSafe(context)};
 
     UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *context_name);
-    hud_manager.set_selected_mapping_context(context_name);
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::set_mapping_context: HUD orchestrator is invalid."));
+        return;
+    }
+    orchestrator->get_hud_manager().set_selected_mapping_context(context_name);
 }
 
 // Life cycle
@@ -120,12 +127,16 @@ void ATestSpaceShipController::Tick(float dt) {
 }
 
 void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
-    if (auto* const world{GetWorld()}; IsValid(world)) {
-        if (auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)}) {
-            orchestrator->unregister_hud_manager(hud_manager);
+    if (IsValid(hud_widget)) {
+        if (auto* const orchestrator{hud_orchestrator.Get()};
+            IsValid(orchestrator) &&
+            orchestrator->get_hud_manager().get_state() == EHUDManagerState::Active) {
+            orchestrator->get_hud_manager().unregister_hud(*hud_widget);
         }
+        hud_widget->RemoveFromParent();
     }
-    hud_manager.deactivate();
+    hud_widget = nullptr;
+    hud_orchestrator.Reset();
 
     Super::EndPlay(reason);
 }
@@ -143,16 +154,6 @@ void ATestSpaceShipController::OnPossess(APawn* in_pawn) {
                TEXT("ATestSpaceShipController::OnPossess: Player ship is invalid."));
         SetActorTickEnabled(false);
         return;
-    }
-
-    if (hud_manager.get_state() == EHUDManagerState::Active) {
-        hud_manager.set_player_ship(ship);
-
-        if (auto* const world{GetWorld()}; IsValid(world)) {
-            if (auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)}) {
-                orchestrator->register_hud_manager(hud_manager);
-            }
-        }
     }
 
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
@@ -186,8 +187,6 @@ void ATestSpaceShipController::OnUnPossess() {
         }
     }
 
-    hud_manager.clear_player_ship();
-
     SetActorTickEnabled(false);
     UE_LOG(LogSandbox, Display, TEXT("Unpossessed player ship"));
 
@@ -198,7 +197,7 @@ void ATestSpaceShipController::OnUnPossess() {
 // UI
 /* ---------------------------------------------------------------------------------------------- */
 void ATestSpaceShipController::initialise_hud() {
-    if (hud_manager.get_state() == EHUDManagerState::Active && IsValid(hud_widget)) {
+    if (IsValid(hud_widget)) {
         return;
     }
 
@@ -210,14 +209,11 @@ void ATestSpaceShipController::initialise_hud() {
     });
 
     auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
-    auto* const mission_manager{orchestrator ? orchestrator->get_mission_manager() : nullptr};
-    auto* const entity_registry{orchestrator ? orchestrator->get_entity_registry() : nullptr};
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(orchestrator),
-        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ui_data),
     });
+    hud_orchestrator = orchestrator;
 
     auto* const team_visual_data{ui_data->team_visual_data.Get()};
     if (!IsValid(team_visual_data)) {
@@ -241,21 +237,11 @@ void ATestSpaceShipController::initialise_hud() {
         return;
     }
 
-    auto* const player_ship{Cast<Pawn>(GetPawn())};
     hud_widget = created_widget;
-    hud_manager.initialise(*created_widget,
-                           *ui_data,
-                           *mission_manager,
-                           *entity_registry,
-                           {*orchestrator},
-                           *this,
-                           player_ship);
-
-    if (hud_manager.get_state() == EHUDManagerState::Active) {
-        orchestrator->register_hud_manager(hud_manager);
-    } else {
-        hud_widget = nullptr;
-    }
+    created_widget->AddToViewport();
+    created_widget->set_entity_colours(team_visual_data->build_team_colour_cache());
+    created_widget->set_crosshair_distances(ui_data->crosshair_distances);
+    orchestrator->get_hud_manager().register_hud(*created_widget);
 }
 void ATestSpaceShipController::on_player_ship_died() {
     UnPossess();

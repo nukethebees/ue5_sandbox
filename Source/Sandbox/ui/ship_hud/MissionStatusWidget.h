@@ -11,22 +11,23 @@
 
 #include "MissionStatusWidget.generated.h"
 
-class ATestMissionManager;
 class UMissionEntityHealthRowWidget;
 class UValueWidget;
 class UVerticalBox;
+
+namespace ml::hud_manager {
+struct FMissionDataCache;
+}
 
 UCLASS()
 class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void update(ATestMissionManager const& mission_manager);
-    void set_mission_started(ATestMissionManager const& mission_manager);
+    void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_enemies_remaining(int32 const enemies_remaining);
     void set_time_remaining(float const time_remaining);
-    void update_surviving_entity_health(ATestMissionManager const& mission_manager);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:

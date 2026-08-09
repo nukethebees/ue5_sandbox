@@ -36,6 +36,7 @@ public class SandboxTests : ModuleRules
             "UnrealEd",
             "CQTest",
             "EnhancedInput",
+            "UMG",
         });
     }
 }

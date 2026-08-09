@@ -4,8 +4,10 @@
 
 #include <limits>
 
-void UDebugGraphWidget::set_samples(std::span<FVector2d> in_samples, int32 new_oldest_index) {
-    samples = TArrayView(in_samples.data(), static_cast<int32>(in_samples.size()));
+void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
+                                    int32 const new_oldest_index) {
+    samples.Reset(in_samples.Num());
+    samples.Append(in_samples.GetData(), in_samples.Num());
     oldest_index = new_oldest_index;
 
     for (auto const& elem : samples) {
@@ -84,7 +86,7 @@ int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
 
         for (int32 i = 0; i < n_samples; ++i) {
             auto const index{(oldest_index + i) % n_samples};
-            auto& sample{samples[index]};
+            auto const& sample{samples[index]};
 
             float const x_alpha = static_cast<float>(i) / (n_samples - 1);
             auto const y_alpha{sample.Y / max_value};

@@ -1,8 +1,8 @@
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
 
 #include <Sandbox/batch_game/TestBatchGameUiData.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
+#include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/ui/ship_hud/MissionEntityHealthRowWidget.h>
 #include <Sandbox/ui/widgets/ValueWidget.h>
 #include <Sandbox/utilities/enums.h>
@@ -74,19 +74,15 @@ void UMissionStatusWidget::NativePreConstruct() {
     }
 }
 
-void UMissionStatusWidget::update(ATestMissionManager const& mission_manager) {
-    set_mission_started(mission_manager);
-}
-
-void UMissionStatusWidget::set_mission_started(ATestMissionManager const& mission_manager) {
-    set_mission_values(mission_manager.get_mission_mode(),
-                       mission_manager.get_mission_state(),
-                       mission_manager.get_mission_stopwatch(),
-                       mission_manager.get_time_remaining(),
-                       mission_manager.get_kills_remaining(),
-                       mission_manager.get_entity_ids_that_must_survive(),
-                       mission_manager.get_entity_types_that_must_survive(),
-                       mission_manager.get_entity_health_that_must_survive());
+void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache const& data) {
+    set_mission_values(data.static_data.mission_mode,
+                       data.status_data.mission_state,
+                       data.status_data.mission_stopwatch,
+                       data.status_data.time_remaining,
+                       data.status_data.enemies_remaining,
+                       data.static_data.surviving_entity_ids,
+                       data.static_data.surviving_entity_types,
+                       data.status_data.surviving_entity_health);
 }
 
 void UMissionStatusWidget::set_mission_mode(ETestMissionMode const new_mode,
@@ -124,19 +120,6 @@ void UMissionStatusWidget::set_time_remaining(float const time_remaining) {
                                                    : ESlateVisibility::Collapsed);
     if (show_time) {
         time_remaining_widget->update(time_remaining);
-    }
-}
-
-void UMissionStatusWidget::update_surviving_entity_health(
-    ATestMissionManager const& mission_manager) {
-    auto const entity_ids{mission_manager.get_entity_ids_that_must_survive()};
-    auto const health_values{mission_manager.get_entity_health_that_must_survive()};
-    for (auto const unique_id : entity_ids) {
-        auto const health_index{entity_ids.Find(unique_id)};
-        auto const row_index{surviving_entity_ids.Find(unique_id)};
-        check(health_index != INDEX_NONE);
-        check(row_index != INDEX_NONE);
-        surviving_entity_widgets[row_index]->set_health(health_values[health_index]);
     }
 }
 

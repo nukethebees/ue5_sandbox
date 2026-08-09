@@ -1,7 +1,8 @@
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 
+#include <Sandbox/ui/HUDManager.h>
+
 #include "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h"
-#include "Sandbox/batch_game/TestMissionManager.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
@@ -203,9 +204,9 @@ void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const&
     }
 }
 
-void UShipHudWidget::set_mission_status(ATestMissionManager const& manager) {
+void UShipHudWidget::set_mission_data(ml::hud_manager::FMissionDataCache const& data) {
     if (mission_status_panel) {
-        mission_status_panel->set_mission_started(manager);
+        mission_status_panel->set_mission_data(data);
     }
 }
 
@@ -233,13 +234,8 @@ void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining
     }
 }
 
-void UShipHudWidget::update_mission_surviving_entity_health(ATestMissionManager const& manager) {
-    if (mission_status_panel) {
-        mission_status_panel->update_surviving_entity_health(manager);
-    }
-}
-
-void UShipHudWidget::update_sampled_speed(std::span<FVector2d> samples, int32 oldest_index) {
+void UShipHudWidget::update_sampled_speed(TConstArrayView<FVector2d> const samples,
+                                          int32 const oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
 }

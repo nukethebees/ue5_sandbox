@@ -1,14 +1,15 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestBatchGameUiData.h>
 #include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
 #include <Sandbox/batch_game/TestShipFireRate.h>
+#include <Sandbox/batch_game/TestSpaceShipControlMode.h>
+#include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
 #include <Sandbox/health/ShipHealth.h>
-#include <Sandbox/players/LaserFiringState.h>
-#include <Sandbox/ui/HudCrosshairDistances.h>
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 
@@ -16,43 +17,10 @@
 #include <HAL/Platform.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
-#include <span>
-
-class ATestSpaceShipController;
 class ATestEntityRegistry;
 class ATestMissionManager;
 class ATestSpaceShip;
-class AActor;
-class UTestBatchGameUiData;
 class UShipHudWidget;
-
-namespace ml::hud_manager {
-struct FLogOnceFlags {
-    void reset() noexcept {
-        tick_dependencies_error_logged = false;
-        player_ship_error_logged = false;
-        player_ship_unique_id_error_logged = false;
-        player_hud_dependencies_error_logged = false;
-        mission_status_dependencies_error_logged = false;
-        player_status_dependencies_error_logged = false;
-        entity_counts_dependencies_error_logged = false;
-        crosshair_dependencies_error_logged = false;
-        lock_on_dependencies_error_logged = false;
-        input_widgets_dependencies_error_logged = false;
-    }
-
-    bool tick_dependencies_error_logged{false};
-    bool player_ship_error_logged{false};
-    bool player_ship_unique_id_error_logged{false};
-    bool player_hud_dependencies_error_logged{false};
-    bool mission_status_dependencies_error_logged{false};
-    bool player_status_dependencies_error_logged{false};
-    bool entity_counts_dependencies_error_logged{false};
-    bool crosshair_dependencies_error_logged{false};
-    bool lock_on_dependencies_error_logged{false};
-    bool input_widgets_dependencies_error_logged{false};
-};
-}
 
 enum class EHUDManagerState : uint8 {
     Disabled,
@@ -91,57 +59,135 @@ struct FMissionDataCache {
     FMissionStaticDataCache static_data;
     FMissionStatusDataCache status_data;
 };
+
+struct FEntityCountDataCache {
+    bool operator==(FEntityCountDataCache const& other) const noexcept = default;
+
+    ATestEntityRegistry::EntityCounts alive_per_team_and_type{};
+};
+
+struct FPlayerStatusDataCache {
+    bool operator==(FPlayerStatusDataCache const& other) const noexcept = default;
+
+    bool has_player_ship{false};
+    FShipHealth health{};
+    float speed{0.f};
+    float target_speed{0.f};
+    float energy{1.f};
+    int32 points{0};
+    ETestShipFireRate fire_rate{ETestShipFireRate::Single};
+    FLinearColor near_crosshair_colour{FLinearColor::Green};
+    FLinearColor far_crosshair_colour{FLinearColor::Green};
+};
+
+struct FPlayerFlightDataCache {
+    bool operator==(FPlayerFlightDataCache const& other) const noexcept = default;
+
+    bool has_player_ship{false};
+    FVector2D turning{};
+    FVector2D moving{};
+    FVector2D desired_velocity_scale{};
+    FVector ship_velocity{};
+    FVector target_velocity{};
+    ETestSpaceShipControlMode control_mode{};
+    ETestSpaceShipFlightMode flight_mode{};
+    FVector crosshair_origin{};
+    FVector crosshair_direction{};
+    bool has_lock_on_target{false};
+    FVector lock_on_target_position{};
+    FString selected_mapping_context;
+};
+
+#if WITH_EDITOR
+struct FSampledSpeedDataCache {
+    bool operator==(FSampledSpeedDataCache const& other) const noexcept = default;
+
+    TArray<FVector2d> samples;
+    int32 oldest_index{0};
+};
+#endif
+
+struct FDataChanges {
+    bool mission{false};
+    bool entity_counts{false};
+    bool player_status{false};
+    bool player_flight{false};
+#if WITH_EDITOR
+    bool sampled_speed{false};
+#endif
+};
 }
 
 struct SANDBOX_API FHUDManager {
     using SimulationClockInterface = ml::test_batch_orchestrator::SimulationClockInterface;
 
-    void initialise(UShipHudWidget& new_hud_widget,
-                    UTestBatchGameUiData const& new_ui_data,
+    void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ATestMissionManager const& new_mission_manager,
                     ATestEntityRegistry const& new_entity_registry,
-                    SimulationClockInterface const simulation_clock,
-                    ATestSpaceShipController& new_player_controller,
+                    SimulationClockInterface simulation_clock,
                     ATestSpaceShip* new_player_ship);
     void deactivate();
     void tick();
 
-    void set_player_ship(ATestSpaceShip* new_player_ship) noexcept;
-    void clear_player_ship() noexcept;
+    void register_hud(UShipHudWidget& hud);
+    void unregister_hud(UShipHudWidget& hud);
     void set_selected_mapping_context(FString const& context_name);
+
     auto get_state() const noexcept -> EHUDManagerState { return state; }
+    auto get_registered_hud_count() const noexcept -> int32 { return registered_huds.Num(); }
+    auto has_mission_data_cache() const noexcept -> bool { return has_mission_data; }
+    auto get_mission_data() const noexcept -> ml::hud_manager::FMissionDataCache const& {
+        return mission_data_buffers.current();
+    }
+    auto get_entity_count_data() const noexcept -> ml::hud_manager::FEntityCountDataCache const& {
+        return entity_count_data_buffers.current();
+    }
+    auto get_player_status_data() const noexcept -> ml::hud_manager::FPlayerStatusDataCache const& {
+        return player_status_data_buffers.current();
+    }
+    auto get_player_flight_data() const noexcept -> ml::hud_manager::FPlayerFlightDataCache const& {
+        return player_flight_data_buffers.current();
+    }
   private:
-    bool validate_player_ship_for_update();
-    void update_player_hud();
-    void update_mission_status();
+    auto collect_data() -> ml::hud_manager::FDataChanges;
+    bool collect_mission_data();
     void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
-    void update_entity_counts();
-    void update_player_status();
-    void update_crosshair_positions(ATestSpaceShip const& ship);
-    void update_lock_on_widget(ATestSpaceShip const& ship);
-    void update_input_widgets(ATestSpaceShip const& ship);
-    void on_health_changed(FShipHealth value);
-    void on_speed_changed(float value);
-    void on_target_speed_changed(float value);
-    void on_energy_changed(float value);
-    void on_ship_fire_rate_changed(ETestShipFireRate value);
-    void on_laser_firing_mode_changed(ELaserFiringState mode);
-    void on_lock_on_acquired(AActor* target);
+    bool collect_entity_count_data();
+    bool collect_player_status_data();
+    bool collect_player_flight_data();
 #if WITH_EDITOR
-    void on_speed_sampled(std::span<FVector2d> samples, int32 oldest_index);
+    bool collect_sampled_speed_data();
 #endif
-    void bind_player_ship_delegates();
-    void remove_player_ship_delegates();
+
+    void update_huds(ml::hud_manager::FDataChanges const& changes);
+    void synchronise_hud(UShipHudWidget& hud) const;
+    void update_mission_hud(UShipHudWidget& hud) const;
+    void update_entity_count_hud(UShipHudWidget& hud) const;
+    void update_player_status_hud(UShipHudWidget& hud) const;
+    void update_player_flight_hud(UShipHudWidget& hud) const;
+#if WITH_EDITOR
+    void update_sampled_speed_hud(UShipHudWidget& hud) const;
+#endif
+
+    bool validate_player_ship_for_collection() const;
 
     EHUDManagerState state{EHUDManagerState::Disabled};
-    TWeakObjectPtr<UShipHudWidget> hud_widget;
-    TWeakObjectPtr<ATestSpaceShipController> player_controller;
+    TArray<TWeakObjectPtr<UShipHudWidget>> registered_huds;
     TWeakObjectPtr<ATestSpaceShip> player_ship;
-    UTestBatchGameUiData const* ui_data{nullptr};
     ATestMissionManager const* mission_manager{nullptr};
     ATestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;
+
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
+    ml::MultiBuffer<ml::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
+    ml::MultiBuffer<ml::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
+    ml::MultiBuffer<ml::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
+
     bool has_mission_data{false};
-    ml::hud_manager::FLogOnceFlags has_logged;
+    FString selected_mapping_context;
+
+#if WITH_EDITOR
+    ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
+    bool has_sampled_speed_data{false};
+#endif
 };
