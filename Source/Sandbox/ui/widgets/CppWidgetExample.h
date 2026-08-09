@@ -32,7 +32,8 @@ class SANDBOX_API UCppWidgetExample : public UUserWidget {
     FText preview_title{FText::FromString(TEXT("C++ UMG Preview Example"))};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preview", meta = (MultiLine = true))
-    FText preview_status{FText::FromString(TEXT("Edit these parent properties in the WBP Details panel to refresh this preview."))};
+    FText preview_status{FText::FromString(
+        TEXT("Edit these parent properties in the WBP Details panel to refresh this preview."))};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
