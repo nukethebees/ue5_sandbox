@@ -272,6 +272,8 @@ Check dist > %f:
     bool not_nullptr(void const* ptr, FString const& description);
     bool is_valid(AActor* ptr, FString const& description);
 
+    void reset();
+
     FAutomationTestBase* test_runner{nullptr};
     bool log_successful_assertions{false};
     bool all_passed{true};

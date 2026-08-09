@@ -41,4 +41,8 @@ bool FSoftTestAssertions::not_nullptr(void const* ptr, FString const& descriptio
 bool FSoftTestAssertions::is_valid(AActor* ptr, FString const& description) {
     return is_true(IsValid(ptr), description);
 }
+
+void FSoftTestAssertions::reset() {
+    *this = {};
+}
 }
