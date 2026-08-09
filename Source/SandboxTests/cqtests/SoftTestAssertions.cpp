@@ -34,7 +34,7 @@ bool FSoftTestAssertions::is_true(bool result, FString const& description, int32
     return result;
 }
 
-bool FSoftTestAssertions::not_nullptr(void* ptr, FString const& description) {
+bool FSoftTestAssertions::not_nullptr(void const* ptr, FString const& description) {
     return is_true(ptr != nullptr, description);
 }
 

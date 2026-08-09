@@ -262,7 +262,7 @@ Check dist > %f:
     /* ---------------------------------------------------------------------------- */
     // Pointer
     /* ---------------------------------------------------------------------------- */
-    bool not_nullptr(void* ptr, FString const& description);
+    bool not_nullptr(void const* ptr, FString const& description);
     bool is_valid(AActor* ptr, FString const& description);
 
     FAutomationTestBase* test_runner{nullptr};
