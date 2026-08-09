@@ -62,6 +62,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
+    TOptional<FHUDManager> headless_hud_manager{NullOpt};
     int32 initial_alive_count{0};
     ml::TimeSeriesData<FEntityCountSample> entity_count_samples;
     ml::TimeSeriesData<FDefenceSample> defence_samples;
@@ -75,6 +76,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
         test_driver.Reset();
+        headless_hud_manager.Reset();
         initial_alive_count = 0;
         entity_count_samples = {};
         defence_samples = {};
@@ -87,85 +89,82 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         if (auto* const orchestrator{level_setup->get_orchestrator()}; IsValid(orchestrator)) {
             orchestrator->clear_end_tick_test_hook();
         }
+        check_headless_hud_manager_matches_simulation();
         level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+
+        ml::reset(spawner, level_setup, checks, test_driver, headless_hud_manager);
     }
 
     TEST_METHOD(InitialCachesPopulateWithoutHUD)
     {
         level_setup->setup(TestCommandBuilder);
-        TestCommandBuilder.Do([this] { check_initial_caches(); });
+        TestCommandBuilder.Do([this] { initial_caches_process_samples(); });
     }
 
     TEST_METHOD(EntityCountPollingContinuesWithoutHUD)
     {
         level_setup->setup(TestCommandBuilder,
                            [this](UWorld& world, UTestSimulationConfig const& config) {
-                               ml::spawn_capital_proxy(world,
-                                                       config,
-                                                       checks,
-                                                       FName{TEXT("entity_count_capital")},
-                                                       FVector::ZeroVector);
+                               entity_count_pre_begin_play(world, config);
                            });
-        TestCommandBuilder.Do([this] { begin_entity_count_polling_scenario(); })
+        TestCommandBuilder.Do([this] { entity_count_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-            .Then([this] { check_entity_count_polling_result(); });
+            .Then([this] { entity_count_process_samples(); });
     }
 
     TEST_METHOD(MissionAndDefenceDataUpdateWithoutHUD)
     {
         level_setup->setup(TestCommandBuilder,
                            [this](UWorld& world, UTestSimulationConfig const& config) {
-                               configure_defence_mission(world, config);
+                               defence_pre_begin_play(world, config);
                            });
-        TestCommandBuilder.Do([this] { begin_defence_scenario(); })
+        TestCommandBuilder.Do([this] { defence_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-            .Then([this] { check_defence_result(); });
+            .Then([this] { defence_process_samples(); });
     }
 
     TEST_METHOD(PlayerStateAndKillsUpdateWithoutHUD)
     {
         level_setup->setup(TestCommandBuilder,
                            [this](UWorld& world, UTestSimulationConfig const& config) {
-                               ml::spawn_capital_proxy(world,
-                                                       config,
-                                                       checks,
-                                                       FName{TEXT("player_kill_target_capital")},
-                                                       FVector{2000.f, 0.f, 0.f});
+                               player_kill_pre_begin_play(world, config);
                            });
-        TestCommandBuilder.Do([this] { begin_player_kill_scenario(); })
+        TestCommandBuilder.Do([this] { player_kill_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-            .Then([this] { check_player_kill_result(); });
+            .Then([this] { player_kill_process_samples(); });
     }
 
     TEST_METHOD(MissionTimeUsesSimulationClockWithoutHUD)
     {
         level_setup->setup(TestCommandBuilder,
                            [this](UWorld& world, UTestSimulationConfig const& config) {
-                               configure_defence_mission(world, config);
+                               mission_time_pre_begin_play(world, config);
                            });
-        TestCommandBuilder.Do([this] { begin_mission_time_scenario(); })
+        TestCommandBuilder.Do([this] { mission_time_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-            .Then([this] { check_mission_time(); });
+            .Then([this] { mission_time_process_samples(); });
     }
 
     TEST_METHOD(LateHUDRegistrationSynchronisesAndUnregisters)
     {
         level_setup->setup(TestCommandBuilder);
-        TestCommandBuilder.Do([this] { check_hud_registration_lifecycle(); });
+        TestCommandBuilder.Do([this] { registration_process_samples(); });
     }
   private:
     /* ------------------------------------------------------------------------------------------ */
     // Initial cache
     /* ------------------------------------------------------------------------------------------ */
-    void check_initial_caches() {
+    void initial_caches_process_samples() {
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
+
         auto* const orchestrator{level_setup->get_orchestrator()};
         if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
             return;
         }
 
-        auto const& hud_manager{orchestrator->get_hud_manager()};
+        auto const& hud_manager{get_headless_hud_manager()};
         auto const* const registry{orchestrator->get_entity_registry()};
         auto const* const mission_manager{orchestrator->get_mission_manager()};
         auto const* const player_ship{orchestrator->get_player_ship()};
@@ -211,7 +210,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Defence mission
     /* ------------------------------------------------------------------------------------------ */
-    void configure_defence_mission(UWorld & world, UTestSimulationConfig const& config) {
+    void defence_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
         auto* const defended{ml::spawn_capital_proxy(
             world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
         if (!IsValid(defended)) {
@@ -228,12 +227,15 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         mission_manager->add_entity_that_must_survive(*defended);
         UGameplayStatics::FinishSpawningActor(mission_manager, FTransform::Identity);
     }
-    void begin_defence_scenario() {
+    void defence_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
         auto const* const mission_manager{test_driver->orchestrator.get_mission_manager()};
         check(mission_manager);
 
-        auto const& initial_data{test_driver->orchestrator.get_hud_manager().get_mission_data()};
+        auto const& initial_data{get_headless_hud_manager().get_mission_data()};
         checks.are_equal(1,
                          initial_data.static_data.surviving_entity_ids.Num(),
                          TEXT("Must-survive ID is cached"));
@@ -251,12 +253,13 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, handles] { test_driver->queue_kills(handles); });
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_defence_tick));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::defence_on_tick));
         test_driver->timeline.finish_at(test_duration);
         test_driver->orchestrator.start_simulation();
     }
-    void on_defence_tick(ATestBatchOrchestrator&) {
-        auto const& data{test_driver->orchestrator.get_hud_manager().get_mission_data()};
+    void defence_on_tick(ATestBatchOrchestrator&) {
+        tick_headless_hud_manager();
+        auto const& data{get_headless_hud_manager().get_mission_data()};
         FDefenceSample sample{};
         sample.mission_state = data.status_data.mission_state;
         sample.mission_stopwatch = data.status_data.mission_stopwatch;
@@ -268,7 +271,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         defence_samples.add(test_driver->get_time(), sample);
         test_driver->timeline.tick(test_driver->get_time());
     }
-    void check_defence_result() {
+    void defence_process_samples() {
         ml::check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
@@ -288,18 +291,25 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Timed mission
     /* ------------------------------------------------------------------------------------------ */
-    void begin_mission_time_scenario() {
+    void mission_time_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
+        defence_pre_begin_play(world, config);
+    }
+    void mission_time_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_mission_time_tick));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::mission_time_on_tick));
         test_driver->timeline.finish_at(test_duration);
         test_driver->orchestrator.start_simulation();
     }
-    void on_mission_time_tick(ATestBatchOrchestrator & orchestrator) {
+    void mission_time_on_tick(ATestBatchOrchestrator & orchestrator) {
+        tick_headless_hud_manager();
         auto const* const mission_manager{orchestrator.get_mission_manager()};
         check(mission_manager);
 
-        auto const& hud_manager{orchestrator.get_hud_manager()};
+        auto const& hud_manager{get_headless_hud_manager()};
         auto const& mission_data{hud_manager.get_mission_data()};
         mission_time_samples.add(test_driver->get_time(),
                                  FMissionTimeSample{mission_data.status_data.mission_stopwatch,
@@ -307,7 +317,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
                                                     hud_manager.get_registered_hud_count()});
         test_driver->timeline.tick(test_driver->get_time());
     }
-    void check_mission_time() {
+    void mission_time_process_samples() {
         ml::check_samples_recorded(
             mission_time_samples.num(), checks, TEXT("Mission-time samples recorded"));
         if (mission_time_samples.is_empty()) {
@@ -331,8 +341,18 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Player kill
     /* ------------------------------------------------------------------------------------------ */
-    void begin_player_kill_scenario() {
+    void player_kill_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
+        ml::spawn_capital_proxy(world,
+                                config,
+                                checks,
+                                FName{TEXT("player_kill_target_capital")},
+                                FVector{2000.f, 0.f, 0.f});
+    }
+    void player_kill_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
         auto const& player_ship{test_driver->get_player_ship()};
         auto const& capitals{test_driver->get_capital_ships()};
         check(capitals.get_num_instances() == 1);
@@ -343,12 +363,13 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
             test_driver->queue_kills(targets, instigator);
         });
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_player_tick));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::player_kill_on_tick));
         test_driver->timeline.finish_at(test_duration);
         test_driver->orchestrator.start_simulation();
     }
-    void on_player_tick(ATestBatchOrchestrator & orchestrator) {
-        auto const& hud_manager{orchestrator.get_hud_manager()};
+    void player_kill_on_tick(ATestBatchOrchestrator&) {
+        tick_headless_hud_manager();
+        auto const& hud_manager{get_headless_hud_manager()};
         auto const& data{hud_manager.get_player_status_data()};
         auto const& player_ship{test_driver->get_player_ship()};
         auto const& kill_data{hud_manager.get_kill_data()};
@@ -375,7 +396,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
                                          hud_manager.get_registered_hud_count()});
         test_driver->timeline.tick(test_driver->get_time());
     }
-    void check_player_kill_result() {
+    void player_kill_process_samples() {
         ml::check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
         if (player_samples.is_empty()) {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -398,7 +419,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Registration
     /* ------------------------------------------------------------------------------------------ */
-    void check_hud_registration_lifecycle() {
+    void registration_process_samples() {
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
+
         auto* const orchestrator{level_setup->get_orchestrator()};
         if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
             return;
@@ -441,7 +466,9 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         hud->RemoveFromParent();
 
         hud_manager.set_selected_mapping_context(FString{TEXT("after_unregister")});
-        hud_manager.tick();
+        hud_manager.tick(1);
+        get_headless_hud_manager().set_selected_mapping_context(FString{TEXT("after_unregister")});
+        tick_headless_hud_manager();
         checks.are_equal(0,
                          hud_manager.get_registered_hud_count(),
                          TEXT("Updates do not target the unregistered HUD"));
@@ -452,9 +479,16 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
     /* ------------------------------------------------------------------------------------------ */
     // Polling scenario
     /* ------------------------------------------------------------------------------------------ */
-    void begin_entity_count_polling_scenario() {
+    void entity_count_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
+        ml::spawn_capital_proxy(
+            world, config, checks, FName{TEXT("entity_count_capital")}, FVector::ZeroVector);
+    }
+    void entity_count_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
-        auto const& hud_manager{test_driver->orchestrator.get_hud_manager()};
+        if (!initialise_headless_hud_manager()) {
+            return;
+        }
+        auto const& hud_manager{get_headless_hud_manager()};
         initial_alive_count = count_cached_entities(hud_manager);
         checks.are_equal(0,
                          hud_manager.get_registered_hud_count(),
@@ -466,11 +500,19 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, targets] { test_driver->queue_kills(targets); });
         test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_entity_count_tick));
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::entity_count_on_tick));
         test_driver->timeline.finish_at(test_duration);
         test_driver->orchestrator.start_simulation();
     }
-    void check_entity_count_polling_result() {
+    void entity_count_on_tick(ATestBatchOrchestrator & orchestrator) {
+        tick_headless_hud_manager();
+        entity_count_samples.add(
+            test_driver->get_time(),
+            FEntityCountSample{count_cached_entities(get_headless_hud_manager()),
+                               orchestrator.get_hud_manager().get_registered_hud_count()});
+        test_driver->timeline.tick(test_driver->get_time());
+    }
+    void entity_count_process_samples() {
         ml::check_samples_recorded(
             entity_count_samples.num(), checks, TEXT("Entity-count samples recorded"));
         if (entity_count_samples.is_empty()) {
@@ -491,17 +533,165 @@ TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
-    void on_entity_count_tick(ATestBatchOrchestrator & orchestrator) {
-        entity_count_samples.add(
-            test_driver->get_time(),
-            FEntityCountSample{count_cached_entities(orchestrator.get_hud_manager()),
-                               orchestrator.get_hud_manager().get_registered_hud_count()});
-        test_driver->timeline.tick(test_driver->get_time());
-    }
-
     /* ------------------------------------------------------------------------------------------ */
     // Shared
     /* ------------------------------------------------------------------------------------------ */
+    auto initialise_headless_hud_manager() -> bool {
+        if (headless_hud_manager.IsSet()) {
+            return true;
+        }
+
+        auto* const orchestrator{level_setup->get_orchestrator()};
+        if (!checks.is_valid(orchestrator, TEXT("Orchestrator for headless HUD manager"))) {
+            return false;
+        }
+
+        auto* const mission_manager{orchestrator->get_mission_manager()};
+        auto* const entity_registry{orchestrator->get_entity_registry()};
+        if (!checks.not_nullptr(mission_manager,
+                                TEXT("Mission manager for headless HUD manager")) ||
+            !checks.not_nullptr(entity_registry,
+                                TEXT("Entity registry for headless HUD manager"))) {
+            return false;
+        }
+
+        headless_hud_manager.Emplace();
+        headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
+                                         *mission_manager,
+                                         *entity_registry,
+                                         {*orchestrator},
+                                         orchestrator->get_player_ship());
+        return true;
+    }
+
+    auto get_headless_hud_manager() -> FHUDManager& {
+        check(headless_hud_manager.IsSet());
+        return headless_hud_manager.GetValue();
+    }
+
+    void tick_headless_hud_manager() {
+        if (!headless_hud_manager.IsSet()) {
+            checks.is_true(false, TEXT("Headless HUD manager is initialised before ticking"));
+            return;
+        }
+
+        headless_hud_manager->tick(1);
+    }
+
+    void check_headless_hud_manager_matches_simulation() {
+        if (!headless_hud_manager.IsSet() || !level_setup.IsSet()) {
+            return;
+        }
+
+        auto* const orchestrator{level_setup->get_orchestrator()};
+        if (!checks.is_valid(orchestrator, TEXT("Orchestrator for HUD cache comparison"))) {
+            return;
+        }
+
+        auto& simulation_hud_manager{orchestrator->get_hud_manager()};
+        auto& local_hud_manager{get_headless_hud_manager()};
+        local_hud_manager.force_sample();
+        simulation_hud_manager.force_sample();
+        check_mission_data_equal(local_hud_manager.get_mission_data(),
+                                 simulation_hud_manager.get_mission_data());
+        checks.is_true(local_hud_manager.get_entity_count_data() ==
+                           simulation_hud_manager.get_entity_count_data(),
+                       TEXT("Headless and simulation entity-count caches match"));
+        checks.is_true(local_hud_manager.get_kill_data() == simulation_hud_manager.get_kill_data(),
+                       TEXT("Headless and simulation kill caches match"));
+        checks.is_true(local_hud_manager.get_player_status_data() ==
+                           simulation_hud_manager.get_player_status_data(),
+                       TEXT("Headless and simulation player-status caches match"));
+        checks.is_true(local_hud_manager.get_player_flight_data() ==
+                           simulation_hud_manager.get_player_flight_data(),
+                       TEXT("Headless and simulation player-flight caches match"));
+#if WITH_EDITOR
+        check_sampled_speed_data_equal(local_hud_manager.get_sampled_speed_data(),
+                                       simulation_hud_manager.get_sampled_speed_data());
+#endif
+    }
+
+    void check_mission_data_equal(ml::hud_manager::FMissionDataCache const& local,
+                                  ml::hud_manager::FMissionDataCache const& simulation) {
+        auto const& local_static_data{local.static_data};
+        auto const& simulation_static_data{simulation.static_data};
+        checks.are_equal(local_static_data.mission_mode,
+                         simulation_static_data.mission_mode,
+                         TEXT("Headless and simulation mission modes match"));
+        checks.is_true(local_static_data.surviving_entity_ids ==
+                           simulation_static_data.surviving_entity_ids,
+                       TEXT("Headless and simulation surviving mission entity IDs match"));
+        checks.is_true(local_static_data.surviving_entity_types ==
+                           simulation_static_data.surviving_entity_types,
+                       TEXT("Headless and simulation surviving mission entity types match"));
+
+        auto const& local_status_data{local.status_data};
+        auto const& simulation_status_data{simulation.status_data};
+        checks.are_equal(local_status_data.mission_state,
+                         simulation_status_data.mission_state,
+                         TEXT("Headless and simulation mission states match"));
+        checks.are_equal(local_status_data.mission_stopwatch,
+                         simulation_status_data.mission_stopwatch,
+                         TEXT("Headless and simulation mission stopwatches match"));
+        checks.are_equal(local_status_data.time_remaining,
+                         simulation_status_data.time_remaining,
+                         TEXT("Headless and simulation mission remaining times match"));
+        checks.are_equal(local_status_data.enemies_remaining,
+                         simulation_status_data.enemies_remaining,
+                         TEXT("Headless and simulation mission enemy counts match"));
+
+        auto const local_health_count{local_status_data.surviving_entity_health.Num()};
+        auto const simulation_health_count{simulation_status_data.surviving_entity_health.Num()};
+        checks.are_equal(local_health_count,
+                         simulation_health_count,
+                         TEXT("Headless and simulation surviving mission health counts match"));
+        auto const health_count{FMath::Min(local_health_count, simulation_health_count)};
+        for (int32 i{0}; i < health_count; ++i) {
+            auto const& local_health{local_status_data.surviving_entity_health[i]};
+            auto const& simulation_health{simulation_status_data.surviving_entity_health[i]};
+            checks.are_equal(local_health.health,
+                             simulation_health.health,
+                             TEXT("Headless and simulation surviving mission health matches"),
+                             i);
+            checks.are_equal(
+                local_health.max_health,
+                simulation_health.max_health,
+                TEXT("Headless and simulation surviving mission maximum health matches"),
+                i);
+        }
+    }
+
+#if WITH_EDITOR
+    void check_sampled_speed_data_equal(ml::hud_manager::FSampledSpeedDataCache const& local,
+                                        ml::hud_manager::FSampledSpeedDataCache const& simulation) {
+        constexpr double sampled_speed_tolerance{1e-6};
+        auto const local_sample_count{local.samples.Num()};
+        auto const simulation_sample_count{simulation.samples.Num()};
+        checks.are_equal(local_sample_count,
+                         simulation_sample_count,
+                         TEXT("Headless and simulation sampled-speed cache lengths match"));
+        checks.are_equal(local.oldest_index,
+                         simulation.oldest_index,
+                         TEXT("Headless and simulation sampled-speed cache indices match"));
+
+        auto const sample_count{FMath::Min(local_sample_count, simulation_sample_count)};
+        for (int32 i{0}; i < sample_count; ++i) {
+            auto const& local_sample{local.samples[i]};
+            auto const& simulation_sample{simulation.samples[i]};
+            checks.are_equal(local_sample.X,
+                             simulation_sample.X,
+                             sampled_speed_tolerance,
+                             TEXT("Headless and simulation sampled-speed times match"),
+                             i);
+            checks.are_equal(local_sample.Y,
+                             simulation_sample.Y,
+                             sampled_speed_tolerance,
+                             TEXT("Headless and simulation sampled-speed values match"),
+                             i);
+        }
+    }
+#endif
+
     static auto count_cached_entities(FHUDManager const& manager) -> int32 {
         int32 total{0};
         auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};

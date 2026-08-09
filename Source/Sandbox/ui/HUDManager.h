@@ -148,9 +148,10 @@ struct SANDBOX_API FHUDManager {
                     ATestMissionManager const& new_mission_manager,
                     ATestEntityRegistry const& new_entity_registry,
                     SimulationClockInterface simulation_clock,
-                    ATestSpaceShip* new_player_ship);
+                    ATestSpaceShip const* new_player_ship);
     void deactivate();
-    void tick();
+    void tick(FPeriodicTickCountdown8::counter_type num_ticks);
+    void force_sample();
 
     void register_hud(UShipHudWidget& hud);
     void unregister_hud(UShipHudWidget& hud);
@@ -174,8 +175,14 @@ struct SANDBOX_API FHUDManager {
     auto get_player_flight_data() const noexcept -> ml::hud_manager::FPlayerFlightDataCache const& {
         return player_flight_data_buffers.current();
     }
+#if WITH_EDITOR
+    auto get_sampled_speed_data() const noexcept -> ml::hud_manager::FSampledSpeedDataCache const& {
+        return sampled_speed_data_buffers.current();
+    }
+#endif
   private:
-    auto collect_data() -> ml::hud_manager::FDataChanges;
+    auto collect_data(FPeriodicTickCountdown8::counter_type num_ticks)
+        -> ml::hud_manager::FDataChanges;
     bool collect_mission_data();
     void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
     bool collect_entity_count_data();
@@ -201,7 +208,7 @@ struct SANDBOX_API FHUDManager {
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<TWeakObjectPtr<UShipHudWidget>> registered_huds;
-    TWeakObjectPtr<ATestSpaceShip> player_ship;
+    TWeakObjectPtr<ATestSpaceShip const> player_ship;
     ATestMissionManager const* mission_manager{nullptr};
     ATestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;

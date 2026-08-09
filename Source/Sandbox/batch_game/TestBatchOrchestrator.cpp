@@ -394,8 +394,10 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    accumulator += (dt * time_scale);
+    auto const time_added{dt * time_scale};
+    accumulator += time_added;
 
+    tick_type num_ticks{0};
     while (accumulator >= tick_period) {
 #if WITH_EDITOR
         if (log_ticks) {
@@ -589,9 +591,16 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 #endif
 
         ++completed_ticks;
+        ++num_ticks;
         end_tick_test_hook.ExecuteIfBound(*this);
-        hud_manager.tick();
     }
+
+    // We may have a huge number of ticks if the simulation is sped up
+    // so just truncate
+    auto const hud_num_ticks{FMath::Min(
+        num_ticks,
+        static_cast<tick_type>(TNumericLimits<FPeriodicTickCountdown8::counter_type>::Max()))};
+    hud_manager.tick(static_cast<FPeriodicTickCountdown8::counter_type>(hud_num_ticks));
 
     /* -------------------------------------------------------------------------------- */
     // Rendering
@@ -633,9 +642,12 @@ auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) c
 void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);
-    capital_ship_fighters->bind_simulation_clock(*this);
-    lasers->bind_simulation_clock(*this);
-    mission_manager->bind_simulation_clock(*this);
+
+    auto const bind_simulation_clock{[this](auto actor) { actor->bind_simulation_clock(*this); }};
+    if (IsValid(player_ship)) {
+        bind_simulation_clock(player_ship);
+    }
+    ml::invoke_on_all(bind_simulation_clock, capital_ship_fighters, lasers, mission_manager);
 
     if (IsValid(player_ship)) {
         player_ship->set_entity_registry(entity_registry);

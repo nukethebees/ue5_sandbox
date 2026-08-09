@@ -87,6 +87,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
     auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
+    auto get_hud_update_frequencies() const noexcept -> FTestBatchGameUiUpdateFrequencies const& {
+        return hud_update_frequencies;
+    }
 
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();

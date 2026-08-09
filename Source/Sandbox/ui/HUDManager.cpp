@@ -17,7 +17,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                              ATestMissionManager const& new_mission_manager,
                              ATestEntityRegistry const& new_entity_registry,
                              SimulationClockInterface const simulation_clock,
-                             ATestSpaceShip* const new_player_ship) {
+                             ATestSpaceShip const* const new_player_ship) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
     mission_data_buffers = {};
@@ -90,8 +90,9 @@ void FHUDManager::deactivate() {
 #endif
 }
 
-void FHUDManager::tick() {
+void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::tick);
+    check(num_ticks >= 0);
     if (state != EHUDManagerState::Active) {
         return;
     }
@@ -99,7 +100,28 @@ void FHUDManager::tick() {
     check(IsValid(mission_manager));
     check(IsValid(entity_registry));
 
-    auto const changes{collect_data()};
+    auto const changes{collect_data(num_ticks)};
+    update_huds(changes);
+}
+
+void FHUDManager::force_sample() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::force_sample);
+    if (state != EHUDManagerState::Active) {
+        return;
+    }
+
+    check(IsValid(mission_manager));
+    check(IsValid(entity_registry));
+
+    ml::hud_manager::FDataChanges changes;
+    changes.mission = collect_mission_data();
+    changes.entity_counts = collect_entity_count_data();
+    changes.kill_data = collect_kill_data();
+    changes.player_status = collect_player_status_data();
+    changes.player_flight = collect_player_flight_data();
+#if WITH_EDITOR
+    changes.sampled_speed = collect_sampled_speed_data();
+#endif
     update_huds(changes);
 }
 
@@ -133,7 +155,8 @@ void FHUDManager::set_selected_mapping_context(FString const& context_name) {
     selected_mapping_context = context_name;
 }
 
-auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
+auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_ticks)
+    -> ml::hud_manager::FDataChanges {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_data);
     ml::hud_manager::FDataChanges changes;
     changes.player_flight = collect_player_flight_data();
@@ -141,7 +164,7 @@ auto FHUDManager::collect_data() -> ml::hud_manager::FDataChanges {
     changes.sampled_speed = collect_sampled_speed_data();
 #endif
 
-    update_timers.tick();
+    update_timers.tick(num_ticks);
     if (update_timers.try_consume(FHUDUpdateTimerIndex::player_status)) {
         changes.player_status = collect_player_status_data();
     }

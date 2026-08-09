@@ -27,10 +27,9 @@
 #include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
-#include <NiagaraComponent.h>
-#include <TimerManager.h>
-
 #include <limits>
+#include <NiagaraComponent.h>
+#include <utility>
 
 #include "Sandbox/utilities/macros/null_checks.hpp"
 
@@ -107,6 +106,14 @@ void ATestSpaceShip::update_timers(float const dt) {
 
     laser_shot_cooldown -= dt;
     time_since_rotation_input += dt;
+
+#if WITH_EDITOR
+    --speed_sample_ticks_remaining;
+    if (speed_sample_ticks_remaining <= 0) {
+        sample_speed();
+        speed_sample_ticks_remaining = speed_sample_tick_period;
+    }
+#endif
 }
 void ATestSpaceShip::move(float const dt) {
     update_boost_brake(dt);
@@ -815,8 +822,9 @@ auto ATestSpaceShip::get_energy() const -> float {
 /* ------------------------------------------------------------------------------------------ */
 #if WITH_EDITOR
 void ATestSpaceShip::sample_speed() {
-    speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
-                                         FMath::Clamp(velocity.Size(), 0.0, 100e3)};
+    speed_samples[speed_sample_index] = {
+        FMath::Clamp(simulation_clock.get_simulation_time(), 0.0, 1e9),
+        FMath::Clamp(velocity.Size(), 0.0, 100e3)};
     speed_sample_index++;
     if (speed_sample_index >= speed_sample_max) {
         speed_sample_index = 0;
@@ -846,17 +854,27 @@ void ATestSpaceShip::draw_debug_shapes() {
 }
 void ATestSpaceShip::configure_speed_sampling() {
 #if WITH_EDITOR
-    static constexpr float sample_rate_hz{60.0f};
-    static constexpr float sample_interval{1.0f / sample_rate_hz};
-    static constexpr float sample_window{5.0f};
+    static constexpr double sample_rate_hz{60.0};
+    static constexpr double sample_window_seconds{5.0};
+    auto const sample_tick_period{simulation_clock.frequency_to_tick_period(sample_rate_hz)};
+    auto const sample_window_ticks{simulation_clock.duration_to_tick_period(sample_window_seconds)};
+    check(std::in_range<int32>(sample_tick_period));
+    check(sample_tick_period > 0);
+    auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
+    check(std::in_range<int32>(sample_count));
+
     speed_sample_index = 0;
-    speed_sample_max = static_cast<int32>(sample_rate_hz * sample_window);
+    speed_sample_max = static_cast<int32>(sample_count);
+    speed_sample_tick_period = static_cast<int32>(sample_tick_period);
+    speed_sample_ticks_remaining = speed_sample_tick_period;
     speed_samples.Reserve(speed_sample_max);
     for (int32 i{0}; i < speed_sample_max; ++i) {
         speed_samples.Add(FVector2d::ZeroVector);
     }
 
-    GetWorldTimerManager().SetTimer(
-        speed_sample_timer, this, &ThisClass::sample_speed, sample_interval, true);
 #endif
+}
+
+void ATestSpaceShip::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) {
+    simulation_clock.bind(orchestrator);
 }

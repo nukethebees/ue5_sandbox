@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
@@ -92,6 +93,8 @@ class SANDBOX_API ATestSpaceShip
 
     auto get_entity_registry() const { return entity_registry; }
     void set_entity_registry(ATestEntityRegistry* er) { entity_registry = er; }
+
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
 
     auto get_laser_actor() const { return laser_actor; }
     void set_laser_actor(ATestLasers* actor) { laser_actor = actor; }
@@ -381,7 +384,8 @@ class SANDBOX_API ATestSpaceShip
 #if WITH_EDITORONLY_DATA
     int32 speed_sample_index{0};
     int32 speed_sample_max{0};
-    FTimerHandle speed_sample_timer;
+    int32 speed_sample_ticks_remaining{0};
+    int32 speed_sample_tick_period{1};
     TArray<FVector2d> speed_samples;
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool debug_forward_socket_direction{false};
@@ -392,4 +396,6 @@ class SANDBOX_API ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "Debug")
     float debug_lock_on_sphere_radius{1000.f};
 #endif
+
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 };
