@@ -48,9 +48,6 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* surviving_entities_box{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "UI")
-    TSubclassOf<UMissionEntityHealthRowWidget> surviving_entity_health_row_widget_class;
-
     UPROPERTY(EditAnywhere, Category = "UI|Format")
     FName mission_mode_format{TEXT("{0} ({1})")};
 
@@ -76,9 +73,9 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
                             TConstArrayView<ETestEntityType> const entity_types,
                             TConstArrayView<FShipHealth> const health_values);
     auto check_widget_bindings() const -> bool;
-    void reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId> entity_ids,
+    auto reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId> entity_ids,
                                               TConstArrayView<ETestEntityType> entity_types,
-                                              TConstArrayView<FShipHealth> health_values);
+                                              TConstArrayView<FShipHealth> health_values) -> bool;
 
     TArray<TestEntityUniqueId> surviving_entity_ids{};
     TArray<TObjectPtr<UMissionEntityHealthRowWidget>> surviving_entity_widgets{};

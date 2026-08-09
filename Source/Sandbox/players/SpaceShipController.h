@@ -78,8 +78,6 @@ class ASpaceShipController
     void on_lock_on_acquired(AActor* target);
 
     // UI
-    UPROPERTY(EditAnywhere, Category = "UI")
-    TSubclassOf<UShipHudWidget> hud_widget_class;
     UPROPERTY(VisibleAnywhere, Category = "UI")
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "UI")

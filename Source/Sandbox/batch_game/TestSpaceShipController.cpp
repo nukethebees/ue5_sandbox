@@ -217,7 +217,6 @@ void ATestSpaceShipController::initialise_hud() {
         SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
         SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(ui_data),
-        SANDBOX_NAMED_UOBJECT_PTR(hud_widget_class),
     });
 
     auto* const team_visual_data{ui_data->team_visual_data.Get()};
@@ -225,6 +224,11 @@ void ATestSpaceShipController::initialise_hud() {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ATestSpaceShipController::initialise_hud: Team visual data is invalid."));
+        return;
+    }
+
+    auto const hud_widget_class{ui_data->get_widget_class<UShipHudWidget>()};
+    if (!hud_widget_class) {
         return;
     }
 

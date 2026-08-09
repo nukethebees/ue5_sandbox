@@ -121,7 +121,12 @@ void ASpaceShipController::initialise_hud() {
         return;
     }
 
-    RETURN_IF_NULLPTR(hud_widget_class);
+    RETURN_IF_NULLPTR(ui_data);
+    auto const hud_widget_class{ui_data->get_widget_class<UShipHudWidget>()};
+    if (!hud_widget_class) {
+        return;
+    }
+
     hud_widget = CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"));
     RETURN_IF_NULLPTR(hud_widget);
     hud_widget->AddToViewport();

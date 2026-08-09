@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Blueprint/UserWidget.h>
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
@@ -10,46 +11,12 @@
 
 class UTestTeamVisualData;
 
-class UEntityCountTableWidget;
-class UMissionEntityHealthRowWidget;
-class UMissionStatusWidget;
-class UShipHealthWidget;
-class UShipHudWidget;
-class UShipSpeedWidget;
-class UShipThrusterEnergyWidget;
-class UDebugGraphWidget;
-class UValueWidget;
-
 USTRUCT(BlueprintType)
 struct FBatchGameUiClasses {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UEntityCountTableWidget> entity_count_table_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UMissionEntityHealthRowWidget> mission_entity_health_row_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UMissionStatusWidget> mission_status_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UShipHealthWidget> ship_health_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UShipHudWidget> ship_hud_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UShipSpeedWidget> ship_speed_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Ship HUD")
-    TSubclassOf<UShipThrusterEnergyWidget> ship_thruster_energy_widget_class{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "Widgets")
-    TSubclassOf<UDebugGraphWidget> debug_graph_widget_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Widgets")
-    TSubclassOf<UValueWidget> value_widget_class{nullptr};
+    TMap<TSubclassOf<UUserWidget>, TSubclassOf<UUserWidget>> classes{};
 };
 
 namespace ml::test_batch_game_ui_data {
@@ -81,6 +48,24 @@ UCLASS(BlueprintType)
 class SANDBOX_API UTestBatchGameUiData : public UDataAsset {
     GENERATED_BODY()
   public:
+    static auto get_native_widget_classes() -> TConstArrayView<UClass*>;
+
+    auto get_widget_class(UClass* native_widget_class) const -> TSubclassOf<UUserWidget>;
+
+    template <typename WidgetType>
+    auto get_widget_class() const -> TSubclassOf<WidgetType> {
+        static_assert(TIsDerivedFrom<WidgetType, UUserWidget>::IsDerived,
+                      "WidgetType must derive from UUserWidget.");
+
+        auto const widget_class{get_widget_class(WidgetType::StaticClass())};
+        return TSubclassOf<WidgetType>{widget_class.Get()};
+    }
+
+#if WITH_EDITOR
+    void PostEditChangeProperty(FPropertyChangedEvent& event) override;
+    void PostLoad() override;
+#endif
+
     UPROPERTY(EditAnywhere, Category = "Widget Classes")
     FBatchGameUiClasses widget_classes{};
 
@@ -92,4 +77,9 @@ class SANDBOX_API UTestBatchGameUiData : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Crosshair")
     FHudCrosshairDistances crosshair_distances{};
+  private:
+#if WITH_EDITOR
+    void synchronise_widget_classes();
+    void validate_widget_classes() const;
+#endif
 };

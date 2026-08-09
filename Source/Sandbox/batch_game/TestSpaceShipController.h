@@ -114,8 +114,6 @@ class ATestSpaceShipController
 
     // UI
     FHUDManager hud_manager;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
-    TSubclassOf<UShipHudWidget> hud_widget_class;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     UShipHudWidget* hud_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")

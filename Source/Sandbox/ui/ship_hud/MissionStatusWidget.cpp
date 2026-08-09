@@ -1,5 +1,6 @@
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
 
+#include <Sandbox/batch_game/TestBatchGameUiData.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/ship_hud/MissionEntityHealthRowWidget.h>
@@ -10,6 +11,8 @@
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/VerticalBox.h>
+#include <Misc/PackageName.h>
+#include <UObject/UObjectGlobals.h>
 
 void UMissionStatusWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -28,7 +31,6 @@ auto UMissionStatusWidget::check_widget_bindings() const -> bool {
                 SANDBOX_NAMED_UOBJECT_PTR(enemies_remaining_widget),
                 SANDBOX_NAMED_UOBJECT_PTR(time_remaining_widget),
                 SANDBOX_NAMED_UOBJECT_PTR(surviving_entities_box),
-                SANDBOX_NAMED_UOBJECT_PTR(surviving_entity_health_row_widget_class),
                 SANDBOX_NAMED_UOBJECT_PTR(WidgetTree),
             },
             error_msg)) {
@@ -178,7 +180,10 @@ void UMissionStatusWidget::set_mission_values(
     }
 
     if (entity_list_changed) {
-        reconstruct_surviving_entity_widgets(entity_ids, entity_types, surviving_entity_health);
+        if (!reconstruct_surviving_entity_widgets(
+                entity_ids, entity_types, surviving_entity_health)) {
+            return;
+        }
     }
 
     auto const n_entities{entity_ids.Num()};
@@ -189,12 +194,31 @@ void UMissionStatusWidget::set_mission_values(
     }
 }
 
-void UMissionStatusWidget::reconstruct_surviving_entity_widgets(
+auto UMissionStatusWidget::reconstruct_surviving_entity_widgets(
     TConstArrayView<TestEntityUniqueId> const entity_ids,
     TConstArrayView<ETestEntityType> const entity_types,
-    TConstArrayView<FShipHealth> const health_values) {
+    TConstArrayView<FShipHealth> const health_values) -> bool {
     check(entity_ids.Num() == entity_types.Num());
     check(entity_ids.Num() == health_values.Num());
+
+    auto const data_asset_path{ml::test_batch_game_ui_data::get_data_asset_path()};
+    auto const data_asset_package_path{data_asset_path.ToString()};
+    auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};
+    auto const data_asset_object_path{
+        FString::Printf(TEXT("%s.%s"), *data_asset_package_path, *data_asset_name)};
+    auto* const ui_data{LoadObject<UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionStatusWidget: Failed to load UI data asset at %s."),
+               *data_asset_path.ToString());
+        return false;
+    }
+
+    auto const widget_class{ui_data->get_widget_class<UMissionEntityHealthRowWidget>()};
+    if (!widget_class) {
+        return false;
+    }
 
     surviving_entities_box->ClearChildren();
     surviving_entity_ids.Reset(entity_ids.Num());
@@ -202,20 +226,21 @@ void UMissionStatusWidget::reconstruct_surviving_entity_widgets(
     surviving_entities_box->SetVisibility(entity_ids.IsEmpty() ? ESlateVisibility::Collapsed
                                                                : ESlateVisibility::Visible);
 
-    if (!surviving_entity_health_row_widget_class) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UMissionStatusWidget: Surviving entity health row widget class is null."));
-        return;
-    }
-
-    auto* const widget_class{surviving_entity_health_row_widget_class.Get()};
     auto const n_entities{entity_ids.Num()};
     for (int32 i{0}; i < n_entities; ++i) {
         auto const name{FString::Printf(TEXT("surviving_entity_health_%d"), i)};
         auto* const health_widget{
             WidgetTree->ConstructWidget<UMissionEntityHealthRowWidget>(widget_class, *name)};
-        check(health_widget);
+        if (!IsValid(health_widget)) {
+            UE_LOG(LogSandboxUI,
+                   Error,
+                   TEXT("UMissionStatusWidget: Failed to create surviving entity health row %d."),
+                   i);
+            surviving_entities_box->ClearChildren();
+            surviving_entity_ids.Reset();
+            surviving_entity_widgets.Reset();
+            return false;
+        }
         health_widget->set_entity(entity_ids[i], entity_types[i]);
         health_widget->set_font_size(font_size);
         health_widget->set_health(health_values[i]);
@@ -223,4 +248,6 @@ void UMissionStatusWidget::reconstruct_surviving_entity_widgets(
         surviving_entity_ids.Add(entity_ids[i]);
         surviving_entity_widgets.Add(health_widget);
     }
+
+    return true;
 }
