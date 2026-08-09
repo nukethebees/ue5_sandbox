@@ -9,6 +9,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/cqtests/level_checks.h>
 #include <SandboxTests/cqtests/test_setup.h>
 #include <SandboxTests/cqtests/TestSimulationDriver.h>
 
@@ -128,9 +129,7 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
         auto const& post_fight{samples.nearest_value(t_post_fight)};
 
         check_fighters_team(pre_fight);
-        for (int32 i{0}; i < pre_fight.radii.Num(); ++i) {
-            checks.is_greater_than(pre_fight.radii[i], 0.05f, TEXT("Check radii > 0.05"), i);
-        }
+        ml::check_radii(TConstArrayView<float>{pre_fight.radii}, checks, 0.05f);
 
         checks.is_true(post_fight.enemy_health < pre_fight.enemy_health, TEXT("Enemy lost health"));
 
