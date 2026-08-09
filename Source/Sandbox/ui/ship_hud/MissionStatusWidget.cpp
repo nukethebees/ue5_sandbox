@@ -11,8 +11,6 @@
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/VerticalBox.h>
-#include <Misc/PackageName.h>
-#include <UObject/UObjectGlobals.h>
 
 void UMissionStatusWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -201,17 +199,8 @@ auto UMissionStatusWidget::reconstruct_surviving_entity_widgets(
     check(entity_ids.Num() == entity_types.Num());
     check(entity_ids.Num() == health_values.Num());
 
-    auto const data_asset_path{ml::test_batch_game_ui_data::get_data_asset_path()};
-    auto const data_asset_package_path{data_asset_path.ToString()};
-    auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};
-    auto const data_asset_object_path{
-        FString::Printf(TEXT("%s.%s"), *data_asset_package_path, *data_asset_name)};
-    auto* const ui_data{LoadObject<UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
+    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UMissionStatusWidget: Failed to load UI data asset at %s."),
-               *data_asset_path.ToString());
         return false;
     }
 

@@ -14,7 +14,6 @@
 #include "ScopedTransaction.h"
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
-#include "UObject/UObjectGlobals.h"
 #include "WidgetBlueprint.h"
 #include "WidgetBlueprintOperationUtils.h"
 
@@ -31,24 +30,6 @@ bool is_project_widget_class(UClass const& widget_class) {
     }
 
     return false;
-}
-
-UTestBatchGameUiData* load_project_ui_data(int32 const entry_index) {
-    auto const data_asset_path{ml::test_batch_game_ui_data::get_data_asset_path()};
-    auto const data_asset_package_path{data_asset_path.ToString()};
-    auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};
-    auto const data_asset_object_path{
-        FString::Printf(TEXT("%s.%s"), *data_asset_package_path, *data_asset_name)};
-    auto* const ui_data{LoadObject<UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
-    if (!IsValid(ui_data)) {
-        UE_LOG(LogSandboxEditor,
-               Error,
-               TEXT("Widget generation row %d could not load project UI data asset '%s'."),
-               entry_index,
-               *data_asset_object_path);
-    }
-
-    return ui_data;
 }
 
 bool try_make_asset_paths(FWidgetBlueprintGenerationEntry const& entry,
@@ -186,10 +167,14 @@ bool add_bind_widgets(UWidgetBlueprint& widget_blueprint,
         auto* widget_class_to_construct{required_widget_class};
         if (is_project_widget_class(*required_widget_class)) {
             if (!IsValid(ui_data)) {
-                ui_data = load_project_ui_data(entry_index);
+                ui_data = ml::test_batch_game_ui_data::get_data_asset();
             }
 
             if (!IsValid(ui_data)) {
+                UE_LOG(LogSandboxEditor,
+                       Error,
+                       TEXT("Widget generation row %d could not load the project UI data asset."),
+                       entry_index);
                 return false;
             }
 

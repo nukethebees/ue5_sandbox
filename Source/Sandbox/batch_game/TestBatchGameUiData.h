@@ -9,6 +9,7 @@
 
 #include "TestBatchGameUiData.generated.h"
 
+class UTestBatchGameUiData;
 class UTestTeamVisualData;
 
 USTRUCT(BlueprintType)
@@ -23,6 +24,8 @@ namespace ml::test_batch_game_ui_data {
 inline auto get_data_asset_path() -> FName {
     return FName{TEXT("/Game/UI/DA_ui_data")};
 }
+
+auto SANDBOX_API get_data_asset() -> UTestBatchGameUiData*;
 }
 
 USTRUCT(BlueprintType)

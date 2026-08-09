@@ -11,6 +11,26 @@
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 #include "Sandbox/ui/widgets/ValueWidget.h"
 
+#include <Misc/PackageName.h>
+#include <UObject/UObjectGlobals.h>
+
+auto ml::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
+    auto const data_asset_path{get_data_asset_path()};
+    auto const data_asset_package_path{data_asset_path.ToString()};
+    auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};
+    auto const data_asset_object_path{
+        FString::Printf(TEXT("%s.%s"), *data_asset_package_path, *data_asset_name)};
+    auto* const data_asset{LoadObject<UTestBatchGameUiData>(nullptr, *data_asset_object_path)};
+    if (!IsValid(data_asset)) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("Failed to load project UI data asset '%s'."),
+               *data_asset_object_path);
+    }
+
+    return data_asset;
+}
+
 auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass*> {
     static UClass* const classes[]{
         UEntityCountTableWidget::StaticClass(),
