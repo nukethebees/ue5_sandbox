@@ -26,6 +26,7 @@ Unreal Engine 5.8 project.
 
 * Unreal Engine C++
 * snake_case for functions and variables
+* Do not prefix boolean variables with `b_`.
 * TitleCase for types
 * east const
 * always use braces
