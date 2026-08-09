@@ -12,6 +12,7 @@
 #include <Misc/AutomationTest.h>
 
 #include <concepts>
+#include <functional>
 
 class AActor;
 
@@ -234,61 +235,30 @@ Check dist > %f:
     }
 
     /* ---------------------------------------------------------------------------- */
-    // Greater
+    // Comparison
     /* ---------------------------------------------------------------------------- */
     template <typename T>
     bool is_greater_than(T const& lhs,
                          T const& rhs,
                          FString const& description,
                          int32 const i = INDEX_NONE) {
-        auto const result{lhs > rhs};
-        store_result(result);
-
-        display_result(result,
-                       FString::Printf(TEXT("%s%s (Expect: %s > %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       *to_string(lhs),
-                                       *to_string(rhs)));
-
-        return result;
+        return compare<std::greater<>{}>(lhs, rhs, TEXT(">"), description, i);
     }
-    /* ---------------------------------------------------------------------------- */
-    // Less than
-    /* ---------------------------------------------------------------------------- */
+
     template <typename T>
     bool is_less_than(T const& lhs,
                       T const& rhs,
                       FString const& description,
                       int32 const i = INDEX_NONE) {
-        auto const result{lhs < rhs};
-        store_result(result);
-
-        display_result(result,
-                       FString::Printf(TEXT("%s%s (Expect: %s < %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       *to_string(lhs),
-                                       *to_string(rhs)));
-
-        return result;
+        return compare<std::less<>{}>(lhs, rhs, TEXT("<"), description, i);
     }
+
     template <typename T>
     bool is_less_equal_than(T const& lhs,
                             T const& rhs,
                             FString const& description,
                             int32 const i = INDEX_NONE) {
-        auto const result{lhs <= rhs};
-        store_result(result);
-
-        display_result(result,
-                       FString::Printf(TEXT("%s%s (Expect: %s <= %s)"),
-                                       *start_msg(i),
-                                       *description,
-                                       *to_string(lhs),
-                                       *to_string(rhs)));
-
-        return result;
+        return compare<std::less_equal<>{}>(lhs, rhs, TEXT("<="), description, i);
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -305,6 +275,26 @@ Check dist > %f:
     FAutomationTestBase* test_runner{nullptr};
     bool log_successful_assertions{false};
     bool all_passed{true};
+  private:
+    template <auto comparison, typename T>
+    bool compare(T const& lhs,
+                 T const& rhs,
+                 TCHAR const* const operator_text,
+                 FString const& description,
+                 int32 const i = INDEX_NONE) {
+        auto const result{comparison(lhs, rhs)};
+        store_result(result);
+
+        display_result(result,
+                       FString::Printf(TEXT("%s%s (Expect: %s %s %s)"),
+                                       *start_msg(i),
+                                       *description,
+                                       *to_string(lhs),
+                                       operator_text,
+                                       *to_string(rhs)));
+
+        return result;
+    }
 };
 
 #define SANDBOX_TESTS_ASSERT_ALL_PASSED(CHECKS_INSTANCE)                     \
