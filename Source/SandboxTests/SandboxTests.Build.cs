@@ -32,7 +32,6 @@ public class SandboxTests : ModuleRules
             "Engine",
             "AssetRegistry",
             "RenderCore",
-            "FunctionalTesting",
             "UnrealEd",
             "CQTest",
             "EnhancedInput",

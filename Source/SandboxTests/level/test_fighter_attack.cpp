@@ -1,5 +1,5 @@
-#include "lex_to_string.h"
-#include "TestFighterAttackDriver.h"
+#include <SandboxTests/support/lex_to_string.h>
+#include <SandboxTests/support/TestFighterAttackDriver.h>
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
@@ -8,10 +8,10 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <SandboxTests/cqtests/level_checks.h>
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -19,7 +19,7 @@
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(FighterCapitalAttack, "Sandbox.FunctionalTests")
+TEST_CLASS(FighterCapitalAttack, "Sandbox.LevelTests")
 {
     using time_type = ml::TestSimulationDriver::time_type;
     using ThisClass = FighterCapitalAttack;

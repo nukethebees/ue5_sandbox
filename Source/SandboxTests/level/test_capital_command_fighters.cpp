@@ -6,9 +6,9 @@
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/enums.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -18,7 +18,7 @@
 #include <EngineUtils.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(CapitalCommandFighters, "Sandbox.FunctionalTests")
+TEST_CLASS(CapitalCommandFighters, "Sandbox.LevelTests")
 {
     using Task = ATestCapitalShipFighters::Task;
     using ThisClass = CapitalCommandFighters;

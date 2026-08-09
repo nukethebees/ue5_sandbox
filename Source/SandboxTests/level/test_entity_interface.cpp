@@ -6,9 +6,9 @@
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -19,7 +19,7 @@
 #include <EngineUtils.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(EntityInterfaceTest, "Sandbox.FunctionalTests")
+TEST_CLASS(EntityInterfaceTest, "Sandbox.LevelTests")
 {
     using ThisClass = EntityInterfaceTest;
     using time_type = ml::TestSimulationDriver::time_type;

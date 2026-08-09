@@ -1,7 +1,7 @@
-#include "test_setup.h"
-#include "TestSimulationDriver.h"
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -17,7 +17,7 @@
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(TestPlayerShipDeath, "Sandbox.FunctionalTests")
+TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
 {
     using ThisClass = TestPlayerShipDeath;
 

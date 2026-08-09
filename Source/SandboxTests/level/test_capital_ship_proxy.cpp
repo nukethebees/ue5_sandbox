@@ -1,6 +1,6 @@
-#include "test_setup.h"
-#include "TestActorSpawning.h"
-#include "TestSimulationDriver.h"
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
@@ -10,13 +10,13 @@
 #include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(TestCapitalShipProxy, "Sandbox.FunctionalTests")
+TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
 {
     using ThisClass = TestCapitalShipProxy;
 

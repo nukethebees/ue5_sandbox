@@ -1,6 +1,6 @@
-#include "test_setup.h"
+#include <SandboxTests/support/test_setup.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -20,7 +20,7 @@
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.UnitTests")
+TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
 {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};

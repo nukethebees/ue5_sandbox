@@ -3,11 +3,11 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestFightersInterceptCapitalResults.h>
-#include <SandboxTests/cqtests/TestResultAssetIO.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestFightersInterceptCapitalResults.h>
+#include <SandboxTests/support/TestResultAssetIO.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -15,7 +15,7 @@
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(FightersInterceptCapital, "Sandbox.FunctionalTests")
+TEST_CLASS(FightersInterceptCapital, "Sandbox.LevelTests")
 {
     using ThisClass = FightersInterceptCapital;
     using time_type = ml::TestSimulationDriver::time_type;

@@ -4,10 +4,10 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestResultAssetIO.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestResultAssetIO.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -21,7 +21,7 @@ This test relies on a long spawn delay to ensure more fighters are not spawned.
 The assumption is that there is one wave of fighters total.
 */
 
-TEST_CLASS(CapitalFighterHandles, "Sandbox.FunctionalTests")
+TEST_CLASS(CapitalFighterHandles, "Sandbox.LevelTests")
 {
     using ThisClass = CapitalFighterHandles;
     using Task = ATestCapitalShipFighters::Task;

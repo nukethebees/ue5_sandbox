@@ -2,9 +2,9 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -12,7 +12,7 @@
 #include <CQTest.h>
 #include <EngineUtils.h>
 
-TEST_CLASS(SimpleBatch, "Sandbox.FunctionalTests")
+TEST_CLASS(SimpleBatch, "Sandbox.LevelTests")
 {
     using ThisClass = SimpleBatch;
     using time_type = ml::TestSimulationDriver::time_type;

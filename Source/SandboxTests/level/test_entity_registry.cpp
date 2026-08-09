@@ -1,4 +1,4 @@
-#include "SimulationTestAssets.h"
+#include <SandboxTests/support/SimulationTestAssets.h>
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -11,10 +11,10 @@
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/enums.h>
 
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
-#include <SandboxTests/cqtests/test_setup.h>
-#include <SandboxTests/cqtests/TestSimulationDriver.h>
 #include <SandboxTests/SandboxTestLogCategories.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/container_ops.h>
@@ -31,7 +31,7 @@
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(TestEntityRegistry, "Sandbox.FunctionalTests")
+TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
 {
     using ThisClass = TestEntityRegistry;
     using time_type = ml::TestSimulationDriver::time_type;

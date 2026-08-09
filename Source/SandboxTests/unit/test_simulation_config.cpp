@@ -1,4 +1,4 @@
-#include "SimulationTestAssets.h"
+#include <SandboxTests/support/SimulationTestAssets.h>
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>

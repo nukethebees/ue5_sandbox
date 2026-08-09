@@ -1,9 +1,9 @@
-#include "test_setup.h"
-#include "TestActorSpawning.h"
-#include "TestSimulationDriver.h"
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <SandboxTests/cqtests/level_checks.h>
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -27,7 +27,7 @@
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
-TEST_CLASS(TestHUDManager, "Sandbox.FunctionalTests")
+TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
 {
     using ThisClass = TestHUDManager;
 

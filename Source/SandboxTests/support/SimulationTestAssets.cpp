@@ -2,7 +2,7 @@
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <SandboxTests/cqtests/SoftTestAssertions.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
