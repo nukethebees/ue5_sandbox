@@ -34,6 +34,7 @@ Unreal Engine 5.8 project.
 * prefer simple C++ over template metaprogramming
 * save loop bounds as const local variables
 * log warnings/errors when null checks fail instead of returning silently
+* Group functions by category
 
 # UI Design
 
@@ -44,3 +45,6 @@ Unreal Engine 5.8 project.
 
 * Only create tests when explicitly asked.
 * When adding tests, do not compile or run them; ask the user to compile and check them.
+* Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
+* All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
+* To avoid time-zero ordering issues, schedule simulation-test damage and kills through `TestSimulationDriver::timeline` at a positive simulation time.
