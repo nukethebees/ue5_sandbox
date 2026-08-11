@@ -77,7 +77,7 @@ void ATestStaticTurrets::begin_tick() {
 void ATestStaticTurrets::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_timers);
 
-    laser_cooldowns.tick(dt);
+    entities.laser_cooldowns.tick(dt);
     log_config.tick(dt);
 }
 void ATestStaticTurrets::make_decisions() {
@@ -94,8 +94,8 @@ void ATestStaticTurrets::resolve_damage_events() {
 
     ml::batch::resolve_damage_events(*entity_registry,
                                      owner_id,
-                                     entity_handles,
-                                     healths,
+                                     entities.handles,
+                                     entities.healths,
                                      local_indices_to_remove,
                                      entity_death_info);
     validate_array_sizes();
@@ -107,7 +107,7 @@ void ATestStaticTurrets::update_entity_registry() {
 
     entity_registry->queue_entity_updates(
         {
-            .indices = entity_handles,
+            .indices = entities.handles,
             .data = entity_update_data.get_const_view(),
         },
         entity_death_info);
@@ -169,21 +169,21 @@ void ATestStaticTurrets::prepare_entity_update_data() {
 
     ml::add_uninitialised(entity_update_data, n);
 
-    entity_update_data.locations = locations;
+    entity_update_data.locations = entities.locations;
     ml::fill(entity_update_data.velocities, 0.f);
     ml::fill(entity_update_data.radii, ml::get_mesh_sphere_bounds(*instances));
-    entity_update_data.healths = healths;
-    entity_update_data.teams = teams;
+    entity_update_data.healths = entities.healths;
+    entity_update_data.teams = entities.teams;
     entity_update_data.set_all_entity_types(ETestEntityType::Turret);
 
     for (int32 i{0}; i < n; ++i) {
-        entity_update_data.alive[i] = static_cast<uint8>(healths[i] > 0);
+        entity_update_data.alive[i] = static_cast<uint8>(entities.healths[i] > 0);
     }
 }
 
 // Accessors
 auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
-    return teams.Num();
+    return entities.handles.Num();
 }
 
 void ATestStaticTurrets::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -194,7 +194,7 @@ auto ATestStaticTurrets::get_owner_id() const -> TestEntityOwnerId {
 }
 
 auto ATestStaticTurrets::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
-    return target_handles;
+    return entities.target_handles;
 }
 
 // Searching
@@ -212,18 +212,18 @@ void ATestStaticTurrets::perform_search() {
         auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
         for (int32 i{begin}; i < end; ++i) {
-            if (!target_handles[i].is_null()) {
+            if (!entities.target_handles[i].is_null()) {
                 continue;
             }
 
-            auto const turret_location{ml::get_vector3f(locations, i)};
-            auto const this_team{teams[i]};
+            auto const turret_location{ml::get_vector3f(entities.locations, i)};
+            auto const this_team{entities.teams[i]};
 
             TStaticArray<FRegistryEntityHandle, 128> elems;
             auto const n_entities{entity_registry->collect_non_team_entities_in_range(
                 turret_location, this_team, radius, elems)};
 
-            target_handles[i] = FRegistryEntityHandle{};
+            entities.target_handles[i] = FRegistryEntityHandle{};
 
             for (int32 j{0}; j < n_entities; ++j) {
                 auto const target_index{elems[j]};
@@ -232,7 +232,7 @@ void ATestStaticTurrets::perform_search() {
                     continue;
                 }
 
-                target_handles[i] = target_index;
+                entities.target_handles[i] = target_index;
                 break;
             }
         }
@@ -259,35 +259,35 @@ void ATestStaticTurrets::fire_at_enemies() {
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const target_handle{target_handles[i]};
+        auto const target_handle{entities.target_handles[i]};
 
         if (target_handle.is_null()) {
             continue;
         }
 
         if (!entity_registry->is_valid_alive(target_handle)) {
-            target_handles[i].reset();
+            entities.target_handles[i].reset();
             continue;
         }
 
-        if (!(laser_cooldowns[i] <= 0.f)) {
+        if (!(entities.laser_cooldowns[i] <= 0.f)) {
             continue;
         }
 
-        auto const turret_location{ml::get_vector3f(locations, i)};
+        auto const turret_location{ml::get_vector3f(entities.locations, i)};
         auto const target_location{entity_registry->get_location(target_handle)};
 
         auto const distance_sq{FVector3f::DistSquared(turret_location, target_location)};
         if (distance_sq >= disengage_radius_sq) {
-            target_handles[i].reset();
+            entities.target_handles[i].reset();
             continue;
         }
 
         auto const target_velocity{entity_registry->get_velocity(target_handle)};
 
-        auto const loc_x{locations.xs[i] + fire_point_offset.X};
-        auto const loc_y{locations.ys[i] + fire_point_offset.Y};
-        auto const loc_z{locations.zs[i] + fire_point_offset.Z};
+        auto const loc_x{entities.locations.xs[i] + fire_point_offset.X};
+        auto const loc_y{entities.locations.ys[i] + fire_point_offset.Y};
+        auto const loc_z{entities.locations.zs[i] + fire_point_offset.Z};
         FVector3f const laser_location{
             loc_x,
             loc_y,
@@ -306,10 +306,10 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.damages.Add(laser_damage);
         new_lasers.speeds.Add(laser_speed);
         new_lasers.max_distances.Add(laser_max_distance);
-        new_lasers.instigator_handles.Add(entity_handles[i]);
-        new_lasers.colours.Add(colour_cache[teams[i]]);
+        new_lasers.instigator_handles.Add(entities.handles[i]);
+        new_lasers.colours.Add(colour_cache[entities.teams[i]]);
 
-        laser_cooldowns[i] = cooldown;
+        entities.laser_cooldowns[i] = cooldown;
     }
 
     laser_actor->queue_laser_spawns(new_lasers);
@@ -337,20 +337,20 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
                                                  EAllowShrinking::No);
 
     // Set entity data
-    ml::add_uninitialised(n_to_add, ismc_transforms, locations, teams, healths);
+    ml::add_uninitialised(n_to_add, ismc_transforms, entities);
 
-    ml::fill(healths, actor_config->max_health);
-    target_handles.AddDefaulted(n_to_add);
-    laser_cooldowns.remaining_times.AddZeroed(n_to_add);
+    ml::fill_last(entities.healths, actor_config->max_health, n_to_add);
+    ml::fill_last(entities.target_handles, FRegistryEntityHandle{}, n_to_add);
+    ml::fill_last(entities.laser_cooldowns.remaining_times, 0.f, n_to_add);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};
 
         ismc_transforms[i] = transform;
-        ml::assign(locations, i, transform.GetLocation());
+        ml::assign(entities.locations, i, transform.GetLocation());
 
         auto const team{proxies[i]->get_team()};
-        teams[i] = team;
+        entities.teams[i] = team;
 
         // Custom ISMC data
         auto const base{i * n_custom_ismc_floats};
@@ -365,12 +365,12 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entity_handles = MoveTemp(new_entities.registry_handles);
+    entities.handles = MoveTemp(new_entities.registry_handles);
 
     // Map the proxies to the new handles
     for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(entity_handles[i]);
-        target_handles[i].reset();
+        proxies[i]->set_entity_handle(entities.handles[i]);
+        entities.target_handles[i].reset();
     }
 
     validate_array_sizes();
@@ -398,15 +398,15 @@ void ATestStaticTurrets::trigger_death_effects() {
         constexpr bool auto_destroy{true};
         constexpr bool auto_activate{true};
 
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
-                                                       explosion_system,
-                                                       ml::get_vector3d(locations, entity_index) +
-                                                           location_offset,
-                                                       FRotator::ZeroRotator,
-                                                       scale,
-                                                       auto_destroy,
-                                                       auto_activate,
-                                                       ENCPoolMethod::AutoRelease);
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            world,
+            explosion_system,
+            ml::get_vector3d(entities.locations, entity_index) + location_offset,
+            FRotator::ZeroRotator,
+            scale,
+            auto_destroy,
+            auto_activate,
+            ENCPoolMethod::AutoRelease);
     }
 }
 void ATestStaticTurrets::handle_dead_entities() {
@@ -419,26 +419,13 @@ void ATestStaticTurrets::handle_dead_entities() {
     trigger_death_effects();
 
     local_indices_to_remove.Sort(TGreater<int32>{});
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove,
-                                        ismc_transforms,
-                                        entity_handles,
-                                        locations,
-                                        teams,
-                                        laser_cooldowns.remaining_times,
-                                        healths,
-                                        target_handles);
+    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, ismc_transforms, entities);
 }
 
 // Misc
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(entity_handles,
-              ismc_transforms,
-              locations,
-              teams,
-              laser_cooldowns,
-              target_handles,
-              healths);
+    ml::reset(entities, ismc_transforms);
     clear_tick_buffers();
 }
 void ATestStaticTurrets::clear_tick_buffers() {
@@ -452,18 +439,15 @@ void ATestStaticTurrets::clear_tick_buffers() {
 // Checks
 void ATestStaticTurrets::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_handles),
+        SANDBOX_NAMED_NUM(entities),
         SANDBOX_NAMED_NUM(ismc_transforms),
-        SANDBOX_NAMED_NUM(locations),
-        SANDBOX_NAMED_NUM(teams),
-        SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(target_handles),
-        SANDBOX_NAMED_NUM(healths),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
+
+    entities.validate_array_sizes();
 }
 void ATestStaticTurrets::validate_proxy_handles() const {
-    entity_registry->validate_handles(entity_handles);
+    entity_registry->validate_handles(entities.handles);
 }
 
 // Debugging
@@ -475,10 +459,10 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{ml::get_vector3d(locations, i)};
+        auto const turret_location{ml::get_vector3d(entities.locations, i)};
 
         if (draw_target_arrows_enabled) {
-            auto const target_handle{target_handles[i]};
+            auto const target_handle{entities.target_handles[i]};
 
             if (entity_registry->is_valid_handle(target_handle)) {
                 FVector3d const target_location{entity_registry->get_location(target_handle)};
@@ -487,10 +471,12 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
         }
 
         if (draw_debug_entity_info_enabled) {
-            auto const turret_handle{entity_handles[i]};
+            auto const turret_handle{entities.handles[i]};
 
-            auto const msg{FString::Printf(
-                TEXT("[%d, %d] HP=%d"), turret_handle.index, turret_handle.generation, healths[i])};
+            auto const msg{FString::Printf(TEXT("[%d, %d] HP=%d"),
+                                           turret_handle.index,
+                                           turret_handle.generation,
+                                           entities.healths[i])};
             auto const msg_location{turret_location + text_offset};
             drawer.draw_string(msg_location, msg);
         }

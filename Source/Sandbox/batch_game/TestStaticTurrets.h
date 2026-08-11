@@ -10,11 +10,14 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include <utility>
 
 #include "TestStaticTurrets.generated.h"
 
@@ -25,12 +28,34 @@ class UTestStaticTurretsConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 
+namespace ml::test_static_turrets {
+struct EntityData : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> handles;
+    FVectors3f locations;
+    TArray<ETestTeam> teams;
+    FCountdownTimers laser_cooldowns;
+    TArray<FRegistryEntityHandle> target_handles;
+    TArray<int32> healths;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.handles,
+                                         self.locations,
+                                         self.teams,
+                                         self.laser_cooldowns,
+                                         self.target_handles,
+                                         self.healths);
+    }
+};
+}
+
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
   public:
     using Proxy = ATestStaticTurretsProxy;
     using RegistryEntityData = ml::entity_registry::EntityData;
+    using EntityData = ml::test_static_turrets::EntityData;
 
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
@@ -107,20 +132,14 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     TestEntityOwnerId owner_id{};
-    TArray<FRegistryEntityHandle> entity_handles{};
+    EntityData entities{};
     EntityDeathInfo entity_death_info;
     RegistryEntityData entity_update_data;
-
-    // Location
-    FVectors3f locations;
 
     // Visuals
     UPROPERTY()
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FTransform> ismc_transforms;
-
-    // Team
-    TArray<ETestTeam> teams{};
 
     // Searching
     UPROPERTY(EditAnywhere, Category = "Performance", meta = (ClampMin = "1", UIMin = "1"))
@@ -130,16 +149,8 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
 
-    FCountdownTimers laser_cooldowns;
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
-
-    // Enemies
-    TArray<FRegistryEntityHandle> target_handles{};
-
-    // Health
-    UPROPERTY()
-    TArray<int32> healths;
 
     // Despawning
     UPROPERTY()
