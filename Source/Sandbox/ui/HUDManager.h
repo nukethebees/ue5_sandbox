@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchGameUiData.h>
 #include <Sandbox/batch_game/TestEntityType.h>
@@ -142,12 +141,10 @@ struct FDataChanges {
 }
 
 struct SANDBOX_API FHUDManager {
-    using SimulationClockInterface = ml::test_batch_orchestrator::SimulationClockInterface;
-
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ATestMissionManager const& new_mission_manager,
                     ATestEntityRegistry const& new_entity_registry,
-                    SimulationClockInterface simulation_clock,
+                    double update_tick_rate,
                     ATestSpaceShip const* new_player_ship);
     void deactivate();
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);

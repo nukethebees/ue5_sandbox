@@ -235,8 +235,8 @@ void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
 
     completed_ticks = 0;
-    check(tick_rate > time_type{0});
-    tick_period = 1.f / tick_rate;
+    simulation_tick_loop.initialise();
+    hud_tick_loop.initialise();
 
 #if WITH_EDITOR
     if (log_ticks) {
@@ -310,8 +310,11 @@ void ATestBatchOrchestrator::begin_play() {
 
     mission_manager->begin_play();
 
-    hud_manager.initialise(
-        hud_update_frequencies, *mission_manager, *entity_registry, {*this}, player_ship.Get());
+    hud_manager.initialise(hud_update_frequencies,
+                           *mission_manager,
+                           *entity_registry,
+                           hud_tick_loop.tick_rate,
+                           player_ship.Get());
 
 #if WITH_EDITOR
     if (log_ticks) {
@@ -394,11 +397,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    auto const time_added{dt * time_scale};
-    accumulator += time_added;
+    simulation_tick_loop.add_time(dt);
 
-    tick_type num_ticks{0};
-    while (accumulator >= tick_period) {
+    while (simulation_tick_loop.try_tick()) {
 #if WITH_EDITOR
         if (log_ticks) {
             UE_LOG(LogSandbox,
@@ -437,12 +438,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
             if (IsValid(player_ship)) {
-                player_ship->update_timers(tick_period);
+                player_ship->update_timers(simulation_tick_loop.tick_period);
             }
-            capital_ship_fighters->update_timers(tick_period);
-            capital_ships->update_timers(tick_period);
-            turrets->update_timers(tick_period);
-            spinners->update_timers(tick_period);
+            capital_ship_fighters->update_timers(simulation_tick_loop.tick_period);
+            capital_ships->update_timers(simulation_tick_loop.tick_period);
+            turrets->update_timers(simulation_tick_loop.tick_period);
+            spinners->update_timers(simulation_tick_loop.tick_period);
         }
 
         {
@@ -460,11 +461,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
             if (IsValid(player_ship)) {
-                player_ship->move(tick_period);
+                player_ship->move(simulation_tick_loop.tick_period);
             }
 
-            capital_ship_fighters->move(tick_period);
-            spinners->move(tick_period);
+            capital_ship_fighters->move(simulation_tick_loop.tick_period);
+            spinners->move(simulation_tick_loop.tick_period);
         }
 
         {
@@ -491,7 +492,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
-            lasers->simulate(tick_period);
+            lasers->simulate(simulation_tick_loop.tick_period);
             lasers->commit_spawns();
         }
 
@@ -581,8 +582,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             entity_registry->end_tick();
         }
 
-        accumulator -= tick_period;
-
 #if WITH_EDITOR
         if (log_ticks) {
             UE_LOG(
@@ -591,16 +590,13 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 #endif
 
         ++completed_ticks;
-        ++num_ticks;
         end_tick_test_hook.ExecuteIfBound(*this);
     }
 
-    // We may have a huge number of ticks if the simulation is sped up
-    // so just truncate
-    auto const hud_num_ticks{FMath::Min(
-        num_ticks,
-        static_cast<tick_type>(TNumericLimits<FPeriodicTickCountdown8::counter_type>::Max()))};
-    hud_manager.tick(static_cast<FPeriodicTickCountdown8::counter_type>(hud_num_ticks));
+    hud_tick_loop.add_time(dt);
+    while (hud_tick_loop.try_tick()) {
+        hud_manager.tick(1);
+    }
 
     /* -------------------------------------------------------------------------------- */
     // Rendering
@@ -624,19 +620,19 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
-    time_scale = scale;
+    simulation_tick_loop.time_scale = scale;
 }
 auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
     -> tick_type {
     check(frequency > time_type{0});
-    check(tick_rate > time_type{0});
-    return static_cast<tick_type>(FMath::CeilToInt64(tick_rate / frequency));
+    check(simulation_tick_loop.tick_rate > time_type{0});
+    return static_cast<tick_type>(FMath::CeilToInt64(simulation_tick_loop.tick_rate / frequency));
 }
 auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
     -> tick_type {
     check(duration >= time_type{0});
-    check(tick_rate > time_type{0});
-    return static_cast<tick_type>(FMath::CeilToInt64(duration * tick_rate));
+    check(simulation_tick_loop.tick_rate > time_type{0});
+    return static_cast<tick_type>(FMath::CeilToInt64(duration * simulation_tick_loop.tick_rate));
 }
 
 void ATestBatchOrchestrator::bind_simulation_dependencies() {

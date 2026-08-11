@@ -16,7 +16,7 @@
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ATestMissionManager const& new_mission_manager,
                              ATestEntityRegistry const& new_entity_registry,
-                             SimulationClockInterface const simulation_clock,
+                             double const update_tick_rate,
                              ATestSpaceShip const* const new_player_ship) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
@@ -31,6 +31,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     has_sampled_speed_data = false;
 #endif
 
+    check(update_tick_rate > 0.0);
+
     auto const periods{update_frequencies.to_array()};
     auto const n_periods{periods.Num()};
     for (int32 i{0}; i < n_periods; ++i) {
@@ -38,7 +40,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
 
-        auto const tick_period{simulation_clock.duration_to_tick_period(periods[i])};
+        auto const tick_period{static_cast<FPeriodicTickCountdown8::counter_type>(
+            FMath::CeilToInt64(periods[i] * update_tick_rate))};
         if (!ml::valid_periods(tick_period)) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid tick period."));
         }

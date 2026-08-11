@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/ui/HUDManager.h>
+#include <Sandbox/utilities/FixedTickLoop.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -70,9 +71,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_state() const noexcept -> EOrchestratorState { return state; }
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
-        return static_cast<time_type>(completed_ticks) * tick_period;
+        return static_cast<time_type>(completed_ticks) * simulation_tick_loop.tick_period;
     }
-    auto get_tick_period() const noexcept -> time_type { return tick_period; }
+    auto get_tick_period() const noexcept -> time_type { return simulation_tick_loop.tick_period; }
 
     auto get_player_ship() const -> ATestSpaceShip const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
@@ -90,6 +91,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_hud_update_frequencies() const noexcept -> FTestBatchGameUiUpdateFrequencies const& {
         return hud_update_frequencies;
     }
+    auto get_hud_tick_loop() const noexcept { return hud_tick_loop; }
 
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
@@ -117,10 +119,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    double tick_rate{60.f};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    double time_scale{1.f};
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    FFixedTickLoop simulation_tick_loop{};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(VisibleAnywhere, Transient, Category = "Sandbox")
@@ -132,8 +132,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USimulationConfig> simulation_config{nullptr};
 
-    time_type tick_period{0.f};
-    time_type accumulator{0.f};
+    FFixedTickLoop hud_tick_loop{};
 
     tick_type completed_ticks{0};
 

@@ -559,7 +559,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
                                          *mission_manager,
                                          *entity_registry,
-                                         {*orchestrator},
+                                         orchestrator->get_hud_tick_loop().tick_rate,
                                          orchestrator->get_player_ship());
         return true;
     }
