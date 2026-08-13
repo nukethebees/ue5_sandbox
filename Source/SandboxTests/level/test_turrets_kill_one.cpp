@@ -24,6 +24,7 @@ TEST_CLASS(SimpleBatch, "Sandbox.LevelTests")
     ml::TimeSeriesData<int32> unique_ids;
     ml::TimeSeriesData<int32> kills;
     ml::TimeSeriesData<int32> alive;
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_simple_batch"), TestRunner, checks); }
@@ -43,6 +44,10 @@ TEST_CLASS(SimpleBatch, "Sandbox.LevelTests")
         unique_ids.add(t, registry.get_num_unique_ids_issued());
         kills.add(t, registry.count_kills());
         alive.add(t, registry.count_alive());
+
+        auto const* turrets{test_driver->orchestrator.get_turrets()};
+        check(turrets);
+        target_handles.add(t, TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_values(orchestrator);
@@ -58,14 +63,21 @@ TEST_CLASS(SimpleBatch, "Sandbox.LevelTests")
     }
 
     void full_checks() {
-        auto const i{kills.nearest_index(test_time)};
-        auto const expected_kills{1};
-        auto const n_unique{unique_ids.value_at(i)};
-        auto const n_kills{kills.value_at(i)};
+        constexpr auto expected_kills{1};
+
+        auto const test_i{kills.nearest_index(test_time)};
+        auto const n_unique{unique_ids.value_at(test_i)};
+        auto const n_kills{kills.value_at(test_i)};
 
         checks.is_greater_than(n_unique, int32{0}, TEXT("At least one unique id issued"));
         checks.are_equal(expected_kills, n_kills, TEXT("One kill"));
-        checks.are_equal(n_unique - n_kills, alive.value_at(i), TEXT("Alive count matches kills"));
+        checks.are_equal(
+            n_unique - n_kills, alive.value_at(test_i), TEXT("Alive count matches kills"));
+
+        auto const values{target_handles.value_at(test_i)};
+        for (auto const& handle : values) {
+            checks.is_true(handle.is_null(), TEXT("All handles end null"));
+        }
     }
 
     TEST_METHOD(FuncT_simple_batch)
