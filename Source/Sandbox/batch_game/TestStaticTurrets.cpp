@@ -123,6 +123,11 @@ void ATestStaticTurrets::update_entity_registry() {
 void ATestStaticTurrets::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
 
+    entity_registry->refresh_entity_data(entities.target_handles,
+                                         entities.target_locations.get_view(),
+                                         entities.target_velocities.get_view(),
+                                         {});
+
     handle_dead_entities();
 }
 void ATestStaticTurrets::update_visual_data() {
@@ -281,7 +286,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         }
 
         auto const turret_location{ml::get_vector3f(entities.locations, i)};
-        auto const target_location{entity_registry->get_location(target_handle)};
+        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
 
         auto const distance_sq{FVector3f::DistSquared(turret_location, target_location)};
         if (distance_sq >= disengage_radius_sq) {
@@ -289,7 +294,7 @@ void ATestStaticTurrets::fire_at_enemies() {
             continue;
         }
 
-        auto const target_velocity{entity_registry->get_velocity(target_handle)};
+        auto const target_velocity{ml::get_vector3f(entities.target_velocities, i)};
 
         auto const loc_x{entities.locations.xs[i] + fire_point_offset.X};
         auto const loc_y{entities.locations.ys[i] + fire_point_offset.Y};
@@ -471,7 +476,7 @@ void ATestStaticTurrets::draw_debugging_shapes() const {
             auto const target_handle{entities.target_handles[i]};
 
             if (entity_registry->is_valid_handle(target_handle)) {
-                FVector3d const target_location{entity_registry->get_location(target_handle)};
+                auto const target_location{ml::get_vector3d(entities.target_locations, i)};
                 drawer.draw_line(turret_location, target_location);
             }
         }

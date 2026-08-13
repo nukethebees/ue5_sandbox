@@ -37,6 +37,8 @@ struct EntityData : public ml::FSoAArrayMixin {
     TArray<ETestTeam> teams;
     FTickCountdown16 laser_cooldowns;
     TArray<FRegistryEntityHandle> target_handles;
+    FVectors3f target_locations;
+    FVectors3f target_velocities;
     TArray<int32> healths;
 
     template <typename TFunc>
@@ -46,6 +48,8 @@ struct EntityData : public ml::FSoAArrayMixin {
                                          self.teams,
                                          self.laser_cooldowns,
                                          self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
                                          self.healths);
     }
 };
