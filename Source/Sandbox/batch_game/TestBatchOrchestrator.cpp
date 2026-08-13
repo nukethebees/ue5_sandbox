@@ -643,7 +643,8 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     if (IsValid(player_ship)) {
         bind_simulation_clock(player_ship);
     }
-    ml::invoke_on_all(bind_simulation_clock, capital_ship_fighters, lasers, mission_manager);
+    ml::invoke_on_all(
+        bind_simulation_clock, capital_ship_fighters, turrets, spinners, lasers, mission_manager);
 
     if (IsValid(player_ship)) {
         player_ship->set_entity_registry(entity_registry);

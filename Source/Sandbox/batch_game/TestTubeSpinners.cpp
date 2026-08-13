@@ -32,13 +32,15 @@ ATestTubeSpinners::ATestTubeSpinners()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
+void ATestTubeSpinners::bind_simulation_clock(
+    ATestBatchOrchestrator const& orchestrator) noexcept {
+    simulation_clock.bind(orchestrator);
+}
+
 // Actor life cycle
 void ATestTubeSpinners::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(locations,
-              yaws,
-              laser_cooldowns,
-              next_fire_point_indices,
+    ml::reset(entities,
               indices_ready_to_fire,
               new_lasers);
 }
@@ -52,6 +54,11 @@ void ATestTubeSpinners::begin_play() {
     });
 
     configure_ismc();
+
+    auto const cooldown_tick_period{
+        simulation_clock.duration_to_tick_period(actor_config->attack_cooldown)};
+    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
+
     register_all_proxies_in_level();
 
     ml::fatal_if_uobject_ptrs_invalid({
@@ -61,10 +68,10 @@ void ATestTubeSpinners::begin_play() {
 void ATestTubeSpinners::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_tick);
 }
-void ATestTubeSpinners::update_timers(float const dt) {
+void ATestTubeSpinners::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_timers);
 
-    laser_cooldowns.tick(dt);
+    entities.laser_cooldowns.tick();
 }
 void ATestTubeSpinners::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::move);
@@ -95,7 +102,7 @@ void ATestTubeSpinners::end_tick() {
 
 // Accessors
 auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
-    return laser_cooldowns.Num();
+    return entities.num();
 }
 
 void ATestTubeSpinners::set_owner_id(TestEntityOwnerId const new_owner_id) {
@@ -136,9 +143,9 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
 
     spawn_instances(new_locations.get_const_view(), new_yaws, new_fire_point_indices);
 
-    auto const first_new_handle{registry_entity_handles.Num() - n_to_add};
+    auto const first_new_handle{entities.handles.Num() - n_to_add};
     for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(registry_entity_handles[first_new_handle + i]);
+        proxies[i]->set_entity_handle(entities.handles[first_new_handle + i]);
     }
 }
 void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_locations,
@@ -155,10 +162,10 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
         SANDBOX_NAMED_NUM(new_fire_point_indices),
     });
 
-    ml::append_from(locations, new_locations);
-    yaws.Append(new_yaws);
-    laser_cooldowns.AddZeroed(n);
-    next_fire_point_indices.Append(new_fire_point_indices);
+    ml::append_from(entities.locations, new_locations);
+    entities.yaws.Append(new_yaws);
+    entities.laser_cooldowns.add_zeroed(n);
+    entities.next_fire_point_indices.Append(new_fire_point_indices);
 
     update_ismc_transforms();
     instances->AddInstances(TArray<FTransform>{ismc_transforms.GetData() + existing_total, n},
@@ -168,7 +175,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
 
     ml::entity_registry::EntityData entity_data;
     entity_data.add_uninitialised(n);
-    entity_data.locations = locations;
+    entity_data.locations = entities.locations;
     ml::fill(entity_data.velocities, 0.f);
     ml::fill(entity_data.radii, ml::get_mesh_sphere_bounds(*instances));
     ml::fill(entity_data.healths, 1000000);
@@ -177,7 +184,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     entity_data.set_all_alive();
 
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-    registry_entity_handles.Append(MoveTemp(new_entities.registry_handles));
+    entities.handles.Append(MoveTemp(new_entities.registry_handles));
 
     validate_array_sizes();
 }
@@ -190,7 +197,7 @@ void ATestTubeSpinners::rotate_instances(float const dt) {
     auto const delta_yaw_degrees{dt * speed};
     auto const n{get_num_instances()};
 
-    ml::add_in_place(TArrayView<float>(yaws), delta_yaw_degrees);
+    ml::add_in_place(TArrayView<float>(entities.yaws), delta_yaw_degrees);
 }
 
 // Visuals
@@ -207,8 +214,8 @@ void ATestTubeSpinners::update_ismc_transforms() {
 
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
-            FRotator{0.0, static_cast<double>(yaws[i]), 0.0},
-            ml::get_vector3d(locations, i),
+            FRotator{0.0, static_cast<double>(entities.yaws[i]), 0.0},
+            ml::get_vector3d(entities.locations, i),
         };
     }
 }
@@ -227,7 +234,6 @@ void ATestTubeSpinners::fire_lasers() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::fire_lasers);
 
     auto const n{get_num_instances()};
-    auto const cooldown{actor_config->attack_cooldown};
     auto const& firing_point_offsets{actor_config->fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
     auto const laser_damage{actor_config->laser_damage};
@@ -241,12 +247,12 @@ void ATestTubeSpinners::fire_lasers() {
     ml::reset(indices_ready_to_fire, new_lasers);
 
     for (int32 i{0}; i < n; ++i) {
-        if (!(laser_cooldowns[i] <= 0.f)) {
+        if (!entities.laser_cooldowns.is_ready(i)) {
             continue;
         }
 
         indices_ready_to_fire.Add(i);
-        laser_cooldowns[i] = cooldown;
+        entities.laser_cooldowns.restart_counter(i);
     }
 
     auto const n_ready_to_fire{indices_ready_to_fire.Num()};
@@ -256,30 +262,30 @@ void ATestTubeSpinners::fire_lasers() {
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
         auto const index{indices_ready_to_fire[i]};
 
-        auto const fire_point_index{next_fire_point_indices[index]};
+        auto const fire_point_index{entities.next_fire_point_indices[index]};
         auto const& offset{firing_point_offsets[fire_point_index]};
 
         auto const fire_point_location{offset.GetLocation()};
         ml::assign(new_lasers.locations,
                    i,
-                   locations.xs[index] + fire_point_location.X,
-                   locations.ys[index] + fire_point_location.Y,
-                   locations.zs[index] + fire_point_location.Z);
+                   entities.locations.xs[index] + fire_point_location.X,
+                   entities.locations.ys[index] + fire_point_location.Y,
+                   entities.locations.zs[index] + fire_point_location.Z);
 
         auto const fire_point_rotation{offset.Rotator()};
         ml::assign(new_lasers.rotations,
                    i,
                    fire_point_rotation.Pitch,
-                   fire_point_rotation.Yaw + yaws[index],
+                   fire_point_rotation.Yaw + entities.yaws[index],
                    fire_point_rotation.Roll);
         ml::assign(new_lasers.base_velocities, i, FVector3f::ZeroVector);
 
         new_lasers.damages[i] = laser_damage;
         new_lasers.speeds[i] = laser_speed;
         new_lasers.max_distances[i] = laser_max_distance;
-        new_lasers.instigator_handles[i] = registry_entity_handles[index];
+        new_lasers.instigator_handles[i] = entities.handles[index];
 
-        next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
+        entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
     laser_actor->queue_laser_spawns(new_lasers);
@@ -288,10 +294,7 @@ void ATestTubeSpinners::fire_lasers() {
 // Checks
 void ATestTubeSpinners::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(locations),
-        SANDBOX_NAMED_NUM(yaws),
-        SANDBOX_NAMED_NUM(laser_cooldowns),
-        SANDBOX_NAMED_NUM(next_fire_point_indices),
+        SANDBOX_NAMED_NUM(entities),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

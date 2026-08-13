@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
@@ -9,10 +10,10 @@
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
-#include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/tick_countdown.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -27,13 +28,14 @@ class ATestStaticTurretsProxy;
 class UTestStaticTurretsConfig;
 class ATestLasers;
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
 
 namespace ml::test_static_turrets {
 struct EntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> handles;
     FVectors3f locations;
     TArray<ETestTeam> teams;
-    FCountdownTimers laser_cooldowns;
+    FTickCountdown16 laser_cooldowns;
     TArray<FRegistryEntityHandle> target_handles;
     TArray<int32> healths;
 
@@ -64,6 +66,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
 
     void begin_tick();
     void update_timers(float const dt);
@@ -126,6 +129,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity Data
     UPROPERTY(EditAnywhere, Category = "Sandbox")
@@ -157,8 +161,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     TArray<int32> local_indices_to_remove;
 
     // Debugging / logging
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    FActorLoggingConfig log_config{1.f};
     UPROPERTY(EditAnywhere)
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox")

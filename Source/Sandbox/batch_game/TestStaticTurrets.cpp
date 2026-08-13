@@ -44,6 +44,11 @@ ATestStaticTurrets::ATestStaticTurrets()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
+void
+    ATestStaticTurrets::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
+    simulation_clock.bind(orchestrator);
+}
+
 // Actor life cycle
 void ATestStaticTurrets::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play);
@@ -66,6 +71,10 @@ void ATestStaticTurrets::begin_play() {
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
 
+    auto const cooldown_tick_period{
+        simulation_clock.duration_to_tick_period(actor_config->attack_cooldown)};
+    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
+
     configure_ismc();
     register_all_proxies_in_level();
 }
@@ -74,11 +83,10 @@ void ATestStaticTurrets::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
     clear_tick_buffers();
 }
-void ATestStaticTurrets::update_timers(float const dt) {
+void ATestStaticTurrets::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_timers);
 
-    entities.laser_cooldowns.tick(dt);
-    log_config.tick(dt);
+    entities.laser_cooldowns.tick();
 }
 void ATestStaticTurrets::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::make_decisions);
@@ -143,7 +151,6 @@ void ATestStaticTurrets::end_tick() {
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
 
     validate_array_sizes();
-    log_config.on_tick_end();
 }
 
 // Visuals
@@ -246,7 +253,6 @@ void ATestStaticTurrets::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::fire_at_enemies);
 
     auto const n{get_num_instances()};
-    auto const cooldown{actor_config->attack_cooldown};
     auto const laser_speed{actor_config->laser_speed};
     auto const laser_damage{actor_config->laser_damage};
     auto const laser_max_distance{actor_config->laser_max_distance};
@@ -270,7 +276,7 @@ void ATestStaticTurrets::fire_at_enemies() {
             continue;
         }
 
-        if (!(entities.laser_cooldowns[i] <= 0.f)) {
+        if (!entities.laser_cooldowns.is_ready(i)) {
             continue;
         }
 
@@ -309,7 +315,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.instigator_handles.Add(entities.handles[i]);
         new_lasers.colours.Add(colour_cache[entities.teams[i]]);
 
-        entities.laser_cooldowns[i] = cooldown;
+        entities.laser_cooldowns.restart_counter(i);
     }
 
     laser_actor->queue_laser_spawns(new_lasers);
@@ -341,7 +347,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     ml::fill_last(entities.healths, actor_config->max_health, n_to_add);
     ml::fill_last(entities.target_handles, FRegistryEntityHandle{}, n_to_add);
-    ml::fill_last(entities.laser_cooldowns.remaining_times, 0.f, n_to_add);
+    entities.laser_cooldowns.zero_last(n_to_add);
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const transform{proxies[i]->GetActorTransform()};

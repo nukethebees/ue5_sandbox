@@ -1,16 +1,20 @@
 #pragma once
 
+#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 
-#include <SandboxCore/countdown_timers.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
+#include <SandboxCore/tick_countdown.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include <utility>
 
 #include "TestTubeSpinners.generated.h"
 
@@ -20,12 +24,33 @@ class ATestTubeSpinnerProxy;
 class UTestTubeSpinnersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
+class ATestBatchOrchestrator;
+
+namespace ml::test_tube_spinners {
+struct EntityData : public ml::FSoAArrayMixin {
+    TArray<FRegistryEntityHandle> handles;
+    FVectors3f locations;
+    TArray<float> yaws;
+    FTickCountdown16 laser_cooldowns;
+    TArray<int32> next_fire_point_indices;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.handles,
+                                         self.locations,
+                                         self.yaws,
+                                         self.laser_cooldowns,
+                                         self.next_fire_point_indices);
+    }
+};
+}
 
 UCLASS()
 class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
   public:
     using Proxy = ATestTubeSpinnerProxy;
+    using EntityData = ml::test_tube_spinners::EntityData;
 
     static constexpr bool is_world_space{false};
 
@@ -33,6 +58,7 @@ class ATestTubeSpinners : public AActor {
 
     void clear_runtime_state();
     void begin_play();
+    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
 
     void begin_tick();
     void update_timers(float const dt);
@@ -82,13 +108,14 @@ class ATestTubeSpinners : public AActor {
     // Config
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
+    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity data
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
 
     TestEntityOwnerId owner_id{};
-    TArray<FRegistryEntityHandle> registry_entity_handles;
+    EntityData entities{};
 
     // Visuals
     UPROPERTY()
@@ -96,20 +123,9 @@ class ATestTubeSpinners : public AActor {
     UPROPERTY()
     TArray<FTransform> ismc_transforms;
 
-    // Movement / position
-    FVectors3f locations;
-    UPROPERTY()
-    TArray<float> yaws{};
-
     // Firing
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    FCountdownTimers laser_cooldowns;
-    TArray<int32> next_fire_point_indices;
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
-
-    // Debugging / logging
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    FActorLoggingConfig log_config{1.f};
 };
