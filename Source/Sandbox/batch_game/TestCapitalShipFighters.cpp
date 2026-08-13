@@ -941,7 +941,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_aiming_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
-        if (!FTickCountdown16::is_ready(data.attack_cooldowns[ship_index])) {
+        if (!data.attack_cooldowns.is_ready(ship_index)) {
             continue;
         }
 

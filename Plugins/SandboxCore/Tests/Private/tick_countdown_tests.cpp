@@ -31,6 +31,12 @@ concept SupportsSetCounter = requires(T& value) { value.set_counter(0, typename 
 
 template <typename T>
 concept SupportsZeroCounter = requires(T& value) { value.zero_counter(0); };
+
+template <typename T>
+concept SupportsIsReady = requires(T const& value) { value.is_ready(0); };
+
+template <typename T>
+concept SupportsZeroLast = requires(T& value) { value.zero_last(0); };
 }
 
 static_assert(std::is_same_v<FTickCountdown16::size_type, int32>);
@@ -45,6 +51,9 @@ static_assert(ml::SupportsRemoveAtSwap<FTickCountdown16>);
 static_assert(ml::SupportsSetNum<FTickCountdown16>);
 static_assert(ml::SupportsCopyElement<FTickCountdown16>);
 static_assert(ml::SupportsGetView<FTickCountdown16>);
+static_assert(SupportsZeroLast<FTickCountdown16>);
+static_assert(SupportsIsReady<FTickCountdown16::View>);
+static_assert(SupportsIsReady<FTickCountdown16::ConstView>);
 static_assert(SupportsTryConsume<FTickCountdown16::View>);
 static_assert(SupportsRestartCounter<FTickCountdown16::View>);
 static_assert(SupportsSetCounter<FTickCountdown16::View>);
@@ -88,10 +97,14 @@ TEST_CASE("SandboxCore.TickCountdown.TickDecrementsEveryCounter") {
     CHECK(countdown.counters()[2] == -1);
 }
 
-TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterValue") {
-    CHECK_FALSE(FTickCountdown16::is_ready(1));
-    CHECK(FTickCountdown16::is_ready(0));
-    CHECK(FTickCountdown16::is_ready(-1));
+TEST_CASE("SandboxCore.TickCountdown.IsReadyChecksCounterAtIndex") {
+    FTickCountdown16 countdown{3, 0};
+    set_counters(countdown, {2, 1, 0});
+    countdown.tick();
+
+    CHECK_FALSE(countdown.is_ready(0));
+    CHECK(countdown.is_ready(1));
+    CHECK(countdown.is_ready(2));
 }
 
 TEST_CASE("SandboxCore.TickCountdown.TickCanFitHandlesDifferentIntegralTypes") {
@@ -158,7 +171,7 @@ TEST_CASE("SandboxCore.TickCountdown.ZeroTickValueRemainsReadyAfterConsume") {
 
     zero_countdown.consume(0);
 
-    CHECK(FTickCountdown16::is_ready(zero_countdown.counters()[0]));
+    CHECK(zero_countdown.is_ready(0));
     CHECK(zero_countdown.counters()[0] == 0);
 }
 
@@ -170,6 +183,18 @@ TEST_CASE("SandboxCore.TickCountdown.SetAndZeroCounter") {
 
     CHECK(countdown.counters()[0] == 3);
     CHECK(countdown.counters()[1] == 0);
+}
+
+TEST_CASE("SandboxCore.TickCountdown.ZeroLastZerosOnlyFinalCounters") {
+    FTickCountdown16 countdown{4, 5};
+    set_counters(countdown, {1, 2, 3, 4});
+
+    countdown.zero_last(2);
+
+    CHECK(countdown.counters()[0] == 1);
+    CHECK(countdown.counters()[1] == 2);
+    CHECK(countdown.counters()[2] == 0);
+    CHECK(countdown.counters()[3] == 0);
 }
 
 TEST_CASE("SandboxCore.TickCountdown.RestartCounter") {
@@ -312,6 +337,7 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     view.set_counter(1, 2);
     CHECK(countdown.counters()[1] == 2);
     CHECK(view[1] == 2);
+    CHECK_FALSE(view.is_ready(1));
 
     view.restart_counter(1);
     CHECK(view[1] == countdown.tick_value());
@@ -324,4 +350,10 @@ TEST_CASE("SandboxCore.TickCountdown.GetViewAliasesCounters") {
     auto const_view{const_countdown.get_view()};
     static_assert(std::is_same_v<decltype(const_view), FTickCountdown16::ConstView>);
     CHECK(const_view[1] == countdown.tick_value());
+    CHECK_FALSE(const_view.is_ready(1));
+
+    countdown.zero_counter(2);
+    auto const slice{countdown.get_view(1, 2)};
+    CHECK_FALSE(slice.is_ready(0));
+    CHECK(slice.is_ready(1));
 }

@@ -31,6 +31,11 @@ class TTickCountdown {
             return countdown_->counters_[offset_ + index];
         }
 
+        [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
+            check_index(index);
+            return countdown_->is_ready(offset_ + index);
+        }
+
         [[nodiscard]] auto try_consume(size_type const index) const noexcept -> bool
             requires (!std::is_const_v<T>)
         {
@@ -108,8 +113,8 @@ class TTickCountdown {
         }
     }
 
-    [[nodiscard]] static auto is_ready(counter_type const value) noexcept -> bool {
-        return value <= 0;
+    [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
+        return counters_[index] <= 0;
     }
 
     template <std::integral TickType>
@@ -124,8 +129,7 @@ class TTickCountdown {
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        auto& counter{counters_[index]};
-        if (!is_ready(counter)) {
+        if (!is_ready(index)) {
             return false;
         }
 
@@ -137,7 +141,7 @@ class TTickCountdown {
 
     void consume() noexcept {
         for (auto& counter : counters_) {
-            if (is_ready(counter)) {
+            if (counter <= 0) {
                 counter = tick_value_;
             }
         }
@@ -190,6 +194,17 @@ class TTickCountdown {
     }
 
     void zero_counter(size_type const index) noexcept { counters_[index] = 0; }
+
+    void zero_last(size_type const count) noexcept {
+        auto const total_count{num()};
+        check(count >= 0);
+        check(count <= total_count);
+
+        auto const first_index{total_count - count};
+        for (size_type index{first_index}; index < total_count; ++index) {
+            counters_[index] = 0;
+        }
+    }
 
     [[nodiscard]] auto counters() noexcept -> TConstArrayView<counter_type> { return counters_; }
 
