@@ -26,6 +26,7 @@ from Codegen.soa import (
     ForEachSoAMemberCall,
     SoAMember,
     SoAStruct,
+    SoAStructNames,
     SoAStorageOperation,
     ForEachSoAMemberFreeFunctionCall,
     ForEachSoAMemberPairFreeFunctionCall,
@@ -344,9 +345,7 @@ void append_from(Other const& other) {
 
     def test_soa_storage_operations_generate_direct_member_functions(self) -> None:
         soa = SoAStruct(
-            "FData",
-            "FDataView",
-            "FDataConstView",
+            SoAStructNames("FData"),
             (tarray_member("values", "int32"),),
             storage_operations=(
                 SoAStorageOperation.ADD_DEFAULTED,
@@ -367,9 +366,7 @@ void append_from(Other const& other) {
 
     def test_soa_storage_operations_share_header_and_source_specs(self) -> None:
         first = SoAStruct(
-            "FFirst",
-            "FFirstView",
-            "FFirstConstView",
+            SoAStructNames("FFirst"),
             (tarray_member("values", "int32"),),
             storage_operations=(
                 SoAStorageOperation.RESET,
@@ -377,9 +374,7 @@ void append_from(Other const& other) {
             ),
         )
         second = SoAStruct(
-            "FSecond",
-            "FSecondView",
-            "FSecondConstView",
+            SoAStructNames("FSecond"),
             (tarray_member("weights", "float"),),
             storage_operations=(SoAStorageOperation.ADD_DEFAULTED,),
         )
@@ -444,11 +439,31 @@ void append_from(Other const& other) {
         self.assertEqual(member.view_type, "TArrayView<int32>")
         self.assertEqual(member.const_view_type, "TConstArrayView<int32>")
 
+    def test_soa_struct_names_derive_and_override_view_names(self) -> None:
+        default_names = SoAStructNames("FData")
+        overridden_names = SoAStructNames("FData", "TDataView", "TDataConstView")
+
+        self.assertEqual(default_names.view_name, "FDataView")
+        self.assertEqual(default_names.const_view_name, "FDataConstView")
+        self.assertEqual(overridden_names.view_name, "TDataView")
+        self.assertEqual(overridden_names.const_view_name, "TDataConstView")
+
+        lowered = lower_soa_struct(
+            SoAStruct(overridden_names, (tarray_member("values", "int32"),))
+        )
+        rendered = "\n".join(node.render(RenderContext()) for node in lowered)
+        self.assertIn("struct TDataView", rendered)
+        self.assertIn("struct TDataConstView", rendered)
+
+    def test_soa_struct_names_reject_empty_names(self) -> None:
+        with self.assertRaisesRegex(ValueError, "SOA struct name"):
+            SoAStructNames("")
+        with self.assertRaisesRegex(ValueError, "SOA view struct names"):
+            SoAStructNames("FData", "")
+
     def test_soa_struct_lowers_to_ordered_generic_declarations(self) -> None:
         soa = SoAStruct(
-            "FData",
-            "TDataView",
-            "TDataConstView",
+            SoAStructNames("FData", "TDataView", "TDataConstView"),
             (
                 tarray_member("values", "int32"),
                 soa_member("vectors", "FVectors3f"),
@@ -478,10 +493,10 @@ void append_from(Other const& other) {
 
         member = tarray_member("values", "int32")
         with self.assertRaisesRegex(ValueError, "duplicate members"):
-            lower_soa_struct(SoAStruct("FData", "TDataView", "TDataConstView", (member, member)))
+            lower_soa_struct(SoAStruct(SoAStructNames("FData"), (member, member)))
 
         with self.assertRaisesRegex(ValueError, "at least one member"):
-            SoAStruct("FData", "TDataView", "TDataConstView", ())
+            SoAStruct(SoAStructNames("FData"), ())
 
     def test_struct_rejects_duplicate_member_names(self) -> None:
         with self.assertRaisesRegex(ValueError, "duplicate members"):
@@ -489,9 +504,7 @@ void append_from(Other const& other) {
 
     def test_storage_metadata_is_rendered(self) -> None:
         soa = SoAStruct(
-            "FExportedData",
-            "FExportedDataView",
-            "FExportedDataConstView",
+            SoAStructNames("FExportedData"),
             (tarray_member("values", "int32"),),
             storage_export_specifier="SANDBOX_API",
             storage_type_aliases=(("CountType", "int32"),),
@@ -504,9 +517,7 @@ void append_from(Other const& other) {
 
     def test_soa_lowering_inserts_nodes_before_generated_functions_and_members(self) -> None:
         soa = SoAStruct(
-            "FData",
-            "FDataView",
-            "FDataConstView",
+            SoAStructNames("FData"),
             (tarray_member("values", "FValue"),),
             nodes=(
                 MemberFunctionSpec(

@@ -15,6 +15,7 @@ from Codegen.nodes import (
 from Codegen.soa import (
     ForEachSoAMemberCall,
     SoAStruct,
+    SoAStructNames,
     SoAStorageOperation,
     lower_soa_structs_with_source,
     soa_member,
@@ -80,9 +81,7 @@ def fighter_soa_module() -> Module:
         tarray_member("target_radii", "float"),
     )
     entity_data = SoAStruct(
-        "EntityData",
-        "EntityDataView",
-        "EntityDataConstView",
+        SoAStructNames("EntityData"),
         members,
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -124,9 +123,7 @@ def fighter_soa_module() -> Module:
 
 def capital_ships_soa_module() -> Module:
     spawn_data = SoAStruct(
-        "SpawnData",
-        "SpawnDataView",
-        "SpawnDataConstView",
+        SoAStructNames("SpawnData"),
         (
             tarray_member("target_handles", "FRegistryEntityHandle"),
             soa_member("locations", "FVectors3f"),
@@ -140,9 +137,7 @@ def capital_ships_soa_module() -> Module:
         storage_export_specifier=SANDBOX_API,
     )
     entity_tick_data = SoAStruct(
-        "EntityTickData",
-        "EntityTickDataView",
-        "EntityTickDataConstView",
+        SoAStructNames("EntityTickData"),
         (
             tarray_member("ships_ready_to_spawn_fighters_buffer", "int32"),
             soa_member("fighter_queue", "TestCapitalShipFighterSpawnQueue"),
@@ -151,9 +146,7 @@ def capital_ships_soa_module() -> Module:
         storage_export_specifier=SANDBOX_API,
     )
     entity_data = SoAStruct(
-        "EntityData",
-        "EntityDataView",
-        "EntityDataConstView",
+        SoAStructNames("EntityData"),
         (
             tarray_member("handles", "FRegistryEntityHandle"),
             soa_member("locations", "FVectors3f"),
@@ -173,9 +166,7 @@ def capital_ships_soa_module() -> Module:
         tarray_member("fighter_handles", "FRegistryEntityHandle"),
     )
     fighter_reassignment = SoAStruct(
-        "FighterReassignment",
-        "FighterReassignmentView",
-        "FighterReassignmentConstView",
+        SoAStructNames("FighterReassignment"),
         fighter_reassignment_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -253,9 +244,7 @@ def lasers_soa_module() -> Module:
         Raw(""),
     )
     spawn_requests = SoAStruct(
-        "SpawnRequests",
-        "SpawnRequestsView",
-        "SpawnRequestsConstView",
+        SoAStructNames("SpawnRequests"),
         (
             soa_member("locations", "FVectors3f"),
             soa_member("rotations", "FRotatorsf"),
@@ -279,9 +268,7 @@ def lasers_soa_module() -> Module:
         ),
     )
     entities = SoAStruct(
-        "Entities",
-        "EntitiesView",
-        "EntitiesConstView",
+        SoAStructNames("Entities"),
         (
             tarray_member("ismc_data", "FInstancedStaticMeshInstanceData"),
             tarray_member("colours", "FLinearColor"),
@@ -296,9 +283,7 @@ def lasers_soa_module() -> Module:
         storage_export_specifier=SANDBOX_API,
     )
     hit_details = SoAStruct(
-        "HitDetails",
-        "HitDetailsView",
-        "HitDetailsConstView",
+        SoAStructNames("HitDetails"),
         (soa_member("locations", "FVectors3f"), tarray_member("colours", "FLinearColor")),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -336,9 +321,7 @@ def lasers_soa_module() -> Module:
 
 def collision_damage_events_soa_module() -> Module:
     unresolved = SoAStruct(
-        "UnresolvedCollisionDamageEvents",
-        "UnresolvedCollisionDamageEventsView",
-        "UnresolvedCollisionDamageEventsConstView",
+        SoAStructNames("UnresolvedCollisionDamageEvents"),
         (
             tarray_member("damaged_actors", "AActor*"),
             tarray_member("damage_amounts", "int32"),
@@ -350,9 +333,7 @@ def collision_damage_events_soa_module() -> Module:
         storage_export_specifier=SANDBOX_API,
     )
     resolved = SoAStruct(
-        "CollisionDamageEvents",
-        "CollisionDamageEventsView",
-        "CollisionDamageEventsConstView",
+        SoAStructNames("CollisionDamageEvents"),
         (
             tarray_member("damage_amounts", "int32"),
             tarray_member("actor_components", "UActorComponent*"),
@@ -391,9 +372,7 @@ def collision_damage_events_soa_module() -> Module:
 
 def fighter_spawn_queue_soa_module() -> Module:
     queue = SoAStruct(
-        "TestCapitalShipFighterSpawnQueue",
-        "TestCapitalShipFighterSpawnQueueView",
-        "TestCapitalShipFighterSpawnQueueConstView",
+        SoAStructNames("TestCapitalShipFighterSpawnQueue"),
         (
             soa_member("locations", "FVectors3f"),
             soa_member("rotations", "FRotatorsf"),
@@ -438,9 +417,7 @@ def fighter_order_queue_module() -> Module:
         tarray_member("targets", "FRegistryEntityHandle"),
     )
     order_queue = SoAStruct(
-        "TestCapitalShipFighterOrderQueue",
-        "TestCapitalShipFighterOrderQueueView",
-        "TestCapitalShipFighterOrderQueueConstView",
+        SoAStructNames("TestCapitalShipFighterOrderQueue"),
         order_queue_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -515,9 +492,7 @@ def entity_death_info_module() -> Module:
         is_inline=True,
     )
     entity_death_info = SoAStruct(
-        "EntityDeathInfo",
-        "EntityDeathInfoView",
-        "EntityDeathInfoConstView",
+        SoAStructNames("EntityDeathInfo"),
         entity_death_info_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -558,9 +533,7 @@ def entity_death_info_module() -> Module:
 
 def static_turrets_soa_module() -> Module:
     entity_data = SoAStruct(
-        "EntityData",
-        "EntityDataView",
-        "EntityDataConstView",
+        SoAStructNames("EntityData"),
         (
             tarray_member("handles", "FRegistryEntityHandle"),
             soa_member("locations", "FVectors3f"),
@@ -603,9 +576,7 @@ def static_turrets_soa_module() -> Module:
 
 def tube_spinners_soa_module() -> Module:
     entity_data = SoAStruct(
-        "EntityData",
-        "EntityDataView",
-        "EntityDataConstView",
+        SoAStructNames("EntityData"),
         (
             tarray_member("handles", "FRegistryEntityHandle"),
             soa_member("locations", "FVectors3f"),
@@ -644,9 +615,7 @@ def tube_spinners_soa_module() -> Module:
 
 def direct_damage_events_soa_module() -> Module:
     events = SoAStruct(
-        "DirectDamageEvents",
-        "DirectDamageEventsView",
-        "DirectDamageEventsConstView",
+        SoAStructNames("DirectDamageEvents"),
         (
             tarray_member("damaged_entities", "FRegistryEntityHandle"),
             tarray_member("damage_amounts", "int32"),
@@ -682,9 +651,7 @@ def direct_damage_events_soa_module() -> Module:
 
 def unique_entity_data_soa_module() -> Module:
     entity_data = SoAStruct(
-        "TestEntityUniqueEntityData",
-        "TestEntityUniqueEntityDataView",
-        "TestEntityUniqueEntityDataConstView",
+        SoAStructNames("TestEntityUniqueEntityData"),
         (
             tarray_member("registry_indices", "FRegistryEntityHandle::index_type"),
             tarray_member("registry_generations", "FRegistryEntityHandle::generation_type"),

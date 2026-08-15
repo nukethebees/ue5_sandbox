@@ -161,10 +161,25 @@ def soa_member(
 
 
 @dataclass(frozen=True)
-class SoAStruct:
+class SoAStructNames:
     name: str
-    view_name: str
-    const_view_name: str
+    view_name: str | None = None
+    const_view_name: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("SOA struct name must not be empty")
+        if self.view_name is None:
+            object.__setattr__(self, "view_name", f"{self.name}View")
+        if self.const_view_name is None:
+            object.__setattr__(self, "const_view_name", f"{self.name}ConstView")
+        if not self.view_name.strip() or not self.const_view_name.strip():
+            raise ValueError("SOA view struct names must not be empty")
+
+
+@dataclass(frozen=True)
+class SoAStruct:
+    names: SoAStructNames
     members: tuple[SoAMember, ...]
     storage_export_specifier: str | None = None
     storage_type_aliases: tuple[tuple[str, str], ...] = ()
@@ -179,7 +194,7 @@ class SoAStruct:
         object.__setattr__(self, "storage_operations", tuple(self.storage_operations))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         if not self.members:
-            raise ValueError(f"SOA struct {self.name!r} must contain at least one member")
+            raise ValueError(f"SOA struct {self.names.name!r} must contain at least one member")
         for alias_name, alias_value_type in self.storage_type_aliases:
             if not alias_name.strip() or not alias_value_type.strip():
                 raise ValueError("SOA storage type aliases must not be empty")
@@ -290,7 +305,7 @@ def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> M
                 ForEachSoAMemberFreeFunctionCall(members, "ml::set_num"),
             )
         case SoAStorageOperation.COPY_ELEMENT:
-            other = FunctionParameter(f"{soa.name} const&", "other")
+            other = FunctionParameter(f"{soa.names.name} const&", "other")
             return MemberFunctionSpec(
                 "copy_element",
                 "void",
@@ -311,7 +326,7 @@ def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> M
                 ForEachSoAMemberPairFreeFunctionCall(members, "ml::append_from", other),
                 is_inline=True,
                 template_parameters="typename Other",
-                requires_clause=f"ml::SupportsApplyArrayPairsWith<{soa.name}, Other>",
+                requires_clause=f"ml::SupportsApplyArrayPairsWith<{soa.names.name}, Other>",
             )
         case _:
             raise ValueError(f"Unsupported SOA storage operation: {operation}")
@@ -338,9 +353,9 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
     return Struct(
         name,
         (
-            UsingDeclaration("View", soa.view_name),
+            UsingDeclaration("View", soa.names.view_name),
             NewLines(1),
-            UsingDeclaration("ConstView", soa.const_view_name),
+            UsingDeclaration("ConstView", soa.names.const_view_name),
             NewLines(2),
             _apply_arrays_function(soa.members),
             NewLines(2),
@@ -354,9 +369,9 @@ def _storage_struct(soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec
     members = tuple(Member(member.container_type, member.name) for member in soa.members)
     aliases = tuple(UsingDeclaration(name, value_type) for name, value_type in soa.storage_type_aliases)
     struct_nodes: list[Node] = [
-        UsingDeclaration("View", soa.view_name),
+        UsingDeclaration("View", soa.names.view_name),
         NewLines(1),
-        UsingDeclaration("ConstView", soa.const_view_name),
+        UsingDeclaration("ConstView", soa.names.const_view_name),
     ]
     if aliases:
         struct_nodes.extend((NewLines(2), *_separate(aliases, 1)))
@@ -369,7 +384,7 @@ def _storage_struct(soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec
     struct_nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
     struct_nodes.extend((NewLines(2), *_separate(members, 1)))
     return Struct(
-        soa.name,
+        soa.names.name,
         struct_nodes,
         bases=(f"public {soa.storage_base}",),
         export_specifier=soa.storage_export_specifier,
@@ -385,17 +400,17 @@ class SoAStructLowering:
 def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
     operation_specs = _storage_operation_specs(soa)
     header_nodes = (
-        ForwardDeclaration(soa.const_view_name),
+        ForwardDeclaration(soa.names.const_view_name),
         NewLines(2),
-        _view_struct(soa, soa.view_name, False),
+        _view_struct(soa, soa.names.view_name, False),
         NewLines(2),
-        _view_struct(soa, soa.const_view_name, True),
+        _view_struct(soa, soa.names.const_view_name, True),
         NewLines(2),
         _storage_struct(soa, operation_specs),
     )
     source_nodes = _separate(
         (
-            spec.definition_node(soa.name)
+            spec.definition_node(soa.names.name)
             for operation, spec in zip(soa.storage_operations, operation_specs, strict=True)
             if operation in OUT_OF_LINE_STORAGE_OPERATIONS
         ),
