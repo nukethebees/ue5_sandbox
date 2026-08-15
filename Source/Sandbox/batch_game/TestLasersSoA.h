@@ -9,7 +9,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -161,18 +160,7 @@ struct SANDBOX_API SpawnRequests {
         ml::append_from(colours, other.colours);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(rotations, indices);
-        ml::apply_permutation(base_velocities, indices);
-        ml::apply_permutation(damages, indices);
-        ml::apply_permutation(speeds, indices);
-        ml::apply_permutation(max_distances, indices);
-        ml::apply_permutation(instigator_handles, indices);
-        ml::apply_permutation(colours, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -387,18 +375,7 @@ struct SANDBOX_API Entities {
         ml::append_from(instigator_handles, other.instigator_handles);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(ismc_data, indices);
-        ml::apply_permutation(colours, indices);
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(rotations, indices);
-        ml::apply_permutation(velocities, indices);
-        ml::apply_permutation(damages, indices);
-        ml::apply_permutation(lifetimes_remaining, indices);
-        ml::apply_permutation(instigator_handles, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -571,12 +548,7 @@ struct SANDBOX_API HitDetails {
         ml::append_from(colours, other.colours);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(colours, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

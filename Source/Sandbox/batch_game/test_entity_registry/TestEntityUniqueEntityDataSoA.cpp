@@ -6,8 +6,11 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 auto TestEntityUniqueEntityDataConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -217,6 +220,19 @@ void TestEntityUniqueEntityData::set_num(int32 const count, EAllowShrinking cons
     ml::set_num(alive, count, allow_shrinking);
     ml::set_num(killed_by, count, allow_shrinking);
     ml::set_num(death_reason, count, allow_shrinking);
+}
+
+void TestEntityUniqueEntityData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(registry_indices, indices);
+    ml::apply_permutation(registry_generations, indices);
+    ml::apply_permutation(entity_types, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(kills, indices);
+    ml::apply_permutation(alive, indices);
+    ml::apply_permutation(killed_by, indices);
+    ml::apply_permutation(death_reason, indices);
 }
 
 auto TestEntityUniqueEntityData::get_view() -> View {

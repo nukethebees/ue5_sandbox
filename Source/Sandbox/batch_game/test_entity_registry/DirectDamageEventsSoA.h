@@ -9,7 +9,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -116,13 +115,7 @@ struct SANDBOX_API DirectDamageEvents {
         ml::append_from(instigators, other.instigators);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(damaged_entities, indices);
-        ml::apply_permutation(damage_amounts, indices);
-        ml::apply_permutation(instigators, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

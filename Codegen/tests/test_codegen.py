@@ -45,6 +45,7 @@ from Codegen.soa import (
     lower_soa_struct,
     lower_soa_structs_with_source,
     lower_homogeneous_soa_layouts,
+    lower_homogeneous_soa_permutation_definitions,
     soa_member,
     tarray_member,
 )
@@ -630,27 +631,31 @@ void append_from(Other const& other) {
             ),
         )
 
-        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
+        lowered = lower_soa_structs_with_source((soa,))
+        header = "\n".join(node.render(RenderContext()) for node in lowered.header_nodes)
+        source = "\n".join(node.render(RenderContext()) for node in lowered.source_nodes)
 
-        self.assertIn("void apply_permutation(TArrayView<int32> indices)", rendered)
-        self.assertIn("check(indices.Num() == num());", rendered)
-        self.assertIn("ml::apply_permutation(keys, indices);", rendered)
-        self.assertIn("ml::apply_permutation(locations, indices);", rendered)
-        self.assertIn("ml::apply_permutation(values, indices);", rendered)
-        self.assertIn("template <typename Compare>", rendered)
-        self.assertIn("void sort(Compare&& compare, TArrayView<int32> scratch_indices)", rendered)
-        self.assertIn("check(scratch_indices.Num() == n);", rendered)
-        self.assertIn("ml::fill_indices(scratch_indices);", rendered)
-        self.assertIn("scratch_indices.Sort", rendered)
-        self.assertIn("apply_permutation(scratch_indices);", rendered)
-        self.assertNotIn("auto indices{scratch_indices};", rendered)
-        self.assertIn("indices[new_index] is the old row index", rendered)
-        self.assertIn("return compare(*this, lhs, rhs);", rendered)
-        self.assertIn("template <auto Compare>", rendered)
-        self.assertIn("void sort(TArrayView<int32> scratch_indices)", rendered)
-        self.assertIn("return Compare(*this, lhs, rhs);", rendered)
-        self.assertNotIn("TFunction", rendered)
-        self.assertNotIn("std::function", rendered)
+        self.assertIn("void apply_permutation(TArrayView<int32> indices);", header)
+        self.assertNotIn("ml::apply_permutation(keys, indices);", header)
+        self.assertIn("template <typename Compare>", header)
+        self.assertIn("void sort(Compare&& compare, TArrayView<int32> scratch_indices)", header)
+        self.assertIn("check(scratch_indices.Num() == n);", header)
+        self.assertIn("ml::fill_indices(scratch_indices);", header)
+        self.assertIn("scratch_indices.Sort", header)
+        self.assertIn("apply_permutation(scratch_indices);", header)
+        self.assertNotIn("auto indices{scratch_indices};", header)
+        self.assertIn("indices[new_index] is the old row index", header)
+        self.assertIn("return compare(*this, lhs, rhs);", header)
+        self.assertIn("template <auto Compare>", header)
+        self.assertIn("void sort(TArrayView<int32> scratch_indices)", header)
+        self.assertIn("return Compare(*this, lhs, rhs);", header)
+        self.assertNotIn("TFunction", header)
+        self.assertNotIn("std::function", header)
+        self.assertIn("void FData::apply_permutation(TArrayView<int32> indices)", source)
+        self.assertIn("check(indices.Num() == num());", source)
+        self.assertIn("ml::apply_permutation(keys, indices);", source)
+        self.assertIn("ml::apply_permutation(locations, indices);", source)
+        self.assertIn("ml::apply_permutation(values, indices);", source)
 
     def test_for_each_soa_member_call_uses_bound_function_parameters(self) -> None:
         handles = tarray_member("handles", "FRegistryEntityHandle")
@@ -740,6 +745,12 @@ void append_from(Other const& other) {
         self.assertIn("struct FValuesf", rendered)
         self.assertIn("using aos_type = FVector2f;", rendered)
         self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)
+
+        source_nodes = lower_homogeneous_soa_permutation_definitions((layout,))
+        source = "\n".join(node.render(RenderContext()) for node in source_nodes)
+        self.assertIn("void FValuesf::apply_permutation(TArrayView<int32> indices)", source)
+        self.assertIn("ml::apply_permutation(xs, indices);", source)
+        self.assertIn("ml::apply_permutation(ys, indices);", source)
 
     def test_soa_struct_lowers_to_ordered_generic_declarations(self) -> None:
         soa = SoAStruct(

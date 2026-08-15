@@ -14,7 +14,6 @@
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -152,17 +151,7 @@ struct SANDBOX_API SpawnData {
         ml::append_from(spawn_cooldowns, other.spawn_cooldowns);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(target_handles, indices);
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(rotations, indices);
-        ml::apply_permutation(teams, indices);
-        ml::apply_permutation(healths, indices);
-        ml::apply_permutation(initial_spawn_delays, indices);
-        ml::apply_permutation(spawn_cooldowns, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -332,12 +321,7 @@ struct SANDBOX_API EntityTickData {
         ml::append_from(fighter_queue, other.fighter_queue);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(ships_ready_to_spawn_fighters_buffer, indices);
-        ml::apply_permutation(fighter_queue, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -541,19 +525,7 @@ struct SANDBOX_API EntityData {
         ml::append_from(target_handles, other.target_handles);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(handles, indices);
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(rotations, indices);
-        ml::apply_permutation(fighter_spawn_timers, indices);
-        ml::apply_permutation(fighter_spawn_cooldowns, indices);
-        ml::apply_permutation(teams, indices);
-        ml::apply_permutation(healths, indices);
-        ml::apply_permutation(capital_fighter_handle_spans, indices);
-        ml::apply_permutation(target_handles, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -734,12 +706,7 @@ struct SANDBOX_API FighterReassignment {
         ml::append_from(fighter_handles, other.fighter_handles);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(capital_handles, indices);
-        ml::apply_permutation(fighter_handles, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

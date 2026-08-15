@@ -10,7 +10,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -126,14 +125,7 @@ struct SANDBOX_API TestCapitalShipFighterSpawnQueue {
         ml::append_from(targets, other.targets);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(rotations, indices);
-        ml::apply_permutation(teams, indices);
-        ml::apply_permutation(targets, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

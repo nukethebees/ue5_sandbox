@@ -6,8 +6,11 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 namespace ml::test_capital_ship_fighters {
 auto EntityDataConstView::get_view() const -> ConstView {
@@ -422,6 +425,36 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(target_distance_sq, count, allow_shrinking);
     ml::set_num(target_distances, count, allow_shrinking);
     ml::set_num(target_radii, count, allow_shrinking);
+}
+
+void EntityData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(integral_biases, indices);
+    ml::apply_permutation(float_biases, indices);
+    ml::apply_permutation(tasks, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(desired_move_locations, indices);
+    ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(desired_aiming_directions, indices);
+    ml::apply_permutation(movement_directions, indices);
+    ml::apply_permutation(velocities, indices);
+    ml::apply_permutation(move_distances, indices);
+    ml::apply_permutation(speeds, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(awareness_scan_countdowns, indices);
+    ml::apply_permutation(attack_reposition_countdowns, indices);
+    ml::apply_permutation(attack_cooldowns, indices);
+    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_locations, indices);
+    ml::apply_permutation(target_velocities, indices);
+    ml::apply_permutation(target_directions, indices);
+    ml::apply_permutation(intercept_times, indices);
+    ml::apply_permutation(target_distance_sq, indices);
+    ml::apply_permutation(target_distances, indices);
+    ml::apply_permutation(target_radii, indices);
 }
 
 auto EntityData::get_view() -> View {

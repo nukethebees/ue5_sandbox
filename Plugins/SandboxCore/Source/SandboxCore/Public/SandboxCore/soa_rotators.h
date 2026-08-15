@@ -5,7 +5,6 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
-#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -66,7 +65,7 @@ struct TRotatorsView {
     }
 };
 
-struct FRotatorsf {
+struct SANDBOXCORE_API FRotatorsf {
     using value_type = float;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
@@ -149,13 +148,7 @@ struct FRotatorsf {
         rolls.Append(other.rolls);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(pitches, indices);
-        ml::apply_permutation(yaws, indices);
-        ml::apply_permutation(rolls, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -230,7 +223,7 @@ struct FRotatorsf {
     }
 };
 
-struct FRotatorsd {
+struct SANDBOXCORE_API FRotatorsd {
     using value_type = double;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
@@ -313,13 +306,7 @@ struct FRotatorsd {
         rolls.Append(other.rolls);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(pitches, indices);
-        ml::apply_permutation(yaws, indices);
-        ml::apply_permutation(rolls, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

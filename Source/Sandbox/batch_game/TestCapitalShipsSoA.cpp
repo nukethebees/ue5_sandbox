@@ -6,8 +6,11 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 namespace ml::test_capital_ships {
 auto SpawnDataConstView::get_view() const -> ConstView {
@@ -206,6 +209,18 @@ void SpawnData::set_num(int32 const count, EAllowShrinking const allow_shrinking
     ml::set_num(healths, count, allow_shrinking);
     ml::set_num(initial_spawn_delays, count, allow_shrinking);
     ml::set_num(spawn_cooldowns, count, allow_shrinking);
+}
+
+void SpawnData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(initial_spawn_delays, indices);
+    ml::apply_permutation(spawn_cooldowns, indices);
 }
 
 auto SpawnData::get_view() -> View {
@@ -432,6 +447,13 @@ void EntityTickData::add_defaulted(int32 const count) {
 void EntityTickData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(ships_ready_to_spawn_fighters_buffer, count, allow_shrinking);
     ml::set_num(fighter_queue, count, allow_shrinking);
+}
+
+void EntityTickData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(ships_ready_to_spawn_fighters_buffer, indices);
+    ml::apply_permutation(fighter_queue, indices);
 }
 
 auto EntityTickData::get_view() -> View {
@@ -724,6 +746,20 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(target_handles, count, allow_shrinking);
 }
 
+void EntityData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(handles, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(fighter_spawn_timers, indices);
+    ml::apply_permutation(fighter_spawn_cooldowns, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(capital_fighter_handle_spans, indices);
+    ml::apply_permutation(target_handles, indices);
+}
+
 auto EntityData::get_view() -> View {
     return get_view(0, num());
 }
@@ -956,6 +992,13 @@ void FighterReassignment::add_defaulted(int32 const count) {
 void FighterReassignment::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(capital_handles, count, allow_shrinking);
     ml::set_num(fighter_handles, count, allow_shrinking);
+}
+
+void FighterReassignment::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(capital_handles, indices);
+    ml::apply_permutation(fighter_handles, indices);
 }
 
 auto FighterReassignment::get_view() -> View {

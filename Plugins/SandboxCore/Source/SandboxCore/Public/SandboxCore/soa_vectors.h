@@ -5,7 +5,6 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
-#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -116,7 +115,7 @@ struct TVectors3View {
     }
 };
 
-struct FVectors2f {
+struct SANDBOXCORE_API FVectors2f {
     using value_type = float;
     using aos_type = FVector2f;
     using size_type = TArray<value_type>::SizeType;
@@ -192,12 +191,7 @@ struct FVectors2f {
         ys.Append(other.ys);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -271,7 +265,7 @@ struct FVectors2f {
     }
 };
 
-struct FVectors2d {
+struct SANDBOXCORE_API FVectors2d {
     using value_type = double;
     using aos_type = FVector2d;
     using size_type = TArray<value_type>::SizeType;
@@ -347,12 +341,7 @@ struct FVectors2d {
         ys.Append(other.ys);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -426,7 +415,7 @@ struct FVectors2d {
     }
 };
 
-struct FVectors2i32 {
+struct SANDBOXCORE_API FVectors2i32 {
     using value_type = int32;
     using aos_type = FIntPoint;
     using size_type = TArray<value_type>::SizeType;
@@ -502,12 +491,7 @@ struct FVectors2i32 {
         ys.Append(other.ys);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -581,7 +565,7 @@ struct FVectors2i32 {
     }
 };
 
-struct FVectors2u32 {
+struct SANDBOXCORE_API FVectors2u32 {
     using value_type = uint32;
     using aos_type = FUintPoint;
     using size_type = TArray<value_type>::SizeType;
@@ -657,12 +641,7 @@ struct FVectors2u32 {
         ys.Append(other.ys);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -736,7 +715,7 @@ struct FVectors2u32 {
     }
 };
 
-struct FVectors3f {
+struct SANDBOXCORE_API FVectors3f {
     using value_type = float;
     using aos_type = FVector3f;
     using size_type = TArray<value_type>::SizeType;
@@ -820,13 +799,7 @@ struct FVectors3f {
         zs.Append(other.zs);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-        ml::apply_permutation(zs, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -910,7 +883,7 @@ struct FVectors3f {
     }
 };
 
-struct FVectors3d {
+struct SANDBOXCORE_API FVectors3d {
     using value_type = double;
     using aos_type = FVector3d;
     using size_type = TArray<value_type>::SizeType;
@@ -994,13 +967,7 @@ struct FVectors3d {
         zs.Append(other.zs);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-        ml::apply_permutation(zs, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -1084,7 +1051,7 @@ struct FVectors3d {
     }
 };
 
-struct FVectors3i32 {
+struct SANDBOXCORE_API FVectors3i32 {
     using value_type = int32;
     using aos_type = FIntVector;
     using size_type = TArray<value_type>::SizeType;
@@ -1168,13 +1135,7 @@ struct FVectors3i32 {
         zs.Append(other.zs);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-        ml::apply_permutation(zs, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
@@ -1258,7 +1219,7 @@ struct FVectors3i32 {
     }
 };
 
-struct FVectors3u32 {
+struct SANDBOXCORE_API FVectors3u32 {
     using value_type = uint32;
     using aos_type = FUintVector3;
     using size_type = TArray<value_type>::SizeType;
@@ -1342,13 +1303,7 @@ struct FVectors3u32 {
         zs.Append(other.zs);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(xs, indices);
-        ml::apply_permutation(ys, indices);
-        ml::apply_permutation(zs, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

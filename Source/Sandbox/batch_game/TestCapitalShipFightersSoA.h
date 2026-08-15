@@ -11,7 +11,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
@@ -275,35 +274,7 @@ struct SANDBOX_API EntityData {
         ml::append_from(target_radii, other.target_radii);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(entity_handles, indices);
-        ml::apply_permutation(integral_biases, indices);
-        ml::apply_permutation(float_biases, indices);
-        ml::apply_permutation(tasks, indices);
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(desired_move_locations, indices);
-        ml::apply_permutation(aim_directions, indices);
-        ml::apply_permutation(desired_aiming_directions, indices);
-        ml::apply_permutation(movement_directions, indices);
-        ml::apply_permutation(velocities, indices);
-        ml::apply_permutation(move_distances, indices);
-        ml::apply_permutation(speeds, indices);
-        ml::apply_permutation(teams, indices);
-        ml::apply_permutation(healths, indices);
-        ml::apply_permutation(awareness_scan_countdowns, indices);
-        ml::apply_permutation(attack_reposition_countdowns, indices);
-        ml::apply_permutation(attack_cooldowns, indices);
-        ml::apply_permutation(target_handles, indices);
-        ml::apply_permutation(target_locations, indices);
-        ml::apply_permutation(target_velocities, indices);
-        ml::apply_permutation(target_directions, indices);
-        ml::apply_permutation(intercept_times, indices);
-        ml::apply_permutation(target_distance_sq, indices);
-        ml::apply_permutation(target_distances, indices);
-        ml::apply_permutation(target_radii, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

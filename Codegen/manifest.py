@@ -51,6 +51,7 @@ from Codegen.soa import (
     SoAStruct,
     SoAStructNames,
     SoAStorageOperation,
+    lower_homogeneous_soa_permutation_definitions,
     lower_soa_structs_with_source,
     lower_homogeneous_soa_layouts,
     soa_member,
@@ -69,6 +70,14 @@ SANDBOX_CORE_PUBLIC_DIR = (
     / "SandboxCore"
     / "Public"
     / "SandboxCore"
+)
+SANDBOX_CORE_PRIVATE_DIR = (
+    PROJECT_ROOT
+    / "Plugins"
+    / "SandboxCore"
+    / "Source"
+    / "SandboxCore"
+    / "Private"
 )
 ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
 SANDBOX_API = "SANDBOX_API"
@@ -104,13 +113,14 @@ def soa_source_file(
     )
 
 
-def homogeneous_soa_header_module(
+def homogeneous_soa_module(
     name: str, header_name: str, layouts: tuple[HomogeneousSoALayout, ...]
 ) -> Module:
+    header_path = SANDBOX_CORE_PUBLIC_DIR / header_name
     return Module(
         name=name,
         header=CppFile(
-            path=SANDBOX_CORE_PUBLIC_DIR / header_name,
+            path=header_path,
             clang_format_off=True,
             include_order=INCLUDE_ORDER,
             nodes=(
@@ -119,11 +129,17 @@ def homogeneous_soa_header_module(
                 *lower_homogeneous_soa_layouts(layouts),
             ),
         ),
+        source=soa_source_file(
+            header_path,
+            lower_homogeneous_soa_permutation_definitions(layouts),
+            source_path=SANDBOX_CORE_PRIVATE_DIR / header_path.with_suffix(".cpp").name,
+            header_include_path=f"SandboxCore/{header_name}",
+        ),
     )
 
 
 def soa_vectors_module() -> Module:
-    return homogeneous_soa_header_module(
+    return homogeneous_soa_module(
         "sandbox_core_soa_vectors",
         "soa_vectors.h",
         (
@@ -136,6 +152,7 @@ def soa_vectors_module() -> Module:
                     HomogeneousSoAValueType("int32", "i32", F_INT_POINT),
                     HomogeneousSoAValueType("uint32", "u32", F_UINT_POINT),
                 ),
+                storage_export_specifier=SANDBOX_CORE_API,
             ),
             HomogeneousSoALayout(
                 "Vectors3",
@@ -146,13 +163,14 @@ def soa_vectors_module() -> Module:
                     HomogeneousSoAValueType("int32", "i32", F_INT_VECTOR),
                     HomogeneousSoAValueType("uint32", "u32", F_UINT_VECTOR_3),
                 ),
+                storage_export_specifier=SANDBOX_CORE_API,
             ),
         ),
     )
 
 
 def soa_rotators_module() -> Module:
-    return homogeneous_soa_header_module(
+    return homogeneous_soa_module(
         "sandbox_core_soa_rotators",
         "soa_rotators.h",
         (
@@ -163,6 +181,7 @@ def soa_rotators_module() -> Module:
                     HomogeneousSoAValueType("float", "f"),
                     HomogeneousSoAValueType("double", "d"),
                 ),
+                storage_export_specifier=SANDBOX_CORE_API,
             ),
         ),
     )

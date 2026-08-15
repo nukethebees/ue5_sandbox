@@ -9,7 +9,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
@@ -133,15 +132,7 @@ struct SANDBOX_API EntityData {
         ml::append_from(next_fire_point_indices, other.next_fire_point_indices);
     }
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(handles, indices);
-        ml::apply_permutation(locations, indices);
-        ml::apply_permutation(yaws, indices);
-        ml::apply_permutation(laser_cooldowns, indices);
-        ml::apply_permutation(next_fire_point_indices, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

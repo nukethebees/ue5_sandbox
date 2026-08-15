@@ -6,6 +6,10 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
+
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 namespace ml::test_lasers {
 auto ComponentHitRangesConstView::get_view() const -> ConstView {
@@ -140,6 +144,15 @@ void ComponentHitRanges::reset() {
     ml::reset(counts);
     ml::reset(offsets);
     ml::reset(next_write_indices);
+}
+
+void ComponentHitRanges::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(components, indices);
+    ml::apply_permutation(counts, indices);
+    ml::apply_permutation(offsets, indices);
+    ml::apply_permutation(next_write_indices, indices);
 }
 
 auto ComponentHitRanges::get_view() -> View {

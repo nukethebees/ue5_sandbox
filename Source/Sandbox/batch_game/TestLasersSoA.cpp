@@ -6,8 +6,11 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 namespace ml::test_lasers {
 auto SpawnRequestsConstView::get_view() const -> ConstView {
@@ -218,6 +221,19 @@ void SpawnRequests::set_num(int32 const count, EAllowShrinking const allow_shrin
     ml::set_num(max_distances, count, allow_shrinking);
     ml::set_num(instigator_handles, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
+}
+
+void SpawnRequests::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(base_velocities, indices);
+    ml::apply_permutation(damages, indices);
+    ml::apply_permutation(speeds, indices);
+    ml::apply_permutation(max_distances, indices);
+    ml::apply_permutation(instigator_handles, indices);
+    ml::apply_permutation(colours, indices);
 }
 
 auto SpawnRequests::get_view() -> View {
@@ -522,6 +538,19 @@ void Entities::set_num(int32 const count, EAllowShrinking const allow_shrinking)
     ml::set_num(instigator_handles, count, allow_shrinking);
 }
 
+void Entities::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(ismc_data, indices);
+    ml::apply_permutation(colours, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(velocities, indices);
+    ml::apply_permutation(damages, indices);
+    ml::apply_permutation(lifetimes_remaining, indices);
+    ml::apply_permutation(instigator_handles, indices);
+}
+
 auto Entities::get_view() -> View {
     return get_view(0, num());
 }
@@ -750,6 +779,13 @@ void HitDetails::add_defaulted(int32 const count) {
 void HitDetails::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
+}
+
+void HitDetails::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(colours, indices);
 }
 
 auto HitDetails::get_view() -> View {

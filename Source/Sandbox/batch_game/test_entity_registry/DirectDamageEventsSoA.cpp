@@ -6,8 +6,11 @@
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 auto DirectDamageEventsConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -157,6 +160,14 @@ void DirectDamageEvents::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(damaged_entities, count, allow_shrinking);
     ml::set_num(damage_amounts, count, allow_shrinking);
     ml::set_num(instigators, count, allow_shrinking);
+}
+
+void DirectDamageEvents::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(damaged_entities, indices);
+    ml::apply_permutation(damage_amounts, indices);
+    ml::apply_permutation(instigators, indices);
 }
 
 auto DirectDamageEvents::get_view() -> View {

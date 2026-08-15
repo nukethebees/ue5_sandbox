@@ -5,7 +5,6 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
-#include "SandboxCore/soa_permutation.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "Containers/Array.h"
@@ -89,14 +88,7 @@ struct SANDBOX_API ComponentHitRanges {
 
     void reset();
 
-    void apply_permutation(TArrayView<int32> indices) {
-        validate_array_sizes();
-        check(indices.Num() == num());
-        ml::apply_permutation(components, indices);
-        ml::apply_permutation(counts, indices);
-        ml::apply_permutation(offsets, indices);
-        ml::apply_permutation(next_write_indices, indices);
-    }
+    void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {

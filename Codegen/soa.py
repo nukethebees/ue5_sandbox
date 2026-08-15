@@ -376,6 +376,7 @@ class HomogeneousSoALayout:
     name: str
     components: tuple[str, ...]
     value_types: tuple[HomogeneousSoAValueType, ...]
+    storage_export_specifier: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "components", tuple(self.components))
@@ -605,7 +606,6 @@ def _permutation_function_specs(fields: Iterable[str]) -> tuple[MemberFunctionSp
             "void",
             (indices,),
             apply_body,
-            is_inline=True,
         ),
         MemberFunctionSpec(
             "sort",
@@ -630,6 +630,11 @@ def _permutation_function_nodes(fields: Iterable[str]) -> tuple[Node, ...]:
     return _separate(
         (spec.header_node() for spec in _permutation_function_specs(fields)), 2
     )
+
+
+def _permutation_source_nodes(fields: Iterable[str], owner_name: str) -> tuple[Node, ...]:
+    apply_permutation, *_ = _permutation_function_specs(fields)
+    return (apply_permutation.definition_node(owner_name),)
 
 
 def _view_projection_body(
@@ -871,6 +876,9 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
                 soa.storage_operations, operation_specs, strict=True
             )
             if operation in OUT_OF_LINE_STORAGE_OPERATIONS
+        ),
+        *_permutation_source_nodes(
+            (member.name for member in soa.members), soa.names.name
         ),
         *(spec.definition_node(soa.names.name) for spec in storage_specs),
     )
@@ -1373,6 +1381,7 @@ def _homogeneous_storage_struct(
             NewLines(2),
             *_homogeneous_storage_functions(layout, value_type),
         ),
+        export_specifier=layout.storage_export_specifier,
     )
 
 
@@ -1388,4 +1397,20 @@ def lower_homogeneous_soa_layouts(
     for layout in layout_list:
         for value_type in layout.value_types:
             nodes.extend((NewLines(2), _homogeneous_storage_struct(layout, value_type)))
+    return tuple(nodes)
+
+
+def lower_homogeneous_soa_permutation_definitions(
+    layouts: Iterable[HomogeneousSoALayout],
+) -> tuple[Node, ...]:
+    nodes: list[Node] = []
+    for layout in layouts:
+        for value_type in layout.value_types:
+            if nodes:
+                nodes.append(NewLines(2))
+            nodes.extend(
+                _permutation_source_nodes(
+                    layout.components, layout.storage_name(value_type)
+                )
+            )
     return tuple(nodes)

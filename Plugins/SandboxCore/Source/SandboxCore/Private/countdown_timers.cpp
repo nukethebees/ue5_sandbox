@@ -7,8 +7,11 @@
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_math.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 void FCountdownTimers::tick(float const dt) noexcept {
     ml::subtract_in_place(remaining_times, dt);
@@ -138,6 +141,12 @@ void FCountdownTimers::add_defaulted(int32 const count) {
 
 void FCountdownTimers::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(remaining_times, count, allow_shrinking);
+}
+
+void FCountdownTimers::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(remaining_times, indices);
 }
 
 auto FCountdownTimers::get_view() -> View {
