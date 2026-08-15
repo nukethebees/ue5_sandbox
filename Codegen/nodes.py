@@ -108,26 +108,23 @@ class Member(Node):
 
 @dataclass(frozen=True)
 class FunctionDeclaration(Node):
-    signature: str
+    function: MemberFunctionSpec | FreeFunctionSpec
 
     def render(self, context: RenderContext) -> str:
-        declaration = self.signature.rstrip(";") + ";"
+        declaration = self.function.declaration_signature().rstrip(";") + ";"
         return context.apply_indent(declaration)
 
 
 @dataclass(frozen=True)
 class Function(Node):
-    signature: str
-    body: Node
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.body, Node):
-            raise TypeError("Function bodies must be codegen nodes; use Raw for literal C++")
+    function: MemberFunctionSpec | FreeFunctionSpec
+    owner_name: str | None = None
+    is_header: bool = False
 
     def render(self, context: RenderContext) -> str:
-        body = self.body.render(context.indent())
+        body = self.function.body.render(context.indent())
         return (
-            f"{context.apply_indent(self.signature)} {{\n"
+            f"{context.apply_indent(self.function.definition_signature(self.owner_name, self.is_header))} {{\n"
             f"{body}\n"
             f"{context.apply_indent('}')}"
         )
@@ -216,18 +213,15 @@ class MemberFunctionSpec:
             self.body.bind(self)
 
     def declaration_node(self) -> FunctionDeclaration:
-        return FunctionDeclaration(self._signature(True))
+        return FunctionDeclaration(self)
 
     def header_node(self) -> Node:
         if self.is_inline:
-            return Function(self._signature(True), self.body)
+            return Function(self, is_header=True)
         return self.declaration_node()
 
     def definition_node(self, owner_name: str) -> Function:
-        return Function(
-            self._signature(False, owner_name),
-            self.body,
-        )
+        return Function(self, owner_name=owner_name)
 
     def parameter(self, parameter: FunctionParameter) -> ParameterRef:
         if not any(candidate is parameter for candidate in self.parameters):
@@ -237,6 +231,12 @@ class MemberFunctionSpec:
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return ", ".join(render(parameter) for parameter in self.parameters)
+
+    def declaration_signature(self) -> str:
+        return self._signature(True)
+
+    def definition_signature(self, owner_name: str | None, is_header: bool) -> str:
+        return self._signature(is_header, owner_name)
 
     def _signature(self, include_defaults: bool, owner_name: str | None = None) -> str:
         static_prefix = "static " if self.is_static and owner_name is None else ""
@@ -283,18 +283,15 @@ class FreeFunctionSpec:
             self.body.bind(self)
 
     def declaration_node(self) -> FunctionDeclaration:
-        return FunctionDeclaration(f"{self.return_type} {self.name}({self._parameters(True)}){self.suffix}")
+        return FunctionDeclaration(self)
 
     def header_node(self) -> Node:
         if self.is_inline:
-            return Function(
-                f"inline {self.return_type} {self.name}({self._parameters(True)}){self.suffix}",
-                self.body,
-            )
+            return Function(self, is_header=True)
         return self.declaration_node()
 
     def definition_node(self) -> Function:
-        return Function(f"{self.return_type} {self.name}({self._parameters(False)}){self.suffix}", self.body)
+        return Function(self)
 
     def parameter(self, parameter: FunctionParameter) -> ParameterRef:
         if not any(candidate is parameter for candidate in self.parameters):
@@ -304,6 +301,18 @@ class FreeFunctionSpec:
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return ", ".join(render(parameter) for parameter in self.parameters)
+
+    def declaration_signature(self) -> str:
+        return self._signature(True, False)
+
+    def definition_signature(self, owner_name: str | None, is_header: bool) -> str:
+        if owner_name is not None:
+            raise ValueError("Free function definitions must not have an owner name")
+        return self._signature(is_header, is_header)
+
+    def _signature(self, include_defaults: bool, include_inline: bool) -> str:
+        inline_prefix = "inline " if include_inline and self.is_inline else ""
+        return f"{inline_prefix}{self.return_type} {self.name}({self._parameters(include_defaults)}){self.suffix}"
 
 
 @dataclass(frozen=True)

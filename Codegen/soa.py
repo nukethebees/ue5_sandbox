@@ -6,7 +6,6 @@ from collections.abc import Iterable
 
 from Codegen.nodes import (
     ForwardDeclaration,
-    Function,
     FunctionBody,
     FunctionParameter,
     MemberFunctionSpec,
@@ -188,33 +187,44 @@ def _separate(nodes: Iterable[Node], newline_count: int) -> tuple[Node, ...]:
     return tuple(separated)
 
 
-def _apply_arrays_function(members: tuple[SoAMember, ...]) -> Function:
+def _apply_arrays_function(members: tuple[SoAMember, ...]) -> Node:
     body = ["return std::forward<TFunc>(func)("]
     final_index = len(members) - 1
     for index, member in enumerate(members):
         comma = "," if index != final_index else ""
         body.append(f"    self.{member.name}{comma}")
     body.append(");")
-    return Function(
-        "template <typename TFunc>\n"
-        "auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto)",
+    return MemberFunctionSpec(
+        "apply_arrays",
+        "auto",
+        (FunctionParameter("this auto&&", "self"), FunctionParameter("TFunc&&", "func")),
         Raw("\n".join(body)),
-    )
+        suffix=" -> decltype(auto)",
+        is_inline=True,
+        template_parameters="typename TFunc",
+    ).header_node()
 
 
-def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Function:
+def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Node:
     body = ["return std::forward<TFunc>(func)("]
     final_index = len(members) - 1
     for index, member in enumerate(members):
         comma = "," if index != final_index else ""
         body.append(f"    self.{member.name}, other.{member.name}{comma}")
     body.append(");")
-    return Function(
-        "template <typename Self, typename Other, typename TFunc>\n"
-        "auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)\n"
-        "    -> decltype(auto)",
+    return MemberFunctionSpec(
+        "apply_array_pairs",
+        "auto",
+        (
+            FunctionParameter("this Self&&", "self"),
+            FunctionParameter("Other&&", "other"),
+            FunctionParameter("TFunc&&", "func"),
+        ),
         Raw("\n".join(body)),
-    )
+        suffix="\n    -> decltype(auto)",
+        is_inline=True,
+        template_parameters="typename Self, typename Other, typename TFunc",
+    ).header_node()
 
 
 def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> Node:

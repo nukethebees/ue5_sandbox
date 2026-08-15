@@ -7,9 +7,7 @@ from Codegen.nodes import (
     CppFile,
     ForwardDeclaration,
     FreeFunctionSpec,
-    Function,
     FunctionBody,
-    FunctionDeclaration,
     FunctionParameter,
     Include,
     Member,
@@ -62,7 +60,14 @@ class NodeRenderingTests(unittest.TestCase):
                             "FValue",
                             (
                                 Member("int32", "value"),
-                                Function("auto get() const -> int32", Raw("return value;")),
+                                MemberFunctionSpec(
+                                    "get",
+                                    "auto",
+                                    (),
+                                    Raw("return value;"),
+                                    suffix=" const -> int32",
+                                    is_inline=True,
+                                ).header_node(),
                             ),
                         ),
                     ),
@@ -161,12 +166,16 @@ struct FValue {
             Raw("this->value = value;"),
         )
 
+        declaration = function.declaration_node()
+        definition = function.definition_node("FData")
+        self.assertIs(declaration.function, function)
+        self.assertIs(definition.function, function)
         self.assertEqual(
-            function.declaration_node().render(RenderContext()),
+            declaration.render(RenderContext()),
             "void update(int32 const value = 0);",
         )
         self.assertEqual(
-            function.definition_node("FData").render(RenderContext()),
+            definition.render(RenderContext()),
             """void FData::update(int32 const value) {
     this->value = value;
 }""",
@@ -470,9 +479,11 @@ void append_from(Other const& other) {
             "FDataConstView",
             (tarray_member("values", "FValue"),),
             nodes=(
-                Function("void reset_values()", Raw("values.Reset();")),
+                MemberFunctionSpec(
+                    "reset_values", "void", (), Raw("values.Reset();"), is_inline=True
+                ).header_node(),
                 NewLines(1),
-                FunctionDeclaration("void validate_values()"),
+                MemberFunctionSpec("validate_values", "void", (), Raw("")).declaration_node(),
             ),
         )
 
