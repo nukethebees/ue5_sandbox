@@ -1,5 +1,7 @@
 #pragma once
 
+#include "soa_permutation.h"
+
 #include "CoreMinimal.h"
 
 #include <concepts>
@@ -208,6 +210,8 @@ class TTickCountdown {
                       size_type const src_index) {
         counters_[dst_index] = src.counters_[src_index];
     }
+
+    void apply_permutation(TArrayView<int32> indices) { ml::apply_permutation(counters_, indices); }
 
     [[nodiscard]] auto num() const noexcept -> size_type { return counters_.Num(); }
 

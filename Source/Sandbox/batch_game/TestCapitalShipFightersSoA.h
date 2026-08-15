@@ -10,12 +10,14 @@
 
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 
@@ -270,6 +272,52 @@ struct SANDBOX_API EntityData {
         ml::append_from(target_distance_sq, other.target_distance_sq);
         ml::append_from(target_distances, other.target_distances);
         ml::append_from(target_radii, other.target_radii);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(entity_handles, indices);
+        ml::apply_permutation(integral_biases, indices);
+        ml::apply_permutation(float_biases, indices);
+        ml::apply_permutation(tasks, indices);
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(desired_move_locations, indices);
+        ml::apply_permutation(aim_directions, indices);
+        ml::apply_permutation(desired_aiming_directions, indices);
+        ml::apply_permutation(movement_directions, indices);
+        ml::apply_permutation(velocities, indices);
+        ml::apply_permutation(move_distances, indices);
+        ml::apply_permutation(speeds, indices);
+        ml::apply_permutation(teams, indices);
+        ml::apply_permutation(healths, indices);
+        ml::apply_permutation(awareness_scan_countdowns, indices);
+        ml::apply_permutation(attack_reposition_countdowns, indices);
+        ml::apply_permutation(attack_cooldowns, indices);
+        ml::apply_permutation(target_handles, indices);
+        ml::apply_permutation(target_locations, indices);
+        ml::apply_permutation(target_velocities, indices);
+        ml::apply_permutation(target_directions, indices);
+        ml::apply_permutation(intercept_times, indices);
+        ml::apply_permutation(target_distance_sq, indices);
+        ml::apply_permutation(target_distances, indices);
+        ml::apply_permutation(target_radii, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>

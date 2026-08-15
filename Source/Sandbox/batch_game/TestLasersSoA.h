@@ -8,6 +8,7 @@
 
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -15,6 +16,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 #include "Math/Color.h"
 
 #include <utility>
@@ -156,6 +158,35 @@ struct SANDBOX_API SpawnRequests {
         ml::append_from(max_distances, other.max_distances);
         ml::append_from(instigator_handles, other.instigator_handles);
         ml::append_from(colours, other.colours);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(rotations, indices);
+        ml::apply_permutation(base_velocities, indices);
+        ml::apply_permutation(damages, indices);
+        ml::apply_permutation(speeds, indices);
+        ml::apply_permutation(max_distances, indices);
+        ml::apply_permutation(instigator_handles, indices);
+        ml::apply_permutation(colours, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>
@@ -345,6 +376,35 @@ struct SANDBOX_API Entities {
         ml::append_from(instigator_handles, other.instigator_handles);
     }
 
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(ismc_data, indices);
+        ml::apply_permutation(colours, indices);
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(rotations, indices);
+        ml::apply_permutation(velocities, indices);
+        ml::apply_permutation(damages, indices);
+        ml::apply_permutation(lifetimes_remaining, indices);
+        ml::apply_permutation(instigator_handles, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -488,6 +548,29 @@ struct SANDBOX_API HitDetails {
     void append_from(Other const& other) {
         ml::append_from(locations, other.locations);
         ml::append_from(colours, other.colours);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(colours, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>

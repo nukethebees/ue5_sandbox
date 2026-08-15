@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "SandboxCore/soa_permutation.h"
+
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
@@ -173,6 +175,9 @@ struct FVectors2f {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -184,6 +189,29 @@ struct FVectors2f {
     void append_from(Other const& other) {
         xs.Append(other.xs);
         ys.Append(other.ys);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -292,6 +320,9 @@ struct FVectors2d {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -303,6 +334,29 @@ struct FVectors2d {
     void append_from(Other const& other) {
         xs.Append(other.xs);
         ys.Append(other.ys);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -411,6 +465,9 @@ struct FVectors2i32 {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -422,6 +479,29 @@ struct FVectors2i32 {
     void append_from(Other const& other) {
         xs.Append(other.xs);
         ys.Append(other.ys);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -530,6 +610,9 @@ struct FVectors2u32 {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -541,6 +624,29 @@ struct FVectors2u32 {
     void append_from(Other const& other) {
         xs.Append(other.xs);
         ys.Append(other.ys);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -654,6 +760,10 @@ struct FVectors3f {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+        check(zs.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -667,6 +777,30 @@ struct FVectors3f {
         xs.Append(other.xs);
         ys.Append(other.ys);
         zs.Append(other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+        ml::apply_permutation(zs, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
@@ -790,6 +924,10 @@ struct FVectors3d {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+        check(zs.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -803,6 +941,30 @@ struct FVectors3d {
         xs.Append(other.xs);
         ys.Append(other.ys);
         zs.Append(other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+        ml::apply_permutation(zs, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
@@ -926,6 +1088,10 @@ struct FVectors3i32 {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+        check(zs.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -939,6 +1105,30 @@ struct FVectors3i32 {
         xs.Append(other.xs);
         ys.Append(other.ys);
         zs.Append(other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+        ml::apply_permutation(zs, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
@@ -1062,6 +1252,10 @@ struct FVectors3u32 {
     auto num() const -> size_type {
         return xs.Num();
     }
+    void validate_array_sizes() const {
+        check(ys.Num() == xs.Num());
+        check(zs.Num() == xs.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -1075,6 +1269,30 @@ struct FVectors3u32 {
         xs.Append(other.xs);
         ys.Append(other.ys);
         zs.Append(other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(xs, indices);
+        ml::apply_permutation(ys, indices);
+        ml::apply_permutation(zs, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};

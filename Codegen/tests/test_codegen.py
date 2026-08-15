@@ -583,15 +583,17 @@ void append_from(Other const& other) {
             ),
         )
 
-        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
+        lowered = lower_soa_structs_with_source((soa,))
+        header = lowered.header_nodes[-1].render(RenderContext())
+        source = "\n".join(node.render(RenderContext()) for node in lowered.source_nodes)
 
-        self.assertIn("void add_defaulted(int32 const count)", rendered)
-        self.assertIn("ml::add_defaulted(", rendered)
-        self.assertIn("void remove_at_swap(", rendered)
-        self.assertIn("values.RemoveAtSwap(", rendered)
-        self.assertIn("ml::copy_element(", rendered)
-        self.assertIn("template <typename Other>", rendered)
-        self.assertLess(rendered.index("void add_defaulted"), rendered.index("apply_arrays"))
+        self.assertIn("void add_defaulted(int32 const count);", header)
+        self.assertIn("ml::add_defaulted(", source)
+        self.assertIn("void remove_at_swap(", header)
+        self.assertIn("values.RemoveAtSwap(", header)
+        self.assertIn("ml::copy_element(", header)
+        self.assertIn("template <typename Other>", header)
+        self.assertLess(header.index("void add_defaulted"), header.index("apply_arrays"))
 
     def test_soa_storage_operations_share_header_and_source_specs(self) -> None:
         first = SoAStruct(
@@ -617,6 +619,33 @@ void append_from(Other const& other) {
         self.assertIn("void FFirst::reset()", source)
         self.assertIn("void FSecond::add_defaulted(int32 const count)", source)
         self.assertNotIn("copy_element", source)
+
+    def test_soa_sort_generates_callable_permutation_api(self) -> None:
+        soa = SoAStruct(
+            SoAStructNames("FData"),
+            (
+                tarray_member("keys", "int32"),
+                soa_member("locations", "FVectors3f"),
+                tarray_member("values", "float"),
+            ),
+        )
+
+        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
+
+        self.assertIn("void apply_permutation(TArrayView<int32> indices)", rendered)
+        self.assertIn("check(indices.Num() == num());", rendered)
+        self.assertIn("ml::apply_permutation(keys, indices);", rendered)
+        self.assertIn("ml::apply_permutation(locations, indices);", rendered)
+        self.assertIn("ml::apply_permutation(values, indices);", rendered)
+        self.assertIn("template <typename Compare>", rendered)
+        self.assertIn("void sort(Compare&& compare, TArrayView<int32> scratch_indices)", rendered)
+        self.assertIn("check(scratch_indices.Num() >= n);", rendered)
+        self.assertIn("auto indices{scratch_indices.Left(n)};", rendered)
+        self.assertIn("indices[new_index] is the old row index", rendered)
+        self.assertIn("return compare(*this, lhs, rhs);", rendered)
+        self.assertNotIn("TFunction", rendered)
+        self.assertNotIn("std::function", rendered)
+        self.assertNotIn("template <auto", rendered)
 
     def test_for_each_soa_member_call_uses_bound_function_parameters(self) -> None:
         handles = tarray_member("handles", "FRegistryEntityHandle")
@@ -778,11 +807,7 @@ void append_from(Other const& other) {
             ),
         )
 
-        rendered = "\n\n".join(
-            node.render(RenderContext())
-            for node in lower_soa_struct(soa)
-            if not isinstance(node, NewLines)
-        )
+        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
 
         self.assertLess(rendered.index("void reset_values()"), rendered.index("TArray<FValue> values"))
         self.assertLess(rendered.index("void validate_values"), rendered.index("apply_arrays"))

@@ -12,10 +12,12 @@
 
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_permutation.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 
@@ -152,6 +154,35 @@ struct SANDBOX_API TestEntityUniqueEntityData {
         ml::append_from(alive, other.alive);
         ml::append_from(killed_by, other.killed_by);
         ml::append_from(death_reason, other.death_reason);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(registry_indices, indices);
+        ml::apply_permutation(registry_generations, indices);
+        ml::apply_permutation(entity_types, indices);
+        ml::apply_permutation(teams, indices);
+        ml::apply_permutation(kills, indices);
+        ml::apply_permutation(alive, indices);
+        ml::apply_permutation(killed_by, indices);
+        ml::apply_permutation(death_reason, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>

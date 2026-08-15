@@ -4,9 +4,12 @@
 
 #pragma once
 
+#include "SandboxCore/soa_permutation.h"
+
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <type_traits>
 #include <utility>
@@ -126,6 +129,10 @@ struct FRotatorsf {
     auto num() const -> size_type {
         return pitches.Num();
     }
+    void validate_array_sizes() const {
+        check(yaws.Num() == pitches.Num());
+        check(rolls.Num() == pitches.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -139,6 +146,30 @@ struct FRotatorsf {
         pitches.Append(other.pitches);
         yaws.Append(other.yaws);
         rolls.Append(other.rolls);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(pitches, indices);
+        ml::apply_permutation(yaws, indices);
+        ml::apply_permutation(rolls, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     auto reset() -> void {
@@ -252,6 +283,10 @@ struct FRotatorsd {
     auto num() const -> size_type {
         return pitches.Num();
     }
+    void validate_array_sizes() const {
+        check(yaws.Num() == pitches.Num());
+        check(rolls.Num() == pitches.Num());
+    }
     auto is_empty() const -> bool {
         return num() == 0;
     }
@@ -265,6 +300,30 @@ struct FRotatorsd {
         pitches.Append(other.pitches);
         yaws.Append(other.yaws);
         rolls.Append(other.rolls);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(pitches, indices);
+        ml::apply_permutation(yaws, indices);
+        ml::apply_permutation(rolls, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     auto reset() -> void {

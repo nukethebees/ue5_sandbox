@@ -13,12 +13,14 @@
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 
@@ -147,6 +149,34 @@ struct SANDBOX_API SpawnData {
         ml::append_from(healths, other.healths);
         ml::append_from(initial_spawn_delays, other.initial_spawn_delays);
         ml::append_from(spawn_cooldowns, other.spawn_cooldowns);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(target_handles, indices);
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(rotations, indices);
+        ml::apply_permutation(teams, indices);
+        ml::apply_permutation(healths, indices);
+        ml::apply_permutation(initial_spawn_delays, indices);
+        ml::apply_permutation(spawn_cooldowns, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>
@@ -289,6 +319,29 @@ struct SANDBOX_API EntityTickData {
     void append_from(Other const& other) {
         ml::append_from(ships_ready_to_spawn_fighters_buffer, other.ships_ready_to_spawn_fighters_buffer);
         ml::append_from(fighter_queue, other.fighter_queue);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(ships_ready_to_spawn_fighters_buffer, indices);
+        ml::apply_permutation(fighter_queue, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>
@@ -467,6 +520,36 @@ struct SANDBOX_API EntityData {
         ml::append_from(target_handles, other.target_handles);
     }
 
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(handles, indices);
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(rotations, indices);
+        ml::apply_permutation(fighter_spawn_timers, indices);
+        ml::apply_permutation(fighter_spawn_cooldowns, indices);
+        ml::apply_permutation(teams, indices);
+        ml::apply_permutation(healths, indices);
+        ml::apply_permutation(capital_fighter_handle_spans, indices);
+        ml::apply_permutation(target_handles, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -618,6 +701,29 @@ struct SANDBOX_API FighterReassignment {
     void append_from(Other const& other) {
         ml::append_from(capital_handles, other.capital_handles);
         ml::append_from(fighter_handles, other.fighter_handles);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(capital_handles, indices);
+        ml::apply_permutation(fighter_handles, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>

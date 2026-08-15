@@ -9,12 +9,14 @@
 
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_permutation.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 
@@ -150,6 +152,35 @@ struct SANDBOX_API EntityData {
         ml::append_from(target_locations, other.target_locations);
         ml::append_from(target_velocities, other.target_velocities);
         ml::append_from(healths, other.healths);
+    }
+
+    void apply_permutation(TArrayView<int32> indices) {
+        validate_array_sizes();
+        check(indices.Num() == num());
+        ml::apply_permutation(handles, indices);
+        ml::apply_permutation(locations, indices);
+        ml::apply_permutation(teams, indices);
+        ml::apply_permutation(laser_cooldowns, indices);
+        ml::apply_permutation(target_handles, indices);
+        ml::apply_permutation(target_locations, indices);
+        ml::apply_permutation(target_velocities, indices);
+        ml::apply_permutation(healths, indices);
+    }
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() >= n);
+        auto indices{scratch_indices.Left(n)};
+        for (int32 i{}; i < n; ++i) {
+            indices[i] = i;
+        }
+        // indices[new_index] is the old row index that belongs at new_index.
+        indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(indices);
     }
 
     template <typename TFunc>

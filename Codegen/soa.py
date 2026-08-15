@@ -42,6 +42,8 @@ CONTAINER_OPS = TypeDependency("ml::num", "SandboxCore/container_ops.h")
 SOA_CONCEPTS = TypeDependency(
     "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h"
 )
+SOA_PERMUTATION = TypeDependency("ml::apply_permutation", "SandboxCore/soa_permutation.h")
+CHECK = TypeDependency("check", "CoreMinimal.h")
 TARRAY_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
 
 
@@ -218,6 +220,32 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
                 f");"
             ).render(context)
             for member in self.members
+        )
+
+
+class ForEachSoAFieldPermutationCall(FunctionBody):
+    def __init__(self, fields: Iterable[str]) -> None:
+        self.fields = tuple(fields)
+        if not self.fields or any(not field.strip() for field in self.fields):
+            raise ValueError("ForEachSoAFieldPermutationCall requires named fields")
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (SOA_PERMUTATION, CHECK)
+
+    def render(self, context: RenderContext) -> str:
+        function = self.function
+        if len(function.parameters) != 1:
+            raise ValueError(
+                f"ForEachSoAFieldPermutationCall for {function.name!r} requires one indices parameter"
+            )
+        indices = function.parameter(function.parameters[0]).cpp_name
+        return "\n".join(
+            (
+                Raw("validate_array_sizes();").render(context),
+                Raw(f"check({indices}.Num() == num());").render(context),
+                *(Raw(f"ml::apply_permutation({field}, {indices});").render(context)
+                  for field in self.fields),
+            )
         )
 
 
@@ -531,6 +559,57 @@ def _storage_operation_nodes(specs: Iterable[MemberFunctionSpec]) -> tuple[Node,
     return _separate((spec.header_node() for spec in specs), 2)
 
 
+def _permutation_function_specs(fields: Iterable[str]) -> tuple[MemberFunctionSpec, ...]:
+    indices = FunctionParameter(composed_type("TArrayView<int32>", TARRAY_VIEW), "indices")
+    scratch_indices = FunctionParameter(
+        composed_type("TArrayView<int32>", TARRAY_VIEW), "scratch_indices"
+    )
+    compare = FunctionParameter("Compare&&", "compare")
+    apply_body = ForEachSoAFieldPermutationCall(fields)
+    sort_body = Raw(
+        "\n".join(
+            (
+                "validate_array_sizes();",
+                "auto const n{num()};",
+                "check(scratch_indices.Num() >= n);",
+                "auto indices{scratch_indices.Left(n)};",
+                "for (int32 i{}; i < n; ++i) {",
+                "    indices[i] = i;",
+                "}",
+                "// indices[new_index] is the old row index that belongs at new_index.",
+                "indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {",
+                "    return compare(*this, lhs, rhs);",
+                "});",
+                "apply_permutation(indices);",
+            )
+        ),
+        (CHECK,),
+    )
+    return (
+        MemberFunctionSpec(
+            "apply_permutation",
+            "void",
+            (indices,),
+            apply_body,
+            is_inline=True,
+        ),
+        MemberFunctionSpec(
+            "sort",
+            "void",
+            (compare, scratch_indices),
+            sort_body,
+            is_inline=True,
+            template_parameters="typename Compare",
+        ),
+    )
+
+
+def _permutation_function_nodes(fields: Iterable[str]) -> tuple[Node, ...]:
+    return _separate(
+        (spec.header_node() for spec in _permutation_function_specs(fields)), 2
+    )
+
+
 def _view_projection_body(
     result_type: str,
     members: tuple[SoAMember, ...],
@@ -719,6 +798,7 @@ def _storage_struct(
     operations = _storage_operation_nodes(operation_specs)
     if operations:
         struct_nodes.extend((NewLines(2), *operations))
+    struct_nodes.extend((NewLines(2), *_permutation_function_nodes(member.name for member in soa.members)))
     struct_nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
     struct_nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
     struct_nodes.extend(
@@ -1142,6 +1222,18 @@ def _homogeneous_storage_functions(
             ).header_node(),
             NewLines(1),
             MemberFunctionSpec(
+                "validate_array_sizes",
+                "void",
+                (),
+                _homogeneous_body(
+                    f"check({component}.Num() == {layout.components[0]}.Num());"
+                    for component in layout.components[1:]
+                ),
+                suffix=" const",
+                is_inline=True,
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
                 "is_empty",
                 "auto",
                 (),
@@ -1179,6 +1271,7 @@ def _homogeneous_storage_functions(
             ).header_node(),
         )
     )
+    nodes.extend((NewLines(2), *_permutation_function_nodes(layout.components)))
     if value_type.aos_type:
         component_parameters = tuple(
             FunctionParameter("value_type const", component[0])
