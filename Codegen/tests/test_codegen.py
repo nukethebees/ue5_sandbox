@@ -5,16 +5,25 @@ from Codegen.generate import collect_files, render_files
 from Codegen.manifest import modules
 from Codegen.nodes import (
     CppFile,
+    ForwardDeclaration,
     Function,
     Include,
     Member,
     Module,
     Namespace,
     NewLines,
+    Node,
     RenderContext,
     Struct,
+    UsingDeclaration,
 )
-from Codegen.soa import SoAMember, SoAStruct, soa_member, tarray_member
+from Codegen.soa import (
+    SoAMember,
+    SoAStruct,
+    lower_soa_struct,
+    soa_member,
+    tarray_member,
+)
 
 
 class NodeRenderingTests(unittest.TestCase):
@@ -102,6 +111,26 @@ struct FValue {
         with self.assertRaisesRegex(ValueError, "must be positive"):
             NewLines(0)
 
+    def test_generic_declaration_nodes_render_in_a_struct(self) -> None:
+        node = Struct(
+            "FExportedData",
+            (UsingDeclaration("IndexType", "int32"), Member("IndexType index")),
+            export_specifier="SANDBOX_API",
+        )
+
+        self.assertEqual(
+            node.render(RenderContext()),
+            """struct SANDBOX_API FExportedData {
+    using IndexType = int32;
+
+    IndexType index;
+};""",
+        )
+        self.assertEqual(
+            ForwardDeclaration("FExportedData").render(RenderContext()),
+            "struct FExportedData;",
+        )
+
 
 class SoARenderingTests(unittest.TestCase):
     def test_tarray_member_derives_storage_and_view_types(self) -> None:
@@ -111,8 +140,8 @@ class SoARenderingTests(unittest.TestCase):
         self.assertEqual(member.view_type, "TArrayView<int32>")
         self.assertEqual(member.const_view_type, "TConstArrayView<int32>")
 
-    def test_soa_struct_renders_ordered_apply_functions(self) -> None:
-        node = SoAStruct(
+    def test_soa_struct_lowers_to_ordered_generic_declarations(self) -> None:
+        soa = SoAStruct(
             "FData",
             "TDataView",
             "TDataConstView",
@@ -122,7 +151,12 @@ class SoARenderingTests(unittest.TestCase):
             ),
         )
 
-        rendered = node.render(RenderContext())
+        lowered = lower_soa_struct(soa)
+        rendered = "\n\n".join(
+            node.render(RenderContext())
+            for node in lowered
+            if not isinstance(node, NewLines)
+        )
 
         self.assertLess(rendered.index("self.values"), rendered.index("self.vectors"))
         self.assertIn("self.values, other.values", rendered)
@@ -130,6 +164,9 @@ class SoARenderingTests(unittest.TestCase):
         self.assertIn("public ml::FSoAViewMixin", rendered)
         self.assertIn("public ml::FSoAArrayMixin", rendered)
         self.assertNotIn("std::conditional_t", rendered)
+        self.assertNotIsInstance(soa, Node)
+        self.assertIsInstance(lowered[0], ForwardDeclaration)
+        self.assertTrue(all(isinstance(node, (ForwardDeclaration, NewLines, Struct)) for node in lowered))
 
     def test_invalid_members_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "must not be empty"):
@@ -143,16 +180,16 @@ class SoARenderingTests(unittest.TestCase):
             SoAStruct("FData", "TDataView", "TDataConstView", ())
 
     def test_storage_metadata_is_rendered(self) -> None:
-        node = SoAStruct(
+        soa = SoAStruct(
             "FExportedData",
             "FExportedDataView",
             "FExportedDataConstView",
             (tarray_member("values", "int32"),),
             storage_export_specifier="SANDBOX_API",
-            storage_type_aliases=("using CountType = int32",),
+            storage_type_aliases=(("CountType", "int32"),),
         )
 
-        rendered = node.render(RenderContext())
+        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
 
         self.assertIn("struct SANDBOX_API FExportedData", rendered)
         self.assertIn("using CountType = int32;", rendered)

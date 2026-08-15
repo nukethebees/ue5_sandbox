@@ -76,6 +76,24 @@ class Include(Node):
 
 
 @dataclass(frozen=True)
+class ForwardDeclaration(Node):
+    name: str
+    kind: str = "struct"
+
+    def render(self, context: RenderContext) -> str:
+        return context.apply_indent(f"{self.kind} {self.name};")
+
+
+@dataclass(frozen=True)
+class UsingDeclaration(Node):
+    name: str
+    value_type: str
+
+    def render(self, context: RenderContext) -> str:
+        return context.apply_indent(f"using {self.name} = {self.value_type};")
+
+
+@dataclass(frozen=True)
 class Member(Node):
     declaration: str
 
@@ -108,6 +126,7 @@ class Struct(Node):
     nodes: tuple[Node, ...]
     bases: tuple[str, ...] = ()
     template: str | None = None
+    export_specifier: str | None = None
 
     def __init__(
         self,
@@ -115,18 +134,21 @@ class Struct(Node):
         nodes: Iterable[Node],
         bases: Iterable[str] = (),
         template: str | None = None,
+        export_specifier: str | None = None,
     ) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "nodes", tuple(nodes))
         object.__setattr__(self, "bases", tuple(bases))
         object.__setattr__(self, "template", template)
+        object.__setattr__(self, "export_specifier", export_specifier)
 
     def render(self, context: RenderContext) -> str:
         lines: list[str] = []
         if self.template:
             lines.append(context.apply_indent(f"template <{self.template}>"))
         inheritance = f" : {', '.join(self.bases)}" if self.bases else ""
-        lines.append(context.apply_indent(f"struct {self.name}{inheritance} {{"))
+        export_specifier = f" {self.export_specifier}" if self.export_specifier else ""
+        lines.append(context.apply_indent(f"struct{export_specifier} {self.name}{inheritance} {{"))
         lines.append(render_node_sequence(self.nodes, context.indent(), 2))
         lines.append(context.apply_indent("};"))
         return "\n".join(lines)

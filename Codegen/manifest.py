@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from Codegen.nodes import CppFile, Include, Module, Namespace, NewLines, Raw
-from Codegen.soa import SoAStruct, soa_member, tarray_member
+from Codegen.soa import SoAStruct, lower_soa_structs, soa_member, tarray_member
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -64,13 +64,15 @@ def fighter_soa_module() -> Module:
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ship_fighters",
-                    (
-                        SoAStruct(
-                            "EntityData",
-                            "EntityDataView",
-                            "EntityDataConstView",
-                            members,
-                        ),
+                    lower_soa_structs(
+                        (
+                            SoAStruct(
+                                "EntityData",
+                                "EntityDataView",
+                                "EntityDataConstView",
+                                members,
+                            ),
+                        )
                     ),
                 ),
             ),
@@ -139,7 +141,10 @@ def capital_ships_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_capital_ships", (spawn_data, entity_tick_data, entity_data)),
+                Namespace(
+                    "ml::test_capital_ships",
+                    lower_soa_structs((spawn_data, entity_tick_data, entity_data)),
+                ),
             ),
         ),
     )
@@ -186,7 +191,7 @@ def lasers_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_lasers", (entities, hit_details)),
+                Namespace("ml::test_lasers", lower_soa_structs((entities, hit_details))),
             ),
         ),
     )
@@ -239,9 +244,7 @@ def collision_damage_events_soa_module() -> Module:
                 NewLines(2),
                 Raw("class AActor;\nclass UActorComponent;"),
                 NewLines(2),
-                unresolved,
-                NewLines(2),
-                resolved,
+                *lower_soa_structs((unresolved, resolved)),
             ),
         ),
     )
@@ -281,7 +284,7 @@ def fighter_spawn_queue_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                queue,
+                *lower_soa_structs((queue,)),
             ),
         ),
     )
@@ -321,7 +324,7 @@ def static_turrets_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_static_turrets", (entity_data,)),
+                Namespace("ml::test_static_turrets", lower_soa_structs((entity_data,))),
             ),
         ),
     )
@@ -357,7 +360,7 @@ def tube_spinners_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_tube_spinners", (entity_data,)),
+                Namespace("ml::test_tube_spinners", lower_soa_structs((entity_data,))),
             ),
         ),
     )
@@ -395,7 +398,7 @@ def direct_damage_events_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                events,
+                *lower_soa_structs((events,)),
             ),
         ),
     )
@@ -417,7 +420,7 @@ def unique_entity_data_soa_module() -> Module:
             tarray_member("death_reason", "ETestDeathReason"),
         ),
         storage_export_specifier="SANDBOX_API",
-        storage_type_aliases=("using kills_type = uint32",),
+        storage_type_aliases=(("kills_type", "uint32"),),
     )
     return Module(
         name="test_entity_unique_entity_data_soa",
@@ -444,7 +447,7 @@ def unique_entity_data_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                entity_data,
+                *lower_soa_structs((entity_data,)),
             ),
         ),
     )
