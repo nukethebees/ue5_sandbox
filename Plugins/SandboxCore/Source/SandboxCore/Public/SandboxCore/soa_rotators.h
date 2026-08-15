@@ -134,6 +134,12 @@ struct FRotatorsf {
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
     }
+    template <typename Other>
+    void append_from(Other const& other) {
+        pitches.Append(other.pitches);
+        yaws.Append(other.yaws);
+        rolls.Append(other.rolls);
+    }
 
     auto reset() -> void {
         pitches.Reset();
@@ -253,6 +259,12 @@ struct FRotatorsd {
         pitches[dst_i] = src.pitches[src_i];
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        pitches.Append(other.pitches);
+        yaws.Append(other.yaws);
+        rolls.Append(other.rolls);
     }
 
     auto reset() -> void {

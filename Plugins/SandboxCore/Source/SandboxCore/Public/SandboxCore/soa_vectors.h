@@ -180,6 +180,11 @@ struct FVectors2f {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
     }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+    }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
@@ -293,6 +298,11 @@ struct FVectors2d {
     auto copy_element(size_type const dst_i, FVectors2d const& src, size_type const src_i) -> void {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -408,6 +418,11 @@ struct FVectors2i32 {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
     }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+    }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
@@ -521,6 +536,11 @@ struct FVectors2u32 {
     auto copy_element(size_type const dst_i, FVectors2u32 const& src, size_type const src_i) -> void {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
     }
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
@@ -641,6 +661,12 @@ struct FVectors3f {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+        zs.Append(other.zs);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
@@ -772,6 +798,12 @@ struct FVectors3d {
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
     }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+        zs.Append(other.zs);
+    }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
@@ -902,6 +934,12 @@ struct FVectors3i32 {
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
     }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+        zs.Append(other.zs);
+    }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
@@ -1031,6 +1069,12 @@ struct FVectors3u32 {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        xs.Append(other.xs);
+        ys.Append(other.ys);
+        zs.Append(other.zs);
     }
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};

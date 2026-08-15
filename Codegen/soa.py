@@ -1165,6 +1165,18 @@ def _homogeneous_storage_functions(
                 suffix=" -> void",
                 is_inline=True,
             ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "append_from",
+                "void",
+                (FunctionParameter("Other const&", "other"),),
+                _homogeneous_body(
+                    f"{component}.Append(other.{component});"
+                    for component in layout.components
+                ),
+                is_inline=True,
+                template_parameters="typename Other",
+            ).header_node(),
         )
     )
     if value_type.aos_type:
