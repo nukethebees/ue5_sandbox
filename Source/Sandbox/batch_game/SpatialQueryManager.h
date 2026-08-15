@@ -29,15 +29,11 @@ struct SANDBOX_API FSpatialQueryManager {
         Unknown,
     };
   public:
-    static constexpr int32 n_hit_sort_keys{std::to_underlying(EHitResolverKind::Count) + 1};
-
     void initialise(ATestSpaceShip const* player_ship,
                     ATestCapitalShips const& capital_ships,
                     ATestCapitalShipFighters const& capital_ship_fighters,
                     ATestStaticTurrets const& static_turrets,
                     ATestTubeSpinners const& tube_spinners);
-
-    auto get_hit_sort_key(FSpatialQueryHit const& hit) const -> uint8;
 
     void resolve_hits(TConstArrayView<FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

@@ -28,8 +28,17 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_lasers {
+struct ComponentHitRanges {
+    TArray<UPrimitiveComponent const*> components;
+    TArray<int32> counts{};
+    TArray<int32> offsets{};
+    TArray<int32> next_write_indices{};
+};
+
 struct ThreadLocalCollisionData {
     TArray<ml::FSpatialQueryHit> hits;
+    TArray<UPrimitiveComponent const*> components_hit;
+    TArray<int32> component_hit_counts;
     DirectDamageEvents damage_events;
     TArray<int32> to_remove;
     HitDetails hit_details;
@@ -102,7 +111,7 @@ class ATestLasers : public AActor {
                                        float const dt,
                                        ThreadLocalCollisionData& data,
                                        ATestLasers const& lasers);
-    void group_collision_hits();
+    void merge_collision_data();
 
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
@@ -137,6 +146,7 @@ class ATestLasers : public AActor {
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
     TArray<ml::FSpatialQueryHit> collision_hits;
     DirectDamageEvents collision_damage_events;
+    ml::test_lasers::ComponentHitRanges collision_hit_ranges;
 
     // Hits
     HitDetails hit_details;

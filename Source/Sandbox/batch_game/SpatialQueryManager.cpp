@@ -2,6 +2,7 @@
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
+#include <functional>
 #include <utility>
 
 namespace ml {
@@ -57,12 +58,6 @@ auto FSpatialQueryManager::classify_component(UPrimitiveComponent const* const c
     return EHitResolverKind::Unknown;
 }
 
-auto FSpatialQueryManager::get_hit_sort_key(FSpatialQueryHit const& hit) const -> uint8 {
-    auto const kind{classify_component(hit.component)};
-    return kind == EHitResolverKind::Unknown ? std::to_underlying(EHitResolverKind::Count)
-                                             : std::to_underlying(kind);
-}
-
 void FSpatialQueryManager::resolve_hits(
     TConstArrayView<FSpatialQueryHit> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
@@ -86,20 +81,16 @@ void FSpatialQueryManager::resolve_hits(
 
     auto previous_kind{EHitResolverKind::Unknown};
     auto const* previous_component{static_cast<UPrimitiveComponent const*>(nullptr)};
-    auto previous_sort_key{uint8{}};
+    std::less<void const*> const pointer_less{};
 
     for (int32 i{}; i < n; ++i) {
         auto const& hit{hits[i]};
         if (hit.component != previous_component) {
+            if (i > 0) {
+                check(pointer_less(previous_component, hit.component));
+            }
             previous_component = hit.component;
             previous_kind = classify_component(hit.component);
-            auto const sort_key{previous_kind == EHitResolverKind::Unknown
-                                    ? std::to_underlying(EHitResolverKind::Count)
-                                    : std::to_underlying(previous_kind)};
-            if (i > 0) {
-                check(previous_sort_key <= sort_key);
-            }
-            previous_sort_key = sort_key;
         }
 
         if (previous_kind == EHitResolverKind::Unknown) {

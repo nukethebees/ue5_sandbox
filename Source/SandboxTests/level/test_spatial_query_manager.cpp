@@ -15,6 +15,8 @@
 #include <CQTest.h>
 #include <Misc/Optional.h>
 
+#include <functional>
+
 TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
 {
     using ThisClass = SpatialQueryManager;
@@ -27,12 +29,18 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
     };
 
     static constexpr time_type test_time{2.5};
+    static constexpr time_type sample_start_time{0.1};
     FTimespan const timeout{0, 0, 4};
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<FResolutionSample> samples;
+    ATestCapitalShips* capitals{nullptr};
+    ATestCapitalShipFighters* fighters{nullptr};
+    UInstancedStaticMeshComponent* capital_instances{nullptr};
+    UInstancedStaticMeshComponent* fighter_instances{nullptr};
+    UInstancedStaticMeshComponent* laser_instances{nullptr};
 
     BEFORE_EACH()
     { spawner = ml::level_test_setup(TEXT("FuncT_capital_fighter_handles"), TestRunner, checks); }
@@ -49,8 +57,30 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
         return {&component, item};
     }
 
+    static void sort_hits_by_component(TArray<ml::FSpatialQueryHit> & hits) {
+        std::less<void const*> const pointer_less{};
+        hits.Sort([pointer_less](ml::FSpatialQueryHit const& lhs, ml::FSpatialQueryHit const& rhs) {
+            return pointer_less(lhs.component, rhs.component);
+        });
+    }
+
     void initial_setup() {
         test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
+        auto& orchestrator{test_driver->orchestrator};
+        capitals = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships());
+        fighters = const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters());
+        auto* const lasers{const_cast<ATestLasers*>(orchestrator.get_lasers())};
+
+        if (capitals) {
+            capital_instances = capitals->FindComponentByClass<UInstancedStaticMeshComponent>();
+        }
+        if (fighters) {
+            fighter_instances = fighters->FindComponentByClass<UInstancedStaticMeshComponent>();
+        }
+        if (lasers) {
+            laser_instances = lasers->FindComponentByClass<UInstancedStaticMeshComponent>();
+        }
+
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(test_time);
@@ -59,22 +89,9 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
 
     void sample_resolution() {
         auto& orchestrator{test_driver->orchestrator};
-        auto* const capitals{const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships())};
-        auto* const fighters{
-            const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters())};
-        auto* const lasers{const_cast<ATestLasers*>(orchestrator.get_lasers())};
-
-        if (!capitals || !fighters || !lasers || (capitals->get_num_instances() < 2) ||
-            (fighters->get_num_instances() < 2)) {
-            return;
-        }
-
-        auto* const capital_instances{
-            capitals->FindComponentByClass<UInstancedStaticMeshComponent>()};
-        auto* const fighter_instances{
-            fighters->FindComponentByClass<UInstancedStaticMeshComponent>()};
-        auto* const laser_instances{lasers->FindComponentByClass<UInstancedStaticMeshComponent>()};
-        if (!capital_instances || !fighter_instances || !laser_instances) {
+        if (!capitals || !fighters || (capitals->get_num_instances() < 2) ||
+            (fighters->get_num_instances() < 2) || !capital_instances || !fighter_instances ||
+            !laser_instances) {
             return;
         }
 
@@ -90,6 +107,7 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
             make_hit(*laser_instances, 0),
             make_hit(*laser_instances, 0),
         };
+        sort_hits_by_component(mixed_hits);
         TArray<FRegistryEntityHandle> mixed_results;
         mixed_results.Init(capitals->get_handle(0), mixed_hits.Num());
         orchestrator.get_spatial_query_manager().resolve_hits(mixed_hits, mixed_results);
@@ -97,14 +115,16 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
         FResolutionSample sample;
         sample.single_result = single_result[0];
         sample.mixed_results = MoveTemp(mixed_results);
-        sample.expected_results = {
-            capitals->get_handle(0),
-            capitals->get_handle(1),
-            fighters->get_handles()[1],
-            fighters->get_handles()[0],
-            FRegistryEntityHandle{},
-            FRegistryEntityHandle{},
-        };
+        sample.expected_results.Reserve(mixed_hits.Num());
+        for (auto const& hit : mixed_hits) {
+            if (hit.component == capital_instances) {
+                sample.expected_results.Add(capitals->get_handle(hit.item));
+            } else if (hit.component == fighter_instances) {
+                sample.expected_results.Add(fighters->get_handles()[hit.item]);
+            } else {
+                sample.expected_results.Add(FRegistryEntityHandle{});
+            }
+        }
         samples.add(test_driver->get_time(), MoveTemp(sample));
     }
 
@@ -118,25 +138,32 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
             samples.num(), int32{0}, TEXT("A hit-resolution sample was captured"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-        auto const sample_index{samples.nearest_index(test_time)};
-        auto const& sample{samples.value_at(sample_index)};
+        auto const sample_start_index{samples.nearest_index(sample_start_time)};
+        auto const n_samples{samples.num()};
+        for (int32 sample_index{sample_start_index}; sample_index < n_samples; ++sample_index) {
+            auto const& sample{samples.value_at(sample_index)};
 
-        checks.are_equal(sample.expected_results[0],
-                         sample.single_result,
-                         TEXT("Single hit resolves to the capital entity"));
-        checks.are_equal(sample.expected_results.Num(),
-                         sample.mixed_results.Num(),
-                         TEXT("One output is returned for every hit"));
+            checks.are_equal(sample.expected_results[0],
+                             sample.single_result,
+                             TEXT("Single hit resolves to the capital entity"));
+            checks.are_equal(sample.expected_results.Num(),
+                             sample.mixed_results.Num(),
+                             TEXT("One output is returned for every hit"));
 
-        auto const n{sample.expected_results.Num()};
-        for (int32 i{}; i < n; ++i) {
-            checks.are_equal(sample.expected_results[i],
-                             sample.mixed_results[i],
-                             FString::Printf(TEXT("Resolved handle at hit index %d"), i));
+            auto const n{sample.expected_results.Num()};
+            for (int32 i{}; i < n; ++i) {
+                checks.are_equal(sample.expected_results[i],
+                                 sample.mixed_results[i],
+                                 FString::Printf(TEXT("Resolved handle at hit index %d"), i));
+            }
+            int32 n_unknown_results{};
+            for (auto const handle : sample.mixed_results) {
+                if (handle.is_null()) {
+                    ++n_unknown_results;
+                }
+            }
+            checks.are_equal(n_unknown_results, 2, TEXT("Unknown hits resolve to null"));
         }
-        checks.is_true(sample.mixed_results[4].is_null(), TEXT("Unknown actor resolves to null"));
-        checks.is_true(sample.mixed_results[5].is_null(),
-                       TEXT("Unknown component resolves to null"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
