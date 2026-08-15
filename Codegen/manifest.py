@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from Codegen.nodes import CppFile, Include, Module, Namespace
+from Codegen.nodes import CppFile, Include, Module, Namespace, NewLines
 from Codegen.soa import SoAStruct, soa_member, tarray_member
 
 
@@ -49,12 +49,15 @@ def fighter_soa_module() -> Module:
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
+                NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
                 Include("SandboxCore/soa_vectors.h"),
                 Include("SandboxCore/tick_countdown.h"),
+                NewLines(2),
                 Include("Containers/Array.h"),
                 Include("Containers/ArrayView.h"),
                 Include("HAL/Platform.h"),
+                NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
             ),

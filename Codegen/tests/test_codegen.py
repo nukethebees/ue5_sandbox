@@ -10,6 +10,7 @@ from Codegen.nodes import (
     Member,
     Module,
     Namespace,
+    NewLines,
     RenderContext,
     Struct,
 )
@@ -20,7 +21,7 @@ class NodeRenderingTests(unittest.TestCase):
     def test_cpp_file_renders_node_tree_exactly(self) -> None:
         file = CppFile(
             path=Path("Example.h"),
-            includes=(Include("utility"),),
+            includes=(Include("Example/Dependency.h"), NewLines(2), Include("utility")),
             nodes=(
                 Namespace(
                     "example",
@@ -43,6 +44,8 @@ class NodeRenderingTests(unittest.TestCase):
 // Edit Codegen/manifest.py and regenerate it instead.
 
 #pragma once
+
+#include <Example/Dependency.h>
 
 #include <utility>
 
@@ -82,6 +85,10 @@ struct FValue {
 
         with self.assertRaisesRegex(ValueError, "Duplicate generated output paths"):
             collect_files(modules)
+
+    def test_new_lines_rejects_non_positive_counts(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must be positive"):
+            NewLines(0)
 
 
 class SoARenderingTests(unittest.TestCase):

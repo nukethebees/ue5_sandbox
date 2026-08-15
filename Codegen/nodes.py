@@ -40,6 +40,32 @@ class Raw(Node):
 
 
 @dataclass(frozen=True)
+class NewLines(Node):
+    count: int
+
+    def __post_init__(self) -> None:
+        if self.count <= 0:
+            raise ValueError("NewLines count must be positive")
+
+    def render(self, context: RenderContext) -> str:
+        return "\n" * self.count
+
+
+def render_node_sequence(
+    nodes: Iterable[Node], context: RenderContext, default_newlines: int
+) -> str:
+    output = ""
+    for node in nodes:
+        if isinstance(node, NewLines):
+            output = output.rstrip("\n") + node.render(context)
+            continue
+        if output and not output.endswith("\n"):
+            output += "\n" * default_newlines
+        output += node.render(context)
+    return output
+
+
+@dataclass(frozen=True)
 class Include(Node):
     path: str
     system: bool = True
@@ -101,7 +127,7 @@ class Struct(Node):
             lines.append(context.apply_indent(f"template <{self.template}>"))
         inheritance = f" : {', '.join(self.bases)}" if self.bases else ""
         lines.append(context.apply_indent(f"struct {self.name}{inheritance} {{"))
-        lines.append("\n\n".join(node.render(context.indent()) for node in self.nodes))
+        lines.append(render_node_sequence(self.nodes, context.indent(), 2))
         lines.append(context.apply_indent("};"))
         return "\n".join(lines)
 
@@ -116,7 +142,7 @@ class Namespace(Node):
         object.__setattr__(self, "nodes", tuple(nodes))
 
     def render(self, context: RenderContext) -> str:
-        body = "\n\n".join(node.render(context) for node in self.nodes)
+        body = render_node_sequence(self.nodes, context, 2)
         return (
             f"{context.apply_indent(f'namespace {self.name} {{')}\n"
             f"{body}\n"
@@ -127,7 +153,7 @@ class Namespace(Node):
 @dataclass(frozen=True)
 class CppFile(Node):
     path: Path
-    includes: tuple[Include, ...] = field(default_factory=tuple)
+    includes: tuple[Node, ...] = field(default_factory=tuple)
     nodes: tuple[Node, ...] = field(default_factory=tuple)
     pragma_once: bool = True
     prologue: tuple[str, ...] = field(default_factory=tuple)
@@ -149,11 +175,9 @@ class CppFile(Node):
         if self.pragma_once:
             sections.append("#pragma once")
         if self.includes:
-            sections.append(
-                "\n".join(include.render(context) for include in self.includes)
-            )
+            sections.append(render_node_sequence(self.includes, context, 1))
         if self.nodes:
-            sections.append("\n\n".join(node.render(context) for node in self.nodes))
+            sections.append(render_node_sequence(self.nodes, context, 2))
         sections.extend(self.epilogue)
         return "\n\n".join(sections).rstrip() + "\n"
 
