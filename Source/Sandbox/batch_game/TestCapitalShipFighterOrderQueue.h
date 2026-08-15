@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/TestCapitalShipFighterOrder.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
 #include <SandboxCore/soa_array_mixin.h>
 
@@ -13,11 +14,6 @@
 #include <Containers/ArrayView.h>
 #include <utility>
 
-struct TestCapitalShipFighterOrderQueueOrder {
-    uint8 task   : 1 {0};
-    uint8 target : 1 {0};
-};
-
 struct TestCapitalShipFighterOrderQueueConstView;
 
 struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
@@ -25,7 +21,7 @@ struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
     TArrayView<FRegistryEntityHandle> handles;
-    TArrayView<TestCapitalShipFighterOrderQueueOrder> orders;
+    TArrayView<TestCapitalShipFighterOrder> orders;
     TArrayView<ETestCapitalShipFightersTask> tasks;
     TArrayView<FRegistryEntityHandle> targets;
 
@@ -45,7 +41,7 @@ struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
-    TConstArrayView<TestCapitalShipFighterOrderQueueOrder> orders;
+    TConstArrayView<TestCapitalShipFighterOrder> orders;
     TConstArrayView<ETestCapitalShipFightersTask> tasks;
     TConstArrayView<FRegistryEntityHandle> targets;
 
@@ -65,7 +61,7 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
     using Task = ETestCapitalShipFightersTask;
-    using Order = TestCapitalShipFighterOrderQueueOrder;
+    using Order = TestCapitalShipFighterOrder;
 
     void add(FRegistryEntityHandle const handle,
              Order const order,
@@ -78,7 +74,7 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     }
 
     TArray<FRegistryEntityHandle> handles;
-    TArray<TestCapitalShipFighterOrderQueueOrder> orders;
+    TArray<TestCapitalShipFighterOrder> orders;
     TArray<ETestCapitalShipFightersTask> tasks;
     TArray<FRegistryEntityHandle> targets;
 

@@ -222,7 +222,6 @@ class SoARenderingTests(unittest.TestCase):
             "FDataView",
             "FDataConstView",
             (tarray_member("values", "FValue"),),
-            outer_nodes=(Struct("FValue", (Member("int32 value"),)),),
             storage_prefix_nodes=(Function("void reset_values()", ("values.Reset();",)),),
             storage_suffix_nodes=(FunctionDeclaration("void validate_values()"),),
         )
@@ -233,7 +232,6 @@ class SoARenderingTests(unittest.TestCase):
             if not isinstance(node, NewLines)
         )
 
-        self.assertLess(rendered.index("struct FValue"), rendered.index("struct FDataConstView"))
         self.assertLess(rendered.index("void reset_values()"), rendered.index("TArray<FValue> values"))
         self.assertLess(rendered.index("TArray<FValue> values"), rendered.index("void validate_values"))
         self.assertLess(rendered.index("void validate_values"), rendered.index("apply_arrays"))

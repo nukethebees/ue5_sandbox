@@ -8,12 +8,10 @@ from Codegen.nodes import (
     FunctionDeclaration,
     FunctionSpec,
     Include,
-    Member,
     Module,
     Namespace,
     NewLines,
     Raw,
-    Struct,
 )
 from Codegen.soa import SoAStruct, lower_soa_structs, soa_member, tarray_member
 
@@ -353,23 +351,13 @@ def fighter_order_queue_module() -> Module:
         "TestCapitalShipFighterOrderQueueConstView",
         (
             tarray_member("handles", "FRegistryEntityHandle"),
-            tarray_member("orders", "TestCapitalShipFighterOrderQueueOrder"),
+            tarray_member("orders", "TestCapitalShipFighterOrder"),
             tarray_member("tasks", "ETestCapitalShipFightersTask"),
             tarray_member("targets", "FRegistryEntityHandle"),
         ),
         storage_type_aliases=(
             ("Task", "ETestCapitalShipFightersTask"),
-            ("Order", "TestCapitalShipFighterOrderQueueOrder"),
-        ),
-        outer_nodes=(
-            Struct(
-                "TestCapitalShipFighterOrderQueueOrder",
-                (
-                    Member("uint8 task   : 1 {0}"),
-                    NewLines(1),
-                    Member("uint8 target : 1 {0}"),
-                ),
-            ),
+            ("Order", "TestCapitalShipFighterOrder"),
         ),
         storage_prefix_nodes=(
             Function(
@@ -397,6 +385,7 @@ def fighter_order_queue_module() -> Module:
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include("Sandbox/batch_game/TestCapitalShipFighterOrder.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
                 Include("SandboxCore/soa_array_mixin.h"),
                 NewLines(2),
