@@ -228,6 +228,20 @@ struct FRotatorsf
         yaws.RemoveAtSwap(index, count, allow_shrinking);
         rolls.RemoveAtSwap(index, count, allow_shrinking);
     }
+
+    auto add_zeroed(size_type const count) -> void
+    {
+        pitches.AddZeroed(count);
+        yaws.AddZeroed(count);
+        rolls.AddZeroed(count);
+    }
+
+    auto add_defaulted(size_type const count) -> void
+    {
+        pitches.AddDefaulted(count);
+        yaws.AddDefaulted(count);
+        rolls.AddDefaulted(count);
+    }
 };
 
 struct FRotatorsd
@@ -374,6 +388,20 @@ struct FRotatorsd
         pitches.RemoveAtSwap(index, count, allow_shrinking);
         yaws.RemoveAtSwap(index, count, allow_shrinking);
         rolls.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    auto add_zeroed(size_type const count) -> void
+    {
+        pitches.AddZeroed(count);
+        yaws.AddZeroed(count);
+        rolls.AddZeroed(count);
+    }
+
+    auto add_defaulted(size_type const count) -> void
+    {
+        pitches.AddDefaulted(count);
+        yaws.AddDefaulted(count);
+        rolls.AddDefaulted(count);
     }
 };
 
