@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 
 GENERATED_FILE_WARNING = (
@@ -17,12 +17,58 @@ def comma_separated(values: Iterable[str]) -> str:
 
 
 @dataclass(frozen=True)
+class TypeDependency:
+    spelling: str
+    header: str | None = None
+    dependencies: tuple[TypeDependency, ...] = ()
+
+    def __init__(
+        self,
+        spelling: str,
+        header: str | None = None,
+        dependencies: Iterable[TypeDependency] = (),
+    ) -> None:
+        object.__setattr__(self, "spelling", spelling)
+        object.__setattr__(self, "header", header)
+        object.__setattr__(self, "dependencies", tuple(dependencies))
+        if not self.spelling.strip():
+            raise ValueError("Type dependency spelling must not be empty")
+        if self.header is not None and not self.header.strip():
+            raise ValueError("Type dependency header must not be empty")
+
+
+TypeLike = str | TypeDependency
+
+
+def type_spelling(value: TypeLike) -> str:
+    return value.spelling if isinstance(value, TypeDependency) else value
+
+
+def composed_type(spelling: str, *dependencies: TypeLike, header: str | None = None) -> TypeDependency:
+    return TypeDependency(
+        spelling,
+        header,
+        (dependency for dependency in dependencies if isinstance(dependency, TypeDependency)),
+    )
+
+
+@dataclass(frozen=True)
 class RenderContext:
     indent_level: int = 0
     indent_text: str = "    "
+    include_groups: tuple[tuple[Include, ...], ...] = ()
 
     def indent(self) -> RenderContext:
-        return RenderContext(self.indent_level + 1, self.indent_text)
+        return RenderContext(self.indent_level + 1, self.indent_text, self.include_groups)
+
+    def with_include_groups(
+        self, include_groups: Iterable[Iterable[Include]]
+    ) -> RenderContext:
+        return RenderContext(
+            self.indent_level,
+            self.indent_text,
+            tuple(tuple(group) for group in include_groups),
+        )
 
     def apply_indent(self, text: str) -> str:
         prefix = self.indent_text * self.indent_level
@@ -30,14 +76,36 @@ class RenderContext:
 
 
 class Node(ABC):
+    def children(self) -> Iterable[Node]:
+        return ()
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return ()
+
     @abstractmethod
     def render(self, context: RenderContext) -> str:
         raise NotImplementedError
 
 
+def walk_tree(root: Node) -> Iterator[Node]:
+    yield root
+    for child in root.children():
+        yield from walk_tree(child)
+
+
 @dataclass(frozen=True)
 class Raw(Node):
     text: str
+    required_dependencies: tuple[TypeDependency, ...] = ()
+
+    def __init__(
+        self, text: str, required_dependencies: Iterable[TypeDependency] = ()
+    ) -> None:
+        object.__setattr__(self, "text", text)
+        object.__setattr__(self, "required_dependencies", tuple(required_dependencies))
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return self.required_dependencies
 
     def render(self, context: RenderContext) -> str:
         return context.apply_indent(self.text)
@@ -63,20 +131,38 @@ def render_node_sequence(
         if isinstance(node, NewLines):
             output = output.rstrip("\n") + node.render(context)
             continue
+        rendered_node = node.render(context)
+        if not rendered_node:
+            continue
         if output and not output.endswith("\n"):
             output += "\n" * default_newlines
-        output += node.render(context)
+        output += rendered_node
     return output
 
 
 @dataclass(frozen=True)
 class Include(Node):
     path: str
-    system: bool = True
+    system: bool | None = None
+
+    @property
+    def is_system(self) -> bool:
+        if self.system is not None:
+            return self.system
+        return "." not in self.path.rsplit("/", 1)[-1]
 
     def render(self, context: RenderContext) -> str:
-        left, right = ("<", ">") if self.system else ('"', '"')
+        left, right = ("<", ">") if self.is_system else ('"', '"')
         return context.apply_indent(f"#include {left}{self.path}{right}")
+
+
+@dataclass(frozen=True)
+class IncludeDependencies(Node):
+    def render(self, context: RenderContext) -> str:
+        return "\n\n".join(
+            "\n".join(include.render(context) for include in group)
+            for group in context.include_groups
+        )
 
 
 @dataclass(frozen=True)
@@ -91,28 +177,40 @@ class ForwardDeclaration(Node):
 @dataclass(frozen=True)
 class UsingDeclaration(Node):
     name: str
-    value_type: str
+    value_type: TypeLike
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (self.value_type,) if isinstance(self.value_type, TypeDependency) else ()
 
     def render(self, context: RenderContext) -> str:
-        return context.apply_indent(f"using {self.name} = {self.value_type};")
+        return context.apply_indent(f"using {self.name} = {type_spelling(self.value_type)};")
 
 
 @dataclass(frozen=True)
 class Member(Node):
-    type_name: str
+    type_name: TypeLike
     name: str
 
     def __post_init__(self) -> None:
-        if not self.type_name.strip() or not self.name.strip():
+        if not type_spelling(self.type_name).strip() or not self.name.strip():
             raise ValueError("Member type and name must not be empty")
 
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (self.type_name,) if isinstance(self.type_name, TypeDependency) else ()
+
     def render(self, context: RenderContext) -> str:
-        return context.apply_indent(f"{self.type_name} {self.name};")
+        return context.apply_indent(f"{type_spelling(self.type_name)} {self.name};")
 
 
 @dataclass(frozen=True)
 class FunctionDeclaration(Node):
     function: MemberFunctionSpec | FreeFunctionSpec
+
+    def children(self) -> Iterable[Node]:
+        return self.function.parameters
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return self.function.type_dependencies()
 
     def render(self, context: RenderContext) -> str:
         declaration = self.function.declaration_signature().rstrip(";") + ";"
@@ -125,6 +223,12 @@ class Function(Node):
     owner_name: str | None = None
     is_header: bool = False
 
+    def children(self) -> Iterable[Node]:
+        return (*self.function.parameters, self.function.body)
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return self.function.type_dependencies()
+
     def render(self, context: RenderContext) -> str:
         body = self.function.body.render(context.indent())
         return (
@@ -136,19 +240,22 @@ class Function(Node):
 
 @dataclass
 class FunctionParameter(Node):
-    type_name: str
+    type_name: TypeLike
     name: str
     default_value: str | None = None
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (self.type_name,) if isinstance(self.type_name, TypeDependency) else ()
 
     def render(self, context: RenderContext) -> str:
         return context.apply_indent(self.declaration_text())
 
     def declaration_text(self) -> str:
         default_value = f" = {self.default_value}" if self.default_value else ""
-        return f"{self.type_name} {self.name}{default_value}"
+        return f"{type_spelling(self.type_name)} {self.name}{default_value}"
 
     def definition_text(self) -> str:
-        return f"{self.type_name} {self.name}"
+        return f"{type_spelling(self.type_name)} {self.name}"
 
 
 @dataclass(frozen=True)
@@ -181,7 +288,7 @@ class FunctionBody(Node, ABC):
 @dataclass(frozen=True)
 class MemberFunctionSpec:
     name: str
-    return_type: str
+    return_type: TypeLike
     parameters: tuple[FunctionParameter, ...]
     body: Node
     suffix: str = ""
@@ -193,7 +300,7 @@ class MemberFunctionSpec:
     def __init__(
         self,
         name: str,
-        return_type: str,
+        return_type: TypeLike,
         parameters: Iterable[FunctionParameter],
         body: Node,
         suffix: str = "",
@@ -232,6 +339,9 @@ class MemberFunctionSpec:
             raise ValueError("Parameter does not belong to this function")
         return ParameterRef(parameter)
 
+    def type_dependencies(self) -> Iterable[TypeDependency]:
+        return (self.return_type,) if isinstance(self.return_type, TypeDependency) else ()
+
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return comma_separated(render(parameter) for parameter in self.parameters)
@@ -251,7 +361,7 @@ class MemberFunctionSpec:
         if self.requires_clause:
             lines.append(f"requires {self.requires_clause}")
         lines.append(
-            f"{static_prefix}{self.return_type} {qualified_name}({self._parameters(include_defaults)})"
+            f"{static_prefix}{type_spelling(self.return_type)} {qualified_name}({self._parameters(include_defaults)})"
             f"{self.suffix}"
         )
         return "\n".join(lines)
@@ -260,7 +370,7 @@ class MemberFunctionSpec:
 @dataclass(frozen=True)
 class FreeFunctionSpec:
     name: str
-    return_type: str
+    return_type: TypeLike
     parameters: tuple[FunctionParameter, ...]
     body: Node
     suffix: str = ""
@@ -269,7 +379,7 @@ class FreeFunctionSpec:
     def __init__(
         self,
         name: str,
-        return_type: str,
+        return_type: TypeLike,
         parameters: Iterable[FunctionParameter],
         body: Node,
         suffix: str = "",
@@ -302,6 +412,9 @@ class FreeFunctionSpec:
             raise ValueError("Parameter does not belong to this function")
         return ParameterRef(parameter)
 
+    def type_dependencies(self) -> Iterable[TypeDependency]:
+        return (self.return_type,) if isinstance(self.return_type, TypeDependency) else ()
+
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return comma_separated(render(parameter) for parameter in self.parameters)
@@ -316,14 +429,14 @@ class FreeFunctionSpec:
 
     def _signature(self, include_defaults: bool, include_inline: bool) -> str:
         inline_prefix = "inline " if include_inline and self.is_inline else ""
-        return f"{inline_prefix}{self.return_type} {self.name}({self._parameters(include_defaults)}){self.suffix}"
+        return f"{inline_prefix}{type_spelling(self.return_type)} {self.name}({self._parameters(include_defaults)}){self.suffix}"
 
 
 @dataclass(frozen=True)
 class Struct(Node):
     name: str
     nodes: tuple[Node, ...]
-    bases: tuple[str, ...] = ()
+    bases: tuple[TypeLike, ...] = ()
     template: str | None = None
     export_specifier: str | None = None
 
@@ -331,7 +444,7 @@ class Struct(Node):
         self,
         name: str,
         nodes: Iterable[Node],
-        bases: Iterable[str] = (),
+        bases: Iterable[TypeLike] = (),
         template: str | None = None,
         export_specifier: str | None = None,
     ) -> None:
@@ -345,11 +458,21 @@ class Struct(Node):
         if duplicates:
             raise ValueError(f"Struct {self.name!r} has duplicate members: {', '.join(duplicates)}")
 
+    def children(self) -> Iterable[Node]:
+        return self.nodes
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (base for base in self.bases if isinstance(base, TypeDependency))
+
     def render(self, context: RenderContext) -> str:
         lines: list[str] = []
         if self.template:
             lines.append(context.apply_indent(f"template <{self.template}>"))
-        inheritance = f" : {comma_separated(self.bases)}" if self.bases else ""
+        inheritance = (
+            f" : {comma_separated(type_spelling(base) for base in self.bases)}"
+            if self.bases
+            else ""
+        )
         export_specifier = f" {self.export_specifier}" if self.export_specifier else ""
         lines.append(context.apply_indent(f"struct{export_specifier} {self.name}{inheritance} {{"))
         lines.append(render_node_sequence(self.nodes, context.indent(), 2))
@@ -365,6 +488,9 @@ class Namespace(Node):
     def __init__(self, name: str, nodes: Iterable[Node]) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "nodes", tuple(nodes))
+
+    def children(self) -> Iterable[Node]:
+        return self.nodes
 
     def render(self, context: RenderContext) -> str:
         body = render_node_sequence(self.nodes, context, 2)
@@ -383,12 +509,55 @@ class CppFile(Node):
     clang_format_off: bool = False
     prologue: tuple[str, ...] = field(default_factory=tuple)
     epilogue: tuple[str, ...] = field(default_factory=tuple)
+    include_order: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", Path(self.path))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         object.__setattr__(self, "prologue", tuple(self.prologue))
         object.__setattr__(self, "epilogue", tuple(self.epilogue))
+        object.__setattr__(self, "include_order", tuple(self.include_order))
+
+    def children(self) -> Iterable[Node]:
+        return self.nodes
+
+    def _include_groups(self) -> tuple[tuple[Include, ...], ...]:
+        includes: set[Include] = set()
+
+        def collect(dependency: TypeDependency) -> None:
+            if dependency.header is not None:
+                includes.add(Include(dependency.header))
+            for contained in dependency.dependencies:
+                collect(contained)
+
+        for node in walk_tree(self):
+            for dependency in node.dependencies():
+                collect(dependency)
+
+        remaining = set(includes)
+        groups: list[tuple[Include, ...]] = []
+        for prefix in self.include_order:
+            group = tuple(sorted(
+                (include for include in remaining if include.path.startswith(prefix)),
+                key=lambda include: include.path,
+            ))
+            if group:
+                groups.append(group)
+                remaining.difference_update(group)
+
+        quoted = tuple(sorted(
+            (include for include in remaining if not include.is_system),
+            key=lambda include: include.path,
+        ))
+        system = tuple(sorted(
+            (include for include in remaining if include.is_system),
+            key=lambda include: include.path,
+        ))
+        if quoted:
+            groups.append(quoted)
+        if system:
+            groups.append(system)
+        return tuple(groups)
 
     def render(self, context: RenderContext | None = None) -> str:
         if context is None:
@@ -396,6 +565,8 @@ class CppFile(Node):
 
         if context.indent_level != 0:
             raise ValueError("CppFile must be rendered at the root indentation level")
+
+        context = context.with_include_groups(self._include_groups())
 
         sections: list[str] = [GENERATED_FILE_WARNING]
         sections.extend(self.prologue)

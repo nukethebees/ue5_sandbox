@@ -15,21 +15,40 @@ from Codegen.nodes import (
     Raw,
     RenderContext,
     Struct,
+    TypeDependency,
+    TypeLike,
     UsingDeclaration,
     comma_separated,
+    composed_type,
+    type_spelling,
+)
+
+
+SOA_ARRAY_MIXIN = TypeDependency(
+    "public ml::FSoAArrayMixin", "SandboxCore/soa_array_mixin.h"
+)
+SOA_VIEW_MIXIN = TypeDependency(
+    "public ml::FSoAViewMixin", "SandboxCore/soa_array_mixin.h"
+)
+STD_FORWARD = TypeDependency("std::forward", "utility")
+STD_REMOVE_CONST = TypeDependency("std::remove_const_t", "type_traits")
+TARRAY = TypeDependency("TArray", "Containers/Array.h")
+TARRAY_VIEW = TypeDependency("TArrayView", "Containers/ArrayView.h")
+ALLOW_SHRINKING = TypeDependency(
+    "EAllowShrinking", "Containers/AllowShrinking.h"
 )
 
 
 @dataclass(frozen=True)
 class SoAMember:
-    container_type: str
-    view_type: str
-    const_view_type: str
+    container_type: TypeLike
+    view_type: TypeLike
+    const_view_type: TypeLike
     name: str
 
     def __post_init__(self) -> None:
-        values = (self.container_type, self.view_type, self.const_view_type, self.name)
-        if any(not value.strip() for value in values):
+        types = (self.container_type, self.view_type, self.const_view_type)
+        if any(not type_spelling(value).strip() for value in types) or not self.name.strip():
             raise ValueError("SOA member types and name must not be empty")
 
 
@@ -149,27 +168,40 @@ OUT_OF_LINE_STORAGE_OPERATIONS = frozenset(
 
 
 def tarray_member(
-    name: str, value_type: str, allocator: str | None = None
+    name: str, value_type: TypeLike, allocator: TypeLike | None = None
 ) -> SoAMember:
-    allocator_suffix = f", {allocator}" if allocator else ""
+    allocator_suffix = f", {type_spelling(allocator)}" if allocator else ""
+    element = type_spelling(value_type)
+    contained_types = (value_type, allocator) if allocator else (value_type,)
     return SoAMember(
-        container_type=f"TArray<{value_type}{allocator_suffix}>",
-        view_type=f"TArrayView<{value_type}>",
-        const_view_type=f"TConstArrayView<{value_type}>",
+        container_type=composed_type(
+            f"TArray<{element}{allocator_suffix}>",
+            *contained_types,
+            header="Containers/Array.h",
+        ),
+        view_type=composed_type(
+            f"TArrayView<{element}>", value_type, header="Containers/ArrayView.h"
+        ),
+        const_view_type=composed_type(
+            f"TConstArrayView<{element}>", value_type, header="Containers/ArrayView.h"
+        ),
         name=name,
     )
 
 
 def soa_member(
     name: str,
-    container_type: str,
-    view_type: str | None = None,
-    const_view_type: str | None = None,
+    container_type: TypeLike,
+    view_type: TypeLike | None = None,
+    const_view_type: TypeLike | None = None,
 ) -> SoAMember:
+    container_spelling = type_spelling(container_type)
     return SoAMember(
         container_type=container_type,
-        view_type=view_type or f"{container_type}::View",
-        const_view_type=const_view_type or f"{container_type}::ConstView",
+        view_type=view_type
+        or composed_type(f"{container_spelling}::View", container_type),
+        const_view_type=const_view_type
+        or composed_type(f"{container_spelling}::ConstView", container_type),
         name=name,
     )
 
@@ -198,8 +230,8 @@ class SoAStruct:
     storage_export_specifier: str | None = None
     storage_operations: tuple[SoAStorageOperation, ...] = ()
     nodes: tuple[Node, ...] = ()
-    storage_base: str = "ml::FSoAArrayMixin"
-    view_base: str = "ml::FSoAViewMixin"
+    storage_base: TypeLike = SOA_ARRAY_MIXIN
+    view_base: TypeLike = SOA_VIEW_MIXIN
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
@@ -222,12 +254,12 @@ class SoAStruct:
 
 @dataclass(frozen=True)
 class HomogeneousSoAValueType:
-    cpp_type: str
+    cpp_type: TypeLike
     suffix: str
-    aos_type: str | None = None
+    aos_type: TypeLike | None = None
 
     def __post_init__(self) -> None:
-        if not self.cpp_type.strip() or not self.suffix.strip():
+        if not type_spelling(self.cpp_type).strip() or not self.suffix.strip():
             raise ValueError("Homogeneous SOA value type and suffix must not be empty")
 
 
@@ -283,7 +315,7 @@ def _apply_arrays_function(members: tuple[SoAMember, ...]) -> Node:
             FunctionParameter("this auto&&", "self"),
             FunctionParameter("TFunc&&", "func"),
         ),
-        Raw("\n".join(body)),
+        Raw("\n".join(body), (STD_FORWARD,)),
         suffix=" -> decltype(auto)",
         is_inline=True,
         template_parameters="typename TFunc",
@@ -305,7 +337,7 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Node:
             FunctionParameter("Other&&", "other"),
             FunctionParameter("TFunc&&", "func"),
         ),
-        Raw("\n".join(body)),
+        Raw("\n".join(body), (STD_FORWARD,)),
         suffix="\n    -> decltype(auto)",
         is_inline=True,
         template_parameters="typename Self, typename Other, typename TFunc",
@@ -352,7 +384,10 @@ def _storage_operation_spec(
                 (
                     FunctionParameter("int32 const", "index"),
                     FunctionParameter("int32 const", "count"),
-                    FunctionParameter("EAllowShrinking const", "allow_shrinking"),
+                    FunctionParameter(
+                        composed_type("EAllowShrinking const", ALLOW_SHRINKING),
+                        "allow_shrinking",
+                    ),
                 ),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::remove_at_swap"),
                 is_inline=True,
@@ -363,7 +398,10 @@ def _storage_operation_spec(
                 "void",
                 (
                     FunctionParameter("int32 const", "count"),
-                    FunctionParameter("EAllowShrinking const", "allow_shrinking"),
+                    FunctionParameter(
+                        composed_type("EAllowShrinking const", ALLOW_SHRINKING),
+                        "allow_shrinking",
+                    ),
                 ),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::set_num"),
             )
@@ -426,7 +464,7 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
             NewLines(2),
             *_separate(members, 1),
         ),
-        bases=(f"public {soa.view_base}",),
+        bases=(soa.view_base,),
     )
 
 
@@ -452,7 +490,7 @@ def _storage_struct(
     return Struct(
         soa.names.name,
         struct_nodes,
-        bases=(f"public {soa.storage_base}",),
+        bases=(soa.storage_base,),
         export_specifier=soa.storage_export_specifier,
     )
 
@@ -587,7 +625,10 @@ def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...
             "apply_arrays",
             "auto",
             (func,),
-            Raw(f"return std::forward<TFunc>(func)({components});"),
+            Raw(
+                f"return std::forward<TFunc>(func)({components});",
+                (STD_FORWARD,),
+            ),
             suffix=" -> decltype(auto)",
             is_inline=True,
             template_parameters="typename TFunc",
@@ -597,7 +638,10 @@ def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...
             "apply_arrays",
             "auto",
             (func,),
-            Raw(f"return std::forward<TFunc>(func)({components});"),
+            Raw(
+                f"return std::forward<TFunc>(func)({components});",
+                (STD_FORWARD,),
+            ),
             suffix=" const -> decltype(auto)",
             is_inline=True,
             template_parameters="typename TFunc",
@@ -651,16 +695,24 @@ def _homogeneous_view_struct(layout: HomogeneousSoALayout) -> Struct:
     return Struct(
         layout.view_name,
         (
-            UsingDeclaration("size_type", "TArrayView<T>::SizeType"),
+            UsingDeclaration(
+                "size_type", composed_type("TArrayView<T>::SizeType", TARRAY_VIEW)
+            ),
             NewLines(1),
-            UsingDeclaration("value_type", "std::remove_const_t<T>"),
+            UsingDeclaration(
+                "value_type",
+                composed_type("std::remove_const_t<T>", STD_REMOVE_CONST),
+            ),
             NewLines(1),
             UsingDeclaration("View", f"{layout.view_name}<T>"),
             NewLines(1),
             UsingDeclaration("ConstView", f"{layout.view_name}<value_type const>"),
             NewLines(2),
             *_separate(
-                (Member("TArrayView<T>", component) for component in layout.components),
+                (
+                    Member(composed_type("TArrayView<T>", TARRAY_VIEW), component)
+                    for component in layout.components
+                ),
                 1,
             ),
             NewLines(2),
@@ -685,7 +737,9 @@ def _homogeneous_storage_functions(
     components = comma_separated(layout.components)
     offset = FunctionParameter("size_type const", "offset")
     count = FunctionParameter("size_type const", "count")
-    allow_shrinking = FunctionParameter("EAllowShrinking const", "allow_shrinking")
+    allow_shrinking = FunctionParameter(
+        composed_type("EAllowShrinking const", ALLOW_SHRINKING), "allow_shrinking"
+    )
     func = FunctionParameter("TFunc&&", "func")
     get_data = (
         MemberFunctionSpec(
@@ -805,7 +859,10 @@ def _homogeneous_storage_functions(
                 "apply_arrays",
                 "auto",
                 (func,),
-                Raw(f"return std::forward<TFunc>(func)({components});"),
+                Raw(
+                    f"return std::forward<TFunc>(func)({components});",
+                    (STD_FORWARD,),
+                ),
                 suffix=" -> decltype(auto)",
                 is_inline=True,
                 template_parameters="typename TFunc",
@@ -815,7 +872,10 @@ def _homogeneous_storage_functions(
                 "apply_arrays",
                 "auto",
                 (func,),
-                Raw(f"return std::forward<TFunc>(func)({components});"),
+                Raw(
+                    f"return std::forward<TFunc>(func)({components});",
+                    (STD_FORWARD,),
+                ),
                 suffix=" const -> decltype(auto)",
                 is_inline=True,
                 template_parameters="typename TFunc",
@@ -907,7 +967,9 @@ def _homogeneous_storage_struct(
     aliases.extend(
         (
             NewLines(1),
-            UsingDeclaration("size_type", "TArray<value_type>::SizeType"),
+            UsingDeclaration(
+                "size_type", composed_type("TArray<value_type>::SizeType", TARRAY)
+            ),
             NewLines(1),
             UsingDeclaration("View", f"{layout.view_name}<value_type>"),
             NewLines(1),
@@ -925,7 +987,7 @@ def _homogeneous_storage_struct(
             NewLines(2),
             *_separate(
                 (
-                    Member("TArray<value_type>", component)
+                    Member(composed_type("TArray<value_type>", TARRAY), component)
                     for component in layout.components
                 ),
                 1,

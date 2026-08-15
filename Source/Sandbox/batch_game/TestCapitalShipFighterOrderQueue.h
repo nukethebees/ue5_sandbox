@@ -4,14 +4,16 @@
 
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/TestCapitalShipFighterOrder.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
-#include <SandboxCore/soa_array_mixin.h>
+#include "Sandbox/batch_game/TestCapitalShipFighterOrder.h"
+#include "Sandbox/batch_game/TestCapitalShipFightersTask.h"
+#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "CoreMinimal.h"
+#include "SandboxCore/soa_array_mixin.h"
 
-#include <Containers/ArrayView.h>
+#include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
+
 #include <utility>
 
 struct TestCapitalShipFighterOrderQueueConstView;

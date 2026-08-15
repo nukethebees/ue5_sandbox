@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 
 #include <type_traits>

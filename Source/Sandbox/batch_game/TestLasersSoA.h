@@ -4,17 +4,18 @@
 
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include <SandboxCore/soa_array_mixin.h>
-#include <SandboxCore/soa_rotators.h>
-#include <SandboxCore/soa_vectors.h>
+#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/soa_rotators.h"
+#include "SandboxCore/soa_vectors.h"
 
-#include <Components/InstancedStaticMeshComponent.h>
-#include <CoreMinimal.h>
-#include <Math/Color.h>
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
+#include "Math/Color.h"
 
-#include <type_traits>
 #include <utility>
 
 namespace ml::test_lasers {

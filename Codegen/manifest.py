@@ -6,12 +6,41 @@ from Codegen.nodes import (
     CppFile,
     FunctionParameter,
     Include,
+    IncludeDependencies,
     MemberFunctionSpec,
     Module,
     Namespace,
     NewLines,
     Raw,
     UsingDeclaration,
+)
+from Codegen.cpp_types import (
+    E_TEST_CAPITAL_SHIP_FIGHTERS_TASK,
+    E_TEST_DEATH_REASON,
+    E_TEST_ENTITY_TYPE,
+    E_TEST_TEAM,
+    F_COUNTDOWN_TIMERS,
+    F_INDEX_SPAN,
+    F_INSTANCED_STATIC_MESH_INSTANCE_DATA,
+    F_INT_POINT,
+    F_INT_VECTOR,
+    F_LINEAR_COLOR,
+    F_REGISTRY_ENTITY_HANDLE,
+    F_ROTATORS_F,
+    F_TICK_COUNTDOWN_8,
+    F_TICK_COUNTDOWN_16,
+    F_UINT_POINT,
+    F_UINT_VECTOR_3,
+    F_VECTOR_2D,
+    F_VECTOR_2F,
+    F_VECTOR_3D,
+    F_VECTOR_3F,
+    F_VECTORS_3F,
+    TEST_CAPITAL_SHIP_FIGHTER_ORDER,
+    TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE,
+    TEST_ENTITY_UNIQUE_ID,
+    nested_type,
+    qualified_type,
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
@@ -47,6 +76,11 @@ COUNTDOWN_TIMERS_STORAGE_OPERATIONS = (
     SoAStorageOperation.COPY_ELEMENT,
 )
 SANDBOX_API = "SANDBOX_API"
+INCLUDE_ORDER = (
+    "Sandbox/batch_game/",
+    "Sandbox/",
+    "SandboxCore/",
+)
 
 
 def soa_source_file(
@@ -73,11 +107,9 @@ def homogeneous_soa_header_module(
         header=CppFile(
             path=SANDBOX_CORE_PUBLIC_DIR / header_name,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lower_homogeneous_soa_layouts(layouts),
             ),
@@ -94,20 +126,20 @@ def soa_vectors_module() -> Module:
                 "Vectors2",
                 ("xs", "ys"),
                 (
-                    HomogeneousSoAValueType("float", "f", "FVector2f"),
-                    HomogeneousSoAValueType("double", "d", "FVector2d"),
-                    HomogeneousSoAValueType("int32", "i32", "FIntPoint"),
-                    HomogeneousSoAValueType("uint32", "u32", "FUintPoint"),
+                    HomogeneousSoAValueType("float", "f", F_VECTOR_2F),
+                    HomogeneousSoAValueType("double", "d", F_VECTOR_2D),
+                    HomogeneousSoAValueType("int32", "i32", F_INT_POINT),
+                    HomogeneousSoAValueType("uint32", "u32", F_UINT_POINT),
                 ),
             ),
             HomogeneousSoALayout(
                 "Vectors3",
                 ("xs", "ys", "zs"),
                 (
-                    HomogeneousSoAValueType("float", "f", "FVector3f"),
-                    HomogeneousSoAValueType("double", "d", "FVector3d"),
-                    HomogeneousSoAValueType("int32", "i32", "FIntVector"),
-                    HomogeneousSoAValueType("uint32", "u32", "FUintVector3"),
+                    HomogeneousSoAValueType("float", "f", F_VECTOR_3F),
+                    HomogeneousSoAValueType("double", "d", F_VECTOR_3D),
+                    HomogeneousSoAValueType("int32", "i32", F_INT_VECTOR),
+                    HomogeneousSoAValueType("uint32", "u32", F_UINT_VECTOR_3),
                 ),
             ),
         ),
@@ -133,27 +165,27 @@ def soa_rotators_module() -> Module:
 
 def fighter_soa_module() -> Module:
     members = (
-        tarray_member("entity_handles", "FRegistryEntityHandle"),
+        tarray_member("entity_handles", F_REGISTRY_ENTITY_HANDLE),
         tarray_member("integral_biases", "uint32"),
         tarray_member("float_biases", "float"),
-        tarray_member("tasks", "ETestCapitalShipFightersTask"),
-        soa_member("locations", "FVectors3f"),
-        soa_member("desired_move_locations", "FVectors3f"),
-        soa_member("aim_directions", "FVectors3f"),
-        soa_member("desired_aiming_directions", "FVectors3f"),
-        soa_member("movement_directions", "FVectors3f"),
-        soa_member("velocities", "FVectors3f"),
+        tarray_member("tasks", E_TEST_CAPITAL_SHIP_FIGHTERS_TASK),
+        soa_member("locations", F_VECTORS_3F),
+        soa_member("desired_move_locations", F_VECTORS_3F),
+        soa_member("aim_directions", F_VECTORS_3F),
+        soa_member("desired_aiming_directions", F_VECTORS_3F),
+        soa_member("movement_directions", F_VECTORS_3F),
+        soa_member("velocities", F_VECTORS_3F),
         tarray_member("move_distances", "float"),
         tarray_member("speeds", "float"),
-        tarray_member("teams", "ETestTeam"),
+        tarray_member("teams", E_TEST_TEAM),
         tarray_member("healths", "int32"),
-        soa_member("awareness_scan_countdowns", "FTickCountdown8"),
-        soa_member("attack_reposition_countdowns", "FTickCountdown16"),
-        soa_member("attack_cooldowns", "FTickCountdown16"),
-        tarray_member("target_handles", "FRegistryEntityHandle"),
-        soa_member("target_locations", "FVectors3f"),
-        soa_member("target_velocities", "FVectors3f"),
-        soa_member("target_directions", "FVectors3f"),
+        soa_member("awareness_scan_countdowns", F_TICK_COUNTDOWN_8),
+        soa_member("attack_reposition_countdowns", F_TICK_COUNTDOWN_16),
+        soa_member("attack_cooldowns", F_TICK_COUNTDOWN_16),
+        tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
+        soa_member("target_locations", F_VECTORS_3F),
+        soa_member("target_velocities", F_VECTORS_3F),
+        soa_member("target_directions", F_VECTORS_3F),
         tarray_member("intercept_times", "float"),
         tarray_member("target_distance_sq", "float"),
         tarray_member("target_distances", "float"),
@@ -172,23 +204,9 @@ def fighter_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
-                Include("Sandbox/batch_game/TestTeam.h"),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                Include("SandboxCore/tick_countdown.h"),
-                NewLines(2),
-                Include("Containers/Array.h"),
-                Include("Containers/ArrayView.h"),
-                Include("HAL/Platform.h"),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ship_fighters",
@@ -206,10 +224,10 @@ def capital_ships_soa_module() -> Module:
     spawn_data = SoAStruct(
         SoAStructNames("SpawnData"),
         (
-            tarray_member("target_handles", "FRegistryEntityHandle"),
-            soa_member("locations", "FVectors3f"),
-            soa_member("rotations", "FRotatorsf"),
-            tarray_member("teams", "ETestTeam"),
+            tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("rotations", F_ROTATORS_F),
+            tarray_member("teams", E_TEST_TEAM),
             tarray_member("healths", "int32"),
             tarray_member("initial_spawn_delays", "float"),
             tarray_member("spawn_cooldowns", "float"),
@@ -221,7 +239,7 @@ def capital_ships_soa_module() -> Module:
         SoAStructNames("EntityTickData"),
         (
             tarray_member("ships_ready_to_spawn_fighters_buffer", "int32"),
-            soa_member("fighter_queue", "TestCapitalShipFighterSpawnQueue"),
+            soa_member("fighter_queue", TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -229,22 +247,22 @@ def capital_ships_soa_module() -> Module:
     entity_data = SoAStruct(
         SoAStructNames("EntityData"),
         (
-            tarray_member("handles", "FRegistryEntityHandle"),
-            soa_member("locations", "FVectors3f"),
-            soa_member("rotations", "FRotatorsf"),
-            soa_member("fighter_spawn_timers", "FCountdownTimers"),
+            tarray_member("handles", F_REGISTRY_ENTITY_HANDLE),
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("rotations", F_ROTATORS_F),
+            soa_member("fighter_spawn_timers", F_COUNTDOWN_TIMERS),
             tarray_member("fighter_spawn_cooldowns", "float"),
-            tarray_member("teams", "ETestTeam"),
+            tarray_member("teams", E_TEST_TEAM),
             tarray_member("healths", "int32"),
-            tarray_member("capital_fighter_handle_spans", "FIndexSpan"),
-            tarray_member("target_handles", "FRegistryEntityHandle"),
+            tarray_member("capital_fighter_handle_spans", F_INDEX_SPAN),
+            tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=COUNTDOWN_TIMERS_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
     )
     fighter_reassignment_members = (
-        tarray_member("capital_handles", "FRegistryEntityHandle"),
-        tarray_member("fighter_handles", "FRegistryEntityHandle"),
+        tarray_member("capital_handles", F_REGISTRY_ENTITY_HANDLE),
+        tarray_member("fighter_handles", F_REGISTRY_ENTITY_HANDLE),
     )
     fighter_reassignment = SoAStruct(
         SoAStructNames("FighterReassignment"),
@@ -256,8 +274,8 @@ def capital_ships_soa_module() -> Module:
                 "add",
                 "void",
                 (
-                    FunctionParameter("FRegistryEntityHandle const", "ch"),
-                    FunctionParameter("FRegistryEntityHandle const", "fh"),
+                    FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "ch"),
+                    FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "fh"),
                 ),
                 ForEachSoAMemberCall(fighter_reassignment_members, "Add"),
                 is_inline=True,
@@ -273,23 +291,9 @@ def capital_ships_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h"),
-                Include("Sandbox/batch_game/TestTeam.h"),
-                Include("Sandbox/utilities/IndexSpan.h"),
-                NewLines(2),
-                Include("SandboxCore/countdown_timers.h"),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_rotators.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                NewLines(2),
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ships",
@@ -325,20 +329,20 @@ def lasers_soa_module() -> Module:
     set_colours = MemberFunctionSpec(
         "set_colours",
         "void",
-        (FunctionParameter("FLinearColor const", "value"),),
+        (FunctionParameter(qualified_type(F_LINEAR_COLOR, " const"), "value"),),
         Raw(""),
     )
     spawn_requests = SoAStruct(
         SoAStructNames("SpawnRequests"),
         (
-            soa_member("locations", "FVectors3f"),
-            soa_member("rotations", "FRotatorsf"),
-            soa_member("base_velocities", "FVectors3f"),
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("rotations", F_ROTATORS_F),
+            soa_member("base_velocities", F_VECTORS_3F),
             tarray_member("damages", "int32"),
             tarray_member("speeds", "float"),
             tarray_member("max_distances", "float"),
-            tarray_member("instigator_handles", "FRegistryEntityHandle"),
-            tarray_member("colours", "FLinearColor"),
+            tarray_member("instigator_handles", F_REGISTRY_ENTITY_HANDLE),
+            tarray_member("colours", F_LINEAR_COLOR),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -355,14 +359,14 @@ def lasers_soa_module() -> Module:
     entities = SoAStruct(
         SoAStructNames("Entities"),
         (
-            tarray_member("ismc_data", "FInstancedStaticMeshInstanceData"),
-            tarray_member("colours", "FLinearColor"),
-            soa_member("locations", "FVectors3f"),
-            soa_member("rotations", "FRotatorsf"),
-            soa_member("velocities", "FVectors3f"),
+            tarray_member("ismc_data", F_INSTANCED_STATIC_MESH_INSTANCE_DATA),
+            tarray_member("colours", F_LINEAR_COLOR),
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("rotations", F_ROTATORS_F),
+            soa_member("velocities", F_VECTORS_3F),
             tarray_member("damages", "int32"),
             tarray_member("lifetimes_remaining", "float"),
-            tarray_member("instigator_handles", "FRegistryEntityHandle"),
+            tarray_member("instigator_handles", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -370,8 +374,8 @@ def lasers_soa_module() -> Module:
     hit_details = SoAStruct(
         SoAStructNames("HitDetails"),
         (
-            soa_member("locations", "FVectors3f"),
-            tarray_member("colours", "FLinearColor"),
+            soa_member("locations", F_VECTORS_3F),
+            tarray_member("colours", F_LINEAR_COLOR),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -383,21 +387,9 @@ def lasers_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_rotators.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                NewLines(2),
-                Include("Components/InstancedStaticMeshComponent.h"),
-                Include("CoreMinimal.h"),
-                Include("Math/Color.h"),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Namespace(
                     "ml::test_lasers",
@@ -417,7 +409,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("damage_amounts", "int32"),
             tarray_member("actor_components", "UActorComponent*"),
             tarray_member("hit_items", "int32"),
-            tarray_member("instigators", "FRegistryEntityHandle"),
+            tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -428,7 +420,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("damage_amounts", "int32"),
             tarray_member("actor_components", "UActorComponent*"),
             tarray_member("hit_items", "int32"),
-            tarray_member("instigators", "FRegistryEntityHandle"),
+            tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -440,18 +432,9 @@ def collision_damage_events_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                NewLines(2),
-                Include("Containers/Array.h"),
-                Include("HAL/Platform.h"),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Raw("class AActor;\nclass UActorComponent;"),
                 NewLines(2),
@@ -466,10 +449,10 @@ def fighter_spawn_queue_soa_module() -> Module:
     queue = SoAStruct(
         SoAStructNames("TestCapitalShipFighterSpawnQueue"),
         (
-            soa_member("locations", "FVectors3f"),
-            soa_member("rotations", "FRotatorsf"),
-            tarray_member("teams", "ETestTeam"),
-            tarray_member("targets", "FRegistryEntityHandle"),
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("rotations", F_ROTATORS_F),
+            tarray_member("teams", E_TEST_TEAM),
+            tarray_member("targets", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -481,20 +464,9 @@ def fighter_spawn_queue_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/TestTeam.h"),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_rotators.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                NewLines(2),
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lowered.header_nodes,
             ),
@@ -505,10 +477,10 @@ def fighter_spawn_queue_soa_module() -> Module:
 
 def fighter_order_queue_module() -> Module:
     order_queue_members = (
-        tarray_member("handles", "FRegistryEntityHandle"),
-        tarray_member("orders", "TestCapitalShipFighterOrder"),
-        tarray_member("tasks", "ETestCapitalShipFightersTask"),
-        tarray_member("targets", "FRegistryEntityHandle"),
+        tarray_member("handles", F_REGISTRY_ENTITY_HANDLE),
+        tarray_member("orders", TEST_CAPITAL_SHIP_FIGHTER_ORDER),
+        tarray_member("tasks", E_TEST_CAPITAL_SHIP_FIGHTERS_TASK),
+        tarray_member("targets", F_REGISTRY_ENTITY_HANDLE),
     )
     order_queue = SoAStruct(
         SoAStructNames("TestCapitalShipFighterOrderQueue"),
@@ -516,18 +488,18 @@ def fighter_order_queue_module() -> Module:
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
         nodes=(
-            UsingDeclaration("Task", "ETestCapitalShipFightersTask"),
+            UsingDeclaration("Task", E_TEST_CAPITAL_SHIP_FIGHTERS_TASK),
             NewLines(1),
-            UsingDeclaration("Order", "TestCapitalShipFighterOrder"),
+            UsingDeclaration("Order", TEST_CAPITAL_SHIP_FIGHTER_ORDER),
             NewLines(2),
             MemberFunctionSpec(
                 "add",
                 "void",
                 (
-                    FunctionParameter("FRegistryEntityHandle const", "handle"),
+                    FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "handle"),
                     FunctionParameter("Order const", "order"),
                     FunctionParameter("Task const", "task"),
-                    FunctionParameter("FRegistryEntityHandle const", "target"),
+                    FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "target"),
                 ),
                 ForEachSoAMemberCall(order_queue_members, "Add"),
                 is_inline=True,
@@ -541,18 +513,9 @@ def fighter_order_queue_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/TestCapitalShipFighterOrder.h"),
-                Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
-                Include("SandboxCore/soa_array_mixin.h"),
-                NewLines(2),
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("Containers/ArrayView.h"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lowered.header_nodes,
             ),
@@ -563,17 +526,17 @@ def fighter_order_queue_module() -> Module:
 
 def entity_death_info_module() -> Module:
     entity_death_info_members = (
-        tarray_member("reasons", "ETestDeathReason"),
-        tarray_member("victims", "FRegistryEntityHandle"),
-        tarray_member("killers", "FRegistryEntityHandle"),
+        tarray_member("reasons", E_TEST_DEATH_REASON),
+        tarray_member("victims", F_REGISTRY_ENTITY_HANDLE),
+        tarray_member("killers", F_REGISTRY_ENTITY_HANDLE),
     )
     add_function = MemberFunctionSpec(
         "add",
         "void",
         (
-            FunctionParameter("ETestDeathReason const", "reason"),
-            FunctionParameter("FRegistryEntityHandle const", "victim"),
-            FunctionParameter("FRegistryEntityHandle const", "killer"),
+            FunctionParameter(qualified_type(E_TEST_DEATH_REASON, " const"), "reason"),
+            FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "victim"),
+            FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "killer"),
         ),
         ForEachSoAMemberCall(entity_death_info_members, "Add"),
     )
@@ -581,8 +544,8 @@ def entity_death_info_module() -> Module:
         "add",
         "void",
         (
-            FunctionParameter("ETestDeathReason const", "reason"),
-            FunctionParameter("FRegistryEntityHandle const", "victim"),
+            FunctionParameter(qualified_type(E_TEST_DEATH_REASON, " const"), "reason"),
+            FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "victim"),
         ),
         Raw("add(reason, victim, FRegistryEntityHandle{});"),
         is_inline=True,
@@ -605,19 +568,9 @@ def entity_death_info_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                NewLines(2),
-                Include("Containers/Array.h"),
-                Include("Containers/ArrayView.h"),
-                Include("HAL/Platform.h"),
-                NewLines(2),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lowered.header_nodes,
             ),
@@ -637,13 +590,13 @@ def static_turrets_soa_module() -> Module:
     entity_data = SoAStruct(
         SoAStructNames("EntityData"),
         (
-            tarray_member("handles", "FRegistryEntityHandle"),
-            soa_member("locations", "FVectors3f"),
-            tarray_member("teams", "ETestTeam"),
-            soa_member("laser_cooldowns", "FTickCountdown16"),
-            tarray_member("target_handles", "FRegistryEntityHandle"),
-            soa_member("target_locations", "FVectors3f"),
-            soa_member("target_velocities", "FVectors3f"),
+            tarray_member("handles", F_REGISTRY_ENTITY_HANDLE),
+            soa_member("locations", F_VECTORS_3F),
+            tarray_member("teams", E_TEST_TEAM),
+            soa_member("laser_cooldowns", F_TICK_COUNTDOWN_16),
+            tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
+            soa_member("target_locations", F_VECTORS_3F),
+            soa_member("target_velocities", F_VECTORS_3F),
             tarray_member("healths", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
@@ -656,20 +609,9 @@ def static_turrets_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/TestTeam.h"),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                Include("SandboxCore/tick_countdown.h"),
-                NewLines(2),
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Namespace("ml::test_static_turrets", lowered.header_nodes),
             ),
@@ -684,10 +626,10 @@ def tube_spinners_soa_module() -> Module:
     entity_data = SoAStruct(
         SoAStructNames("EntityData"),
         (
-            tarray_member("handles", "FRegistryEntityHandle"),
-            soa_member("locations", "FVectors3f"),
+            tarray_member("handles", F_REGISTRY_ENTITY_HANDLE),
+            soa_member("locations", F_VECTORS_3F),
             tarray_member("yaws", "float"),
-            soa_member("laser_cooldowns", "FTickCountdown16"),
+            soa_member("laser_cooldowns", F_TICK_COUNTDOWN_16),
             tarray_member("next_fire_point_indices", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
@@ -700,19 +642,9 @@ def tube_spinners_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                Include("SandboxCore/soa_vectors.h"),
-                Include("SandboxCore/tick_countdown.h"),
-                NewLines(2),
-                Include("CoreMinimal.h", system=False),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 Namespace("ml::test_tube_spinners", lowered.header_nodes),
             ),
@@ -727,9 +659,9 @@ def direct_damage_events_soa_module() -> Module:
     events = SoAStruct(
         SoAStructNames("DirectDamageEvents"),
         (
-            tarray_member("damaged_entities", "FRegistryEntityHandle"),
+            tarray_member("damaged_entities", F_REGISTRY_ENTITY_HANDLE),
             tarray_member("damage_amounts", "int32"),
-            tarray_member("instigators", "FRegistryEntityHandle"),
+            tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -741,18 +673,9 @@ def direct_damage_events_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                NewLines(2),
-                Include("Containers/Array.h"),
-                Include("HAL/Platform.h"),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lowered.header_nodes,
             ),
@@ -765,16 +688,16 @@ def unique_entity_data_soa_module() -> Module:
     entity_data = SoAStruct(
         SoAStructNames("TestEntityUniqueEntityData"),
         (
-            tarray_member("registry_indices", "FRegistryEntityHandle::index_type"),
+            tarray_member("registry_indices", nested_type(F_REGISTRY_ENTITY_HANDLE, "index_type")),
             tarray_member(
-                "registry_generations", "FRegistryEntityHandle::generation_type"
+                "registry_generations", nested_type(F_REGISTRY_ENTITY_HANDLE, "generation_type")
             ),
-            tarray_member("entity_types", "ETestEntityType"),
-            tarray_member("teams", "ETestTeam"),
+            tarray_member("entity_types", E_TEST_ENTITY_TYPE),
+            tarray_member("teams", E_TEST_TEAM),
             tarray_member("kills", "uint32"),
             tarray_member("alive", "uint8"),
-            tarray_member("killed_by", "TestEntityUniqueId"),
-            tarray_member("death_reason", "ETestDeathReason"),
+            tarray_member("killed_by", TEST_ENTITY_UNIQUE_ID),
+            tarray_member("death_reason", E_TEST_DEATH_REASON),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
@@ -787,22 +710,9 @@ def unique_entity_data_soa_module() -> Module:
         header=CppFile(
             path=header_path,
             clang_format_off=True,
+            include_order=INCLUDE_ORDER,
             nodes=(
-                Include(
-                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-                ),
-                Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
-                Include("Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h"),
-                Include("Sandbox/batch_game/TestEntityType.h"),
-                Include("Sandbox/batch_game/TestTeam.h"),
-                NewLines(2),
-                Include("SandboxCore/soa_array_mixin.h"),
-                NewLines(2),
-                Include("Containers/Array.h"),
-                Include("HAL/Platform.h"),
-                NewLines(2),
-                Include("type_traits"),
-                Include("utility"),
+                IncludeDependencies(),
                 NewLines(2),
                 *lowered.header_nodes,
             ),

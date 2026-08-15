@@ -10,6 +10,7 @@ from Codegen.nodes import (
     FunctionBody,
     FunctionParameter,
     Include,
+    IncludeDependencies,
     Member,
     MemberFunctionSpec,
     Module,
@@ -20,7 +21,11 @@ from Codegen.nodes import (
     Raw,
     RenderContext,
     Struct,
+    TypeDependency,
     UsingDeclaration,
+    composed_type,
+    type_spelling,
+    walk_tree,
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
@@ -87,7 +92,7 @@ class NodeRenderingTests(unittest.TestCase):
 
 #pragma once
 
-#include <Example/Dependency.h>
+#include "Example/Dependency.h"
 
 #include <utility>
 
@@ -144,6 +149,125 @@ struct FValue {
     def test_new_lines_rejects_non_positive_counts(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be positive"):
             NewLines(0)
+
+    def test_walk_tree_visits_leaf_and_nested_nodes_in_preorder(self) -> None:
+        leaf = Raw("value")
+        self.assertEqual(tuple(walk_tree(leaf)), (leaf,))
+
+        member = Member("int32", "value")
+        struct = Struct("FValue", (member,))
+        namespace = Namespace("example", (struct,))
+        file = CppFile(Path("Example.h"), nodes=(namespace,))
+
+        self.assertEqual(tuple(walk_tree(file)), (file, namespace, struct, member))
+        self.assertEqual(tuple(file.children()), (namespace,))
+        self.assertEqual(tuple(namespace.children()), (struct,))
+        self.assertEqual(tuple(struct.children()), (member,))
+
+        parameter = FunctionParameter("int32", "value")
+        body = Raw("return value;")
+        function = MemberFunctionSpec(
+            "get", "int32", (parameter,), body, is_inline=True
+        )
+        definition = function.header_node()
+        declaration = function.declaration_node()
+        self.assertEqual(tuple(walk_tree(definition)), (definition, parameter, body))
+        self.assertEqual(tuple(walk_tree(declaration)), (declaration, parameter))
+
+    def test_include_dependencies_collect_nested_types_and_deduplicate(self) -> None:
+        element = TypeDependency("FElement", "Project/Element.h")
+        array = composed_type(
+            "TArray<FElement>", element, header="Containers/Array.h"
+        )
+        file = CppFile(
+            Path("Example.h"),
+            include_order=("Project/",),
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                Namespace(
+                    "example",
+                    (Struct("FData", (Member(array, "first"), Member(array, "second"))),),
+                ),
+            ),
+        )
+
+        rendered = file.render()
+        self.assertEqual(rendered.count('#include "Project/Element.h"'), 1)
+        self.assertEqual(rendered.count('#include "Containers/Array.h"'), 1)
+
+    def test_include_dependencies_group_and_sort_deterministically(self) -> None:
+        dependencies = (
+            TypeDependency("Z", "Project/Z.h"),
+            TypeDependency("B", "Project/Sub/B.h"),
+            TypeDependency("A", "Project/A.h"),
+            TypeDependency("Other", "Other.h"),
+            TypeDependency("Vector", "vector"),
+            TypeDependency("Utility", "utility"),
+        )
+        file = CppFile(
+            Path("Example.h"),
+            include_order=("Project/Sub/", "Project/"),
+            nodes=(IncludeDependencies(), Raw("struct FValue {};", dependencies)),
+        )
+
+        includes = "\n".join(
+            line for line in file.render().splitlines() if line.startswith("#include") or not line
+        )
+        self.assertIn(
+            '#include "Project/Sub/B.h"\n\n'
+            '#include "Project/A.h"\n#include "Project/Z.h"\n\n'
+            '#include "Other.h"\n\n'
+            '#include <utility>\n#include <vector>',
+            includes,
+        )
+
+    def test_include_dependencies_render_from_context_at_their_location(self) -> None:
+        dependency = TypeDependency("FValue", "Value.h")
+        file = CppFile(
+            Path("Example.h"),
+            nodes=(
+                Raw("// before", (dependency,)),
+                NewLines(1),
+                IncludeDependencies(),
+                NewLines(1),
+                Raw("// after"),
+            ),
+        )
+
+        rendered = file.render()
+        self.assertLess(rendered.index("// before"), rendered.index('#include "Value.h"'))
+        self.assertLess(rendered.index('#include "Value.h"'), rendered.index("// after"))
+        self.assertEqual(
+            IncludeDependencies().render(
+                RenderContext(include_groups=((Include("Prepared.h"),),))
+            ),
+            '#include "Prepared.h"',
+        )
+
+    def test_explicit_include_renders_in_place_without_becoming_a_dependency(self) -> None:
+        file = CppFile(
+            Path("Example.h"),
+            nodes=(
+                Include("Manual.h"),
+                NewLines(2),
+                IncludeDependencies(),
+                Raw("value", (TypeDependency("FValue", "Automatic.h"),)),
+            ),
+        )
+
+        rendered = file.render()
+        self.assertEqual(rendered.count('#include "Manual.h"'), 1)
+        self.assertEqual(rendered.count('#include "Automatic.h"'), 1)
+        self.assertLess(rendered.index("Manual.h"), rendered.index("Automatic.h"))
+        self.assertEqual(
+            Include("ForcedQuoted", system=False).render(RenderContext()),
+            '#include "ForcedQuoted"',
+        )
+        self.assertEqual(
+            Include("ForcedSystem.h", system=True).render(RenderContext()),
+            "#include <ForcedSystem.h>",
+        )
 
     def test_generic_declaration_nodes_render_in_a_struct(self) -> None:
         node = Struct(
@@ -440,9 +564,9 @@ void append_from(Other const& other) {
     def test_tarray_member_derives_storage_and_view_types(self) -> None:
         member = tarray_member("values", "int32")
 
-        self.assertEqual(member.container_type, "TArray<int32>")
-        self.assertEqual(member.view_type, "TArrayView<int32>")
-        self.assertEqual(member.const_view_type, "TConstArrayView<int32>")
+        self.assertEqual(type_spelling(member.container_type), "TArray<int32>")
+        self.assertEqual(type_spelling(member.view_type), "TArrayView<int32>")
+        self.assertEqual(type_spelling(member.const_view_type), "TConstArrayView<int32>")
 
     def test_soa_struct_names_derive_and_override_view_names(self) -> None:
         default_names = SoAStructNames("FData")
