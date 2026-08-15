@@ -3,6 +3,7 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>
@@ -54,40 +55,6 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
 
     SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
 #undef SANDBOX_PACK
-};
-
-struct Entities : public ml::FSoAArrayMixin {
-    TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    TArray<FLinearColor> colours;
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FVectors3f velocities;
-    TArray<int32> damages;
-    TArray<float> lifetimes_remaining;
-    TArray<FRegistryEntityHandle> instigator_handles;
-
-#define SANDBOX_PACK(STAMPER, NON_FINAL)    \
-    NON_FINAL(STAMPER(ismc_data))           \
-    NON_FINAL(STAMPER(colours))             \
-    NON_FINAL(STAMPER(locations))           \
-    NON_FINAL(STAMPER(rotations))           \
-    NON_FINAL(STAMPER(velocities))          \
-    NON_FINAL(STAMPER(damages))             \
-    NON_FINAL(STAMPER(lifetimes_remaining)) \
-    STAMPER(instigator_handles)
-
-    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
-#undef SANDBOX_PACK
-};
-
-struct HitDetails : public ml::FSoAArrayMixin {
-    FVectors3f locations;
-    TArray<FLinearColor> colours;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.locations, self.colours);
-    }
 };
 
 struct ThreadLocalCollisionData {

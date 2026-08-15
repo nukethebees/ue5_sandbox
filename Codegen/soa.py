@@ -48,11 +48,14 @@ class SoAStruct(Node):
     view_name: str
     const_view_name: str
     members: tuple[SoAMember, ...]
+    storage_export_specifier: str | None = None
+    storage_type_aliases: tuple[str, ...] = ()
     storage_base: str = "ml::FSoAArrayMixin"
     view_base: str = "ml::FSoAViewMixin"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
+        object.__setattr__(self, "storage_type_aliases", tuple(self.storage_type_aliases))
         if not self.members:
             raise ValueError(f"SOA struct {self.name!r} must contain at least one member")
         names = [member.name for member in self.members]
@@ -91,12 +94,16 @@ class SoAStruct(Node):
         return "\n".join(lines)
 
     def _render_storage(self) -> str:
+        export_specifier = f" {self.storage_export_specifier}" if self.storage_export_specifier else ""
         lines = [
-            f"struct {self.name} : public {self.storage_base} {{",
+            f"struct{export_specifier} {self.name} : public {self.storage_base} {{",
             f"    using View = {self.view_name};",
             f"    using ConstView = {self.const_view_name};",
-            "",
         ]
+        if self.storage_type_aliases:
+            lines.append("")
+            lines.extend(f"    {alias.rstrip(';')};" for alias in self.storage_type_aliases)
+        lines.append("")
         for member in self.members:
             lines.append(f"    {member.container_type} {member.name};")
         lines.append("")

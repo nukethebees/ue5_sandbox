@@ -77,6 +77,15 @@ struct FValue {
                 generated_file.content,
             )
 
+    def test_manifest_groups_multiple_soa_types_in_one_header(self) -> None:
+        generated_modules = modules()
+        module_names = {module.name for module in generated_modules}
+
+        self.assertIn("test_capital_ships_soa", module_names)
+        self.assertIn("test_lasers_soa", module_names)
+        self.assertIn("collision_damage_events_soa", module_names)
+        self.assertEqual(len(generated_modules), 9)
+
     def test_duplicate_output_paths_are_rejected(self) -> None:
         modules = (
             Module("first", header=CppFile(Path("Same.h"))),
@@ -129,6 +138,21 @@ class SoARenderingTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "at least one member"):
             SoAStruct("FData", "TDataView", "TDataConstView", ())
+
+    def test_storage_metadata_is_rendered(self) -> None:
+        node = SoAStruct(
+            "FExportedData",
+            "FExportedDataView",
+            "FExportedDataConstView",
+            (tarray_member("values", "int32"),),
+            storage_export_specifier="SANDBOX_API",
+            storage_type_aliases=("using CountType = int32",),
+        )
+
+        rendered = node.render(RenderContext())
+
+        self.assertIn("struct SANDBOX_API FExportedData", rendered)
+        self.assertIn("using CountType = int32;", rendered)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestTubeSpinnersSoA.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 
 #include <SandboxCore/soa_array_mixin.h>
@@ -25,25 +26,6 @@ class UTestTubeSpinnersConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 class ATestBatchOrchestrator;
-
-namespace ml::test_tube_spinners {
-struct EntityData : public ml::FSoAArrayMixin {
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    TArray<float> yaws;
-    FTickCountdown16 laser_cooldowns;
-    TArray<int32> next_fire_point_indices;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.handles,
-                                         self.locations,
-                                         self.yaws,
-                                         self.laser_cooldowns,
-                                         self.next_fire_point_indices);
-    }
-};
-}
 
 UCLASS()
 class ATestTubeSpinners : public AActor {

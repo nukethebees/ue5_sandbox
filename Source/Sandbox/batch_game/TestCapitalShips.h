@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
+#include <Sandbox/batch_game/TestCapitalShipsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 #include <Sandbox/utilities/IndexSpan.h>
@@ -36,78 +37,6 @@ class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
 
 namespace ml::test_capital_ships {
-
-struct SpawnData : public ml::FSoAArrayMixin {
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f locations;
-    FRotatorsf rotations;
-    TArray<ETestTeam> teams;
-    TArray<int32> healths;
-
-    TArray<float> initial_spawn_delays;
-    TArray<float> spawn_cooldowns;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.target_handles,
-                                         self.locations,
-                                         self.rotations,
-                                         self.teams,
-                                         self.healths,
-                                         self.initial_spawn_delays,
-                                         self.spawn_cooldowns);
-    }
-};
-
-// Cycled each tick via double buffering
-struct EntityTickData : public ml::FSoAArrayMixin {
-    TArray<int32> ships_ready_to_spawn_fighters_buffer;
-    TestCapitalShipFighterSpawnQueue fighter_queue;
-
-#define SANDBOX_PACK(STAMPER, NON_FINAL)                     \
-    NON_FINAL(STAMPER(ships_ready_to_spawn_fighters_buffer)) \
-    STAMPER(fighter_queue)
-
-    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
-#undef SANDBOX_PACK
-};
-
-struct EntityData : public ml::FSoAArrayMixin {
-    TArray<FRegistryEntityHandle> handles;
-
-    // Transform
-    FVectors3f locations;
-    FRotatorsf rotations;
-
-    FCountdownTimers fighter_spawn_timers;
-    TArray<float> fighter_spawn_cooldowns;
-
-    // Teams
-    TArray<ETestTeam> teams{};
-
-    // Health
-    TArray<int32> healths{};
-
-    // Fighters
-    TArray<FIndexSpan> capital_fighter_handle_spans;
-
-    // Targets
-    TArray<FRegistryEntityHandle> target_handles;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.handles,
-                                         self.locations,
-                                         self.rotations,
-                                         self.fighter_spawn_timers,
-                                         self.fighter_spawn_cooldowns,
-                                         self.teams,
-                                         self.healths,
-                                         self.capital_fighter_handle_spans,
-                                         self.target_handles);
-    }
-};
-
 struct FighterReassignment : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> capital_handles;
     TArray<FRegistryEntityHandle> fighter_handles;

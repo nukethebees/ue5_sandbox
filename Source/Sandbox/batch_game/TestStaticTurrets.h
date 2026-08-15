@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestStaticTurretsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -29,31 +30,6 @@ class UTestStaticTurretsConfig;
 class ATestLasers;
 class ATestEntityRegistry;
 class ATestBatchOrchestrator;
-
-namespace ml::test_static_turrets {
-struct EntityData : public ml::FSoAArrayMixin {
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    TArray<ETestTeam> teams;
-    FTickCountdown16 laser_cooldowns;
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f target_locations;
-    FVectors3f target_velocities;
-    TArray<int32> healths;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.handles,
-                                         self.locations,
-                                         self.teams,
-                                         self.laser_cooldowns,
-                                         self.target_handles,
-                                         self.target_locations,
-                                         self.target_velocities,
-                                         self.healths);
-    }
-};
-}
 
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
