@@ -43,6 +43,7 @@ SOA_CONCEPTS = TypeDependency(
     "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h"
 )
 SOA_PERMUTATION = TypeDependency("ml::apply_permutation", "SandboxCore/soa_permutation.h")
+FILL_INDICES = TypeDependency("ml::fill_indices", "SandboxCore/array_utils.h")
 CHECK = TypeDependency("check", "CoreMinimal.h")
 TARRAY_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
 
@@ -571,19 +572,32 @@ def _permutation_function_specs(fields: Iterable[str]) -> tuple[MemberFunctionSp
             (
                 "validate_array_sizes();",
                 "auto const n{num()};",
-                "check(scratch_indices.Num() >= n);",
-                "auto indices{scratch_indices.Left(n)};",
-                "for (int32 i{}; i < n; ++i) {",
-                "    indices[i] = i;",
-                "}",
+                "check(scratch_indices.Num() == n);",
+                "ml::fill_indices(scratch_indices);",
                 "// indices[new_index] is the old row index that belongs at new_index.",
-                "indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {",
+                "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {",
                 "    return compare(*this, lhs, rhs);",
                 "});",
-                "apply_permutation(indices);",
+                "apply_permutation(scratch_indices);",
             )
         ),
-        (CHECK,),
+        (CHECK, FILL_INDICES),
+    )
+    nttp_sort_body = Raw(
+        "\n".join(
+            (
+                "validate_array_sizes();",
+                "auto const n{num()};",
+                "check(scratch_indices.Num() == n);",
+                "ml::fill_indices(scratch_indices);",
+                "// indices[new_index] is the old row index that belongs at new_index.",
+                "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {",
+                "    return Compare(*this, lhs, rhs);",
+                "});",
+                "apply_permutation(scratch_indices);",
+            )
+        ),
+        (CHECK, FILL_INDICES),
     )
     return (
         MemberFunctionSpec(
@@ -600,6 +614,14 @@ def _permutation_function_specs(fields: Iterable[str]) -> tuple[MemberFunctionSp
             sort_body,
             is_inline=True,
             template_parameters="typename Compare",
+        ),
+        MemberFunctionSpec(
+            "sort",
+            "void",
+            (scratch_indices,),
+            nttp_sort_body,
+            is_inline=True,
+            template_parameters="auto Compare",
         ),
     )
 

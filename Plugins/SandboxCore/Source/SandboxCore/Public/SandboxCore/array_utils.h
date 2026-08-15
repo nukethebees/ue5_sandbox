@@ -126,6 +126,13 @@ void fill(Container&& values, T const value) {
     ml::kernel::fill(values.GetData(), value, values.Num());
 }
 
+inline void fill_indices(TArrayView<int32> const indices) {
+    auto const n{indices.Num()};
+    for (int32 i{}; i < n; ++i) {
+        indices[i] = i;
+    }
+}
+
 template <typename Container, typename T>
     requires requires(Container& values) {
         { values.GetData() } -> std::same_as<T*>;

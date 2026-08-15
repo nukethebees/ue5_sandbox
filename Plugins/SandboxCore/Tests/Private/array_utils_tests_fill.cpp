@@ -34,3 +34,11 @@ TEST_CASE("SandboxCore.Array.fill_last.Zero count") {
 
     REQUIRE((values == TArray<int32>{1, 2, 3}));
 }
+
+TEST_CASE("SandboxCore.Array.fill_indices") {
+    TArray<int32> indices{9, 8, 7, 6};
+
+    ml::fill_indices(indices);
+
+    REQUIRE((indices == TArray<int32>{0, 1, 2, 3}));
+}

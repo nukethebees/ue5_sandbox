@@ -17,6 +17,10 @@ void check_row_associations(FVectors3f const& vectors) {
         CHECK(vectors.zs[i] == static_cast<float>(id + 200));
     }
 }
+
+auto sort_by_x(FVectors3f const& vectors, int32 const lhs, int32 const rhs) -> bool {
+    return vectors.xs[lhs] < vectors.xs[rhs];
+}
 }
 
 TEST_CASE("SandboxCore.SoaSort.Vectors3f.SortPreservesParallelStreams") {
@@ -27,16 +31,12 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.SortPreservesParallelStreams") {
     add_row(vectors, 40);
 
     TArray<int32> scratch_indices;
-    scratch_indices.SetNumUninitialized(6);
-    scratch_indices[4] = 1234;
-    scratch_indices[5] = 5678;
+    scratch_indices.SetNumUninitialized(vectors.num());
 
-    vectors.sort([](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; }, scratch_indices);
+    vectors.sort<sort_by_x>(scratch_indices);
 
     check_row_associations(vectors);
     CHECK((vectors.xs == TArray<float>{10.f, 20.f, 30.f, 40.f}));
-    CHECK(scratch_indices[4] == 1234);
-    CHECK(scratch_indices[5] == 5678);
 }
 
 TEST_CASE("SandboxCore.SoaSort.Vectors3f.CustomComparatorAndEquivalentKeys") {
@@ -78,11 +78,10 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.EmptySingleAndSortedInputs") {
 
     FVectors3f single;
     add_row(single, 42);
-    TArray<int32> single_scratch{0, 99};
+    TArray<int32> single_scratch{0};
     single.sort([](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; }, single_scratch);
     check_row_associations(single);
     CHECK(single.xs[0] == 42.f);
-    CHECK(single_scratch[1] == 99);
 
     FVectors3f already_sorted;
     add_row(already_sorted, 10);
