@@ -4,10 +4,9 @@ from pathlib import Path
 
 from Codegen.nodes import (
     CppFile,
-    Function,
-    FunctionDeclaration,
-    FunctionSpec,
+    FunctionParameter,
     Include,
+    MemberFunctionSpec,
     Module,
     Namespace,
     NewLines,
@@ -139,10 +138,16 @@ def capital_ships_soa_module() -> Module:
             tarray_member("fighter_handles", "FRegistryEntityHandle"),
         ),
         storage_suffix_nodes=(
-            Function(
-                "void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh)",
+            MemberFunctionSpec(
+                "add",
+                "void",
+                (
+                    FunctionParameter("FRegistryEntityHandle const", "ch"),
+                    FunctionParameter("FRegistryEntityHandle const", "fh"),
+                ),
                 ("capital_handles.Add(ch);", "fighter_handles.Add(fh);"),
-            ),
+                is_inline=True,
+            ).header_node(),
         ),
     )
     return Module(
@@ -178,6 +183,30 @@ def capital_ships_soa_module() -> Module:
 
 
 def lasers_soa_module() -> Module:
+    set_damages = MemberFunctionSpec(
+        "set_damages",
+        "void",
+        (FunctionParameter("int32 const", "value"),),
+        (),
+    )
+    set_speeds = MemberFunctionSpec(
+        "set_speeds",
+        "void",
+        (FunctionParameter("float const", "value"),),
+        (),
+    )
+    set_max_distances = MemberFunctionSpec(
+        "set_max_distances",
+        "void",
+        (FunctionParameter("float const", "value"),),
+        (),
+    )
+    set_colours = MemberFunctionSpec(
+        "set_colours",
+        "void",
+        (FunctionParameter("FLinearColor const", "value"),),
+        (),
+    )
     spawn_requests = SoAStruct(
         "SpawnRequests",
         "SpawnRequestsView",
@@ -193,13 +222,13 @@ def lasers_soa_module() -> Module:
             tarray_member("colours", "FLinearColor"),
         ),
         storage_suffix_nodes=(
-            FunctionDeclaration("void set_damages(int32 const value)"),
+            set_damages.header_node(),
             NewLines(1),
-            FunctionDeclaration("void set_speeds(float const value)"),
+            set_speeds.header_node(),
             NewLines(1),
-            FunctionDeclaration("void set_max_distances(float const value)"),
+            set_max_distances.header_node(),
             NewLines(1),
-            FunctionDeclaration("void set_colours(FLinearColor const value)"),
+            set_colours.header_node(),
         ),
     )
     entities = SoAStruct(
@@ -360,18 +389,23 @@ def fighter_order_queue_module() -> Module:
             ("Order", "TestCapitalShipFighterOrder"),
         ),
         storage_prefix_nodes=(
-            Function(
-                "void add(FRegistryEntityHandle const handle,\n"
-                "         Order const order,\n"
-                "         Task const task,\n"
-                "         FRegistryEntityHandle const target)",
+            MemberFunctionSpec(
+                "add",
+                "void",
+                (
+                    FunctionParameter("FRegistryEntityHandle const", "handle"),
+                    FunctionParameter("Order const", "order"),
+                    FunctionParameter("Task const", "task"),
+                    FunctionParameter("FRegistryEntityHandle const", "target"),
+                ),
                 (
                     "handles.Add(handle);",
                     "orders.Add(order);",
                     "tasks.Add(task);",
                     "targets.Add(target);",
                 ),
-            ),
+                is_inline=True,
+            ).header_node(),
         ),
     )
     return Module(
@@ -401,14 +435,25 @@ def fighter_order_queue_module() -> Module:
 
 
 def entity_death_info_module() -> Module:
-    add_function = FunctionSpec(
-        "void add(ETestDeathReason const reason,\n"
-        "         FRegistryEntityHandle const victim,\n"
-        "         FRegistryEntityHandle const killer)",
-        "void EntityDeathInfo::add(ETestDeathReason const reason,\n"
-        "                          FRegistryEntityHandle const victim,\n"
-        "                          FRegistryEntityHandle const killer)",
+    add_function = MemberFunctionSpec(
+        "add",
+        "void",
+        (
+            FunctionParameter("ETestDeathReason const", "reason"),
+            FunctionParameter("FRegistryEntityHandle const", "victim"),
+            FunctionParameter("FRegistryEntityHandle const", "killer"),
+        ),
         ("reasons.Add(reason);", "victims.Add(victim);", "killers.Add(killer);"),
+    )
+    add_without_killer = MemberFunctionSpec(
+        "add",
+        "void",
+        (
+            FunctionParameter("ETestDeathReason const", "reason"),
+            FunctionParameter("FRegistryEntityHandle const", "victim"),
+        ),
+        ("add(reason, victim, FRegistryEntityHandle{});",),
+        is_inline=True,
     )
     entity_death_info = SoAStruct(
         "EntityDeathInfo",
@@ -422,10 +467,7 @@ def entity_death_info_module() -> Module:
         storage_suffix_nodes=(
             add_function.declaration_node(),
             NewLines(1),
-            Function(
-                "void add(ETestDeathReason const reason, FRegistryEntityHandle const victim)",
-                ("add(reason, victim, FRegistryEntityHandle{});",),
-            ),
+            add_without_killer.header_node(),
         ),
     )
     return Module(
@@ -465,7 +507,7 @@ def entity_death_info_module() -> Module:
             nodes=(
                 Include("EntityDeathInfo.h", system=False),
                 NewLines(2),
-                add_function.definition_node(),
+                add_function.definition_node("EntityDeathInfo"),
             ),
         ),
     )

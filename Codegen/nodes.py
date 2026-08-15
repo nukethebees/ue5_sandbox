@@ -130,26 +130,118 @@ class Function(Node):
 
 
 @dataclass(frozen=True)
-class FunctionSpec:
-    declaration_signature: str
-    definition_signature: str
+class FunctionParameter(Node):
+    type_name: str
+    name: str
+    default_value: str | None = None
+
+    def render(self, context: RenderContext) -> str:
+        return context.apply_indent(self.declaration_text())
+
+    def declaration_text(self) -> str:
+        default_value = f" = {self.default_value}" if self.default_value else ""
+        return f"{self.type_name} {self.name}{default_value}"
+
+    def definition_text(self) -> str:
+        return f"{self.type_name} {self.name}"
+
+
+@dataclass(frozen=True)
+class MemberFunctionSpec:
+    name: str
+    return_type: str
+    parameters: tuple[FunctionParameter, ...]
     body: tuple[str, ...]
+    suffix: str = ""
+    is_static: bool = False
+    is_inline: bool = False
 
     def __init__(
         self,
-        declaration_signature: str,
-        definition_signature: str,
+        name: str,
+        return_type: str,
+        parameters: Iterable[FunctionParameter],
         body: Iterable[str],
+        suffix: str = "",
+        is_static: bool = False,
+        is_inline: bool = False,
     ) -> None:
-        object.__setattr__(self, "declaration_signature", declaration_signature)
-        object.__setattr__(self, "definition_signature", definition_signature)
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "return_type", return_type)
+        object.__setattr__(self, "parameters", tuple(parameters))
         object.__setattr__(self, "body", tuple(body))
+        object.__setattr__(self, "suffix", suffix)
+        object.__setattr__(self, "is_static", is_static)
+        object.__setattr__(self, "is_inline", is_inline)
 
     def declaration_node(self) -> FunctionDeclaration:
-        return FunctionDeclaration(self.declaration_signature)
+        static_prefix = "static " if self.is_static else ""
+        return FunctionDeclaration(
+            f"{static_prefix}{self.return_type} {self.name}({self._parameters(True)}){self.suffix}"
+        )
+
+    def header_node(self) -> Node:
+        if self.is_inline:
+            static_prefix = "static " if self.is_static else ""
+            return Function(
+                f"{static_prefix}{self.return_type} {self.name}({self._parameters(True)}){self.suffix}",
+                self.body,
+            )
+        return self.declaration_node()
+
+    def definition_node(self, owner_name: str) -> Function:
+        return Function(
+            f"{self.return_type} {owner_name}::{self.name}({self._parameters(False)}){self.suffix}",
+            self.body,
+        )
+
+    def _parameters(self, include_defaults: bool) -> str:
+        render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
+        return ", ".join(render(parameter) for parameter in self.parameters)
+
+
+@dataclass(frozen=True)
+class FreeFunctionSpec:
+    name: str
+    return_type: str
+    parameters: tuple[FunctionParameter, ...]
+    body: tuple[str, ...]
+    suffix: str = ""
+    is_inline: bool = False
+
+    def __init__(
+        self,
+        name: str,
+        return_type: str,
+        parameters: Iterable[FunctionParameter],
+        body: Iterable[str],
+        suffix: str = "",
+        is_inline: bool = False,
+    ) -> None:
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "return_type", return_type)
+        object.__setattr__(self, "parameters", tuple(parameters))
+        object.__setattr__(self, "body", tuple(body))
+        object.__setattr__(self, "suffix", suffix)
+        object.__setattr__(self, "is_inline", is_inline)
+
+    def declaration_node(self) -> FunctionDeclaration:
+        return FunctionDeclaration(f"{self.return_type} {self.name}({self._parameters(True)}){self.suffix}")
+
+    def header_node(self) -> Node:
+        if self.is_inline:
+            return Function(
+                f"inline {self.return_type} {self.name}({self._parameters(True)}){self.suffix}",
+                self.body,
+            )
+        return self.declaration_node()
 
     def definition_node(self) -> Function:
-        return Function(self.definition_signature, self.body)
+        return Function(f"{self.return_type} {self.name}({self._parameters(False)}){self.suffix}", self.body)
+
+    def _parameters(self, include_defaults: bool) -> str:
+        render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
+        return ", ".join(render(parameter) for parameter in self.parameters)
 
 
 @dataclass(frozen=True)

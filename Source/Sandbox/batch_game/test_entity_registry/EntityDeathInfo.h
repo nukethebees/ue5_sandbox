@@ -61,9 +61,7 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> victims;
     TArray<FRegistryEntityHandle> killers;
 
-    void add(ETestDeathReason const reason,
-             FRegistryEntityHandle const victim,
-             FRegistryEntityHandle const killer);
+    void add(ETestDeathReason const reason, FRegistryEntityHandle const victim, FRegistryEntityHandle const killer);
     void add(ETestDeathReason const reason, FRegistryEntityHandle const victim) {
         add(reason, victim, FRegistryEntityHandle{});
     }

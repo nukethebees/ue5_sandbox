@@ -63,10 +63,7 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     using Task = ETestCapitalShipFightersTask;
     using Order = TestCapitalShipFighterOrder;
 
-    void add(FRegistryEntityHandle const handle,
-             Order const order,
-             Task const task,
-             FRegistryEntityHandle const target) {
+    void add(FRegistryEntityHandle const handle, Order const order, Task const task, FRegistryEntityHandle const target) {
         handles.Add(handle);
         orders.Add(order);
         tasks.Add(task);

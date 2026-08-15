@@ -6,11 +6,13 @@ from Codegen.manifest import modules
 from Codegen.nodes import (
     CppFile,
     ForwardDeclaration,
+    FreeFunctionSpec,
     Function,
     FunctionDeclaration,
-    FunctionSpec,
+    FunctionParameter,
     Include,
     Member,
+    MemberFunctionSpec,
     Module,
     Namespace,
     NewLines,
@@ -135,21 +137,53 @@ struct FValue {
             "struct FExportedData;",
         )
 
-    def test_function_spec_emits_header_and_source_nodes(self) -> None:
-        function = FunctionSpec(
-            "void update(int32 const value)",
-            "void FData::update(int32 const value)",
+    def test_member_function_spec_emits_header_and_source_nodes(self) -> None:
+        function = MemberFunctionSpec(
+            "update",
+            "void",
+            (FunctionParameter("int32 const", "value", "0"),),
             ("this->value = value;",),
         )
 
         self.assertEqual(
             function.declaration_node().render(RenderContext()),
-            "void update(int32 const value);",
+            "void update(int32 const value = 0);",
+        )
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """void FData::update(int32 const value) {
+    this->value = value;
+}""",
+        )
+        static_function = MemberFunctionSpec("reset", "void", (), (), is_static=True)
+        self.assertEqual(
+            static_function.declaration_node().render(RenderContext()),
+            "static void reset();",
+        )
+        self.assertEqual(
+            static_function.definition_node("FData").render(RenderContext()),
+            "void FData::reset() {\n\n}",
+        )
+
+    def test_free_function_spec_handles_inline_bodies(self) -> None:
+        function = FreeFunctionSpec(
+            "make_value",
+            "int32",
+            (FunctionParameter("int32", "value", "1"),),
+            ("return value;",),
+            is_inline=True,
+        )
+
+        self.assertEqual(
+            function.header_node().render(RenderContext()),
+            """inline int32 make_value(int32 value = 1) {
+    return value;
+}""",
         )
         self.assertEqual(
             function.definition_node().render(RenderContext()),
-            """void FData::update(int32 const value) {
-    this->value = value;
+            """int32 make_value(int32 value) {
+    return value;
 }""",
         )
 

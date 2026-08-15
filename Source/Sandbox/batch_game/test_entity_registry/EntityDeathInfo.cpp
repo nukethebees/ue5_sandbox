@@ -4,9 +4,7 @@
 
 #include "EntityDeathInfo.h"
 
-void EntityDeathInfo::add(ETestDeathReason const reason,
-                          FRegistryEntityHandle const victim,
-                          FRegistryEntityHandle const killer) {
+void EntityDeathInfo::add(ETestDeathReason const reason, FRegistryEntityHandle const victim, FRegistryEntityHandle const killer) {
     reasons.Add(reason);
     victims.Add(victim);
     killers.Add(killer);
