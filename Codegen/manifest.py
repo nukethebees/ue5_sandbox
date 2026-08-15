@@ -16,6 +16,8 @@ from Codegen.soa import ForEachSoAMemberCall, SoAStruct, lower_soa_structs, soa_
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BATCH_GAME_DIR = PROJECT_ROOT / "Source" / "Sandbox" / "batch_game"
+TEST_ENTITY_REGISTRY_DIR = BATCH_GAME_DIR / "test_entity_registry"
 
 
 def fighter_soa_module() -> Module:
@@ -49,11 +51,7 @@ def fighter_soa_module() -> Module:
     return Module(
         name="test_capital_ship_fighters_soa",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "TestCapitalShipFightersSoA.h",
+            path=BATCH_GAME_DIR / "TestCapitalShipFightersSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -154,7 +152,7 @@ def capital_ships_soa_module() -> Module:
     return Module(
         name="test_capital_ships_soa",
         header=CppFile(
-            path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestCapitalShipsSoA.h",
+            path=BATCH_GAME_DIR / "TestCapitalShipsSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -256,7 +254,7 @@ def lasers_soa_module() -> Module:
     return Module(
         name="test_lasers_soa",
         header=CppFile(
-            path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestLasersSoA.h",
+            path=BATCH_GAME_DIR / "TestLasersSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -308,12 +306,7 @@ def collision_damage_events_soa_module() -> Module:
     return Module(
         name="collision_damage_events_soa",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "test_entity_registry"
-            / "CollisionDamageEventsSoA.h",
+            path=TEST_ENTITY_REGISTRY_DIR / "CollisionDamageEventsSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -349,11 +342,7 @@ def fighter_spawn_queue_soa_module() -> Module:
     return Module(
         name="test_capital_ship_fighter_spawn_queue_soa",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "TestCapitalShipFighterSpawnQueueSoA.h",
+            path=BATCH_GAME_DIR / "TestCapitalShipFighterSpawnQueueSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -408,11 +397,7 @@ def fighter_order_queue_module() -> Module:
     return Module(
         name="test_capital_ship_fighter_order_queue",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "TestCapitalShipFighterOrderQueue.h",
+            path=BATCH_GAME_DIR / "TestCapitalShipFighterOrderQueue.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -471,12 +456,7 @@ def entity_death_info_module() -> Module:
     return Module(
         name="entity_death_info",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "test_entity_registry"
-            / "EntityDeathInfo.h",
+            path=TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -494,12 +474,7 @@ def entity_death_info_module() -> Module:
             ),
         ),
         source=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "test_entity_registry"
-            / "EntityDeathInfo.cpp",
+            path=TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.cpp",
             pragma_once=False,
             clang_format_off=True,
             nodes=(
@@ -530,7 +505,7 @@ def static_turrets_soa_module() -> Module:
     return Module(
         name="test_static_turrets_soa",
         header=CppFile(
-            path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestStaticTurretsSoA.h",
+            path=BATCH_GAME_DIR / "TestStaticTurretsSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -567,7 +542,7 @@ def tube_spinners_soa_module() -> Module:
     return Module(
         name="test_tube_spinners_soa",
         header=CppFile(
-            path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestTubeSpinnersSoA.h",
+            path=BATCH_GAME_DIR / "TestTubeSpinnersSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -601,12 +576,7 @@ def direct_damage_events_soa_module() -> Module:
     return Module(
         name="direct_damage_events_soa",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "test_entity_registry"
-            / "DirectDamageEventsSoA.h",
+            path=TEST_ENTITY_REGISTRY_DIR / "DirectDamageEventsSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -646,12 +616,7 @@ def unique_entity_data_soa_module() -> Module:
     return Module(
         name="test_entity_unique_entity_data_soa",
         header=CppFile(
-            path=PROJECT_ROOT
-            / "Source"
-            / "Sandbox"
-            / "batch_game"
-            / "test_entity_registry"
-            / "TestEntityUniqueEntityDataSoA.h",
+            path=TEST_ENTITY_REGISTRY_DIR / "TestEntityUniqueEntityDataSoA.h",
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
