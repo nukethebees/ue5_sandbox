@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
+#include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
@@ -25,8 +26,6 @@
 #include <optional>
 
 #include "TestCapitalShips.generated.h"
-
-struct FHitResult;
 
 class UInstancedStaticMeshComponent;
 class UBoxComponent;
@@ -205,7 +204,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     bool debugging_shapes_enabled{false};
   private:
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<FHitResult> hits,
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
     void visual_log_state() const;
 
@@ -219,7 +218,7 @@ struct FTestCapitalShipsSpatialQueryAccess {
         return actor->get_spatial_query_component();
     }
 
-    void resolve_hits(TConstArrayView<FHitResult> const hits,
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
                       TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
         actor->resolve_hits(hits, out_entity_handles);
     }

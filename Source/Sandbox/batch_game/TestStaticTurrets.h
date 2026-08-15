@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
+#include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
@@ -21,8 +22,6 @@
 #include <utility>
 
 #include "TestStaticTurrets.generated.h"
-
-struct FHitResult;
 
 class UInstancedStaticMeshComponent;
 class UPrimitiveComponent;
@@ -147,7 +146,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     bool draw_debug_entity_info_enabled{false};
   private:
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<FHitResult> hits,
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     friend struct FTestStaticTurretsSpatialQueryAccess;
@@ -160,7 +159,7 @@ struct FTestStaticTurretsSpatialQueryAccess {
         return actor->get_spatial_query_component();
     }
 
-    void resolve_hits(TConstArrayView<FHitResult> const hits,
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
                       TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
         actor->resolve_hits(hits, out_entity_handles);
     }

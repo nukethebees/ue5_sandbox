@@ -13,7 +13,6 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <Engine/HitResult.h>
 #include <Misc/Optional.h>
 
 TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
@@ -45,11 +44,9 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
         }
     }
   private:
-    static auto make_hit(AActor & actor, UPrimitiveComponent & component, int32 const item)
-        -> FHitResult {
-        FHitResult hit{&actor, &component, FVector::ZeroVector, FVector::UpVector};
-        hit.Item = item;
-        return hit;
+    static auto make_hit(UPrimitiveComponent const& component, int32 const item)
+        -> ml::FSpatialQueryHit {
+        return {&component, item};
     }
 
     void initial_setup() {
@@ -81,17 +78,17 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
             return;
         }
 
-        TArray<FHitResult> single_hit{make_hit(*capitals, *capital_instances, 0)};
+        TArray<ml::FSpatialQueryHit> single_hit{make_hit(*capital_instances, 0)};
         TArray<FRegistryEntityHandle> single_result{FRegistryEntityHandle{}};
         orchestrator.get_spatial_query_manager().resolve_hits(single_hit, single_result);
 
-        TArray<FHitResult> mixed_hits{
-            make_hit(*capitals, *capital_instances, 0),
-            make_hit(*lasers, *laser_instances, 0),
-            make_hit(*fighters, *fighter_instances, 1),
-            make_hit(*capitals, *capital_instances, 1),
-            make_hit(*capitals, *laser_instances, 0),
-            make_hit(*fighters, *fighter_instances, 0),
+        TArray<ml::FSpatialQueryHit> mixed_hits{
+            make_hit(*capital_instances, 0),
+            make_hit(*capital_instances, 1),
+            make_hit(*fighter_instances, 1),
+            make_hit(*fighter_instances, 0),
+            make_hit(*laser_instances, 0),
+            make_hit(*laser_instances, 0),
         };
         TArray<FRegistryEntityHandle> mixed_results;
         mixed_results.Init(capitals->get_handle(0), mixed_hits.Num());
@@ -102,11 +99,11 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
         sample.mixed_results = MoveTemp(mixed_results);
         sample.expected_results = {
             capitals->get_handle(0),
-            FRegistryEntityHandle{},
-            fighters->get_handles()[1],
             capitals->get_handle(1),
-            FRegistryEntityHandle{},
+            fighters->get_handles()[1],
             fighters->get_handles()[0],
+            FRegistryEntityHandle{},
+            FRegistryEntityHandle{},
         };
         samples.add(test_driver->get_time(), MoveTemp(sample));
     }
@@ -137,8 +134,8 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
                              sample.mixed_results[i],
                              FString::Printf(TEXT("Resolved handle at hit index %d"), i));
         }
-        checks.is_true(sample.mixed_results[1].is_null(), TEXT("Unknown actor resolves to null"));
-        checks.is_true(sample.mixed_results[4].is_null(),
+        checks.is_true(sample.mixed_results[4].is_null(), TEXT("Unknown actor resolves to null"));
+        checks.is_true(sample.mixed_results[5].is_null(),
                        TEXT("Unknown component resolves to null"));
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

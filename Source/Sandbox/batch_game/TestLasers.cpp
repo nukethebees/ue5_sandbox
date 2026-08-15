@@ -17,6 +17,7 @@
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Containers/StaticArray.h>
 #include <Engine/HitResult.h>
 #include <Engine/World.h>
 #include <NiagaraFunctionLibrary.h>
@@ -257,6 +258,7 @@ void ATestLasers::handle_collisions(float const dt) {
         }
     }
 
+    group_collision_hits();
     query_manager->resolve_hits(collision_hits, collision_damage_events.damaged_entities);
     entity_registry->queue_direct_damage_events(collision_damage_events);
 
@@ -297,12 +299,56 @@ void ATestLasers::check_collision_thread(int32 const job_index,
 
         data.to_remove.Add(i);
 
-        data.hits.Add(hit);
+        data.hits.Add({hit.GetComponent(), hit.Item});
         data.damage_events.damaged_entities.AddDefaulted();
         data.damage_events.damage_amounts.Add(lasers.entities.damages[i]);
         data.damage_events.instigators.Add(lasers.entities.instigator_handles[i]);
 
         ml::append(data.hit_details.locations, hit.Location);
+    }
+}
+
+void ATestLasers::group_collision_hits() {
+    check(query_manager);
+    check(collision_hits.Num() == collision_damage_events.num());
+
+    using Manager = ml::FSpatialQueryManager;
+    TStaticArray<int32, Manager::n_hit_sort_keys> bucket_counts{};
+    TStaticArray<int32, Manager::n_hit_sort_keys> bucket_offsets{};
+    TStaticArray<int32, Manager::n_hit_sort_keys> next_indices{};
+
+    auto const n{collision_hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const sort_key{query_manager->get_hit_sort_key(collision_hits[i])};
+        check(sort_key < Manager::n_hit_sort_keys);
+        ++bucket_counts[sort_key];
+    }
+
+    int32 offset{};
+    for (int32 i{}; i < Manager::n_hit_sort_keys; ++i) {
+        bucket_offsets[i] = offset;
+        next_indices[i] = offset;
+        offset += bucket_counts[i];
+    }
+
+    for (int32 bucket{}; bucket < Manager::n_hit_sort_keys; ++bucket) {
+        auto const bucket_end{bucket_offsets[bucket] + bucket_counts[bucket]};
+        while (next_indices[bucket] < bucket_end) {
+            auto const index{next_indices[bucket]};
+            auto const sort_key{query_manager->get_hit_sort_key(collision_hits[index])};
+            check(sort_key >= bucket);
+
+            if (sort_key == bucket) {
+                ++next_indices[bucket];
+                continue;
+            }
+
+            auto const destination{next_indices[sort_key]++};
+            collision_hits.Swap(index, destination);
+            collision_damage_events.damaged_entities.Swap(index, destination);
+            collision_damage_events.damage_amounts.Swap(index, destination);
+            collision_damage_events.instigators.Swap(index, destination);
+        }
     }
 }
 

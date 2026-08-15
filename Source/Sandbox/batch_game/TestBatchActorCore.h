@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
@@ -10,7 +11,6 @@
 struct FTestEntityRegistry;
 struct FRegistryEntityHandle;
 struct EntityDeathInfo;
-struct FHitResult;
 class UPrimitiveComponent;
 
 namespace ml::batch {
@@ -20,7 +20,7 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
                            TArray<int32>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info);
 
-void resolve_ismc_hits(TConstArrayView<FHitResult> hits,
+void resolve_ismc_hits(TConstArrayView<FSpatialQueryHit> hits,
                        TArrayView<FRegistryEntityHandle> out_entity_handles,
                        UPrimitiveComponent const& expected_component,
                        TConstArrayView<FRegistryEntityHandle> entity_handles);

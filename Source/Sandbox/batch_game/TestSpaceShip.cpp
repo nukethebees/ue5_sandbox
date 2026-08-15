@@ -176,13 +176,13 @@ auto ATestSpaceShip::get_spatial_query_component() const -> UPrimitiveComponent 
 }
 
 void
-    ATestSpaceShip::resolve_hits(TConstArrayView<FHitResult> const hits,
+    ATestSpaceShip::resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
                                  TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
     check(hits.Num() == out_entity_handles.Num());
 
     auto const n{hits.Num()};
     for (int32 i{}; i < n; ++i) {
-        check(hits[i].GetComponent() == ship_mesh);
+        check(hits[i].component == ship_mesh);
         out_entity_handles[i] = registry_handle;
     }
 }

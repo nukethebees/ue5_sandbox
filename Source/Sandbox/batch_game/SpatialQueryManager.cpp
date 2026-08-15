@@ -2,8 +2,6 @@
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
-#include <Engine/HitResult.h>
-
 #include <utility>
 
 namespace ml {
@@ -48,8 +46,8 @@ void FSpatialQueryManager::initialise(ATestSpaceShip const* const player_ship,
     component_resolvers.Add({tube_spinner_instances, EHitResolverKind::TubeSpinnerInstances});
 }
 
-auto FSpatialQueryManager::classify_hit(FHitResult const& hit) const -> EHitResolverKind {
-    auto const* const component{hit.GetComponent()};
+auto FSpatialQueryManager::classify_component(UPrimitiveComponent const* const component) const
+    -> EHitResolverKind {
     for (auto const& resolver : component_resolvers) {
         if (resolver.component == component) {
             return resolver.kind;
@@ -59,8 +57,14 @@ auto FSpatialQueryManager::classify_hit(FHitResult const& hit) const -> EHitReso
     return EHitResolverKind::Unknown;
 }
 
+auto FSpatialQueryManager::get_hit_sort_key(FSpatialQueryHit const& hit) const -> uint8 {
+    auto const kind{classify_component(hit.component)};
+    return kind == EHitResolverKind::Unknown ? std::to_underlying(EHitResolverKind::Count)
+                                             : std::to_underlying(kind);
+}
+
 void FSpatialQueryManager::resolve_hits(
-    TConstArrayView<FHitResult> const hits,
+    TConstArrayView<FSpatialQueryHit> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
     check(hits.Num() == out_entity_handles.Num());
     check(component_resolvers.Num() >= (std::to_underlying(EHitResolverKind::Count) - 1));
@@ -74,47 +78,52 @@ void FSpatialQueryManager::resolve_hits(
         return;
     }
 
-    TArray<EHitResolverKind> resolver_kinds;
-    TArray<int32> sorted_indices;
-    resolver_kinds.Reserve(n);
-    sorted_indices.Reserve(n);
+    struct FResolverSpan {
+        int32 offset{};
+        int32 count{};
+    };
+    TStaticArray<FResolverSpan, std::to_underlying(EHitResolverKind::Count)> resolver_spans{};
+
+    auto previous_kind{EHitResolverKind::Unknown};
+    auto const* previous_component{static_cast<UPrimitiveComponent const*>(nullptr)};
+    auto previous_sort_key{uint8{}};
 
     for (int32 i{}; i < n; ++i) {
-        resolver_kinds.Add(classify_hit(hits[i]));
-        sorted_indices.Add(i);
+        auto const& hit{hits[i]};
+        if (hit.component != previous_component) {
+            previous_component = hit.component;
+            previous_kind = classify_component(hit.component);
+            auto const sort_key{previous_kind == EHitResolverKind::Unknown
+                                    ? std::to_underlying(EHitResolverKind::Count)
+                                    : std::to_underlying(previous_kind)};
+            if (i > 0) {
+                check(previous_sort_key <= sort_key);
+            }
+            previous_sort_key = sort_key;
+        }
+
+        if (previous_kind == EHitResolverKind::Unknown) {
+            continue;
+        }
+
+        auto& span{resolver_spans[std::to_underlying(previous_kind)]};
+        if (span.count == 0) {
+            span.offset = i;
+        } else {
+            check(span.offset + span.count == i);
+        }
+        ++span.count;
     }
 
-    sorted_indices.Sort([&resolver_kinds](int32 const lhs_index, int32 const rhs_index) {
-        auto const lhs_kind{resolver_kinds[lhs_index]};
-        auto const rhs_kind{resolver_kinds[rhs_index]};
-        return std::to_underlying(lhs_kind) < std::to_underlying(rhs_kind);
-    });
+    for (int32 i{}; i < std::to_underlying(EHitResolverKind::Count); ++i) {
+        auto const& span{resolver_spans[i]};
+        if (span.count == 0) {
+            continue;
+        }
 
-    TArray<FHitResult> sorted_hits;
-    TArray<EHitResolverKind> sorted_resolver_kinds;
-    TArray<FRegistryEntityHandle> sorted_entity_handles;
-    sorted_hits.Reserve(n);
-    sorted_resolver_kinds.Reserve(n);
-    sorted_entity_handles.AddDefaulted(n);
-
-    for (int32 const sorted_index : sorted_indices) {
-        sorted_hits.Add(hits[sorted_index]);
-        sorted_resolver_kinds.Add(resolver_kinds[sorted_index]);
-    }
-
-    int32 index{};
-    while (index < n) {
-        auto const run_start{index};
-        auto const resolver_kind{sorted_resolver_kinds[index]};
-
-        do {
-            ++index;
-        } while ((index < n) && (sorted_resolver_kinds[index] == resolver_kind));
-
-        auto const run_count{index - run_start};
-        auto const hit_slice{TConstArrayView<FHitResult>{sorted_hits}.Slice(run_start, run_count)};
-        auto const handle_slice{
-            TArrayView<FRegistryEntityHandle>{sorted_entity_handles}.Slice(run_start, run_count)};
+        auto const resolver_kind{static_cast<EHitResolverKind>(i)};
+        auto const hit_slice{hits.Slice(span.offset, span.count)};
+        auto const handle_slice{out_entity_handles.Slice(span.offset, span.count)};
 
         switch (resolver_kind) {
             case EHitResolverKind::PlayerShipMesh:
@@ -133,12 +142,9 @@ void FSpatialQueryManager::resolve_hits(
                 tube_spinners_access.resolve_hits(hit_slice, handle_slice);
                 break;
             case EHitResolverKind::Unknown:
+            case EHitResolverKind::Count:
                 break;
         }
-    }
-
-    for (int32 i{}; i < n; ++i) {
-        out_entity_handles[sorted_indices[i]] = sorted_entity_handles[i];
     }
 }
 }

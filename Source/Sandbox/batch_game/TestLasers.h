@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
+#include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
@@ -8,7 +9,6 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <Engine/HitResult.h>
 #include <GameFramework/Actor.h>
 #include <Math/Color.h>
 #include <SandboxCore/generation_index.h>
@@ -29,7 +29,7 @@ struct FSpatialQueryManager;
 
 namespace ml::test_lasers {
 struct ThreadLocalCollisionData {
-    TArray<FHitResult> hits;
+    TArray<ml::FSpatialQueryHit> hits;
     DirectDamageEvents damage_events;
     TArray<int32> to_remove;
     HitDetails hit_details;
@@ -102,6 +102,7 @@ class ATestLasers : public AActor {
                                        float const dt,
                                        ThreadLocalCollisionData& data,
                                        ATestLasers const& lasers);
+    void group_collision_hits();
 
     // Misc
     void remove_instances(TConstArrayView<int32> indices);
@@ -134,7 +135,7 @@ class ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 collision_jobs{8};
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
-    TArray<FHitResult> collision_hits;
+    TArray<ml::FSpatialQueryHit> collision_hits;
     DirectDamageEvents collision_damage_events;
 
     // Hits

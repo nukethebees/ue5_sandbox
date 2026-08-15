@@ -108,7 +108,7 @@ auto ATestTubeSpinners::get_spatial_query_component() const -> UPrimitiveCompone
 }
 
 void ATestTubeSpinners::resolve_hits(
-    TConstArrayView<FHitResult> const hits,
+    TConstArrayView<ml::FSpatialQueryHit> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
     ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, entities.handles);
 }
