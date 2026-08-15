@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 
 
 GENERATED_FILE_WARNING = (
@@ -187,7 +187,10 @@ class CppFile(Node):
         object.__setattr__(self, "prologue", tuple(self.prologue))
         object.__setattr__(self, "epilogue", tuple(self.epilogue))
 
-    def render(self, context: RenderContext = RenderContext()) -> str:
+    def render(self, context: RenderContext | None = None) -> str:
+        if context is None:
+            context = RenderContext()
+
         if context.indent_level != 0:
             raise ValueError("CppFile must be rendered at the root indentation level")
 
