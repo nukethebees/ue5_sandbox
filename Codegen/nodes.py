@@ -95,11 +95,15 @@ class UsingDeclaration(Node):
 
 @dataclass(frozen=True)
 class Member(Node):
-    declaration: str
+    type_name: str
+    name: str
+
+    def __post_init__(self) -> None:
+        if not self.type_name.strip() or not self.name.strip():
+            raise ValueError("Member type and name must not be empty")
 
     def render(self, context: RenderContext) -> str:
-        declaration = self.declaration.rstrip(";") + ";"
-        return context.apply_indent(declaration)
+        return context.apply_indent(f"{self.type_name} {self.name};")
 
 
 @dataclass(frozen=True)
@@ -310,6 +314,10 @@ class Struct(Node):
         object.__setattr__(self, "bases", tuple(bases))
         object.__setattr__(self, "template", template)
         object.__setattr__(self, "export_specifier", export_specifier)
+        member_names = [node.name for node in self.nodes if isinstance(node, Member)]
+        duplicates = sorted({name for name in member_names if member_names.count(name) > 1})
+        if duplicates:
+            raise ValueError(f"Struct {self.name!r} has duplicate members: {', '.join(duplicates)}")
 
     def render(self, context: RenderContext) -> str:
         lines: list[str] = []

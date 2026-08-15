@@ -58,7 +58,7 @@ class NodeRenderingTests(unittest.TestCase):
                         Struct(
                             "FValue",
                             (
-                                Member("int32 value"),
+                                Member("int32", "value"),
                                 Function("auto get() const -> int32", Raw("return value;")),
                             ),
                         ),
@@ -133,7 +133,7 @@ struct FValue {
     def test_generic_declaration_nodes_render_in_a_struct(self) -> None:
         node = Struct(
             "FExportedData",
-            (UsingDeclaration("IndexType", "int32"), Member("IndexType index")),
+            (UsingDeclaration("IndexType", "int32"), Member("IndexType", "index")),
             export_specifier="SANDBOX_API",
         )
 
@@ -329,10 +329,14 @@ class SoARenderingTests(unittest.TestCase):
 
         member = tarray_member("values", "int32")
         with self.assertRaisesRegex(ValueError, "duplicate members"):
-            SoAStruct("FData", "TDataView", "TDataConstView", (member, member))
+            lower_soa_struct(SoAStruct("FData", "TDataView", "TDataConstView", (member, member)))
 
         with self.assertRaisesRegex(ValueError, "at least one member"):
             SoAStruct("FData", "TDataView", "TDataConstView", ())
+
+    def test_struct_rejects_duplicate_member_names(self) -> None:
+        with self.assertRaisesRegex(ValueError, "duplicate members"):
+            Struct("FData", (Member("int32", "value"), Member("float", "value")))
 
     def test_storage_metadata_is_rendered(self) -> None:
         soa = SoAStruct(

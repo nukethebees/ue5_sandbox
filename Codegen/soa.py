@@ -98,12 +98,6 @@ class SoAStruct:
         object.__setattr__(self, "nodes", tuple(self.nodes))
         if not self.members:
             raise ValueError(f"SOA struct {self.name!r} must contain at least one member")
-        names = [member.name for member in self.members]
-        duplicates = sorted({name for name in names if names.count(name) > 1})
-        if duplicates:
-            raise ValueError(
-                f"SOA struct {self.name!r} has duplicate members: {', '.join(duplicates)}"
-            )
         for alias_name, alias_value_type in self.storage_type_aliases:
             if not alias_name.strip() or not alias_value_type.strip():
                 raise ValueError("SOA storage type aliases must not be empty")
@@ -151,8 +145,8 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Function:
 def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struct:
     members = tuple(
         Member(
-            f"{member.const_view_type if use_const_view_types else member.view_type} "
-            f"{member.name}"
+            member.const_view_type if use_const_view_types else member.view_type,
+            member.name,
         )
         for member in soa.members
     )
@@ -172,7 +166,7 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
 
 
 def _storage_struct(soa: SoAStruct) -> Struct:
-    members = tuple(Member(f"{member.container_type} {member.name}") for member in soa.members)
+    members = tuple(Member(member.container_type, member.name) for member in soa.members)
     aliases = tuple(UsingDeclaration(name, value_type) for name, value_type in soa.storage_type_aliases)
     struct_nodes: list[Node] = [
         UsingDeclaration("View", soa.view_name),
