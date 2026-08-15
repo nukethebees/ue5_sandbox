@@ -10,11 +10,53 @@
 #include <SandboxCore/soa_array_mixin.h>
 
 #include <Containers/Array.h>
+#include <Containers/ArrayView.h>
 #include <HAL/Platform.h>
 
 #include <utility>
 
+struct EntityDeathInfoConstView;
+
+struct EntityDeathInfoView : public ml::FSoAViewMixin {
+    using View = EntityDeathInfoView;
+    using ConstView = EntityDeathInfoConstView;
+
+    TArrayView<ETestDeathReason> reasons;
+    TArrayView<FRegistryEntityHandle> victims;
+    TArrayView<FRegistryEntityHandle> killers;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.reasons,
+            self.victims,
+            self.killers
+        );
+    }
+};
+
+struct EntityDeathInfoConstView : public ml::FSoAViewMixin {
+    using View = EntityDeathInfoView;
+    using ConstView = EntityDeathInfoConstView;
+
+    TConstArrayView<ETestDeathReason> reasons;
+    TConstArrayView<FRegistryEntityHandle> victims;
+    TConstArrayView<FRegistryEntityHandle> killers;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.reasons,
+            self.victims,
+            self.killers
+        );
+    }
+};
+
 struct EntityDeathInfo : public ml::FSoAArrayMixin {
+    using View = EntityDeathInfoView;
+    using ConstView = EntityDeathInfoConstView;
+
     TArray<ETestDeathReason> reasons;
     TArray<FRegistryEntityHandle> victims;
     TArray<FRegistryEntityHandle> killers;
@@ -28,7 +70,21 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.reasons, self.victims, self.killers);
+        return std::forward<TFunc>(func)(
+            self.reasons,
+            self.victims,
+            self.killers
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.reasons, other.reasons,
+            self.victims, other.victims,
+            self.killers, other.killers
+        );
     }
 };
 // clang-format on

@@ -146,34 +146,5 @@ struct FSoAArrayMixin : public FSoACommonMixin {
     }
 };
 
-#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS(MEMBER_NAME) self.MEMBER_NAME
-#define SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS(MEMBER_NAME) self.MEMBER_NAME, other.MEMBER_NAME
-
-#define SANDBOX_SOA_MIXIN_MEMBER_TYPE_ALIAS(MEMBER_NAME) \
-    using member_type_##MEMBER_NAME = decltype(MEMBER_NAME);
-#define SANDBOX_SOA_MIXIN_VIEW_MEMBER(MEMBER_NAME) member_type_##MEMBER_NAME MEMBER_NAME;
-
-/* SANDBOX_SOA_MEMBERS is a macro in the form
-
-#define SANDBOX_PACK(STAMPER)  \
-    STAMPER(entity_handles)    \
-    , STAMPER(tasks)           \
-    , ...
-
-*/
-
-#define SANDBOX_EXPAND_COMMA(INPUT) INPUT,
-#define SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_SOA_MEMBERS)                                       \
-    template <typename TFunc>                                                                 \
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {                     \
-        return std::forward<TFunc>(func)(                                                     \
-            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS, SANDBOX_EXPAND_COMMA));       \
-    }                                                                                         \
-    template <typename Self, typename Other, typename TFunc>                                  \
-    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) { \
-        return std::forward<TFunc>(func)(                                                     \
-            SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS, SANDBOX_EXPAND_COMMA)); \
-    }
-
 struct FSoAViewMixin : public FSoACommonMixin {};
 }

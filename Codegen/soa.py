@@ -59,12 +59,18 @@ class SoAStruct:
     members: tuple[SoAMember, ...]
     storage_export_specifier: str | None = None
     storage_type_aliases: tuple[tuple[str, str], ...] = ()
+    outer_nodes: tuple[Node, ...] = ()
+    storage_prefix_nodes: tuple[Node, ...] = ()
+    storage_suffix_nodes: tuple[Node, ...] = ()
     storage_base: str = "ml::FSoAArrayMixin"
     view_base: str = "ml::FSoAViewMixin"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
         object.__setattr__(self, "storage_type_aliases", tuple(self.storage_type_aliases))
+        object.__setattr__(self, "outer_nodes", tuple(self.outer_nodes))
+        object.__setattr__(self, "storage_prefix_nodes", tuple(self.storage_prefix_nodes))
+        object.__setattr__(self, "storage_suffix_nodes", tuple(self.storage_suffix_nodes))
         if not self.members:
             raise ValueError(f"SOA struct {self.name!r} must contain at least one member")
         names = [member.name for member in self.members]
@@ -150,7 +156,12 @@ def _storage_struct(soa: SoAStruct) -> Struct:
     ]
     if aliases:
         nodes.extend((NewLines(2), *_separate(aliases, 1)))
-    nodes.extend((NewLines(2), *_separate(members, 1), NewLines(2), _apply_arrays_function(soa.members)))
+    if soa.storage_prefix_nodes:
+        nodes.extend((NewLines(2), *soa.storage_prefix_nodes))
+    nodes.extend((NewLines(2), *_separate(members, 1)))
+    if soa.storage_suffix_nodes:
+        nodes.extend((NewLines(2), *soa.storage_suffix_nodes))
+    nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
     nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
     return Struct(
         soa.name,
@@ -161,7 +172,10 @@ def _storage_struct(soa: SoAStruct) -> Struct:
 
 
 def lower_soa_struct(soa: SoAStruct) -> tuple[Node, ...]:
-    return (
+    nodes: list[Node] = []
+    if soa.outer_nodes:
+        nodes.extend((*soa.outer_nodes, NewLines(2)))
+    nodes.extend((
         ForwardDeclaration(soa.const_view_name),
         NewLines(2),
         _view_struct(soa, soa.view_name, False),
@@ -169,7 +183,8 @@ def lower_soa_struct(soa: SoAStruct) -> tuple[Node, ...]:
         _view_struct(soa, soa.const_view_name, True),
         NewLines(2),
         _storage_struct(soa),
-    )
+    ))
+    return tuple(nodes)
 
 
 def lower_soa_structs(soa_structs: Iterable[SoAStruct]) -> tuple[Node, ...]:

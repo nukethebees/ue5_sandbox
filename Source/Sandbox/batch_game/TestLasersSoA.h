@@ -18,6 +18,112 @@
 #include <utility>
 
 namespace ml::test_lasers {
+struct SpawnRequestsConstView;
+
+struct SpawnRequestsView : public ml::FSoAViewMixin {
+    using View = SpawnRequestsView;
+    using ConstView = SpawnRequestsConstView;
+
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    FVectors3f::View base_velocities;
+    TArrayView<int32> damages;
+    TArrayView<float> speeds;
+    TArrayView<float> max_distances;
+    TArrayView<FRegistryEntityHandle> instigator_handles;
+    TArrayView<FLinearColor> colours;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.base_velocities,
+            self.damages,
+            self.speeds,
+            self.max_distances,
+            self.instigator_handles,
+            self.colours
+        );
+    }
+};
+
+struct SpawnRequestsConstView : public ml::FSoAViewMixin {
+    using View = SpawnRequestsView;
+    using ConstView = SpawnRequestsConstView;
+
+    FVectors3f::ConstView locations;
+    FRotatorsf::ConstView rotations;
+    FVectors3f::ConstView base_velocities;
+    TConstArrayView<int32> damages;
+    TConstArrayView<float> speeds;
+    TConstArrayView<float> max_distances;
+    TConstArrayView<FRegistryEntityHandle> instigator_handles;
+    TConstArrayView<FLinearColor> colours;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.base_velocities,
+            self.damages,
+            self.speeds,
+            self.max_distances,
+            self.instigator_handles,
+            self.colours
+        );
+    }
+};
+
+struct SpawnRequests : public ml::FSoAArrayMixin {
+    using View = SpawnRequestsView;
+    using ConstView = SpawnRequestsConstView;
+
+    FVectors3f locations;
+    FRotatorsf rotations;
+    FVectors3f base_velocities;
+    TArray<int32> damages;
+    TArray<float> speeds;
+    TArray<float> max_distances;
+    TArray<FRegistryEntityHandle> instigator_handles;
+    TArray<FLinearColor> colours;
+
+    void set_damages(int32 const value);
+    void set_speeds(float const value);
+    void set_max_distances(float const value);
+    void set_colours(FLinearColor const value);
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.base_velocities,
+            self.damages,
+            self.speeds,
+            self.max_distances,
+            self.instigator_handles,
+            self.colours
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations, other.locations,
+            self.rotations, other.rotations,
+            self.base_velocities, other.base_velocities,
+            self.damages, other.damages,
+            self.speeds, other.speeds,
+            self.max_distances, other.max_distances,
+            self.instigator_handles, other.instigator_handles,
+            self.colours, other.colours
+        );
+    }
+};
+
 struct EntitiesConstView;
 
 struct EntitiesView : public ml::FSoAViewMixin {

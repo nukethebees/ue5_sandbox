@@ -7,6 +7,7 @@ from Codegen.nodes import (
     CppFile,
     ForwardDeclaration,
     Function,
+    FunctionDeclaration,
     FunctionSpec,
     Include,
     Member,
@@ -214,6 +215,28 @@ class SoARenderingTests(unittest.TestCase):
 
         self.assertIn("struct SANDBOX_API FExportedData", rendered)
         self.assertIn("using CountType = int32;", rendered)
+
+    def test_soa_lowering_inserts_storage_extra_nodes_in_order(self) -> None:
+        soa = SoAStruct(
+            "FData",
+            "FDataView",
+            "FDataConstView",
+            (tarray_member("values", "FValue"),),
+            outer_nodes=(Struct("FValue", (Member("int32 value"),)),),
+            storage_prefix_nodes=(Function("void reset_values()", ("values.Reset();",)),),
+            storage_suffix_nodes=(FunctionDeclaration("void validate_values()"),),
+        )
+
+        rendered = "\n\n".join(
+            node.render(RenderContext())
+            for node in lower_soa_struct(soa)
+            if not isinstance(node, NewLines)
+        )
+
+        self.assertLess(rendered.index("struct FValue"), rendered.index("struct FDataConstView"))
+        self.assertLess(rendered.index("void reset_values()"), rendered.index("TArray<FValue> values"))
+        self.assertLess(rendered.index("TArray<FValue> values"), rendered.index("void validate_values"))
+        self.assertLess(rendered.index("void validate_values"), rendered.index("apply_arrays"))
 
 
 if __name__ == "__main__":

@@ -281,18 +281,67 @@ struct EntityData : public ml::FSoAArrayMixin {
     }
 };
 
+struct FighterReassignmentConstView;
+
+struct FighterReassignmentView : public ml::FSoAViewMixin {
+    using View = FighterReassignmentView;
+    using ConstView = FighterReassignmentConstView;
+
+    TArrayView<FRegistryEntityHandle> capital_handles;
+    TArrayView<FRegistryEntityHandle> fighter_handles;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.capital_handles,
+            self.fighter_handles
+        );
+    }
+};
+
+struct FighterReassignmentConstView : public ml::FSoAViewMixin {
+    using View = FighterReassignmentView;
+    using ConstView = FighterReassignmentConstView;
+
+    TConstArrayView<FRegistryEntityHandle> capital_handles;
+    TConstArrayView<FRegistryEntityHandle> fighter_handles;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.capital_handles,
+            self.fighter_handles
+        );
+    }
+};
+
 struct FighterReassignment : public ml::FSoAArrayMixin {
+    using View = FighterReassignmentView;
+    using ConstView = FighterReassignmentConstView;
+
+    TArray<FRegistryEntityHandle> capital_handles;
+    TArray<FRegistryEntityHandle> fighter_handles;
+
     void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
         capital_handles.Add(ch);
         fighter_handles.Add(fh);
     }
 
-    TArray<FRegistryEntityHandle> capital_handles;
-    TArray<FRegistryEntityHandle> fighter_handles;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.capital_handles, self.fighter_handles);
+        return std::forward<TFunc>(func)(
+            self.capital_handles,
+            self.fighter_handles
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.capital_handles, other.capital_handles,
+            self.fighter_handles, other.fighter_handles
+        );
     }
 };
 } // namespace ml::test_capital_ships

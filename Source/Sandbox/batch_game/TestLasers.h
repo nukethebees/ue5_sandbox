@@ -7,10 +7,6 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCore/generation_index.h>
-#include <SandboxCore/soa_array_mixin.h>
-#include <SandboxCore/soa_rotators.h>
-#include <SandboxCore/soa_vectors.h>
-
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -28,35 +24,6 @@ class ATestEntityRegistry;
 class ATestBatchOrchestrator;
 
 namespace ml::test_lasers {
-struct SpawnRequests : public ml::FSoAArrayMixin {
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FVectors3f base_velocities;
-    TArray<int32> damages;
-    TArray<float> speeds;
-    TArray<float> max_distances;
-    TArray<FRegistryEntityHandle> instigator_handles;
-    TArray<FLinearColor> colours;
-
-    void set_damages(int32 const value);
-    void set_speeds(float const value);
-    void set_max_distances(float const value);
-    void set_colours(FLinearColor const value);
-
-#define SANDBOX_PACK(STAMPER, NON_FINAL)   \
-    NON_FINAL(STAMPER(locations))          \
-    NON_FINAL(STAMPER(rotations))          \
-    NON_FINAL(STAMPER(base_velocities))    \
-    NON_FINAL(STAMPER(damages))            \
-    NON_FINAL(STAMPER(speeds))             \
-    NON_FINAL(STAMPER(max_distances))      \
-    NON_FINAL(STAMPER(instigator_handles)) \
-    STAMPER(colours)
-
-    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
-#undef SANDBOX_PACK
-};
-
 struct ThreadLocalCollisionData {
     UnresolvedCollisionDamageEvents collision_damage_events;
     TArray<int32> to_remove;
