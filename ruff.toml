@@ -10,6 +10,13 @@ select = [
     "UP",
     # Ruff checks focused on correctness and stale suppression comments.
     "RUF",
+    # Pylint error checks for likely runtime failures and invalid constructs.
+    "PLE",
+    # Do not hide diagnostics behind blanket type-checker or linter suppressions.
+    "PGH003",
+    "PGH004",
+    # A trailing comma can accidentally turn an expression into a tuple.
+    "COM818",
     # Useful pycodestyle correctness checks; intentionally excludes formatting rules.
     "E711", # Compare with None using `is` / `is not`.
     "E712", # Avoid equality comparisons with True, False, and None.
