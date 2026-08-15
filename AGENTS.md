@@ -46,7 +46,8 @@ Unreal Engine 5.8 project.
 # Testing
 
 * Only create tests when explicitly asked.
-* When adding tests, do not compile or run them; ask the user to compile and check them.
+* Do not compile C++, launch Unreal, or run Unreal tests. Ask the user to perform all C++/Unreal builds and tests, then continue based on their reported results.
+* Python scripts may be run when needed.
 * Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
 * `SANDBOX_TESTS_ASSERT_ALL_PASSED` returns when a soft assertion has failed; use it to end assertion stages instead of adding duplicate failure branches.
 * All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
