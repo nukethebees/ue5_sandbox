@@ -23,6 +23,20 @@ struct EntityDataView : public ml::FSoAViewMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.handles,
+            self.locations,
+            self.teams,
+            self.laser_cooldowns,
+            self.target_handles,
+            self.target_locations,
+            self.target_velocities,
+            self.healths
+        );
+    }
+
     TArrayView<FRegistryEntityHandle> handles;
     FVectors3f::View locations;
     TArrayView<ETestTeam> teams;
@@ -31,6 +45,11 @@ struct EntityDataView : public ml::FSoAViewMixin {
     FVectors3f::View target_locations;
     FVectors3f::View target_velocities;
     TArrayView<int32> healths;
+};
+
+struct EntityDataConstView : public ml::FSoAViewMixin {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -45,11 +64,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
             self.healths
         );
     }
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
     FVectors3f::ConstView locations;
@@ -59,34 +73,11 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     FVectors3f::ConstView target_locations;
     FVectors3f::ConstView target_velocities;
     TConstArrayView<int32> healths;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.teams,
-            self.laser_cooldowns,
-            self.target_handles,
-            self.target_locations,
-            self.target_velocities,
-            self.healths
-        );
-    }
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
-
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    TArray<ETestTeam> teams;
-    FTickCountdown16 laser_cooldowns;
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f target_locations;
-    FVectors3f target_velocities;
-    TArray<int32> healths;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -116,6 +107,15 @@ struct EntityData : public ml::FSoAArrayMixin {
             self.healths, other.healths
         );
     }
+
+    TArray<FRegistryEntityHandle> handles;
+    FVectors3f locations;
+    TArray<ETestTeam> teams;
+    FTickCountdown16 laser_cooldowns;
+    TArray<FRegistryEntityHandle> target_handles;
+    FVectors3f target_locations;
+    FVectors3f target_velocities;
+    TArray<int32> healths;
 };
 } // namespace ml::test_static_turrets
 // clang-format on

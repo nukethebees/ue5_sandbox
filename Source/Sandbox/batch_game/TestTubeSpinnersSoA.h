@@ -22,12 +22,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
-    TArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::View locations;
-    TArrayView<float> yaws;
-    FTickCountdown16::View laser_cooldowns;
-    TArrayView<int32> next_fire_point_indices;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -38,18 +32,18 @@ struct EntityDataView : public ml::FSoAViewMixin {
             self.next_fire_point_indices
         );
     }
+
+    TArrayView<FRegistryEntityHandle> handles;
+    FVectors3f::View locations;
+    TArrayView<float> yaws;
+    FTickCountdown16::View laser_cooldowns;
+    TArrayView<int32> next_fire_point_indices;
 };
 
 struct EntityDataConstView : public ml::FSoAViewMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
-    TConstArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::ConstView locations;
-    TConstArrayView<float> yaws;
-    FTickCountdown16::ConstView laser_cooldowns;
-    TConstArrayView<int32> next_fire_point_indices;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -60,17 +54,17 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
             self.next_fire_point_indices
         );
     }
+
+    TConstArrayView<FRegistryEntityHandle> handles;
+    FVectors3f::ConstView locations;
+    TConstArrayView<float> yaws;
+    FTickCountdown16::ConstView laser_cooldowns;
+    TConstArrayView<int32> next_fire_point_indices;
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
-
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    TArray<float> yaws;
-    FTickCountdown16 laser_cooldowns;
-    TArray<int32> next_fire_point_indices;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -94,6 +88,12 @@ struct EntityData : public ml::FSoAArrayMixin {
             self.next_fire_point_indices, other.next_fire_point_indices
         );
     }
+
+    TArray<FRegistryEntityHandle> handles;
+    FVectors3f locations;
+    TArray<float> yaws;
+    FTickCountdown16 laser_cooldowns;
+    TArray<int32> next_fire_point_indices;
 };
 } // namespace ml::test_tube_spinners
 // clang-format on

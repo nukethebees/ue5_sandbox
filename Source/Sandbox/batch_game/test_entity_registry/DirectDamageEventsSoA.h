@@ -20,10 +20,6 @@ struct DirectDamageEventsView : public ml::FSoAViewMixin {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
-    TArrayView<FRegistryEntityHandle> damaged_entities;
-    TArrayView<int32> damage_amounts;
-    TArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -32,16 +28,16 @@ struct DirectDamageEventsView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TArrayView<FRegistryEntityHandle> damaged_entities;
+    TArrayView<int32> damage_amounts;
+    TArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct DirectDamageEventsConstView : public ml::FSoAViewMixin {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
-    TConstArrayView<FRegistryEntityHandle> damaged_entities;
-    TConstArrayView<int32> damage_amounts;
-    TConstArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -50,15 +46,15 @@ struct DirectDamageEventsConstView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TConstArrayView<FRegistryEntityHandle> damaged_entities;
+    TConstArrayView<int32> damage_amounts;
+    TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct DirectDamageEvents : public ml::FSoAArrayMixin {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
-
-    TArray<FRegistryEntityHandle> damaged_entities;
-    TArray<int32> damage_amounts;
-    TArray<FRegistryEntityHandle> instigators;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -78,5 +74,9 @@ struct DirectDamageEvents : public ml::FSoAArrayMixin {
             self.instigators, other.instigators
         );
     }
+
+    TArray<FRegistryEntityHandle> damaged_entities;
+    TArray<int32> damage_amounts;
+    TArray<FRegistryEntityHandle> instigators;
 };
 // clang-format on

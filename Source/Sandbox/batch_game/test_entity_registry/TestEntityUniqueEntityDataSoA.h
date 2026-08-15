@@ -24,6 +24,20 @@ struct TestEntityUniqueEntityDataView : public ml::FSoAViewMixin {
     using View = TestEntityUniqueEntityDataView;
     using ConstView = TestEntityUniqueEntityDataConstView;
 
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.registry_indices,
+            self.registry_generations,
+            self.entity_types,
+            self.teams,
+            self.kills,
+            self.alive,
+            self.killed_by,
+            self.death_reason
+        );
+    }
+
     TArrayView<FRegistryEntityHandle::index_type> registry_indices;
     TArrayView<FRegistryEntityHandle::generation_type> registry_generations;
     TArrayView<ETestEntityType> entity_types;
@@ -32,6 +46,11 @@ struct TestEntityUniqueEntityDataView : public ml::FSoAViewMixin {
     TArrayView<uint8> alive;
     TArrayView<TestEntityUniqueId> killed_by;
     TArrayView<ETestDeathReason> death_reason;
+};
+
+struct TestEntityUniqueEntityDataConstView : public ml::FSoAViewMixin {
+    using View = TestEntityUniqueEntityDataView;
+    using ConstView = TestEntityUniqueEntityDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -46,11 +65,6 @@ struct TestEntityUniqueEntityDataView : public ml::FSoAViewMixin {
             self.death_reason
         );
     }
-};
-
-struct TestEntityUniqueEntityDataConstView : public ml::FSoAViewMixin {
-    using View = TestEntityUniqueEntityDataView;
-    using ConstView = TestEntityUniqueEntityDataConstView;
 
     TConstArrayView<FRegistryEntityHandle::index_type> registry_indices;
     TConstArrayView<FRegistryEntityHandle::generation_type> registry_generations;
@@ -60,20 +74,6 @@ struct TestEntityUniqueEntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<uint8> alive;
     TConstArrayView<TestEntityUniqueId> killed_by;
     TConstArrayView<ETestDeathReason> death_reason;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.registry_indices,
-            self.registry_generations,
-            self.entity_types,
-            self.teams,
-            self.kills,
-            self.alive,
-            self.killed_by,
-            self.death_reason
-        );
-    }
 };
 
 struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
@@ -81,15 +81,6 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
     using ConstView = TestEntityUniqueEntityDataConstView;
 
     using kills_type = uint32;
-
-    TArray<FRegistryEntityHandle::index_type> registry_indices;
-    TArray<FRegistryEntityHandle::generation_type> registry_generations;
-    TArray<ETestEntityType> entity_types;
-    TArray<ETestTeam> teams;
-    TArray<uint32> kills;
-    TArray<uint8> alive;
-    TArray<TestEntityUniqueId> killed_by;
-    TArray<ETestDeathReason> death_reason;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -119,5 +110,14 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
             self.death_reason, other.death_reason
         );
     }
+
+    TArray<FRegistryEntityHandle::index_type> registry_indices;
+    TArray<FRegistryEntityHandle::generation_type> registry_generations;
+    TArray<ETestEntityType> entity_types;
+    TArray<ETestTeam> teams;
+    TArray<uint32> kills;
+    TArray<uint8> alive;
+    TArray<TestEntityUniqueId> killed_by;
+    TArray<ETestDeathReason> death_reason;
 };
 // clang-format on

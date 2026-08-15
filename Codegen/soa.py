@@ -88,16 +88,14 @@ class SoAStruct:
     members: tuple[SoAMember, ...]
     storage_export_specifier: str | None = None
     storage_type_aliases: tuple[tuple[str, str], ...] = ()
-    storage_prefix_nodes: tuple[Node, ...] = ()
-    storage_suffix_nodes: tuple[Node, ...] = ()
+    nodes: tuple[Node, ...] = ()
     storage_base: str = "ml::FSoAArrayMixin"
     view_base: str = "ml::FSoAViewMixin"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
         object.__setattr__(self, "storage_type_aliases", tuple(self.storage_type_aliases))
-        object.__setattr__(self, "storage_prefix_nodes", tuple(self.storage_prefix_nodes))
-        object.__setattr__(self, "storage_suffix_nodes", tuple(self.storage_suffix_nodes))
+        object.__setattr__(self, "nodes", tuple(self.nodes))
         if not self.members:
             raise ValueError(f"SOA struct {self.name!r} must contain at least one member")
         names = [member.name for member in self.members]
@@ -165,9 +163,9 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
             NewLines(1),
             UsingDeclaration("ConstView", soa.const_view_name),
             NewLines(2),
-            *_separate(members, 1),
-            NewLines(2),
             _apply_arrays_function(soa.members),
+            NewLines(2),
+            *_separate(members, 1),
         ),
         bases=(f"public {soa.view_base}",),
     )
@@ -176,23 +174,21 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
 def _storage_struct(soa: SoAStruct) -> Struct:
     members = tuple(Member(f"{member.container_type} {member.name}") for member in soa.members)
     aliases = tuple(UsingDeclaration(name, value_type) for name, value_type in soa.storage_type_aliases)
-    nodes: list[Node] = [
+    struct_nodes: list[Node] = [
         UsingDeclaration("View", soa.view_name),
         NewLines(1),
         UsingDeclaration("ConstView", soa.const_view_name),
     ]
     if aliases:
-        nodes.extend((NewLines(2), *_separate(aliases, 1)))
-    if soa.storage_prefix_nodes:
-        nodes.extend((NewLines(2), *soa.storage_prefix_nodes))
-    nodes.extend((NewLines(2), *_separate(members, 1)))
-    if soa.storage_suffix_nodes:
-        nodes.extend((NewLines(2), *soa.storage_suffix_nodes))
-    nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
-    nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
+        struct_nodes.extend((NewLines(2), *_separate(aliases, 1)))
+    if soa.nodes:
+        struct_nodes.extend((NewLines(2), *soa.nodes))
+    struct_nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
+    struct_nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
+    struct_nodes.extend((NewLines(2), *_separate(members, 1)))
     return Struct(
         soa.name,
-        nodes,
+        struct_nodes,
         bases=(f"public {soa.storage_base}",),
         export_specifier=soa.storage_export_specifier,
     )

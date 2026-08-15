@@ -21,10 +21,6 @@ struct EntityDeathInfoView : public ml::FSoAViewMixin {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
-    TArrayView<ETestDeathReason> reasons;
-    TArrayView<FRegistryEntityHandle> victims;
-    TArrayView<FRegistryEntityHandle> killers;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -33,16 +29,16 @@ struct EntityDeathInfoView : public ml::FSoAViewMixin {
             self.killers
         );
     }
+
+    TArrayView<ETestDeathReason> reasons;
+    TArrayView<FRegistryEntityHandle> victims;
+    TArrayView<FRegistryEntityHandle> killers;
 };
 
 struct EntityDeathInfoConstView : public ml::FSoAViewMixin {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
-    TConstArrayView<ETestDeathReason> reasons;
-    TConstArrayView<FRegistryEntityHandle> victims;
-    TConstArrayView<FRegistryEntityHandle> killers;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -51,15 +47,15 @@ struct EntityDeathInfoConstView : public ml::FSoAViewMixin {
             self.killers
         );
     }
+
+    TConstArrayView<ETestDeathReason> reasons;
+    TConstArrayView<FRegistryEntityHandle> victims;
+    TConstArrayView<FRegistryEntityHandle> killers;
 };
 
 struct EntityDeathInfo : public ml::FSoAArrayMixin {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
-
-    TArray<ETestDeathReason> reasons;
-    TArray<FRegistryEntityHandle> victims;
-    TArray<FRegistryEntityHandle> killers;
 
     void add(ETestDeathReason const reason, FRegistryEntityHandle const victim, FRegistryEntityHandle const killer);
     void add(ETestDeathReason const reason, FRegistryEntityHandle const victim) {
@@ -84,5 +80,9 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
             self.killers, other.killers
         );
     }
+
+    TArray<ETestDeathReason> reasons;
+    TArray<FRegistryEntityHandle> victims;
+    TArray<FRegistryEntityHandle> killers;
 };
 // clang-format on

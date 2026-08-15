@@ -20,11 +20,6 @@ struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
-    TArrayView<FRegistryEntityHandle> handles;
-    TArrayView<TestCapitalShipFighterOrder> orders;
-    TArrayView<ETestCapitalShipFightersTask> tasks;
-    TArrayView<FRegistryEntityHandle> targets;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -34,17 +29,17 @@ struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
             self.targets
         );
     }
+
+    TArrayView<FRegistryEntityHandle> handles;
+    TArrayView<TestCapitalShipFighterOrder> orders;
+    TArrayView<ETestCapitalShipFightersTask> tasks;
+    TArrayView<FRegistryEntityHandle> targets;
 };
 
 struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
-    TConstArrayView<FRegistryEntityHandle> handles;
-    TConstArrayView<TestCapitalShipFighterOrder> orders;
-    TConstArrayView<ETestCapitalShipFightersTask> tasks;
-    TConstArrayView<FRegistryEntityHandle> targets;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -54,6 +49,11 @@ struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
             self.targets
         );
     }
+
+    TConstArrayView<FRegistryEntityHandle> handles;
+    TConstArrayView<TestCapitalShipFighterOrder> orders;
+    TConstArrayView<ETestCapitalShipFightersTask> tasks;
+    TConstArrayView<FRegistryEntityHandle> targets;
 };
 
 struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
@@ -69,11 +69,6 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
         tasks.Add(task);
         targets.Add(target);
     }
-
-    TArray<FRegistryEntityHandle> handles;
-    TArray<TestCapitalShipFighterOrder> orders;
-    TArray<ETestCapitalShipFightersTask> tasks;
-    TArray<FRegistryEntityHandle> targets;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -95,5 +90,10 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
             self.targets, other.targets
         );
     }
+
+    TArray<FRegistryEntityHandle> handles;
+    TArray<TestCapitalShipFighterOrder> orders;
+    TArray<ETestCapitalShipFightersTask> tasks;
+    TArray<FRegistryEntityHandle> targets;
 };
 // clang-format on

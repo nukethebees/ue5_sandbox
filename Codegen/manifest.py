@@ -136,7 +136,7 @@ def capital_ships_soa_module() -> Module:
         "FighterReassignmentView",
         "FighterReassignmentConstView",
         fighter_reassignment_members,
-        storage_suffix_nodes=(
+        nodes=(
             MemberFunctionSpec(
                 "add",
                 "void",
@@ -220,7 +220,7 @@ def lasers_soa_module() -> Module:
             tarray_member("instigator_handles", "FRegistryEntityHandle"),
             tarray_member("colours", "FLinearColor"),
         ),
-        storage_suffix_nodes=(
+        nodes=(
             set_damages.header_node(),
             NewLines(1),
             set_speeds.header_node(),
@@ -379,7 +379,7 @@ def fighter_order_queue_module() -> Module:
             ("Task", "ETestCapitalShipFightersTask"),
             ("Order", "TestCapitalShipFighterOrder"),
         ),
-        storage_prefix_nodes=(
+        nodes=(
             MemberFunctionSpec(
                 "add",
                 "void",
@@ -447,7 +447,7 @@ def entity_death_info_module() -> Module:
         "EntityDeathInfoView",
         "EntityDeathInfoConstView",
         entity_death_info_members,
-        storage_suffix_nodes=(
+        nodes=(
             add_function.declaration_node(),
             NewLines(1),
             add_without_killer.header_node(),

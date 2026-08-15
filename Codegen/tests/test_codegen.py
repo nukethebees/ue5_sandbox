@@ -349,14 +349,17 @@ class SoARenderingTests(unittest.TestCase):
         self.assertIn("struct SANDBOX_API FExportedData", rendered)
         self.assertIn("using CountType = int32;", rendered)
 
-    def test_soa_lowering_inserts_storage_extra_nodes_in_order(self) -> None:
+    def test_soa_lowering_inserts_nodes_before_generated_functions_and_members(self) -> None:
         soa = SoAStruct(
             "FData",
             "FDataView",
             "FDataConstView",
             (tarray_member("values", "FValue"),),
-            storage_prefix_nodes=(Function("void reset_values()", Raw("values.Reset();")),),
-            storage_suffix_nodes=(FunctionDeclaration("void validate_values()"),),
+            nodes=(
+                Function("void reset_values()", Raw("values.Reset();")),
+                NewLines(1),
+                FunctionDeclaration("void validate_values()"),
+            ),
         )
 
         rendered = "\n\n".join(
@@ -366,8 +369,8 @@ class SoARenderingTests(unittest.TestCase):
         )
 
         self.assertLess(rendered.index("void reset_values()"), rendered.index("TArray<FValue> values"))
-        self.assertLess(rendered.index("TArray<FValue> values"), rendered.index("void validate_values"))
         self.assertLess(rendered.index("void validate_values"), rendered.index("apply_arrays"))
+        self.assertLess(rendered.index("apply_array_pairs"), rendered.index("TArray<FValue> values"))
 
 
 if __name__ == "__main__":

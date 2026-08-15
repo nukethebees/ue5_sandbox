@@ -24,6 +24,20 @@ struct SpawnRequestsView : public ml::FSoAViewMixin {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
 
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.base_velocities,
+            self.damages,
+            self.speeds,
+            self.max_distances,
+            self.instigator_handles,
+            self.colours
+        );
+    }
+
     FVectors3f::View locations;
     FRotatorsf::View rotations;
     FVectors3f::View base_velocities;
@@ -32,6 +46,11 @@ struct SpawnRequestsView : public ml::FSoAViewMixin {
     TArrayView<float> max_distances;
     TArrayView<FRegistryEntityHandle> instigator_handles;
     TArrayView<FLinearColor> colours;
+};
+
+struct SpawnRequestsConstView : public ml::FSoAViewMixin {
+    using View = SpawnRequestsView;
+    using ConstView = SpawnRequestsConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -46,11 +65,6 @@ struct SpawnRequestsView : public ml::FSoAViewMixin {
             self.colours
         );
     }
-};
-
-struct SpawnRequestsConstView : public ml::FSoAViewMixin {
-    using View = SpawnRequestsView;
-    using ConstView = SpawnRequestsConstView;
 
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
@@ -60,34 +74,11 @@ struct SpawnRequestsConstView : public ml::FSoAViewMixin {
     TConstArrayView<float> max_distances;
     TConstArrayView<FRegistryEntityHandle> instigator_handles;
     TConstArrayView<FLinearColor> colours;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.locations,
-            self.rotations,
-            self.base_velocities,
-            self.damages,
-            self.speeds,
-            self.max_distances,
-            self.instigator_handles,
-            self.colours
-        );
-    }
 };
 
 struct SpawnRequests : public ml::FSoAArrayMixin {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
-
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FVectors3f base_velocities;
-    TArray<int32> damages;
-    TArray<float> speeds;
-    TArray<float> max_distances;
-    TArray<FRegistryEntityHandle> instigator_handles;
-    TArray<FLinearColor> colours;
 
     void set_damages(int32 const value);
     void set_speeds(float const value);
@@ -122,6 +113,15 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
             self.colours, other.colours
         );
     }
+
+    FVectors3f locations;
+    FRotatorsf rotations;
+    FVectors3f base_velocities;
+    TArray<int32> damages;
+    TArray<float> speeds;
+    TArray<float> max_distances;
+    TArray<FRegistryEntityHandle> instigator_handles;
+    TArray<FLinearColor> colours;
 };
 
 struct EntitiesConstView;
@@ -129,6 +129,20 @@ struct EntitiesConstView;
 struct EntitiesView : public ml::FSoAViewMixin {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.ismc_data,
+            self.colours,
+            self.locations,
+            self.rotations,
+            self.velocities,
+            self.damages,
+            self.lifetimes_remaining,
+            self.instigator_handles
+        );
+    }
 
     TArrayView<FInstancedStaticMeshInstanceData> ismc_data;
     TArrayView<FLinearColor> colours;
@@ -138,6 +152,11 @@ struct EntitiesView : public ml::FSoAViewMixin {
     TArrayView<int32> damages;
     TArrayView<float> lifetimes_remaining;
     TArrayView<FRegistryEntityHandle> instigator_handles;
+};
+
+struct EntitiesConstView : public ml::FSoAViewMixin {
+    using View = EntitiesView;
+    using ConstView = EntitiesConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -152,11 +171,6 @@ struct EntitiesView : public ml::FSoAViewMixin {
             self.instigator_handles
         );
     }
-};
-
-struct EntitiesConstView : public ml::FSoAViewMixin {
-    using View = EntitiesView;
-    using ConstView = EntitiesConstView;
 
     TConstArrayView<FInstancedStaticMeshInstanceData> ismc_data;
     TConstArrayView<FLinearColor> colours;
@@ -166,34 +180,11 @@ struct EntitiesConstView : public ml::FSoAViewMixin {
     TConstArrayView<int32> damages;
     TConstArrayView<float> lifetimes_remaining;
     TConstArrayView<FRegistryEntityHandle> instigator_handles;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.ismc_data,
-            self.colours,
-            self.locations,
-            self.rotations,
-            self.velocities,
-            self.damages,
-            self.lifetimes_remaining,
-            self.instigator_handles
-        );
-    }
 };
 
 struct Entities : public ml::FSoAArrayMixin {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
-
-    TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    TArray<FLinearColor> colours;
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FVectors3f velocities;
-    TArray<int32> damages;
-    TArray<float> lifetimes_remaining;
-    TArray<FRegistryEntityHandle> instigator_handles;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -223,6 +214,15 @@ struct Entities : public ml::FSoAArrayMixin {
             self.instigator_handles, other.instigator_handles
         );
     }
+
+    TArray<FInstancedStaticMeshInstanceData> ismc_data;
+    TArray<FLinearColor> colours;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    FVectors3f velocities;
+    TArray<int32> damages;
+    TArray<float> lifetimes_remaining;
+    TArray<FRegistryEntityHandle> instigator_handles;
 };
 
 struct HitDetailsConstView;
@@ -231,9 +231,6 @@ struct HitDetailsView : public ml::FSoAViewMixin {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    FVectors3f::View locations;
-    TArrayView<FLinearColor> colours;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -241,15 +238,15 @@ struct HitDetailsView : public ml::FSoAViewMixin {
             self.colours
         );
     }
+
+    FVectors3f::View locations;
+    TArrayView<FLinearColor> colours;
 };
 
 struct HitDetailsConstView : public ml::FSoAViewMixin {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    FVectors3f::ConstView locations;
-    TConstArrayView<FLinearColor> colours;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -257,14 +254,14 @@ struct HitDetailsConstView : public ml::FSoAViewMixin {
             self.colours
         );
     }
+
+    FVectors3f::ConstView locations;
+    TConstArrayView<FLinearColor> colours;
 };
 
 struct HitDetails : public ml::FSoAArrayMixin {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
-
-    FVectors3f locations;
-    TArray<FLinearColor> colours;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -282,6 +279,9 @@ struct HitDetails : public ml::FSoAArrayMixin {
             self.colours, other.colours
         );
     }
+
+    FVectors3f locations;
+    TArray<FLinearColor> colours;
 };
 } // namespace ml::test_lasers
 // clang-format on

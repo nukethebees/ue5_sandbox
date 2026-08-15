@@ -26,6 +26,37 @@ struct EntityDataView : public ml::FSoAViewMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_handles,
+            self.integral_biases,
+            self.float_biases,
+            self.tasks,
+            self.locations,
+            self.desired_move_locations,
+            self.aim_directions,
+            self.desired_aiming_directions,
+            self.movement_directions,
+            self.velocities,
+            self.move_distances,
+            self.speeds,
+            self.teams,
+            self.healths,
+            self.awareness_scan_countdowns,
+            self.attack_reposition_countdowns,
+            self.attack_cooldowns,
+            self.target_handles,
+            self.target_locations,
+            self.target_velocities,
+            self.target_directions,
+            self.intercept_times,
+            self.target_distance_sq,
+            self.target_distances,
+            self.target_radii
+        );
+    }
+
     TArrayView<FRegistryEntityHandle> entity_handles;
     TArrayView<uint32> integral_biases;
     TArrayView<float> float_biases;
@@ -51,6 +82,11 @@ struct EntityDataView : public ml::FSoAViewMixin {
     TArrayView<float> target_distance_sq;
     TArrayView<float> target_distances;
     TArrayView<float> target_radii;
+};
+
+struct EntityDataConstView : public ml::FSoAViewMixin {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -82,11 +118,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
             self.target_radii
         );
     }
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
 
     TConstArrayView<FRegistryEntityHandle> entity_handles;
     TConstArrayView<uint32> integral_biases;
@@ -113,68 +144,11 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<float> target_distance_sq;
     TConstArrayView<float> target_distances;
     TConstArrayView<float> target_radii;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.entity_handles,
-            self.integral_biases,
-            self.float_biases,
-            self.tasks,
-            self.locations,
-            self.desired_move_locations,
-            self.aim_directions,
-            self.desired_aiming_directions,
-            self.movement_directions,
-            self.velocities,
-            self.move_distances,
-            self.speeds,
-            self.teams,
-            self.healths,
-            self.awareness_scan_countdowns,
-            self.attack_reposition_countdowns,
-            self.attack_cooldowns,
-            self.target_handles,
-            self.target_locations,
-            self.target_velocities,
-            self.target_directions,
-            self.intercept_times,
-            self.target_distance_sq,
-            self.target_distances,
-            self.target_radii
-        );
-    }
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
-
-    TArray<FRegistryEntityHandle> entity_handles;
-    TArray<uint32> integral_biases;
-    TArray<float> float_biases;
-    TArray<ETestCapitalShipFightersTask> tasks;
-    FVectors3f locations;
-    FVectors3f desired_move_locations;
-    FVectors3f aim_directions;
-    FVectors3f desired_aiming_directions;
-    FVectors3f movement_directions;
-    FVectors3f velocities;
-    TArray<float> move_distances;
-    TArray<float> speeds;
-    TArray<ETestTeam> teams;
-    TArray<int32> healths;
-    FTickCountdown8 awareness_scan_countdowns;
-    FTickCountdown16 attack_reposition_countdowns;
-    FTickCountdown16 attack_cooldowns;
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f target_locations;
-    FVectors3f target_velocities;
-    FVectors3f target_directions;
-    TArray<float> intercept_times;
-    TArray<float> target_distance_sq;
-    TArray<float> target_distances;
-    TArray<float> target_radii;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -238,6 +212,32 @@ struct EntityData : public ml::FSoAArrayMixin {
             self.target_radii, other.target_radii
         );
     }
+
+    TArray<FRegistryEntityHandle> entity_handles;
+    TArray<uint32> integral_biases;
+    TArray<float> float_biases;
+    TArray<ETestCapitalShipFightersTask> tasks;
+    FVectors3f locations;
+    FVectors3f desired_move_locations;
+    FVectors3f aim_directions;
+    FVectors3f desired_aiming_directions;
+    FVectors3f movement_directions;
+    FVectors3f velocities;
+    TArray<float> move_distances;
+    TArray<float> speeds;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    FTickCountdown8 awareness_scan_countdowns;
+    FTickCountdown16 attack_reposition_countdowns;
+    FTickCountdown16 attack_cooldowns;
+    TArray<FRegistryEntityHandle> target_handles;
+    FVectors3f target_locations;
+    FVectors3f target_velocities;
+    FVectors3f target_directions;
+    TArray<float> intercept_times;
+    TArray<float> target_distance_sq;
+    TArray<float> target_distances;
+    TArray<float> target_radii;
 };
 } // namespace ml::test_capital_ship_fighters
 // clang-format on

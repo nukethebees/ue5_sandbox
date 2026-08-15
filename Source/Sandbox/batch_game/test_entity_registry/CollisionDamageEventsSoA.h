@@ -23,12 +23,6 @@ struct UnresolvedCollisionDamageEventsView : public ml::FSoAViewMixin {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
-    TArrayView<AActor*> damaged_actors;
-    TArrayView<int32> damage_amounts;
-    TArrayView<UActorComponent*> actor_components;
-    TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -39,18 +33,18 @@ struct UnresolvedCollisionDamageEventsView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TArrayView<AActor*> damaged_actors;
+    TArrayView<int32> damage_amounts;
+    TArrayView<UActorComponent*> actor_components;
+    TArrayView<int32> hit_items;
+    TArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct UnresolvedCollisionDamageEventsConstView : public ml::FSoAViewMixin {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
-    TConstArrayView<AActor*> damaged_actors;
-    TConstArrayView<int32> damage_amounts;
-    TConstArrayView<UActorComponent*> actor_components;
-    TConstArrayView<int32> hit_items;
-    TConstArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -61,17 +55,17 @@ struct UnresolvedCollisionDamageEventsConstView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TConstArrayView<AActor*> damaged_actors;
+    TConstArrayView<int32> damage_amounts;
+    TConstArrayView<UActorComponent*> actor_components;
+    TConstArrayView<int32> hit_items;
+    TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
-
-    TArray<AActor*> damaged_actors;
-    TArray<int32> damage_amounts;
-    TArray<UActorComponent*> actor_components;
-    TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -95,6 +89,12 @@ struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
             self.instigators, other.instigators
         );
     }
+
+    TArray<AActor*> damaged_actors;
+    TArray<int32> damage_amounts;
+    TArray<UActorComponent*> actor_components;
+    TArray<int32> hit_items;
+    TArray<FRegistryEntityHandle> instigators;
 };
 
 struct CollisionDamageEventsConstView;
@@ -103,11 +103,6 @@ struct CollisionDamageEventsView : public ml::FSoAViewMixin {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
-    TArrayView<int32> damage_amounts;
-    TArrayView<UActorComponent*> actor_components;
-    TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -117,17 +112,17 @@ struct CollisionDamageEventsView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TArrayView<int32> damage_amounts;
+    TArrayView<UActorComponent*> actor_components;
+    TArrayView<int32> hit_items;
+    TArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
-    TConstArrayView<int32> damage_amounts;
-    TConstArrayView<UActorComponent*> actor_components;
-    TConstArrayView<int32> hit_items;
-    TConstArrayView<FRegistryEntityHandle> instigators;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -137,16 +132,16 @@ struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
             self.instigators
         );
     }
+
+    TConstArrayView<int32> damage_amounts;
+    TConstArrayView<UActorComponent*> actor_components;
+    TConstArrayView<int32> hit_items;
+    TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
 struct CollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
-
-    TArray<int32> damage_amounts;
-    TArray<UActorComponent*> actor_components;
-    TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -168,5 +163,10 @@ struct CollisionDamageEvents : public ml::FSoAArrayMixin {
             self.instigators, other.instigators
         );
     }
+
+    TArray<int32> damage_amounts;
+    TArray<UActorComponent*> actor_components;
+    TArray<int32> hit_items;
+    TArray<FRegistryEntityHandle> instigators;
 };
 // clang-format on

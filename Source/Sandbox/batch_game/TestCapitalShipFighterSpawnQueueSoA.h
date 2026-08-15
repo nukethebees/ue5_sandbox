@@ -22,11 +22,6 @@ struct TestCapitalShipFighterSpawnQueueView : public ml::FSoAViewMixin {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    TArrayView<ETestTeam> teams;
-    TArrayView<FRegistryEntityHandle> targets;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -36,17 +31,17 @@ struct TestCapitalShipFighterSpawnQueueView : public ml::FSoAViewMixin {
             self.targets
         );
     }
+
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<FRegistryEntityHandle> targets;
 };
 
 struct TestCapitalShipFighterSpawnQueueConstView : public ml::FSoAViewMixin {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
-    FVectors3f::ConstView locations;
-    FRotatorsf::ConstView rotations;
-    TConstArrayView<ETestTeam> teams;
-    TConstArrayView<FRegistryEntityHandle> targets;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -56,16 +51,16 @@ struct TestCapitalShipFighterSpawnQueueConstView : public ml::FSoAViewMixin {
             self.targets
         );
     }
+
+    FVectors3f::ConstView locations;
+    FRotatorsf::ConstView rotations;
+    TConstArrayView<ETestTeam> teams;
+    TConstArrayView<FRegistryEntityHandle> targets;
 };
 
 struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
-
-    FVectors3f locations;
-    FRotatorsf rotations;
-    TArray<ETestTeam> teams;
-    TArray<FRegistryEntityHandle> targets;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -87,5 +82,10 @@ struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
             self.targets, other.targets
         );
     }
+
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+    TArray<FRegistryEntityHandle> targets;
 };
 // clang-format on

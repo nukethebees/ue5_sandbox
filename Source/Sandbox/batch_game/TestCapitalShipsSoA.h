@@ -26,6 +26,19 @@ struct SpawnDataView : public ml::FSoAViewMixin {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.target_handles,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.initial_spawn_delays,
+            self.spawn_cooldowns
+        );
+    }
+
     TArrayView<FRegistryEntityHandle> target_handles;
     FVectors3f::View locations;
     FRotatorsf::View rotations;
@@ -33,6 +46,11 @@ struct SpawnDataView : public ml::FSoAViewMixin {
     TArrayView<int32> healths;
     TArrayView<float> initial_spawn_delays;
     TArrayView<float> spawn_cooldowns;
+};
+
+struct SpawnDataConstView : public ml::FSoAViewMixin {
+    using View = SpawnDataView;
+    using ConstView = SpawnDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -46,11 +64,6 @@ struct SpawnDataView : public ml::FSoAViewMixin {
             self.spawn_cooldowns
         );
     }
-};
-
-struct SpawnDataConstView : public ml::FSoAViewMixin {
-    using View = SpawnDataView;
-    using ConstView = SpawnDataConstView;
 
     TConstArrayView<FRegistryEntityHandle> target_handles;
     FVectors3f::ConstView locations;
@@ -59,32 +72,11 @@ struct SpawnDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<int32> healths;
     TConstArrayView<float> initial_spawn_delays;
     TConstArrayView<float> spawn_cooldowns;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.target_handles,
-            self.locations,
-            self.rotations,
-            self.teams,
-            self.healths,
-            self.initial_spawn_delays,
-            self.spawn_cooldowns
-        );
-    }
 };
 
 struct SpawnData : public ml::FSoAArrayMixin {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
-
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f locations;
-    FRotatorsf rotations;
-    TArray<ETestTeam> teams;
-    TArray<int32> healths;
-    TArray<float> initial_spawn_delays;
-    TArray<float> spawn_cooldowns;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -112,6 +104,14 @@ struct SpawnData : public ml::FSoAArrayMixin {
             self.spawn_cooldowns, other.spawn_cooldowns
         );
     }
+
+    TArray<FRegistryEntityHandle> target_handles;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    TArray<float> initial_spawn_delays;
+    TArray<float> spawn_cooldowns;
 };
 
 struct EntityTickDataConstView;
@@ -120,9 +120,6 @@ struct EntityTickDataView : public ml::FSoAViewMixin {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
 
-    TArrayView<int32> ships_ready_to_spawn_fighters_buffer;
-    TestCapitalShipFighterSpawnQueue::View fighter_queue;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -130,15 +127,15 @@ struct EntityTickDataView : public ml::FSoAViewMixin {
             self.fighter_queue
         );
     }
+
+    TArrayView<int32> ships_ready_to_spawn_fighters_buffer;
+    TestCapitalShipFighterSpawnQueue::View fighter_queue;
 };
 
 struct EntityTickDataConstView : public ml::FSoAViewMixin {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
 
-    TConstArrayView<int32> ships_ready_to_spawn_fighters_buffer;
-    TestCapitalShipFighterSpawnQueue::ConstView fighter_queue;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -146,14 +143,14 @@ struct EntityTickDataConstView : public ml::FSoAViewMixin {
             self.fighter_queue
         );
     }
+
+    TConstArrayView<int32> ships_ready_to_spawn_fighters_buffer;
+    TestCapitalShipFighterSpawnQueue::ConstView fighter_queue;
 };
 
 struct EntityTickData : public ml::FSoAArrayMixin {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
-
-    TArray<int32> ships_ready_to_spawn_fighters_buffer;
-    TestCapitalShipFighterSpawnQueue fighter_queue;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -171,6 +168,9 @@ struct EntityTickData : public ml::FSoAArrayMixin {
             self.fighter_queue, other.fighter_queue
         );
     }
+
+    TArray<int32> ships_ready_to_spawn_fighters_buffer;
+    TestCapitalShipFighterSpawnQueue fighter_queue;
 };
 
 struct EntityDataConstView;
@@ -178,6 +178,21 @@ struct EntityDataConstView;
 struct EntityDataView : public ml::FSoAViewMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.handles,
+            self.locations,
+            self.rotations,
+            self.fighter_spawn_timers,
+            self.fighter_spawn_cooldowns,
+            self.teams,
+            self.healths,
+            self.capital_fighter_handle_spans,
+            self.target_handles
+        );
+    }
 
     TArrayView<FRegistryEntityHandle> handles;
     FVectors3f::View locations;
@@ -188,6 +203,11 @@ struct EntityDataView : public ml::FSoAViewMixin {
     TArrayView<int32> healths;
     TArrayView<FIndexSpan> capital_fighter_handle_spans;
     TArrayView<FRegistryEntityHandle> target_handles;
+};
+
+struct EntityDataConstView : public ml::FSoAViewMixin {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -203,11 +223,6 @@ struct EntityDataView : public ml::FSoAViewMixin {
             self.target_handles
         );
     }
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
     FVectors3f::ConstView locations;
@@ -218,36 +233,11 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<int32> healths;
     TConstArrayView<FIndexSpan> capital_fighter_handle_spans;
     TConstArrayView<FRegistryEntityHandle> target_handles;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.rotations,
-            self.fighter_spawn_timers,
-            self.fighter_spawn_cooldowns,
-            self.teams,
-            self.healths,
-            self.capital_fighter_handle_spans,
-            self.target_handles
-        );
-    }
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
-
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    FRotatorsf rotations;
-    FCountdownTimers fighter_spawn_timers;
-    TArray<float> fighter_spawn_cooldowns;
-    TArray<ETestTeam> teams;
-    TArray<int32> healths;
-    TArray<FIndexSpan> capital_fighter_handle_spans;
-    TArray<FRegistryEntityHandle> target_handles;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -279,6 +269,16 @@ struct EntityData : public ml::FSoAArrayMixin {
             self.target_handles, other.target_handles
         );
     }
+
+    TArray<FRegistryEntityHandle> handles;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    FCountdownTimers fighter_spawn_timers;
+    TArray<float> fighter_spawn_cooldowns;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    TArray<FIndexSpan> capital_fighter_handle_spans;
+    TArray<FRegistryEntityHandle> target_handles;
 };
 
 struct FighterReassignmentConstView;
@@ -287,9 +287,6 @@ struct FighterReassignmentView : public ml::FSoAViewMixin {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
-    TArrayView<FRegistryEntityHandle> capital_handles;
-    TArrayView<FRegistryEntityHandle> fighter_handles;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -297,15 +294,15 @@ struct FighterReassignmentView : public ml::FSoAViewMixin {
             self.fighter_handles
         );
     }
+
+    TArrayView<FRegistryEntityHandle> capital_handles;
+    TArrayView<FRegistryEntityHandle> fighter_handles;
 };
 
 struct FighterReassignmentConstView : public ml::FSoAViewMixin {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
-    TConstArrayView<FRegistryEntityHandle> capital_handles;
-    TConstArrayView<FRegistryEntityHandle> fighter_handles;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -313,14 +310,14 @@ struct FighterReassignmentConstView : public ml::FSoAViewMixin {
             self.fighter_handles
         );
     }
+
+    TConstArrayView<FRegistryEntityHandle> capital_handles;
+    TConstArrayView<FRegistryEntityHandle> fighter_handles;
 };
 
 struct FighterReassignment : public ml::FSoAArrayMixin {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
-
-    TArray<FRegistryEntityHandle> capital_handles;
-    TArray<FRegistryEntityHandle> fighter_handles;
 
     void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
         capital_handles.Add(ch);
@@ -343,6 +340,9 @@ struct FighterReassignment : public ml::FSoAArrayMixin {
             self.fighter_handles, other.fighter_handles
         );
     }
+
+    TArray<FRegistryEntityHandle> capital_handles;
+    TArray<FRegistryEntityHandle> fighter_handles;
 };
 } // namespace ml::test_capital_ships
 // clang-format on
