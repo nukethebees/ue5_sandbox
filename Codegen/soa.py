@@ -114,9 +114,10 @@ class SoAStruct(Node):
         )
         final_index = len(self.members) - 1
         for index, member in enumerate(self.members):
-            lines.append(f"            self.{member.name},")
             comma = "," if index != final_index else ""
-            lines.append(f"            other.{member.name}{comma}")
+            lines.append(
+                f"            self.{member.name}, other.{member.name}{comma}"
+            )
         lines.extend(["        );", "    }", "};"])
         return "\n".join(lines)
 

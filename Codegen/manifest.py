@@ -45,6 +45,7 @@ def fighter_soa_module() -> Module:
             / "Sandbox"
             / "batch_game"
             / "TestCapitalShipFightersSoA.h",
+            clang_format_off=True,
             includes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),

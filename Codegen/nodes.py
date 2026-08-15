@@ -156,6 +156,7 @@ class CppFile(Node):
     includes: tuple[Node, ...] = field(default_factory=tuple)
     nodes: tuple[Node, ...] = field(default_factory=tuple)
     pragma_once: bool = True
+    clang_format_off: bool = False
     prologue: tuple[str, ...] = field(default_factory=tuple)
     epilogue: tuple[str, ...] = field(default_factory=tuple)
 
@@ -179,7 +180,10 @@ class CppFile(Node):
         if self.nodes:
             sections.append(render_node_sequence(self.nodes, context, 2))
         sections.extend(self.epilogue)
-        return "\n\n".join(sections).rstrip() + "\n"
+        rendered = "\n\n".join(sections).rstrip()
+        if self.clang_format_off:
+            return f"// clang-format off\n{rendered}\n// clang-format on\n"
+        return rendered + "\n"
 
 
 @dataclass(frozen=True)

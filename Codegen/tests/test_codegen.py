@@ -113,9 +113,8 @@ class SoARenderingTests(unittest.TestCase):
         rendered = node.render(RenderContext())
 
         self.assertLess(rendered.index("self.values"), rendered.index("self.vectors"))
-        self.assertLess(rendered.index("self.values,"), rendered.index("other.values,"))
-        self.assertLess(rendered.index("other.values,"), rendered.index("self.vectors,"))
-        self.assertLess(rendered.index("self.vectors,"), rendered.index("other.vectors"))
+        self.assertIn("self.values, other.values", rendered)
+        self.assertIn("self.vectors, other.vectors", rendered)
         self.assertIn("public ml::FSoAViewMixin", rendered)
         self.assertIn("public ml::FSoAArrayMixin", rendered)
         self.assertNotIn("std::conditional_t", rendered)
