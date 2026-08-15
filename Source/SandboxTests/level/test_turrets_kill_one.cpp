@@ -12,9 +12,9 @@
 #include <CQTest.h>
 #include <EngineUtils.h>
 
-TEST_CLASS(SimpleBatch, "Sandbox.LevelTests")
+TEST_CLASS(TurretsKillOneTurret, "Sandbox.LevelTests")
 {
-    using ThisClass = SimpleBatch;
+    using ThisClass = TurretsKillOneTurret;
     using time_type = ml::TestSimulationDriver::time_type;
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
