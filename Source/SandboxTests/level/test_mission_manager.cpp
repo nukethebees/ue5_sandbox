@@ -2,7 +2,10 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
+#include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+
+#include <SandboxCore/time_series_data.h>
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -21,11 +24,20 @@
 
 TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 {
+    using ThisClass = TestMissionManager;
+
     enum class EScenario : uint8 {
         SurviveTime,
         KillEnemies,
         KillEnemiesWithinTime,
         DefenceObjective,
+    };
+
+    struct FSimulationSample {
+        ETestMissionState mission_state{ETestMissionState::NotStarted};
+        ETestMissionFailReason mission_fail_reason{ETestMissionFailReason::None};
+        int32 mission_kills{0};
+        TArray<int32> surviving_entity_health;
     };
 
     static constexpr float short_mission_time{0.1f};
@@ -37,18 +49,23 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     EScenario scenario{EScenario::SurviveTime};
+    ml::TimeSeriesData<FSimulationSample> samples;
 
     BEFORE_EACH()
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
         test_driver.Reset();
+        samples = {};
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
     }
 
     AFTER_EACH()
     {
+        if (test_driver.IsSet()) {
+            test_driver->orchestrator.clear_end_tick_test_hook();
+        }
         level_setup->teardown();
         level_setup.Reset();
         spawner.Reset();
@@ -162,13 +179,31 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                                   surviving_health[0].max_health);
         }
 
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         if (scenario == EScenario::KillEnemies) {
-            queue_enemy_kill(*manager);
+            test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); });
         } else if (scenario == EScenario::DefenceObjective) {
-            queue_defended_entity_kill(*manager);
+            test_driver->timeline.then_after(
+                0.01, [this, manager] { queue_defended_entity_kill(*manager); });
+        }
+        test_driver->orchestrator.start_simulation();
+    }
+
+    void on_end_tick(ATestBatchOrchestrator&) {
+        auto const* const manager{test_driver->orchestrator.get_mission_manager()};
+        check(manager);
+
+        FSimulationSample sample{};
+        sample.mission_state = manager->get_mission_state();
+        sample.mission_fail_reason = manager->get_mission_fail_reason();
+        sample.mission_kills = manager->get_mission_kills();
+        for (auto const& health : manager->get_entity_health_that_must_survive()) {
+            sample.surviving_entity_health.Add(health.health);
         }
 
-        test_driver->orchestrator.start_simulation();
+        samples.add(test_driver->get_time(), MoveTemp(sample));
+        test_driver->timeline.tick(test_driver->get_time());
     }
 
     void queue_enemy_kill(ATestMissionManager const& manager) {
@@ -209,47 +244,53 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     }
 
     void check_scenario_result() {
-        auto const* const manager{test_driver->orchestrator.get_mission_manager()};
-        check(manager);
+        ml::check_samples_recorded(
+            samples.num(), checks, TEXT("Mission simulation samples recorded"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        auto const& sample{samples.last_value()};
 
         switch (scenario) {
             case EScenario::SurviveTime: {
                 TestRunner->TestEqual(TEXT("Survive-time mission succeeds"),
-                                      manager->get_mission_state(),
+                                      sample.mission_state,
                                       ETestMissionState::Succeeded);
                 TestRunner->TestEqual(TEXT("Successful mission has no failure reason"),
-                                      manager->get_mission_fail_reason(),
+                                      sample.mission_fail_reason,
                                       ETestMissionFailReason::None);
                 break;
             }
             case EScenario::KillEnemies: {
                 TestRunner->TestEqual(TEXT("Kill mission succeeds"),
-                                      manager->get_mission_state(),
+                                      sample.mission_state,
                                       ETestMissionState::Succeeded);
                 TestRunner->TestEqual(
-                    TEXT("Hero kill contributes to mission"), manager->get_mission_kills(), 1);
+                    TEXT("Hero kill contributes to mission"), sample.mission_kills, 1);
                 break;
             }
             case EScenario::KillEnemiesWithinTime: {
                 TestRunner->TestEqual(TEXT("Timed kill mission fails"),
-                                      manager->get_mission_state(),
+                                      sample.mission_state,
                                       ETestMissionState::Failed);
                 TestRunner->TestEqual(TEXT("Timed mission reports elapsed time"),
-                                      manager->get_mission_fail_reason(),
+                                      sample.mission_fail_reason,
                                       ETestMissionFailReason::TimeElapsed);
                 break;
             }
             case EScenario::DefenceObjective: {
                 TestRunner->TestEqual(TEXT("Defence objective failure fails mission"),
-                                      manager->get_mission_state(),
+                                      sample.mission_state,
                                       ETestMissionState::Failed);
                 TestRunner->TestEqual(TEXT("Defence failure reason is retained"),
-                                      manager->get_mission_fail_reason(),
+                                      sample.mission_fail_reason,
                                       ETestMissionFailReason::DefenceObjectiveFailed);
-                auto const surviving_health{manager->get_entity_health_that_must_survive()};
-                TestRunner->TestEqual(TEXT("Destroyed defence objective reports zero health"),
-                                      surviving_health[0].health,
-                                      0);
+                TestRunner->TestTrue(TEXT("Defence health is sampled"),
+                                     !sample.surviving_entity_health.IsEmpty());
+                if (!sample.surviving_entity_health.IsEmpty()) {
+                    TestRunner->TestEqual(TEXT("Destroyed defence objective reports zero health"),
+                                          sample.surviving_entity_health[0],
+                                          0);
+                }
                 break;
             }
             default: {
