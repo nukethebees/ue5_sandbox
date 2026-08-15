@@ -15,10 +15,13 @@ from Codegen.nodes import (
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
+    HomogeneousSoALayout,
+    HomogeneousSoAValueType,
     SoAStruct,
     SoAStructNames,
     SoAStorageOperation,
     lower_soa_structs_with_source,
+    lower_homogeneous_soa_layouts,
     soa_member,
     tarray_member,
 )
@@ -27,6 +30,15 @@ from Codegen.soa import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BATCH_GAME_DIR = PROJECT_ROOT / "Source" / "Sandbox" / "batch_game"
 TEST_ENTITY_REGISTRY_DIR = BATCH_GAME_DIR / "test_entity_registry"
+SANDBOX_CORE_PUBLIC_DIR = (
+    PROJECT_ROOT
+    / "Plugins"
+    / "SandboxCore"
+    / "Source"
+    / "SandboxCore"
+    / "Public"
+    / "SandboxCore"
+)
 ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
 COUNTDOWN_TIMERS_STORAGE_OPERATIONS = (
     SoAStorageOperation.RESET,
@@ -49,6 +61,72 @@ def soa_source_file(
             Include(header_path.name, system=False),
             NewLines(2),
             *definitions,
+        ),
+    )
+
+
+def homogeneous_soa_header_module(
+    name: str, header_name: str, layouts: tuple[HomogeneousSoALayout, ...]
+) -> Module:
+    return Module(
+        name=name,
+        header=CppFile(
+            path=SANDBOX_CORE_PUBLIC_DIR / header_name,
+            clang_format_off=True,
+            nodes=(
+                Include("CoreMinimal.h", system=False),
+                NewLines(2),
+                Include("type_traits"),
+                Include("utility"),
+                NewLines(2),
+                *lower_homogeneous_soa_layouts(layouts),
+            ),
+        ),
+    )
+
+
+def soa_vectors_module() -> Module:
+    return homogeneous_soa_header_module(
+        "sandbox_core_soa_vectors",
+        "soa_vectors.h",
+        (
+            HomogeneousSoALayout(
+                "Vectors2",
+                ("xs", "ys"),
+                (
+                    HomogeneousSoAValueType("float", "f", "FVector2f"),
+                    HomogeneousSoAValueType("double", "d", "FVector2d"),
+                    HomogeneousSoAValueType("int32", "i32", "FIntPoint"),
+                    HomogeneousSoAValueType("uint32", "u32", "FUintPoint"),
+                ),
+            ),
+            HomogeneousSoALayout(
+                "Vectors3",
+                ("xs", "ys", "zs"),
+                (
+                    HomogeneousSoAValueType("float", "f", "FVector3f"),
+                    HomogeneousSoAValueType("double", "d", "FVector3d"),
+                    HomogeneousSoAValueType("int32", "i32", "FIntVector"),
+                    HomogeneousSoAValueType("uint32", "u32", "FUintVector3"),
+                ),
+            ),
+        ),
+    )
+
+
+def soa_rotators_module() -> Module:
+    return homogeneous_soa_header_module(
+        "sandbox_core_soa_rotators",
+        "soa_rotators.h",
+        (
+            HomogeneousSoALayout(
+                "Rotators",
+                ("pitches", "yaws", "rolls"),
+                (
+                    HomogeneousSoAValueType("float", "f"),
+                    HomogeneousSoAValueType("double", "d"),
+                ),
+            ),
         ),
     )
 
@@ -95,7 +173,9 @@ def fighter_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 NewLines(2),
@@ -194,7 +274,9 @@ def capital_ships_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 Include("Sandbox/utilities/IndexSpan.h"),
@@ -215,7 +297,9 @@ def capital_ships_soa_module() -> Module:
                 ),
             ),
         ),
-        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_capital_ships"),
+        source=soa_source_file(
+            header_path, lowered.source_nodes, "ml::test_capital_ships"
+        ),
     )
 
 
@@ -285,7 +369,10 @@ def lasers_soa_module() -> Module:
     )
     hit_details = SoAStruct(
         SoAStructNames("HitDetails"),
-        (soa_member("locations", "FVectors3f"), tarray_member("colours", "FLinearColor")),
+        (
+            soa_member("locations", "FVectors3f"),
+            tarray_member("colours", "FLinearColor"),
+        ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
     )
@@ -297,7 +384,9 @@ def lasers_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
                 Include("SandboxCore/soa_rotators.h"),
@@ -352,7 +441,9 @@ def collision_damage_events_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
                 NewLines(2),
@@ -391,7 +482,9 @@ def fighter_spawn_queue_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -449,7 +542,9 @@ def fighter_order_queue_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/TestCapitalShipFighterOrder.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -511,7 +606,9 @@ def entity_death_info_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -527,7 +624,11 @@ def entity_death_info_module() -> Module:
         ),
         source=soa_source_file(
             header_path,
-            (*lowered.source_nodes, NewLines(2), add_function.definition_node("EntityDeathInfo")),
+            (
+                *lowered.source_nodes,
+                NewLines(2),
+                add_function.definition_node("EntityDeathInfo"),
+            ),
         ),
     )
 
@@ -556,7 +657,9 @@ def static_turrets_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -571,7 +674,9 @@ def static_turrets_soa_module() -> Module:
                 Namespace("ml::test_static_turrets", lowered.header_nodes),
             ),
         ),
-        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_static_turrets"),
+        source=soa_source_file(
+            header_path, lowered.source_nodes, "ml::test_static_turrets"
+        ),
     )
 
 
@@ -596,7 +701,9 @@ def tube_spinners_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
                 Include("SandboxCore/soa_vectors.h"),
@@ -610,7 +717,9 @@ def tube_spinners_soa_module() -> Module:
                 Namespace("ml::test_tube_spinners", lowered.header_nodes),
             ),
         ),
-        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_tube_spinners"),
+        source=soa_source_file(
+            header_path, lowered.source_nodes, "ml::test_tube_spinners"
+        ),
     )
 
 
@@ -633,7 +742,9 @@ def direct_damage_events_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
                 NewLines(2),
@@ -655,7 +766,9 @@ def unique_entity_data_soa_module() -> Module:
         SoAStructNames("TestEntityUniqueEntityData"),
         (
             tarray_member("registry_indices", "FRegistryEntityHandle::index_type"),
-            tarray_member("registry_generations", "FRegistryEntityHandle::generation_type"),
+            tarray_member(
+                "registry_generations", "FRegistryEntityHandle::generation_type"
+            ),
             tarray_member("entity_types", "ETestEntityType"),
             tarray_member("teams", "ETestTeam"),
             tarray_member("kills", "uint32"),
@@ -675,7 +788,9 @@ def unique_entity_data_soa_module() -> Module:
             path=header_path,
             clang_format_off=True,
             nodes=(
-                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include(
+                    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+                ),
                 Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
                 Include("Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h"),
                 Include("Sandbox/batch_game/TestEntityType.h"),
@@ -698,6 +813,8 @@ def unique_entity_data_soa_module() -> Module:
 
 def modules() -> tuple[Module, ...]:
     return (
+        soa_vectors_module(),
+        soa_rotators_module(),
         fighter_soa_module(),
         capital_ships_soa_module(),
         lasers_soa_module(),

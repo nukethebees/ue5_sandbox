@@ -30,7 +30,7 @@ class SoAMember:
     def __post_init__(self) -> None:
         values = (self.container_type, self.view_type, self.const_view_type, self.name)
         if any(not value.strip() for value in values):
-                raise ValueError("SOA member types and name must not be empty")
+            raise ValueError("SOA member types and name must not be empty")
 
 
 class ForEachSoAMemberCall(FunctionBody):
@@ -64,9 +64,13 @@ class ForEachSoAMemberFreeFunctionCall(FunctionBody):
         self.members = tuple(members)
         self.free_function = free_function
         if not self.members:
-            raise ValueError("ForEachSoAMemberFreeFunctionCall requires at least one SOA member")
+            raise ValueError(
+                "ForEachSoAMemberFreeFunctionCall requires at least one SOA member"
+            )
         if not self.free_function.strip():
-            raise ValueError("ForEachSoAMemberFreeFunctionCall free function must not be empty")
+            raise ValueError(
+                "ForEachSoAMemberFreeFunctionCall free function must not be empty"
+            )
 
     def render(self, context: RenderContext) -> str:
         function = self.function
@@ -74,7 +78,9 @@ class ForEachSoAMemberFreeFunctionCall(FunctionBody):
             function.parameter(parameter).cpp_name for parameter in function.parameters
         )
         return "\n".join(
-            Raw(f"{self.free_function}({comma_separated((member.name, *parameters))});").render(context)
+            Raw(
+                f"{self.free_function}({comma_separated((member.name, *parameters))});"
+            ).render(context)
             for member in self.members
         )
 
@@ -90,19 +96,25 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
         self.free_function = free_function
         self.other_parameter = other_parameter
         if not self.members:
-            raise ValueError("ForEachSoAMemberPairFreeFunctionCall requires at least one SOA member")
+            raise ValueError(
+                "ForEachSoAMemberPairFreeFunctionCall requires at least one SOA member"
+            )
         if not self.free_function.strip():
-            raise ValueError("ForEachSoAMemberPairFreeFunctionCall free function must not be empty")
+            raise ValueError(
+                "ForEachSoAMemberPairFreeFunctionCall free function must not be empty"
+            )
 
     def render(self, context: RenderContext) -> str:
         function = self.function
         other = function.parameter(self.other_parameter)
         other_index = function.parameters.index(self.other_parameter)
         before_other = tuple(
-            function.parameter(parameter).cpp_name for parameter in function.parameters[:other_index]
+            function.parameter(parameter).cpp_name
+            for parameter in function.parameters[:other_index]
         )
         after_other = tuple(
-            function.parameter(parameter).cpp_name for parameter in function.parameters[other_index + 1 :]
+            function.parameter(parameter).cpp_name
+            for parameter in function.parameters[other_index + 1 :]
         )
         return "\n".join(
             Raw(
@@ -136,7 +148,9 @@ OUT_OF_LINE_STORAGE_OPERATIONS = frozenset(
 )
 
 
-def tarray_member(name: str, value_type: str, allocator: str | None = None) -> SoAMember:
+def tarray_member(
+    name: str, value_type: str, allocator: str | None = None
+) -> SoAMember:
     allocator_suffix = f", {allocator}" if allocator else ""
     return SoAMember(
         container_type=f"TArray<{value_type}{allocator_suffix}>",
@@ -192,11 +206,57 @@ class SoAStruct:
         object.__setattr__(self, "storage_operations", tuple(self.storage_operations))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         if not self.members:
-            raise ValueError(f"SOA struct {self.names.name!r} must contain at least one member")
-        if any(not isinstance(operation, SoAStorageOperation) for operation in self.storage_operations):
-            raise ValueError("SOA storage operations must be SoAStorageOperation values")
+            raise ValueError(
+                f"SOA struct {self.names.name!r} must contain at least one member"
+            )
+        if any(
+            not isinstance(operation, SoAStorageOperation)
+            for operation in self.storage_operations
+        ):
+            raise ValueError(
+                "SOA storage operations must be SoAStorageOperation values"
+            )
         if len(set(self.storage_operations)) != len(self.storage_operations):
             raise ValueError("SOA storage operations must not contain duplicates")
+
+
+@dataclass(frozen=True)
+class HomogeneousSoAValueType:
+    cpp_type: str
+    suffix: str
+    aos_type: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.cpp_type.strip() or not self.suffix.strip():
+            raise ValueError("Homogeneous SOA value type and suffix must not be empty")
+
+
+@dataclass(frozen=True)
+class HomogeneousSoALayout:
+    name: str
+    components: tuple[str, ...]
+    value_types: tuple[HomogeneousSoAValueType, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "components", tuple(self.components))
+        object.__setattr__(self, "value_types", tuple(self.value_types))
+        if not self.name.strip():
+            raise ValueError("Homogeneous SOA layout name must not be empty")
+        if not self.components or any(
+            not component.strip() for component in self.components
+        ):
+            raise ValueError("Homogeneous SOA components must not be empty")
+        if len(set(self.components)) != len(self.components):
+            raise ValueError("Homogeneous SOA components must not contain duplicates")
+        if not self.value_types:
+            raise ValueError("Homogeneous SOA layout must contain value types")
+
+    @property
+    def view_name(self) -> str:
+        return f"T{self.name}View"
+
+    def storage_name(self, value_type: HomogeneousSoAValueType) -> str:
+        return f"F{self.name}{value_type.suffix}"
 
 
 def _separate(nodes: Iterable[Node], newline_count: int) -> tuple[Node, ...]:
@@ -219,7 +279,10 @@ def _apply_arrays_function(members: tuple[SoAMember, ...]) -> Node:
     return MemberFunctionSpec(
         "apply_arrays",
         "auto",
-        (FunctionParameter("this auto&&", "self"), FunctionParameter("TFunc&&", "func")),
+        (
+            FunctionParameter("this auto&&", "self"),
+            FunctionParameter("TFunc&&", "func"),
+        ),
         Raw("\n".join(body)),
         suffix=" -> decltype(auto)",
         is_inline=True,
@@ -249,12 +312,17 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Node:
     ).header_node()
 
 
-def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> MemberFunctionSpec:
+def _storage_operation_spec(
+    soa: SoAStruct, operation: SoAStorageOperation
+) -> MemberFunctionSpec:
     members = soa.members
     match operation:
         case SoAStorageOperation.RESET:
             return MemberFunctionSpec(
-                "reset", "void", (), ForEachSoAMemberFreeFunctionCall(members, "ml::reset")
+                "reset",
+                "void",
+                (),
+                ForEachSoAMemberFreeFunctionCall(members, "ml::reset"),
             )
         case SoAStorageOperation.RESERVE:
             return MemberFunctionSpec(
@@ -309,7 +377,9 @@ def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> M
                     other,
                     FunctionParameter("int32 const", "src_i"),
                 ),
-                ForEachSoAMemberPairFreeFunctionCall(members, "ml::copy_element", other),
+                ForEachSoAMemberPairFreeFunctionCall(
+                    members, "ml::copy_element", other
+                ),
                 is_inline=True,
             )
         case SoAStorageOperation.APPEND_FROM:
@@ -328,13 +398,13 @@ def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> M
 
 
 def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
-    return tuple(_storage_operation_spec(soa, operation) for operation in soa.storage_operations)
+    return tuple(
+        _storage_operation_spec(soa, operation) for operation in soa.storage_operations
+    )
 
 
 def _storage_operation_nodes(specs: Iterable[MemberFunctionSpec]) -> tuple[Node, ...]:
-    return _separate(
-        (spec.header_node() for spec in specs), 2
-    )
+    return _separate((spec.header_node() for spec in specs), 2)
 
 
 def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struct:
@@ -360,8 +430,12 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
     )
 
 
-def _storage_struct(soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec]) -> Struct:
-    members = tuple(Member(member.container_type, member.name) for member in soa.members)
+def _storage_struct(
+    soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec]
+) -> Struct:
+    members = tuple(
+        Member(member.container_type, member.name) for member in soa.members
+    )
     struct_nodes: list[Node] = [
         UsingDeclaration("View", soa.names.view_name),
         NewLines(1),
@@ -403,7 +477,9 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
     source_nodes = _separate(
         (
             spec.definition_node(soa.names.name)
-            for operation, spec in zip(soa.storage_operations, operation_specs, strict=True)
+            for operation, spec in zip(
+                soa.storage_operations, operation_specs, strict=True
+            )
             if operation in OUT_OF_LINE_STORAGE_OPERATIONS
         ),
         2,
@@ -421,7 +497,9 @@ class SoAStructsLowering:
     source_nodes: tuple[Node, ...]
 
 
-def lower_soa_structs_with_source(soa_structs: Iterable[SoAStruct]) -> SoAStructsLowering:
+def lower_soa_structs_with_source(
+    soa_structs: Iterable[SoAStruct],
+) -> SoAStructsLowering:
     lowerings = tuple(lower_soa_struct_with_source(soa) for soa in soa_structs)
     header_nodes: list[Node] = []
     source_nodes: list[Node] = []
@@ -438,3 +516,436 @@ def lower_soa_structs_with_source(soa_structs: Iterable[SoAStruct]) -> SoAStruct
 
 def lower_soa_structs(soa_structs: Iterable[SoAStruct]) -> tuple[Node, ...]:
     return lower_soa_structs_with_source(soa_structs).header_nodes
+
+
+def _homogeneous_body(lines: Iterable[str]) -> Raw:
+    return Raw("\n".join(lines))
+
+
+def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...]:
+    components = comma_separated(layout.components)
+    view_name = layout.view_name
+    offset = FunctionParameter("size_type const", "offset")
+    count = FunctionParameter("size_type const", "count")
+    func = FunctionParameter("TFunc&&", "func")
+    return (
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (),
+            Raw("return View{" + components + "};"),
+            suffix=" -> View",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (offset, count),
+            Raw("return get_view().slice(offset, count);"),
+            suffix=" -> View",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (),
+            Raw("return ConstView{" + components + "};"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (offset, count),
+            Raw("return get_view().slice(offset, count);"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_const_view",
+            "auto",
+            (),
+            Raw("return ConstView{" + components + "};"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_const_view",
+            "auto",
+            (offset, count),
+            Raw("return get_const_view().slice(offset, count);"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "apply_arrays",
+            "auto",
+            (func,),
+            Raw(f"return std::forward<TFunc>(func)({components});"),
+            suffix=" -> decltype(auto)",
+            is_inline=True,
+            template_parameters="typename TFunc",
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "apply_arrays",
+            "auto",
+            (func,),
+            Raw(f"return std::forward<TFunc>(func)({components});"),
+            suffix=" const -> decltype(auto)",
+            is_inline=True,
+            template_parameters="typename TFunc",
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "num",
+            "auto",
+            (),
+            Raw(f"return {layout.components[0]}.Num();"),
+            suffix=" const -> size_type",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "slice",
+            "auto",
+            (offset, count),
+            Raw(
+                f"return {view_name}{{{comma_separated(f'{component}.Slice(offset, count)' for component in layout.components)}}};"
+            ),
+            suffix=f" const -> {view_name}",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "left",
+            "auto",
+            (count,),
+            Raw(
+                f"return {view_name}{{{comma_separated(f'{component}.Left(count)' for component in layout.components)}}};"
+            ),
+            suffix=f" const -> {view_name}",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "right",
+            "auto",
+            (count,),
+            Raw(
+                f"return {view_name}{{{comma_separated(f'{component}.Right(count)' for component in layout.components)}}};"
+            ),
+            suffix=f" const -> {view_name}",
+            is_inline=True,
+        ).header_node(),
+    )
+
+
+def _homogeneous_view_struct(layout: HomogeneousSoALayout) -> Struct:
+    return Struct(
+        layout.view_name,
+        (
+            UsingDeclaration("size_type", "TArrayView<T>::SizeType"),
+            NewLines(1),
+            UsingDeclaration("value_type", "std::remove_const_t<T>"),
+            NewLines(1),
+            UsingDeclaration("View", f"{layout.view_name}<T>"),
+            NewLines(1),
+            UsingDeclaration("ConstView", f"{layout.view_name}<value_type const>"),
+            NewLines(2),
+            *_separate(
+                (Member("TArrayView<T>", component) for component in layout.components),
+                1,
+            ),
+            NewLines(2),
+            *_homogeneous_view_functions(layout),
+        ),
+        template="typename T",
+    )
+
+
+def _homogeneous_data_struct(
+    layout: HomogeneousSoALayout, name: str, pointer_type: str
+) -> Struct:
+    return Struct(
+        name, (Member(pointer_type, component) for component in layout.components)
+    )
+
+
+def _homogeneous_storage_functions(
+    layout: HomogeneousSoALayout, value_type: HomogeneousSoAValueType
+) -> tuple[Node, ...]:
+    name = layout.storage_name(value_type)
+    components = comma_separated(layout.components)
+    offset = FunctionParameter("size_type const", "offset")
+    count = FunctionParameter("size_type const", "count")
+    allow_shrinking = FunctionParameter("EAllowShrinking const", "allow_shrinking")
+    func = FunctionParameter("TFunc&&", "func")
+    get_data = (
+        MemberFunctionSpec(
+            "get_data",
+            "auto",
+            (),
+            Raw(
+                f"return Data{{{comma_separated(f'{component}.GetData()' for component in layout.components)}}};"
+            ),
+            suffix=" -> Data",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_data",
+            "auto",
+            (),
+            Raw(
+                f"return ConstData{{{comma_separated(f'{component}.GetData()' for component in layout.components)}}};"
+            ),
+            suffix=" const -> ConstData",
+            is_inline=True,
+        ).header_node(),
+    )
+    views = (
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (),
+            Raw(f"return View{{{components}}};"),
+            suffix=" -> View",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (offset, count),
+            Raw("return get_view().slice(offset, count);"),
+            suffix=" -> View",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (),
+            Raw(f"return ConstView{{{components}}};"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_view",
+            "auto",
+            (offset, count),
+            Raw("return get_view().slice(offset, count);"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_const_view",
+            "auto",
+            (),
+            Raw(f"return ConstView{{{components}}};"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+        NewLines(1),
+        MemberFunctionSpec(
+            "get_const_view",
+            "auto",
+            (offset, count),
+            Raw("return get_const_view().slice(offset, count);"),
+            suffix=" const -> ConstView",
+            is_inline=True,
+        ).header_node(),
+    )
+    operations = (
+        ("reset", (), "Reset"),
+        ("empty", (), "Empty"),
+        ("reserve", (count,), "Reserve"),
+        ("set_num", (count, allow_shrinking), "SetNum"),
+        ("set_num_uninitialised", (count,), "SetNumUninitialized"),
+        ("add_uninitialised", (count,), "AddUninitialized"),
+        (
+            "remove_at_swap",
+            (FunctionParameter("size_type const", "index"), count, allow_shrinking),
+            "RemoveAtSwap",
+        ),
+        ("add_zeroed", (count,), "AddZeroed"),
+        ("add_defaulted", (count,), "AddDefaulted"),
+    )
+    operation_nodes: list[Node] = []
+    for index, (operation_name, parameters, array_operation) in enumerate(operations):
+        if index:
+            operation_nodes.append(NewLines(1))
+        arguments = comma_separated(parameter.name for parameter in parameters)
+        operation_nodes.append(
+            MemberFunctionSpec(
+                operation_name,
+                "auto",
+                parameters,
+                _homogeneous_body(
+                    f"{component}.{array_operation}({arguments});"
+                    for component in layout.components
+                ),
+                suffix=" -> void",
+                is_inline=True,
+            ).header_node()
+        )
+    nodes: list[Node] = [*get_data, NewLines(2), *views, NewLines(2)]
+    nodes.extend(
+        (
+            MemberFunctionSpec(
+                "apply_arrays",
+                "auto",
+                (func,),
+                Raw(f"return std::forward<TFunc>(func)({components});"),
+                suffix=" -> decltype(auto)",
+                is_inline=True,
+                template_parameters="typename TFunc",
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "apply_arrays",
+                "auto",
+                (func,),
+                Raw(f"return std::forward<TFunc>(func)({components});"),
+                suffix=" const -> decltype(auto)",
+                is_inline=True,
+                template_parameters="typename TFunc",
+            ).header_node(),
+            NewLines(2),
+            MemberFunctionSpec(
+                "num",
+                "auto",
+                (),
+                Raw(f"return {layout.components[0]}.Num();"),
+                suffix=" const -> size_type",
+                is_inline=True,
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "is_empty",
+                "auto",
+                (),
+                Raw("return num() == 0;"),
+                suffix=" const -> bool",
+                is_inline=True,
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "copy_element",
+                "auto",
+                (
+                    FunctionParameter("size_type const", "dst_i"),
+                    FunctionParameter(f"{name} const&", "src"),
+                    FunctionParameter("size_type const", "src_i"),
+                ),
+                _homogeneous_body(
+                    f"{component}[dst_i] = src.{component}[src_i];"
+                    for component in layout.components
+                ),
+                suffix=" -> void",
+                is_inline=True,
+            ).header_node(),
+        )
+    )
+    if value_type.aos_type:
+        component_parameters = tuple(
+            FunctionParameter("value_type const", component[0])
+            for component in layout.components
+        )
+        nodes.extend(
+            (
+                NewLines(1),
+                MemberFunctionSpec(
+                    "add",
+                    "auto",
+                    component_parameters,
+                    _homogeneous_body(
+                        (
+                            f"auto const index{{{layout.components[0]}.Add({layout.components[0][0]})}};",
+                            *(
+                                f"{component}.Add({component[0]});"
+                                for component in layout.components[1:]
+                            ),
+                            "return index;",
+                        )
+                    ),
+                    suffix=" -> size_type",
+                    is_inline=True,
+                ).header_node(),
+                NewLines(1),
+                MemberFunctionSpec(
+                    "add",
+                    "auto",
+                    (FunctionParameter("aos_type const&", "value"),),
+                    Raw(
+                        f"return add({comma_separated(f'value.{axis}' for axis in ('X', 'Y', 'Z')[: len(layout.components)])});"
+                    ),
+                    suffix=" -> size_type",
+                    is_inline=True,
+                ).header_node(),
+            )
+        )
+    nodes.extend((NewLines(2), *operation_nodes))
+    return tuple(nodes)
+
+
+def _homogeneous_storage_struct(
+    layout: HomogeneousSoALayout, value_type: HomogeneousSoAValueType
+) -> Struct:
+    aliases: list[Node] = [UsingDeclaration("value_type", value_type.cpp_type)]
+    if value_type.aos_type:
+        aliases.extend((NewLines(1), UsingDeclaration("aos_type", value_type.aos_type)))
+    aliases.extend(
+        (
+            NewLines(1),
+            UsingDeclaration("size_type", "TArray<value_type>::SizeType"),
+            NewLines(1),
+            UsingDeclaration("View", f"{layout.view_name}<value_type>"),
+            NewLines(1),
+            UsingDeclaration("ConstView", f"{layout.view_name}<value_type const>"),
+        )
+    )
+    return Struct(
+        layout.storage_name(value_type),
+        (
+            *aliases,
+            NewLines(2),
+            _homogeneous_data_struct(layout, "Data", "value_type*"),
+            NewLines(2),
+            _homogeneous_data_struct(layout, "ConstData", "value_type const*"),
+            NewLines(2),
+            *_separate(
+                (
+                    Member("TArray<value_type>", component)
+                    for component in layout.components
+                ),
+                1,
+            ),
+            NewLines(2),
+            *_homogeneous_storage_functions(layout, value_type),
+        ),
+    )
+
+
+def lower_homogeneous_soa_layouts(
+    layouts: Iterable[HomogeneousSoALayout],
+) -> tuple[Node, ...]:
+    layout_list = tuple(layouts)
+    nodes: list[Node] = []
+    for layout in layout_list:
+        if nodes:
+            nodes.append(NewLines(2))
+        nodes.append(_homogeneous_view_struct(layout))
+    for layout in layout_list:
+        for value_type in layout.value_types:
+            nodes.extend((NewLines(2), _homogeneous_storage_struct(layout, value_type)))
+    return tuple(nodes)

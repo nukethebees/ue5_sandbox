@@ -24,6 +24,8 @@ from Codegen.nodes import (
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
+    HomogeneousSoALayout,
+    HomogeneousSoAValueType,
     SoAMember,
     SoAStruct,
     SoAStructNames,
@@ -32,6 +34,7 @@ from Codegen.soa import (
     ForEachSoAMemberPairFreeFunctionCall,
     lower_soa_struct,
     lower_soa_structs_with_source,
+    lower_homogeneous_soa_layouts,
     soa_member,
     tarray_member,
 )
@@ -125,7 +128,9 @@ struct FValue {
         self.assertIn("collision_damage_events_soa", module_names)
         self.assertIn("test_capital_ship_fighter_order_queue", module_names)
         self.assertIn("entity_death_info", module_names)
-        self.assertEqual(len(generated_modules), 11)
+        self.assertIn("sandbox_core_soa_vectors", module_names)
+        self.assertIn("sandbox_core_soa_rotators", module_names)
+        self.assertEqual(len(generated_modules), 13)
 
     def test_duplicate_output_paths_are_rejected(self) -> None:
         modules = (
@@ -460,6 +465,23 @@ void append_from(Other const& other) {
             SoAStructNames("")
         with self.assertRaisesRegex(ValueError, "SOA view struct names"):
             SoAStructNames("FData", "")
+
+    def test_homogeneous_soa_layout_lowers_to_generic_struct_nodes(self) -> None:
+        layout = HomogeneousSoALayout(
+            "Values",
+            ("xs", "ys"),
+            (HomogeneousSoAValueType("float", "f", "FVector2f"),),
+        )
+
+        nodes = lower_homogeneous_soa_layouts((layout,))
+        rendered = "\n".join(node.render(RenderContext()) for node in nodes)
+
+        self.assertTrue(all(isinstance(node, (NewLines, Struct)) for node in nodes))
+        self.assertIn("template <typename T>", rendered)
+        self.assertIn("struct TValuesView", rendered)
+        self.assertIn("struct FValuesf", rendered)
+        self.assertIn("using aos_type = FVector2f;", rendered)
+        self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)
 
     def test_soa_struct_lowers_to_ordered_generic_declarations(self) -> None:
         soa = SoAStruct(
