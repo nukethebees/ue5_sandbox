@@ -12,6 +12,10 @@ GENERATED_FILE_WARNING = (
 )
 
 
+def comma_separated(values: Iterable[str]) -> str:
+    return ", ".join(values)
+
+
 @dataclass(frozen=True)
 class RenderContext:
     indent_level: int = 0
@@ -230,7 +234,7 @@ class MemberFunctionSpec:
 
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
-        return ", ".join(render(parameter) for parameter in self.parameters)
+        return comma_separated(render(parameter) for parameter in self.parameters)
 
     def declaration_signature(self) -> str:
         return self._signature(True)
@@ -300,7 +304,7 @@ class FreeFunctionSpec:
 
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
-        return ", ".join(render(parameter) for parameter in self.parameters)
+        return comma_separated(render(parameter) for parameter in self.parameters)
 
     def declaration_signature(self) -> str:
         return self._signature(True, False)
@@ -345,7 +349,7 @@ class Struct(Node):
         lines: list[str] = []
         if self.template:
             lines.append(context.apply_indent(f"template <{self.template}>"))
-        inheritance = f" : {', '.join(self.bases)}" if self.bases else ""
+        inheritance = f" : {comma_separated(self.bases)}" if self.bases else ""
         export_specifier = f" {self.export_specifier}" if self.export_specifier else ""
         lines.append(context.apply_indent(f"struct{export_specifier} {self.name}{inheritance} {{"))
         lines.append(render_node_sequence(self.nodes, context.indent(), 2))

@@ -16,6 +16,7 @@ from Codegen.nodes import (
     RenderContext,
     Struct,
     UsingDeclaration,
+    comma_separated,
 )
 
 
@@ -73,7 +74,7 @@ class ForEachSoAMemberFreeFunctionCall(FunctionBody):
             function.parameter(parameter).cpp_name for parameter in function.parameters
         )
         return "\n".join(
-            Raw(f"{self.free_function}({', '.join((member.name, *parameters))});").render(context)
+            Raw(f"{self.free_function}({comma_separated((member.name, *parameters))});").render(context)
             for member in self.members
         )
 
@@ -106,7 +107,7 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
         return "\n".join(
             Raw(
                 f"{self.free_function}("
-                f"{', '.join((member.name, *before_other, f'{other.cpp_name}.{member.name}', *after_other))}"
+                f"{comma_separated((member.name, *before_other, f'{other.cpp_name}.{member.name}', *after_other))}"
                 f");"
             ).render(context)
             for member in self.members
