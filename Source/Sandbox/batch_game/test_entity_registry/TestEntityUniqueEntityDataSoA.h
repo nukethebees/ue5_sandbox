@@ -82,6 +82,96 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
 
     using kills_type = uint32;
 
+    void reset() {
+        ml::reset(registry_indices);
+        ml::reset(registry_generations);
+        ml::reset(entity_types);
+        ml::reset(teams);
+        ml::reset(kills);
+        ml::reset(alive);
+        ml::reset(killed_by);
+        ml::reset(death_reason);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(registry_indices, count);
+        ml::reserve(registry_generations, count);
+        ml::reserve(entity_types, count);
+        ml::reserve(teams, count);
+        ml::reserve(kills, count);
+        ml::reserve(alive, count);
+        ml::reserve(killed_by, count);
+        ml::reserve(death_reason, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(registry_indices, count);
+        ml::add_uninitialised(registry_generations, count);
+        ml::add_uninitialised(entity_types, count);
+        ml::add_uninitialised(teams, count);
+        ml::add_uninitialised(kills, count);
+        ml::add_uninitialised(alive, count);
+        ml::add_uninitialised(killed_by, count);
+        ml::add_uninitialised(death_reason, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(registry_indices, count);
+        ml::add_defaulted(registry_generations, count);
+        ml::add_defaulted(entity_types, count);
+        ml::add_defaulted(teams, count);
+        ml::add_defaulted(kills, count);
+        ml::add_defaulted(alive, count);
+        ml::add_defaulted(killed_by, count);
+        ml::add_defaulted(death_reason, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(registry_indices, index, count, allow_shrinking);
+        ml::remove_at_swap(registry_generations, index, count, allow_shrinking);
+        ml::remove_at_swap(entity_types, index, count, allow_shrinking);
+        ml::remove_at_swap(teams, index, count, allow_shrinking);
+        ml::remove_at_swap(kills, index, count, allow_shrinking);
+        ml::remove_at_swap(alive, index, count, allow_shrinking);
+        ml::remove_at_swap(killed_by, index, count, allow_shrinking);
+        ml::remove_at_swap(death_reason, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(registry_indices, count, allow_shrinking);
+        ml::set_num(registry_generations, count, allow_shrinking);
+        ml::set_num(entity_types, count, allow_shrinking);
+        ml::set_num(teams, count, allow_shrinking);
+        ml::set_num(kills, count, allow_shrinking);
+        ml::set_num(alive, count, allow_shrinking);
+        ml::set_num(killed_by, count, allow_shrinking);
+        ml::set_num(death_reason, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, TestEntityUniqueEntityData const& other, int32 const src_i) {
+        ml::copy_element(registry_indices, dst_i, other.registry_indices, src_i);
+        ml::copy_element(registry_generations, dst_i, other.registry_generations, src_i);
+        ml::copy_element(entity_types, dst_i, other.entity_types, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(kills, dst_i, other.kills, src_i);
+        ml::copy_element(alive, dst_i, other.alive, src_i);
+        ml::copy_element(killed_by, dst_i, other.killed_by, src_i);
+        ml::copy_element(death_reason, dst_i, other.death_reason, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<TestEntityUniqueEntityData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(registry_indices, other.registry_indices);
+        ml::append_from(registry_generations, other.registry_generations);
+        ml::append_from(entity_types, other.entity_types);
+        ml::append_from(teams, other.teams);
+        ml::append_from(kills, other.kills);
+        ml::append_from(alive, other.alive);
+        ml::append_from(killed_by, other.killed_by);
+        ml::append_from(death_reason, other.death_reason);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(

@@ -12,12 +12,26 @@ from Codegen.nodes import (
     NewLines,
     Raw,
 )
-from Codegen.soa import ForEachSoAMemberCall, SoAStruct, lower_soa_structs, soa_member, tarray_member
+from Codegen.soa import (
+    ForEachSoAMemberCall,
+    SoAStruct,
+    SoAStorageOperation,
+    lower_soa_structs,
+    soa_member,
+    tarray_member,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BATCH_GAME_DIR = PROJECT_ROOT / "Source" / "Sandbox" / "batch_game"
 TEST_ENTITY_REGISTRY_DIR = BATCH_GAME_DIR / "test_entity_registry"
+ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
+COUNTDOWN_TIMERS_STORAGE_OPERATIONS = (
+    SoAStorageOperation.RESET,
+    SoAStorageOperation.ADD_UNINITIALISED,
+    SoAStorageOperation.REMOVE_AT_SWAP,
+    SoAStorageOperation.COPY_ELEMENT,
+)
 
 
 def fighter_soa_module() -> Module:
@@ -78,6 +92,7 @@ def fighter_soa_module() -> Module:
                                 "EntityDataView",
                                 "EntityDataConstView",
                                 members,
+                                storage_operations=ALL_STORAGE_OPERATIONS,
                             ),
                         )
                     ),
@@ -101,6 +116,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("initial_spawn_delays", "float"),
             tarray_member("spawn_cooldowns", "float"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     entity_tick_data = SoAStruct(
         "EntityTickData",
@@ -110,6 +126,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("ships_ready_to_spawn_fighters_buffer", "int32"),
             soa_member("fighter_queue", "TestCapitalShipFighterSpawnQueue"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     entity_data = SoAStruct(
         "EntityData",
@@ -126,6 +143,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("capital_fighter_handle_spans", "FIndexSpan"),
             tarray_member("target_handles", "FRegistryEntityHandle"),
         ),
+        storage_operations=COUNTDOWN_TIMERS_STORAGE_OPERATIONS,
     )
     fighter_reassignment_members = (
         tarray_member("capital_handles", "FRegistryEntityHandle"),
@@ -136,6 +154,7 @@ def capital_ships_soa_module() -> Module:
         "FighterReassignmentView",
         "FighterReassignmentConstView",
         fighter_reassignment_members,
+        storage_operations=ALL_STORAGE_OPERATIONS,
         nodes=(
             MemberFunctionSpec(
                 "add",
@@ -220,6 +239,7 @@ def lasers_soa_module() -> Module:
             tarray_member("instigator_handles", "FRegistryEntityHandle"),
             tarray_member("colours", "FLinearColor"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
         nodes=(
             set_damages.header_node(),
             NewLines(1),
@@ -244,12 +264,14 @@ def lasers_soa_module() -> Module:
             tarray_member("lifetimes_remaining", "float"),
             tarray_member("instigator_handles", "FRegistryEntityHandle"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     hit_details = SoAStruct(
         "HitDetails",
         "HitDetailsView",
         "HitDetailsConstView",
         (soa_member("locations", "FVectors3f"), tarray_member("colours", "FLinearColor")),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="test_lasers_soa",
@@ -291,6 +313,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("hit_items", "int32"),
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     resolved = SoAStruct(
         "CollisionDamageEvents",
@@ -302,6 +325,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("hit_items", "int32"),
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="collision_damage_events_soa",
@@ -338,6 +362,7 @@ def fighter_spawn_queue_soa_module() -> Module:
             tarray_member("teams", "ETestTeam"),
             tarray_member("targets", "FRegistryEntityHandle"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="test_capital_ship_fighter_spawn_queue_soa",
@@ -375,6 +400,7 @@ def fighter_order_queue_module() -> Module:
         "TestCapitalShipFighterOrderQueueView",
         "TestCapitalShipFighterOrderQueueConstView",
         order_queue_members,
+        storage_operations=ALL_STORAGE_OPERATIONS,
         storage_type_aliases=(
             ("Task", "ETestCapitalShipFightersTask"),
             ("Order", "TestCapitalShipFighterOrder"),
@@ -447,6 +473,7 @@ def entity_death_info_module() -> Module:
         "EntityDeathInfoView",
         "EntityDeathInfoConstView",
         entity_death_info_members,
+        storage_operations=ALL_STORAGE_OPERATIONS,
         nodes=(
             add_function.declaration_node(),
             NewLines(1),
@@ -501,6 +528,7 @@ def static_turrets_soa_module() -> Module:
             soa_member("target_velocities", "FVectors3f"),
             tarray_member("healths", "int32"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="test_static_turrets_soa",
@@ -538,6 +566,7 @@ def tube_spinners_soa_module() -> Module:
             soa_member("laser_cooldowns", "FTickCountdown16"),
             tarray_member("next_fire_point_indices", "int32"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="test_tube_spinners_soa",
@@ -572,6 +601,7 @@ def direct_damage_events_soa_module() -> Module:
             tarray_member("damage_amounts", "int32"),
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
     )
     return Module(
         name="direct_damage_events_soa",
@@ -610,6 +640,7 @@ def unique_entity_data_soa_module() -> Module:
             tarray_member("killed_by", "TestEntityUniqueId"),
             tarray_member("death_reason", "ETestDeathReason"),
         ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier="SANDBOX_API",
         storage_type_aliases=(("kills_type", "uint32"),),
     )

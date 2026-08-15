@@ -79,6 +79,96 @@ struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    void reset() {
+        ml::reset(handles);
+        ml::reset(locations);
+        ml::reset(teams);
+        ml::reset(laser_cooldowns);
+        ml::reset(target_handles);
+        ml::reset(target_locations);
+        ml::reset(target_velocities);
+        ml::reset(healths);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(handles, count);
+        ml::reserve(locations, count);
+        ml::reserve(teams, count);
+        ml::reserve(laser_cooldowns, count);
+        ml::reserve(target_handles, count);
+        ml::reserve(target_locations, count);
+        ml::reserve(target_velocities, count);
+        ml::reserve(healths, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(handles, count);
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(teams, count);
+        ml::add_uninitialised(laser_cooldowns, count);
+        ml::add_uninitialised(target_handles, count);
+        ml::add_uninitialised(target_locations, count);
+        ml::add_uninitialised(target_velocities, count);
+        ml::add_uninitialised(healths, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(handles, count);
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(teams, count);
+        ml::add_defaulted(laser_cooldowns, count);
+        ml::add_defaulted(target_handles, count);
+        ml::add_defaulted(target_locations, count);
+        ml::add_defaulted(target_velocities, count);
+        ml::add_defaulted(healths, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(handles, index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(teams, index, count, allow_shrinking);
+        ml::remove_at_swap(laser_cooldowns, index, count, allow_shrinking);
+        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(healths, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(handles, count, allow_shrinking);
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(teams, count, allow_shrinking);
+        ml::set_num(laser_cooldowns, count, allow_shrinking);
+        ml::set_num(target_handles, count, allow_shrinking);
+        ml::set_num(target_locations, count, allow_shrinking);
+        ml::set_num(target_velocities, count, allow_shrinking);
+        ml::set_num(healths, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
+        ml::copy_element(handles, dst_i, other.handles, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(laser_cooldowns, dst_i, other.laser_cooldowns, src_i);
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
+        ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(handles, other.handles);
+        ml::append_from(locations, other.locations);
+        ml::append_from(teams, other.teams);
+        ml::append_from(laser_cooldowns, other.laser_cooldowns);
+        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_locations, other.target_locations);
+        ml::append_from(target_velocities, other.target_velocities);
+        ml::append_from(healths, other.healths);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(

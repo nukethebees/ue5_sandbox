@@ -70,6 +70,64 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
         targets.Add(target);
     }
 
+    void reset() {
+        ml::reset(handles);
+        ml::reset(orders);
+        ml::reset(tasks);
+        ml::reset(targets);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(handles, count);
+        ml::reserve(orders, count);
+        ml::reserve(tasks, count);
+        ml::reserve(targets, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(handles, count);
+        ml::add_uninitialised(orders, count);
+        ml::add_uninitialised(tasks, count);
+        ml::add_uninitialised(targets, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(handles, count);
+        ml::add_defaulted(orders, count);
+        ml::add_defaulted(tasks, count);
+        ml::add_defaulted(targets, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(handles, index, count, allow_shrinking);
+        ml::remove_at_swap(orders, index, count, allow_shrinking);
+        ml::remove_at_swap(tasks, index, count, allow_shrinking);
+        ml::remove_at_swap(targets, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(handles, count, allow_shrinking);
+        ml::set_num(orders, count, allow_shrinking);
+        ml::set_num(tasks, count, allow_shrinking);
+        ml::set_num(targets, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, TestCapitalShipFighterOrderQueue const& other, int32 const src_i) {
+        ml::copy_element(handles, dst_i, other.handles, src_i);
+        ml::copy_element(orders, dst_i, other.orders, src_i);
+        ml::copy_element(tasks, dst_i, other.tasks, src_i);
+        ml::copy_element(targets, dst_i, other.targets, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<TestCapitalShipFighterOrderQueue, Other>
+    void append_from(Other const& other) {
+        ml::append_from(handles, other.handles);
+        ml::append_from(orders, other.orders);
+        ml::append_from(tasks, other.tasks);
+        ml::append_from(targets, other.targets);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(

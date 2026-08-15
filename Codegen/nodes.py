@@ -186,6 +186,8 @@ class MemberFunctionSpec:
     suffix: str = ""
     is_static: bool = False
     is_inline: bool = False
+    template_parameters: str | None = None
+    requires_clause: str | None = None
 
     def __init__(
         self,
@@ -196,6 +198,8 @@ class MemberFunctionSpec:
         suffix: str = "",
         is_static: bool = False,
         is_inline: bool = False,
+        template_parameters: str | None = None,
+        requires_clause: str | None = None,
     ) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "return_type", return_type)
@@ -206,27 +210,22 @@ class MemberFunctionSpec:
         object.__setattr__(self, "suffix", suffix)
         object.__setattr__(self, "is_static", is_static)
         object.__setattr__(self, "is_inline", is_inline)
+        object.__setattr__(self, "template_parameters", template_parameters)
+        object.__setattr__(self, "requires_clause", requires_clause)
         if isinstance(self.body, FunctionBody):
             self.body.bind(self)
 
     def declaration_node(self) -> FunctionDeclaration:
-        static_prefix = "static " if self.is_static else ""
-        return FunctionDeclaration(
-            f"{static_prefix}{self.return_type} {self.name}({self._parameters(True)}){self.suffix}"
-        )
+        return FunctionDeclaration(self._signature(True))
 
     def header_node(self) -> Node:
         if self.is_inline:
-            static_prefix = "static " if self.is_static else ""
-            return Function(
-                f"{static_prefix}{self.return_type} {self.name}({self._parameters(True)}){self.suffix}",
-                self.body,
-            )
+            return Function(self._signature(True), self.body)
         return self.declaration_node()
 
     def definition_node(self, owner_name: str) -> Function:
         return Function(
-            f"{self.return_type} {owner_name}::{self.name}({self._parameters(False)}){self.suffix}",
+            self._signature(False, owner_name),
             self.body,
         )
 
@@ -238,6 +237,20 @@ class MemberFunctionSpec:
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return ", ".join(render(parameter) for parameter in self.parameters)
+
+    def _signature(self, include_defaults: bool, owner_name: str | None = None) -> str:
+        static_prefix = "static " if self.is_static and owner_name is None else ""
+        qualified_name = f"{owner_name}::{self.name}" if owner_name else self.name
+        lines: list[str] = []
+        if self.template_parameters:
+            lines.append(f"template <{self.template_parameters}>")
+        if self.requires_clause:
+            lines.append(f"requires {self.requires_clause}")
+        lines.append(
+            f"{static_prefix}{self.return_type} {qualified_name}({self._parameters(include_defaults)})"
+            f"{self.suffix}"
+        )
+        return "\n".join(lines)
 
 
 @dataclass(frozen=True)

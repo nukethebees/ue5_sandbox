@@ -78,6 +78,88 @@ struct SpawnData : public ml::FSoAArrayMixin {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
+    void reset() {
+        ml::reset(target_handles);
+        ml::reset(locations);
+        ml::reset(rotations);
+        ml::reset(teams);
+        ml::reset(healths);
+        ml::reset(initial_spawn_delays);
+        ml::reset(spawn_cooldowns);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(target_handles, count);
+        ml::reserve(locations, count);
+        ml::reserve(rotations, count);
+        ml::reserve(teams, count);
+        ml::reserve(healths, count);
+        ml::reserve(initial_spawn_delays, count);
+        ml::reserve(spawn_cooldowns, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(target_handles, count);
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(rotations, count);
+        ml::add_uninitialised(teams, count);
+        ml::add_uninitialised(healths, count);
+        ml::add_uninitialised(initial_spawn_delays, count);
+        ml::add_uninitialised(spawn_cooldowns, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(target_handles, count);
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(rotations, count);
+        ml::add_defaulted(teams, count);
+        ml::add_defaulted(healths, count);
+        ml::add_defaulted(initial_spawn_delays, count);
+        ml::add_defaulted(spawn_cooldowns, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(rotations, index, count, allow_shrinking);
+        ml::remove_at_swap(teams, index, count, allow_shrinking);
+        ml::remove_at_swap(healths, index, count, allow_shrinking);
+        ml::remove_at_swap(initial_spawn_delays, index, count, allow_shrinking);
+        ml::remove_at_swap(spawn_cooldowns, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(target_handles, count, allow_shrinking);
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(rotations, count, allow_shrinking);
+        ml::set_num(teams, count, allow_shrinking);
+        ml::set_num(healths, count, allow_shrinking);
+        ml::set_num(initial_spawn_delays, count, allow_shrinking);
+        ml::set_num(spawn_cooldowns, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, SpawnData const& other, int32 const src_i) {
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(initial_spawn_delays, dst_i, other.initial_spawn_delays, src_i);
+        ml::copy_element(spawn_cooldowns, dst_i, other.spawn_cooldowns, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<SpawnData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(initial_spawn_delays, other.initial_spawn_delays);
+        ml::append_from(spawn_cooldowns, other.spawn_cooldowns);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -151,6 +233,48 @@ struct EntityTickDataConstView : public ml::FSoAViewMixin {
 struct EntityTickData : public ml::FSoAArrayMixin {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
+
+    void reset() {
+        ml::reset(ships_ready_to_spawn_fighters_buffer);
+        ml::reset(fighter_queue);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(ships_ready_to_spawn_fighters_buffer, count);
+        ml::reserve(fighter_queue, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(ships_ready_to_spawn_fighters_buffer, count);
+        ml::add_uninitialised(fighter_queue, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(ships_ready_to_spawn_fighters_buffer, count);
+        ml::add_defaulted(fighter_queue, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(ships_ready_to_spawn_fighters_buffer, index, count, allow_shrinking);
+        ml::remove_at_swap(fighter_queue, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(ships_ready_to_spawn_fighters_buffer, count, allow_shrinking);
+        ml::set_num(fighter_queue, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, EntityTickData const& other, int32 const src_i) {
+        ml::copy_element(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i);
+        ml::copy_element(fighter_queue, dst_i, other.fighter_queue, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<EntityTickData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(ships_ready_to_spawn_fighters_buffer, other.ships_ready_to_spawn_fighters_buffer);
+        ml::append_from(fighter_queue, other.fighter_queue);
+    }
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -239,6 +363,54 @@ struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    void reset() {
+        ml::reset(handles);
+        ml::reset(locations);
+        ml::reset(rotations);
+        ml::reset(fighter_spawn_timers);
+        ml::reset(fighter_spawn_cooldowns);
+        ml::reset(teams);
+        ml::reset(healths);
+        ml::reset(capital_fighter_handle_spans);
+        ml::reset(target_handles);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(handles, count);
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(rotations, count);
+        ml::add_uninitialised(fighter_spawn_timers, count);
+        ml::add_uninitialised(fighter_spawn_cooldowns, count);
+        ml::add_uninitialised(teams, count);
+        ml::add_uninitialised(healths, count);
+        ml::add_uninitialised(capital_fighter_handle_spans, count);
+        ml::add_uninitialised(target_handles, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(handles, index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(rotations, index, count, allow_shrinking);
+        ml::remove_at_swap(fighter_spawn_timers, index, count, allow_shrinking);
+        ml::remove_at_swap(fighter_spawn_cooldowns, index, count, allow_shrinking);
+        ml::remove_at_swap(teams, index, count, allow_shrinking);
+        ml::remove_at_swap(healths, index, count, allow_shrinking);
+        ml::remove_at_swap(capital_fighter_handle_spans, index, count, allow_shrinking);
+        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
+        ml::copy_element(handles, dst_i, other.handles, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(fighter_spawn_timers, dst_i, other.fighter_spawn_timers, src_i);
+        ml::copy_element(fighter_spawn_cooldowns, dst_i, other.fighter_spawn_cooldowns, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(capital_fighter_handle_spans, dst_i, other.capital_fighter_handle_spans, src_i);
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -322,6 +494,48 @@ struct FighterReassignment : public ml::FSoAArrayMixin {
     void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
         capital_handles.Add(ch);
         fighter_handles.Add(fh);
+    }
+
+    void reset() {
+        ml::reset(capital_handles);
+        ml::reset(fighter_handles);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(capital_handles, count);
+        ml::reserve(fighter_handles, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(capital_handles, count);
+        ml::add_uninitialised(fighter_handles, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(capital_handles, count);
+        ml::add_defaulted(fighter_handles, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(capital_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(fighter_handles, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(capital_handles, count, allow_shrinking);
+        ml::set_num(fighter_handles, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, FighterReassignment const& other, int32 const src_i) {
+        ml::copy_element(capital_handles, dst_i, other.capital_handles, src_i);
+        ml::copy_element(fighter_handles, dst_i, other.fighter_handles, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<FighterReassignment, Other>
+    void append_from(Other const& other) {
+        ml::append_from(capital_handles, other.capital_handles);
+        ml::append_from(fighter_handles, other.fighter_handles);
     }
 
     template <typename TFunc>

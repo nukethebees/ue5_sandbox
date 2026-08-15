@@ -28,6 +28,9 @@ from Codegen.soa import (
     ForEachSoAMemberCall,
     SoAMember,
     SoAStruct,
+    SoAStorageOperation,
+    ForEachSoAMemberFreeFunctionCall,
+    ForEachSoAMemberPairFreeFunctionCall,
     lower_soa_struct,
     soa_member,
     tarray_member,
@@ -245,6 +248,113 @@ struct FValue {
 
 
 class SoARenderingTests(unittest.TestCase):
+    def test_member_free_function_call_uses_bound_function_parameters(self) -> None:
+        count = FunctionParameter("int32 const", "count")
+        function = MemberFunctionSpec(
+            "add_defaulted",
+            "void",
+            (count,),
+            ForEachSoAMemberFreeFunctionCall(
+                (tarray_member("handles", "int32"), tarray_member("weights", "float")),
+                "ml::add_defaulted",
+            ),
+        )
+
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """void FData::add_defaulted(int32 const count) {
+    ml::add_defaulted(handles, count);
+    ml::add_defaulted(weights, count);
+}""",
+        )
+
+        count.name = "new_count"
+        self.assertIn("new_count);", function.definition_node("FData").render(RenderContext()))
+
+    def test_member_pair_free_function_call_expands_other_members(self) -> None:
+        dst_i = FunctionParameter("int32 const", "dst_i")
+        other = FunctionParameter("FData const&", "other")
+        src_i = FunctionParameter("int32 const", "src_i")
+        function = MemberFunctionSpec(
+            "copy_element",
+            "void",
+            (dst_i, other, src_i),
+            ForEachSoAMemberPairFreeFunctionCall(
+                (tarray_member("handles", "int32"), tarray_member("weights", "float")),
+                "ml::copy_element",
+                other,
+            ),
+        )
+
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """void FData::copy_element(int32 const dst_i, FData const& other, int32 const src_i) {
+    ml::copy_element(handles, dst_i, other.handles, src_i);
+    ml::copy_element(weights, dst_i, other.weights, src_i);
+}""",
+        )
+
+    def test_member_pair_free_function_call_rejects_an_unowned_other_parameter(self) -> None:
+        function = MemberFunctionSpec(
+            "append_from",
+            "void",
+            (FunctionParameter("FData const&", "other"),),
+            ForEachSoAMemberPairFreeFunctionCall(
+                (tarray_member("values", "int32"),),
+                "ml::append_from",
+                FunctionParameter("FData const&", "other"),
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "does not belong"):
+            function.definition_node("FData").render(RenderContext())
+
+    def test_member_function_spec_renders_templated_requires_clause(self) -> None:
+        other = FunctionParameter("Other const&", "other")
+        function = MemberFunctionSpec(
+            "append_from",
+            "void",
+            (other,),
+            ForEachSoAMemberPairFreeFunctionCall(
+                (tarray_member("values", "int32"),), "ml::append_from", other
+            ),
+            is_inline=True,
+            template_parameters="typename Other",
+            requires_clause="ml::SupportsApplyArrayPairsWith<FData, Other>",
+        )
+
+        self.assertEqual(
+            function.header_node().render(RenderContext()),
+            """template <typename Other>
+requires ml::SupportsApplyArrayPairsWith<FData, Other>
+void append_from(Other const& other) {
+    ml::append_from(values, other.values);
+}""",
+        )
+
+    def test_soa_storage_operations_generate_direct_member_functions(self) -> None:
+        soa = SoAStruct(
+            "FData",
+            "FDataView",
+            "FDataConstView",
+            (tarray_member("values", "int32"),),
+            storage_operations=(
+                SoAStorageOperation.ADD_DEFAULTED,
+                SoAStorageOperation.REMOVE_AT_SWAP,
+                SoAStorageOperation.COPY_ELEMENT,
+                SoAStorageOperation.APPEND_FROM,
+            ),
+        )
+
+        rendered = lower_soa_struct(soa)[-1].render(RenderContext())
+
+        self.assertIn("void add_defaulted(int32 const count)", rendered)
+        self.assertIn("ml::add_defaulted(", rendered)
+        self.assertIn("void remove_at_swap(", rendered)
+        self.assertIn("ml::copy_element(", rendered)
+        self.assertIn("template <typename Other>", rendered)
+        self.assertLess(rendered.index("void add_defaulted"), rendered.index("apply_arrays"))
+
     def test_for_each_soa_member_call_uses_bound_function_parameters(self) -> None:
         handles = tarray_member("handles", "FRegistryEntityHandle")
         weights = tarray_member("weights", "float")

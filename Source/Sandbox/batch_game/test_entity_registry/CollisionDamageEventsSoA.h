@@ -67,6 +67,72 @@ struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
+    void reset() {
+        ml::reset(damaged_actors);
+        ml::reset(damage_amounts);
+        ml::reset(actor_components);
+        ml::reset(hit_items);
+        ml::reset(instigators);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(damaged_actors, count);
+        ml::reserve(damage_amounts, count);
+        ml::reserve(actor_components, count);
+        ml::reserve(hit_items, count);
+        ml::reserve(instigators, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(damaged_actors, count);
+        ml::add_uninitialised(damage_amounts, count);
+        ml::add_uninitialised(actor_components, count);
+        ml::add_uninitialised(hit_items, count);
+        ml::add_uninitialised(instigators, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(damaged_actors, count);
+        ml::add_defaulted(damage_amounts, count);
+        ml::add_defaulted(actor_components, count);
+        ml::add_defaulted(hit_items, count);
+        ml::add_defaulted(instigators, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(damaged_actors, index, count, allow_shrinking);
+        ml::remove_at_swap(damage_amounts, index, count, allow_shrinking);
+        ml::remove_at_swap(actor_components, index, count, allow_shrinking);
+        ml::remove_at_swap(hit_items, index, count, allow_shrinking);
+        ml::remove_at_swap(instigators, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(damaged_actors, count, allow_shrinking);
+        ml::set_num(damage_amounts, count, allow_shrinking);
+        ml::set_num(actor_components, count, allow_shrinking);
+        ml::set_num(hit_items, count, allow_shrinking);
+        ml::set_num(instigators, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, UnresolvedCollisionDamageEvents const& other, int32 const src_i) {
+        ml::copy_element(damaged_actors, dst_i, other.damaged_actors, src_i);
+        ml::copy_element(damage_amounts, dst_i, other.damage_amounts, src_i);
+        ml::copy_element(actor_components, dst_i, other.actor_components, src_i);
+        ml::copy_element(hit_items, dst_i, other.hit_items, src_i);
+        ml::copy_element(instigators, dst_i, other.instigators, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<UnresolvedCollisionDamageEvents, Other>
+    void append_from(Other const& other) {
+        ml::append_from(damaged_actors, other.damaged_actors);
+        ml::append_from(damage_amounts, other.damage_amounts);
+        ml::append_from(actor_components, other.actor_components);
+        ml::append_from(hit_items, other.hit_items);
+        ml::append_from(instigators, other.instigators);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -142,6 +208,64 @@ struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
 struct CollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
+
+    void reset() {
+        ml::reset(damage_amounts);
+        ml::reset(actor_components);
+        ml::reset(hit_items);
+        ml::reset(instigators);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(damage_amounts, count);
+        ml::reserve(actor_components, count);
+        ml::reserve(hit_items, count);
+        ml::reserve(instigators, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(damage_amounts, count);
+        ml::add_uninitialised(actor_components, count);
+        ml::add_uninitialised(hit_items, count);
+        ml::add_uninitialised(instigators, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(damage_amounts, count);
+        ml::add_defaulted(actor_components, count);
+        ml::add_defaulted(hit_items, count);
+        ml::add_defaulted(instigators, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(damage_amounts, index, count, allow_shrinking);
+        ml::remove_at_swap(actor_components, index, count, allow_shrinking);
+        ml::remove_at_swap(hit_items, index, count, allow_shrinking);
+        ml::remove_at_swap(instigators, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(damage_amounts, count, allow_shrinking);
+        ml::set_num(actor_components, count, allow_shrinking);
+        ml::set_num(hit_items, count, allow_shrinking);
+        ml::set_num(instigators, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, CollisionDamageEvents const& other, int32 const src_i) {
+        ml::copy_element(damage_amounts, dst_i, other.damage_amounts, src_i);
+        ml::copy_element(actor_components, dst_i, other.actor_components, src_i);
+        ml::copy_element(hit_items, dst_i, other.hit_items, src_i);
+        ml::copy_element(instigators, dst_i, other.instigators, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<CollisionDamageEvents, Other>
+    void append_from(Other const& other) {
+        ml::append_from(damage_amounts, other.damage_amounts);
+        ml::append_from(actor_components, other.actor_components);
+        ml::append_from(hit_items, other.hit_items);
+        ml::append_from(instigators, other.instigators);
+    }
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {

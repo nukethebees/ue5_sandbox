@@ -85,6 +85,96 @@ struct SpawnRequests : public ml::FSoAArrayMixin {
     void set_max_distances(float const value);
     void set_colours(FLinearColor const value);
 
+    void reset() {
+        ml::reset(locations);
+        ml::reset(rotations);
+        ml::reset(base_velocities);
+        ml::reset(damages);
+        ml::reset(speeds);
+        ml::reset(max_distances);
+        ml::reset(instigator_handles);
+        ml::reset(colours);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(locations, count);
+        ml::reserve(rotations, count);
+        ml::reserve(base_velocities, count);
+        ml::reserve(damages, count);
+        ml::reserve(speeds, count);
+        ml::reserve(max_distances, count);
+        ml::reserve(instigator_handles, count);
+        ml::reserve(colours, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(rotations, count);
+        ml::add_uninitialised(base_velocities, count);
+        ml::add_uninitialised(damages, count);
+        ml::add_uninitialised(speeds, count);
+        ml::add_uninitialised(max_distances, count);
+        ml::add_uninitialised(instigator_handles, count);
+        ml::add_uninitialised(colours, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(rotations, count);
+        ml::add_defaulted(base_velocities, count);
+        ml::add_defaulted(damages, count);
+        ml::add_defaulted(speeds, count);
+        ml::add_defaulted(max_distances, count);
+        ml::add_defaulted(instigator_handles, count);
+        ml::add_defaulted(colours, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(rotations, index, count, allow_shrinking);
+        ml::remove_at_swap(base_velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(damages, index, count, allow_shrinking);
+        ml::remove_at_swap(speeds, index, count, allow_shrinking);
+        ml::remove_at_swap(max_distances, index, count, allow_shrinking);
+        ml::remove_at_swap(instigator_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(colours, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(rotations, count, allow_shrinking);
+        ml::set_num(base_velocities, count, allow_shrinking);
+        ml::set_num(damages, count, allow_shrinking);
+        ml::set_num(speeds, count, allow_shrinking);
+        ml::set_num(max_distances, count, allow_shrinking);
+        ml::set_num(instigator_handles, count, allow_shrinking);
+        ml::set_num(colours, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, SpawnRequests const& other, int32 const src_i) {
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(base_velocities, dst_i, other.base_velocities, src_i);
+        ml::copy_element(damages, dst_i, other.damages, src_i);
+        ml::copy_element(speeds, dst_i, other.speeds, src_i);
+        ml::copy_element(max_distances, dst_i, other.max_distances, src_i);
+        ml::copy_element(instigator_handles, dst_i, other.instigator_handles, src_i);
+        ml::copy_element(colours, dst_i, other.colours, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<SpawnRequests, Other>
+    void append_from(Other const& other) {
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(base_velocities, other.base_velocities);
+        ml::append_from(damages, other.damages);
+        ml::append_from(speeds, other.speeds);
+        ml::append_from(max_distances, other.max_distances);
+        ml::append_from(instigator_handles, other.instigator_handles);
+        ml::append_from(colours, other.colours);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -186,6 +276,96 @@ struct Entities : public ml::FSoAArrayMixin {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
+    void reset() {
+        ml::reset(ismc_data);
+        ml::reset(colours);
+        ml::reset(locations);
+        ml::reset(rotations);
+        ml::reset(velocities);
+        ml::reset(damages);
+        ml::reset(lifetimes_remaining);
+        ml::reset(instigator_handles);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(ismc_data, count);
+        ml::reserve(colours, count);
+        ml::reserve(locations, count);
+        ml::reserve(rotations, count);
+        ml::reserve(velocities, count);
+        ml::reserve(damages, count);
+        ml::reserve(lifetimes_remaining, count);
+        ml::reserve(instigator_handles, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(ismc_data, count);
+        ml::add_uninitialised(colours, count);
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(rotations, count);
+        ml::add_uninitialised(velocities, count);
+        ml::add_uninitialised(damages, count);
+        ml::add_uninitialised(lifetimes_remaining, count);
+        ml::add_uninitialised(instigator_handles, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(ismc_data, count);
+        ml::add_defaulted(colours, count);
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(rotations, count);
+        ml::add_defaulted(velocities, count);
+        ml::add_defaulted(damages, count);
+        ml::add_defaulted(lifetimes_remaining, count);
+        ml::add_defaulted(instigator_handles, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(ismc_data, index, count, allow_shrinking);
+        ml::remove_at_swap(colours, index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(rotations, index, count, allow_shrinking);
+        ml::remove_at_swap(velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(damages, index, count, allow_shrinking);
+        ml::remove_at_swap(lifetimes_remaining, index, count, allow_shrinking);
+        ml::remove_at_swap(instigator_handles, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(ismc_data, count, allow_shrinking);
+        ml::set_num(colours, count, allow_shrinking);
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(rotations, count, allow_shrinking);
+        ml::set_num(velocities, count, allow_shrinking);
+        ml::set_num(damages, count, allow_shrinking);
+        ml::set_num(lifetimes_remaining, count, allow_shrinking);
+        ml::set_num(instigator_handles, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, Entities const& other, int32 const src_i) {
+        ml::copy_element(ismc_data, dst_i, other.ismc_data, src_i);
+        ml::copy_element(colours, dst_i, other.colours, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(velocities, dst_i, other.velocities, src_i);
+        ml::copy_element(damages, dst_i, other.damages, src_i);
+        ml::copy_element(lifetimes_remaining, dst_i, other.lifetimes_remaining, src_i);
+        ml::copy_element(instigator_handles, dst_i, other.instigator_handles, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<Entities, Other>
+    void append_from(Other const& other) {
+        ml::append_from(ismc_data, other.ismc_data);
+        ml::append_from(colours, other.colours);
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(velocities, other.velocities);
+        ml::append_from(damages, other.damages);
+        ml::append_from(lifetimes_remaining, other.lifetimes_remaining);
+        ml::append_from(instigator_handles, other.instigator_handles);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -262,6 +442,48 @@ struct HitDetailsConstView : public ml::FSoAViewMixin {
 struct HitDetails : public ml::FSoAArrayMixin {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
+
+    void reset() {
+        ml::reset(locations);
+        ml::reset(colours);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(locations, count);
+        ml::reserve(colours, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(colours, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(colours, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(colours, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(colours, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, HitDetails const& other, int32 const src_i) {
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(colours, dst_i, other.colours, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<HitDetails, Other>
+    void append_from(Other const& other) {
+        ml::append_from(locations, other.locations);
+        ml::append_from(colours, other.colours);
+    }
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {

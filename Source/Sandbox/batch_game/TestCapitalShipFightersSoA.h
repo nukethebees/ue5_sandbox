@@ -150,6 +150,232 @@ struct EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    void reset() {
+        ml::reset(entity_handles);
+        ml::reset(integral_biases);
+        ml::reset(float_biases);
+        ml::reset(tasks);
+        ml::reset(locations);
+        ml::reset(desired_move_locations);
+        ml::reset(aim_directions);
+        ml::reset(desired_aiming_directions);
+        ml::reset(movement_directions);
+        ml::reset(velocities);
+        ml::reset(move_distances);
+        ml::reset(speeds);
+        ml::reset(teams);
+        ml::reset(healths);
+        ml::reset(awareness_scan_countdowns);
+        ml::reset(attack_reposition_countdowns);
+        ml::reset(attack_cooldowns);
+        ml::reset(target_handles);
+        ml::reset(target_locations);
+        ml::reset(target_velocities);
+        ml::reset(target_directions);
+        ml::reset(intercept_times);
+        ml::reset(target_distance_sq);
+        ml::reset(target_distances);
+        ml::reset(target_radii);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(entity_handles, count);
+        ml::reserve(integral_biases, count);
+        ml::reserve(float_biases, count);
+        ml::reserve(tasks, count);
+        ml::reserve(locations, count);
+        ml::reserve(desired_move_locations, count);
+        ml::reserve(aim_directions, count);
+        ml::reserve(desired_aiming_directions, count);
+        ml::reserve(movement_directions, count);
+        ml::reserve(velocities, count);
+        ml::reserve(move_distances, count);
+        ml::reserve(speeds, count);
+        ml::reserve(teams, count);
+        ml::reserve(healths, count);
+        ml::reserve(awareness_scan_countdowns, count);
+        ml::reserve(attack_reposition_countdowns, count);
+        ml::reserve(attack_cooldowns, count);
+        ml::reserve(target_handles, count);
+        ml::reserve(target_locations, count);
+        ml::reserve(target_velocities, count);
+        ml::reserve(target_directions, count);
+        ml::reserve(intercept_times, count);
+        ml::reserve(target_distance_sq, count);
+        ml::reserve(target_distances, count);
+        ml::reserve(target_radii, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(entity_handles, count);
+        ml::add_uninitialised(integral_biases, count);
+        ml::add_uninitialised(float_biases, count);
+        ml::add_uninitialised(tasks, count);
+        ml::add_uninitialised(locations, count);
+        ml::add_uninitialised(desired_move_locations, count);
+        ml::add_uninitialised(aim_directions, count);
+        ml::add_uninitialised(desired_aiming_directions, count);
+        ml::add_uninitialised(movement_directions, count);
+        ml::add_uninitialised(velocities, count);
+        ml::add_uninitialised(move_distances, count);
+        ml::add_uninitialised(speeds, count);
+        ml::add_uninitialised(teams, count);
+        ml::add_uninitialised(healths, count);
+        ml::add_uninitialised(awareness_scan_countdowns, count);
+        ml::add_uninitialised(attack_reposition_countdowns, count);
+        ml::add_uninitialised(attack_cooldowns, count);
+        ml::add_uninitialised(target_handles, count);
+        ml::add_uninitialised(target_locations, count);
+        ml::add_uninitialised(target_velocities, count);
+        ml::add_uninitialised(target_directions, count);
+        ml::add_uninitialised(intercept_times, count);
+        ml::add_uninitialised(target_distance_sq, count);
+        ml::add_uninitialised(target_distances, count);
+        ml::add_uninitialised(target_radii, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(entity_handles, count);
+        ml::add_defaulted(integral_biases, count);
+        ml::add_defaulted(float_biases, count);
+        ml::add_defaulted(tasks, count);
+        ml::add_defaulted(locations, count);
+        ml::add_defaulted(desired_move_locations, count);
+        ml::add_defaulted(aim_directions, count);
+        ml::add_defaulted(desired_aiming_directions, count);
+        ml::add_defaulted(movement_directions, count);
+        ml::add_defaulted(velocities, count);
+        ml::add_defaulted(move_distances, count);
+        ml::add_defaulted(speeds, count);
+        ml::add_defaulted(teams, count);
+        ml::add_defaulted(healths, count);
+        ml::add_defaulted(awareness_scan_countdowns, count);
+        ml::add_defaulted(attack_reposition_countdowns, count);
+        ml::add_defaulted(attack_cooldowns, count);
+        ml::add_defaulted(target_handles, count);
+        ml::add_defaulted(target_locations, count);
+        ml::add_defaulted(target_velocities, count);
+        ml::add_defaulted(target_directions, count);
+        ml::add_defaulted(intercept_times, count);
+        ml::add_defaulted(target_distance_sq, count);
+        ml::add_defaulted(target_distances, count);
+        ml::add_defaulted(target_radii, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(entity_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(integral_biases, index, count, allow_shrinking);
+        ml::remove_at_swap(float_biases, index, count, allow_shrinking);
+        ml::remove_at_swap(tasks, index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(move_distances, index, count, allow_shrinking);
+        ml::remove_at_swap(speeds, index, count, allow_shrinking);
+        ml::remove_at_swap(teams, index, count, allow_shrinking);
+        ml::remove_at_swap(healths, index, count, allow_shrinking);
+        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
+        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
+        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(intercept_times, index, count, allow_shrinking);
+        ml::remove_at_swap(target_distance_sq, index, count, allow_shrinking);
+        ml::remove_at_swap(target_distances, index, count, allow_shrinking);
+        ml::remove_at_swap(target_radii, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(entity_handles, count, allow_shrinking);
+        ml::set_num(integral_biases, count, allow_shrinking);
+        ml::set_num(float_biases, count, allow_shrinking);
+        ml::set_num(tasks, count, allow_shrinking);
+        ml::set_num(locations, count, allow_shrinking);
+        ml::set_num(desired_move_locations, count, allow_shrinking);
+        ml::set_num(aim_directions, count, allow_shrinking);
+        ml::set_num(desired_aiming_directions, count, allow_shrinking);
+        ml::set_num(movement_directions, count, allow_shrinking);
+        ml::set_num(velocities, count, allow_shrinking);
+        ml::set_num(move_distances, count, allow_shrinking);
+        ml::set_num(speeds, count, allow_shrinking);
+        ml::set_num(teams, count, allow_shrinking);
+        ml::set_num(healths, count, allow_shrinking);
+        ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
+        ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
+        ml::set_num(attack_cooldowns, count, allow_shrinking);
+        ml::set_num(target_handles, count, allow_shrinking);
+        ml::set_num(target_locations, count, allow_shrinking);
+        ml::set_num(target_velocities, count, allow_shrinking);
+        ml::set_num(target_directions, count, allow_shrinking);
+        ml::set_num(intercept_times, count, allow_shrinking);
+        ml::set_num(target_distance_sq, count, allow_shrinking);
+        ml::set_num(target_distances, count, allow_shrinking);
+        ml::set_num(target_radii, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
+        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
+        ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
+        ml::copy_element(tasks, dst_i, other.tasks, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
+        ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
+        ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
+        ml::copy_element(velocities, dst_i, other.velocities, src_i);
+        ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
+        ml::copy_element(speeds, dst_i, other.speeds, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
+        ml::copy_element(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
+        ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
+        ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
+        ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
+        ml::copy_element(intercept_times, dst_i, other.intercept_times, src_i);
+        ml::copy_element(target_distance_sq, dst_i, other.target_distance_sq, src_i);
+        ml::copy_element(target_distances, dst_i, other.target_distances, src_i);
+        ml::copy_element(target_radii, dst_i, other.target_radii, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(integral_biases, other.integral_biases);
+        ml::append_from(float_biases, other.float_biases);
+        ml::append_from(tasks, other.tasks);
+        ml::append_from(locations, other.locations);
+        ml::append_from(desired_move_locations, other.desired_move_locations);
+        ml::append_from(aim_directions, other.aim_directions);
+        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
+        ml::append_from(movement_directions, other.movement_directions);
+        ml::append_from(velocities, other.velocities);
+        ml::append_from(move_distances, other.move_distances);
+        ml::append_from(speeds, other.speeds);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
+        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
+        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_locations, other.target_locations);
+        ml::append_from(target_velocities, other.target_velocities);
+        ml::append_from(target_directions, other.target_directions);
+        ml::append_from(intercept_times, other.intercept_times);
+        ml::append_from(target_distance_sq, other.target_distance_sq);
+        ml::append_from(target_distances, other.target_distances);
+        ml::append_from(target_radii, other.target_radii);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(

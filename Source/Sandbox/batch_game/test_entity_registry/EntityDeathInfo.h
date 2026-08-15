@@ -62,6 +62,56 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
         add(reason, victim, FRegistryEntityHandle{});
     }
 
+    void reset() {
+        ml::reset(reasons);
+        ml::reset(victims);
+        ml::reset(killers);
+    }
+
+    void reserve(int32 const count) {
+        ml::reserve(reasons, count);
+        ml::reserve(victims, count);
+        ml::reserve(killers, count);
+    }
+
+    void add_uninitialised(int32 const count) {
+        ml::add_uninitialised(reasons, count);
+        ml::add_uninitialised(victims, count);
+        ml::add_uninitialised(killers, count);
+    }
+
+    void add_defaulted(int32 const count) {
+        ml::add_defaulted(reasons, count);
+        ml::add_defaulted(victims, count);
+        ml::add_defaulted(killers, count);
+    }
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::remove_at_swap(reasons, index, count, allow_shrinking);
+        ml::remove_at_swap(victims, index, count, allow_shrinking);
+        ml::remove_at_swap(killers, index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+        ml::set_num(reasons, count, allow_shrinking);
+        ml::set_num(victims, count, allow_shrinking);
+        ml::set_num(killers, count, allow_shrinking);
+    }
+
+    void copy_element(int32 const dst_i, EntityDeathInfo const& other, int32 const src_i) {
+        ml::copy_element(reasons, dst_i, other.reasons, src_i);
+        ml::copy_element(victims, dst_i, other.victims, src_i);
+        ml::copy_element(killers, dst_i, other.killers, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<EntityDeathInfo, Other>
+    void append_from(Other const& other) {
+        ml::append_from(reasons, other.reasons);
+        ml::append_from(victims, other.victims);
+        ml::append_from(killers, other.killers);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
