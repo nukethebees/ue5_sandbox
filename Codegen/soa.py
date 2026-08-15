@@ -182,7 +182,6 @@ class SoAStruct:
     names: SoAStructNames
     members: tuple[SoAMember, ...]
     storage_export_specifier: str | None = None
-    storage_type_aliases: tuple[tuple[str, str], ...] = ()
     storage_operations: tuple[SoAStorageOperation, ...] = ()
     nodes: tuple[Node, ...] = ()
     storage_base: str = "ml::FSoAArrayMixin"
@@ -190,14 +189,10 @@ class SoAStruct:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
-        object.__setattr__(self, "storage_type_aliases", tuple(self.storage_type_aliases))
         object.__setattr__(self, "storage_operations", tuple(self.storage_operations))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         if not self.members:
             raise ValueError(f"SOA struct {self.names.name!r} must contain at least one member")
-        for alias_name, alias_value_type in self.storage_type_aliases:
-            if not alias_name.strip() or not alias_value_type.strip():
-                raise ValueError("SOA storage type aliases must not be empty")
         if any(not isinstance(operation, SoAStorageOperation) for operation in self.storage_operations):
             raise ValueError("SOA storage operations must be SoAStorageOperation values")
         if len(set(self.storage_operations)) != len(self.storage_operations):
@@ -367,14 +362,11 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
 
 def _storage_struct(soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec]) -> Struct:
     members = tuple(Member(member.container_type, member.name) for member in soa.members)
-    aliases = tuple(UsingDeclaration(name, value_type) for name, value_type in soa.storage_type_aliases)
     struct_nodes: list[Node] = [
         UsingDeclaration("View", soa.names.view_name),
         NewLines(1),
         UsingDeclaration("ConstView", soa.names.const_view_name),
     ]
-    if aliases:
-        struct_nodes.extend((NewLines(2), *_separate(aliases, 1)))
     if soa.nodes:
         struct_nodes.extend((NewLines(2), *soa.nodes))
     operations = _storage_operation_nodes(operation_specs)

@@ -502,12 +502,12 @@ void append_from(Other const& other) {
         with self.assertRaisesRegex(ValueError, "duplicate members"):
             Struct("FData", (Member("int32", "value"), Member("float", "value")))
 
-    def test_storage_metadata_is_rendered(self) -> None:
+    def test_storage_export_and_nodes_are_rendered(self) -> None:
         soa = SoAStruct(
             SoAStructNames("FExportedData"),
             (tarray_member("values", "int32"),),
             storage_export_specifier="SANDBOX_API",
-            storage_type_aliases=(("CountType", "int32"),),
+            nodes=(UsingDeclaration("CountType", "int32"),),
         )
 
         rendered = lower_soa_struct(soa)[-1].render(RenderContext())

@@ -11,6 +11,7 @@ from Codegen.nodes import (
     Namespace,
     NewLines,
     Raw,
+    UsingDeclaration,
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
@@ -421,11 +422,11 @@ def fighter_order_queue_module() -> Module:
         order_queue_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
-        storage_type_aliases=(
-            ("Task", "ETestCapitalShipFightersTask"),
-            ("Order", "TestCapitalShipFighterOrder"),
-        ),
         nodes=(
+            UsingDeclaration("Task", "ETestCapitalShipFightersTask"),
+            NewLines(1),
+            UsingDeclaration("Order", "TestCapitalShipFighterOrder"),
+            NewLines(2),
             MemberFunctionSpec(
                 "add",
                 "void",
@@ -664,7 +665,7 @@ def unique_entity_data_soa_module() -> Module:
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
-        storage_type_aliases=(("kills_type", "uint32"),),
+        nodes=(UsingDeclaration("kills_type", "uint32"),),
     )
     lowered = lower_soa_structs_with_source((entity_data,))
     header_path = TEST_ENTITY_REGISTRY_DIR / "TestEntityUniqueEntityDataSoA.h"
