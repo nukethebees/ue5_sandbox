@@ -25,7 +25,6 @@
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
-#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
@@ -556,19 +555,8 @@ auto ATestCapitalShipFighters::get_spatial_query_component() const -> UPrimitive
 void ATestCapitalShipFighters::resolve_hits(
     TConstArrayView<FHitResult> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    check(hits.Num() == out_entity_handles.Num());
-
     auto const& data{entity_buffers.current()};
-    auto const n{hits.Num()};
-    for (int32 i{}; i < n; ++i) {
-        auto const& hit{hits[i]};
-        check(hit.GetComponent() == instances.Get());
-        if (!data.entity_handles.IsValidIndex(hit.Item)) {
-            continue;
-        }
-
-        out_entity_handles[i] = data.entity_handles[hit.Item];
-    }
+    ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, data.entity_handles);
 }
 
 auto ATestCapitalShipFighters::get_task_spans() const -> TaskSpans {

@@ -7,6 +7,7 @@
 #include <Sandbox/batch_game/TestEntityType.h>
 
 #include <Containers/Array.h>
+#include <Engine/HitResult.h>
 #include <HAL/Platform.h>
 
 namespace ml::batch {
@@ -54,6 +55,21 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
                      healths,
                      local_indices_to_remove,
                      entity_death_info);
+    }
+}
+
+void resolve_ismc_hits(TConstArrayView<FHitResult> const hits,
+                       TArrayView<FRegistryEntityHandle> const out_entity_handles,
+                       UPrimitiveComponent const& expected_component,
+                       TConstArrayView<FRegistryEntityHandle> const entity_handles) {
+    check(hits.Num() == out_entity_handles.Num());
+
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const& hit{hits[i]};
+        check(hit.GetComponent() == &expected_component);
+        check(entity_handles.IsValidIndex(hit.Item));
+        out_entity_handles[i] = entity_handles[hit.Item];
     }
 }
 

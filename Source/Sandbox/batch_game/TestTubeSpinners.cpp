@@ -1,6 +1,7 @@
 #include "TestTubeSpinners.h"
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
@@ -17,7 +18,6 @@
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
-#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 
@@ -110,18 +110,7 @@ auto ATestTubeSpinners::get_spatial_query_component() const -> UPrimitiveCompone
 void ATestTubeSpinners::resolve_hits(
     TConstArrayView<FHitResult> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    check(hits.Num() == out_entity_handles.Num());
-
-    auto const n{hits.Num()};
-    for (int32 i{}; i < n; ++i) {
-        auto const& hit{hits[i]};
-        check(hit.GetComponent() == instances.Get());
-        if (!entities.handles.IsValidIndex(hit.Item)) {
-            continue;
-        }
-
-        out_entity_handles[i] = entities.handles[hit.Item];
-    }
+    ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, entities.handles);
 }
 
 // Spawning
