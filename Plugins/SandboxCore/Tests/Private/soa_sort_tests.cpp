@@ -6,8 +6,7 @@
 
 namespace {
 void add_row(FVectors3f& vectors, int32 const id) {
-    vectors.add(
-        static_cast<float>(id), static_cast<float>(id + 100), static_cast<float>(id + 200));
+    vectors.add(static_cast<float>(id), static_cast<float>(id + 100), static_cast<float>(id + 200));
 }
 
 void check_row_associations(FVectors3f const& vectors) {
@@ -32,11 +31,7 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.SortPreservesParallelStreams") {
     scratch_indices[4] = 1234;
     scratch_indices[5] = 5678;
 
-    vectors.sort(
-        [](auto const& soa, int32 const lhs, int32 const rhs) {
-            return soa.xs[lhs] < soa.xs[rhs];
-        },
-        scratch_indices);
+    vectors.sort([](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; }, scratch_indices);
 
     check_row_associations(vectors);
     CHECK((vectors.xs == TArray<float>{10.f, 20.f, 30.f, 40.f}));
@@ -78,21 +73,13 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.CustomComparatorAndEquivalentKeys") {
 TEST_CASE("SandboxCore.SoaSort.Vectors3f.EmptySingleAndSortedInputs") {
     TArray<int32> empty_scratch;
     FVectors3f empty;
-    empty.sort(
-        [](auto const& soa, int32 const lhs, int32 const rhs) {
-            return soa.xs[lhs] < soa.xs[rhs];
-        },
-        empty_scratch);
+    empty.sort([](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; }, empty_scratch);
     CHECK(empty.is_empty());
 
     FVectors3f single;
     add_row(single, 42);
     TArray<int32> single_scratch{0, 99};
-    single.sort(
-        [](auto const& soa, int32 const lhs, int32 const rhs) {
-            return soa.xs[lhs] < soa.xs[rhs];
-        },
-        single_scratch);
+    single.sort([](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; }, single_scratch);
     check_row_associations(single);
     CHECK(single.xs[0] == 42.f);
     CHECK(single_scratch[1] == 99);
@@ -106,9 +93,7 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.EmptySingleAndSortedInputs") {
     add_row(reverse_sorted, 20);
     add_row(reverse_sorted, 10);
     TArray<int32> scratch_indices{0, 0, 0};
-    auto const by_x = [](auto const& soa, int32 const lhs, int32 const rhs) {
-        return soa.xs[lhs] < soa.xs[rhs];
-    };
+    auto const by_x = [](auto const& soa, int32 const lhs, int32 const rhs) { return soa.xs[lhs] < soa.xs[rhs]; };
     already_sorted.sort(by_x, scratch_indices);
     reverse_sorted.sort(by_x, scratch_indices);
 

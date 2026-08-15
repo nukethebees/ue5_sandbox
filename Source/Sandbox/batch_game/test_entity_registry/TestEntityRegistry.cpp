@@ -362,6 +362,11 @@ auto FTestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> E
     check(is_valid_handle(index));
     return entity_data.teams[index.index];
 }
+auto FTestEntityRegistry::get_entity_type(FRegistryEntityHandle const index) const
+    -> ETestEntityType {
+    check(is_valid_handle(index));
+    return entity_data.entity_types[index.index];
+}
 auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
     check(is_valid_handle(index));
     return static_cast<bool>(entity_data.alive[index.index]);

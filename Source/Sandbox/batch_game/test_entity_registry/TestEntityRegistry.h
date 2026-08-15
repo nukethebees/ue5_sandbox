@@ -88,6 +88,7 @@ struct SANDBOX_API FTestEntityRegistry {
     auto get_velocity(FRegistryEntityHandle const index) const -> FVector3f;
     auto get_health(FRegistryEntityHandle const index) const -> int32;
     auto get_team(FRegistryEntityHandle const index) const -> ETestTeam;
+    auto get_entity_type(FRegistryEntityHandle const index) const -> ETestEntityType;
     auto get_alive(FRegistryEntityHandle const index) const -> bool;
 
     // Entity collection queries

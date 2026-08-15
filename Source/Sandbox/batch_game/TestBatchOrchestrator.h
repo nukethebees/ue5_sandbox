@@ -88,6 +88,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
+    auto get_entity_type(FRegistryEntityHandle const handle) const -> ETestEntityType {
+        return entity_registry.get_entity_type(handle);
+    }
     auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& { return query_manager; }
     auto get_spatial_query_manager() const noexcept -> ml::FSpatialQueryManager const& {
         return query_manager;
