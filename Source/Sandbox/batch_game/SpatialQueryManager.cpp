@@ -12,7 +12,6 @@ void FSpatialQueryManager::initialise(ATestSpaceShip const* const player_ship,
                                       ATestCapitalShipFighters const& capital_ship_fighters,
                                       ATestStaticTurrets const& static_turrets,
                                       ATestTubeSpinners const& tube_spinners) {
-    initialised = false;
     player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};
     capital_ships_access = FTestCapitalShipsSpatialQueryAccess{&capital_ships};
     capital_ship_fighters_access =
@@ -47,7 +46,6 @@ void FSpatialQueryManager::initialise(ATestSpaceShip const* const player_ship,
         {capital_ship_fighter_instances, EHitResolverKind::CapitalShipFighterInstances});
     component_resolvers.Add({static_turret_instances, EHitResolverKind::StaticTurretInstances});
     component_resolvers.Add({tube_spinner_instances, EHitResolverKind::TubeSpinnerInstances});
-    initialised = true;
 }
 
 auto FSpatialQueryManager::classify_hit(FHitResult const& hit) const -> EHitResolverKind {
@@ -65,7 +63,7 @@ void FSpatialQueryManager::resolve_hits(
     TConstArrayView<FHitResult> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
     check(hits.Num() == out_entity_handles.Num());
-    check(initialised);
+    check(component_resolvers.Num() >= (std::to_underlying(EHitResolverKind::Count) - 1));
 
     for (auto& handle : out_entity_handles) {
         handle = FRegistryEntityHandle{};

@@ -51,6 +51,5 @@ struct SANDBOX_API FSpatialQueryManager {
     FTestCapitalShipFightersSpatialQueryAccess capital_ship_fighters_access;
     FTestStaticTurretsSpatialQueryAccess static_turrets_access;
     FTestTubeSpinnersSpatialQueryAccess tube_spinners_access;
-    bool initialised{false};
 };
 }
