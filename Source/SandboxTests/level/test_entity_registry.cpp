@@ -15,6 +15,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/container_ops.h>
@@ -294,6 +295,8 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
         TArray<FRegistryEntityHandle> targets;
         targets.Append(available_targets.GetData(), state.expected_kills);
 
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, variable_kill_test_duration, state.samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_variable_kill_end_tick));
         test_driver->timeline.then_after(
@@ -373,6 +376,10 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
         TestCommandBuilder
             .Do([this] {
                 initial_setup();
+                ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                                  test_time,
+                                                  team_count_state->alive_per_team,
+                                                  team_count_state->alive_per_team_and_type);
                 test_driver->orchestrator.set_end_tick_test_hook(
                     FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
                 test_driver->timeline.finish_at(test_time);

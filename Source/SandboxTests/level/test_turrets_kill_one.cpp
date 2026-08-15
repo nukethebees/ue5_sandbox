@@ -5,6 +5,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -56,6 +57,8 @@ TEST_CLASS(TurretsKillOneTurret, "Sandbox.LevelTests")
 
     void initial_setup() {
         test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_time, unique_ids, kills, alive, target_handles);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(test_time);

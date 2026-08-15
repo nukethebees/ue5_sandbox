@@ -9,6 +9,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -106,6 +107,13 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.LevelTests")
         TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
             .Then([this] {
                 initial_setup();
+                ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                                  test_time,
+                                                  capital_proxy_counts,
+                                                  turret_proxy_counts,
+                                                  spinner_proxy_counts,
+                                                  capital_target_handles,
+                                                  capital_target_alive);
                 test_driver->orchestrator.set_end_tick_test_hook(
                     FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
                 test_driver->timeline.finish_at(test_time);

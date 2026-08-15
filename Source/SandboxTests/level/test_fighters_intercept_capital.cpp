@@ -8,6 +8,7 @@
 #include <SandboxTests/support/TestFightersInterceptCapitalResults.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -86,6 +87,7 @@ TEST_CLASS(FightersInterceptCapital, "Sandbox.LevelTests")
         original_target = *capitals->find_first_handle_on_team(ETestTeam::Red);
         intercept_target = *capitals->find_first_handle_on_team(ETestTeam::Blue);
 
+        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(test_duration);

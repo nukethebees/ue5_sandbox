@@ -11,6 +11,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -105,6 +106,8 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
 
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, pre_kill_wait + post_kill_wait, samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline

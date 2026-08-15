@@ -3,6 +3,7 @@
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -31,6 +32,8 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     };
 
     inline static FTimespan const timeout{0, 0, 2};
+    static constexpr double kill_time{0.1};
+    static constexpr double post_kill_time{0.4};
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
@@ -79,9 +82,11 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
 
         TArray<FRegistryEntityHandle> const targets{player_ship_handle};
         test_driver->timeline
-            .then_after(0.1, [this, targets] { test_driver->queue_kills(targets); })
-            .finish_after(0.4);
+            .then_after(kill_time, [this, targets] { test_driver->queue_kills(targets); })
+            .finish_after(post_kill_time);
 
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, kill_time + post_kill_time, samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->orchestrator.start_simulation();

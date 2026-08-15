@@ -4,6 +4,7 @@
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -252,6 +253,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         check(handles.Num() == 1);
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, handles] { test_driver->queue_kills(handles); });
+        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, defence_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::defence_on_tick));
         test_driver->timeline.finish_at(test_duration);
@@ -299,6 +301,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         if (!initialise_headless_hud_manager()) {
             return;
         }
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_duration, mission_time_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::mission_time_on_tick));
         test_driver->timeline.finish_at(test_duration);
@@ -362,6 +366,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
             test_driver->queue_kills(targets, instigator);
         });
+        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, player_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::player_kill_on_tick));
         test_driver->timeline.finish_at(test_duration);
@@ -499,6 +504,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         TArray<FRegistryEntityHandle> const targets{capitals.get_handle(0)};
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, targets] { test_driver->queue_kills(targets); });
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_duration, entity_count_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::entity_count_on_tick));
         test_driver->timeline.finish_at(test_duration);

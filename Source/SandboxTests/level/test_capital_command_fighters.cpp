@@ -9,6 +9,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -94,6 +95,9 @@ TEST_CLASS(CapitalCommandFighters, "Sandbox.LevelTests")
     }
     void initial_setup_and_stimuli() {
         initial_setup();
+        ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                          wait_after_setup + wait_after_kills + wait_after_kills,
+                                          samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
 

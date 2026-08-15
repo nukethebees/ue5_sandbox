@@ -9,6 +9,7 @@
 #include <SandboxTests/support/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -88,6 +89,13 @@ TEST_CLASS(PlayerShipVsCapital, "Sandbox.LevelTests")
         capitals = &test_driver->get_capital_ships();
         fighters = &test_driver->get_capital_ship_fighters();
         player_ship_handle = player_ship->get_entity_handle();
+        ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                          t_end,
+                                          player_ship_locations,
+                                          player_ship_registry_locations,
+                                          fighter_target_locations,
+                                          fighter_locations,
+                                          orchestrator_ticks);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(t_end);

@@ -12,6 +12,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -106,6 +107,10 @@ TEST_CLASS(FighterCapitalAttack, "Sandbox.LevelTests")
         initial_setup();
         initial_samples();
         initial_checks();
+
+        auto const test_duration{initial_wait + local_driver->get_fight_duration()};
+        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, samples);
+
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.at(initial_wait, [this] { t_pre_fight = test_driver->get_time(); })

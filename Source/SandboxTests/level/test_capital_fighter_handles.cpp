@@ -8,6 +8,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -240,6 +241,34 @@ TEST_CLASS(CapitalFighterHandles, "Sandbox.LevelTests")
     }
 
     void configure_timeline(bool const should_kill_fighters, bool const should_kill_capital) {
+        auto test_duration{initial_sample_delay + final_sample_delay};
+        if (should_kill_fighters) {
+            test_duration += fighter_kill_delay + post_fighter_kill_sample_delay;
+        }
+        if (should_kill_capital) {
+            test_duration += capital_kill_delay + post_capital_kill_sample_delay;
+        }
+
+        ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                          test_duration,
+                                          orchestrator_tick_samples,
+                                          fighter_spawn_slots_samples,
+                                          fighter_count_samples,
+                                          capital_count_samples,
+                                          capital_fighter_handle_count_samples,
+                                          capital_fighter_span_count_samples,
+                                          fighter_handle_count_samples,
+                                          fighter_target_handle_count_samples,
+                                          fighter_task_count_samples,
+                                          main_capital_fighter_count_samples,
+                                          capital_samples,
+                                          capital_fighter_handle_samples,
+                                          capital_fighter_count_samples,
+                                          fighter_handle_samples,
+                                          fighter_target_handle_samples,
+                                          fighter_task_samples,
+                                          main_capital_fighter_samples);
+
         test_driver->timeline.then_after(initial_sample_delay,
                                          [this] { t_initial = test_driver->get_time(); });
 
