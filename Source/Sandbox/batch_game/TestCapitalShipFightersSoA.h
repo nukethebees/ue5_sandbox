@@ -16,54 +16,99 @@
 #include <utility>
 
 namespace ml::test_capital_ship_fighters {
-template <bool is_const>
-struct EntityDataView : public ml::FSoAViewMixin {
-    using View = EntityDataView<false>;
-    using ConstView = EntityDataView<true>;
+struct EntityDataConstView;
 
-    std::conditional_t<is_const,
-                       TConstArrayView<FRegistryEntityHandle>,
-                       TArrayView<FRegistryEntityHandle>>
-        entity_handles;
-    std::conditional_t<is_const, TConstArrayView<uint32>, TArrayView<uint32>> integral_biases;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> float_biases;
-    std::conditional_t<is_const,
-                       TConstArrayView<ETestCapitalShipFightersTask>,
-                       TArrayView<ETestCapitalShipFightersTask>>
-        tasks;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> locations;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> desired_move_locations;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> aim_directions;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> desired_aiming_directions;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> movement_directions;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> velocities;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> move_distances;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> speeds;
-    std::conditional_t<is_const, TConstArrayView<ETestTeam>, TArrayView<ETestTeam>> teams;
-    std::conditional_t<is_const, TConstArrayView<int32>, TArrayView<int32>> healths;
-    std::conditional_t<is_const,
-                       FTickCountdown8::ConstView,
-                       FTickCountdown8::View>
-        awareness_scan_countdowns;
-    std::conditional_t<is_const,
-                       FTickCountdown16::ConstView,
-                       FTickCountdown16::View>
-        attack_reposition_countdowns;
-    std::conditional_t<is_const,
-                       FTickCountdown16::ConstView,
-                       FTickCountdown16::View>
-        attack_cooldowns;
-    std::conditional_t<is_const,
-                       TConstArrayView<FRegistryEntityHandle>,
-                       TArrayView<FRegistryEntityHandle>>
-        target_handles;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> target_locations;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> target_velocities;
-    std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View> target_directions;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> intercept_times;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> target_distance_sq;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> target_distances;
-    std::conditional_t<is_const, TConstArrayView<float>, TArrayView<float>> target_radii;
+struct EntityDataView : public ml::FSoAViewMixin {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
+
+    TArrayView<FRegistryEntityHandle> entity_handles;
+    TArrayView<uint32> integral_biases;
+    TArrayView<float> float_biases;
+    TArrayView<ETestCapitalShipFightersTask> tasks;
+    FVectors3f::View locations;
+    FVectors3f::View desired_move_locations;
+    FVectors3f::View aim_directions;
+    FVectors3f::View desired_aiming_directions;
+    FVectors3f::View movement_directions;
+    FVectors3f::View velocities;
+    TArrayView<float> move_distances;
+    TArrayView<float> speeds;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    FTickCountdown8::View awareness_scan_countdowns;
+    FTickCountdown16::View attack_reposition_countdowns;
+    FTickCountdown16::View attack_cooldowns;
+    TArrayView<FRegistryEntityHandle> target_handles;
+    FVectors3f::View target_locations;
+    FVectors3f::View target_velocities;
+    FVectors3f::View target_directions;
+    TArrayView<float> intercept_times;
+    TArrayView<float> target_distance_sq;
+    TArrayView<float> target_distances;
+    TArrayView<float> target_radii;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_handles,
+            self.integral_biases,
+            self.float_biases,
+            self.tasks,
+            self.locations,
+            self.desired_move_locations,
+            self.aim_directions,
+            self.desired_aiming_directions,
+            self.movement_directions,
+            self.velocities,
+            self.move_distances,
+            self.speeds,
+            self.teams,
+            self.healths,
+            self.awareness_scan_countdowns,
+            self.attack_reposition_countdowns,
+            self.attack_cooldowns,
+            self.target_handles,
+            self.target_locations,
+            self.target_velocities,
+            self.target_directions,
+            self.intercept_times,
+            self.target_distance_sq,
+            self.target_distances,
+            self.target_radii
+        );
+    }
+};
+
+struct EntityDataConstView : public ml::FSoAViewMixin {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
+
+    TConstArrayView<FRegistryEntityHandle> entity_handles;
+    TConstArrayView<uint32> integral_biases;
+    TConstArrayView<float> float_biases;
+    TConstArrayView<ETestCapitalShipFightersTask> tasks;
+    FVectors3f::ConstView locations;
+    FVectors3f::ConstView desired_move_locations;
+    FVectors3f::ConstView aim_directions;
+    FVectors3f::ConstView desired_aiming_directions;
+    FVectors3f::ConstView movement_directions;
+    FVectors3f::ConstView velocities;
+    TConstArrayView<float> move_distances;
+    TConstArrayView<float> speeds;
+    TConstArrayView<ETestTeam> teams;
+    TConstArrayView<int32> healths;
+    FTickCountdown8::ConstView awareness_scan_countdowns;
+    FTickCountdown16::ConstView attack_reposition_countdowns;
+    FTickCountdown16::ConstView attack_cooldowns;
+    TConstArrayView<FRegistryEntityHandle> target_handles;
+    FVectors3f::ConstView target_locations;
+    FVectors3f::ConstView target_velocities;
+    FVectors3f::ConstView target_directions;
+    TConstArrayView<float> intercept_times;
+    TConstArrayView<float> target_distance_sq;
+    TConstArrayView<float> target_distances;
+    TConstArrayView<float> target_radii;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -98,8 +143,8 @@ struct EntityDataView : public ml::FSoAViewMixin {
 };
 
 struct EntityData : public ml::FSoAArrayMixin {
-    using View = EntityDataView<false>;
-    using ConstView = EntityDataView<true>;
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
 
     TArray<FRegistryEntityHandle> entity_handles;
     TArray<uint32> integral_biases;

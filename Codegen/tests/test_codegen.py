@@ -96,6 +96,7 @@ class SoARenderingTests(unittest.TestCase):
         node = SoAStruct(
             "FData",
             "TDataView",
+            "TDataConstView",
             (
                 tarray_member("values", "int32"),
                 soa_member("vectors", "FVectors3f"),
@@ -110,6 +111,7 @@ class SoARenderingTests(unittest.TestCase):
         self.assertLess(rendered.index("self.vectors,"), rendered.index("other.vectors"))
         self.assertIn("public ml::FSoAViewMixin", rendered)
         self.assertIn("public ml::FSoAArrayMixin", rendered)
+        self.assertNotIn("std::conditional_t", rendered)
 
     def test_invalid_members_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "must not be empty"):
@@ -117,10 +119,10 @@ class SoARenderingTests(unittest.TestCase):
 
         member = tarray_member("values", "int32")
         with self.assertRaisesRegex(ValueError, "duplicate members"):
-            SoAStruct("FData", "TDataView", (member, member))
+            SoAStruct("FData", "TDataView", "TDataConstView", (member, member))
 
         with self.assertRaisesRegex(ValueError, "at least one member"):
-            SoAStruct("FData", "TDataView", ())
+            SoAStruct("FData", "TDataView", "TDataConstView", ())
 
 
 if __name__ == "__main__":

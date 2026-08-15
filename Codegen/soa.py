@@ -46,6 +46,7 @@ def soa_member(
 class SoAStruct(Node):
     name: str
     view_name: str
+    const_view_name: str
     members: tuple[SoAMember, ...]
     storage_base: str = "ml::FSoAArrayMixin"
     view_base: str = "ml::FSoAViewMixin"
@@ -74,30 +75,16 @@ class SoAStruct(Node):
         lines.extend([f"{indent}    );", f"{indent}}}"])
         return lines
 
-    def _render_view(self) -> str:
+    def _render_view(self, name: str, use_const_view_types: bool) -> str:
         lines = [
-            "template <bool is_const>",
-            f"struct {self.view_name} : public {self.view_base} {{",
-            f"    using View = {self.view_name}<false>;",
-            f"    using ConstView = {self.view_name}<true>;",
+            f"struct {name} : public {self.view_base} {{",
+            f"    using View = {self.view_name};",
+            f"    using ConstView = {self.const_view_name};",
             "",
         ]
         for member in self.members:
-            declaration = (
-                "    std::conditional_t<is_const, "
-                f"{member.const_view_type}, {member.view_type}> {member.name};"
-            )
-            if len(declaration) <= 100:
-                lines.append(declaration)
-                continue
-            lines.extend(
-                [
-                    "    std::conditional_t<is_const,",
-                    f"                       {member.const_view_type},",
-                    f"                       {member.view_type}>",
-                    f"        {member.name};",
-                ]
-            )
+            view_type = member.const_view_type if use_const_view_types else member.view_type
+            lines.append(f"    {view_type} {member.name};")
         lines.append("")
         lines.extend(self._render_apply_arrays("    "))
         lines.append("};")
@@ -106,8 +93,8 @@ class SoAStruct(Node):
     def _render_storage(self) -> str:
         lines = [
             f"struct {self.name} : public {self.storage_base} {{",
-            f"    using View = {self.view_name}<false>;",
-            f"    using ConstView = {self.view_name}<true>;",
+            f"    using View = {self.view_name};",
+            f"    using ConstView = {self.const_view_name};",
             "",
         ]
         for member in self.members:
@@ -134,4 +121,13 @@ class SoAStruct(Node):
         return "\n".join(lines)
 
     def render(self, context: RenderContext) -> str:
-        return context.apply_indent(f"{self._render_view()}\n\n{self._render_storage()}")
+        return context.apply_indent(
+            "\n\n".join(
+                (
+                    f"struct {self.const_view_name};",
+                    self._render_view(self.view_name, False),
+                    self._render_view(self.const_view_name, True),
+                    self._render_storage(),
+                )
+            )
+        )

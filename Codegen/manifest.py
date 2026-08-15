@@ -61,7 +61,14 @@ def fighter_soa_module() -> Module:
             nodes=(
                 Namespace(
                     "ml::test_capital_ship_fighters",
-                    (SoAStruct("EntityData", "EntityDataView", members),),
+                    (
+                        SoAStruct(
+                            "EntityData",
+                            "EntityDataView",
+                            "EntityDataConstView",
+                            members,
+                        ),
+                    ),
                 ),
             ),
         ),
