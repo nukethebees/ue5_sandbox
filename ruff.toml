@@ -1,0 +1,27 @@
+target-version = "py312"
+
+[lint]
+# Compiler-like warnings: undefined names, unused imports, and other clear defects.
+select = [
+    "F",
+    # Suspicious constructs and common Python footguns.
+    "B",
+    # Safe, unambiguous modernization for the Python 3.12 baseline.
+    "UP",
+    # Ruff checks focused on correctness and stale suppression comments.
+    "RUF",
+    # Useful pycodestyle correctness checks; intentionally excludes formatting rules.
+    "E711", # Compare with None using `is` / `is not`.
+    "E712", # Avoid equality comparisons with True, False, and None.
+    "E713", # Use membership tests instead of manual containment checks.
+    "E714", # Use `not in` instead of negated membership tests.
+    "E721", # Avoid comparing types directly.
+    "E722", # Do not silently catch every exception.
+    "E731", # Named functions are safer and easier to debug than assigned lambdas.
+    "E741", # Ambiguous variable names.
+    "E742", # Ambiguous class names.
+    "E743", # Ambiguous function names.
+]
+
+# Line length and import ordering are formatter or human-judgement concerns, not lint errors.
+ignore = []
