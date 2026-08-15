@@ -12,7 +12,7 @@ from Codegen.nodes import (
     NewLines,
     Raw,
 )
-from Codegen.soa import SoAStruct, lower_soa_structs, soa_member, tarray_member
+from Codegen.soa import ForEachSoAMemberCall, SoAStruct, lower_soa_structs, soa_member, tarray_member
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -129,14 +129,15 @@ def capital_ships_soa_module() -> Module:
             tarray_member("target_handles", "FRegistryEntityHandle"),
         ),
     )
+    fighter_reassignment_members = (
+        tarray_member("capital_handles", "FRegistryEntityHandle"),
+        tarray_member("fighter_handles", "FRegistryEntityHandle"),
+    )
     fighter_reassignment = SoAStruct(
         "FighterReassignment",
         "FighterReassignmentView",
         "FighterReassignmentConstView",
-        (
-            tarray_member("capital_handles", "FRegistryEntityHandle"),
-            tarray_member("fighter_handles", "FRegistryEntityHandle"),
-        ),
+        fighter_reassignment_members,
         storage_suffix_nodes=(
             MemberFunctionSpec(
                 "add",
@@ -145,7 +146,7 @@ def capital_ships_soa_module() -> Module:
                     FunctionParameter("FRegistryEntityHandle const", "ch"),
                     FunctionParameter("FRegistryEntityHandle const", "fh"),
                 ),
-                ("capital_handles.Add(ch);", "fighter_handles.Add(fh);"),
+                ForEachSoAMemberCall(fighter_reassignment_members, "Add"),
                 is_inline=True,
             ).header_node(),
         ),
@@ -187,25 +188,25 @@ def lasers_soa_module() -> Module:
         "set_damages",
         "void",
         (FunctionParameter("int32 const", "value"),),
-        (),
+        Raw(""),
     )
     set_speeds = MemberFunctionSpec(
         "set_speeds",
         "void",
         (FunctionParameter("float const", "value"),),
-        (),
+        Raw(""),
     )
     set_max_distances = MemberFunctionSpec(
         "set_max_distances",
         "void",
         (FunctionParameter("float const", "value"),),
-        (),
+        Raw(""),
     )
     set_colours = MemberFunctionSpec(
         "set_colours",
         "void",
         (FunctionParameter("FLinearColor const", "value"),),
-        (),
+        Raw(""),
     )
     spawn_requests = SoAStruct(
         "SpawnRequests",
@@ -374,16 +375,17 @@ def fighter_spawn_queue_soa_module() -> Module:
 
 
 def fighter_order_queue_module() -> Module:
+    order_queue_members = (
+        tarray_member("handles", "FRegistryEntityHandle"),
+        tarray_member("orders", "TestCapitalShipFighterOrder"),
+        tarray_member("tasks", "ETestCapitalShipFightersTask"),
+        tarray_member("targets", "FRegistryEntityHandle"),
+    )
     order_queue = SoAStruct(
         "TestCapitalShipFighterOrderQueue",
         "TestCapitalShipFighterOrderQueueView",
         "TestCapitalShipFighterOrderQueueConstView",
-        (
-            tarray_member("handles", "FRegistryEntityHandle"),
-            tarray_member("orders", "TestCapitalShipFighterOrder"),
-            tarray_member("tasks", "ETestCapitalShipFightersTask"),
-            tarray_member("targets", "FRegistryEntityHandle"),
-        ),
+        order_queue_members,
         storage_type_aliases=(
             ("Task", "ETestCapitalShipFightersTask"),
             ("Order", "TestCapitalShipFighterOrder"),
@@ -398,12 +400,7 @@ def fighter_order_queue_module() -> Module:
                     FunctionParameter("Task const", "task"),
                     FunctionParameter("FRegistryEntityHandle const", "target"),
                 ),
-                (
-                    "handles.Add(handle);",
-                    "orders.Add(order);",
-                    "tasks.Add(task);",
-                    "targets.Add(target);",
-                ),
+                ForEachSoAMemberCall(order_queue_members, "Add"),
                 is_inline=True,
             ).header_node(),
         ),
@@ -435,6 +432,11 @@ def fighter_order_queue_module() -> Module:
 
 
 def entity_death_info_module() -> Module:
+    entity_death_info_members = (
+        tarray_member("reasons", "ETestDeathReason"),
+        tarray_member("victims", "FRegistryEntityHandle"),
+        tarray_member("killers", "FRegistryEntityHandle"),
+    )
     add_function = MemberFunctionSpec(
         "add",
         "void",
@@ -443,7 +445,7 @@ def entity_death_info_module() -> Module:
             FunctionParameter("FRegistryEntityHandle const", "victim"),
             FunctionParameter("FRegistryEntityHandle const", "killer"),
         ),
-        ("reasons.Add(reason);", "victims.Add(victim);", "killers.Add(killer);"),
+        ForEachSoAMemberCall(entity_death_info_members, "Add"),
     )
     add_without_killer = MemberFunctionSpec(
         "add",
@@ -452,18 +454,14 @@ def entity_death_info_module() -> Module:
             FunctionParameter("ETestDeathReason const", "reason"),
             FunctionParameter("FRegistryEntityHandle const", "victim"),
         ),
-        ("add(reason, victim, FRegistryEntityHandle{});",),
+        Raw("add(reason, victim, FRegistryEntityHandle{});"),
         is_inline=True,
     )
     entity_death_info = SoAStruct(
         "EntityDeathInfo",
         "EntityDeathInfoView",
         "EntityDeathInfoConstView",
-        (
-            tarray_member("reasons", "ETestDeathReason"),
-            tarray_member("victims", "FRegistryEntityHandle"),
-            tarray_member("killers", "FRegistryEntityHandle"),
-        ),
+        entity_death_info_members,
         storage_suffix_nodes=(
             add_function.declaration_node(),
             NewLines(1),

@@ -6,9 +6,12 @@ from collections.abc import Iterable
 from Codegen.nodes import (
     ForwardDeclaration,
     Function,
+    FunctionBody,
     Member,
     NewLines,
     Node,
+    Raw,
+    RenderContext,
     Struct,
     UsingDeclaration,
 )
@@ -24,7 +27,33 @@ class SoAMember:
     def __post_init__(self) -> None:
         values = (self.container_type, self.view_type, self.const_view_type, self.name)
         if any(not value.strip() for value in values):
-            raise ValueError("SOA member types and name must not be empty")
+                raise ValueError("SOA member types and name must not be empty")
+
+
+class ForEachSoAMemberCall(FunctionBody):
+    def __init__(self, members: Iterable[SoAMember], method_name: str) -> None:
+        self.members = tuple(members)
+        self.method_name = method_name
+        if not self.members:
+            raise ValueError("ForEachSoAMemberCall requires at least one SOA member")
+        if not self.method_name.strip():
+            raise ValueError("ForEachSoAMemberCall method name must not be empty")
+
+    def render(self, context: RenderContext) -> str:
+        function = self.function
+        if len(self.members) != len(function.parameters):
+            raise ValueError(
+                f"ForEachSoAMemberCall for {function.name!r} requires one parameter "
+                f"per SOA member ({len(self.members)} members, "
+                f"{len(function.parameters)} parameters)"
+            )
+        return "\n".join(
+            Raw(
+                f"{member.name}.{self.method_name}("
+                f"{function.parameter(parameter).cpp_name});"
+            ).render(context)
+            for member, parameter in zip(self.members, function.parameters, strict=True)
+        )
 
 
 def tarray_member(name: str, value_type: str, allocator: str | None = None) -> SoAMember:
@@ -102,7 +131,7 @@ def _apply_arrays_function(members: tuple[SoAMember, ...]) -> Function:
     return Function(
         "template <typename TFunc>\n"
         "auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto)",
-        body,
+        Raw("\n".join(body)),
     )
 
 
@@ -117,7 +146,7 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Function:
         "template <typename Self, typename Other, typename TFunc>\n"
         "auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)\n"
         "    -> decltype(auto)",
-        body,
+        Raw("\n".join(body)),
     )
 
 

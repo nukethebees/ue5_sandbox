@@ -8,6 +8,7 @@ from Codegen.nodes import (
     ForwardDeclaration,
     FreeFunctionSpec,
     Function,
+    FunctionBody,
     FunctionDeclaration,
     FunctionParameter,
     Include,
@@ -17,17 +18,29 @@ from Codegen.nodes import (
     Namespace,
     NewLines,
     Node,
+    ParameterRef,
+    Raw,
     RenderContext,
     Struct,
     UsingDeclaration,
 )
 from Codegen.soa import (
+    ForEachSoAMemberCall,
     SoAMember,
     SoAStruct,
     lower_soa_struct,
     soa_member,
     tarray_member,
 )
+
+
+class ReturnParameterBody(FunctionBody):
+    def __init__(self, parameter: FunctionParameter) -> None:
+        self.parameter_to_return = parameter
+
+    def render(self, context: RenderContext) -> str:
+        parameter = self.function.parameter(self.parameter_to_return)
+        return Raw(f"return {parameter.cpp_name};").render(context)
 
 
 class NodeRenderingTests(unittest.TestCase):
@@ -46,7 +59,7 @@ class NodeRenderingTests(unittest.TestCase):
                             "FValue",
                             (
                                 Member("int32 value"),
-                                Function("auto get() const -> int32", ("return value;",)),
+                                Function("auto get() const -> int32", Raw("return value;")),
                             ),
                         ),
                     ),
@@ -142,7 +155,7 @@ struct FValue {
             "update",
             "void",
             (FunctionParameter("int32 const", "value", "0"),),
-            ("this->value = value;",),
+            Raw("this->value = value;"),
         )
 
         self.assertEqual(
@@ -155,7 +168,7 @@ struct FValue {
     this->value = value;
 }""",
         )
-        static_function = MemberFunctionSpec("reset", "void", (), (), is_static=True)
+        static_function = MemberFunctionSpec("reset", "void", (), Raw(""), is_static=True)
         self.assertEqual(
             static_function.declaration_node().render(RenderContext()),
             "static void reset();",
@@ -170,7 +183,7 @@ struct FValue {
             "make_value",
             "int32",
             (FunctionParameter("int32", "value", "1"),),
-            ("return value;",),
+            Raw("return value;"),
             is_inline=True,
         )
 
@@ -187,8 +200,94 @@ struct FValue {
 }""",
         )
 
+    def test_function_body_binds_to_member_function_and_tracks_parameter_name(self) -> None:
+        weight = FunctionParameter("float", "weight")
+        body = ReturnParameterBody(weight)
+        function = MemberFunctionSpec("get_weight", "float", (weight,), body)
+
+        self.assertIs(body.function, function)
+        self.assertIsInstance(function.parameter(weight), ParameterRef)
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """float FData::get_weight(float weight) {
+    return weight;
+}""",
+        )
+
+        weight.name = "strength"
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """float FData::get_weight(float strength) {
+    return strength;
+}""",
+        )
+
+    def test_function_body_works_for_free_functions_and_rejects_reuse(self) -> None:
+        value = FunctionParameter("int32", "value")
+        body = ReturnParameterBody(value)
+        function = FreeFunctionSpec("identity", "int32", (value,), body)
+
+        self.assertEqual(
+            function.definition_node().render(RenderContext()),
+            """int32 identity(int32 value) {
+    return value;
+}""",
+        )
+
+        with self.assertRaisesRegex(ValueError, "already bound"):
+            MemberFunctionSpec("identity", "int32", (value,), body)
+
+    def test_function_body_rejects_rendering_before_binding(self) -> None:
+        body = ReturnParameterBody(FunctionParameter("int32", "value"))
+
+        with self.assertRaisesRegex(ValueError, "must be bound"):
+            body.render(RenderContext())
+
 
 class SoARenderingTests(unittest.TestCase):
+    def test_for_each_soa_member_call_uses_bound_function_parameters(self) -> None:
+        handles = tarray_member("handles", "FRegistryEntityHandle")
+        weights = tarray_member("weights", "float")
+        handle = FunctionParameter("FRegistryEntityHandle const", "handle")
+        weight = FunctionParameter("float", "weight")
+        function = MemberFunctionSpec(
+            "add",
+            "void",
+            (handle, weight),
+            ForEachSoAMemberCall((handles, weights), "Add"),
+        )
+
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """void FData::add(FRegistryEntityHandle const handle, float weight) {
+    handles.Add(handle);
+    weights.Add(weight);
+}""",
+        )
+
+        weight.name = "strength"
+        self.assertEqual(
+            function.definition_node("FData").render(RenderContext()),
+            """void FData::add(FRegistryEntityHandle const handle, float strength) {
+    handles.Add(handle);
+    weights.Add(strength);
+}""",
+        )
+
+    def test_for_each_soa_member_call_rejects_mismatched_parameters(self) -> None:
+        function = MemberFunctionSpec(
+            "add",
+            "void",
+            (FunctionParameter("int32", "value"),),
+            ForEachSoAMemberCall(
+                (tarray_member("values", "int32"), tarray_member("weights", "float")),
+                "Add",
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "one parameter per SOA member"):
+            function.definition_node("FData").render(RenderContext())
+
     def test_tarray_member_derives_storage_and_view_types(self) -> None:
         member = tarray_member("values", "int32")
 
@@ -256,7 +355,7 @@ class SoARenderingTests(unittest.TestCase):
             "FDataView",
             "FDataConstView",
             (tarray_member("values", "FValue"),),
-            storage_prefix_nodes=(Function("void reset_values()", ("values.Reset();",)),),
+            storage_prefix_nodes=(Function("void reset_values()", Raw("values.Reset();")),),
             storage_suffix_nodes=(FunctionDeclaration("void validate_values()"),),
         )
 

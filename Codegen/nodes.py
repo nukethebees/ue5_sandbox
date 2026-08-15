@@ -114,14 +114,14 @@ class FunctionDeclaration(Node):
 @dataclass(frozen=True)
 class Function(Node):
     signature: str
-    body: tuple[str, ...]
+    body: Node
 
-    def __init__(self, signature: str, body: Iterable[str]) -> None:
-        object.__setattr__(self, "signature", signature)
-        object.__setattr__(self, "body", tuple(body))
+    def __post_init__(self) -> None:
+        if not isinstance(self.body, Node):
+            raise TypeError("Function bodies must be codegen nodes; use Raw for literal C++")
 
     def render(self, context: RenderContext) -> str:
-        body = "\n".join(context.indent().apply_indent(line) for line in self.body)
+        body = self.body.render(context.indent())
         return (
             f"{context.apply_indent(self.signature)} {{\n"
             f"{body}\n"
@@ -129,7 +129,7 @@ class Function(Node):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class FunctionParameter(Node):
     type_name: str
     name: str
@@ -147,11 +147,38 @@ class FunctionParameter(Node):
 
 
 @dataclass(frozen=True)
+class ParameterRef(Node):
+    parameter: FunctionParameter
+
+    @property
+    def cpp_name(self) -> str:
+        return self.parameter.name
+
+    def render(self, context: RenderContext) -> str:
+        return context.apply_indent(self.cpp_name)
+
+
+class FunctionBody(Node, ABC):
+    @property
+    def function(self) -> MemberFunctionSpec | FreeFunctionSpec:
+        function = getattr(self, "_function", None)
+        if function is None:
+            raise ValueError("Function body must be bound to a function before rendering")
+        return function
+
+    def bind(self, function: MemberFunctionSpec | FreeFunctionSpec) -> None:
+        owner = getattr(self, "_function", None)
+        if owner is not None and owner is not function:
+            raise ValueError("Function body is already bound to a different function")
+        object.__setattr__(self, "_function", function)
+
+
+@dataclass(frozen=True)
 class MemberFunctionSpec:
     name: str
     return_type: str
     parameters: tuple[FunctionParameter, ...]
-    body: tuple[str, ...]
+    body: Node
     suffix: str = ""
     is_static: bool = False
     is_inline: bool = False
@@ -161,7 +188,7 @@ class MemberFunctionSpec:
         name: str,
         return_type: str,
         parameters: Iterable[FunctionParameter],
-        body: Iterable[str],
+        body: Node,
         suffix: str = "",
         is_static: bool = False,
         is_inline: bool = False,
@@ -169,10 +196,14 @@ class MemberFunctionSpec:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "return_type", return_type)
         object.__setattr__(self, "parameters", tuple(parameters))
-        object.__setattr__(self, "body", tuple(body))
+        if not isinstance(body, Node):
+            raise TypeError("Function bodies must be codegen nodes; use Raw for literal C++")
+        object.__setattr__(self, "body", body)
         object.__setattr__(self, "suffix", suffix)
         object.__setattr__(self, "is_static", is_static)
         object.__setattr__(self, "is_inline", is_inline)
+        if isinstance(self.body, FunctionBody):
+            self.body.bind(self)
 
     def declaration_node(self) -> FunctionDeclaration:
         static_prefix = "static " if self.is_static else ""
@@ -195,6 +226,11 @@ class MemberFunctionSpec:
             self.body,
         )
 
+    def parameter(self, parameter: FunctionParameter) -> ParameterRef:
+        if not any(candidate is parameter for candidate in self.parameters):
+            raise ValueError("Parameter does not belong to this function")
+        return ParameterRef(parameter)
+
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
         return ", ".join(render(parameter) for parameter in self.parameters)
@@ -205,7 +241,7 @@ class FreeFunctionSpec:
     name: str
     return_type: str
     parameters: tuple[FunctionParameter, ...]
-    body: tuple[str, ...]
+    body: Node
     suffix: str = ""
     is_inline: bool = False
 
@@ -214,16 +250,20 @@ class FreeFunctionSpec:
         name: str,
         return_type: str,
         parameters: Iterable[FunctionParameter],
-        body: Iterable[str],
+        body: Node,
         suffix: str = "",
         is_inline: bool = False,
     ) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "return_type", return_type)
         object.__setattr__(self, "parameters", tuple(parameters))
-        object.__setattr__(self, "body", tuple(body))
+        if not isinstance(body, Node):
+            raise TypeError("Function bodies must be codegen nodes; use Raw for literal C++")
+        object.__setattr__(self, "body", body)
         object.__setattr__(self, "suffix", suffix)
         object.__setattr__(self, "is_inline", is_inline)
+        if isinstance(self.body, FunctionBody):
+            self.body.bind(self)
 
     def declaration_node(self) -> FunctionDeclaration:
         return FunctionDeclaration(f"{self.return_type} {self.name}({self._parameters(True)}){self.suffix}")
@@ -238,6 +278,11 @@ class FreeFunctionSpec:
 
     def definition_node(self) -> Function:
         return Function(f"{self.return_type} {self.name}({self._parameters(False)}){self.suffix}", self.body)
+
+    def parameter(self, parameter: FunctionParameter) -> ParameterRef:
+        if not any(candidate is parameter for candidate in self.parameters):
+            raise ValueError("Parameter does not belong to this function")
+        return ParameterRef(parameter)
 
     def _parameters(self, include_defaults: bool) -> str:
         render = FunctionParameter.declaration_text if include_defaults else FunctionParameter.definition_text
