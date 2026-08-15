@@ -77,7 +77,6 @@ void ATestEntityRegistry::end_tick() {
 
     ml::reset(queued_entity_data,
               queued_entity_update_handles,
-              queued_entity_update_handles,
               queued_death_infos,
               queued_direct_damage_events,
               dead_entities_this_frame);
