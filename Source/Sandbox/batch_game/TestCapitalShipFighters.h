@@ -145,7 +145,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(aim_directions))               \
     NON_FINAL(STAMPER(desired_aiming_directions))    \
     NON_FINAL(STAMPER(movement_directions))          \
-    NON_FINAL(STAMPER(velocities))                    \
+    NON_FINAL(STAMPER(velocities))                   \
     NON_FINAL(STAMPER(move_distances))               \
     NON_FINAL(STAMPER(speeds))                       \
     NON_FINAL(STAMPER(teams))                        \

@@ -32,17 +32,14 @@ ATestTubeSpinners::ATestTubeSpinners()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
-void ATestTubeSpinners::bind_simulation_clock(
-    ATestBatchOrchestrator const& orchestrator) noexcept {
+void ATestTubeSpinners::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
     simulation_clock.bind(orchestrator);
 }
 
 // Actor life cycle
 void ATestTubeSpinners::clear_runtime_state() {
     instances->ClearInstances();
-    ml::reset(entities,
-              indices_ready_to_fire,
-              new_lasers);
+    ml::reset(entities, indices_ready_to_fire, new_lasers);
 }
 void ATestTubeSpinners::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play);

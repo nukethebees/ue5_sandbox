@@ -1,8 +1,8 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -78,7 +78,8 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
         player_ship_id = ship->get_unique_id();
 
         TArray<FRegistryEntityHandle> const targets{player_ship_handle};
-        test_driver->timeline.then_after(0.1, [this, targets] { test_driver->queue_kills(targets); })
+        test_driver->timeline
+            .then_after(0.1, [this, targets] { test_driver->queue_kills(targets); })
             .finish_after(0.4);
 
         test_driver->orchestrator.set_end_tick_test_hook(
@@ -96,7 +97,8 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     }
 
     void check_player_ship_death() {
-        ml::check_samples_recorded(samples.num(), checks, TEXT("Player-death simulation samples recorded"));
+        ml::check_samples_recorded(
+            samples.num(), checks, TEXT("Player-death simulation samples recorded"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         auto const& sample{samples.last_value()};

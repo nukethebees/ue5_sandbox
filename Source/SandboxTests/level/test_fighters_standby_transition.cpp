@@ -6,11 +6,11 @@
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
+#include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
-#include <SandboxTests/support/level_checks.h>
-#include <SandboxTests/support/test_setup.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -57,9 +57,10 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
 
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(
-            TestCommandBuilder,
-            [this](UWorld& world, UTestSimulationConfig const& config) { spawn_capitals(world, config); });
+        level_setup->setup(TestCommandBuilder,
+                           [this](UWorld& world, UTestSimulationConfig const& config) {
+                               spawn_capitals(world, config);
+                           });
     }
     AFTER_EACH()
     {
@@ -107,10 +108,11 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline
-            .then_after(pre_kill_wait, [this] {
-                pre_kill_time = test_driver->get_time();
-                test_driver->queue_kills(TArray{enemy_capital});
-            })
+            .then_after(pre_kill_wait,
+                        [this] {
+                            pre_kill_time = test_driver->get_time();
+                            test_driver->queue_kills(TArray{enemy_capital});
+                        })
             .then_after(post_kill_wait, [this] { post_kill_time = test_driver->get_time(); })
             .finish_after(0.0);
         test_driver->orchestrator.start_simulation();
@@ -145,14 +147,16 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     // Checks
     /* ------------------------------------------------------------------------------------------ */
     void check_pre_kill_state(FSimulationSample const& sample) {
-        if (!checks.is_greater_than(
-                sample.fighter_handles.Num(), int32{0}, TEXT("Fighters spawned before capital kill"))) {
+        if (!checks.is_greater_than(sample.fighter_handles.Num(),
+                                    int32{0},
+                                    TEXT("Fighters spawned before capital kill"))) {
             return;
         }
 
-        if (!checks.are_equal(sample.fighter_handles.Num(),
-                              sample.fighter_velocities.Num(),
-                              TEXT("Pre-kill fighter handles and velocities have matching counts"))) {
+        if (!checks.are_equal(
+                sample.fighter_handles.Num(),
+                sample.fighter_velocities.Num(),
+                TEXT("Pre-kill fighter handles and velocities have matching counts"))) {
             return;
         }
 
@@ -166,9 +170,8 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
 
     void check_post_kill_state(FSimulationSample const& sample) {
         checks.are_equal(1, sample.capital_count, TEXT("One capital remains after kill"));
-        if (!checks.is_greater_than(sample.fighter_handles.Num(),
-                                    int32{0},
-                                    TEXT("Fighters remain after kill"))) {
+        if (!checks.is_greater_than(
+                sample.fighter_handles.Num(), int32{0}, TEXT("Fighters remain after kill"))) {
             return;
         }
 
@@ -182,10 +185,8 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
         }
 
         for (int32 i{0}; i < sample.fighter_handles.Num(); ++i) {
-            checks.are_equal(Task::Standby,
-                             sample.fighter_tasks[i],
-                             TEXT("Fighter transitioned to standby"),
-                             i);
+            checks.are_equal(
+                Task::Standby, sample.fighter_tasks[i], TEXT("Fighter transitioned to standby"), i);
             checks.dist_zero(sample.fighter_velocities[i],
                              FVector3f::ZeroVector,
                              0.0f,
