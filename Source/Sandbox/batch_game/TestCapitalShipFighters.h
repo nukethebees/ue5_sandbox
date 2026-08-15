@@ -69,6 +69,7 @@ struct EntityDataView : public ml::FSoAViewMixin {
     NON_FINAL(X(VectorsView, aim_directions))                       \
     NON_FINAL(X(VectorsView, desired_aiming_directions))            \
     NON_FINAL(X(VectorsView, movement_directions))                  \
+    NON_FINAL(X(VectorsView, velocities))                           \
     NON_FINAL(X(TView<float>, move_distances))                      \
     NON_FINAL(X(TView<float>, speeds))                              \
     NON_FINAL(X(TView<ETestTeam>, teams))                           \
@@ -114,6 +115,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     FVectors3f desired_aiming_directions;
 
     FVectors3f movement_directions;
+    FVectors3f velocities;
     TArray<float> move_distances;
     TArray<float> speeds;
 
@@ -143,6 +145,7 @@ struct EntityData : public ml::FSoAArrayMixin {
     NON_FINAL(STAMPER(aim_directions))               \
     NON_FINAL(STAMPER(desired_aiming_directions))    \
     NON_FINAL(STAMPER(movement_directions))          \
+    NON_FINAL(STAMPER(velocities))                    \
     NON_FINAL(STAMPER(move_distances))               \
     NON_FINAL(STAMPER(speeds))                       \
     NON_FINAL(STAMPER(teams))                        \

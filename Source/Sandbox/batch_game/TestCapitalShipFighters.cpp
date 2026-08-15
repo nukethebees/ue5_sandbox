@@ -198,6 +198,7 @@ void ATestCapitalShipFighters::begin_tick() {
 
     data.awareness_scan_countdowns.tick();
     data.attack_reposition_countdowns.tick();
+    ml::fill(data.velocities, 0.f);
     clear_tick_buffers();
 }
 void ATestCapitalShipFighters::update_timers(float const) {
@@ -528,10 +529,16 @@ void ATestCapitalShipFighters::visual_log_state() const {
 
 // Movement
 void ATestCapitalShipFighters::move(float const dt, TaskView const& fighters) {
+    check(dt > 0.f);
+
     auto const n{fighters.num()};
     for (int32 i{0}; i < n; ++i) {
         auto const max_move_distance{fighters.speeds[i] * dt};
         fighters.move_distances[i] = FMath::Min(fighters.move_distances[i], max_move_distance);
+
+        auto const velocity{ml::get_vector3f(fighters.movement_directions, i) *
+                            (fighters.move_distances[i] / dt)};
+        ml::assign(fighters.velocities, i, velocity);
     }
 
     ml::add_scaled_in_place(fighters.locations,
@@ -696,7 +703,7 @@ void ATestCapitalShipFighters::prepare_entity_update_data() {
     ml::add_uninitialised(registry_update_data, n);
 
     registry_update_data.locations = data.locations;
-    ml::multiply(registry_update_data.velocities, data.movement_directions, data.speeds);
+    registry_update_data.velocities = data.velocities;
     registry_update_data.healths = data.healths;
     registry_update_data.teams = data.teams;
     for (int32 i{0}; i < n; ++i) {
@@ -811,6 +818,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     ml::append_from(data.locations, new_locations);
     ml::append_from(data.desired_move_locations, new_locations);
     data.movement_directions.add_zeroed(n_new);
+    data.velocities.add_zeroed(n_new);
     data.move_distances.AddZeroed(n_new);
     ml::add_uninitialised(data.aim_directions, n_new);
     ml::append_n(data.speeds, speed, n_new);
@@ -849,11 +857,7 @@ void ATestCapitalShipFighters::commit_spawns() {
     }
     new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
 
-    // Velocities
-    TConstArrayView<float> const new_speeds{data.speeds.GetData() + n_cur, n_new};
-    ml::multiply(new_spawn_entity_data.velocities,
-                 data.aim_directions.get_const_view().right(n_new),
-                 new_speeds);
+    ml::fill(new_spawn_entity_data.velocities, 0.f);
 
     // Entity handles
     new_spawn_entity_handles =
@@ -1028,8 +1032,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
 
         ml::assign(new_lasers.locations, i, laser_location);
         ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());
-        auto const base_velocity{ml::get_vector3f(data.movement_directions, ship_index) *
-                                 data.speeds[ship_index]};
+        auto const base_velocity{ml::get_vector3f(data.velocities, ship_index)};
         ml::assign(new_lasers.base_velocities, i, base_velocity);
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
