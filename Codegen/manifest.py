@@ -40,6 +40,7 @@ from Codegen.cpp_types import (
     TEST_CAPITAL_SHIP_FIGHTER_ORDER,
     TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE,
     TEST_ENTITY_UNIQUE_ID,
+    U_PRIMITIVE_COMPONENT_CONST_PTR,
     nested_type,
     qualified_type,
 )
@@ -453,6 +454,39 @@ def lasers_soa_module() -> Module:
     )
 
 
+def laser_collision_data_soa_module() -> Module:
+    component_hit_ranges = SoAStruct(
+        SoAStructNames("ComponentHitRanges"),
+        (
+            tarray_member("components", U_PRIMITIVE_COMPONENT_CONST_PTR),
+            tarray_member("counts", "int32"),
+            tarray_member("offsets", "int32"),
+            tarray_member("next_write_indices", "int32"),
+        ),
+        storage_operations=(SoAStorageOperation.RESET,),
+        storage_export_specifier=SANDBOX_API,
+    )
+    lowered = lower_soa_structs_with_source((component_hit_ranges,))
+    header_path = BATCH_GAME_DIR / "TestLaserCollisionDataSoA.h"
+    return Module(
+        name="test_laser_collision_data_soa",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                Namespace(
+                    "ml::test_lasers",
+                    lowered.header_nodes,
+                ),
+            ),
+        ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_lasers"),
+    )
+
+
 def collision_damage_events_soa_module() -> Module:
     unresolved = SoAStruct(
         SoAStructNames("UnresolvedCollisionDamageEvents"),
@@ -781,6 +815,7 @@ def modules() -> tuple[Module, ...]:
         fighter_soa_module(),
         capital_ships_soa_module(),
         lasers_soa_module(),
+        laser_collision_data_soa_module(),
         collision_damage_events_soa_module(),
         fighter_spawn_queue_soa_module(),
         fighter_order_queue_module(),

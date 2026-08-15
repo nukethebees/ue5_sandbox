@@ -99,6 +99,9 @@ F_INSTANCED_STATIC_MESH_INSTANCE_DATA = dependent_type(
     "Components/InstancedStaticMeshComponent.h",
 )
 F_LINEAR_COLOR = dependent_type("FLinearColor", "Math/Color.h")
+U_PRIMITIVE_COMPONENT_CONST_PTR = dependent_type(
+    "UPrimitiveComponent const*", "Components/PrimitiveComponent.h"
+)
 
 F_VECTOR_2F = core_type("FVector2f")
 F_VECTOR_2D = core_type("FVector2d")

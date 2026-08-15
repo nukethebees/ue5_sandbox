@@ -306,10 +306,7 @@ void ATestLasers::check_collision_thread(int32 const job_index,
 void ATestLasers::merge_collision_data() {
     auto& data{thread_local_collision_data};
 
-    collision_hit_ranges.components.Reset();
-    collision_hit_ranges.counts.Reset();
-    collision_hit_ranges.offsets.Reset();
-    collision_hit_ranges.next_write_indices.Reset();
+    collision_hit_ranges.reset();
 
     // First combine only the small worker-local component count arrays.
     for (int32 i{}; i < collision_jobs; ++i) {
@@ -335,12 +332,58 @@ void ATestLasers::merge_collision_data() {
 
     // Sort the unique components by address, then assign their contiguous output ranges.
     std::less<void const*> const pointer_less{};
-    // collision_hit_ranges.Sort([pointer_less](auto const& lhs, auto const& rhs) {
-    //     return pointer_less(lhs.component, rhs.component);
-    // });
+    collision_hit_ranges.validate_array_sizes();
+
+    auto const n_ranges{collision_hit_ranges.num()};
+    auto& sort_indices{collision_hit_range_sort_indices};
+    sort_indices.Reset();
+    sort_indices.Reserve(n_ranges);
+    for (int32 i{}; i < n_ranges; ++i) {
+        sort_indices.Add(i);
+    }
+
+    sort_indices.Sort([this, pointer_less](int32 const lhs, int32 const rhs) {
+        return pointer_less(collision_hit_ranges.components[lhs],
+                            collision_hit_ranges.components[rhs]);
+    });
+
+    // Apply the sorted source indices in place. Consumed cycles are marked INDEX_NONE.
+    for (int32 start_index{}; start_index < n_ranges; ++start_index) {
+        if (sort_indices[start_index] == INDEX_NONE) {
+            continue;
+        }
+
+        auto const component{collision_hit_ranges.components[start_index]};
+        auto const count{collision_hit_ranges.counts[start_index]};
+        auto const offset{collision_hit_ranges.offsets[start_index]};
+        auto const next_write_index{collision_hit_ranges.next_write_indices[start_index]};
+
+        auto destination_index{start_index};
+        while (true) {
+            auto const source_index{sort_indices[destination_index]};
+            sort_indices[destination_index] = INDEX_NONE;
+
+            if (source_index == start_index) {
+                collision_hit_ranges.components[destination_index] = component;
+                collision_hit_ranges.counts[destination_index] = count;
+                collision_hit_ranges.offsets[destination_index] = offset;
+                collision_hit_ranges.next_write_indices[destination_index] = next_write_index;
+                break;
+            }
+
+            collision_hit_ranges.components[destination_index] =
+                collision_hit_ranges.components[source_index];
+            collision_hit_ranges.counts[destination_index] =
+                collision_hit_ranges.counts[source_index];
+            collision_hit_ranges.offsets[destination_index] =
+                collision_hit_ranges.offsets[source_index];
+            collision_hit_ranges.next_write_indices[destination_index] =
+                collision_hit_ranges.next_write_indices[source_index];
+            destination_index = source_index;
+        }
+    }
 
     int32 total_hits{};
-    auto const n_ranges{collision_hit_ranges.components.Num()};
     for (int32 i{}; i < n_ranges; ++i) {
         if (i > 0) {
             check(pointer_less(collision_hit_ranges.components[i - 1],
@@ -374,9 +417,9 @@ void ATestLasers::merge_collision_data() {
                 collision_hit_ranges.components.Find(thread_data.hits[j].component)};
             check(range_index != INDEX_NONE);
 
-            auto const write_index{collision_hit_ranges.next_write_indices[j]++};
-            auto const offset{collision_hit_ranges.offsets[j]};
-            auto const count{collision_hit_ranges.counts[j]};
+            auto const write_index{collision_hit_ranges.next_write_indices[range_index]++};
+            auto const offset{collision_hit_ranges.offsets[range_index]};
+            auto const count{collision_hit_ranges.counts[range_index]};
 
             check(write_index < (offset + count));
 

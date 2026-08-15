@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/TestLaserCollisionDataSoA.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -28,13 +29,6 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_lasers {
-struct ComponentHitRanges {
-    TArray<UPrimitiveComponent const*> components;
-    TArray<int32> counts{};
-    TArray<int32> offsets{};
-    TArray<int32> next_write_indices{};
-};
-
 struct ThreadLocalCollisionData {
     TArray<ml::FSpatialQueryHit> hits;
     TArray<UPrimitiveComponent const*> components_hit;
@@ -147,6 +141,7 @@ class ATestLasers : public AActor {
     TArray<ml::FSpatialQueryHit> collision_hits;
     DirectDamageEvents collision_damage_events;
     ml::test_lasers::ComponentHitRanges collision_hit_ranges;
+    TArray<int32> collision_hit_range_sort_indices;
 
     // Hits
     HitDetails hit_details;
