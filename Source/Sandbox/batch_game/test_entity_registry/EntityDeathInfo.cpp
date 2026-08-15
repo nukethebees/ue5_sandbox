@@ -4,6 +4,134 @@
 
 #include "EntityDeathInfo.h"
 
+#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
+#include "Sandbox/batch_game/test_entity_registry/TestDeathReason.h"
+
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto EntityDeathInfoConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDeathInfoConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfoConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDeathInfoConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfoConstView::num() const noexcept -> int32 {
+    return ml::num(reasons);
+}
+
+void EntityDeathInfoConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(reasons),
+        ml::num(victims),
+        ml::num(killers),
+    });
+}
+
+auto EntityDeathInfoConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDeathInfoConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDeathInfoConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto EntityDeathInfoView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityDeathInfoView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfoView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDeathInfoView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfoView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDeathInfoView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfoView::num() const noexcept -> int32 {
+    return ml::num(reasons);
+}
+
+void EntityDeathInfoView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(reasons),
+        ml::num(victims),
+        ml::num(killers),
+    });
+}
+
+auto EntityDeathInfoView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityDeathInfoView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityDeathInfoView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityDeathInfoView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDeathInfoView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDeathInfoView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void EntityDeathInfo::reset() {
     ml::reset(reasons);
     ml::reset(victims);
@@ -32,6 +160,78 @@ void EntityDeathInfo::set_num(int32 const count, EAllowShrinking const allow_shr
     ml::set_num(reasons, count, allow_shrinking);
     ml::set_num(victims, count, allow_shrinking);
     ml::set_num(killers, count, allow_shrinking);
+}
+
+auto EntityDeathInfo::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityDeathInfo::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfo::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDeathInfo::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfo::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDeathInfo::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestDeathReason>{reasons}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{victims}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{killers}.Slice(offset, count),
+    };
+}
+
+auto EntityDeathInfo::num() const noexcept -> int32 {
+    return ml::num(reasons);
+}
+
+void EntityDeathInfo::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(reasons),
+        ml::num(victims),
+        ml::num(killers),
+    });
+}
+
+auto EntityDeathInfo::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityDeathInfo::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityDeathInfo::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityDeathInfo::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDeathInfo::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDeathInfo::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 
 void EntityDeathInfo::add(ETestDeathReason const reason, FRegistryEntityHandle const victim, FRegistryEntityHandle const killer) {

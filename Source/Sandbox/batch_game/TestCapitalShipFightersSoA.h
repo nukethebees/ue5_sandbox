@@ -8,7 +8,8 @@
 #include "Sandbox/batch_game/TestTeam.h"
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
@@ -19,9 +20,10 @@
 #include <utility>
 
 namespace ml::test_capital_ship_fighters {
+struct EntityDataView;
 struct EntityDataConstView;
 
-struct EntityDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntityDataConstView {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
@@ -56,67 +58,15 @@ struct EntityDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> entity_handles;
-    TArrayView<uint32> integral_biases;
-    TArrayView<float> float_biases;
-    TArrayView<ETestCapitalShipFightersTask> tasks;
-    FVectors3f::View locations;
-    FVectors3f::View desired_move_locations;
-    FVectors3f::View aim_directions;
-    FVectors3f::View desired_aiming_directions;
-    FVectors3f::View movement_directions;
-    FVectors3f::View velocities;
-    TArrayView<float> move_distances;
-    TArrayView<float> speeds;
-    TArrayView<ETestTeam> teams;
-    TArrayView<int32> healths;
-    FTickCountdown8::View awareness_scan_countdowns;
-    FTickCountdown16::View attack_reposition_countdowns;
-    FTickCountdown16::View attack_cooldowns;
-    TArrayView<FRegistryEntityHandle> target_handles;
-    FVectors3f::View target_locations;
-    FVectors3f::View target_velocities;
-    FVectors3f::View target_directions;
-    TArrayView<float> intercept_times;
-    TArrayView<float> target_distance_sq;
-    TArrayView<float> target_distances;
-    TArrayView<float> target_radii;
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.entity_handles,
-            self.integral_biases,
-            self.float_biases,
-            self.tasks,
-            self.locations,
-            self.desired_move_locations,
-            self.aim_directions,
-            self.desired_aiming_directions,
-            self.movement_directions,
-            self.velocities,
-            self.move_distances,
-            self.speeds,
-            self.teams,
-            self.healths,
-            self.awareness_scan_countdowns,
-            self.attack_reposition_countdowns,
-            self.attack_cooldowns,
-            self.target_handles,
-            self.target_locations,
-            self.target_velocities,
-            self.target_directions,
-            self.intercept_times,
-            self.target_distance_sq,
-            self.target_distances,
-            self.target_radii
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> entity_handles;
     TConstArrayView<uint32> integral_biases;
@@ -145,7 +95,84 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<float> target_radii;
 };
 
-struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityDataView {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_handles,
+            self.integral_biases,
+            self.float_biases,
+            self.tasks,
+            self.locations,
+            self.desired_move_locations,
+            self.aim_directions,
+            self.desired_aiming_directions,
+            self.movement_directions,
+            self.velocities,
+            self.move_distances,
+            self.speeds,
+            self.teams,
+            self.healths,
+            self.awareness_scan_countdowns,
+            self.attack_reposition_countdowns,
+            self.attack_cooldowns,
+            self.target_handles,
+            self.target_locations,
+            self.target_velocities,
+            self.target_directions,
+            self.intercept_times,
+            self.target_distance_sq,
+            self.target_distances,
+            self.target_radii
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> entity_handles;
+    TArrayView<uint32> integral_biases;
+    TArrayView<float> float_biases;
+    TArrayView<ETestCapitalShipFightersTask> tasks;
+    FVectors3f::View locations;
+    FVectors3f::View desired_move_locations;
+    FVectors3f::View aim_directions;
+    FVectors3f::View desired_aiming_directions;
+    FVectors3f::View movement_directions;
+    FVectors3f::View velocities;
+    TArrayView<float> move_distances;
+    TArrayView<float> speeds;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    FTickCountdown8::View awareness_scan_countdowns;
+    FTickCountdown16::View attack_reposition_countdowns;
+    FTickCountdown16::View attack_cooldowns;
+    TArrayView<FRegistryEntityHandle> target_handles;
+    FVectors3f::View target_locations;
+    FVectors3f::View target_velocities;
+    FVectors3f::View target_directions;
+    TArrayView<float> intercept_times;
+    TArrayView<float> target_distance_sq;
+    TArrayView<float> target_distances;
+    TArrayView<float> target_radii;
+};
+
+struct SANDBOX_API EntityData {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
@@ -307,6 +334,21 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
             self.target_radii, other.target_radii
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> entity_handles;
     TArray<uint32> integral_biases;

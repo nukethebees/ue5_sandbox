@@ -6,7 +6,8 @@
 
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
 
@@ -17,9 +18,10 @@
 #include <utility>
 
 namespace ml::test_tube_spinners {
+struct EntityDataView;
 struct EntityDataConstView;
 
-struct EntityDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntityDataConstView {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
@@ -34,27 +36,15 @@ struct EntityDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::View locations;
-    TArrayView<float> yaws;
-    FTickCountdown16::View laser_cooldowns;
-    TArrayView<int32> next_fire_point_indices;
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.yaws,
-            self.laser_cooldowns,
-            self.next_fire_point_indices
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
     FVectors3f::ConstView locations;
@@ -63,7 +53,44 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<int32> next_fire_point_indices;
 };
 
-struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityDataView {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.handles,
+            self.locations,
+            self.yaws,
+            self.laser_cooldowns,
+            self.next_fire_point_indices
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> handles;
+    FVectors3f::View locations;
+    TArrayView<float> yaws;
+    FTickCountdown16::View laser_cooldowns;
+    TArrayView<int32> next_fire_point_indices;
+};
+
+struct SANDBOX_API EntityData {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
@@ -125,6 +152,21 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
             self.next_fire_point_indices, other.next_fire_point_indices
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> handles;
     FVectors3f locations;

@@ -7,7 +7,8 @@
 #include "Sandbox/batch_game/TestTeam.h"
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -17,9 +18,10 @@
 
 #include <utility>
 
+struct TestCapitalShipFighterSpawnQueueView;
 struct TestCapitalShipFighterSpawnQueueConstView;
 
-struct TestCapitalShipFighterSpawnQueueView : public ml::FSoAViewMixin {
+struct SANDBOX_API TestCapitalShipFighterSpawnQueueConstView {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
@@ -33,25 +35,15 @@ struct TestCapitalShipFighterSpawnQueueView : public ml::FSoAViewMixin {
         );
     }
 
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    TArrayView<ETestTeam> teams;
-    TArrayView<FRegistryEntityHandle> targets;
-};
-
-struct TestCapitalShipFighterSpawnQueueConstView : public ml::FSoAViewMixin {
-    using View = TestCapitalShipFighterSpawnQueueView;
-    using ConstView = TestCapitalShipFighterSpawnQueueConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.locations,
-            self.rotations,
-            self.teams,
-            self.targets
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
@@ -59,7 +51,42 @@ struct TestCapitalShipFighterSpawnQueueConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> targets;
 };
 
-struct SANDBOX_API TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
+struct SANDBOX_API TestCapitalShipFighterSpawnQueueView {
+    using View = TestCapitalShipFighterSpawnQueueView;
+    using ConstView = TestCapitalShipFighterSpawnQueueConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.targets
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<FRegistryEntityHandle> targets;
+};
+
+struct SANDBOX_API TestCapitalShipFighterSpawnQueue {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
@@ -116,6 +143,21 @@ struct SANDBOX_API TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin 
             self.targets, other.targets
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     FVectors3f locations;
     FRotatorsf rotations;

@@ -71,7 +71,7 @@ F_INDEX_SPAN = dependent_type("FIndexSpan", "Sandbox/utilities/IndexSpan.h")
 F_COUNTDOWN_TIMERS = dependent_type(
     "FCountdownTimers",
     "SandboxCore/countdown_timers.h",
-    {REMOVE_AT_SWAP: UNREAL_REMOVE_AT_SWAP},
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
 F_ROTATORS_F = dependent_type(
     "FRotatorsf",

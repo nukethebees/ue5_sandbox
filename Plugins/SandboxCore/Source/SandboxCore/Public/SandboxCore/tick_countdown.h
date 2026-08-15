@@ -18,12 +18,42 @@ class TTickCountdown {
       public:
         using size_type = int32;
         using counter_type = std::remove_cvref_t<T>;
+        using View = TView<T>;
+        using ConstView = TView<counter_type const>;
 
         static_assert(std::same_as<counter_type, CounterType>);
 
         TView() = default;
 
         [[nodiscard]] auto num() const noexcept -> size_type { return length_; }
+
+        [[nodiscard]] auto get_view() noexcept -> View { return {*countdown_, offset_, length_}; }
+
+        [[nodiscard]] auto get_view(size_type const offset, size_type const count) noexcept -> View {
+            check(offset >= 0);
+            check(count >= 0);
+            check(offset + count <= length_);
+            return {*countdown_, offset_ + offset, count};
+        }
+
+        [[nodiscard]] auto get_view() const noexcept -> ConstView { return get_const_view(); }
+
+        [[nodiscard]] auto get_view(size_type const offset, size_type const count) const noexcept
+            -> ConstView {
+            return get_const_view(offset, count);
+        }
+
+        [[nodiscard]] auto get_const_view() const noexcept -> ConstView {
+            return {*countdown_, offset_, length_};
+        }
+
+        [[nodiscard]] auto get_const_view(size_type const offset, size_type const count) const noexcept
+            -> ConstView {
+            check(offset >= 0);
+            check(count >= 0);
+            check(offset + count <= length_);
+            return {*countdown_, offset_ + offset, count};
+        }
 
         [[nodiscard]] auto operator[](size_type const index) const noexcept -> counter_type {
             check(index >= 0);
@@ -68,6 +98,8 @@ class TTickCountdown {
             std::conditional_t<std::is_const_v<T>, TTickCountdown const, TTickCountdown>;
 
         friend class TTickCountdown;
+        template <typename>
+        friend class TView;
 
         TView(Countdown& countdown, size_type const offset, size_type const length) noexcept
             : countdown_{&countdown}

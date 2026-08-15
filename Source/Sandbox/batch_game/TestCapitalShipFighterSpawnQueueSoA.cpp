@@ -4,6 +4,138 @@
 
 #include "TestCapitalShipFighterSpawnQueueSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto TestCapitalShipFighterSpawnQueueConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void TestCapitalShipFighterSpawnQueueConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueueView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueueView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void TestCapitalShipFighterSpawnQueueView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterSpawnQueueView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void TestCapitalShipFighterSpawnQueue::reset() {
     ml::reset(locations);
     ml::reset(rotations);
@@ -37,5 +169,81 @@ void TestCapitalShipFighterSpawnQueue::set_num(int32 const count, EAllowShrinkin
     ml::set_num(rotations, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(targets, count, allow_shrinking);
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterSpawnQueue::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterSpawnQueue::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void TestCapitalShipFighterSpawnQueue::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterSpawnQueue::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterSpawnQueue::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterSpawnQueue::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterSpawnQueue::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterSpawnQueue::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterSpawnQueue::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 // clang-format on

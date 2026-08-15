@@ -10,7 +10,8 @@
 #include "Sandbox/batch_game/test_entity_registry/TestDeathReason.h"
 #include "Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -18,9 +19,10 @@
 
 #include <utility>
 
+struct TestEntityUniqueEntityDataView;
 struct TestEntityUniqueEntityDataConstView;
 
-struct TestEntityUniqueEntityDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API TestEntityUniqueEntityDataConstView {
     using View = TestEntityUniqueEntityDataView;
     using ConstView = TestEntityUniqueEntityDataConstView;
 
@@ -38,33 +40,15 @@ struct TestEntityUniqueEntityDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle::index_type> registry_indices;
-    TArrayView<FRegistryEntityHandle::generation_type> registry_generations;
-    TArrayView<ETestEntityType> entity_types;
-    TArrayView<ETestTeam> teams;
-    TArrayView<uint32> kills;
-    TArrayView<uint8> alive;
-    TArrayView<TestEntityUniqueId> killed_by;
-    TArrayView<ETestDeathReason> death_reason;
-};
-
-struct TestEntityUniqueEntityDataConstView : public ml::FSoAViewMixin {
-    using View = TestEntityUniqueEntityDataView;
-    using ConstView = TestEntityUniqueEntityDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.registry_indices,
-            self.registry_generations,
-            self.entity_types,
-            self.teams,
-            self.kills,
-            self.alive,
-            self.killed_by,
-            self.death_reason
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle::index_type> registry_indices;
     TConstArrayView<FRegistryEntityHandle::generation_type> registry_generations;
@@ -76,7 +60,50 @@ struct TestEntityUniqueEntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<ETestDeathReason> death_reason;
 };
 
-struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API TestEntityUniqueEntityDataView {
+    using View = TestEntityUniqueEntityDataView;
+    using ConstView = TestEntityUniqueEntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.registry_indices,
+            self.registry_generations,
+            self.entity_types,
+            self.teams,
+            self.kills,
+            self.alive,
+            self.killed_by,
+            self.death_reason
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle::index_type> registry_indices;
+    TArrayView<FRegistryEntityHandle::generation_type> registry_generations;
+    TArrayView<ETestEntityType> entity_types;
+    TArrayView<ETestTeam> teams;
+    TArrayView<uint32> kills;
+    TArrayView<uint8> alive;
+    TArrayView<TestEntityUniqueId> killed_by;
+    TArrayView<ETestDeathReason> death_reason;
+};
+
+struct SANDBOX_API TestEntityUniqueEntityData {
     using View = TestEntityUniqueEntityDataView;
     using ConstView = TestEntityUniqueEntityDataConstView;
 
@@ -155,6 +182,21 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
             self.death_reason, other.death_reason
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle::index_type> registry_indices;
     TArray<FRegistryEntityHandle::generation_type> registry_generations;

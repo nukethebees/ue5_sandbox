@@ -12,6 +12,7 @@ from Codegen.nodes import (
     Namespace,
     NewLines,
     Raw,
+    TypeDependency,
     UsingDeclaration,
 )
 from Codegen.cpp_types import (
@@ -69,13 +70,9 @@ SANDBOX_CORE_PUBLIC_DIR = (
     / "SandboxCore"
 )
 ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
-COUNTDOWN_TIMERS_STORAGE_OPERATIONS = (
-    SoAStorageOperation.RESET,
-    SoAStorageOperation.ADD_UNINITIALISED,
-    SoAStorageOperation.REMOVE_AT_SWAP,
-    SoAStorageOperation.COPY_ELEMENT,
-)
 SANDBOX_API = "SANDBOX_API"
+SANDBOX_CORE_API = "SANDBOXCORE_API"
+ARRAY_MATH = TypeDependency("ml::subtract_in_place", "SandboxCore/array_math.h")
 INCLUDE_ORDER = (
     "Sandbox/batch_game/",
     "Sandbox/",
@@ -84,15 +81,22 @@ INCLUDE_ORDER = (
 
 
 def soa_source_file(
-    header_path: Path, source_nodes: tuple, namespace: str | None = None
+    header_path: Path,
+    source_nodes: tuple,
+    namespace: str | None = None,
+    source_path: Path | None = None,
+    header_include_path: str | None = None,
 ) -> CppFile:
     definitions = (Namespace(namespace, source_nodes),) if namespace else source_nodes
     return CppFile(
-        path=header_path.with_suffix(".cpp"),
+        path=source_path or header_path.with_suffix(".cpp"),
         pragma_once=False,
         clang_format_off=True,
+        include_order=INCLUDE_ORDER,
         nodes=(
-            Include(header_path.name, system=False),
+            Include(header_include_path or header_path.name, system=False),
+            NewLines(2),
+            IncludeDependencies(),
             NewLines(2),
             *definitions,
         ),
@@ -159,6 +163,54 @@ def soa_rotators_module() -> Module:
                     HomogeneousSoAValueType("double", "d"),
                 ),
             ),
+        ),
+    )
+
+
+def countdown_timers_module() -> Module:
+    tick = MemberFunctionSpec(
+        "tick",
+        "void",
+        (FunctionParameter("float const", "dt"),),
+        Raw("ml::subtract_in_place(remaining_times, dt);", (ARRAY_MATH,)),
+        suffix=" noexcept",
+    )
+    countdown_timers = SoAStruct(
+        SoAStructNames("FCountdownTimers"),
+        (tarray_member("remaining_times", "float"),),
+        storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_CORE_API,
+        nodes=(tick.header_node(),),
+        source_nodes=(tick.definition_node("FCountdownTimers"),),
+    )
+    lowered = lower_soa_structs_with_source((countdown_timers,))
+    header_path = SANDBOX_CORE_PUBLIC_DIR / "countdown_timers.h"
+    source_path = (
+        PROJECT_ROOT
+        / "Plugins"
+        / "SandboxCore"
+        / "Source"
+        / "SandboxCore"
+        / "Private"
+        / "countdown_timers.cpp"
+    )
+    return Module(
+        name="sandbox_core_countdown_timers",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                *lowered.header_nodes,
+            ),
+        ),
+        source=soa_source_file(
+            header_path,
+            lowered.source_nodes,
+            source_path=source_path,
+            header_include_path="SandboxCore/countdown_timers.h",
         ),
     )
 
@@ -257,7 +309,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("capital_fighter_handle_spans", F_INDEX_SPAN),
             tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
         ),
-        storage_operations=COUNTDOWN_TIMERS_STORAGE_OPERATIONS,
+        storage_operations=ALL_STORAGE_OPERATIONS,
         storage_export_specifier=SANDBOX_API,
     )
     fighter_reassignment_members = (
@@ -723,6 +775,7 @@ def unique_entity_data_soa_module() -> Module:
 
 def modules() -> tuple[Module, ...]:
     return (
+        countdown_timers_module(),
         soa_vectors_module(),
         soa_rotators_module(),
         fighter_soa_module(),

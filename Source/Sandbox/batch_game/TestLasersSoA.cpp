@@ -4,7 +4,167 @@
 
 #include "TestLasersSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
 namespace ml::test_lasers {
+auto SpawnRequestsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnRequestsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequestsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnRequestsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequestsConstView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void SpawnRequestsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(base_velocities),
+        ml::num(damages),
+        ml::num(speeds),
+        ml::num(max_distances),
+        ml::num(instigator_handles),
+        ml::num(colours),
+    });
+}
+
+auto SpawnRequestsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnRequestsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnRequestsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto SpawnRequestsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto SpawnRequestsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        base_velocities.get_view(offset, count),
+        TArrayView<int32>{damages}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<float>{max_distances}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequestsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnRequestsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequestsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnRequestsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequestsView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void SpawnRequestsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(base_velocities),
+        ml::num(damages),
+        ml::num(speeds),
+        ml::num(max_distances),
+        ml::num(instigator_handles),
+        ml::num(colours),
+    });
+}
+
+auto SpawnRequestsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto SpawnRequestsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto SpawnRequestsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto SpawnRequestsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnRequestsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnRequestsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void SpawnRequests::reset() {
     ml::reset(locations);
     ml::reset(rotations);
@@ -58,6 +218,253 @@ void SpawnRequests::set_num(int32 const count, EAllowShrinking const allow_shrin
     ml::set_num(max_distances, count, allow_shrinking);
     ml::set_num(instigator_handles, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
+}
+
+auto SpawnRequests::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto SpawnRequests::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        base_velocities.get_view(offset, count),
+        TArrayView<int32>{damages}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<float>{max_distances}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequests::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnRequests::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequests::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnRequests::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        base_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<float>{max_distances}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto SpawnRequests::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void SpawnRequests::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(base_velocities),
+        ml::num(damages),
+        ml::num(speeds),
+        ml::num(max_distances),
+        ml::num(instigator_handles),
+        ml::num(colours),
+    });
+}
+
+auto SpawnRequests::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto SpawnRequests::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto SpawnRequests::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto SpawnRequests::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnRequests::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnRequests::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto EntitiesConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntitiesConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto EntitiesConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntitiesConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto EntitiesConstView::num() const noexcept -> int32 {
+    return ml::num(ismc_data);
+}
+
+void EntitiesConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(ismc_data),
+        ml::num(colours),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(velocities),
+        ml::num(damages),
+        ml::num(lifetimes_remaining),
+        ml::num(instigator_handles),
+    });
+}
+
+auto EntitiesConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntitiesConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntitiesConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto EntitiesView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntitiesView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<int32>{damages}.Slice(offset, count),
+        TArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto EntitiesView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntitiesView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto EntitiesView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntitiesView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto EntitiesView::num() const noexcept -> int32 {
+    return ml::num(ismc_data);
+}
+
+void EntitiesView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(ismc_data),
+        ml::num(colours),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(velocities),
+        ml::num(damages),
+        ml::num(lifetimes_remaining),
+        ml::num(instigator_handles),
+    });
+}
+
+auto EntitiesView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntitiesView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntitiesView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntitiesView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntitiesView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntitiesView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 
 void Entities::reset() {
@@ -115,6 +522,211 @@ void Entities::set_num(int32 const count, EAllowShrinking const allow_shrinking)
     ml::set_num(instigator_handles, count, allow_shrinking);
 }
 
+auto Entities::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto Entities::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<int32>{damages}.Slice(offset, count),
+        TArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto Entities::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto Entities::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto Entities::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto Entities::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{damages}.Slice(offset, count),
+        TConstArrayView<float>{lifetimes_remaining}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
+    };
+}
+
+auto Entities::num() const noexcept -> int32 {
+    return ml::num(ismc_data);
+}
+
+void Entities::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(ismc_data),
+        ml::num(colours),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(velocities),
+        ml::num(damages),
+        ml::num(lifetimes_remaining),
+        ml::num(instigator_handles),
+    });
+}
+
+auto Entities::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto Entities::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto Entities::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto Entities::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto Entities::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto Entities::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto HitDetailsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto HitDetailsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetailsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto HitDetailsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetailsConstView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void HitDetailsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(colours),
+    });
+}
+
+auto HitDetailsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto HitDetailsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto HitDetailsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto HitDetailsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto HitDetailsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetailsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto HitDetailsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetailsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto HitDetailsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetailsView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void HitDetailsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(colours),
+    });
+}
+
+auto HitDetailsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto HitDetailsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto HitDetailsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto HitDetailsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto HitDetailsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto HitDetailsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void HitDetails::reset() {
     ml::reset(locations);
     ml::reset(colours);
@@ -138,6 +750,74 @@ void HitDetails::add_defaulted(int32 const count) {
 void HitDetails::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
+}
+
+auto HitDetails::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto HitDetails::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        TArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetails::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto HitDetails::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetails::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto HitDetails::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
+    };
+}
+
+auto HitDetails::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+void HitDetails::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(colours),
+    });
+}
+
+auto HitDetails::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto HitDetails::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto HitDetails::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto HitDetails::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto HitDetails::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto HitDetails::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 } // namespace ml::test_lasers
 // clang-format on

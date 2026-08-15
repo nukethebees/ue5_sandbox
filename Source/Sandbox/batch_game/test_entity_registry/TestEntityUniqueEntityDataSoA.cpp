@@ -4,6 +4,166 @@
 
 #include "TestEntityUniqueEntityDataSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto TestEntityUniqueEntityDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestEntityUniqueEntityDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestEntityUniqueEntityDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityDataConstView::num() const noexcept -> int32 {
+    return ml::num(registry_indices);
+}
+
+void TestEntityUniqueEntityDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(registry_indices),
+        ml::num(registry_generations),
+        ml::num(entity_types),
+        ml::num(teams),
+        ml::num(kills),
+        ml::num(alive),
+        ml::num(killed_by),
+        ml::num(death_reason),
+    });
+}
+
+auto TestEntityUniqueEntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestEntityUniqueEntityDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestEntityUniqueEntityDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto TestEntityUniqueEntityDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestEntityUniqueEntityDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<uint32>{kills}.Slice(offset, count),
+        TArrayView<uint8>{alive}.Slice(offset, count),
+        TArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestEntityUniqueEntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestEntityUniqueEntityDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityDataView::num() const noexcept -> int32 {
+    return ml::num(registry_indices);
+}
+
+void TestEntityUniqueEntityDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(registry_indices),
+        ml::num(registry_generations),
+        ml::num(entity_types),
+        ml::num(teams),
+        ml::num(kills),
+        ml::num(alive),
+        ml::num(killed_by),
+        ml::num(death_reason),
+    });
+}
+
+auto TestEntityUniqueEntityDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestEntityUniqueEntityDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestEntityUniqueEntityDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestEntityUniqueEntityDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestEntityUniqueEntityDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestEntityUniqueEntityDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void TestEntityUniqueEntityData::reset() {
     ml::reset(registry_indices);
     ml::reset(registry_generations);
@@ -57,5 +217,97 @@ void TestEntityUniqueEntityData::set_num(int32 const count, EAllowShrinking cons
     ml::set_num(alive, count, allow_shrinking);
     ml::set_num(killed_by, count, allow_shrinking);
     ml::set_num(death_reason, count, allow_shrinking);
+}
+
+auto TestEntityUniqueEntityData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestEntityUniqueEntityData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<uint32>{kills}.Slice(offset, count),
+        TArrayView<uint8>{alive}.Slice(offset, count),
+        TArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestEntityUniqueEntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestEntityUniqueEntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle::index_type>{registry_indices}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle::generation_type>{registry_generations}.Slice(offset, count),
+        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<uint32>{kills}.Slice(offset, count),
+        TConstArrayView<uint8>{alive}.Slice(offset, count),
+        TConstArrayView<TestEntityUniqueId>{killed_by}.Slice(offset, count),
+        TConstArrayView<ETestDeathReason>{death_reason}.Slice(offset, count),
+    };
+}
+
+auto TestEntityUniqueEntityData::num() const noexcept -> int32 {
+    return ml::num(registry_indices);
+}
+
+void TestEntityUniqueEntityData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(registry_indices),
+        ml::num(registry_generations),
+        ml::num(entity_types),
+        ml::num(teams),
+        ml::num(kills),
+        ml::num(alive),
+        ml::num(killed_by),
+        ml::num(death_reason),
+    });
+}
+
+auto TestEntityUniqueEntityData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestEntityUniqueEntityData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestEntityUniqueEntityData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestEntityUniqueEntityData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestEntityUniqueEntityData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestEntityUniqueEntityData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 // clang-format on

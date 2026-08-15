@@ -3,8 +3,7 @@
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_rotators.h>
 
-#include <HAL/Platform.h>
-#include <Math/UnrealMathUtility.h>
+#include <CoreMinimal.h>
 
 #include <concepts>
 #include <initializer_list>

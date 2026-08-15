@@ -28,18 +28,19 @@ from Codegen.nodes import (
 )
 
 
-SOA_ARRAY_MIXIN = TypeDependency(
-    "public ml::FSoAArrayMixin", "SandboxCore/soa_array_mixin.h"
-)
-SOA_VIEW_MIXIN = TypeDependency(
-    "public ml::FSoAViewMixin", "SandboxCore/soa_array_mixin.h"
-)
 STD_FORWARD = TypeDependency("std::forward", "utility")
 STD_REMOVE_CONST = TypeDependency("std::remove_const_t", "type_traits")
 TARRAY = TypeDependency("TArray", "Containers/Array.h")
 TARRAY_VIEW = TypeDependency("TArrayView", "Containers/ArrayView.h")
 ALLOW_SHRINKING = TypeDependency(
     "EAllowShrinking", "Containers/AllowShrinking.h"
+)
+ARRAY_CHECKS = TypeDependency(
+    "ml::fatal_if_nums_not_equal", "SandboxCore/array_checks.h"
+)
+CONTAINER_OPS = TypeDependency("ml::num", "SandboxCore/container_ops.h")
+SOA_CONCEPTS = TypeDependency(
+    "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h"
 )
 TARRAY_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
 
@@ -50,6 +51,8 @@ class SoAMember:
     view_type: CppType
     const_view_type: CppType
     name: str
+    view_function: str | None = None
+    const_view_function: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "container_type", cpp_type(self.container_type))
@@ -58,6 +61,21 @@ class SoAMember:
         types = (self.container_type, self.view_type, self.const_view_type)
         if any(not type_spelling(value).strip() for value in types) or not self.name.strip():
             raise ValueError("SOA member types and name must not be empty")
+        if (self.view_function is None) != (self.const_view_function is None):
+            raise ValueError(
+                "SOA member view functions must be specified together"
+            )
+        if self.view_function is not None and (
+            not self.view_function.strip() or not self.const_view_function.strip()
+        ):
+            raise ValueError("SOA member view functions must not be empty")
+
+    def view_expression(self, use_const_view: bool) -> str:
+        if self.view_function is not None:
+            function = self.const_view_function if use_const_view else self.view_function
+            return f"{self.name}.{function}(offset, count)"
+        view_type = self.const_view_type if use_const_view else self.view_type
+        return f"{type_spelling(view_type)}{{{self.name}}}.Slice(offset, count)"
 
 
 class ForEachSoAMemberCall(FunctionBody):
@@ -99,6 +117,9 @@ class ForEachSoAMemberFreeFunctionCall(FunctionBody):
                 "ForEachSoAMemberFreeFunctionCall free function must not be empty"
             )
 
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (CONTAINER_OPS,)
+
     def render(self, context: RenderContext) -> str:
         function = self.function
         parameters = tuple(
@@ -131,6 +152,9 @@ class ForEachSoAMemberOperationCall(FunctionBody):
         if not self.fallback_function.strip():
             raise ValueError("SOA member operation fallback must not be empty")
 
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return (CONTAINER_OPS,)
+
     def render(self, context: RenderContext) -> str:
         function = self.function
         parameters = tuple(
@@ -157,10 +181,12 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
         members: Iterable[SoAMember],
         free_function: str,
         other_parameter: FunctionParameter,
+        required_dependencies: Iterable[TypeDependency] = (),
     ) -> None:
         self.members = tuple(members)
         self.free_function = free_function
         self.other_parameter = other_parameter
+        self.required_dependencies = (CONTAINER_OPS, *required_dependencies)
         if not self.members:
             raise ValueError(
                 "ForEachSoAMemberPairFreeFunctionCall requires at least one SOA member"
@@ -169,6 +195,9 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
             raise ValueError(
                 "ForEachSoAMemberPairFreeFunctionCall free function must not be empty"
             )
+
+    def dependencies(self) -> Iterable[TypeDependency]:
+        return self.required_dependencies
 
     def render(self, context: RenderContext) -> str:
         function = self.function
@@ -251,6 +280,8 @@ def soa_member(
         const_view_type=const_view_type
         or composed_type(f"{container_spelling}::ConstView", container_type),
         name=name,
+        view_function="get_view",
+        const_view_function="get_const_view",
     )
 
 
@@ -278,13 +309,13 @@ class SoAStruct:
     storage_export_specifier: str | None = None
     storage_operations: tuple[SoAStorageOperation, ...] = ()
     nodes: tuple[Node, ...] = ()
-    storage_base: TypeLike = SOA_ARRAY_MIXIN
-    view_base: TypeLike = SOA_VIEW_MIXIN
+    source_nodes: tuple[Node, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
         object.__setattr__(self, "storage_operations", tuple(self.storage_operations))
         object.__setattr__(self, "nodes", tuple(self.nodes))
+        object.__setattr__(self, "source_nodes", tuple(self.source_nodes))
         if not self.members:
             raise ValueError(
                 f"SOA struct {self.names.name!r} must contain at least one member"
@@ -476,7 +507,12 @@ def _storage_operation_spec(
                 "append_from",
                 "void",
                 (other,),
-                ForEachSoAMemberPairFreeFunctionCall(members, "ml::append_from", other),
+                ForEachSoAMemberPairFreeFunctionCall(
+                    members,
+                    "ml::append_from",
+                    other,
+                    (SOA_CONCEPTS,),
+                ),
                 is_inline=True,
                 template_parameters="typename Other",
                 requires_clause=f"ml::SupportsApplyArrayPairsWith<{soa.names.name}, Other>",
@@ -493,6 +529,148 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
 
 def _storage_operation_nodes(specs: Iterable[MemberFunctionSpec]) -> tuple[Node, ...]:
     return _separate((spec.header_node() for spec in specs), 2)
+
+
+def _view_projection_body(
+    result_type: str,
+    members: tuple[SoAMember, ...],
+    use_const_view: bool,
+) -> Raw:
+    lines = [f"return {result_type}{{"]
+    lines.extend(
+        f"    {member.view_expression(use_const_view)},"
+        for member in members
+    )
+    lines.append("};")
+    return Raw("\n".join(lines))
+
+
+def _common_soa_function_specs(
+    soa: SoAStruct, is_const_view: bool = False
+) -> tuple[MemberFunctionSpec, ...]:
+    offset = FunctionParameter("int32 const", "offset")
+    count = FunctionParameter("int32 const", "count")
+    validate_lines = ["ml::fatal_if_nums_not_equal({"]
+    validate_lines.extend(f"    ml::num({member.name})," for member in soa.members)
+    validate_lines.append("});")
+    functions: list[MemberFunctionSpec] = []
+    if not is_const_view:
+        functions.extend(
+            (
+                MemberFunctionSpec(
+                    "get_view",
+                    "auto",
+                    (),
+                    Raw("return get_view(0, num());"),
+                    suffix=" -> View",
+                ),
+                MemberFunctionSpec(
+                    "get_view",
+                    "auto",
+                    (offset, count),
+                    _view_projection_body("View", soa.members, False),
+                    suffix=" -> View",
+                ),
+            )
+        )
+    functions.extend(
+        (
+            MemberFunctionSpec(
+                "get_view",
+                "auto",
+                (),
+                Raw("return get_view(0, num());"),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "get_view",
+                "auto",
+                (offset, count),
+                _view_projection_body("ConstView", soa.members, True),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "get_const_view",
+                "auto",
+                (),
+                Raw("return get_const_view(0, num());"),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "get_const_view",
+                "auto",
+                (offset, count),
+                _view_projection_body("ConstView", soa.members, True),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "num",
+                "auto",
+                (),
+                Raw(f"return ml::num({soa.members[0].name});", (CONTAINER_OPS,)),
+                suffix=" const noexcept -> int32",
+            ),
+            MemberFunctionSpec(
+                "validate_array_sizes",
+                "void",
+                (),
+                Raw("\n".join(validate_lines), (ARRAY_CHECKS, CONTAINER_OPS)),
+                suffix=" const",
+            ),
+        )
+    )
+    if not is_const_view:
+        functions.extend(
+            (
+                MemberFunctionSpec(
+                    "slice",
+                    "auto",
+                    (offset, count),
+                    Raw("return get_view(offset, count);"),
+                    suffix=" -> View",
+                ),
+                MemberFunctionSpec(
+                    "left",
+                    "auto",
+                    (count,),
+                    Raw("return slice(0, count);"),
+                    suffix=" -> View",
+                ),
+                MemberFunctionSpec(
+                    "right",
+                    "auto",
+                    (count,),
+                    Raw("return slice(num() - count, count);"),
+                    suffix=" -> View",
+                ),
+            )
+        )
+    functions.extend(
+        (
+            MemberFunctionSpec(
+                "slice",
+                "auto",
+                (offset, count),
+                Raw("return get_view(offset, count);"),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "left",
+                "auto",
+                (count,),
+                Raw("return slice(0, count);"),
+                suffix=" const -> ConstView",
+            ),
+            MemberFunctionSpec(
+                "right",
+                "auto",
+                (count,),
+                Raw("return slice(num() - count, count);"),
+                suffix=" const -> ConstView",
+            ),
+        )
+    )
+    return tuple(functions)
 
 
 def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struct:
@@ -512,9 +690,16 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
             NewLines(2),
             _apply_arrays_function(soa.members),
             NewLines(2),
+            *_separate(
+                (function.header_node() for function in _common_soa_function_specs(
+                    soa, use_const_view_types
+                )),
+                1,
+            ),
+            NewLines(2),
             *_separate(members, 1),
         ),
-        bases=(soa.view_base,),
+        export_specifier=soa.storage_export_specifier,
     )
 
 
@@ -536,11 +721,19 @@ def _storage_struct(
         struct_nodes.extend((NewLines(2), *operations))
     struct_nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
     struct_nodes.extend((NewLines(2), _apply_array_pairs_function(soa.members)))
+    struct_nodes.extend(
+        (
+            NewLines(2),
+            *_separate(
+                (function.header_node() for function in _common_soa_function_specs(soa)),
+                1,
+            ),
+        )
+    )
     struct_nodes.extend((NewLines(2), *_separate(members, 1)))
     return Struct(
         soa.names.name,
         struct_nodes,
-        bases=(soa.storage_base,),
         export_specifier=soa.storage_export_specifier,
     )
 
@@ -553,25 +746,33 @@ class SoAStructLowering:
 
 def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
     operation_specs = _storage_operation_specs(soa)
+    const_view_specs = _common_soa_function_specs(soa, True)
+    view_specs = _common_soa_function_specs(soa)
+    storage_specs = _common_soa_function_specs(soa)
     header_nodes = (
+        ForwardDeclaration(soa.names.view_name),
+        NewLines(1),
         ForwardDeclaration(soa.names.const_view_name),
-        NewLines(2),
-        _view_struct(soa, soa.names.view_name, False),
         NewLines(2),
         _view_struct(soa, soa.names.const_view_name, True),
         NewLines(2),
+        _view_struct(soa, soa.names.view_name, False),
+        NewLines(2),
         _storage_struct(soa, operation_specs),
     )
-    source_nodes = _separate(
-        (
+    source_functions = (
+        *(spec.definition_node(soa.names.const_view_name) for spec in const_view_specs),
+        *(spec.definition_node(soa.names.view_name) for spec in view_specs),
+        *(
             spec.definition_node(soa.names.name)
             for operation, spec in zip(
                 soa.storage_operations, operation_specs, strict=True
             )
             if operation in OUT_OF_LINE_STORAGE_OPERATIONS
         ),
-        2,
+        *(spec.definition_node(soa.names.name) for spec in storage_specs),
     )
+    source_nodes = _separate((*soa.source_nodes, *source_functions), 2)
     return SoAStructLowering(header_nodes, source_nodes)
 
 

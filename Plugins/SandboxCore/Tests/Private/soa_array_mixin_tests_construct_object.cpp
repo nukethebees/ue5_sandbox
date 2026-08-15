@@ -84,7 +84,7 @@ TEST_CASE("SandboxCore.SoaArrayMixin.ConstructObject.MutableSlice") {
     static_assert(std::is_same_v<decltype(view.timers), TArrayView<float>>);
     REQUIRE(view.values.Num() == 2);
     REQUIRE(view.vectors.num() == 2);
-    REQUIRE(view.timers.Num() == 2);
+    REQUIRE(view.timers.num() == 2);
     CHECK(view.values[0] == 20);
     CHECK(view.vectors.ys[1] == 7.f);
     CHECK(view.timers[1] == 0.3f);
@@ -114,7 +114,7 @@ TEST_CASE("SandboxCore.SoaArrayMixin.ConstructObject.ConstSlice") {
     static_assert(std::is_same_v<decltype(view.timers), TConstArrayView<float>>);
     REQUIRE(view.values.Num() == 2);
     REQUIRE(view.vectors.num() == 2);
-    REQUIRE(view.timers.Num() == 2);
+    REQUIRE(view.timers.num() == 2);
     CHECK(view.values[0] == 20);
     CHECK(view.vectors.xs[1] == 3.f);
     CHECK(view.timers[1] == 0.3f);

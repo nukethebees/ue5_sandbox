@@ -4,6 +4,138 @@
 
 #include "TestCapitalShipFighterOrderQueue.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto TestCapitalShipFighterOrderQueueConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void TestCapitalShipFighterOrderQueueConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(orders),
+        ml::num(tasks),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterOrderQueueConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueueView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueueView::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void TestCapitalShipFighterOrderQueueView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(orders),
+        ml::num(tasks),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterOrderQueueView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterOrderQueueView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void TestCapitalShipFighterOrderQueue::reset() {
     ml::reset(handles);
     ml::reset(orders);
@@ -37,5 +169,81 @@ void TestCapitalShipFighterOrderQueue::set_num(int32 const count, EAllowShrinkin
     ml::set_num(orders, count, allow_shrinking);
     ml::set_num(tasks, count, allow_shrinking);
     ml::set_num(targets, count, allow_shrinking);
+}
+
+auto TestCapitalShipFighterOrderQueue::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueue::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueue::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueue::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueue::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto TestCapitalShipFighterOrderQueue::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        TConstArrayView<TestCapitalShipFighterOrder>{orders}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{targets}.Slice(offset, count),
+    };
+}
+
+auto TestCapitalShipFighterOrderQueue::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void TestCapitalShipFighterOrderQueue::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(orders),
+        ml::num(tasks),
+        ml::num(targets),
+    });
+}
+
+auto TestCapitalShipFighterOrderQueue::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterOrderQueue::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterOrderQueue::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto TestCapitalShipFighterOrderQueue::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto TestCapitalShipFighterOrderQueue::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto TestCapitalShipFighterOrderQueue::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 // clang-format on

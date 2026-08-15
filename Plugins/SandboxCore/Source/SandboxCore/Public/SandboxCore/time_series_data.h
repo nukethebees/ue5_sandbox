@@ -22,6 +22,15 @@ class TimeSeriesData {
     auto num() const -> size_type { return times_.Num(); }
     bool is_empty() const { return times_.IsEmpty(); }
 
+    void reset() {
+        times_.Reset();
+        values_.Reset();
+    }
+    void reserve(size_type const count) {
+        times_.Reserve(count);
+        values_.Reserve(count);
+    }
+
     auto times() const -> TConstArrayView<time_type> { return times_; }
     auto values() const -> TConstArrayView<value_type> { return values_; }
 

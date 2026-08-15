@@ -8,7 +8,8 @@
 #include "Sandbox/batch_game/TestCapitalShipFightersTask.h"
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -16,9 +17,10 @@
 
 #include <utility>
 
+struct TestCapitalShipFighterOrderQueueView;
 struct TestCapitalShipFighterOrderQueueConstView;
 
-struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
+struct SANDBOX_API TestCapitalShipFighterOrderQueueConstView {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
@@ -32,25 +34,15 @@ struct TestCapitalShipFighterOrderQueueView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> handles;
-    TArrayView<TestCapitalShipFighterOrder> orders;
-    TArrayView<ETestCapitalShipFightersTask> tasks;
-    TArrayView<FRegistryEntityHandle> targets;
-};
-
-struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
-    using View = TestCapitalShipFighterOrderQueueView;
-    using ConstView = TestCapitalShipFighterOrderQueueConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.handles,
-            self.orders,
-            self.tasks,
-            self.targets
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
     TConstArrayView<TestCapitalShipFighterOrder> orders;
@@ -58,7 +50,42 @@ struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> targets;
 };
 
-struct SANDBOX_API TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
+struct SANDBOX_API TestCapitalShipFighterOrderQueueView {
+    using View = TestCapitalShipFighterOrderQueueView;
+    using ConstView = TestCapitalShipFighterOrderQueueConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.handles,
+            self.orders,
+            self.tasks,
+            self.targets
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> handles;
+    TArrayView<TestCapitalShipFighterOrder> orders;
+    TArrayView<ETestCapitalShipFightersTask> tasks;
+    TArrayView<FRegistryEntityHandle> targets;
+};
+
+struct SANDBOX_API TestCapitalShipFighterOrderQueue {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
@@ -125,6 +152,21 @@ struct SANDBOX_API TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin 
             self.targets, other.targets
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> handles;
     TArray<TestCapitalShipFighterOrder> orders;

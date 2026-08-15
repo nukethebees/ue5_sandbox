@@ -6,7 +6,8 @@
 
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -17,9 +18,10 @@
 class AActor;
 class UActorComponent;
 
+struct UnresolvedCollisionDamageEventsView;
 struct UnresolvedCollisionDamageEventsConstView;
 
-struct UnresolvedCollisionDamageEventsView : public ml::FSoAViewMixin {
+struct SANDBOX_API UnresolvedCollisionDamageEventsConstView {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
@@ -34,27 +36,15 @@ struct UnresolvedCollisionDamageEventsView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<AActor*> damaged_actors;
-    TArrayView<int32> damage_amounts;
-    TArrayView<UActorComponent*> actor_components;
-    TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
-};
-
-struct UnresolvedCollisionDamageEventsConstView : public ml::FSoAViewMixin {
-    using View = UnresolvedCollisionDamageEventsView;
-    using ConstView = UnresolvedCollisionDamageEventsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.damaged_actors,
-            self.damage_amounts,
-            self.actor_components,
-            self.hit_items,
-            self.instigators
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<AActor*> damaged_actors;
     TConstArrayView<int32> damage_amounts;
@@ -63,7 +53,44 @@ struct UnresolvedCollisionDamageEventsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct SANDBOX_API UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API UnresolvedCollisionDamageEventsView {
+    using View = UnresolvedCollisionDamageEventsView;
+    using ConstView = UnresolvedCollisionDamageEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.damaged_actors,
+            self.damage_amounts,
+            self.actor_components,
+            self.hit_items,
+            self.instigators
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<AActor*> damaged_actors;
+    TArrayView<int32> damage_amounts;
+    TArrayView<UActorComponent*> actor_components;
+    TArrayView<int32> hit_items;
+    TArrayView<FRegistryEntityHandle> instigators;
+};
+
+struct SANDBOX_API UnresolvedCollisionDamageEvents {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
@@ -126,6 +153,21 @@ struct SANDBOX_API UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     TArray<AActor*> damaged_actors;
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
@@ -133,9 +175,10 @@ struct SANDBOX_API UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> instigators;
 };
 
+struct CollisionDamageEventsView;
 struct CollisionDamageEventsConstView;
 
-struct CollisionDamageEventsView : public ml::FSoAViewMixin {
+struct SANDBOX_API CollisionDamageEventsConstView {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
@@ -149,25 +192,15 @@ struct CollisionDamageEventsView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<int32> damage_amounts;
-    TArrayView<UActorComponent*> actor_components;
-    TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
-};
-
-struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
-    using View = CollisionDamageEventsView;
-    using ConstView = CollisionDamageEventsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.damage_amounts,
-            self.actor_components,
-            self.hit_items,
-            self.instigators
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<int32> damage_amounts;
     TConstArrayView<UActorComponent*> actor_components;
@@ -175,7 +208,42 @@ struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct SANDBOX_API CollisionDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API CollisionDamageEventsView {
+    using View = CollisionDamageEventsView;
+    using ConstView = CollisionDamageEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.damage_amounts,
+            self.actor_components,
+            self.hit_items,
+            self.instigators
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int32> damage_amounts;
+    TArrayView<UActorComponent*> actor_components;
+    TArrayView<int32> hit_items;
+    TArrayView<FRegistryEntityHandle> instigators;
+};
+
+struct SANDBOX_API CollisionDamageEvents {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
@@ -232,6 +300,21 @@ struct SANDBOX_API CollisionDamageEvents : public ml::FSoAArrayMixin {
             self.instigators, other.instigators
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;

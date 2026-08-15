@@ -4,6 +4,145 @@
 
 #include "CollisionDamageEventsSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto UnresolvedCollisionDamageEventsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEventsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEventsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEventsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEventsConstView::num() const noexcept -> int32 {
+    return ml::num(damaged_actors);
+}
+
+void UnresolvedCollisionDamageEventsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_actors),
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto UnresolvedCollisionDamageEventsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto UnresolvedCollisionDamageEventsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto UnresolvedCollisionDamageEventsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEventsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TArrayView<int32>{hit_items}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEventsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEventsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEventsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEventsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEventsView::num() const noexcept -> int32 {
+    return ml::num(damaged_actors);
+}
+
+void UnresolvedCollisionDamageEventsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_actors),
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto UnresolvedCollisionDamageEventsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto UnresolvedCollisionDamageEventsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void UnresolvedCollisionDamageEvents::reset() {
     ml::reset(damaged_actors);
     ml::reset(damage_amounts);
@@ -44,6 +183,213 @@ void UnresolvedCollisionDamageEvents::set_num(int32 const count, EAllowShrinking
     ml::set_num(instigators, count, allow_shrinking);
 }
 
+auto UnresolvedCollisionDamageEvents::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEvents::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TArrayView<int32>{hit_items}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEvents::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEvents::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEvents::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto UnresolvedCollisionDamageEvents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<AActor*>{damaged_actors}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto UnresolvedCollisionDamageEvents::num() const noexcept -> int32 {
+    return ml::num(damaged_actors);
+}
+
+void UnresolvedCollisionDamageEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_actors),
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto UnresolvedCollisionDamageEvents::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto UnresolvedCollisionDamageEvents::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto UnresolvedCollisionDamageEvents::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto UnresolvedCollisionDamageEvents::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto UnresolvedCollisionDamageEvents::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto UnresolvedCollisionDamageEvents::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto CollisionDamageEventsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto CollisionDamageEventsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEventsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto CollisionDamageEventsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEventsConstView::num() const noexcept -> int32 {
+    return ml::num(damage_amounts);
+}
+
+void CollisionDamageEventsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto CollisionDamageEventsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto CollisionDamageEventsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto CollisionDamageEventsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto CollisionDamageEventsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto CollisionDamageEventsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TArrayView<int32>{hit_items}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEventsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto CollisionDamageEventsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEventsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto CollisionDamageEventsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEventsView::num() const noexcept -> int32 {
+    return ml::num(damage_amounts);
+}
+
+void CollisionDamageEventsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto CollisionDamageEventsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto CollisionDamageEventsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto CollisionDamageEventsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto CollisionDamageEventsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto CollisionDamageEventsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto CollisionDamageEventsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void CollisionDamageEvents::reset() {
     ml::reset(damage_amounts);
     ml::reset(actor_components);
@@ -77,5 +423,81 @@ void CollisionDamageEvents::set_num(int32 const count, EAllowShrinking const all
     ml::set_num(actor_components, count, allow_shrinking);
     ml::set_num(hit_items, count, allow_shrinking);
     ml::set_num(instigators, count, allow_shrinking);
+}
+
+auto CollisionDamageEvents::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto CollisionDamageEvents::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TArrayView<int32>{hit_items}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEvents::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto CollisionDamageEvents::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEvents::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto CollisionDamageEvents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
+        TConstArrayView<int32>{hit_items}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto CollisionDamageEvents::num() const noexcept -> int32 {
+    return ml::num(damage_amounts);
+}
+
+void CollisionDamageEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damage_amounts),
+        ml::num(actor_components),
+        ml::num(hit_items),
+        ml::num(instigators),
+    });
+}
+
+auto CollisionDamageEvents::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto CollisionDamageEvents::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto CollisionDamageEvents::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto CollisionDamageEvents::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto CollisionDamageEvents::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto CollisionDamageEvents::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 // clang-format on

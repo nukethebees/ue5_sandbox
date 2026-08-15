@@ -4,7 +4,167 @@
 
 #include "TestStaticTurretsSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
 namespace ml::test_static_turrets {
+auto EntityDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityDataConstView::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void EntityDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(laser_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(healths),
+    });
+}
+
+auto EntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto EntityDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_view(offset, count),
+        TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void EntityDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(laser_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(healths),
+    });
+}
+
+auto EntityDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void EntityData::reset() {
     ml::reset(handles);
     ml::reset(locations);
@@ -58,6 +218,98 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
+}
+
+auto EntityData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_view(offset, count),
+        TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        laser_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+    };
+}
+
+auto EntityData::num() const noexcept -> int32 {
+    return ml::num(handles);
+}
+
+void EntityData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(handles),
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(laser_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(healths),
+    });
+}
+
+auto EntityData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 } // namespace ml::test_static_turrets
 // clang-format on

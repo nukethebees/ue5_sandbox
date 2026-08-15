@@ -10,8 +10,9 @@
 
 #include "Sandbox/utilities/IndexSpan.h"
 
+#include "SandboxCore/container_ops.h"
 #include "SandboxCore/countdown_timers.h"
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -22,9 +23,10 @@
 #include <utility>
 
 namespace ml::test_capital_ships {
+struct SpawnDataView;
 struct SpawnDataConstView;
 
-struct SpawnDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API SpawnDataConstView {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
@@ -41,31 +43,15 @@ struct SpawnDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> target_handles;
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    TArrayView<ETestTeam> teams;
-    TArrayView<int32> healths;
-    TArrayView<float> initial_spawn_delays;
-    TArrayView<float> spawn_cooldowns;
-};
-
-struct SpawnDataConstView : public ml::FSoAViewMixin {
-    using View = SpawnDataView;
-    using ConstView = SpawnDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.target_handles,
-            self.locations,
-            self.rotations,
-            self.teams,
-            self.healths,
-            self.initial_spawn_delays,
-            self.spawn_cooldowns
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> target_handles;
     FVectors3f::ConstView locations;
@@ -76,7 +62,48 @@ struct SpawnDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<float> spawn_cooldowns;
 };
 
-struct SANDBOX_API SpawnData : public ml::FSoAArrayMixin {
+struct SANDBOX_API SpawnDataView {
+    using View = SpawnDataView;
+    using ConstView = SpawnDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.target_handles,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.initial_spawn_delays,
+            self.spawn_cooldowns
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> target_handles;
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    TArrayView<float> initial_spawn_delays;
+    TArrayView<float> spawn_cooldowns;
+};
+
+struct SANDBOX_API SpawnData {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
@@ -149,6 +176,21 @@ struct SANDBOX_API SpawnData : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     TArray<FRegistryEntityHandle> target_handles;
     FVectors3f locations;
     FRotatorsf rotations;
@@ -158,9 +200,10 @@ struct SANDBOX_API SpawnData : public ml::FSoAArrayMixin {
     TArray<float> spawn_cooldowns;
 };
 
+struct EntityTickDataView;
 struct EntityTickDataConstView;
 
-struct EntityTickDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntityTickDataConstView {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
 
@@ -172,27 +215,52 @@ struct EntityTickDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<int32> ships_ready_to_spawn_fighters_buffer;
-    TestCapitalShipFighterSpawnQueue::View fighter_queue;
-};
-
-struct EntityTickDataConstView : public ml::FSoAViewMixin {
-    using View = EntityTickDataView;
-    using ConstView = EntityTickDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.ships_ready_to_spawn_fighters_buffer,
-            self.fighter_queue
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue::ConstView fighter_queue;
 };
 
-struct SANDBOX_API EntityTickData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityTickDataView {
+    using View = EntityTickDataView;
+    using ConstView = EntityTickDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.ships_ready_to_spawn_fighters_buffer,
+            self.fighter_queue
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int32> ships_ready_to_spawn_fighters_buffer;
+    TestCapitalShipFighterSpawnQueue::View fighter_queue;
+};
+
+struct SANDBOX_API EntityTickData {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
 
@@ -240,13 +308,29 @@ struct SANDBOX_API EntityTickData : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     TArray<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue fighter_queue;
 };
 
+struct EntityDataView;
 struct EntityDataConstView;
 
-struct EntityDataView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntityDataConstView {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
@@ -265,35 +349,15 @@ struct EntityDataView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    FCountdownTimers::View fighter_spawn_timers;
-    TArrayView<float> fighter_spawn_cooldowns;
-    TArrayView<ETestTeam> teams;
-    TArrayView<int32> healths;
-    TArrayView<FIndexSpan> capital_fighter_handle_spans;
-    TArrayView<FRegistryEntityHandle> target_handles;
-};
-
-struct EntityDataConstView : public ml::FSoAViewMixin {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.rotations,
-            self.fighter_spawn_timers,
-            self.fighter_spawn_cooldowns,
-            self.teams,
-            self.healths,
-            self.capital_fighter_handle_spans,
-            self.target_handles
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
     FVectors3f::ConstView locations;
@@ -306,25 +370,76 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> target_handles;
 };
 
-struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityDataView {
+    using View = EntityDataView;
+    using ConstView = EntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.handles,
+            self.locations,
+            self.rotations,
+            self.fighter_spawn_timers,
+            self.fighter_spawn_cooldowns,
+            self.teams,
+            self.healths,
+            self.capital_fighter_handle_spans,
+            self.target_handles
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> handles;
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    FCountdownTimers::View fighter_spawn_timers;
+    TArrayView<float> fighter_spawn_cooldowns;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    TArrayView<FIndexSpan> capital_fighter_handle_spans;
+    TArrayView<FRegistryEntityHandle> target_handles;
+};
+
+struct SANDBOX_API EntityData {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
     void reset();
 
+    void reserve(int32 const count);
+
     void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         handles.RemoveAtSwap(index, count, allow_shrinking);
         locations.remove_at_swap(index, count, allow_shrinking);
         rotations.remove_at_swap(index, count, allow_shrinking);
-        fighter_spawn_timers.RemoveAtSwap(index, count, allow_shrinking);
+        fighter_spawn_timers.remove_at_swap(index, count, allow_shrinking);
         fighter_spawn_cooldowns.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
         capital_fighter_handle_spans.RemoveAtSwap(index, count, allow_shrinking);
         target_handles.RemoveAtSwap(index, count, allow_shrinking);
     }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);
@@ -336,6 +451,20 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
         ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(capital_fighter_handle_spans, dst_i, other.capital_fighter_handle_spans, src_i);
         ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+    }
+
+    template <typename Other>
+    requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
+    void append_from(Other const& other) {
+        ml::append_from(handles, other.handles);
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(fighter_spawn_timers, other.fighter_spawn_timers);
+        ml::append_from(fighter_spawn_cooldowns, other.fighter_spawn_cooldowns);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(capital_fighter_handle_spans, other.capital_fighter_handle_spans);
+        ml::append_from(target_handles, other.target_handles);
     }
 
     template <typename TFunc>
@@ -369,6 +498,21 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     TArray<FRegistryEntityHandle> handles;
     FVectors3f locations;
     FRotatorsf rotations;
@@ -380,9 +524,10 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> target_handles;
 };
 
+struct FighterReassignmentView;
 struct FighterReassignmentConstView;
 
-struct FighterReassignmentView : public ml::FSoAViewMixin {
+struct SANDBOX_API FighterReassignmentConstView {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
@@ -394,27 +539,52 @@ struct FighterReassignmentView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> capital_handles;
-    TArrayView<FRegistryEntityHandle> fighter_handles;
-};
-
-struct FighterReassignmentConstView : public ml::FSoAViewMixin {
-    using View = FighterReassignmentView;
-    using ConstView = FighterReassignmentConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.capital_handles,
-            self.fighter_handles
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> capital_handles;
     TConstArrayView<FRegistryEntityHandle> fighter_handles;
 };
 
-struct SANDBOX_API FighterReassignment : public ml::FSoAArrayMixin {
+struct SANDBOX_API FighterReassignmentView {
+    using View = FighterReassignmentView;
+    using ConstView = FighterReassignmentConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.capital_handles,
+            self.fighter_handles
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> capital_handles;
+    TArrayView<FRegistryEntityHandle> fighter_handles;
+};
+
+struct SANDBOX_API FighterReassignment {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
@@ -466,6 +636,21 @@ struct SANDBOX_API FighterReassignment : public ml::FSoAArrayMixin {
             self.fighter_handles, other.fighter_handles
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> capital_handles;
     TArray<FRegistryEntityHandle> fighter_handles;

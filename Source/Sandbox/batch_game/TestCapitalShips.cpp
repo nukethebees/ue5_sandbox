@@ -18,6 +18,7 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/container_ops.h>
 #include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -411,7 +412,7 @@ void ATestCapitalShips::spawn_ships(SpawnData const& spawn_data) {
     ml::append_from(entities.locations, spawn_data.locations);
     ml::append_from(entities.rotations, spawn_data.rotations);
 
-    entities.fighter_spawn_timers.Append(spawn_data.initial_spawn_delays);
+    ml::append_from(entities.fighter_spawn_timers.remaining_times, spawn_data.initial_spawn_delays);
     entities.fighter_spawn_cooldowns.Append(spawn_data.spawn_cooldowns);
 
     entities.teams.Append(spawn_data.teams);
@@ -477,10 +478,10 @@ void ATestCapitalShips::queue_fighter_spawns() {
     auto const n_capital_ships{get_num_instances()};
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
                                                                   EAllowShrinking::No);
-    auto ships_ready_to_spawn_fighters_indices{
-        ml::collect_indices_less_equal(entities.fighter_spawn_timers.get_const_view(),
-                                       0.f,
-                                       data.ships_ready_to_spawn_fighters_buffer)};
+    auto ships_ready_to_spawn_fighters_indices{ml::collect_indices_less_equal(
+        entities.fighter_spawn_timers.get_const_view().remaining_times,
+        0.f,
+        data.ships_ready_to_spawn_fighters_buffer)};
 
     // Resize based on how many actually need to spawn
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(

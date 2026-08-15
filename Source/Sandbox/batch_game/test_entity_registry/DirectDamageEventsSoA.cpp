@@ -4,6 +4,131 @@
 
 #include "DirectDamageEventsSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
+auto DirectDamageEventsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto DirectDamageEventsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEventsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto DirectDamageEventsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEventsConstView::num() const noexcept -> int32 {
+    return ml::num(damaged_entities);
+}
+
+void DirectDamageEventsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_entities),
+        ml::num(damage_amounts),
+        ml::num(instigators),
+    });
+}
+
+auto DirectDamageEventsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto DirectDamageEventsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto DirectDamageEventsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto DirectDamageEventsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto DirectDamageEventsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEventsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto DirectDamageEventsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEventsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto DirectDamageEventsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEventsView::num() const noexcept -> int32 {
+    return ml::num(damaged_entities);
+}
+
+void DirectDamageEventsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_entities),
+        ml::num(damage_amounts),
+        ml::num(instigators),
+    });
+}
+
+auto DirectDamageEventsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto DirectDamageEventsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto DirectDamageEventsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto DirectDamageEventsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto DirectDamageEventsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto DirectDamageEventsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void DirectDamageEvents::reset() {
     ml::reset(damaged_entities);
     ml::reset(damage_amounts);
@@ -32,5 +157,77 @@ void DirectDamageEvents::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(damaged_entities, count, allow_shrinking);
     ml::set_num(damage_amounts, count, allow_shrinking);
     ml::set_num(instigators, count, allow_shrinking);
+}
+
+auto DirectDamageEvents::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto DirectDamageEvents::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEvents::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto DirectDamageEvents::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEvents::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto DirectDamageEvents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{damaged_entities}.Slice(offset, count),
+        TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+    };
+}
+
+auto DirectDamageEvents::num() const noexcept -> int32 {
+    return ml::num(damaged_entities);
+}
+
+void DirectDamageEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(damaged_entities),
+        ml::num(damage_amounts),
+        ml::num(instigators),
+    });
+}
+
+auto DirectDamageEvents::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto DirectDamageEvents::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto DirectDamageEvents::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto DirectDamageEvents::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto DirectDamageEvents::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto DirectDamageEvents::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 // clang-format on

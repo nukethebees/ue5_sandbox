@@ -7,7 +7,8 @@
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 #include "Sandbox/batch_game/test_entity_registry/TestDeathReason.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -15,9 +16,10 @@
 
 #include <utility>
 
+struct EntityDeathInfoView;
 struct EntityDeathInfoConstView;
 
-struct EntityDeathInfoView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntityDeathInfoConstView {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
@@ -30,30 +32,55 @@ struct EntityDeathInfoView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<ETestDeathReason> reasons;
-    TArrayView<FRegistryEntityHandle> victims;
-    TArrayView<FRegistryEntityHandle> killers;
-};
-
-struct EntityDeathInfoConstView : public ml::FSoAViewMixin {
-    using View = EntityDeathInfoView;
-    using ConstView = EntityDeathInfoConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.reasons,
-            self.victims,
-            self.killers
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<ETestDeathReason> reasons;
     TConstArrayView<FRegistryEntityHandle> victims;
     TConstArrayView<FRegistryEntityHandle> killers;
 };
 
-struct SANDBOX_API EntityDeathInfo : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityDeathInfoView {
+    using View = EntityDeathInfoView;
+    using ConstView = EntityDeathInfoConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.reasons,
+            self.victims,
+            self.killers
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<ETestDeathReason> reasons;
+    TArrayView<FRegistryEntityHandle> victims;
+    TArrayView<FRegistryEntityHandle> killers;
+};
+
+struct SANDBOX_API EntityDeathInfo {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
@@ -110,6 +137,21 @@ struct SANDBOX_API EntityDeathInfo : public ml::FSoAArrayMixin {
             self.killers, other.killers
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<ETestDeathReason> reasons;
     TArray<FRegistryEntityHandle> victims;

@@ -4,7 +4,286 @@
 
 #include "TestCapitalShipFightersSoA.h"
 
+#include "SandboxCore/array_checks.h"
+#include "SandboxCore/container_ops.h"
+
+#include "Containers/AllowShrinking.h"
+
 namespace ml::test_capital_ship_fighters {
+auto EntityDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityDataConstView::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+void EntityDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(awareness_scan_countdowns),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto EntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto EntityDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TArrayView<float>{float_biases}.Slice(offset, count),
+        TArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_view(offset, count),
+        desired_move_locations.get_view(offset, count),
+        aim_directions.get_view(offset, count),
+        desired_aiming_directions.get_view(offset, count),
+        movement_directions.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<float>{move_distances}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_view(offset, count),
+        attack_reposition_countdowns.get_view(offset, count),
+        attack_cooldowns.get_view(offset, count),
+        TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        target_directions.get_view(offset, count),
+        TArrayView<float>{intercept_times}.Slice(offset, count),
+        TArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TArrayView<float>{target_distances}.Slice(offset, count),
+        TArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityDataView::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+void EntityDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(awareness_scan_countdowns),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto EntityDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 void EntityData::reset() {
     ml::reset(entity_handles);
     ml::reset(integral_biases);
@@ -143,6 +422,166 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(target_distance_sq, count, allow_shrinking);
     ml::set_num(target_distances, count, allow_shrinking);
     ml::set_num(target_radii, count, allow_shrinking);
+}
+
+auto EntityData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto EntityData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TArrayView<float>{float_biases}.Slice(offset, count),
+        TArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_view(offset, count),
+        desired_move_locations.get_view(offset, count),
+        aim_directions.get_view(offset, count),
+        desired_aiming_directions.get_view(offset, count),
+        movement_directions.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<float>{move_distances}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_view(offset, count),
+        attack_reposition_countdowns.get_view(offset, count),
+        attack_cooldowns.get_view(offset, count),
+        TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        target_directions.get_view(offset, count),
+        TArrayView<float>{intercept_times}.Slice(offset, count),
+        TArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TArrayView<float>{target_distances}.Slice(offset, count),
+        TArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto EntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<FRegistryEntityHandle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<ETestCapitalShipFightersTask>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto EntityData::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+void EntityData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(awareness_scan_countdowns),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto EntityData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto EntityData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto EntityData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto EntityData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto EntityData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto EntityData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
 }
 } // namespace ml::test_capital_ship_fighters
 // clang-format on

@@ -6,7 +6,8 @@
 
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors.h"
 
@@ -19,9 +20,10 @@
 #include <utility>
 
 namespace ml::test_lasers {
+struct SpawnRequestsView;
 struct SpawnRequestsConstView;
 
-struct SpawnRequestsView : public ml::FSoAViewMixin {
+struct SANDBOX_API SpawnRequestsConstView {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
 
@@ -39,33 +41,15 @@ struct SpawnRequestsView : public ml::FSoAViewMixin {
         );
     }
 
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    FVectors3f::View base_velocities;
-    TArrayView<int32> damages;
-    TArrayView<float> speeds;
-    TArrayView<float> max_distances;
-    TArrayView<FRegistryEntityHandle> instigator_handles;
-    TArrayView<FLinearColor> colours;
-};
-
-struct SpawnRequestsConstView : public ml::FSoAViewMixin {
-    using View = SpawnRequestsView;
-    using ConstView = SpawnRequestsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.locations,
-            self.rotations,
-            self.base_velocities,
-            self.damages,
-            self.speeds,
-            self.max_distances,
-            self.instigator_handles,
-            self.colours
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
@@ -77,7 +61,50 @@ struct SpawnRequestsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FLinearColor> colours;
 };
 
-struct SANDBOX_API SpawnRequests : public ml::FSoAArrayMixin {
+struct SANDBOX_API SpawnRequestsView {
+    using View = SpawnRequestsView;
+    using ConstView = SpawnRequestsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.rotations,
+            self.base_velocities,
+            self.damages,
+            self.speeds,
+            self.max_distances,
+            self.instigator_handles,
+            self.colours
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    FVectors3f::View base_velocities;
+    TArrayView<int32> damages;
+    TArrayView<float> speeds;
+    TArrayView<float> max_distances;
+    TArrayView<FRegistryEntityHandle> instigator_handles;
+    TArrayView<FLinearColor> colours;
+};
+
+struct SANDBOX_API SpawnRequests {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
 
@@ -160,6 +187,21 @@ struct SANDBOX_API SpawnRequests : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     FVectors3f locations;
     FRotatorsf rotations;
     FVectors3f base_velocities;
@@ -170,9 +212,10 @@ struct SANDBOX_API SpawnRequests : public ml::FSoAArrayMixin {
     TArray<FLinearColor> colours;
 };
 
+struct EntitiesView;
 struct EntitiesConstView;
 
-struct EntitiesView : public ml::FSoAViewMixin {
+struct SANDBOX_API EntitiesConstView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
@@ -190,33 +233,15 @@ struct EntitiesView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FInstancedStaticMeshInstanceData> ismc_data;
-    TArrayView<FLinearColor> colours;
-    FVectors3f::View locations;
-    FRotatorsf::View rotations;
-    FVectors3f::View velocities;
-    TArrayView<int32> damages;
-    TArrayView<float> lifetimes_remaining;
-    TArrayView<FRegistryEntityHandle> instigator_handles;
-};
-
-struct EntitiesConstView : public ml::FSoAViewMixin {
-    using View = EntitiesView;
-    using ConstView = EntitiesConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.ismc_data,
-            self.colours,
-            self.locations,
-            self.rotations,
-            self.velocities,
-            self.damages,
-            self.lifetimes_remaining,
-            self.instigator_handles
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FInstancedStaticMeshInstanceData> ismc_data;
     TConstArrayView<FLinearColor> colours;
@@ -228,7 +253,50 @@ struct EntitiesConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigator_handles;
 };
 
-struct SANDBOX_API Entities : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntitiesView {
+    using View = EntitiesView;
+    using ConstView = EntitiesConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.ismc_data,
+            self.colours,
+            self.locations,
+            self.rotations,
+            self.velocities,
+            self.damages,
+            self.lifetimes_remaining,
+            self.instigator_handles
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FInstancedStaticMeshInstanceData> ismc_data;
+    TArrayView<FLinearColor> colours;
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    FVectors3f::View velocities;
+    TArrayView<int32> damages;
+    TArrayView<float> lifetimes_remaining;
+    TArrayView<FRegistryEntityHandle> instigator_handles;
+};
+
+struct SANDBOX_API Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
@@ -306,6 +374,21 @@ struct SANDBOX_API Entities : public ml::FSoAArrayMixin {
         );
     }
 
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
     TArray<FLinearColor> colours;
     FVectors3f locations;
@@ -316,9 +399,10 @@ struct SANDBOX_API Entities : public ml::FSoAArrayMixin {
     TArray<FRegistryEntityHandle> instigator_handles;
 };
 
+struct HitDetailsView;
 struct HitDetailsConstView;
 
-struct HitDetailsView : public ml::FSoAViewMixin {
+struct SANDBOX_API HitDetailsConstView {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
@@ -330,27 +414,52 @@ struct HitDetailsView : public ml::FSoAViewMixin {
         );
     }
 
-    FVectors3f::View locations;
-    TArrayView<FLinearColor> colours;
-};
-
-struct HitDetailsConstView : public ml::FSoAViewMixin {
-    using View = HitDetailsView;
-    using ConstView = HitDetailsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.locations,
-            self.colours
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     FVectors3f::ConstView locations;
     TConstArrayView<FLinearColor> colours;
 };
 
-struct SANDBOX_API HitDetails : public ml::FSoAArrayMixin {
+struct SANDBOX_API HitDetailsView {
+    using View = HitDetailsView;
+    using ConstView = HitDetailsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.colours
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f::View locations;
+    TArrayView<FLinearColor> colours;
+};
+
+struct SANDBOX_API HitDetails {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
@@ -397,6 +506,21 @@ struct SANDBOX_API HitDetails : public ml::FSoAArrayMixin {
             self.colours, other.colours
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     FVectors3f locations;
     TArray<FLinearColor> colours;

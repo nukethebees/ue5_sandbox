@@ -6,7 +6,8 @@
 
 #include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
-#include "SandboxCore/soa_array_mixin.h"
+#include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -14,9 +15,10 @@
 
 #include <utility>
 
+struct DirectDamageEventsView;
 struct DirectDamageEventsConstView;
 
-struct DirectDamageEventsView : public ml::FSoAViewMixin {
+struct SANDBOX_API DirectDamageEventsConstView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
@@ -29,30 +31,55 @@ struct DirectDamageEventsView : public ml::FSoAViewMixin {
         );
     }
 
-    TArrayView<FRegistryEntityHandle> damaged_entities;
-    TArrayView<int32> damage_amounts;
-    TArrayView<FRegistryEntityHandle> instigators;
-};
-
-struct DirectDamageEventsConstView : public ml::FSoAViewMixin {
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.damaged_entities,
-            self.damage_amounts,
-            self.instigators
-        );
-    }
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> damaged_entities;
     TConstArrayView<int32> damage_amounts;
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct SANDBOX_API DirectDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API DirectDamageEventsView {
+    using View = DirectDamageEventsView;
+    using ConstView = DirectDamageEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.damaged_entities,
+            self.damage_amounts,
+            self.instigators
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<FRegistryEntityHandle> damaged_entities;
+    TArrayView<int32> damage_amounts;
+    TArrayView<FRegistryEntityHandle> instigators;
+};
+
+struct SANDBOX_API DirectDamageEvents {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
@@ -104,6 +131,21 @@ struct SANDBOX_API DirectDamageEvents : public ml::FSoAArrayMixin {
             self.instigators, other.instigators
         );
     }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> damaged_entities;
     TArray<int32> damage_amounts;
