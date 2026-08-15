@@ -52,7 +52,6 @@ struct EntityData : public ml::FSoAArrayMixin {
     using ConstView = EntityDataView<true>;
 
     void add_disabled(int32 const count);
-    void add(ConstView const view);
 
     void set_all_alive();
     void set_all_velocities(float const v);
@@ -67,6 +66,24 @@ struct EntityData : public ml::FSoAArrayMixin {
                                          self.teams,
                                          self.entity_types,
                                          self.alive);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.locations,
+                                         other.locations,
+                                         self.velocities,
+                                         other.velocities,
+                                         self.radii,
+                                         other.radii,
+                                         self.healths,
+                                         other.healths,
+                                         self.teams,
+                                         other.teams,
+                                         self.entity_types,
+                                         other.entity_types,
+                                         self.alive,
+                                         other.alive);
     }
 
     FVectors3f locations;

@@ -111,8 +111,6 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Function:
     body.append(");")
     return Function(
         "template <typename Self, typename Other, typename TFunc>\n"
-        "    requires std::is_same_v<std::remove_cvref_t<Self>,\n"
-        "                            std::remove_cvref_t<Other>>\n"
         "auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)\n"
         "    -> decltype(auto)",
         body,

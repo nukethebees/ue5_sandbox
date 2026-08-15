@@ -201,6 +201,9 @@ struct AppendFromTraits;
 
 template <details::HasUnrealAppend T>
 struct AppendFromTraits<T> {
-    static void append_from(T& dst, T const& src) { dst.Append(src); }
+    template <typename Src>
+    static void append_from(T& dst, Src const& src) {
+        dst.Append(src);
+    }
 };
 }

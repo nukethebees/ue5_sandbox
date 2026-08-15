@@ -100,8 +100,6 @@ struct SpawnData : public ml::FSoAArrayMixin {
     }
 
     template <typename Self, typename Other, typename TFunc>
-        requires std::is_same_v<std::remove_cvref_t<Self>,
-                                std::remove_cvref_t<Other>>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -166,8 +164,6 @@ struct EntityTickData : public ml::FSoAArrayMixin {
     }
 
     template <typename Self, typename Other, typename TFunc>
-        requires std::is_same_v<std::remove_cvref_t<Self>,
-                                std::remove_cvref_t<Other>>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -269,8 +265,6 @@ struct EntityData : public ml::FSoAArrayMixin {
     }
 
     template <typename Self, typename Other, typename TFunc>
-        requires std::is_same_v<std::remove_cvref_t<Self>,
-                                std::remove_cvref_t<Other>>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -284,6 +278,21 @@ struct EntityData : public ml::FSoAArrayMixin {
             self.capital_fighter_handle_spans, other.capital_fighter_handle_spans,
             self.target_handles, other.target_handles
         );
+    }
+};
+
+struct FighterReassignment : public ml::FSoAArrayMixin {
+    void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
+        capital_handles.Add(ch);
+        fighter_handles.Add(fh);
+    }
+
+    TArray<FRegistryEntityHandle> capital_handles;
+    TArray<FRegistryEntityHandle> fighter_handles;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.capital_handles, self.fighter_handles);
     }
 };
 } // namespace ml::test_capital_ships

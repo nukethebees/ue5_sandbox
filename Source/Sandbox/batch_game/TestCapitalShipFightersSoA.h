@@ -208,8 +208,6 @@ struct EntityData : public ml::FSoAArrayMixin {
     }
 
     template <typename Self, typename Other, typename TFunc>
-        requires std::is_same_v<std::remove_cvref_t<Self>,
-                                std::remove_cvref_t<Other>>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(

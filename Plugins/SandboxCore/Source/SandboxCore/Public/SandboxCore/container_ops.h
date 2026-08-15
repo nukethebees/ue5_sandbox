@@ -101,10 +101,11 @@ auto get_const_view(int32 const offset, int32 const count, Containers&... contai
     (GetViewTraits<Containers>::get_const_view(containers, offset, count), ...);
 }
 
-template <typename Container, typename... Rest>
-    requires (sizeof...(Rest) % 2 == 0) && SupportsAppendFrom<std::remove_cvref_t<Container>>
-void append_from(Container& dst, Container const& src, Rest&&... rest) {
-    AppendFromTraits<Container>::append_from(dst, src);
+template <typename Dst, typename Src, typename... Rest>
+    requires (sizeof...(Rest) % 2 == 0) &&
+             SupportsAppendFrom<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>
+void append_from(Dst& dst, Src const& src, Rest&&... rest) {
+    AppendFromTraits<std::remove_cvref_t<Dst>>::append_from(dst, src);
 
     if constexpr (sizeof...(rest)) {
         append_from(rest...);

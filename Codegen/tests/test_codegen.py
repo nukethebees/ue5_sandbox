@@ -7,6 +7,7 @@ from Codegen.nodes import (
     CppFile,
     ForwardDeclaration,
     Function,
+    FunctionSpec,
     Include,
     Member,
     Module,
@@ -96,7 +97,9 @@ struct FValue {
         self.assertIn("test_capital_ships_soa", module_names)
         self.assertIn("test_lasers_soa", module_names)
         self.assertIn("collision_damage_events_soa", module_names)
-        self.assertEqual(len(generated_modules), 9)
+        self.assertIn("test_capital_ship_fighter_order_queue", module_names)
+        self.assertIn("entity_death_info", module_names)
+        self.assertEqual(len(generated_modules), 11)
 
     def test_duplicate_output_paths_are_rejected(self) -> None:
         modules = (
@@ -129,6 +132,24 @@ struct FValue {
         self.assertEqual(
             ForwardDeclaration("FExportedData").render(RenderContext()),
             "struct FExportedData;",
+        )
+
+    def test_function_spec_emits_header_and_source_nodes(self) -> None:
+        function = FunctionSpec(
+            "void update(int32 const value)",
+            "void FData::update(int32 const value)",
+            ("this->value = value;",),
+        )
+
+        self.assertEqual(
+            function.declaration_node().render(RenderContext()),
+            "void update(int32 const value);",
+        )
+        self.assertEqual(
+            function.definition_node().render(RenderContext()),
+            """void FData::update(int32 const value) {
+    this->value = value;
+}""",
         )
 
 

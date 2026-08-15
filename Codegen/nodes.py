@@ -103,6 +103,15 @@ class Member(Node):
 
 
 @dataclass(frozen=True)
+class FunctionDeclaration(Node):
+    signature: str
+
+    def render(self, context: RenderContext) -> str:
+        declaration = self.signature.rstrip(";") + ";"
+        return context.apply_indent(declaration)
+
+
+@dataclass(frozen=True)
 class Function(Node):
     signature: str
     body: tuple[str, ...]
@@ -118,6 +127,29 @@ class Function(Node):
             f"{body}\n"
             f"{context.apply_indent('}')}"
         )
+
+
+@dataclass(frozen=True)
+class FunctionSpec:
+    declaration_signature: str
+    definition_signature: str
+    body: tuple[str, ...]
+
+    def __init__(
+        self,
+        declaration_signature: str,
+        definition_signature: str,
+        body: Iterable[str],
+    ) -> None:
+        object.__setattr__(self, "declaration_signature", declaration_signature)
+        object.__setattr__(self, "definition_signature", definition_signature)
+        object.__setattr__(self, "body", tuple(body))
+
+    def declaration_node(self) -> FunctionDeclaration:
+        return FunctionDeclaration(self.declaration_signature)
+
+    def definition_node(self) -> Function:
+        return Function(self.definition_signature, self.body)
 
 
 @dataclass(frozen=True)

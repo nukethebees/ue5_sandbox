@@ -175,7 +175,7 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
     generations.AddZeroed(indices_left_to_reserve);
     unique_ids.AddDefaulted(indices_left_to_reserve);
 
-    entity_data.add(view.get_view(ml::num(new_entities), indices_left_to_reserve));
+    entity_data.append_from(view.get_view(ml::num(new_entities), indices_left_to_reserve));
 
     for (int32 i{0}; i < indices_left_to_reserve; ++i) {
         auto const entity_index{start_index + i};
@@ -193,7 +193,7 @@ void ATestEntityRegistry::queue_entity_updates(ConstView const view,
                                                EntityDeathInfo const& death_info) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::queue_entity_updates);
 
-    queued_entity_data.add(view.data);
+    queued_entity_data.append_from(view.data);
     queued_entity_update_handles.Append(view.indices);
 
     death_info.validate_array_sizes();

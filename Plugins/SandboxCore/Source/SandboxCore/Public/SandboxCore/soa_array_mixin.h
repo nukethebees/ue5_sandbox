@@ -32,6 +32,12 @@ concept SupportsApplyArrayPairs =
         value.apply_array_pairs(const_value, FApplyArrayPairsProbe{});
     };
 
+template <typename T, typename Other>
+concept SupportsApplyArrayPairsWith =
+    requires(std::remove_cvref_t<T>& value, std::remove_cvref_t<Other> const& other) {
+        value.apply_array_pairs(other, FApplyArrayPairsProbe{});
+    };
+
 struct FSoACommonMixin {
     template <typename T>
     using ViewFor = std::conditional_t<std::is_const_v<T>,
@@ -133,8 +139,9 @@ struct FSoAArrayMixin : public FSoACommonMixin {
         });
     }
 
-    template <SupportsApplyArrayPairs Self>
-    void append_from(this Self& self, Self const& other) {
+    template <typename Other, typename Self>
+        requires SupportsApplyArrayPairsWith<Self, Other>
+    void append_from(this Self& self, Other const& other) {
         self.apply_array_pairs(other, [](auto&&... arrays) -> void { ml::append_from(arrays...); });
     }
 };
@@ -163,7 +170,6 @@ struct FSoAArrayMixin : public FSoACommonMixin {
             SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS, SANDBOX_EXPAND_COMMA));       \
     }                                                                                         \
     template <typename Self, typename Other, typename TFunc>                                  \
-        requires std::is_same_v<std::remove_cvref_t<Self>, std::remove_cvref_t<Other>>        \
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) { \
         return std::forward<TFunc>(func)(                                                     \
             SANDBOX_SOA_MEMBERS(SANDBOX_SOA_MIXIN_APPLY_ARRAYS_PAIRS, SANDBOX_EXPAND_COMMA)); \

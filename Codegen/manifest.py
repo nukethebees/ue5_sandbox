@@ -2,7 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from Codegen.nodes import CppFile, Include, Module, Namespace, NewLines, Raw
+from Codegen.nodes import (
+    CppFile,
+    Function,
+    FunctionSpec,
+    Include,
+    Member,
+    Module,
+    Namespace,
+    NewLines,
+    Raw,
+    Struct,
+    UsingDeclaration,
+)
 from Codegen.soa import SoAStruct, lower_soa_structs, soa_member, tarray_member
 
 
@@ -120,6 +132,29 @@ def capital_ships_soa_module() -> Module:
             tarray_member("target_handles", "FRegistryEntityHandle"),
         ),
     )
+    fighter_reassignment = Struct(
+        "FighterReassignment",
+        (
+            Function(
+                "void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh)",
+                ("capital_handles.Add(ch);", "fighter_handles.Add(fh);"),
+            ),
+            NewLines(2),
+            Member("TArray<FRegistryEntityHandle> capital_handles"),
+            NewLines(1),
+            Member("TArray<FRegistryEntityHandle> fighter_handles"),
+            NewLines(2),
+            Function(
+                "template <typename TFunc>\n"
+                "auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto)",
+                (
+                    "return std::forward<TFunc>(func)(self.capital_handles, "
+                    "self.fighter_handles);",
+                ),
+            ),
+        ),
+        bases=("public ml::FSoAArrayMixin",),
+    )
     return Module(
         name="test_capital_ships_soa",
         header=CppFile(
@@ -143,7 +178,11 @@ def capital_ships_soa_module() -> Module:
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ships",
-                    lower_soa_structs((spawn_data, entity_tick_data, entity_data)),
+                    (
+                        *lower_soa_structs((spawn_data, entity_tick_data, entity_data)),
+                        NewLines(2),
+                        fighter_reassignment,
+                    ),
                 ),
             ),
         ),
@@ -290,6 +329,163 @@ def fighter_spawn_queue_soa_module() -> Module:
     )
 
 
+def fighter_order_queue_module() -> Module:
+    order_queue = Struct(
+        "TestCapitalShipFighterOrderQueue",
+        (
+            UsingDeclaration("Task", "ETestCapitalShipFightersTask"),
+            NewLines(2),
+            Struct(
+                "Order",
+                (
+                    Member("uint8 task   : 1 {0}"),
+                    NewLines(1),
+                    Member("uint8 target : 1 {0}"),
+                ),
+            ),
+            NewLines(2),
+            Function(
+                "void add(FRegistryEntityHandle const handle,\n"
+                "         Order const order,\n"
+                "         Task const task,\n"
+                "         FRegistryEntityHandle const target)",
+                (
+                    "handles.Add(handle);",
+                    "orders.Add(order);",
+                    "tasks.Add(task);",
+                    "targets.Add(target);",
+                ),
+            ),
+            NewLines(2),
+            Member("TArray<FRegistryEntityHandle> handles"),
+            NewLines(1),
+            Member("TArray<Order> orders"),
+            NewLines(1),
+            Member("TArray<ETestCapitalShipFightersTask> tasks"),
+            NewLines(1),
+            Member("TArray<FRegistryEntityHandle> targets"),
+            NewLines(2),
+            Function(
+                "template <typename TFunc>\n"
+                "auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto)",
+                (
+                    "return std::forward<TFunc>(func)(self.handles, self.orders, "
+                    "self.tasks, self.targets);",
+                ),
+            ),
+            NewLines(2),
+            Function(
+                "template <typename Self, typename Other, typename TFunc>\n"
+                "auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)\n"
+                "    -> decltype(auto)",
+                (
+                    "return std::forward<TFunc>(func)(self.handles, other.handles,\n"
+                    "                                 self.orders, other.orders,\n"
+                    "                                 self.tasks, other.tasks,\n"
+                    "                                 self.targets, other.targets);",
+                ),
+            ),
+        ),
+        bases=("public ml::FSoAArrayMixin",),
+    )
+    return Module(
+        name="test_capital_ship_fighter_order_queue",
+        header=CppFile(
+            path=PROJECT_ROOT
+            / "Source"
+            / "Sandbox"
+            / "batch_game"
+            / "TestCapitalShipFighterOrderQueue.h",
+            clang_format_off=True,
+            nodes=(
+                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
+                Include("SandboxCore/soa_array_mixin.h"),
+                NewLines(2),
+                Include("CoreMinimal.h", system=False),
+                NewLines(2),
+                Include("utility"),
+                NewLines(2),
+                order_queue,
+            ),
+        ),
+    )
+
+
+def entity_death_info_module() -> Module:
+    add_function = FunctionSpec(
+        "void add(ETestDeathReason const reason,\n"
+        "         FRegistryEntityHandle const victim,\n"
+        "         FRegistryEntityHandle const killer)",
+        "void EntityDeathInfo::add(ETestDeathReason const reason,\n"
+        "                          FRegistryEntityHandle const victim,\n"
+        "                          FRegistryEntityHandle const killer)",
+        ("reasons.Add(reason);", "victims.Add(victim);", "killers.Add(killer);"),
+    )
+    entity_death_info = Struct(
+        "EntityDeathInfo",
+        (
+            Member("TArray<ETestDeathReason> reasons"),
+            NewLines(1),
+            Member("TArray<FRegistryEntityHandle> victims"),
+            NewLines(1),
+            Member("TArray<FRegistryEntityHandle> killers"),
+            NewLines(2),
+            add_function.declaration_node(),
+            NewLines(1),
+            Function(
+                "void add(ETestDeathReason const reason, FRegistryEntityHandle const victim)",
+                ("add(reason, victim, FRegistryEntityHandle{});",),
+            ),
+            NewLines(2),
+            Function(
+                "template <typename TFunc>\n"
+                "auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto)",
+                ("return std::forward<TFunc>(func)(self.reasons, self.victims, self.killers);",),
+            ),
+        ),
+        bases=("public ml::FSoAArrayMixin",),
+    )
+    return Module(
+        name="entity_death_info",
+        header=CppFile(
+            path=PROJECT_ROOT
+            / "Source"
+            / "Sandbox"
+            / "batch_game"
+            / "test_entity_registry"
+            / "EntityDeathInfo.h",
+            clang_format_off=True,
+            nodes=(
+                Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
+                Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
+                NewLines(2),
+                Include("SandboxCore/soa_array_mixin.h"),
+                NewLines(2),
+                Include("Containers/Array.h"),
+                Include("HAL/Platform.h"),
+                NewLines(2),
+                Include("utility"),
+                NewLines(2),
+                entity_death_info,
+            ),
+        ),
+        source=CppFile(
+            path=PROJECT_ROOT
+            / "Source"
+            / "Sandbox"
+            / "batch_game"
+            / "test_entity_registry"
+            / "EntityDeathInfo.cpp",
+            pragma_once=False,
+            clang_format_off=True,
+            nodes=(
+                Include("EntityDeathInfo.h", system=False),
+                NewLines(2),
+                add_function.definition_node(),
+            ),
+        ),
+    )
 def static_turrets_soa_module() -> Module:
     entity_data = SoAStruct(
         "EntityData",
@@ -460,8 +656,10 @@ def modules() -> tuple[Module, ...]:
         lasers_soa_module(),
         collision_damage_events_soa_module(),
         fighter_spawn_queue_soa_module(),
+        fighter_order_queue_module(),
         static_turrets_soa_module(),
         tube_spinners_soa_module(),
         direct_damage_events_soa_module(),
         unique_entity_data_soa_module(),
+        entity_death_info_module(),
     )

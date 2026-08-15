@@ -19,17 +19,6 @@ void EntityData::add_disabled(int32 const count) {
     ml::fill(slice.entity_types, ETestEntityType::COUNT);
     ml::fill(slice.alive, uint8{0u});
 }
-void EntityData::add(ConstView const view) {
-    ml::append_from(locations, view.locations);
-    ml::append_from(velocities, view.velocities);
-
-    radii.Append(view.radii);
-    healths.Append(view.healths);
-    teams.Append(view.teams);
-    entity_types.Append(view.entity_types);
-    alive.Append(view.alive);
-}
-
 void EntityData::set_all_alive() {
     ml::fill(alive, uint8{1});
 }
