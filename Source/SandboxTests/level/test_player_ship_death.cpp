@@ -2,6 +2,9 @@
 #include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/level_checks.h>
+
+#include <SandboxCore/time_series_data.h>
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -21,6 +24,12 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
 {
     using ThisClass = TestPlayerShipDeath;
 
+    struct FSimulationSample {
+        bool player_handle_is_dead{false};
+        bool player_actor_is_valid{false};
+        bool player_unique_entity_is_alive{false};
+    };
+
     inline static FTimespan const timeout{0, 0, 2};
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
@@ -30,12 +39,14 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
     FRegistryEntityHandle player_ship_handle{};
     TestEntityUniqueId player_ship_id{};
+    ml::TimeSeriesData<FSimulationSample> samples;
 
     BEFORE_EACH()
     {
         test_driver.Reset();
         checks.test_runner = TestRunner;
         checks.all_passed = true;
+        samples = {};
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
         level_setup->setup(TestCommandBuilder);
@@ -60,8 +71,6 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
   private:
     void queue_player_ship_death() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
-        test_driver->timeline.finish_at(0.5);
-
         auto* const ship{const_cast<ATestSpaceShip*>(&test_driver->get_player_ship())};
 
         player_ship = ship;
@@ -69,7 +78,8 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
         player_ship_id = ship->get_unique_id();
 
         TArray<FRegistryEntityHandle> const targets{player_ship_handle};
-        test_driver->queue_kills(targets);
+        test_driver->timeline.then_after(0.1, [this, targets] { test_driver->queue_kills(targets); })
+            .finish_after(0.4);
 
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
@@ -77,16 +87,23 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     }
 
     void on_end_tick(ATestBatchOrchestrator&) {
+        auto const& unique_entities{test_driver->registry.get_unique_entities()};
+        samples.add(test_driver->get_time(),
+                    FSimulationSample{test_driver->registry.is_valid_dead(player_ship_handle),
+                                      IsValid(player_ship.Get()),
+                                      static_cast<bool>(unique_entities.alive[player_ship_id.id])});
         test_driver->timeline.tick(test_driver->get_time());
     }
 
     void check_player_ship_death() {
-        TestRunner->TestTrue(TEXT("Player ship handle is dead"),
-                             test_driver->registry.is_valid_dead(player_ship_handle));
-        TestRunner->TestFalse(TEXT("Player ship actor is destroyed"), IsValid(player_ship.Get()));
+        ml::check_samples_recorded(samples.num(), checks, TEXT("Player-death simulation samples recorded"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-        auto const& unique_entities{test_driver->registry.get_unique_entities()};
-        TestRunner->TestFalse(TEXT("Player ship entity is dead"),
-                              static_cast<bool>(unique_entities.alive[player_ship_id.id]));
+        auto const& sample{samples.last_value()};
+        checks.is_true(sample.player_handle_is_dead, TEXT("Player ship handle is dead"));
+        checks.is_true(!sample.player_actor_is_valid, TEXT("Player ship actor is destroyed"));
+        checks.is_true(!sample.player_unique_entity_is_alive, TEXT("Player ship entity is dead"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 };
