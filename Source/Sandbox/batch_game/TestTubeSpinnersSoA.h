@@ -76,11 +76,11 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(handles, index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(yaws, index, count, allow_shrinking);
-        ml::remove_at_swap(laser_cooldowns, index, count, allow_shrinking);
-        ml::remove_at_swap(next_fire_point_indices, index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        yaws.RemoveAtSwap(index, count, allow_shrinking);
+        laser_cooldowns.remove_at_swap(index, count, allow_shrinking);
+        next_fire_point_indices.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

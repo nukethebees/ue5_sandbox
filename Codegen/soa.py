@@ -5,14 +5,17 @@ from enum import Enum
 from collections.abc import Iterable
 
 from Codegen.nodes import (
+    CppType,
     ForwardDeclaration,
     FunctionBody,
     FunctionParameter,
+    MemberFunctionOperation,
     MemberFunctionSpec,
     Member,
     NewLines,
     Node,
     Raw,
+    REMOVE_AT_SWAP,
     RenderContext,
     Struct,
     TypeDependency,
@@ -20,6 +23,7 @@ from Codegen.nodes import (
     UsingDeclaration,
     comma_separated,
     composed_type,
+    cpp_type,
     type_spelling,
 )
 
@@ -37,16 +41,20 @@ TARRAY_VIEW = TypeDependency("TArrayView", "Containers/ArrayView.h")
 ALLOW_SHRINKING = TypeDependency(
     "EAllowShrinking", "Containers/AllowShrinking.h"
 )
+TARRAY_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
 
 
 @dataclass(frozen=True)
 class SoAMember:
-    container_type: TypeLike
-    view_type: TypeLike
-    const_view_type: TypeLike
+    container_type: CppType
+    view_type: CppType
+    const_view_type: CppType
     name: str
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "container_type", cpp_type(self.container_type))
+        object.__setattr__(self, "view_type", cpp_type(self.view_type))
+        object.__setattr__(self, "const_view_type", cpp_type(self.const_view_type))
         types = (self.container_type, self.view_type, self.const_view_type)
         if any(not type_spelling(value).strip() for value in types) or not self.name.strip():
             raise ValueError("SOA member types and name must not be empty")
@@ -102,6 +110,45 @@ class ForEachSoAMemberFreeFunctionCall(FunctionBody):
             ).render(context)
             for member in self.members
         )
+
+
+class ForEachSoAMemberOperationCall(FunctionBody):
+    def __init__(
+        self,
+        members: Iterable[SoAMember],
+        operation: str,
+        fallback_function: str,
+    ) -> None:
+        self.members = tuple(members)
+        self.operation = operation
+        self.fallback_function = fallback_function
+        if not self.members:
+            raise ValueError(
+                "ForEachSoAMemberOperationCall requires at least one SOA member"
+            )
+        if not self.operation.strip():
+            raise ValueError("SOA member operation must not be empty")
+        if not self.fallback_function.strip():
+            raise ValueError("SOA member operation fallback must not be empty")
+
+    def render(self, context: RenderContext) -> str:
+        function = self.function
+        parameters = tuple(
+            function.parameter(parameter).cpp_name for parameter in function.parameters
+        )
+        calls: list[str] = []
+        for member in self.members:
+            implementation = member.container_type.operation(self.operation)
+            call = (
+                implementation.call(member.name, parameters)
+                if implementation is not None
+                else Raw(
+                    f"{self.fallback_function}("
+                    f"{comma_separated((member.name, *parameters))});"
+                )
+            )
+            calls.append(call.render(context))
+        return "\n".join(calls)
 
 
 class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
@@ -178,6 +225,7 @@ def tarray_member(
             f"TArray<{element}{allocator_suffix}>",
             *contained_types,
             header="Containers/Array.h",
+            operations={REMOVE_AT_SWAP: TARRAY_REMOVE_AT_SWAP},
         ),
         view_type=composed_type(
             f"TArrayView<{element}>", value_type, header="Containers/ArrayView.h"
@@ -389,7 +437,9 @@ def _storage_operation_spec(
                         "allow_shrinking",
                     ),
                 ),
-                ForEachSoAMemberFreeFunctionCall(members, "ml::remove_at_swap"),
+                ForEachSoAMemberOperationCall(
+                    members, REMOVE_AT_SWAP, "ml::remove_at_swap"
+                ),
                 is_inline=True,
             )
         case SoAStorageOperation.SET_NUM:

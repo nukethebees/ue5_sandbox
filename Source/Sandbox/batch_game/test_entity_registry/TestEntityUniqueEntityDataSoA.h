@@ -91,14 +91,14 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(registry_indices, index, count, allow_shrinking);
-        ml::remove_at_swap(registry_generations, index, count, allow_shrinking);
-        ml::remove_at_swap(entity_types, index, count, allow_shrinking);
-        ml::remove_at_swap(teams, index, count, allow_shrinking);
-        ml::remove_at_swap(kills, index, count, allow_shrinking);
-        ml::remove_at_swap(alive, index, count, allow_shrinking);
-        ml::remove_at_swap(killed_by, index, count, allow_shrinking);
-        ml::remove_at_swap(death_reason, index, count, allow_shrinking);
+        registry_indices.RemoveAtSwap(index, count, allow_shrinking);
+        registry_generations.RemoveAtSwap(index, count, allow_shrinking);
+        entity_types.RemoveAtSwap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        kills.RemoveAtSwap(index, count, allow_shrinking);
+        alive.RemoveAtSwap(index, count, allow_shrinking);
+        killed_by.RemoveAtSwap(index, count, allow_shrinking);
+        death_reason.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

@@ -158,31 +158,31 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(entity_handles, index, count, allow_shrinking);
-        ml::remove_at_swap(integral_biases, index, count, allow_shrinking);
-        ml::remove_at_swap(float_biases, index, count, allow_shrinking);
-        ml::remove_at_swap(tasks, index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(move_distances, index, count, allow_shrinking);
-        ml::remove_at_swap(speeds, index, count, allow_shrinking);
-        ml::remove_at_swap(teams, index, count, allow_shrinking);
-        ml::remove_at_swap(healths, index, count, allow_shrinking);
-        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
-        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(intercept_times, index, count, allow_shrinking);
-        ml::remove_at_swap(target_distance_sq, index, count, allow_shrinking);
-        ml::remove_at_swap(target_distances, index, count, allow_shrinking);
-        ml::remove_at_swap(target_radii, index, count, allow_shrinking);
+        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
+        float_biases.RemoveAtSwap(index, count, allow_shrinking);
+        tasks.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        desired_move_locations.remove_at_swap(index, count, allow_shrinking);
+        aim_directions.remove_at_swap(index, count, allow_shrinking);
+        desired_aiming_directions.remove_at_swap(index, count, allow_shrinking);
+        movement_directions.remove_at_swap(index, count, allow_shrinking);
+        velocities.remove_at_swap(index, count, allow_shrinking);
+        move_distances.RemoveAtSwap(index, count, allow_shrinking);
+        speeds.RemoveAtSwap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        awareness_scan_countdowns.remove_at_swap(index, count, allow_shrinking);
+        attack_reposition_countdowns.remove_at_swap(index, count, allow_shrinking);
+        attack_cooldowns.remove_at_swap(index, count, allow_shrinking);
+        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        target_locations.remove_at_swap(index, count, allow_shrinking);
+        target_velocities.remove_at_swap(index, count, allow_shrinking);
+        target_directions.remove_at_swap(index, count, allow_shrinking);
+        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
+        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
+        target_distances.RemoveAtSwap(index, count, allow_shrinking);
+        target_radii.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

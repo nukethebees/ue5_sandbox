@@ -81,10 +81,10 @@ struct SANDBOX_API TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin 
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(handles, index, count, allow_shrinking);
-        ml::remove_at_swap(orders, index, count, allow_shrinking);
-        ml::remove_at_swap(tasks, index, count, allow_shrinking);
-        ml::remove_at_swap(targets, index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
+        orders.RemoveAtSwap(index, count, allow_shrinking);
+        tasks.RemoveAtSwap(index, count, allow_shrinking);
+        targets.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

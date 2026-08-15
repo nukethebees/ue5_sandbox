@@ -76,11 +76,11 @@ struct SANDBOX_API UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(damaged_actors, index, count, allow_shrinking);
-        ml::remove_at_swap(damage_amounts, index, count, allow_shrinking);
-        ml::remove_at_swap(actor_components, index, count, allow_shrinking);
-        ml::remove_at_swap(hit_items, index, count, allow_shrinking);
-        ml::remove_at_swap(instigators, index, count, allow_shrinking);
+        damaged_actors.RemoveAtSwap(index, count, allow_shrinking);
+        damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
+        actor_components.RemoveAtSwap(index, count, allow_shrinking);
+        hit_items.RemoveAtSwap(index, count, allow_shrinking);
+        instigators.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -188,10 +188,10 @@ struct SANDBOX_API CollisionDamageEvents : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(damage_amounts, index, count, allow_shrinking);
-        ml::remove_at_swap(actor_components, index, count, allow_shrinking);
-        ml::remove_at_swap(hit_items, index, count, allow_shrinking);
-        ml::remove_at_swap(instigators, index, count, allow_shrinking);
+        damage_amounts.RemoveAtSwap(index, count, allow_shrinking);
+        actor_components.RemoveAtSwap(index, count, allow_shrinking);
+        hit_items.RemoveAtSwap(index, count, allow_shrinking);
+        instigators.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

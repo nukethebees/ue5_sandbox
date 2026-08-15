@@ -1,9 +1,11 @@
 import unittest
 from pathlib import Path
 
+from Codegen.cpp_types import F_VECTORS_3F
 from Codegen.generate import collect_files, render_files
 from Codegen.manifest import modules
 from Codegen.nodes import (
+    CppType,
     CppFile,
     ForwardDeclaration,
     FreeFunctionSpec,
@@ -12,6 +14,7 @@ from Codegen.nodes import (
     Include,
     IncludeDependencies,
     Member,
+    MemberFunctionOperation,
     MemberFunctionSpec,
     Module,
     Namespace,
@@ -19,6 +22,7 @@ from Codegen.nodes import (
     Node,
     ParameterRef,
     Raw,
+    REMOVE_AT_SWAP,
     RenderContext,
     Struct,
     TypeDependency,
@@ -29,6 +33,7 @@ from Codegen.nodes import (
 )
 from Codegen.soa import (
     ForEachSoAMemberCall,
+    ForEachSoAMemberOperationCall,
     HomogeneousSoALayout,
     HomogeneousSoAValueType,
     SoAMember,
@@ -388,6 +393,99 @@ struct FValue {
 
 
 class SoARenderingTests(unittest.TestCase):
+    def test_type_directed_operation_uses_registered_member_function(self) -> None:
+        function = MemberFunctionSpec(
+            "remove_at_swap",
+            "void",
+            (
+                FunctionParameter("int32 const", "index"),
+                FunctionParameter("int32 const", "count"),
+                FunctionParameter("EAllowShrinking const", "allow_shrinking"),
+            ),
+            ForEachSoAMemberOperationCall(
+                (tarray_member("values", "int32"),),
+                REMOVE_AT_SWAP,
+                "ml::remove_at_swap",
+            ),
+        )
+
+        self.assertIn(
+            "values.RemoveAtSwap(index, count, allow_shrinking);",
+            function.definition_node("FData").render(RenderContext()),
+        )
+
+    def test_generated_soa_container_registers_its_remove_at_swap(self) -> None:
+        function = MemberFunctionSpec(
+            "remove_at_swap",
+            "void",
+            (
+                FunctionParameter("int32 const", "index"),
+                FunctionParameter("int32 const", "count"),
+                FunctionParameter("EAllowShrinking const", "allow_shrinking"),
+            ),
+            ForEachSoAMemberOperationCall(
+                (soa_member("locations", F_VECTORS_3F),),
+                REMOVE_AT_SWAP,
+                "ml::remove_at_swap",
+            ),
+        )
+
+        self.assertIn(
+            "locations.remove_at_swap(index, count, allow_shrinking);",
+            function.definition_node("FData").render(RenderContext()),
+        )
+
+    def test_type_directed_operation_uses_generic_fallback(self) -> None:
+        function = MemberFunctionSpec(
+            "remove_at_swap",
+            "void",
+            (
+                FunctionParameter("int32 const", "index"),
+                FunctionParameter("int32 const", "count"),
+                FunctionParameter("EAllowShrinking const", "allow_shrinking"),
+            ),
+            ForEachSoAMemberOperationCall(
+                (soa_member("values", "FNestedValues"),),
+                REMOVE_AT_SWAP,
+                "ml::remove_at_swap",
+            ),
+        )
+
+        self.assertIn(
+            "ml::remove_at_swap(values, index, count, allow_shrinking);",
+            function.definition_node("FData").render(RenderContext()),
+        )
+
+    def test_operation_lookup_does_not_use_type_dependencies(self) -> None:
+        dependency = TypeDependency("FSharedDependency", "SharedDependency.h")
+        operation = MemberFunctionOperation("RemoveAtSwap")
+        direct_type = CppType(
+            "FValues",
+            (dependency,),
+            {REMOVE_AT_SWAP: operation},
+        )
+        fallback_type = CppType("FValues", (dependency,))
+
+        self.assertIs(direct_type.operation(REMOVE_AT_SWAP), operation)
+        self.assertIsNone(fallback_type.operation(REMOVE_AT_SWAP))
+
+    def test_tarray_types_share_construction_without_template_awareness(self) -> None:
+        floats = tarray_member("floats", "float").container_type
+        tasks = tarray_member("tasks", "ETask").container_type
+
+        self.assertIsNot(floats, tasks)
+        self.assertEqual(floats.spelling, "TArray<float>")
+        self.assertEqual(tasks.spelling, "TArray<ETask>")
+        self.assertIs(
+            floats.operation(REMOVE_AT_SWAP), tasks.operation(REMOVE_AT_SWAP)
+        )
+
+    def test_function_parameter_stores_a_cpp_type(self) -> None:
+        parameter = FunctionParameter("int32 const", "count")
+
+        self.assertIsInstance(parameter.type_name, CppType)
+        self.assertEqual(parameter.type_name.spelling, "int32 const")
+
     def test_member_free_function_call_uses_bound_function_parameters(self) -> None:
         count = FunctionParameter("int32 const", "count")
         function = MemberFunctionSpec(
@@ -489,6 +587,7 @@ void append_from(Other const& other) {
         self.assertIn("void add_defaulted(int32 const count)", rendered)
         self.assertIn("ml::add_defaulted(", rendered)
         self.assertIn("void remove_at_swap(", rendered)
+        self.assertIn("values.RemoveAtSwap(", rendered)
         self.assertIn("ml::copy_element(", rendered)
         self.assertIn("template <typename Other>", rendered)
         self.assertLess(rendered.index("void add_defaulted"), rendered.index("apply_arrays"))

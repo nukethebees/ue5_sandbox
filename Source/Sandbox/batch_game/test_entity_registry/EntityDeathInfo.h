@@ -71,9 +71,9 @@ struct SANDBOX_API EntityDeathInfo : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(reasons, index, count, allow_shrinking);
-        ml::remove_at_swap(victims, index, count, allow_shrinking);
-        ml::remove_at_swap(killers, index, count, allow_shrinking);
+        reasons.RemoveAtSwap(index, count, allow_shrinking);
+        victims.RemoveAtSwap(index, count, allow_shrinking);
+        killers.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

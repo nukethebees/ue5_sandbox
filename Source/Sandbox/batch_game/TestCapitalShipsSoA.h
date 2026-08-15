@@ -89,13 +89,13 @@ struct SANDBOX_API SpawnData : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(rotations, index, count, allow_shrinking);
-        ml::remove_at_swap(teams, index, count, allow_shrinking);
-        ml::remove_at_swap(healths, index, count, allow_shrinking);
-        ml::remove_at_swap(initial_spawn_delays, index, count, allow_shrinking);
-        ml::remove_at_swap(spawn_cooldowns, index, count, allow_shrinking);
+        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        initial_spawn_delays.RemoveAtSwap(index, count, allow_shrinking);
+        spawn_cooldowns.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -205,8 +205,8 @@ struct SANDBOX_API EntityTickData : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(ships_ready_to_spawn_fighters_buffer, index, count, allow_shrinking);
-        ml::remove_at_swap(fighter_queue, index, count, allow_shrinking);
+        ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(index, count, allow_shrinking);
+        fighter_queue.remove_at_swap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -315,15 +315,15 @@ struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     void add_uninitialised(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(handles, index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(rotations, index, count, allow_shrinking);
-        ml::remove_at_swap(fighter_spawn_timers, index, count, allow_shrinking);
-        ml::remove_at_swap(fighter_spawn_cooldowns, index, count, allow_shrinking);
-        ml::remove_at_swap(teams, index, count, allow_shrinking);
-        ml::remove_at_swap(healths, index, count, allow_shrinking);
-        ml::remove_at_swap(capital_fighter_handle_spans, index, count, allow_shrinking);
-        ml::remove_at_swap(target_handles, index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        fighter_spawn_timers.RemoveAtSwap(index, count, allow_shrinking);
+        fighter_spawn_cooldowns.RemoveAtSwap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        capital_fighter_handle_spans.RemoveAtSwap(index, count, allow_shrinking);
+        target_handles.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
@@ -432,8 +432,8 @@ struct SANDBOX_API FighterReassignment : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(capital_handles, index, count, allow_shrinking);
-        ml::remove_at_swap(fighter_handles, index, count, allow_shrinking);
+        capital_handles.RemoveAtSwap(index, count, allow_shrinking);
+        fighter_handles.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

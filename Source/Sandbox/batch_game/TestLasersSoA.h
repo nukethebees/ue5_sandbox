@@ -95,14 +95,14 @@ struct SANDBOX_API SpawnRequests : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(rotations, index, count, allow_shrinking);
-        ml::remove_at_swap(base_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(damages, index, count, allow_shrinking);
-        ml::remove_at_swap(speeds, index, count, allow_shrinking);
-        ml::remove_at_swap(max_distances, index, count, allow_shrinking);
-        ml::remove_at_swap(instigator_handles, index, count, allow_shrinking);
-        ml::remove_at_swap(colours, index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        base_velocities.remove_at_swap(index, count, allow_shrinking);
+        damages.RemoveAtSwap(index, count, allow_shrinking);
+        speeds.RemoveAtSwap(index, count, allow_shrinking);
+        max_distances.RemoveAtSwap(index, count, allow_shrinking);
+        instigator_handles.RemoveAtSwap(index, count, allow_shrinking);
+        colours.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -241,14 +241,14 @@ struct SANDBOX_API Entities : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(ismc_data, index, count, allow_shrinking);
-        ml::remove_at_swap(colours, index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(rotations, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(damages, index, count, allow_shrinking);
-        ml::remove_at_swap(lifetimes_remaining, index, count, allow_shrinking);
-        ml::remove_at_swap(instigator_handles, index, count, allow_shrinking);
+        ismc_data.RemoveAtSwap(index, count, allow_shrinking);
+        colours.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        velocities.remove_at_swap(index, count, allow_shrinking);
+        damages.RemoveAtSwap(index, count, allow_shrinking);
+        lifetimes_remaining.RemoveAtSwap(index, count, allow_shrinking);
+        instigator_handles.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -363,8 +363,8 @@ struct SANDBOX_API HitDetails : public ml::FSoAArrayMixin {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(colours, index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        colours.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);

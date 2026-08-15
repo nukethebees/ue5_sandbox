@@ -1,67 +1,104 @@
 from __future__ import annotations
 
-from Codegen.nodes import TypeDependency, TypeLike, composed_type, type_spelling
+from collections.abc import Mapping
+
+from Codegen.nodes import (
+    CppType,
+    MemberFunctionOperation,
+    REMOVE_AT_SWAP,
+    TypeLike,
+    TypeOperation,
+    composed_type,
+    type_spelling,
+)
 
 
-def qualified_type(value: TypeLike, suffix: str) -> TypeDependency:
+LOWERCASE_REMOVE_AT_SWAP = MemberFunctionOperation("remove_at_swap")
+UNREAL_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
+
+
+def qualified_type(value: TypeLike, suffix: str) -> CppType:
     return composed_type(f"{type_spelling(value)}{suffix}", value)
 
 
-def nested_type(value: TypeLike, name: str) -> TypeDependency:
+def nested_type(value: TypeLike, name: str) -> CppType:
     return composed_type(f"{type_spelling(value)}::{name}", value)
 
 
-def core_type(spelling: str) -> TypeDependency:
-    return TypeDependency(spelling, "CoreMinimal.h")
+def dependent_type(
+    spelling: str,
+    header: str,
+    operations: Mapping[str, TypeOperation] | None = None,
+) -> CppType:
+    return composed_type(spelling, header=header, operations=operations)
 
 
-F_REGISTRY_ENTITY_HANDLE = TypeDependency(
+def core_type(spelling: str) -> CppType:
+    return dependent_type(spelling, "CoreMinimal.h")
+
+
+F_REGISTRY_ENTITY_HANDLE = dependent_type(
     "FRegistryEntityHandle",
     "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h",
 )
-E_TEST_DEATH_REASON = TypeDependency(
+E_TEST_DEATH_REASON = dependent_type(
     "ETestDeathReason",
     "Sandbox/batch_game/test_entity_registry/TestDeathReason.h",
 )
-TEST_ENTITY_UNIQUE_ID = TypeDependency(
+TEST_ENTITY_UNIQUE_ID = dependent_type(
     "TestEntityUniqueId",
     "Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h",
 )
-E_TEST_CAPITAL_SHIP_FIGHTERS_TASK = TypeDependency(
+E_TEST_CAPITAL_SHIP_FIGHTERS_TASK = dependent_type(
     "ETestCapitalShipFightersTask",
     "Sandbox/batch_game/TestCapitalShipFightersTask.h",
 )
-TEST_CAPITAL_SHIP_FIGHTER_ORDER = TypeDependency(
+TEST_CAPITAL_SHIP_FIGHTER_ORDER = dependent_type(
     "TestCapitalShipFighterOrder",
     "Sandbox/batch_game/TestCapitalShipFighterOrder.h",
 )
-TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE = TypeDependency(
+TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE = dependent_type(
     "TestCapitalShipFighterSpawnQueue",
     "Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
-E_TEST_ENTITY_TYPE = TypeDependency(
+E_TEST_ENTITY_TYPE = dependent_type(
     "ETestEntityType", "Sandbox/batch_game/TestEntityType.h"
 )
-E_TEST_TEAM = TypeDependency("ETestTeam", "Sandbox/batch_game/TestTeam.h")
-F_INDEX_SPAN = TypeDependency("FIndexSpan", "Sandbox/utilities/IndexSpan.h")
+E_TEST_TEAM = dependent_type("ETestTeam", "Sandbox/batch_game/TestTeam.h")
+F_INDEX_SPAN = dependent_type("FIndexSpan", "Sandbox/utilities/IndexSpan.h")
 
-F_COUNTDOWN_TIMERS = TypeDependency(
-    "FCountdownTimers", "SandboxCore/countdown_timers.h"
+F_COUNTDOWN_TIMERS = dependent_type(
+    "FCountdownTimers",
+    "SandboxCore/countdown_timers.h",
+    {REMOVE_AT_SWAP: UNREAL_REMOVE_AT_SWAP},
 )
-F_ROTATORS_F = TypeDependency("FRotatorsf", "SandboxCore/soa_rotators.h")
-F_VECTORS_3F = TypeDependency("FVectors3f", "SandboxCore/soa_vectors.h")
-F_TICK_COUNTDOWN_8 = TypeDependency(
-    "FTickCountdown8", "SandboxCore/tick_countdown.h"
+F_ROTATORS_F = dependent_type(
+    "FRotatorsf",
+    "SandboxCore/soa_rotators.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
-F_TICK_COUNTDOWN_16 = TypeDependency(
-    "FTickCountdown16", "SandboxCore/tick_countdown.h"
+F_VECTORS_3F = dependent_type(
+    "FVectors3f",
+    "SandboxCore/soa_vectors.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
+)
+F_TICK_COUNTDOWN_8 = dependent_type(
+    "FTickCountdown8",
+    "SandboxCore/tick_countdown.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
+)
+F_TICK_COUNTDOWN_16 = dependent_type(
+    "FTickCountdown16",
+    "SandboxCore/tick_countdown.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
 
-F_INSTANCED_STATIC_MESH_INSTANCE_DATA = TypeDependency(
+F_INSTANCED_STATIC_MESH_INSTANCE_DATA = dependent_type(
     "FInstancedStaticMeshInstanceData",
     "Components/InstancedStaticMeshComponent.h",
 )
-F_LINEAR_COLOR = TypeDependency("FLinearColor", "Math/Color.h")
+F_LINEAR_COLOR = dependent_type("FLinearColor", "Math/Color.h")
 
 F_VECTOR_2F = core_type("FVector2f")
 F_VECTOR_2D = core_type("FVector2d")
