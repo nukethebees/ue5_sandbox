@@ -82,49 +82,13 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
 
     using kills_type = uint32;
 
-    void reset() {
-        ml::reset(registry_indices);
-        ml::reset(registry_generations);
-        ml::reset(entity_types);
-        ml::reset(teams);
-        ml::reset(kills);
-        ml::reset(alive);
-        ml::reset(killed_by);
-        ml::reset(death_reason);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(registry_indices, count);
-        ml::reserve(registry_generations, count);
-        ml::reserve(entity_types, count);
-        ml::reserve(teams, count);
-        ml::reserve(kills, count);
-        ml::reserve(alive, count);
-        ml::reserve(killed_by, count);
-        ml::reserve(death_reason, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(registry_indices, count);
-        ml::add_uninitialised(registry_generations, count);
-        ml::add_uninitialised(entity_types, count);
-        ml::add_uninitialised(teams, count);
-        ml::add_uninitialised(kills, count);
-        ml::add_uninitialised(alive, count);
-        ml::add_uninitialised(killed_by, count);
-        ml::add_uninitialised(death_reason, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(registry_indices, count);
-        ml::add_defaulted(registry_generations, count);
-        ml::add_defaulted(entity_types, count);
-        ml::add_defaulted(teams, count);
-        ml::add_defaulted(kills, count);
-        ml::add_defaulted(alive, count);
-        ml::add_defaulted(killed_by, count);
-        ml::add_defaulted(death_reason, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(registry_indices, index, count, allow_shrinking);
@@ -137,16 +101,7 @@ struct SANDBOX_API TestEntityUniqueEntityData : public ml::FSoAArrayMixin {
         ml::remove_at_swap(death_reason, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(registry_indices, count, allow_shrinking);
-        ml::set_num(registry_generations, count, allow_shrinking);
-        ml::set_num(entity_types, count, allow_shrinking);
-        ml::set_num(teams, count, allow_shrinking);
-        ml::set_num(kills, count, allow_shrinking);
-        ml::set_num(alive, count, allow_shrinking);
-        ml::set_num(killed_by, count, allow_shrinking);
-        ml::set_num(death_reason, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, TestEntityUniqueEntityData const& other, int32 const src_i) {
         ml::copy_element(registry_indices, dst_i, other.registry_indices, src_i);

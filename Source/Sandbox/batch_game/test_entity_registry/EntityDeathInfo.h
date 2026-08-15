@@ -53,7 +53,7 @@ struct EntityDeathInfoConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> killers;
 };
 
-struct EntityDeathInfo : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityDeathInfo : public ml::FSoAArrayMixin {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
@@ -62,29 +62,13 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
         add(reason, victim, FRegistryEntityHandle{});
     }
 
-    void reset() {
-        ml::reset(reasons);
-        ml::reset(victims);
-        ml::reset(killers);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(reasons, count);
-        ml::reserve(victims, count);
-        ml::reserve(killers, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(reasons, count);
-        ml::add_uninitialised(victims, count);
-        ml::add_uninitialised(killers, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(reasons, count);
-        ml::add_defaulted(victims, count);
-        ml::add_defaulted(killers, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(reasons, index, count, allow_shrinking);
@@ -92,11 +76,7 @@ struct EntityDeathInfo : public ml::FSoAArrayMixin {
         ml::remove_at_swap(killers, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(reasons, count, allow_shrinking);
-        ml::set_num(victims, count, allow_shrinking);
-        ml::set_num(killers, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, EntityDeathInfo const& other, int32 const src_i) {
         ml::copy_element(reasons, dst_i, other.reasons, src_i);

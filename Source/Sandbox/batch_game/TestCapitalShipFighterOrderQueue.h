@@ -56,7 +56,7 @@ struct TestCapitalShipFighterOrderQueueConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> targets;
 };
 
-struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
+struct SANDBOX_API TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
@@ -70,33 +70,13 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
         targets.Add(target);
     }
 
-    void reset() {
-        ml::reset(handles);
-        ml::reset(orders);
-        ml::reset(tasks);
-        ml::reset(targets);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(handles, count);
-        ml::reserve(orders, count);
-        ml::reserve(tasks, count);
-        ml::reserve(targets, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(handles, count);
-        ml::add_uninitialised(orders, count);
-        ml::add_uninitialised(tasks, count);
-        ml::add_uninitialised(targets, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(handles, count);
-        ml::add_defaulted(orders, count);
-        ml::add_defaulted(tasks, count);
-        ml::add_defaulted(targets, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(handles, index, count, allow_shrinking);
@@ -105,12 +85,7 @@ struct TestCapitalShipFighterOrderQueue : public ml::FSoAArrayMixin {
         ml::remove_at_swap(targets, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(handles, count, allow_shrinking);
-        ml::set_num(orders, count, allow_shrinking);
-        ml::set_num(tasks, count, allow_shrinking);
-        ml::set_num(targets, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, TestCapitalShipFighterOrderQueue const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);

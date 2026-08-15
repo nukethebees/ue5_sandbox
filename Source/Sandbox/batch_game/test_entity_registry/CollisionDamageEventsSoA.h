@@ -63,41 +63,17 @@ struct UnresolvedCollisionDamageEventsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
-    void reset() {
-        ml::reset(damaged_actors);
-        ml::reset(damage_amounts);
-        ml::reset(actor_components);
-        ml::reset(hit_items);
-        ml::reset(instigators);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(damaged_actors, count);
-        ml::reserve(damage_amounts, count);
-        ml::reserve(actor_components, count);
-        ml::reserve(hit_items, count);
-        ml::reserve(instigators, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(damaged_actors, count);
-        ml::add_uninitialised(damage_amounts, count);
-        ml::add_uninitialised(actor_components, count);
-        ml::add_uninitialised(hit_items, count);
-        ml::add_uninitialised(instigators, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(damaged_actors, count);
-        ml::add_defaulted(damage_amounts, count);
-        ml::add_defaulted(actor_components, count);
-        ml::add_defaulted(hit_items, count);
-        ml::add_defaulted(instigators, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(damaged_actors, index, count, allow_shrinking);
@@ -107,13 +83,7 @@ struct UnresolvedCollisionDamageEvents : public ml::FSoAArrayMixin {
         ml::remove_at_swap(instigators, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(damaged_actors, count, allow_shrinking);
-        ml::set_num(damage_amounts, count, allow_shrinking);
-        ml::set_num(actor_components, count, allow_shrinking);
-        ml::set_num(hit_items, count, allow_shrinking);
-        ml::set_num(instigators, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, UnresolvedCollisionDamageEvents const& other, int32 const src_i) {
         ml::copy_element(damaged_actors, dst_i, other.damaged_actors, src_i);
@@ -205,37 +175,17 @@ struct CollisionDamageEventsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct CollisionDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API CollisionDamageEvents : public ml::FSoAArrayMixin {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
-    void reset() {
-        ml::reset(damage_amounts);
-        ml::reset(actor_components);
-        ml::reset(hit_items);
-        ml::reset(instigators);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(damage_amounts, count);
-        ml::reserve(actor_components, count);
-        ml::reserve(hit_items, count);
-        ml::reserve(instigators, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(damage_amounts, count);
-        ml::add_uninitialised(actor_components, count);
-        ml::add_uninitialised(hit_items, count);
-        ml::add_uninitialised(instigators, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(damage_amounts, count);
-        ml::add_defaulted(actor_components, count);
-        ml::add_defaulted(hit_items, count);
-        ml::add_defaulted(instigators, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(damage_amounts, index, count, allow_shrinking);
@@ -244,12 +194,7 @@ struct CollisionDamageEvents : public ml::FSoAArrayMixin {
         ml::remove_at_swap(instigators, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(damage_amounts, count, allow_shrinking);
-        ml::set_num(actor_components, count, allow_shrinking);
-        ml::set_num(hit_items, count, allow_shrinking);
-        ml::set_num(instigators, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, CollisionDamageEvents const& other, int32 const src_i) {
         ml::copy_element(damage_amounts, dst_i, other.damage_amounts, src_i);

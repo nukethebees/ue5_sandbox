@@ -125,6 +125,17 @@ class SoAStorageOperation(Enum):
     APPEND_FROM = "append_from"
 
 
+OUT_OF_LINE_STORAGE_OPERATIONS = frozenset(
+    (
+        SoAStorageOperation.RESET,
+        SoAStorageOperation.RESERVE,
+        SoAStorageOperation.ADD_UNINITIALISED,
+        SoAStorageOperation.ADD_DEFAULTED,
+        SoAStorageOperation.SET_NUM,
+    )
+)
+
+
 def tarray_member(name: str, value_type: str, allocator: str | None = None) -> SoAMember:
     allocator_suffix = f", {allocator}" if allocator else ""
     return SoAMember(
@@ -228,37 +239,34 @@ def _apply_array_pairs_function(members: tuple[SoAMember, ...]) -> Node:
     ).header_node()
 
 
-def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> Node:
+def _storage_operation_spec(soa: SoAStruct, operation: SoAStorageOperation) -> MemberFunctionSpec:
     members = soa.members
     match operation:
         case SoAStorageOperation.RESET:
             return MemberFunctionSpec(
-                "reset", "void", (), ForEachSoAMemberFreeFunctionCall(members, "ml::reset"), is_inline=True
-            ).header_node()
+                "reset", "void", (), ForEachSoAMemberFreeFunctionCall(members, "ml::reset")
+            )
         case SoAStorageOperation.RESERVE:
             return MemberFunctionSpec(
                 "reserve",
                 "void",
                 (FunctionParameter("int32 const", "count"),),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::reserve"),
-                is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.ADD_UNINITIALISED:
             return MemberFunctionSpec(
                 "add_uninitialised",
                 "void",
                 (FunctionParameter("int32 const", "count"),),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::add_uninitialised"),
-                is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.ADD_DEFAULTED:
             return MemberFunctionSpec(
                 "add_defaulted",
                 "void",
                 (FunctionParameter("int32 const", "count"),),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::add_defaulted"),
-                is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.REMOVE_AT_SWAP:
             return MemberFunctionSpec(
                 "remove_at_swap",
@@ -270,7 +278,7 @@ def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> N
                 ),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::remove_at_swap"),
                 is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.SET_NUM:
             return MemberFunctionSpec(
                 "set_num",
@@ -280,8 +288,7 @@ def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> N
                     FunctionParameter("EAllowShrinking const", "allow_shrinking"),
                 ),
                 ForEachSoAMemberFreeFunctionCall(members, "ml::set_num"),
-                is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.COPY_ELEMENT:
             other = FunctionParameter(f"{soa.name} const&", "other")
             return MemberFunctionSpec(
@@ -294,7 +301,7 @@ def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> N
                 ),
                 ForEachSoAMemberPairFreeFunctionCall(members, "ml::copy_element", other),
                 is_inline=True,
-            ).header_node()
+            )
         case SoAStorageOperation.APPEND_FROM:
             other = FunctionParameter("Other const&", "other")
             return MemberFunctionSpec(
@@ -305,14 +312,18 @@ def _storage_operation_node(soa: SoAStruct, operation: SoAStorageOperation) -> N
                 is_inline=True,
                 template_parameters="typename Other",
                 requires_clause=f"ml::SupportsApplyArrayPairsWith<{soa.name}, Other>",
-            ).header_node()
+            )
         case _:
             raise ValueError(f"Unsupported SOA storage operation: {operation}")
 
 
-def _storage_operation_nodes(soa: SoAStruct) -> tuple[Node, ...]:
+def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
+    return tuple(_storage_operation_spec(soa, operation) for operation in soa.storage_operations)
+
+
+def _storage_operation_nodes(specs: Iterable[MemberFunctionSpec]) -> tuple[Node, ...]:
     return _separate(
-        (_storage_operation_node(soa, operation) for operation in soa.storage_operations), 2
+        (spec.header_node() for spec in specs), 2
     )
 
 
@@ -339,7 +350,7 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
     )
 
 
-def _storage_struct(soa: SoAStruct) -> Struct:
+def _storage_struct(soa: SoAStruct, operation_specs: Iterable[MemberFunctionSpec]) -> Struct:
     members = tuple(Member(member.container_type, member.name) for member in soa.members)
     aliases = tuple(UsingDeclaration(name, value_type) for name, value_type in soa.storage_type_aliases)
     struct_nodes: list[Node] = [
@@ -351,7 +362,7 @@ def _storage_struct(soa: SoAStruct) -> Struct:
         struct_nodes.extend((NewLines(2), *_separate(aliases, 1)))
     if soa.nodes:
         struct_nodes.extend((NewLines(2), *soa.nodes))
-    operations = _storage_operation_nodes(soa)
+    operations = _storage_operation_nodes(operation_specs)
     if operations:
         struct_nodes.extend((NewLines(2), *operations))
     struct_nodes.extend((NewLines(2), _apply_arrays_function(soa.members)))
@@ -365,22 +376,58 @@ def _storage_struct(soa: SoAStruct) -> Struct:
     )
 
 
-def lower_soa_struct(soa: SoAStruct) -> tuple[Node, ...]:
-    return (
+@dataclass(frozen=True)
+class SoAStructLowering:
+    header_nodes: tuple[Node, ...]
+    source_nodes: tuple[Node, ...]
+
+
+def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
+    operation_specs = _storage_operation_specs(soa)
+    header_nodes = (
         ForwardDeclaration(soa.const_view_name),
         NewLines(2),
         _view_struct(soa, soa.view_name, False),
         NewLines(2),
         _view_struct(soa, soa.const_view_name, True),
         NewLines(2),
-        _storage_struct(soa),
+        _storage_struct(soa, operation_specs),
     )
+    source_nodes = _separate(
+        (
+            spec.definition_node(soa.name)
+            for operation, spec in zip(soa.storage_operations, operation_specs, strict=True)
+            if operation in OUT_OF_LINE_STORAGE_OPERATIONS
+        ),
+        2,
+    )
+    return SoAStructLowering(header_nodes, source_nodes)
+
+
+def lower_soa_struct(soa: SoAStruct) -> tuple[Node, ...]:
+    return lower_soa_struct_with_source(soa).header_nodes
+
+
+@dataclass(frozen=True)
+class SoAStructsLowering:
+    header_nodes: tuple[Node, ...]
+    source_nodes: tuple[Node, ...]
+
+
+def lower_soa_structs_with_source(soa_structs: Iterable[SoAStruct]) -> SoAStructsLowering:
+    lowerings = tuple(lower_soa_struct_with_source(soa) for soa in soa_structs)
+    header_nodes: list[Node] = []
+    source_nodes: list[Node] = []
+    for lowering in lowerings:
+        if header_nodes:
+            header_nodes.append(NewLines(2))
+        header_nodes.extend(lowering.header_nodes)
+        if lowering.source_nodes:
+            if source_nodes:
+                source_nodes.append(NewLines(2))
+            source_nodes.extend(lowering.source_nodes)
+    return SoAStructsLowering(tuple(header_nodes), tuple(source_nodes))
 
 
 def lower_soa_structs(soa_structs: Iterable[SoAStruct]) -> tuple[Node, ...]:
-    nodes: list[Node] = []
-    for index, soa in enumerate(soa_structs):
-        if index:
-            nodes.append(NewLines(2))
-        nodes.extend(lower_soa_struct(soa))
-    return tuple(nodes)
+    return lower_soa_structs_with_source(soa_structs).header_nodes

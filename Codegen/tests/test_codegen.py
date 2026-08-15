@@ -30,6 +30,7 @@ from Codegen.soa import (
     ForEachSoAMemberFreeFunctionCall,
     ForEachSoAMemberPairFreeFunctionCall,
     lower_soa_struct,
+    lower_soa_structs_with_source,
     soa_member,
     tarray_member,
 )
@@ -363,6 +364,35 @@ void append_from(Other const& other) {
         self.assertIn("ml::copy_element(", rendered)
         self.assertIn("template <typename Other>", rendered)
         self.assertLess(rendered.index("void add_defaulted"), rendered.index("apply_arrays"))
+
+    def test_soa_storage_operations_share_header_and_source_specs(self) -> None:
+        first = SoAStruct(
+            "FFirst",
+            "FFirstView",
+            "FFirstConstView",
+            (tarray_member("values", "int32"),),
+            storage_operations=(
+                SoAStorageOperation.RESET,
+                SoAStorageOperation.COPY_ELEMENT,
+            ),
+        )
+        second = SoAStruct(
+            "FSecond",
+            "FSecondView",
+            "FSecondConstView",
+            (tarray_member("weights", "float"),),
+            storage_operations=(SoAStorageOperation.ADD_DEFAULTED,),
+        )
+
+        lowered = lower_soa_structs_with_source((first, second))
+        header = "\n".join(node.render(RenderContext()) for node in lowered.header_nodes)
+        source = "\n".join(node.render(RenderContext()) for node in lowered.source_nodes)
+
+        self.assertIn("void reset();", header)
+        self.assertIn("void add_defaulted(int32 const count);", header)
+        self.assertIn("void FFirst::reset()", source)
+        self.assertIn("void FSecond::add_defaulted(int32 const count)", source)
+        self.assertNotIn("copy_element", source)
 
     def test_for_each_soa_member_call_uses_bound_function_parameters(self) -> None:
         handles = tarray_member("handles", "FRegistryEntityHandle")

@@ -58,37 +58,17 @@ struct TestCapitalShipFighterSpawnQueueConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> targets;
 };
 
-struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
+struct SANDBOX_API TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
-    void reset() {
-        ml::reset(locations);
-        ml::reset(rotations);
-        ml::reset(teams);
-        ml::reset(targets);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(locations, count);
-        ml::reserve(rotations, count);
-        ml::reserve(teams, count);
-        ml::reserve(targets, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(locations, count);
-        ml::add_uninitialised(rotations, count);
-        ml::add_uninitialised(teams, count);
-        ml::add_uninitialised(targets, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(locations, count);
-        ml::add_defaulted(rotations, count);
-        ml::add_defaulted(teams, count);
-        ml::add_defaulted(targets, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(locations, index, count, allow_shrinking);
@@ -97,12 +77,7 @@ struct TestCapitalShipFighterSpawnQueue : public ml::FSoAArrayMixin {
         ml::remove_at_swap(targets, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(locations, count, allow_shrinking);
-        ml::set_num(rotations, count, allow_shrinking);
-        ml::set_num(teams, count, allow_shrinking);
-        ml::set_num(targets, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, TestCapitalShipFighterSpawnQueue const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);

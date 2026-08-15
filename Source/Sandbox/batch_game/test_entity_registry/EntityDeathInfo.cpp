@@ -4,6 +4,36 @@
 
 #include "EntityDeathInfo.h"
 
+void EntityDeathInfo::reset() {
+    ml::reset(reasons);
+    ml::reset(victims);
+    ml::reset(killers);
+}
+
+void EntityDeathInfo::reserve(int32 const count) {
+    ml::reserve(reasons, count);
+    ml::reserve(victims, count);
+    ml::reserve(killers, count);
+}
+
+void EntityDeathInfo::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(reasons, count);
+    ml::add_uninitialised(victims, count);
+    ml::add_uninitialised(killers, count);
+}
+
+void EntityDeathInfo::add_defaulted(int32 const count) {
+    ml::add_defaulted(reasons, count);
+    ml::add_defaulted(victims, count);
+    ml::add_defaulted(killers, count);
+}
+
+void EntityDeathInfo::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(reasons, count, allow_shrinking);
+    ml::set_num(victims, count, allow_shrinking);
+    ml::set_num(killers, count, allow_shrinking);
+}
+
 void EntityDeathInfo::add(ETestDeathReason const reason, FRegistryEntityHandle const victim, FRegistryEntityHandle const killer) {
     reasons.Add(reason);
     victims.Add(victim);

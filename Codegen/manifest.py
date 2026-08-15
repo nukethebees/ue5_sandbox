@@ -16,7 +16,7 @@ from Codegen.soa import (
     ForEachSoAMemberCall,
     SoAStruct,
     SoAStorageOperation,
-    lower_soa_structs,
+    lower_soa_structs_with_source,
     soa_member,
     tarray_member,
 )
@@ -32,6 +32,23 @@ COUNTDOWN_TIMERS_STORAGE_OPERATIONS = (
     SoAStorageOperation.REMOVE_AT_SWAP,
     SoAStorageOperation.COPY_ELEMENT,
 )
+SANDBOX_API = "SANDBOX_API"
+
+
+def soa_source_file(
+    header_path: Path, source_nodes: tuple, namespace: str | None = None
+) -> CppFile:
+    definitions = (Namespace(namespace, source_nodes),) if namespace else source_nodes
+    return CppFile(
+        path=header_path.with_suffix(".cpp"),
+        pragma_once=False,
+        clang_format_off=True,
+        nodes=(
+            Include(header_path.name, system=False),
+            NewLines(2),
+            *definitions,
+        ),
+    )
 
 
 def fighter_soa_module() -> Module:
@@ -62,10 +79,20 @@ def fighter_soa_module() -> Module:
         tarray_member("target_distances", "float"),
         tarray_member("target_radii", "float"),
     )
+    entity_data = SoAStruct(
+        "EntityData",
+        "EntityDataView",
+        "EntityDataConstView",
+        members,
+        storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
+    )
+    lowered = lower_soa_structs_with_source((entity_data,))
+    header_path = BATCH_GAME_DIR / "TestCapitalShipFightersSoA.h"
     return Module(
         name="test_capital_ship_fighters_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestCapitalShipFightersSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -85,19 +112,12 @@ def fighter_soa_module() -> Module:
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ship_fighters",
-                    lower_soa_structs(
-                        (
-                            SoAStruct(
-                                "EntityData",
-                                "EntityDataView",
-                                "EntityDataConstView",
-                                members,
-                                storage_operations=ALL_STORAGE_OPERATIONS,
-                            ),
-                        )
-                    ),
+                    lowered.header_nodes,
                 ),
             ),
+        ),
+        source=soa_source_file(
+            header_path, lowered.source_nodes, "ml::test_capital_ship_fighters"
         ),
     )
 
@@ -117,6 +137,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("spawn_cooldowns", "float"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
     entity_tick_data = SoAStruct(
         "EntityTickData",
@@ -127,6 +148,7 @@ def capital_ships_soa_module() -> Module:
             soa_member("fighter_queue", "TestCapitalShipFighterSpawnQueue"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
     entity_data = SoAStruct(
         "EntityData",
@@ -144,6 +166,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("target_handles", "FRegistryEntityHandle"),
         ),
         storage_operations=COUNTDOWN_TIMERS_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
     fighter_reassignment_members = (
         tarray_member("capital_handles", "FRegistryEntityHandle"),
@@ -155,6 +178,7 @@ def capital_ships_soa_module() -> Module:
         "FighterReassignmentConstView",
         fighter_reassignment_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
         nodes=(
             MemberFunctionSpec(
                 "add",
@@ -168,10 +192,14 @@ def capital_ships_soa_module() -> Module:
             ).header_node(),
         ),
     )
+    lowered = lower_soa_structs_with_source(
+        (spawn_data, entity_tick_data, entity_data, fighter_reassignment)
+    )
+    header_path = BATCH_GAME_DIR / "TestCapitalShipsSoA.h"
     return Module(
         name="test_capital_ships_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestCapitalShipsSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -191,12 +219,11 @@ def capital_ships_soa_module() -> Module:
                 NewLines(2),
                 Namespace(
                     "ml::test_capital_ships",
-                    lower_soa_structs(
-                        (spawn_data, entity_tick_data, entity_data, fighter_reassignment)
-                    ),
+                    lowered.header_nodes,
                 ),
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_capital_ships"),
     )
 
 
@@ -240,6 +267,7 @@ def lasers_soa_module() -> Module:
             tarray_member("colours", "FLinearColor"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
         nodes=(
             set_damages.header_node(),
             NewLines(1),
@@ -265,6 +293,7 @@ def lasers_soa_module() -> Module:
             tarray_member("instigator_handles", "FRegistryEntityHandle"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
     hit_details = SoAStruct(
         "HitDetails",
@@ -272,11 +301,14 @@ def lasers_soa_module() -> Module:
         "HitDetailsConstView",
         (soa_member("locations", "FVectors3f"), tarray_member("colours", "FLinearColor")),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((spawn_requests, entities, hit_details))
+    header_path = BATCH_GAME_DIR / "TestLasersSoA.h"
     return Module(
         name="test_lasers_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestLasersSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -294,10 +326,11 @@ def lasers_soa_module() -> Module:
                 NewLines(2),
                 Namespace(
                     "ml::test_lasers",
-                    lower_soa_structs((spawn_requests, entities, hit_details)),
+                    lowered.header_nodes,
                 ),
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_lasers"),
     )
 
 
@@ -314,6 +347,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
     resolved = SoAStruct(
         "CollisionDamageEvents",
@@ -326,11 +360,14 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((unresolved, resolved))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "CollisionDamageEventsSoA.h"
     return Module(
         name="collision_damage_events_soa",
         header=CppFile(
-            path=TEST_ENTITY_REGISTRY_DIR / "CollisionDamageEventsSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -345,9 +382,10 @@ def collision_damage_events_soa_module() -> Module:
                 NewLines(2),
                 Raw("class AActor;\nclass UActorComponent;"),
                 NewLines(2),
-                *lower_soa_structs((unresolved, resolved)),
+                *lowered.header_nodes,
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes),
     )
 
 
@@ -363,11 +401,14 @@ def fighter_spawn_queue_soa_module() -> Module:
             tarray_member("targets", "FRegistryEntityHandle"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((queue,))
+    header_path = BATCH_GAME_DIR / "TestCapitalShipFighterSpawnQueueSoA.h"
     return Module(
         name="test_capital_ship_fighter_spawn_queue_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestCapitalShipFighterSpawnQueueSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -382,9 +423,10 @@ def fighter_spawn_queue_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                *lower_soa_structs((queue,)),
+                *lowered.header_nodes,
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes),
     )
 
 
@@ -401,6 +443,7 @@ def fighter_order_queue_module() -> Module:
         "TestCapitalShipFighterOrderQueueConstView",
         order_queue_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
         storage_type_aliases=(
             ("Task", "ETestCapitalShipFightersTask"),
             ("Order", "TestCapitalShipFighterOrder"),
@@ -420,10 +463,12 @@ def fighter_order_queue_module() -> Module:
             ).header_node(),
         ),
     )
+    lowered = lower_soa_structs_with_source((order_queue,))
+    header_path = BATCH_GAME_DIR / "TestCapitalShipFighterOrderQueue.h"
     return Module(
         name="test_capital_ship_fighter_order_queue",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestCapitalShipFighterOrderQueue.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -436,9 +481,10 @@ def fighter_order_queue_module() -> Module:
                 Include("Containers/ArrayView.h"),
                 Include("utility"),
                 NewLines(2),
-                *lower_soa_structs((order_queue,)),
+                *lowered.header_nodes,
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes),
     )
 
 
@@ -474,16 +520,19 @@ def entity_death_info_module() -> Module:
         "EntityDeathInfoConstView",
         entity_death_info_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
         nodes=(
             add_function.declaration_node(),
             NewLines(1),
             add_without_killer.header_node(),
         ),
     )
+    lowered = lower_soa_structs_with_source((entity_death_info,))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.h"
     return Module(
         name="entity_death_info",
         header=CppFile(
-            path=TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -497,18 +546,12 @@ def entity_death_info_module() -> Module:
                 NewLines(2),
                 Include("utility"),
                 NewLines(2),
-                *lower_soa_structs((entity_death_info,)),
+                *lowered.header_nodes,
             ),
         ),
-        source=CppFile(
-            path=TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.cpp",
-            pragma_once=False,
-            clang_format_off=True,
-            nodes=(
-                Include("EntityDeathInfo.h", system=False),
-                NewLines(2),
-                add_function.definition_node("EntityDeathInfo"),
-            ),
+        source=soa_source_file(
+            header_path,
+            (*lowered.source_nodes, NewLines(2), add_function.definition_node("EntityDeathInfo")),
         ),
     )
 
@@ -529,11 +572,14 @@ def static_turrets_soa_module() -> Module:
             tarray_member("healths", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((entity_data,))
+    header_path = BATCH_GAME_DIR / "TestStaticTurretsSoA.h"
     return Module(
         name="test_static_turrets_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestStaticTurretsSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -548,9 +594,10 @@ def static_turrets_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_static_turrets", lower_soa_structs((entity_data,))),
+                Namespace("ml::test_static_turrets", lowered.header_nodes),
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_static_turrets"),
     )
 
 
@@ -567,11 +614,14 @@ def tube_spinners_soa_module() -> Module:
             tarray_member("next_fire_point_indices", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((entity_data,))
+    header_path = BATCH_GAME_DIR / "TestTubeSpinnersSoA.h"
     return Module(
         name="test_tube_spinners_soa",
         header=CppFile(
-            path=BATCH_GAME_DIR / "TestTubeSpinnersSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -585,9 +635,10 @@ def tube_spinners_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                Namespace("ml::test_tube_spinners", lower_soa_structs((entity_data,))),
+                Namespace("ml::test_tube_spinners", lowered.header_nodes),
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::test_tube_spinners"),
     )
 
 
@@ -602,11 +653,14 @@ def direct_damage_events_soa_module() -> Module:
             tarray_member("instigators", "FRegistryEntityHandle"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
     )
+    lowered = lower_soa_structs_with_source((events,))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "DirectDamageEventsSoA.h"
     return Module(
         name="direct_damage_events_soa",
         header=CppFile(
-            path=TEST_ENTITY_REGISTRY_DIR / "DirectDamageEventsSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -619,9 +673,10 @@ def direct_damage_events_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                *lower_soa_structs((events,)),
+                *lowered.header_nodes,
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes),
     )
 
 
@@ -641,13 +696,15 @@ def unique_entity_data_soa_module() -> Module:
             tarray_member("death_reason", "ETestDeathReason"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier="SANDBOX_API",
+        storage_export_specifier=SANDBOX_API,
         storage_type_aliases=(("kills_type", "uint32"),),
     )
+    lowered = lower_soa_structs_with_source((entity_data,))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "TestEntityUniqueEntityDataSoA.h"
     return Module(
         name="test_entity_unique_entity_data_soa",
         header=CppFile(
-            path=TEST_ENTITY_REGISTRY_DIR / "TestEntityUniqueEntityDataSoA.h",
+            path=header_path,
             clang_format_off=True,
             nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
@@ -664,9 +721,10 @@ def unique_entity_data_soa_module() -> Module:
                 Include("type_traits"),
                 Include("utility"),
                 NewLines(2),
-                *lower_soa_structs((entity_data,)),
+                *lowered.header_nodes,
             ),
         ),
+        source=soa_source_file(header_path, lowered.source_nodes),
     )
 
 

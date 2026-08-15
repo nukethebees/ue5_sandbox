@@ -62,41 +62,17 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<int32> next_fire_point_indices;
 };
 
-struct EntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
-    void reset() {
-        ml::reset(handles);
-        ml::reset(locations);
-        ml::reset(yaws);
-        ml::reset(laser_cooldowns);
-        ml::reset(next_fire_point_indices);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(handles, count);
-        ml::reserve(locations, count);
-        ml::reserve(yaws, count);
-        ml::reserve(laser_cooldowns, count);
-        ml::reserve(next_fire_point_indices, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(handles, count);
-        ml::add_uninitialised(locations, count);
-        ml::add_uninitialised(yaws, count);
-        ml::add_uninitialised(laser_cooldowns, count);
-        ml::add_uninitialised(next_fire_point_indices, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(handles, count);
-        ml::add_defaulted(locations, count);
-        ml::add_defaulted(yaws, count);
-        ml::add_defaulted(laser_cooldowns, count);
-        ml::add_defaulted(next_fire_point_indices, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(handles, index, count, allow_shrinking);
@@ -106,13 +82,7 @@ struct EntityData : public ml::FSoAArrayMixin {
         ml::remove_at_swap(next_fire_point_indices, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(handles, count, allow_shrinking);
-        ml::set_num(locations, count, allow_shrinking);
-        ml::set_num(yaws, count, allow_shrinking);
-        ml::set_num(laser_cooldowns, count, allow_shrinking);
-        ml::set_num(next_fire_point_indices, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);

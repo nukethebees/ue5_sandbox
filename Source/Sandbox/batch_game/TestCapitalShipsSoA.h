@@ -74,49 +74,17 @@ struct SpawnDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<float> spawn_cooldowns;
 };
 
-struct SpawnData : public ml::FSoAArrayMixin {
+struct SANDBOX_API SpawnData : public ml::FSoAArrayMixin {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
-    void reset() {
-        ml::reset(target_handles);
-        ml::reset(locations);
-        ml::reset(rotations);
-        ml::reset(teams);
-        ml::reset(healths);
-        ml::reset(initial_spawn_delays);
-        ml::reset(spawn_cooldowns);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(target_handles, count);
-        ml::reserve(locations, count);
-        ml::reserve(rotations, count);
-        ml::reserve(teams, count);
-        ml::reserve(healths, count);
-        ml::reserve(initial_spawn_delays, count);
-        ml::reserve(spawn_cooldowns, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(target_handles, count);
-        ml::add_uninitialised(locations, count);
-        ml::add_uninitialised(rotations, count);
-        ml::add_uninitialised(teams, count);
-        ml::add_uninitialised(healths, count);
-        ml::add_uninitialised(initial_spawn_delays, count);
-        ml::add_uninitialised(spawn_cooldowns, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(target_handles, count);
-        ml::add_defaulted(locations, count);
-        ml::add_defaulted(rotations, count);
-        ml::add_defaulted(teams, count);
-        ml::add_defaulted(healths, count);
-        ml::add_defaulted(initial_spawn_delays, count);
-        ml::add_defaulted(spawn_cooldowns, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(target_handles, index, count, allow_shrinking);
@@ -128,15 +96,7 @@ struct SpawnData : public ml::FSoAArrayMixin {
         ml::remove_at_swap(spawn_cooldowns, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(target_handles, count, allow_shrinking);
-        ml::set_num(locations, count, allow_shrinking);
-        ml::set_num(rotations, count, allow_shrinking);
-        ml::set_num(teams, count, allow_shrinking);
-        ml::set_num(healths, count, allow_shrinking);
-        ml::set_num(initial_spawn_delays, count, allow_shrinking);
-        ml::set_num(spawn_cooldowns, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, SpawnData const& other, int32 const src_i) {
         ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
@@ -230,39 +190,24 @@ struct EntityTickDataConstView : public ml::FSoAViewMixin {
     TestCapitalShipFighterSpawnQueue::ConstView fighter_queue;
 };
 
-struct EntityTickData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityTickData : public ml::FSoAArrayMixin {
     using View = EntityTickDataView;
     using ConstView = EntityTickDataConstView;
 
-    void reset() {
-        ml::reset(ships_ready_to_spawn_fighters_buffer);
-        ml::reset(fighter_queue);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(ships_ready_to_spawn_fighters_buffer, count);
-        ml::reserve(fighter_queue, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(ships_ready_to_spawn_fighters_buffer, count);
-        ml::add_uninitialised(fighter_queue, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(ships_ready_to_spawn_fighters_buffer, count);
-        ml::add_defaulted(fighter_queue, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(ships_ready_to_spawn_fighters_buffer, index, count, allow_shrinking);
         ml::remove_at_swap(fighter_queue, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(ships_ready_to_spawn_fighters_buffer, count, allow_shrinking);
-        ml::set_num(fighter_queue, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, EntityTickData const& other, int32 const src_i) {
         ml::copy_element(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i);
@@ -359,33 +304,13 @@ struct EntityDataConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> target_handles;
 };
 
-struct EntityData : public ml::FSoAArrayMixin {
+struct SANDBOX_API EntityData : public ml::FSoAArrayMixin {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
-    void reset() {
-        ml::reset(handles);
-        ml::reset(locations);
-        ml::reset(rotations);
-        ml::reset(fighter_spawn_timers);
-        ml::reset(fighter_spawn_cooldowns);
-        ml::reset(teams);
-        ml::reset(healths);
-        ml::reset(capital_fighter_handle_spans);
-        ml::reset(target_handles);
-    }
+    void reset();
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(handles, count);
-        ml::add_uninitialised(locations, count);
-        ml::add_uninitialised(rotations, count);
-        ml::add_uninitialised(fighter_spawn_timers, count);
-        ml::add_uninitialised(fighter_spawn_cooldowns, count);
-        ml::add_uninitialised(teams, count);
-        ml::add_uninitialised(healths, count);
-        ml::add_uninitialised(capital_fighter_handle_spans, count);
-        ml::add_uninitialised(target_handles, count);
-    }
+    void add_uninitialised(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(handles, index, count, allow_shrinking);
@@ -487,7 +412,7 @@ struct FighterReassignmentConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> fighter_handles;
 };
 
-struct FighterReassignment : public ml::FSoAArrayMixin {
+struct SANDBOX_API FighterReassignment : public ml::FSoAArrayMixin {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
@@ -496,35 +421,20 @@ struct FighterReassignment : public ml::FSoAArrayMixin {
         fighter_handles.Add(fh);
     }
 
-    void reset() {
-        ml::reset(capital_handles);
-        ml::reset(fighter_handles);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(capital_handles, count);
-        ml::reserve(fighter_handles, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(capital_handles, count);
-        ml::add_uninitialised(fighter_handles, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(capital_handles, count);
-        ml::add_defaulted(fighter_handles, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(capital_handles, index, count, allow_shrinking);
         ml::remove_at_swap(fighter_handles, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(capital_handles, count, allow_shrinking);
-        ml::set_num(fighter_handles, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, FighterReassignment const& other, int32 const src_i) {
         ml::copy_element(capital_handles, dst_i, other.capital_handles, src_i);

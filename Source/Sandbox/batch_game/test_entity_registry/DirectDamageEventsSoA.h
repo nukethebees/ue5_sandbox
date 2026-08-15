@@ -52,33 +52,17 @@ struct DirectDamageEventsConstView : public ml::FSoAViewMixin {
     TConstArrayView<FRegistryEntityHandle> instigators;
 };
 
-struct DirectDamageEvents : public ml::FSoAArrayMixin {
+struct SANDBOX_API DirectDamageEvents : public ml::FSoAArrayMixin {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
-    void reset() {
-        ml::reset(damaged_entities);
-        ml::reset(damage_amounts);
-        ml::reset(instigators);
-    }
+    void reset();
 
-    void reserve(int32 const count) {
-        ml::reserve(damaged_entities, count);
-        ml::reserve(damage_amounts, count);
-        ml::reserve(instigators, count);
-    }
+    void reserve(int32 const count);
 
-    void add_uninitialised(int32 const count) {
-        ml::add_uninitialised(damaged_entities, count);
-        ml::add_uninitialised(damage_amounts, count);
-        ml::add_uninitialised(instigators, count);
-    }
+    void add_uninitialised(int32 const count);
 
-    void add_defaulted(int32 const count) {
-        ml::add_defaulted(damaged_entities, count);
-        ml::add_defaulted(damage_amounts, count);
-        ml::add_defaulted(instigators, count);
-    }
+    void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         ml::remove_at_swap(damaged_entities, index, count, allow_shrinking);
@@ -86,11 +70,7 @@ struct DirectDamageEvents : public ml::FSoAArrayMixin {
         ml::remove_at_swap(instigators, index, count, allow_shrinking);
     }
 
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-        ml::set_num(damaged_entities, count, allow_shrinking);
-        ml::set_num(damage_amounts, count, allow_shrinking);
-        ml::set_num(instigators, count, allow_shrinking);
-    }
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     void copy_element(int32 const dst_i, DirectDamageEvents const& other, int32 const src_i) {
         ml::copy_element(damaged_entities, dst_i, other.damaged_entities, src_i);
