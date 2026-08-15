@@ -21,8 +21,11 @@ class NodeRenderingTests(unittest.TestCase):
     def test_cpp_file_renders_node_tree_exactly(self) -> None:
         file = CppFile(
             path=Path("Example.h"),
-            includes=(Include("Example/Dependency.h"), NewLines(2), Include("utility")),
             nodes=(
+                Include("Example/Dependency.h"),
+                NewLines(2),
+                Include("utility"),
+                NewLines(2),
                 Namespace(
                     "example",
                     (

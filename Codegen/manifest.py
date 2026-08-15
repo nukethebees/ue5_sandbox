@@ -46,7 +46,7 @@ def fighter_soa_module() -> Module:
             / "batch_game"
             / "TestCapitalShipFightersSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFightersTask.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
@@ -61,8 +61,7 @@ def fighter_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
-            ),
-            nodes=(
+                NewLines(2),
                 Namespace(
                     "ml::test_capital_ship_fighters",
                     (
@@ -124,7 +123,7 @@ def capital_ships_soa_module() -> Module:
         header=CppFile(
             path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestCapitalShipsSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
@@ -139,8 +138,7 @@ def capital_ships_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
-            ),
-            nodes=(
+                NewLines(2),
                 Namespace("ml::test_capital_ships", (spawn_data, entity_tick_data, entity_data)),
             ),
         ),
@@ -174,7 +172,7 @@ def lasers_soa_module() -> Module:
         header=CppFile(
             path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestLasersSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -187,8 +185,9 @@ def lasers_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                Namespace("ml::test_lasers", (entities, hit_details)),
             ),
-            nodes=(Namespace("ml::test_lasers", (entities, hit_details)),),
         ),
     )
 
@@ -227,7 +226,7 @@ def collision_damage_events_soa_module() -> Module:
             / "test_entity_registry"
             / "CollisionDamageEventsSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -237,8 +236,13 @@ def collision_damage_events_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                Raw("class AActor;\nclass UActorComponent;"),
+                NewLines(2),
+                unresolved,
+                NewLines(2),
+                resolved,
             ),
-            nodes=(Raw("class AActor;\nclass UActorComponent;"), unresolved, resolved),
         ),
     )
 
@@ -264,7 +268,7 @@ def fighter_spawn_queue_soa_module() -> Module:
             / "batch_game"
             / "TestCapitalShipFighterSpawnQueueSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 NewLines(2),
@@ -276,8 +280,9 @@ def fighter_spawn_queue_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                queue,
             ),
-            nodes=(queue,),
         ),
     )
 
@@ -303,7 +308,7 @@ def static_turrets_soa_module() -> Module:
         header=CppFile(
             path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestStaticTurretsSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/TestTeam.h"),
                 NewLines(2),
@@ -315,8 +320,9 @@ def static_turrets_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                Namespace("ml::test_static_turrets", (entity_data,)),
             ),
-            nodes=(Namespace("ml::test_static_turrets", (entity_data,)),),
         ),
     )
 
@@ -339,7 +345,7 @@ def tube_spinners_soa_module() -> Module:
         header=CppFile(
             path=PROJECT_ROOT / "Source" / "Sandbox" / "batch_game" / "TestTubeSpinnersSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -350,8 +356,9 @@ def tube_spinners_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                Namespace("ml::test_tube_spinners", (entity_data,)),
             ),
-            nodes=(Namespace("ml::test_tube_spinners", (entity_data,)),),
         ),
     )
 
@@ -377,7 +384,7 @@ def direct_damage_events_soa_module() -> Module:
             / "test_entity_registry"
             / "DirectDamageEventsSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 NewLines(2),
                 Include("SandboxCore/soa_array_mixin.h"),
@@ -387,8 +394,9 @@ def direct_damage_events_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                events,
             ),
-            nodes=(events,),
         ),
     )
 
@@ -421,7 +429,7 @@ def unique_entity_data_soa_module() -> Module:
             / "test_entity_registry"
             / "TestEntityUniqueEntityDataSoA.h",
             clang_format_off=True,
-            includes=(
+            nodes=(
                 Include("Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"),
                 Include("Sandbox/batch_game/test_entity_registry/TestDeathReason.h"),
                 Include("Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h"),
@@ -435,8 +443,9 @@ def unique_entity_data_soa_module() -> Module:
                 NewLines(2),
                 Include("type_traits"),
                 Include("utility"),
+                NewLines(2),
+                entity_data,
             ),
-            nodes=(entity_data,),
         ),
     )
 

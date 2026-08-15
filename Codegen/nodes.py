@@ -153,7 +153,6 @@ class Namespace(Node):
 @dataclass(frozen=True)
 class CppFile(Node):
     path: Path
-    includes: tuple[Node, ...] = field(default_factory=tuple)
     nodes: tuple[Node, ...] = field(default_factory=tuple)
     pragma_once: bool = True
     clang_format_off: bool = False
@@ -162,7 +161,6 @@ class CppFile(Node):
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", Path(self.path))
-        object.__setattr__(self, "includes", tuple(self.includes))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         object.__setattr__(self, "prologue", tuple(self.prologue))
         object.__setattr__(self, "epilogue", tuple(self.epilogue))
@@ -175,10 +173,8 @@ class CppFile(Node):
         sections.extend(self.prologue)
         if self.pragma_once:
             sections.append("#pragma once")
-        if self.includes:
-            sections.append(render_node_sequence(self.includes, context, 1))
         if self.nodes:
-            sections.append(render_node_sequence(self.nodes, context, 2))
+            sections.append(render_node_sequence(self.nodes, context, 1))
         sections.extend(self.epilogue)
         rendered = "\n\n".join(sections).rstrip()
         if self.clang_format_off:
