@@ -2,7 +2,6 @@
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTubeSpinnersSoA.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
@@ -19,13 +18,17 @@
 
 #include "TestTubeSpinners.generated.h"
 
+struct FHitResult;
+
 class UInstancedStaticMeshComponent;
+class UPrimitiveComponent;
 
 class ATestTubeSpinnerProxy;
 class UTestTubeSpinnersConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
+struct FTestTubeSpinnersSpatialQueryAccess;
 
 UCLASS()
 class ATestTubeSpinners : public AActor {
@@ -53,9 +56,6 @@ class ATestTubeSpinners : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
-    auto get_owner_id() const -> TestEntityOwnerId;
 
     void set_actor_config(UTestTubeSpinnersConfig* const new_config) noexcept {
         actor_config = new_config;
@@ -95,7 +95,6 @@ class ATestTubeSpinners : public AActor {
     // Entity data
     FTestEntityRegistry* entity_registry{nullptr};
 
-    TestEntityOwnerId owner_id{};
     EntityData entities{};
 
     // Visuals
@@ -109,4 +108,23 @@ class ATestTubeSpinners : public AActor {
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
+  private:
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<FHitResult> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
+    friend struct FTestTubeSpinnersSpatialQueryAccess;
+};
+
+struct FTestTubeSpinnersSpatialQueryAccess {
+    ATestTubeSpinners const* actor{nullptr};
+
+    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
+        return actor->get_spatial_query_component();
+    }
+
+    void resolve_hits(TConstArrayView<FHitResult> const hits,
+                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+        actor->resolve_hits(hits, out_entity_handles);
+    }
 };

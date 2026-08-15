@@ -25,6 +25,7 @@
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
@@ -355,20 +356,10 @@ void ATestCapitalShipFighters::resolve_damage_events() {
     auto& data{entity_buffers.current()};
 
     ml::batch::resolve_damage_events(*entity_registry,
-                                     owner_id,
                                      data.entity_handles,
                                      data.healths,
                                      local_indices_to_remove,
                                      entity_death_info);
-
-    auto const view{entity_registry->get_collision_damage_queue_view(owner_id)};
-    auto const n{view.num()};
-    for (int32 i{0}; i < n; ++i) {
-        auto const ismc_index_hit{view.hit_items[i]};
-        auto const instigator{view.instigators[i]};
-
-        data.target_handles[ismc_index_hit] = instigator;
-    }
 
     auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
     auto const n_direct_damage{direct_damage.num()};
@@ -558,11 +549,26 @@ auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return ml::num(entity_buffers.current().num());
 }
 
-void ATestCapitalShipFighters::set_owner_id(TestEntityOwnerId const new_owner_id) {
-    owner_id = new_owner_id;
+auto ATestCapitalShipFighters::get_spatial_query_component() const -> UPrimitiveComponent const* {
+    return instances.Get();
 }
-auto ATestCapitalShipFighters::get_owner_id() const -> TestEntityOwnerId {
-    return owner_id;
+
+void ATestCapitalShipFighters::resolve_hits(
+    TConstArrayView<FHitResult> const hits,
+    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    check(hits.Num() == out_entity_handles.Num());
+
+    auto const& data{entity_buffers.current()};
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const& hit{hits[i]};
+        check(hit.GetComponent() == instances.Get());
+        if (!data.entity_handles.IsValidIndex(hit.Item)) {
+            continue;
+        }
+
+        out_entity_handles[i] = data.entity_handles[hit.Item];
+    }
 }
 
 auto ATestCapitalShipFighters::get_task_spans() const -> TaskSpans {

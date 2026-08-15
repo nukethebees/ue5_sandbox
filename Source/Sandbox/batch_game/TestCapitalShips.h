@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
@@ -27,14 +26,18 @@
 
 #include "TestCapitalShips.generated.h"
 
+struct FHitResult;
+
 class UInstancedStaticMeshComponent;
 class UBoxComponent;
+class UPrimitiveComponent;
 
 class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
 struct FTestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
+struct FTestCapitalShipsSpatialQueryAccess;
 
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
@@ -70,11 +73,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Accessors
     auto get_num_instances() const -> int32;
     auto is_valid(FRegistryEntityHandle const index) const -> bool;
-    auto get_entity_from_hit_slot(int32 const hit_slot) const -> FRegistryEntityHandle;
-
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
-    auto get_owner_id() const -> TestEntityOwnerId;
-
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const*;
     void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
 
@@ -178,7 +176,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
     // Entity data
-    TestEntityOwnerId owner_id{};
     EntityData entities{};
     EntityBuffers tick_buffers{};
 
@@ -207,5 +204,23 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};
   private:
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<FHitResult> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
     void visual_log_state() const;
+
+    friend struct FTestCapitalShipsSpatialQueryAccess;
+};
+
+struct FTestCapitalShipsSpatialQueryAccess {
+    ATestCapitalShips const* actor{nullptr};
+
+    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
+        return actor->get_spatial_query_component();
+    }
+
+    void resolve_hits(TConstArrayView<FHitResult> const hits,
+                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+        actor->resolve_hits(hits, out_entity_handles);
+    }
 };

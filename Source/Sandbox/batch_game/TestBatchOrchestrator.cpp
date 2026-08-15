@@ -276,14 +276,6 @@ void ATestBatchOrchestrator::begin_play() {
                       turrets,
                       spinners);
 
-    auto register_owner{
-        [this](auto actor) { actor->set_owner_id(entity_registry.register_owner(*actor)); }};
-
-    if (IsValid(player_ship)) {
-        register_owner(player_ship);
-    }
-    ml::invoke_on_all(register_owner, capital_ships, capital_ship_fighters, turrets, spinners);
-
     if (IsValid(player_ship)) {
         player_ship->begin_play();
     }
@@ -293,6 +285,9 @@ void ATestBatchOrchestrator::begin_play() {
                       turrets,
                       spinners,
                       lasers);
+
+    query_manager.initialise(
+        player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
 
     validate_proxy_handles();
 
@@ -655,6 +650,8 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
                       turrets,
                       spinners,
                       mission_manager);
+
+    lasers->set_spatial_query_manager(query_manager);
 
     ml::invoke_on_all([&](auto actor) { actor->set_laser_actor(*lasers); },
                       capital_ship_fighters,

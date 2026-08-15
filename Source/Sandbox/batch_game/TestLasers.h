@@ -1,13 +1,14 @@
 #pragma once
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
-#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
+#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
+#include <Engine/HitResult.h>
 #include <GameFramework/Actor.h>
 #include <Math/Color.h>
 #include <SandboxCore/generation_index.h>
@@ -22,10 +23,14 @@ class UWorld;
 class UTestLasersConfig;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
+namespace ml {
+struct FSpatialQueryManager;
+}
 
 namespace ml::test_lasers {
 struct ThreadLocalCollisionData {
-    UnresolvedCollisionDamageEvents collision_damage_events;
+    TArray<FHitResult> hits;
+    DirectDamageEvents damage_events;
     TArray<int32> to_remove;
     HitDetails hit_details;
 };
@@ -65,6 +70,7 @@ class ATestLasers : public AActor {
 
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+    void set_spatial_query_manager(ml::FSpatialQueryManager& manager) { query_manager = &manager; }
 
     // Spawning / configuration
     void queue_laser_spawns(SpawnRequests const& spawn_data);
@@ -103,6 +109,7 @@ class ATestLasers : public AActor {
     void clear_hit_buffers();
 
     FTestEntityRegistry* entity_registry{nullptr};
+    ml::FSpatialQueryManager* query_manager{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestLasersConfig> actor_config{nullptr};
@@ -127,6 +134,8 @@ class ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 collision_jobs{8};
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
+    TArray<FHitResult> collision_hits;
+    DirectDamageEvents collision_damage_events;
 
     // Hits
     HitDetails hit_details;

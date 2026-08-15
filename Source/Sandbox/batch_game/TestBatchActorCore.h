@@ -7,13 +7,11 @@
 #include <HAL/Platform.h>
 
 struct FTestEntityRegistry;
-struct TestEntityOwnerId;
 struct FRegistryEntityHandle;
 struct EntityDeathInfo;
 
 namespace ml::batch {
 void resolve_damage_events(FTestEntityRegistry const& registry,
-                           TestEntityOwnerId const owner_id,
                            TArray<FRegistryEntityHandle>& entity_handles,
                            TArray<int32>& healths,
                            TArray<int32>& local_indices_to_remove,

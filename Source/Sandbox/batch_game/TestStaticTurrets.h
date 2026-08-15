@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestStaticTurretsSoA.h>
@@ -23,13 +22,17 @@
 
 #include "TestStaticTurrets.generated.h"
 
+struct FHitResult;
+
 class UInstancedStaticMeshComponent;
+class UPrimitiveComponent;
 
 class ATestStaticTurretsProxy;
 class UTestStaticTurretsConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
+struct FTestStaticTurretsSpatialQueryAccess;
 
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
@@ -61,9 +64,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
-    auto get_owner_id() const -> TestEntityOwnerId;
 
     void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
         actor_config = new_config;
@@ -114,7 +114,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     // Entity Data
     FTestEntityRegistry* entity_registry{nullptr};
 
-    TestEntityOwnerId owner_id{};
     EntityData entities{};
     EntityDeathInfo entity_death_info;
     RegistryEntityData entity_update_data;
@@ -146,4 +145,23 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     bool draw_target_arrows_enabled{false};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool draw_debug_entity_info_enabled{false};
+  private:
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<FHitResult> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
+    friend struct FTestStaticTurretsSpatialQueryAccess;
+};
+
+struct FTestStaticTurretsSpatialQueryAccess {
+    ATestStaticTurrets const* actor{nullptr};
+
+    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
+        return actor->get_spatial_query_component();
+    }
+
+    void resolve_hits(TConstArrayView<FHitResult> const hits,
+                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+        actor->resolve_hits(hits, out_entity_handles);
+    }
 };

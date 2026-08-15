@@ -2,7 +2,6 @@
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntity.h>
@@ -21,9 +20,12 @@
 
 #include "TestSpaceShip.generated.h"
 
+struct FHitResult;
+
 class UCameraComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+class UPrimitiveComponent;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
@@ -36,6 +38,7 @@ struct FTestEntityRegistry;
 class ATestLasers;
 class UTestSpaceShipData;
 struct EntityDeathInfo;
+struct FTestSpaceShipSpatialQueryAccess;
 
 namespace ml::entity_registry {
 struct EntityData;
@@ -84,9 +87,6 @@ class SANDBOX_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
-    auto get_owner_id() const -> TestEntityOwnerId;
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
-
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
@@ -265,7 +265,6 @@ class SANDBOX_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
-    TestEntityOwnerId owner_id{};
     TestEntityUniqueId unique_entity_id;
 
     FTestEntityRegistry* entity_registry{nullptr};
@@ -397,4 +396,23 @@ class SANDBOX_API ATestSpaceShip
 #endif
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
+  private:
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<FHitResult> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
+    friend struct FTestSpaceShipSpatialQueryAccess;
+};
+
+struct FTestSpaceShipSpatialQueryAccess {
+    ATestSpaceShip const* actor{nullptr};
+
+    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
+        return actor->get_spatial_query_component();
+    }
+
+    void resolve_hits(TConstArrayView<FHitResult> const hits,
+                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+        actor->resolve_hits(hits, out_entity_handles);
+    }
 };

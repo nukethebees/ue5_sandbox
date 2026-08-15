@@ -23,6 +23,7 @@
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
@@ -101,7 +102,6 @@ void ATestStaticTurrets::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_damage_events);
 
     ml::batch::resolve_damage_events(*entity_registry,
-                                     owner_id,
                                      entities.handles,
                                      entities.healths,
                                      local_indices_to_remove,
@@ -198,11 +198,25 @@ auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
     return entities.handles.Num();
 }
 
-void ATestStaticTurrets::set_owner_id(TestEntityOwnerId const new_owner_id) {
-    owner_id = new_owner_id;
+auto ATestStaticTurrets::get_spatial_query_component() const -> UPrimitiveComponent const* {
+    return instances.Get();
 }
-auto ATestStaticTurrets::get_owner_id() const -> TestEntityOwnerId {
-    return owner_id;
+
+void ATestStaticTurrets::resolve_hits(
+    TConstArrayView<FHitResult> const hits,
+    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    check(hits.Num() == out_entity_handles.Num());
+
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const& hit{hits[i]};
+        check(hit.GetComponent() == instances.Get());
+        if (!entities.handles.IsValidIndex(hit.Item)) {
+            continue;
+        }
+
+        out_entity_handles[i] = entities.handles[hit.Item];
+    }
 }
 
 auto ATestStaticTurrets::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {

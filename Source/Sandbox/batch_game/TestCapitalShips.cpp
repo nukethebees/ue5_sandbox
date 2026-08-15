@@ -1,6 +1,5 @@
 #include "TestCapitalShips.h"
 
-#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -29,6 +28,7 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
+#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 #include <ProfilingDebugging/CountersTrace.h>
@@ -152,7 +152,6 @@ void ATestCapitalShips::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::resolve_damage_events);
 
     ml::batch::resolve_damage_events(*entity_registry,
-                                     owner_id,
                                      entities.handles,
                                      entities.healths,
                                      local_indices_to_remove,
@@ -314,17 +313,24 @@ auto ATestCapitalShips::is_valid(FRegistryEntityHandle const index) const -> boo
 
     return true;
 }
-auto ATestCapitalShips::get_entity_from_hit_slot(int32 const hit_slot) const
-    -> FRegistryEntityHandle {
-    return entities.handles.IsValidIndex(hit_slot) ? entities.handles[hit_slot]
-                                                   : FRegistryEntityHandle{};
+auto ATestCapitalShips::get_spatial_query_component() const -> UPrimitiveComponent const* {
+    return instances.Get();
 }
+void ATestCapitalShips::resolve_hits(
+    TConstArrayView<FHitResult> const hits,
+    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    check(hits.Num() == out_entity_handles.Num());
 
-void ATestCapitalShips::set_owner_id(TestEntityOwnerId const new_owner_id) {
-    owner_id = new_owner_id;
-}
-auto ATestCapitalShips::get_owner_id() const -> TestEntityOwnerId {
-    return owner_id;
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const& hit{hits[i]};
+        check(hit.GetComponent() == instances.Get());
+        if (!entities.handles.IsValidIndex(hit.Item)) {
+            continue;
+        }
+
+        out_entity_handles[i] = entities.handles[hit.Item];
+    }
 }
 
 auto ATestCapitalShips::get_niagara_spawner() const -> ADelayedNiagaraSpawner const* {

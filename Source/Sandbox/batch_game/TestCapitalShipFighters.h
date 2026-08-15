@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
@@ -27,12 +26,16 @@
 
 #include "TestCapitalShipFighters.generated.h"
 
+struct FHitResult;
+
 class UInstancedStaticMeshComponent;
+class UPrimitiveComponent;
 
 class UTestCapitalShipFightersConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
+struct FTestCapitalShipFightersSpatialQueryAccess;
 
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
@@ -81,9 +84,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-
-    void set_owner_id(TestEntityOwnerId const new_owner_id);
-    auto get_owner_id() const -> TestEntityOwnerId;
 
     void set_actor_config(UTestCapitalShipFightersConfig* const new_config) noexcept {
         actor_config = new_config;
@@ -225,7 +225,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
 
     // Entity data
-    TestEntityOwnerId owner_id{};
     EntityBuffers entity_buffers{};
 
     FTestEntityRegistry* entity_registry{nullptr};
@@ -268,7 +267,25 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
     bool enable_ship_location_debug_drawing{false};
   private:
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<FHitResult> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
     void visual_log_state() const;
+
+    friend struct FTestCapitalShipFightersSpatialQueryAccess;
+};
+
+struct FTestCapitalShipFightersSpatialQueryAccess {
+    ATestCapitalShipFighters const* actor{nullptr};
+
+    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
+        return actor->get_spatial_query_component();
+    }
+
+    void resolve_hits(TConstArrayView<FHitResult> const hits,
+                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+        actor->resolve_hits(hits, out_entity_handles);
+    }
 };
 
 namespace ml::test_capital_ship_fighters {

@@ -17,6 +17,7 @@
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
+#include <Engine/HitResult.h>
 #include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 
@@ -102,11 +103,25 @@ auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
     return entities.num();
 }
 
-void ATestTubeSpinners::set_owner_id(TestEntityOwnerId const new_owner_id) {
-    owner_id = new_owner_id;
+auto ATestTubeSpinners::get_spatial_query_component() const -> UPrimitiveComponent const* {
+    return instances.Get();
 }
-auto ATestTubeSpinners::get_owner_id() const -> TestEntityOwnerId {
-    return owner_id;
+
+void ATestTubeSpinners::resolve_hits(
+    TConstArrayView<FHitResult> const hits,
+    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    check(hits.Num() == out_entity_handles.Num());
+
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        auto const& hit{hits[i]};
+        check(hit.GetComponent() == instances.Get());
+        if (!entities.handles.IsValidIndex(hit.Item)) {
+            continue;
+        }
+
+        out_entity_handles[i] = entities.handles[hit.Item];
+    }
 }
 
 // Spawning

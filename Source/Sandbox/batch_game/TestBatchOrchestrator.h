@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/utilities/FixedTickLoop.h>
@@ -87,6 +88,10 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
+    auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& { return query_manager; }
+    auto get_spatial_query_manager() const noexcept -> ml::FSpatialQueryManager const& {
+        return query_manager;
+    }
     auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
@@ -140,6 +145,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     tick_type completed_ticks{0};
 
     FHUDManager hud_manager;
+    ml::FSpatialQueryManager query_manager;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
     FTestBatchGameUiUpdateFrequencies hud_update_frequencies{};

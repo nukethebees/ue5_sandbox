@@ -141,9 +141,6 @@ void ATestSpaceShip::queue_commands() {
 void ATestSpaceShip::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_events);
 
-    auto const view{entity_registry->get_collision_damage_queue_view(owner_id)};
-    auto const n{view.num()};
-
     auto const original_health{health.health};
     FRegistryEntityHandle killer{};
 
@@ -155,10 +152,6 @@ void ATestSpaceShip::resolve_damage_events() {
                 killer = instigator;
             }
         }};
-
-    for (int32 i{0}; i < n; ++i) {
-        apply_damage(view.damage_amounts[i], view.instigators[i]);
-    }
 
     auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
     auto const n_direct_damage{direct_damage.num()};
@@ -175,6 +168,22 @@ void ATestSpaceShip::resolve_damage_events() {
     }
     if ((original_health > 0) && !is_alive()) {
         die(killer);
+    }
+}
+
+auto ATestSpaceShip::get_spatial_query_component() const -> UPrimitiveComponent const* {
+    return ship_mesh;
+}
+
+void
+    ATestSpaceShip::resolve_hits(TConstArrayView<FHitResult> const hits,
+                                 TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    check(hits.Num() == out_entity_handles.Num());
+
+    auto const n{hits.Num()};
+    for (int32 i{}; i < n; ++i) {
+        check(hits[i].GetComponent() == ship_mesh);
+        out_entity_handles[i] = registry_handle;
     }
 }
 void ATestSpaceShip::update_entity_registry() {
@@ -235,12 +244,6 @@ auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
     entity_data.entity_types.Add(ETestEntityType::PlayerShip);
 
     return entity_data;
-}
-void ATestSpaceShip::set_owner_id(TestEntityOwnerId const new_owner_id) {
-    owner_id = new_owner_id;
-}
-auto ATestSpaceShip::get_owner_id() const -> TestEntityOwnerId {
-    return owner_id;
 }
 auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
     return unique_entity_id;

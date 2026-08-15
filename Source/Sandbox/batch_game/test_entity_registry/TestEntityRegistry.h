@@ -2,12 +2,10 @@
 
 #include "TestEntityRegistryData.h"
 
-#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEventsSoA.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryHandleState.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityOwnerId.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueEntityData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestTeam.h>
@@ -18,9 +16,6 @@
 #include "CoreMinimal.h"
 #include "Containers/StaticArray.h"
 #include "GameFramework/Actor.h"
-
-struct CollisionDamageEvents;
-struct UnresolvedCollisionDamageEvents;
 
 struct SpawnedEntityHandles {
     TArray<FRegistryEntityHandle> registry_handles;
@@ -59,12 +54,6 @@ struct SANDBOX_API FTestEntityRegistry {
     void commit_updates();
     void end_tick();
 
-    // Owner registration
-    auto register_owner(AActor const& actor) -> TestEntityOwnerId;
-    auto is_owner(AActor const* const actor) const -> bool;
-    auto is_valid_owner(TestEntityOwnerId const id) const -> bool;
-    auto get_owner(AActor const* const actor) -> TestEntityOwnerId;
-
     // Entity creation
     auto add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles;
 
@@ -72,10 +61,6 @@ struct SANDBOX_API FTestEntityRegistry {
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 
     // Damage events
-    void queue_collision_damage_events(
-        UnresolvedCollisionDamageEvents const& collision_damage_events);
-    auto get_collision_damage_queue_view(TestEntityOwnerId const id) const
-        -> CollisionDamageEvents const&;
     void queue_direct_damage_events(DirectDamageEvents const& damage_events);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 
@@ -168,7 +153,6 @@ struct SANDBOX_API FTestEntityRegistry {
     EntityData entity_data;
     TArray<int32> generations;
     TArray<TestEntityUniqueId> unique_ids;
-    TArray<AActor const*> entity_owners;
 
     // Unique entity data
     TestEntityUniqueEntityData unique_entities;
@@ -179,9 +163,7 @@ struct SANDBOX_API FTestEntityRegistry {
     EntityDeathInfo queued_death_infos;
 
     // Queued damage events
-    TArray<CollisionDamageEvents> queued_collision_damage_events;
     DirectDamageEvents queued_direct_damage_events;
-    TArray<int32> collision_damage_events_to_filter_buffer;
 
     // Dead entities
     TArray<FRegistryEntityHandle> dead_entities_this_frame;

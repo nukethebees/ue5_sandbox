@@ -1,5 +1,6 @@
 #include "TestLasers.h"
 
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestLasersConfig.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
@@ -62,6 +63,7 @@ void ATestLasers::begin_play() {
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
     check(entity_registry);
+    check(query_manager);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
@@ -241,9 +243,10 @@ void ATestLasers::handle_collisions(float const dt) {
     });
 
     // Move data out of thread buffers
-    ml::reset(to_remove, hit_details);
+    ml::reset(to_remove, hit_details, collision_hits, collision_damage_events);
     for (int32 i{0}; i < collision_jobs; ++i) {
-        entity_registry->queue_collision_damage_events(data[i].collision_damage_events);
+        collision_hits.Append(data[i].hits);
+        collision_damage_events.append_from(data[i].damage_events);
         to_remove.Append(data[i].to_remove);
 
         ml::append_from(hit_details.locations, data[i].hit_details.locations);
@@ -253,6 +256,9 @@ void ATestLasers::handle_collisions(float const dt) {
             hit_details.colours.Add(entities.colours[data[i].to_remove[j]]);
         }
     }
+
+    query_manager->resolve_hits(collision_hits, collision_damage_events.damaged_entities);
+    entity_registry->queue_direct_damage_events(collision_damage_events);
 
     to_remove.Sort(TGreater<int32>{});
     remove_instances(to_remove);
@@ -266,7 +272,7 @@ void ATestLasers::check_collision_thread(int32 const job_index,
     auto const n{lasers.get_num_instances()};
     auto const* world{lasers.GetWorld()};
 
-    ml::reset(data.collision_damage_events, data.to_remove, data.hit_details);
+    ml::reset(data.hits, data.damage_events, data.to_remove, data.hit_details);
 
     FHitResult hit{};
 
@@ -291,22 +297,10 @@ void ATestLasers::check_collision_thread(int32 const job_index,
 
         data.to_remove.Add(i);
 
-        // Identify who we hit
-        auto* hit_actor{hit.GetActor()};
-        if (!IsValid(hit_actor)) {
-            continue;
-        }
-
-        auto* hit_component{hit.GetComponent()};
-        if (!IsValid(hit_component)) {
-            continue;
-        }
-
-        data.collision_damage_events.damage_amounts.Add(lasers.entities.damages[i]);
-        data.collision_damage_events.damaged_actors.Add(hit_actor);
-        data.collision_damage_events.actor_components.Add(hit_component);
-        data.collision_damage_events.hit_items.Add(hit.Item);
-        data.collision_damage_events.instigators.Add(lasers.entities.instigator_handles[i]);
+        data.hits.Add(hit);
+        data.damage_events.damaged_entities.AddDefaulted();
+        data.damage_events.damage_amounts.Add(lasers.entities.damages[i]);
+        data.damage_events.instigators.Add(lasers.entities.instigator_handles[i]);
 
         ml::append(data.hit_details.locations, hit.Location);
     }
@@ -487,7 +481,7 @@ void ATestLasers::clear_spawn_buffers() {
     ml::reset(pending_spawns, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
-    ml::reset(hit_details);
+    ml::reset(hit_details, collision_hits, collision_damage_events);
 }
 
 // Checks

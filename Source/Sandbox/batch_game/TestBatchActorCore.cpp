@@ -1,6 +1,5 @@
 #include "TestBatchActorCore.h"
 
-#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
@@ -33,26 +32,11 @@ void apply_damage(int32 const local_index,
 }
 
 void resolve_damage_events(FTestEntityRegistry const& registry,
-                           TestEntityOwnerId const owner_id,
                            TArray<FRegistryEntityHandle>& entity_handles,
                            TArray<int32>& healths,
                            TArray<int32>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info) {
     TRACE_CPUPROFILER_EVENT_SCOPE(ml::batch::resolve_damage_events);
-
-    auto const& collision_view{registry.get_collision_damage_queue_view(owner_id)};
-    auto const n_collision_events{collision_view.num()};
-
-    for (int32 i{0}; i < n_collision_events; ++i) {
-        auto const ismc_index_hit{collision_view.hit_items[i]};
-        apply_damage(ismc_index_hit,
-                     collision_view.damage_amounts[i],
-                     collision_view.instigators[i],
-                     entity_handles,
-                     healths,
-                     local_indices_to_remove,
-                     entity_death_info);
-    }
 
     auto const& direct_view{registry.get_direct_damage_queue_view()};
     auto const n_direct_events{direct_view.num()};
