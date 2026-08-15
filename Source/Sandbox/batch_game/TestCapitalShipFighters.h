@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersSoA.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
@@ -16,18 +17,13 @@
 #include <Sandbox/utilities/IndexSpan.h>
 
 #include <SandboxCore/multi_buffer.h>
-#include <SandboxCore/soa_array_mixin.h>
-#include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCore/soa_vectors.h>
 #include <SandboxCore/tick_countdown.h>
 
 #include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
 #include "Containers/StaticArray.h"
 #include "GameFramework/Actor.h"
-
-#include <type_traits>
 
 #include "TestCapitalShipFighters.generated.h"
 
@@ -40,131 +36,6 @@ class ATestBatchOrchestrator;
 
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
-
-template <bool is_const>
-struct EntityDataView : public ml::FSoAViewMixin {
-    using View = EntityDataView<false>;
-    using ConstView = EntityDataView<true>;
-
-    template <typename T>
-    using TView = std::conditional_t<is_const, TConstArrayView<T>, TArrayView<T>>;
-    using VectorsView = std::conditional_t<is_const, FVectors3f::ConstView, FVectors3f::View>;
-    using TickCountdownView8 =
-        std::conditional_t<is_const, FTickCountdown8::ConstView, FTickCountdown8::View>;
-    using TickCountdownView16 =
-        std::conditional_t<is_const, FTickCountdown16::ConstView, FTickCountdown16::View>;
-
-#define EXPAND(X) X
-#define EXPAND_WITH_COMMA(X) X,
-#define MEMBER_DECL(TYPE, NAME) TYPE NAME;
-#define FN_ARG(TYPE, NAME) self.NAME
-
-#define SANDBOX_CLASS_MEMBERS(X, NON_FINAL)                         \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, entity_handles))      \
-    NON_FINAL(X(TView<uint32>, integral_biases))                    \
-    NON_FINAL(X(TView<float>, float_biases))                        \
-    NON_FINAL(X(TView<ETestCapitalShipFightersTask>, tasks))        \
-    NON_FINAL(X(VectorsView, locations))                            \
-    NON_FINAL(X(VectorsView, desired_move_locations))               \
-    NON_FINAL(X(VectorsView, aim_directions))                       \
-    NON_FINAL(X(VectorsView, desired_aiming_directions))            \
-    NON_FINAL(X(VectorsView, movement_directions))                  \
-    NON_FINAL(X(VectorsView, velocities))                           \
-    NON_FINAL(X(TView<float>, move_distances))                      \
-    NON_FINAL(X(TView<float>, speeds))                              \
-    NON_FINAL(X(TView<ETestTeam>, teams))                           \
-    NON_FINAL(X(TView<int32>, healths))                             \
-    NON_FINAL(X(TickCountdownView8, awareness_scan_countdowns))     \
-    NON_FINAL(X(TickCountdownView16, attack_reposition_countdowns)) \
-    NON_FINAL(X(TickCountdownView16, attack_cooldowns))             \
-    NON_FINAL(X(TView<FRegistryEntityHandle>, target_handles))      \
-    NON_FINAL(X(VectorsView, target_locations))                     \
-    NON_FINAL(X(VectorsView, target_velocities))                    \
-    NON_FINAL(X(VectorsView, target_directions))                    \
-    NON_FINAL(X(TView<float>, intercept_times))                     \
-    NON_FINAL(X(TView<float>, target_distance_sq))                  \
-    NON_FINAL(X(TView<float>, target_distances))                    \
-    X(TView<float>, target_radii)
-
-    SANDBOX_CLASS_MEMBERS(MEMBER_DECL, EXPAND)
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(SANDBOX_CLASS_MEMBERS(FN_ARG, EXPAND_WITH_COMMA));
-    }
-
-#undef EXPAND
-#undef EXPAND_WITH_COMMA
-#undef MEMBER_DECL
-#undef FN_ARG
-#undef SANDBOX_CLASS_MEMBERS
-};
-
-struct EntityData : public ml::FSoAArrayMixin {
-    using View = EntityDataView<false>;
-    using ConstView = EntityDataView<true>;
-
-    TArray<FRegistryEntityHandle> entity_handles;
-    TArray<uint32> integral_biases;
-    TArray<float> float_biases;
-    TArray<ETestCapitalShipFightersTask> tasks;
-
-    FVectors3f locations;
-    FVectors3f desired_move_locations;
-    FVectors3f aim_directions;
-    FVectors3f desired_aiming_directions;
-
-    FVectors3f movement_directions;
-    FVectors3f velocities;
-    TArray<float> move_distances;
-    TArray<float> speeds;
-
-    TArray<ETestTeam> teams{};
-    TArray<int32> healths;
-
-    FTickCountdown8 awareness_scan_countdowns;
-    FTickCountdown16 attack_reposition_countdowns;
-    FTickCountdown16 attack_cooldowns;
-
-    TArray<FRegistryEntityHandle> target_handles;
-    FVectors3f target_locations;
-    FVectors3f target_velocities;
-    FVectors3f target_directions;
-    TArray<float> intercept_times;
-    TArray<float> target_distance_sq;
-    TArray<float> target_distances;
-    TArray<float> target_radii;
-
-#define SANDBOX_PACK(STAMPER, NON_FINAL)             \
-    NON_FINAL(STAMPER(entity_handles))               \
-    NON_FINAL(STAMPER(integral_biases))              \
-    NON_FINAL(STAMPER(float_biases))                 \
-    NON_FINAL(STAMPER(tasks))                        \
-    NON_FINAL(STAMPER(locations))                    \
-    NON_FINAL(STAMPER(desired_move_locations))       \
-    NON_FINAL(STAMPER(aim_directions))               \
-    NON_FINAL(STAMPER(desired_aiming_directions))    \
-    NON_FINAL(STAMPER(movement_directions))          \
-    NON_FINAL(STAMPER(velocities))                   \
-    NON_FINAL(STAMPER(move_distances))               \
-    NON_FINAL(STAMPER(speeds))                       \
-    NON_FINAL(STAMPER(teams))                        \
-    NON_FINAL(STAMPER(healths))                      \
-    NON_FINAL(STAMPER(awareness_scan_countdowns))    \
-    NON_FINAL(STAMPER(attack_reposition_countdowns)) \
-    NON_FINAL(STAMPER(attack_cooldowns))             \
-    NON_FINAL(STAMPER(target_handles))               \
-    NON_FINAL(STAMPER(target_locations))             \
-    NON_FINAL(STAMPER(target_velocities))            \
-    NON_FINAL(STAMPER(target_directions))            \
-    NON_FINAL(STAMPER(intercept_times))              \
-    NON_FINAL(STAMPER(target_distance_sq))           \
-    NON_FINAL(STAMPER(target_distances))             \
-    STAMPER(target_radii)
-
-    SANDBOX_SOA_MAKE_APPLY_FNS(SANDBOX_PACK)
-#undef SANDBOX_PACK
-};
 }
 
 UCLASS()
