@@ -19,9 +19,7 @@ void FTestMissionStartupData::prune_invalid_actors() {
 }
 
 void ATestMissionManager::begin_play() {
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
-    });
+    check(entity_registry);
 
     startup_data.prune_invalid_actors();
     mission_fail_reason = ETestMissionFailReason::None;

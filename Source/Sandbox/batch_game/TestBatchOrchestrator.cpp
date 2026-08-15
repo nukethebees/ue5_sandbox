@@ -1,6 +1,5 @@
 #include "TestBatchOrchestrator.h"
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
@@ -46,7 +45,7 @@ void set_actor_config_on_all(UWorld& world, TConfig* const config) {
 
 template <typename TProxy>
 void add_proxy_handles(UWorld& world,
-                       ATestEntityRegistry const& entity_registry,
+                       FTestEntityRegistry const& entity_registry,
                        FProxyEntityMap& proxy_entities) {
     for (TActorIterator<TProxy> it{&world}; it; ++it) {
         auto* const proxy{*it};
@@ -81,7 +80,7 @@ void destroy_proxy_actors(UWorld& world) {
 
 template <typename... TProxies>
 void bind_and_destroy_proxy_actors(UWorld& world,
-                                   ATestEntityRegistry const& entity_registry,
+                                   FTestEntityRegistry const& entity_registry,
                                    ATestMissionManager& mission_manager) {
     FProxyEntityMap proxy_entities;
     (add_proxy_handles<TProxies>(world, entity_registry, proxy_entities), ...);
@@ -250,14 +249,13 @@ void ATestBatchOrchestrator::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
         SANDBOX_NAMED_UOBJECT_PTR(turrets),
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
         SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
     });
 
     bind_simulation_dependencies();
 
-    entity_registry->reset();
+    entity_registry.reset();
 
     ml::invoke_on_all(
         [](AActor* actor) {
@@ -279,7 +277,7 @@ void ATestBatchOrchestrator::begin_play() {
                       spinners);
 
     auto register_owner{
-        [this](auto actor) { actor->set_owner_id(entity_registry->register_owner(*actor)); }};
+        [this](auto actor) { actor->set_owner_id(entity_registry.register_owner(*actor)); }};
 
     if (IsValid(player_ship)) {
         register_owner(player_ship);
@@ -302,17 +300,16 @@ void ATestBatchOrchestrator::begin_play() {
     check(world);
     bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
                                   ATestStaticTurretsProxy,
-                                  ATestTubeSpinnerProxy>(
-        *world, *entity_registry, *mission_manager);
+                                  ATestTubeSpinnerProxy>(*world, entity_registry, *mission_manager);
 
-    entity_registry->commit_updates();
-    entity_registry->end_tick();
+    entity_registry.commit_updates();
+    entity_registry.end_tick();
 
     mission_manager->begin_play();
 
     hud_manager.initialise(hud_update_frequencies,
                            *mission_manager,
-                           *entity_registry,
+                           entity_registry,
                            hud_tick_loop.tick_rate,
                            player_ship.Get());
 
@@ -377,7 +374,7 @@ void ATestBatchOrchestrator::stop_visual_logging() {
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
     if (IsValid(player_ship)) {
-        if (!entity_registry->is_valid_handle(player_ship->get_entity_registry_handle())) {
+        if (!entity_registry.is_valid_handle(player_ship->get_entity_registry_handle())) {
             UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
         }
     }
@@ -531,7 +528,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
 
-            entity_registry->commit_updates();
+            entity_registry.commit_updates();
         }
 
         {
@@ -579,7 +576,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             turrets->end_tick();
             spinners->end_tick();
             lasers->end_tick();
-            entity_registry->end_tick();
+            entity_registry.end_tick();
         }
 
 #if WITH_EDITOR
@@ -647,11 +644,11 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
         bind_simulation_clock, capital_ship_fighters, turrets, spinners, lasers, mission_manager);
 
     if (IsValid(player_ship)) {
-        player_ship->set_entity_registry(entity_registry);
+        player_ship->set_entity_registry(&entity_registry);
         player_ship->set_laser_actor(lasers);
     }
 
-    ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(*entity_registry); },
+    ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(entity_registry); },
                       lasers,
                       capital_ships,
                       capital_ship_fighters,
@@ -722,7 +719,6 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
     turrets = spawn(actor_classes.turrets_class);
     spinners = spawn(actor_classes.spinners_class);
 
-    entity_registry = spawn(actor_classes.entity_registry_class);
     mission_manager = spawn(actor_classes.mission_manager_class);
     niagara_spawner = spawn(actor_classes.niagara_spawner_class);
 

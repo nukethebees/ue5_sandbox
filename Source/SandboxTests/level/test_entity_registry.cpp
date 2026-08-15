@@ -48,8 +48,8 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
     // Team-count test
     /* ------------------------------------------------------------------------------------------ */
     struct FTeamCountTestState {
-        ml::TimeSeriesData<ATestEntityRegistry::TeamCounts> alive_per_team;
-        ml::TimeSeriesData<ATestEntityRegistry::EntityCounts> alive_per_team_and_type;
+        ml::TimeSeriesData<FTestEntityRegistry::TeamCounts> alive_per_team;
+        ml::TimeSeriesData<FTestEntityRegistry::EntityCounts> alive_per_team_and_type;
         TMap<ETestTeam, int32> expected_teams{
             {ETestTeam::White, 0},
             {ETestTeam::Red, 1},

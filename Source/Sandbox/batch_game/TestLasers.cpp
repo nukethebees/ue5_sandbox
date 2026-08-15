@@ -61,10 +61,10 @@ void ATestLasers::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_play);
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
+    check(entity_registry);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
     if (!actor_config->is_ready()) {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("actor_config is not ready."));

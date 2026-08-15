@@ -17,7 +17,7 @@
 #include <HAL/Platform.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestMissionManager;
 class ATestSpaceShip;
 class UShipHudWidget;
@@ -77,7 +77,7 @@ struct FMissionDataCache {
 struct FEntityCountDataCache {
     bool operator==(FEntityCountDataCache const& other) const noexcept = default;
 
-    ATestEntityRegistry::EntityCounts alive_per_team_and_type{};
+    FTestEntityRegistry::EntityCounts alive_per_team_and_type{};
 };
 
 struct FKillDataCache {
@@ -143,7 +143,7 @@ struct FDataChanges {
 struct SANDBOX_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ATestMissionManager const& new_mission_manager,
-                    ATestEntityRegistry const& new_entity_registry,
+                    FTestEntityRegistry const& new_entity_registry,
                     double update_tick_rate,
                     ATestSpaceShip const* new_player_ship);
     void deactivate();
@@ -207,7 +207,7 @@ struct SANDBOX_API FHUDManager {
     TArray<TWeakObjectPtr<UShipHudWidget>> registered_huds;
     TWeakObjectPtr<ATestSpaceShip const> player_ship;
     ATestMissionManager const* mission_manager{nullptr};
-    ATestEntityRegistry const* entity_registry{nullptr};
+    FTestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;

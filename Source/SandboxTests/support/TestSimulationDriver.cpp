@@ -21,7 +21,7 @@
 
 namespace ml {
 TestSimulationDriver::TestSimulationDriver(UWorld& world,
-                                           ATestEntityRegistry& registry,
+                                           FTestEntityRegistry& registry,
                                            ATestBatchOrchestrator& orchestrator)
     : world{world}
     , registry{registry}
@@ -31,17 +31,11 @@ TestSimulationDriver::TestSimulationDriver(UWorld& world,
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     auto* orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(world)};
-    auto* registry{ml::get_first_actor<ATestEntityRegistry>(world)};
-
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
     }
 
-    if (!IsValid(registry)) {
-        UE_LOG(LogSandboxTest, Fatal, TEXT("registry is nullptr"));
-    }
-
-    return TestSimulationDriver{world, *registry, *orchestrator};
+    return TestSimulationDriver{world, orchestrator->get_entity_registry(), *orchestrator};
 }
 
 auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {

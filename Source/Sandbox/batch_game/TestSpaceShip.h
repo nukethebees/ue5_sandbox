@@ -32,7 +32,7 @@ class UShipLaserConfig;
 class AShipHomingLaser;
 class AShipBomb;
 class UShipHealthComponent;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestLasers;
 class UTestSpaceShipData;
 struct EntityDeathInfo;
@@ -92,7 +92,7 @@ class SANDBOX_API ATestSpaceShip
     auto get_team() const noexcept -> ETestTeam;
 
     auto get_entity_registry() const { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry* er) { entity_registry = er; }
+    void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
 
@@ -268,8 +268,7 @@ class SANDBOX_API ATestSpaceShip
     TestEntityOwnerId owner_id{};
     TestEntityUniqueId unique_entity_id;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
     FRegistryEntityHandle registry_handle{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")

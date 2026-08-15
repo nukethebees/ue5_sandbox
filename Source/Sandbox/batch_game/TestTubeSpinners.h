@@ -24,7 +24,7 @@ class UInstancedStaticMeshComponent;
 class ATestTubeSpinnerProxy;
 class UTestTubeSpinnersConfig;
 class ATestLasers;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 UCLASS()
@@ -61,8 +61,8 @@ class ATestTubeSpinners : public AActor {
         actor_config = new_config;
     }
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
@@ -93,8 +93,7 @@ class ATestTubeSpinners : public AActor {
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity data
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
 
     TestEntityOwnerId owner_id{};
     EntityData entities{};

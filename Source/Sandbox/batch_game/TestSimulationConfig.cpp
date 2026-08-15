@@ -9,7 +9,6 @@ auto UTestSimulationConfig::is_valid() const noexcept -> bool {
            IsValid(actor_classes.capital_ship_proxy_class) &&
            IsValid(actor_classes.capital_ship_fighters_class) &&
            IsValid(actor_classes.turrets_class) && IsValid(actor_classes.spinners_class) &&
-           IsValid(actor_classes.entity_registry_class) &&
            IsValid(actor_classes.mission_manager_class) &&
            IsValid(actor_classes.niagara_spawner_class);
 }

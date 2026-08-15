@@ -28,7 +28,7 @@ class UInstancedStaticMeshComponent;
 class ATestStaticTurretsProxy;
 class UTestStaticTurretsConfig;
 class ATestLasers;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 UCLASS()
@@ -71,8 +71,8 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
@@ -112,8 +112,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity Data
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
 
     TestEntityOwnerId owner_id{};
     EntityData entities{};

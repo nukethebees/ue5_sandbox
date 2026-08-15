@@ -4,7 +4,6 @@
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -29,16 +28,7 @@ void SpawnedEntityHandles::add_uninitialised(int32 const count) {
     registry_handles.AddUninitialized(count);
 }
 
-/* ------------------------------------------------------------------------------------------ */
-// ATestEntityRegistry
-/* ------------------------------------------------------------------------------------------ */
-ATestEntityRegistry::ATestEntityRegistry() {
-    PrimaryActorTick.bCanEverTick = false;
-
-    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
-}
-
-void ATestEntityRegistry::reset() {
+void FTestEntityRegistry::reset() {
     entity_data.reset();
     queued_entity_data.reset();
 
@@ -51,16 +41,16 @@ void ATestEntityRegistry::reset() {
 }
 
 // Lifecycle
-void ATestEntityRegistry::commit_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_updates);
+void FTestEntityRegistry::commit_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_updates);
 
     commit_entity_updates();
     commit_death_updates();
 
     validate_array_sizes();
 }
-void ATestEntityRegistry::refresh_free_indices() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::refresh_free_indices);
+void FTestEntityRegistry::refresh_free_indices() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::refresh_free_indices);
 
     free_indices.Reset();
     auto const n{entity_data.num()};
@@ -70,8 +60,8 @@ void ATestEntityRegistry::refresh_free_indices() {
         }
     }
 }
-void ATestEntityRegistry::end_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::end_tick);
+void FTestEntityRegistry::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::end_tick);
 
     refresh_free_indices();
 
@@ -92,27 +82,27 @@ void ATestEntityRegistry::end_tick() {
 }
 
 // Owner registration
-auto ATestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
+auto FTestEntityRegistry::register_owner(AActor const& actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Add(&actor)};
 
     queued_collision_damage_events.AddDefaulted();
 
     return {static_cast<uint8>(index)};
 }
-auto ATestEntityRegistry::is_owner(AActor const* const actor) const -> bool {
+auto FTestEntityRegistry::is_owner(AActor const* const actor) const -> bool {
     return entity_owners.Contains(actor);
 }
-auto ATestEntityRegistry::is_valid_owner(TestEntityOwnerId const id) const -> bool {
+auto FTestEntityRegistry::is_valid_owner(TestEntityOwnerId const id) const -> bool {
     return entity_owners.IsValidIndex(id.id);
 }
-auto ATestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwnerId {
+auto FTestEntityRegistry::get_owner(AActor const* const actor) -> TestEntityOwnerId {
     auto const index{entity_owners.Find(actor)};
     return index != INDEX_NONE ? TestEntityOwnerId{static_cast<uint8>(index)} : TestEntityOwnerId{};
 }
 
 // Entity creation
-auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::add_entities);
+auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::add_entities);
 
     view.validate_array_sizes();
 
@@ -188,9 +178,9 @@ auto ATestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
 }
 
 // Queued updates
-void ATestEntityRegistry::queue_entity_updates(ConstView const view,
+void FTestEntityRegistry::queue_entity_updates(ConstView const view,
                                                EntityDeathInfo const& death_info) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::queue_entity_updates);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::queue_entity_updates);
 
     queued_entity_data.append_from(view.data);
     queued_entity_update_handles.Append(view.indices);
@@ -200,8 +190,8 @@ void ATestEntityRegistry::queue_entity_updates(ConstView const view,
     queued_death_infos.victims.Append(death_info.victims);
     queued_death_infos.killers.Append(death_info.killers);
 }
-void ATestEntityRegistry::commit_entity_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_entity_updates);
+void FTestEntityRegistry::commit_entity_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_entity_updates);
 
     auto const n{queued_entity_data.num()};
 
@@ -221,8 +211,8 @@ void ATestEntityRegistry::commit_entity_updates() {
         unique_entities.alive[unique_id.id] = queued_entity_data.alive[i];
     }
 }
-void ATestEntityRegistry::commit_death_updates() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::commit_death_updates);
+void FTestEntityRegistry::commit_death_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_death_updates);
 
     dead_entities_this_frame.Reset();
     queued_death_infos.validate_array_sizes();
@@ -248,7 +238,7 @@ void ATestEntityRegistry::commit_death_updates() {
 }
 
 // Damage events
-void ATestEntityRegistry::queue_collision_damage_events(
+void FTestEntityRegistry::queue_collision_damage_events(
     UnresolvedCollisionDamageEvents const& collision_damage_events) {
     collision_damage_events.validate_array_sizes();
 
@@ -268,22 +258,22 @@ void ATestEntityRegistry::queue_collision_damage_events(
         actor_collision_damage_events.instigators.Add(collision_damage_events.instigators[i]);
     }
 }
-auto ATestEntityRegistry::get_collision_damage_queue_view(TestEntityOwnerId const id) const
+auto FTestEntityRegistry::get_collision_damage_queue_view(TestEntityOwnerId const id) const
     -> CollisionDamageEvents const& {
     check(is_valid_owner(id));
     return queued_collision_damage_events[id.id];
 }
-void ATestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
+void FTestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
     damage_events.validate_array_sizes();
 
     queued_direct_damage_events.append_from(damage_events);
 }
-auto ATestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
+auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
     return queued_direct_damage_events;
 }
 
 // Handle queries
-auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
+auto FTestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
     -> ERegistryHandleState {
     if (handle.is_null()) {
         return ERegistryHandleState::Null;
@@ -301,12 +291,12 @@ auto ATestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) con
 
     return ERegistryHandleState::Invalid;
 }
-auto ATestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
+auto FTestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
 }
 
 // Entity data updates
-void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
+void FTestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
     for (auto& handle : handles) {
         auto const handle_state{analyse_handle(handle)};
 
@@ -332,7 +322,7 @@ void ATestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> cons
     }
 }
 
-void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
+void FTestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
                                             FVectors3f::View const& locations) {
     auto const n{handles.Num()};
     check(ml::num(locations) == n);
@@ -353,7 +343,7 @@ void ATestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandl
         }
     }
 }
-void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
+void FTestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
                                               FVectors3f::View const& locations,
                                               FVectors3f::View const& velocities,
                                               TArrayView<float> const radii) {
@@ -407,39 +397,39 @@ void ATestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> 
 }
 
 // Entity data queries
-auto ATestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
+auto FTestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
     check(is_valid_handle(index));
     return ml::get_vector3f(entity_data.locations, index.index);
 }
-auto ATestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
+auto FTestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
     check(is_valid_handle(index));
     return ml::get_vector3f(entity_data.velocities, index.index);
 }
-auto ATestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
+auto FTestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
     check(is_valid_handle(index));
     return entity_data.healths[index.index];
 }
-auto ATestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
+auto FTestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
     check(is_valid_handle(index));
     return entity_data.teams[index.index];
 }
-auto ATestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
+auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
     check(is_valid_handle(index));
     return static_cast<bool>(entity_data.alive[index.index]);
 }
 
 // Entity collection queries
-auto ATestEntityRegistry::get_dead_entities_this_frame() const
+auto FTestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
 }
-auto ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
+auto FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
     -> TArray<FRegistryEntityHandle> {
     TArray<FRegistryEntityHandle> out;
     get_handles_not_in_team(team, out);
     return out;
 }
-void ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
+void FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
                                                   TArray<FRegistryEntityHandle>& out) const {
     out.Reset();
 
@@ -457,10 +447,10 @@ void ATestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
 }
 
 // Aggregate queries
-auto ATestEntityRegistry::get_num_elements() const noexcept -> int32 {
+auto FTestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.num();
 }
-auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
+auto FTestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
     int32 total{0};
 
     for (auto const& alive : entity_data.alive) {
@@ -472,7 +462,7 @@ auto ATestEntityRegistry::get_num_alive_active_entities() const noexcept -> int3
     return total;
 }
 
-auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
+auto FTestEntityRegistry::count_kills() const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
 
     int32 total{0};
@@ -482,7 +472,7 @@ auto ATestEntityRegistry::count_kills() const noexcept -> int32 {
 
     return total;
 }
-auto ATestEntityRegistry::count_alive() const noexcept -> int32 {
+auto FTestEntityRegistry::count_alive() const noexcept -> int32 {
     int32 total{0};
     for (auto const& alive : unique_entities.alive) {
         if (alive) {
@@ -492,7 +482,7 @@ auto ATestEntityRegistry::count_alive() const noexcept -> int32 {
 
     return total;
 }
-auto ATestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
+auto FTestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
     int32 n{get_num_unique_ids_issued()};
 
     int32 total{0};
@@ -507,7 +497,7 @@ auto ATestEntityRegistry::count_alive(ETestEntityType const type) const noexcept
 
     return total;
 }
-auto ATestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
+auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
     TeamCounts out{};
 
     int32 n{get_num_unique_ids_issued()};
@@ -521,7 +511,7 @@ auto ATestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 
     return out;
 }
-auto ATestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
+auto FTestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
     EntityCounts out{};
 
     auto const n{get_num_elements()};
@@ -543,7 +533,7 @@ auto ATestEntityRegistry::count_alive_per_team_and_type() const noexcept -> Enti
 
     return out;
 }
-auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
+auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
     auto const n{get_num_elements()};
     int32 count{0};
 
@@ -556,10 +546,10 @@ auto ATestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const no
     return count;
 }
 // Unique entity queries
-auto ATestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
+auto FTestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
     return id.is_valid() && (id.id < get_num_unique_ids_issued());
 }
-auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
+auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
     -> TestEntityUniqueId {
     auto const handle_state{analyse_handle(handle)};
 
@@ -595,18 +585,18 @@ auto ATestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
     return {};
 }
 
-auto ATestEntityRegistry::get_kills(TestEntityUniqueId const id) const
+auto FTestEntityRegistry::get_kills(TestEntityUniqueId const id) const
     -> TestEntityUniqueEntityData::kills_type {
     check(is_valid_unique_id(id));
     return unique_entities.kills[id.id];
 }
 
 // Spatial queries
-auto ATestEntityRegistry::collect_entities_in_range(
+auto FTestEntityRegistry::collect_entities_in_range(
     FVector3f const& origin,
     float const radius,
     TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_entities_in_range);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::collect_entities_in_range);
 
     int32 count{0};
 
@@ -632,12 +622,12 @@ auto ATestEntityRegistry::collect_entities_in_range(
 
     return count;
 }
-auto ATestEntityRegistry::collect_non_team_entities_in_range(
+auto FTestEntityRegistry::collect_non_team_entities_in_range(
     FVector3f const& origin,
     ETestTeam const team,
     float const radius,
     TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::collect_non_team_entities_in_range);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::collect_non_team_entities_in_range);
 
     int32 count{0};
 
@@ -670,10 +660,10 @@ auto ATestEntityRegistry::collect_non_team_entities_in_range(
 
     return count;
 }
-void ATestEntityRegistry::are_entities_within_dist_sq(float const dist_sq_threshold,
+void FTestEntityRegistry::are_entities_within_dist_sq(float const dist_sq_threshold,
                                                       FVectors3f const& locations,
                                                       TArrayView<bool> results) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::are_entities_within_dist_sq);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::are_entities_within_dist_sq);
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(locations),
@@ -702,7 +692,7 @@ void ATestEntityRegistry::are_entities_within_dist_sq(float const dist_sq_thresh
         }
     }
 }
-auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team) const
+auto FTestEntityRegistry::get_any_non_team_entity(ETestTeam const team) const
     -> FRegistryEntityHandle {
     auto const n{get_num_elements()};
 
@@ -717,7 +707,7 @@ auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team) const
 
     return {};
 }
-auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team,
+auto FTestEntityRegistry::get_any_non_team_entity(ETestTeam const team,
                                                   ETestEntityType const entity_type) const
     -> FRegistryEntityHandle {
     auto const n{get_num_elements()};
@@ -740,7 +730,7 @@ auto ATestEntityRegistry::get_any_non_team_entity(ETestTeam const team,
 }
 
 // Validation
-void ATestEntityRegistry::validate_array_sizes() const {
+void FTestEntityRegistry::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_data),
         SANDBOX_NAMED_NUM(generations),
@@ -764,8 +754,8 @@ void ATestEntityRegistry::validate_array_sizes() const {
                num_ids_issued);
     }
 }
-void ATestEntityRegistry::validate_unique_ids() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::validate_unique_ids);
+void FTestEntityRegistry::validate_unique_ids() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_ids);
 
     // Development-time validation for the unique id system
     auto const n{unique_ids.Num()};
@@ -780,8 +770,8 @@ void ATestEntityRegistry::validate_unique_ids() const {
         }
     }
 }
-void ATestEntityRegistry::validate_unique_entity_data() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestEntityRegistry::validate_death_reasons);
+void FTestEntityRegistry::validate_unique_entity_data() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_death_reasons);
 
     auto const n{unique_entities.num()};
 
@@ -800,7 +790,7 @@ void ATestEntityRegistry::validate_unique_entity_data() const {
         check(unique_entities.death_reason[i] != ETestDeathReason::Unset);
     }
 }
-void ATestEntityRegistry::validate_handles(TConstArrayView<FRegistryEntityHandle> const handles) {
+void FTestEntityRegistry::validate_handles(TConstArrayView<FRegistryEntityHandle> const handles) {
     for (auto const handle : handles) {
         if (!is_valid_handle(handle)) {
             UE_LOG(LogSandbox, Fatal, TEXT("Handle is invalid"));

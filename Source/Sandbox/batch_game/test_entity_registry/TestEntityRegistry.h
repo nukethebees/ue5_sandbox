@@ -2,6 +2,7 @@
 
 #include "TestEntityRegistryData.h"
 
+#include <Sandbox/batch_game/test_entity_registry/CollisionDamageEventsSoA.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
@@ -18,10 +19,6 @@
 #include "Containers/StaticArray.h"
 #include "GameFramework/Actor.h"
 
-#include "TestEntityRegistry.generated.h"
-
-class UActorComponent;
-
 struct CollisionDamageEvents;
 struct UnresolvedCollisionDamageEvents;
 
@@ -35,9 +32,7 @@ struct SpawnedEntityHandles {
     void add_uninitialised(int32 const count);
 };
 
-UCLASS()
-class SANDBOX_API ATestEntityRegistry : public AActor {
-    GENERATED_BODY()
+struct SANDBOX_API FTestEntityRegistry {
   public:
     using EntityData = ml::entity_registry::EntityData;
     using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
@@ -60,7 +55,6 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     static constexpr uint8 TEAM_COUNT{static_cast<uint8>(ETestTeam::COUNT)};
 
     // Lifecycle
-    ATestEntityRegistry();
     void reset();
     void commit_updates();
     void end_tick();
@@ -194,13 +188,13 @@ class SANDBOX_API ATestEntityRegistry : public AActor {
     TArray<int32> free_indices;
 };
 
-inline auto ATestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {
+inline auto FTestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {
     return generations.IsValidIndex(index.index) && (generations[index.index] == index.generation);
 }
 
-inline auto ATestEntityRegistry::is_valid_alive(FRegistryEntityHandle const handle) const -> bool {
+inline auto FTestEntityRegistry::is_valid_alive(FRegistryEntityHandle const handle) const -> bool {
     return is_valid_handle(handle) && (entity_data.alive[handle.index] > 0);
 }
-inline auto ATestEntityRegistry::is_valid_dead(FRegistryEntityHandle const handle) const -> bool {
+inline auto FTestEntityRegistry::is_valid_dead(FRegistryEntityHandle const handle) const -> bool {
     return is_valid_handle(handle) && (entity_data.alive[handle.index] == 0);
 }

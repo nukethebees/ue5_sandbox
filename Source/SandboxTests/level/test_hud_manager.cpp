@@ -166,17 +166,16 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         }
 
         auto const& hud_manager{get_headless_hud_manager()};
-        auto const* const registry{orchestrator->get_entity_registry()};
+        auto const& registry{orchestrator->get_entity_registry()};
         auto const* const mission_manager{orchestrator->get_mission_manager()};
         auto const* const player_ship{orchestrator->get_player_ship()};
-        check(registry);
         check(mission_manager);
 
         checks.are_equal(
             0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
         checks.are_equal(
             EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
-        checks.are_equal(registry->get_num_alive_active_entities(),
+        checks.are_equal(registry.get_num_alive_active_entities(),
                          count_cached_entities(hud_manager),
                          TEXT("Initial entity count cache matches the registry"));
 
@@ -253,7 +252,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         check(handles.Num() == 1);
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, handles] { test_driver->queue_kills(handles); });
-        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, defence_samples);
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_duration, defence_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::defence_on_tick));
         test_driver->timeline.finish_at(test_duration);
@@ -434,7 +434,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
             return;
         }
         auto& hud_manager{orchestrator->get_hud_manager()};
-        checks.are_equal(orchestrator->get_entity_registry()->get_num_alive_active_entities(),
+        checks.are_equal(orchestrator->get_entity_registry().get_num_alive_active_entities(),
                          count_cached_entities(hud_manager),
                          TEXT("Cache exists before HUD registration"));
 
@@ -554,18 +554,16 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         }
 
         auto* const mission_manager{orchestrator->get_mission_manager()};
-        auto* const entity_registry{orchestrator->get_entity_registry()};
+        auto& entity_registry{orchestrator->get_entity_registry()};
         if (!checks.not_nullptr(mission_manager,
-                                TEXT("Mission manager for headless HUD manager")) ||
-            !checks.not_nullptr(entity_registry,
-                                TEXT("Entity registry for headless HUD manager"))) {
+                                TEXT("Mission manager for headless HUD manager"))) {
             return false;
         }
 
         headless_hud_manager.Emplace();
         headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
                                          *mission_manager,
-                                         *entity_registry,
+                                         entity_registry,
                                          orchestrator->get_hud_tick_loop().tick_rate,
                                          orchestrator->get_player_ship());
         return true;

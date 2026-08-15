@@ -150,12 +150,12 @@ void ATestCapitalShipFighters::bind_simulation_clock(
 void ATestCapitalShipFighters::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
+    check(entity_registry);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
     ensureAlways(IsValid(actor_config->team_visual_data));
@@ -387,7 +387,7 @@ void ATestCapitalShipFighters::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_entity_registry);
 
     prepare_entity_update_data();
-    ATestEntityRegistry::ConstView view{entity_buffers.current().entity_handles,
+    FTestEntityRegistry::ConstView view{entity_buffers.current().entity_handles,
                                         registry_update_data.get_const_view()};
     entity_registry->queue_entity_updates(view, entity_death_info);
 }
@@ -441,9 +441,15 @@ void ATestCapitalShipFighters::visual_log_state() const {
     return;
 #endif
 
+    if (!entity_registry) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShipFighters::visual_log_state entity registry is null"));
+        return;
+    }
+
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
         UE_LOG(LogSandboxEntities,
                Error,

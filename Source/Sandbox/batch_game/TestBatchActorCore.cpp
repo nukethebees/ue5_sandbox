@@ -32,7 +32,7 @@ void apply_damage(int32 const local_index,
 }
 }
 
-void resolve_damage_events(ATestEntityRegistry const& registry,
+void resolve_damage_events(FTestEntityRegistry const& registry,
                            TestEntityOwnerId const owner_id,
                            TArray<FRegistryEntityHandle>& entity_handles,
                            TArray<int32>& healths,
@@ -73,7 +73,7 @@ void resolve_damage_events(ATestEntityRegistry const& registry,
     }
 }
 
-void refresh_targets(ATestEntityRegistry const& registry,
+void refresh_targets(FTestEntityRegistry const& registry,
                      TArray<FRegistryEntityHandle>& target_handles,
                      TArray<int32>& indices_without_targets,
                      TConstArrayView<ETestTeam> const teams,

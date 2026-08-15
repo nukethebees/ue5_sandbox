@@ -15,7 +15,7 @@
 
 #include "TestMissionManager.generated.h"
 
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 USTRUCT()
@@ -89,9 +89,9 @@ class SANDBOX_API ATestMissionManager : public AActor {
     }
     auto is_ready() const noexcept -> bool;
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    auto get_entity_registry() -> ATestEntityRegistry* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    auto get_entity_registry() -> FTestEntityRegistry* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
@@ -108,8 +108,7 @@ class SANDBOX_API ATestMissionManager : public AActor {
     void handle_mission_success();
     void handle_mission_failure(ETestMissionFailReason fail_reason);
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
     FTestMissionStartupData startup_data{};

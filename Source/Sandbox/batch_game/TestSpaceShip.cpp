@@ -59,12 +59,12 @@ ATestSpaceShip::ATestSpaceShip()
 
 void ATestSpaceShip::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
+    check(entity_registry);
 
     ml::fatal_if_uobject_ptrs_invalid({
         {
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
             SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
             SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
         },
@@ -184,7 +184,7 @@ void ATestSpaceShip::update_entity_registry() {
 }
 void ATestSpaceShip::queue_entity_update(EntityDeathInfo const& death_info) {
     entity_registry->queue_entity_updates(
-        ATestEntityRegistry::ConstView{
+        FTestEntityRegistry::ConstView{
             {&registry_handle, 1},
             get_entity_update_data().get_const_view(),
         },

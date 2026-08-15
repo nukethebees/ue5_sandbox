@@ -65,11 +65,11 @@ TEST_CLASS(EntityInterfaceTest, "Sandbox.LevelTests")
         target_handles.Append(capitals->get_target_handles());
         capital_target_handles.add(t, MoveTemp(target_handles));
 
-        auto const registry{test_driver->orchestrator.get_entity_registry()};
+        auto const& registry{test_driver->orchestrator.get_entity_registry()};
 
         TArray<uint8> target_alive;
         for (auto const handle : capitals->get_target_handles()) {
-            target_alive.Add(registry->is_valid_alive(handle));
+            target_alive.Add(registry.is_valid_alive(handle));
         }
         capital_target_alive.add(t, MoveTemp(target_alive));
     }

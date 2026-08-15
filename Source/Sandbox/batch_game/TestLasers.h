@@ -6,11 +6,11 @@
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
-#include <SandboxCore/generation_index.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 #include <Math/Color.h>
+#include <SandboxCore/generation_index.h>
 
 #include "TestLasers.generated.h"
 
@@ -20,7 +20,7 @@ class UActorComponent;
 class UWorld;
 
 class UTestLasersConfig;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 namespace ml::test_lasers {
@@ -63,8 +63,8 @@ class ATestLasers : public AActor {
         actor_config = new_config;
     }
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
     // Spawning / configuration
     void queue_laser_spawns(SpawnRequests const& spawn_data);
@@ -102,8 +102,7 @@ class ATestLasers : public AActor {
     void clear_spawn_buffers();
     void clear_hit_buffers();
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestLasersConfig> actor_config{nullptr};

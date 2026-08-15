@@ -32,7 +32,7 @@ class UBoxComponent;
 
 class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
 
@@ -82,8 +82,8 @@ class SANDBOX_API ATestCapitalShips : public AActor {
         actor_config = new_config;
     }
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
     inline void bind_fighters(ATestCapitalShipFighters& fighters) {
         fighters_interface.bind(fighters);
@@ -169,8 +169,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Config / context
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
 
     // Visuals
     UPROPERTY(EditDefaultsOnly, Category = "Sandbox")

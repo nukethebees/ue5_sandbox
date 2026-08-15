@@ -29,7 +29,8 @@ class TTickCountdown {
 
         [[nodiscard]] auto get_view() noexcept -> View { return {*countdown_, offset_, length_}; }
 
-        [[nodiscard]] auto get_view(size_type const offset, size_type const count) noexcept -> View {
+        [[nodiscard]] auto get_view(size_type const offset, size_type const count) noexcept
+            -> View {
             check(offset >= 0);
             check(count >= 0);
             check(offset + count <= length_);
@@ -47,8 +48,8 @@ class TTickCountdown {
             return {*countdown_, offset_, length_};
         }
 
-        [[nodiscard]] auto get_const_view(size_type const offset, size_type const count) const noexcept
-            -> ConstView {
+        [[nodiscard]] auto get_const_view(size_type const offset,
+                                          size_type const count) const noexcept -> ConstView {
             check(offset >= 0);
             check(count >= 0);
             check(offset + count <= length_);

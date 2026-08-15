@@ -32,7 +32,7 @@ void UEntityCountTableWidget::NativePreConstruct() {
 }
 
 void UEntityCountTableWidget::set_entity_counts(
-    ATestEntityRegistry::EntityCounts const& new_counts) {
+    FTestEntityRegistry::EntityCounts const& new_counts) {
     entity_counts = new_counts;
     rebuild_table();
 }

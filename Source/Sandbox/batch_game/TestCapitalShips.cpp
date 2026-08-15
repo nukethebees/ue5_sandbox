@@ -58,10 +58,10 @@ void ATestCapitalShips::begin_play() {
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
 
     auto* world{GetWorld()};
+    check(entity_registry);
     ml::fatal_if_uobject_ptrs_invalid({
         {
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
             SANDBOX_NAMED_UOBJECT_PTR(world),
         },
         {
@@ -206,9 +206,15 @@ void ATestCapitalShips::visual_log_state() const {
     return;
 #endif
 
+    if (!entity_registry) {
+        UE_LOG(LogSandboxEntities,
+               Error,
+               TEXT("ATestCapitalShips::visual_log_state entity registry is null"));
+        return;
+    }
+
     if (auto const msg{ml::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         })}) {
         UE_LOG(LogSandboxEntities,
                Error,

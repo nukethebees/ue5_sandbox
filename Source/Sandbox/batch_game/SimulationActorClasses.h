@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
@@ -39,9 +38,6 @@ struct SANDBOX_API FSimulationActorClasses {
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestTubeSpinners> spinners_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Simulation")
-    TSubclassOf<ATestEntityRegistry> entity_registry_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestMissionManager> mission_manager_class{nullptr};

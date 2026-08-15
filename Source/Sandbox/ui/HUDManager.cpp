@@ -15,7 +15,7 @@
 
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ATestMissionManager const& new_mission_manager,
-                             ATestEntityRegistry const& new_entity_registry,
+                             FTestEntityRegistry const& new_entity_registry,
                              double const update_tick_rate,
                              ATestSpaceShip const* const new_player_ship) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
@@ -54,7 +54,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     top_killer_ids_buffer.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
     check(IsValid(mission_manager));
-    check(IsValid(entity_registry));
+    check(entity_registry);
     state = EHUDManagerState::Active;
 
     collect_mission_data();
@@ -101,7 +101,7 @@ void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
     }
 
     check(IsValid(mission_manager));
-    check(IsValid(entity_registry));
+    check(entity_registry);
 
     auto const changes{collect_data(num_ticks)};
     update_huds(changes);
@@ -114,7 +114,7 @@ void FHUDManager::force_sample() {
     }
 
     check(IsValid(mission_manager));
-    check(IsValid(entity_registry));
+    check(entity_registry);
 
     ml::hud_manager::FDataChanges changes;
     changes.mission = collect_mission_data();
@@ -211,7 +211,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
 }
 bool FHUDManager::collect_entity_count_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_entity_count_data);
-    check(IsValid(entity_registry));
+    check(entity_registry);
 
     auto& next_data{entity_count_data_buffers.next()};
     next_data.alive_per_team_and_type = entity_registry->count_alive_per_team_and_type();
@@ -220,7 +220,7 @@ bool FHUDManager::collect_entity_count_data() {
 }
 bool FHUDManager::collect_kill_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_kill_data);
-    check(IsValid(entity_registry));
+    check(entity_registry);
 
     auto& next_data{kill_data_buffers.next()};
     auto const& unique_entities{entity_registry->get_unique_entities()};
@@ -496,7 +496,7 @@ bool FHUDManager::validate_player_ship_for_collection() const {
         return false;
     }
 
-    check(IsValid(entity_registry));
+    check(entity_registry);
     auto const unique_id{ship->get_unique_id()};
     return unique_id.is_valid() && entity_registry->is_valid_unique_id(unique_id);
 }

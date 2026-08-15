@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/utilities/FixedTickLoop.h>
 
@@ -19,7 +20,6 @@ class ATestCapitalShipFighters;
 class ATestStaticTurrets;
 class ATestTubeSpinners;
 
-class ATestEntityRegistry;
 class ATestMissionManager;
 class ADelayedNiagaraSpawner;
 class UTestSimulationConfig;
@@ -83,7 +83,10 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_turrets() const -> auto const* { return turrets.Get(); }
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
+    auto get_entity_registry() noexcept -> FTestEntityRegistry& { return entity_registry; }
+    auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
+        return entity_registry;
+    }
     auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
@@ -154,8 +157,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestTubeSpinners> spinners{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry entity_registry;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")

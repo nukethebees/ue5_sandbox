@@ -31,7 +31,7 @@ class UInstancedStaticMeshComponent;
 
 class UTestCapitalShipFightersConfig;
 class ATestLasers;
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 namespace ml::test_capital_ship_fighters {
@@ -89,8 +89,8 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
         actor_config = new_config;
     }
 
-    auto get_entity_registry() const -> ATestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(ATestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
+    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
@@ -228,8 +228,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TestEntityOwnerId owner_id{};
     EntityBuffers entity_buffers{};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestEntityRegistry> entity_registry{nullptr};
+    FTestEntityRegistry* entity_registry{nullptr};
     RegistryEntityData registry_update_data;
 
     // Spawning

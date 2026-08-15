@@ -54,12 +54,12 @@ void ATestStaticTurrets::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play);
 
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
+    check(entity_registry);
 
     ml::fatal_if_uobject_ptrs_invalid({
         {
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-            SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
         },
         {
             {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},

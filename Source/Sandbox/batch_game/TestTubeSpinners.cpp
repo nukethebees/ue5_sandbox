@@ -43,11 +43,11 @@ void ATestTubeSpinners::clear_runtime_state() {
 }
 void ATestTubeSpinners::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play);
+    check(entity_registry);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
-        SANDBOX_NAMED_UOBJECT_PTR(entity_registry),
     });
 
     configure_ismc();

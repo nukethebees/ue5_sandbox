@@ -9,7 +9,7 @@
 class UWorld;
 class AActor;
 
-class ATestEntityRegistry;
+struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 class ATestSpaceShip;
@@ -23,7 +23,7 @@ struct TestSimulationDriver {
     using time_type = double;
 
     explicit TestSimulationDriver(UWorld& world,
-                                  ATestEntityRegistry& registry,
+                                  FTestEntityRegistry& registry,
                                   ATestBatchOrchestrator& orchestrator);
 
     static auto from_world(UWorld& world) -> TestSimulationDriver;
@@ -51,7 +51,7 @@ struct TestSimulationDriver {
     bool time_wait_completed() const;
 
     UWorld& world;
-    ATestEntityRegistry& registry;
+    FTestEntityRegistry& registry;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};

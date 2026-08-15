@@ -213,7 +213,7 @@ void UShipHudWidget::set_flight_mode(FStringView value) {
     flight_mode_widget->update(value);
 }
 
-void UShipHudWidget::set_entity_counts(ATestEntityRegistry::EntityCounts const& counts) {
+void UShipHudWidget::set_entity_counts(FTestEntityRegistry::EntityCounts const& counts) {
     if (entity_count_table) {
         entity_count_table->set_entity_counts(counts);
     }
