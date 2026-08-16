@@ -2,15 +2,53 @@
 
 #include "SoftTestAssertions.h"
 
+#include <SandboxTests/SandboxTestLogCategories.h>
+
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <Sandbox/batch_game/TestSpaceShipData.h>
 
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
 
 namespace ml {
+auto spawn_player_ship(UWorld& world,
+                       TSubclassOf<ATestSpaceShip> const player_class,
+                       UTestSpaceShipData* const player_config) -> ATestSpaceShip* {
+    if (!IsValid(player_class)) {
+        UE_LOG(LogSandboxTest,
+               Warning,
+               TEXT("Cannot spawn player ship: Player ship class is invalid"));
+        return nullptr;
+    }
+    if (!IsValid(player_config)) {
+        UE_LOG(LogSandboxTest,
+               Warning,
+               TEXT("Cannot spawn player ship: Player ship config is invalid"));
+        return nullptr;
+    }
+
+    auto* const player_ship{
+        world.SpawnActorDeferred<ATestSpaceShip>(player_class, FTransform::Identity)};
+    if (!IsValid(player_ship)) {
+        UE_LOG(LogSandboxTest, Warning, TEXT("Cannot spawn player ship: Deferred spawn failed"));
+        return nullptr;
+    }
+
+    player_ship->set_actor_config(player_config);
+    auto* const finished_actor{
+        UGameplayStatics::FinishSpawningActor(player_ship, FTransform::Identity)};
+    if (!IsValid(finished_actor)) {
+        UE_LOG(LogSandboxTest, Warning, TEXT("Cannot spawn player ship: Finish spawning failed"));
+        return nullptr;
+    }
+
+    return player_ship;
+}
+
 void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
                                    TArray<FProxyEntityBinding> const& bindings,
                                    FSoftTestAssertions& checks) {

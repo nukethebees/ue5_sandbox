@@ -1,10 +1,12 @@
 #pragma once
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 
 #include <CoreMinimal.h>
 
 class ATestCapitalShipProxy;
+class UTestSpaceShipData;
 class UTestSimulationConfig;
 class UWorld;
 
@@ -20,6 +22,10 @@ struct FProxyEntityBinding {
 void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
                                    TArray<FProxyEntityBinding> const& bindings,
                                    FSoftTestAssertions& checks);
+
+auto spawn_player_ship(UWorld& world,
+                       TSubclassOf<ATestSpaceShip> const player_class,
+                       UTestSpaceShipData* const player_config) -> ATestSpaceShip*;
 
 auto spawn_capital_proxy(UWorld& world,
                          UTestSimulationConfig const& config,
