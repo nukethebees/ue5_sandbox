@@ -32,6 +32,7 @@ class ATestStaticTurretsProxy
     void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
         actor_config = new_config;
     }
+    void set_team(ETestTeam const new_team) noexcept { team = new_team; }
     void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
     void set_laser_damage(TOptional<int32> const new_damage) noexcept { laser_damage = new_damage; }
 
