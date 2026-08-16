@@ -277,6 +277,11 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
+    auto& candidate_indices{scratch_int_buffer};
+    auto& start_locations{line_of_sight_start_locations};
+    auto& end_locations{line_of_sight_end_locations};
+    auto& hit_entity_handles{line_of_sight_hit_entity_handles};
+
     for (int32 i{0}; i < n; ++i) {
         auto const target_handle{entities.target_handles[i]};
 
@@ -302,6 +307,32 @@ void ATestStaticTurrets::fire_at_enemies() {
             continue;
         }
 
+        candidate_indices.Add(i);
+        ml::append(start_locations,
+                   entities.fire_point_locations.xs[i],
+                   entities.fire_point_locations.ys[i],
+                   entities.fire_point_locations.zs[i]);
+        ml::append(end_locations, target_location);
+
+        entities.laser_cooldowns.restart_counter(i);
+    }
+
+    auto const n_candidates{candidate_indices.Num()};
+    if (n_candidates == 0) {
+        return;
+    }
+
+    hit_entity_handles.SetNumUninitialized(n_candidates, EAllowShrinking::No);
+    spatial_query_manager->trace_line_of_sight(
+        start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
+
+    for (int32 candidate_index{0}; candidate_index < n_candidates; ++candidate_index) {
+        auto const i{candidate_indices[candidate_index]};
+        if (hit_entity_handles[candidate_index] != entities.target_handles[i]) {
+            continue;
+        }
+
+        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
         auto const loc_x{entities.fire_point_locations.xs[i]};
         auto const loc_y{entities.fire_point_locations.ys[i]};
         auto const loc_z{entities.fire_point_locations.zs[i]};
@@ -326,8 +357,6 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.max_distances.Add(laser_max_distance);
         new_lasers.instigator_handles.Add(entities.handles[i]);
         new_lasers.colours.Add(colour_cache[entities.teams[i]]);
-
-        entities.laser_cooldowns.restart_counter(i);
     }
 
     laser_actor->queue_laser_spawns(new_lasers);
@@ -472,7 +501,10 @@ void ATestStaticTurrets::clear_tick_buffers() {
     ml::reset(entity_death_info,
               entity_update_data,
               local_indices_to_remove,
-              indices_ready_to_fire,
+              scratch_int_buffer,
+              line_of_sight_start_locations,
+              line_of_sight_end_locations,
+              line_of_sight_hit_entity_handles,
               new_lasers);
 }
 
