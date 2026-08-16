@@ -45,6 +45,12 @@ class ATestCapitalShipProxy
 
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
     void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
+    void set_initial_spawn_delay(TOptional<float> const new_delay) noexcept {
+        initial_spawn_delay = new_delay;
+    }
+    void set_spawn_cooldown(TOptional<float> const new_cooldown) noexcept {
+        spawn_cooldown = new_cooldown;
+    }
 
     void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
 
