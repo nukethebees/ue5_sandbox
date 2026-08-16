@@ -239,6 +239,8 @@ void ATestBatchOrchestrator::begin_play() {
     simulation_tick_loop.initialise();
     hud_tick_loop.initialise();
 
+    auto* world{GetWorld()};
+
 #if WITH_EDITOR
     if (log_ticks) {
         UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
@@ -253,6 +255,7 @@ void ATestBatchOrchestrator::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
         SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
         SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
+        SANDBOX_NAMED_UOBJECT_PTR(world),
     });
 
     bind_simulation_dependencies();
@@ -289,12 +292,10 @@ void ATestBatchOrchestrator::begin_play() {
                       lasers);
 
     query_manager.initialise(
-        player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
+        *world, player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
 
     validate_proxy_handles();
 
-    auto* const world{GetWorld()};
-    check(world);
     bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
                                   ATestStaticTurretsProxy,
                                   ATestTubeSpinnerProxy>(*world, entity_registry, *mission_manager);
@@ -630,6 +631,8 @@ auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) c
 }
 
 void ATestBatchOrchestrator::bind_simulation_dependencies() {
+    UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator::bind_simulation_dependencies"));
+
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);
 
@@ -711,8 +714,8 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
         return actor;
     }};
 
-    if (IsValid(actor_classes.player_ship_class)) {
-        player_ship = spawn(actor_classes.player_ship_class);
+    if (!IsValid(player_ship)) {
+        player_ship = ml::get_first_actor<ATestSpaceShip>(*world);
     }
 
     lasers = spawn(actor_classes.lasers_class);

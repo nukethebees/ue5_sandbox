@@ -10,6 +10,7 @@
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
 
+#include <Containers/Array.h>
 #include <Containers/ArrayView.h>
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
@@ -18,6 +19,7 @@
 #include <utility>
 
 class UPrimitiveComponent;
+class UWorld;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -39,7 +41,8 @@ struct SANDBOX_API FSpatialQueryManager {
     FSpatialQueryManager() = default;
     explicit FSpatialQueryManager(FTestEntityRegistry const& entity_registry) noexcept;
 
-    void initialise(ATestSpaceShip const* player_ship,
+    void initialise(UWorld& world,
+                    ATestSpaceShip const* player_ship,
                     ATestCapitalShips const& capital_ships,
                     ATestCapitalShipFighters const& capital_ship_fighters,
                     ATestStaticTurrets const& static_turrets,
@@ -47,6 +50,9 @@ struct SANDBOX_API FSpatialQueryManager {
 
     void resolve_hits(TConstArrayView<FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+    void trace_line_of_sight(FVectors3f::ConstView start_locations,
+                             FVectors3f::ConstView end_locations,
+                             TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     auto collect_non_team_entities_in_range(
         FVector3f const& origin,
@@ -70,7 +76,12 @@ struct SANDBOX_API FSpatialQueryManager {
     using ComponentResolvers =
         TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;
     FTestEntityRegistry const* const entity_registry{nullptr};
+    UWorld* world{nullptr};
     ComponentResolvers component_resolvers;
+    mutable TArray<FSpatialQueryHit> line_of_sight_hits;
+    mutable TArray<FSpatialQueryHit> sorted_line_of_sight_hits;
+    mutable TArray<FRegistryEntityHandle> sorted_line_of_sight_entity_handles;
+    mutable TArray<int32> line_of_sight_sort_indices;
     FTestSpaceShipSpatialQueryAccess player_ship_access;
     FTestCapitalShipsSpatialQueryAccess capital_ships_access;
     FTestCapitalShipFightersSpatialQueryAccess capital_ship_fighters_access;
