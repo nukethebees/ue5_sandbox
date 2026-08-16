@@ -140,7 +140,10 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};
 
-    TArray<int32> indices_ready_to_fire;
+    TArray<int32> scratch_int_buffer;
+    FVectors3f line_of_sight_start_locations;
+    FVectors3f line_of_sight_end_locations;
+    TArray<FRegistryEntityHandle> line_of_sight_hit_entity_handles;
     ml::test_lasers::SpawnRequests new_lasers;
 
     // Despawning
