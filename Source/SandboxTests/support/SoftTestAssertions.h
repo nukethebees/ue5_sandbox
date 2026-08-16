@@ -231,7 +231,7 @@ Check dist > {1}:
         return is_true(ptr != nullptr, description);
     }
     template <SoftTestDescription Description>
-    bool is_valid(AActor* ptr, Description const& description) {
+    bool is_valid(AActor const* ptr, Description const& description) {
         return is_true(IsValid(ptr), description);
     }
 
