@@ -78,19 +78,18 @@ concept HasSetNum = requires(T& value) {
     { value.set_num(0, EAllowShrinking::No) } -> std::convertible_to<void>;
 };
 
-template <typename T>
-concept HasSubscriptCopy = requires(T& dst, T const& src) {
-    { dst[0] } -> std::same_as<typename std::remove_cvref_t<T>::ElementType&>;
-    { src[0] } -> std::same_as<typename std::remove_cvref_t<T>::ElementType const&>;
+template <typename Dst, typename Src>
+concept HasSubscriptCopy = requires(Dst& dst, Src const& src) {
+    dst[0] = src[0];
 };
 
-template <typename T>
-concept HasCopyElement = requires(T& dst, T const& src) {
+template <typename Dst, typename Src>
+concept HasCopyElement = requires(Dst& dst, Src const& src) {
     { dst.copy_element(0, src, 0) } -> std::same_as<void>;
 };
 
-template <typename T>
-concept HasCopyElements = requires(T& dst, T const& src) {
+template <typename Dst, typename Src>
+concept HasCopyElements = requires(Dst& dst, Src const& src) {
     { dst.copy_elements(0, src, 0, 0) } -> std::same_as<void>;
 };
 

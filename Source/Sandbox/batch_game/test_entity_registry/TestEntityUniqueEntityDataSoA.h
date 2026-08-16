@@ -132,7 +132,8 @@ struct SANDBOX_API TestEntityUniqueEntityData {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, TestEntityUniqueEntityData const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(registry_indices, dst_i, other.registry_indices, src_i);
         ml::copy_element(registry_generations, dst_i, other.registry_generations, src_i);
         ml::copy_element(entity_types, dst_i, other.entity_types, src_i);
@@ -143,7 +144,8 @@ struct SANDBOX_API TestEntityUniqueEntityData {
         ml::copy_element(death_reason, dst_i, other.death_reason, src_i);
     }
 
-    void copy_elements(int32 const dst_i, TestEntityUniqueEntityData const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(registry_indices, dst_i, other.registry_indices, src_i, count);
         ml::copy_elements(registry_generations, dst_i, other.registry_generations, src_i, count);
         ml::copy_elements(entity_types, dst_i, other.entity_types, src_i, count);
@@ -154,7 +156,8 @@ struct SANDBOX_API TestEntityUniqueEntityData {
         ml::copy_elements(death_reason, dst_i, other.death_reason, src_i, count);
     }
 
-    void copy_to_tail(TestEntityUniqueEntityData const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);

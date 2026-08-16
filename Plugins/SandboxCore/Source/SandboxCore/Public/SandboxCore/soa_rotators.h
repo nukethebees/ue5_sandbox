@@ -137,17 +137,20 @@ struct SANDBOXCORE_API FRotatorsf {
     auto is_empty() const -> bool {
         return num() == 0;
     }
-    auto copy_element(size_type const dst_i, FRotatorsf const& src, size_type const src_i) -> void {
+    template <typename Other>
+    auto copy_element(size_type const dst_i, Other const& src, size_type const src_i) -> void {
         pitches[dst_i] = src.pitches[src_i];
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
     }
-    auto copy_elements(size_type const dst_i, FRotatorsf const& src, size_type const src_i, size_type const count) -> void {
+    template <typename Other>
+    auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void {
         ml::copy_elements(pitches, dst_i, src.pitches, src_i, count);
         ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
         ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
     }
-    auto copy_to_tail(FRotatorsf const& src) -> void {
+    template <typename Other>
+    auto copy_to_tail(Other const& src) -> void {
         auto const count{src.num()};
         check(num() >= count);
         copy_elements(num() - count, src, 0, count);
@@ -305,17 +308,20 @@ struct SANDBOXCORE_API FRotatorsd {
     auto is_empty() const -> bool {
         return num() == 0;
     }
-    auto copy_element(size_type const dst_i, FRotatorsd const& src, size_type const src_i) -> void {
+    template <typename Other>
+    auto copy_element(size_type const dst_i, Other const& src, size_type const src_i) -> void {
         pitches[dst_i] = src.pitches[src_i];
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
     }
-    auto copy_elements(size_type const dst_i, FRotatorsd const& src, size_type const src_i, size_type const count) -> void {
+    template <typename Other>
+    auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void {
         ml::copy_elements(pitches, dst_i, src.pitches, src_i, count);
         ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
         ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
     }
-    auto copy_to_tail(FRotatorsd const& src) -> void {
+    template <typename Other>
+    auto copy_to_tail(Other const& src) -> void {
         auto const count{src.num()};
         check(num() >= count);
         copy_elements(num() - count, src, 0, count);

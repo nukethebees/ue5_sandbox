@@ -547,7 +547,8 @@ class SoARenderingTests(unittest.TestCase):
         header = lower_soa_struct(soa)[-1].render(RenderContext())
 
         self.assertIn(
-            "void copy_elements(int32 const dst_i, FData const& other, int32 const src_i, int32 const count)",
+            "    template <typename Other>\n"
+            "    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count)",
             header,
         )
         self.assertIn(
@@ -557,7 +558,9 @@ class SoARenderingTests(unittest.TestCase):
             "ml::copy_elements(nested_values, dst_i, other.nested_values, src_i, count);",
             header,
         )
-        self.assertIn("void copy_to_tail(FData const& other)", header)
+        self.assertIn(
+            "    template <typename Other>\n    void copy_to_tail(Other const& other)", header
+        )
         self.assertIn("check(num() >= count);", header)
         self.assertIn("copy_elements(num() - count, other, 0, count);", header)
 
@@ -772,12 +775,16 @@ void append_from(Other const& other) {
         self.assertIn("struct TValuesView", rendered)
         self.assertIn("struct FValuesf", rendered)
         self.assertIn(
-            "auto copy_elements(size_type const dst_i, FValuesf const& src, size_type const src_i, size_type const count) -> void",
+            "    template <typename Other>\n"
+            "    auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void",
             rendered,
         )
         self.assertIn("ml::copy_elements(xs, dst_i, src.xs, src_i, count);", rendered)
         self.assertIn("ml::copy_elements(ys, dst_i, src.ys, src_i, count);", rendered)
-        self.assertIn("auto copy_to_tail(FValuesf const& src) -> void", rendered)
+        self.assertIn(
+            "    template <typename Other>\n    auto copy_to_tail(Other const& src) -> void",
+            rendered,
+        )
         self.assertIn("copy_elements(num() - count, src, 0, count);", rendered)
         self.assertIn("using aos_type = FVector2f;", rendered)
         self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)

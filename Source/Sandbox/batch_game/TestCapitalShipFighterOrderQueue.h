@@ -118,21 +118,24 @@ struct SANDBOX_API TestCapitalShipFighterOrderQueue {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, TestCapitalShipFighterOrderQueue const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);
         ml::copy_element(orders, dst_i, other.orders, src_i);
         ml::copy_element(tasks, dst_i, other.tasks, src_i);
         ml::copy_element(targets, dst_i, other.targets, src_i);
     }
 
-    void copy_elements(int32 const dst_i, TestCapitalShipFighterOrderQueue const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(handles, dst_i, other.handles, src_i, count);
         ml::copy_elements(orders, dst_i, other.orders, src_i, count);
         ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
         ml::copy_elements(targets, dst_i, other.targets, src_i, count);
     }
 
-    void copy_to_tail(TestCapitalShipFighterOrderQueue const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);

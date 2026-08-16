@@ -114,7 +114,8 @@ struct SANDBOX_API EntityData {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, EntityData const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(yaws, dst_i, other.yaws, src_i);
@@ -122,7 +123,8 @@ struct SANDBOX_API EntityData {
         ml::copy_element(next_fire_point_indices, dst_i, other.next_fire_point_indices, src_i);
     }
 
-    void copy_elements(int32 const dst_i, EntityData const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(handles, dst_i, other.handles, src_i, count);
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(yaws, dst_i, other.yaws, src_i, count);
@@ -130,7 +132,8 @@ struct SANDBOX_API EntityData {
         ml::copy_elements(next_fire_point_indices, dst_i, other.next_fire_point_indices, src_i, count);
     }
 
-    void copy_to_tail(EntityData const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);

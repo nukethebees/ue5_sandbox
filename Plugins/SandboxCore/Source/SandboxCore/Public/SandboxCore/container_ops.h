@@ -76,32 +76,36 @@ auto set_num(int32 count, EAllowShrinking const allow_shrinking, Containers&... 
     (set_num(containers, count, allow_shrinking), ...);
 }
 
-template <SupportsCopyElement Container>
-void copy_element(Container& dst, int32 const dst_i, Container const& src, int32 const src_i) {
-    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
+template <typename Dst, typename Src>
+    requires SupportsCopyElement<Dst, Src>
+void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
+    CopyElementTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_element(
+        dst, dst_i, src, src_i);
 }
 
-template <typename Container, typename... Rest>
-    requires (sizeof...(Rest) % 2 == 0) && SupportsCopyElement<std::remove_cvref_t<Container>>
+template <typename Dst, typename Src, typename... Rest>
+    requires (sizeof...(Rest) % 2 == 0) && SupportsCopyElement<Dst, Src>
 void copy_element(
-    int32 const dst_i, int32 const src_i, Container& dst, Container const& src, Rest&&... rest) {
-    CopyElementTraits<Container>::copy_element(dst, dst_i, src, src_i);
+    int32 const dst_i, int32 const src_i, Dst& dst, Src const& src, Rest&&... rest) {
+    CopyElementTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_element(
+        dst, dst_i, src, src_i);
 
     if constexpr (sizeof...(rest)) {
         copy_element(dst_i, src_i, rest...);
     }
 }
 
-template <typename Container>
-    requires SupportsCopyElements<Container> && SupportsNum<Container>
+template <typename Dst, typename Src>
+    requires SupportsCopyElements<Dst, Src> && SupportsNum<Dst> && SupportsNum<Src>
 void copy_elements(
-    Container& dst, int32 const dst_i, Container const& src, int32 const src_i, int32 const count) {
+    Dst& dst, int32 const dst_i, Src const& src, int32 const src_i, int32 const count) {
     check(dst_i >= 0);
     check(src_i >= 0);
     check(count >= 0);
     check(dst_i + count <= num(dst));
     check(src_i + count <= num(src));
-    CopyElementsTraits<Container>::copy_elements(dst, dst_i, src, src_i, count);
+    CopyElementsTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_elements(
+        dst, dst_i, src, src_i, count);
 }
 
 template <SupportsGetView... Containers>

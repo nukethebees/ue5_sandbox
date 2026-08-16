@@ -138,19 +138,21 @@ struct SetNumTraits<T> {
 /* -------------------------------------------------------------------------- */
 // copy_element
 /* -------------------------------------------------------------------------- */
-template <typename T>
+template <typename Dst, typename Src = Dst>
 struct CopyElementTraits;
 
-template <details::HasSubscriptCopy T>
-struct CopyElementTraits<T> {
-    static void copy_element(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
+template <typename Dst, typename Src>
+    requires details::HasSubscriptCopy<Dst, Src>
+struct CopyElementTraits<Dst, Src> {
+    static void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
         dst[dst_i] = src[src_i];
     }
 };
 
-template <details::HasCopyElement T>
-struct CopyElementTraits<T> {
-    static void copy_element(T& dst, int32 const dst_i, T const& src, int32 const src_i) {
+template <typename Dst, typename Src>
+    requires details::HasCopyElement<Dst, Src>
+struct CopyElementTraits<Dst, Src> {
+    static void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
         dst.copy_element(dst_i, src, src_i);
     }
 };
@@ -158,23 +160,25 @@ struct CopyElementTraits<T> {
 /* -------------------------------------------------------------------------- */
 // copy_elements
 /* -------------------------------------------------------------------------- */
-template <typename T>
+template <typename Dst, typename Src = Dst>
 struct CopyElementsTraits;
 
-template <details::HasSubscriptCopy T>
-struct CopyElementsTraits<T> {
+template <typename Dst, typename Src>
+    requires details::HasSubscriptCopy<Dst, Src>
+struct CopyElementsTraits<Dst, Src> {
     static void copy_elements(
-        T& dst, int32 const dst_i, T const& src, int32 const src_i, int32 const count) {
+        Dst& dst, int32 const dst_i, Src const& src, int32 const src_i, int32 const count) {
         for (int32 i{}; i < count; ++i) {
             dst[dst_i + i] = src[src_i + i];
         }
     }
 };
 
-template <details::HasCopyElements T>
-struct CopyElementsTraits<T> {
+template <typename Dst, typename Src>
+    requires details::HasCopyElements<Dst, Src>
+struct CopyElementsTraits<Dst, Src> {
     static void copy_elements(
-        T& dst, int32 const dst_i, T const& src, int32 const src_i, int32 const count) {
+        Dst& dst, int32 const dst_i, Src const& src, int32 const src_i, int32 const count) {
         dst.copy_elements(dst_i, src, src_i, count);
     }
 };

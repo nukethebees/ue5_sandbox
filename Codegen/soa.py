@@ -517,7 +517,7 @@ def _storage_operation_spec(
                 ForEachSoAMemberFreeFunctionCall(members, "ml::set_num"),
             )
         case SoAStorageOperation.COPY_ELEMENT:
-            other = FunctionParameter(f"{soa.names.name} const&", "other")
+            other = FunctionParameter("Other const&", "other")
             return MemberFunctionSpec(
                 "copy_element",
                 "void",
@@ -530,6 +530,7 @@ def _storage_operation_spec(
                     members, "ml::copy_element", other
                 ),
                 is_inline=True,
+                template_parameters="typename Other",
             )
         case SoAStorageOperation.APPEND_FROM:
             other = FunctionParameter("Other const&", "other")
@@ -556,7 +557,7 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
     for operation in soa.storage_operations:
         specs.append(_storage_operation_spec(soa, operation))
         if operation is SoAStorageOperation.COPY_ELEMENT:
-            other = FunctionParameter(f"{soa.names.name} const&", "other")
+            other = FunctionParameter("Other const&", "other")
             specs.append(
                 MemberFunctionSpec(
                     "copy_elements",
@@ -571,6 +572,7 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
                         soa.members, "ml::copy_elements", other
                     ),
                     is_inline=True,
+                    template_parameters="typename Other",
                 )
             )
             specs.append(
@@ -585,6 +587,7 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
                         (CHECK,),
                     ),
                     is_inline=True,
+                    template_parameters="typename Other",
                 )
             )
     return tuple(specs)
@@ -1310,7 +1313,7 @@ def _homogeneous_storage_functions(
                 "auto",
                 (
                     FunctionParameter("size_type const", "dst_i"),
-                    FunctionParameter(f"{name} const&", "src"),
+                    FunctionParameter("Other const&", "src"),
                     FunctionParameter("size_type const", "src_i"),
                 ),
                 _homogeneous_body(
@@ -1319,6 +1322,7 @@ def _homogeneous_storage_functions(
                 ),
                 suffix=" -> void",
                 is_inline=True,
+                template_parameters="typename Other",
             ).header_node(),
             NewLines(1),
             MemberFunctionSpec(
@@ -1326,7 +1330,7 @@ def _homogeneous_storage_functions(
                 "auto",
                 (
                     FunctionParameter("size_type const", "dst_i"),
-                    FunctionParameter(f"{name} const&", "src"),
+                    FunctionParameter("Other const&", "src"),
                     FunctionParameter("size_type const", "src_i"),
                     FunctionParameter("size_type const", "count"),
                 ),
@@ -1339,12 +1343,13 @@ def _homogeneous_storage_functions(
                 ),
                 suffix=" -> void",
                 is_inline=True,
+                template_parameters="typename Other",
             ).header_node(),
             NewLines(1),
             MemberFunctionSpec(
                 "copy_to_tail",
                 "auto",
-                (FunctionParameter(f"{name} const&", "src"),),
+                (FunctionParameter("Other const&", "src"),),
                 Raw(
                     "auto const count{src.num()};\n"
                     "check(num() >= count);\n"
@@ -1353,6 +1358,7 @@ def _homogeneous_storage_functions(
                 ),
                 suffix=" -> void",
                 is_inline=True,
+                template_parameters="typename Other",
             ).header_node(),
             NewLines(1),
             MemberFunctionSpec(

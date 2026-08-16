@@ -107,19 +107,22 @@ struct SANDBOX_API EntityDeathInfo {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, EntityDeathInfo const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(reasons, dst_i, other.reasons, src_i);
         ml::copy_element(victims, dst_i, other.victims, src_i);
         ml::copy_element(killers, dst_i, other.killers, src_i);
     }
 
-    void copy_elements(int32 const dst_i, EntityDeathInfo const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(reasons, dst_i, other.reasons, src_i, count);
         ml::copy_elements(victims, dst_i, other.victims, src_i, count);
         ml::copy_elements(killers, dst_i, other.killers, src_i, count);
     }
 
-    void copy_to_tail(EntityDeathInfo const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);

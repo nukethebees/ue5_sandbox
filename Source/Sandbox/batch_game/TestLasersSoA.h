@@ -136,7 +136,8 @@ struct SANDBOX_API SpawnRequests {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, SpawnRequests const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(rotations, dst_i, other.rotations, src_i);
         ml::copy_element(base_velocities, dst_i, other.base_velocities, src_i);
@@ -147,7 +148,8 @@ struct SANDBOX_API SpawnRequests {
         ml::copy_element(colours, dst_i, other.colours, src_i);
     }
 
-    void copy_elements(int32 const dst_i, SpawnRequests const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
         ml::copy_elements(base_velocities, dst_i, other.base_velocities, src_i, count);
@@ -158,7 +160,8 @@ struct SANDBOX_API SpawnRequests {
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
     }
 
-    void copy_to_tail(SpawnRequests const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);
@@ -368,7 +371,8 @@ struct SANDBOX_API Entities {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, Entities const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(ismc_data, dst_i, other.ismc_data, src_i);
         ml::copy_element(colours, dst_i, other.colours, src_i);
         ml::copy_element(locations, dst_i, other.locations, src_i);
@@ -379,7 +383,8 @@ struct SANDBOX_API Entities {
         ml::copy_element(instigator_handles, dst_i, other.instigator_handles, src_i);
     }
 
-    void copy_elements(int32 const dst_i, Entities const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(ismc_data, dst_i, other.ismc_data, src_i, count);
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
@@ -390,7 +395,8 @@ struct SANDBOX_API Entities {
         ml::copy_elements(instigator_handles, dst_i, other.instigator_handles, src_i, count);
     }
 
-    void copy_to_tail(Entities const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);
@@ -570,17 +576,20 @@ struct SANDBOX_API HitDetails {
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
-    void copy_element(int32 const dst_i, HitDetails const& other, int32 const src_i) {
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(colours, dst_i, other.colours, src_i);
     }
 
-    void copy_elements(int32 const dst_i, HitDetails const& other, int32 const src_i, int32 const count) {
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
     }
 
-    void copy_to_tail(HitDetails const& other) {
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
         auto const count{other.num()};
         check(num() >= count);
         copy_elements(num() - count, other, 0, count);
