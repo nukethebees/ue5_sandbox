@@ -80,6 +80,10 @@ void ATestSpaceShip::begin_play() {
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
 
+    if (!simulation_clock.is_valid()) {
+        UE_LOG(LogSandbox, Fatal, TEXT("Simulation clock is invalid"));
+    }
+
     set_laser_mode(ELaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
 
