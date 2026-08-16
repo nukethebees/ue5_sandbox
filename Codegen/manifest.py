@@ -84,6 +84,8 @@ ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
 SANDBOX_API = "SANDBOX_API"
 SANDBOX_CORE_API = "SANDBOXCORE_API"
 ARRAY_MATH = TypeDependency("ml::subtract_in_place", "SandboxCore/array_math.h")
+ARRAY_FILL = TypeDependency("ml::fill", "SandboxCore/array_utils.h")
+SOA_VECTOR_FILL = TypeDependency("ml::fill", "SandboxCore/soa_vector_utils.h")
 INCLUDE_ORDER = (
     "Sandbox/batch_game/",
     "Sandbox/",
@@ -828,6 +830,84 @@ def unique_entity_data_soa_module() -> Module:
     )
 
 
+def entity_registry_data_soa_module() -> Module:
+    add_disabled = MemberFunctionSpec(
+        "add_disabled",
+        "void",
+        (FunctionParameter("int32 const", "count"),),
+        Raw(
+            "add_uninitialised(count);\n"
+            "auto view{get_view()};\n"
+            "auto slice{view.right(count)};\n\n"
+            "ml::fill(slice.locations, 0.f);\n"
+            "ml::fill(slice.velocities, 0.f);\n"
+            "ml::fill(slice.radii, 0.f);\n"
+            "ml::fill(slice.healths, 0);\n"
+            "ml::fill(slice.teams, ETestTeam::White);\n"
+            "ml::fill(slice.entity_types, ETestEntityType::COUNT);\n"
+            "ml::fill(slice.alive, uint8{0u});",
+            (ARRAY_FILL, SOA_VECTOR_FILL),
+        ),
+    )
+    set_all_alive = MemberFunctionSpec(
+        "set_all_alive",
+        "void",
+        (),
+        Raw("ml::fill(alive, uint8{1});", (ARRAY_FILL,)),
+    )
+    set_all_velocities = MemberFunctionSpec(
+        "set_all_velocities",
+        "void",
+        (FunctionParameter("float const", "value"),),
+        Raw("ml::fill(velocities, value);", (SOA_VECTOR_FILL,)),
+    )
+    set_all_entity_types = MemberFunctionSpec(
+        "set_all_entity_types",
+        "void",
+        (FunctionParameter(qualified_type(E_TEST_ENTITY_TYPE, " const"), "value"),),
+        Raw("ml::fill(entity_types, value);", (ARRAY_FILL,)),
+    )
+    custom_functions = (
+        add_disabled,
+        set_all_alive,
+        set_all_velocities,
+        set_all_entity_types,
+    )
+    entity_data = SoAStruct(
+        SoAStructNames("EntityData"),
+        (
+            soa_member("locations", F_VECTORS_3F),
+            soa_member("velocities", F_VECTORS_3F),
+            tarray_member("radii", "float"),
+            tarray_member("healths", "int32"),
+            tarray_member("teams", E_TEST_TEAM),
+            tarray_member("entity_types", E_TEST_ENTITY_TYPE),
+            tarray_member("alive", "uint8"),
+        ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
+        nodes=tuple(function.header_node() for function in custom_functions),
+        source_nodes=tuple(
+            function.definition_node("EntityData") for function in custom_functions
+        ),
+    )
+    lowered = lower_soa_structs_with_source((entity_data,))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "TestEntityRegistryData.h"
+    return Module(
+        name="test_entity_registry_data_soa",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                Namespace("ml::entity_registry", lowered.header_nodes),
+            ),
+        ),
+        source=soa_source_file(header_path, lowered.source_nodes, "ml::entity_registry"),
+    )
+
+
 def modules() -> tuple[Module, ...]:
     return (
         countdown_timers_module(),
@@ -844,5 +924,6 @@ def modules() -> tuple[Module, ...]:
         tube_spinners_soa_module(),
         direct_damage_events_soa_module(),
         unique_entity_data_soa_module(),
+        entity_registry_data_soa_module(),
         entity_death_info_module(),
     )
