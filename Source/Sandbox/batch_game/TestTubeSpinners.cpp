@@ -157,6 +157,7 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
 
     auto const n{new_locations.num()};
     auto const existing_total{get_num_instances()};
+    auto const new_total{existing_total + n};
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(new_locations),
@@ -164,10 +165,13 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
         SANDBOX_NAMED_NUM(new_fire_point_indices),
     });
 
-    ml::append_from(entities.locations, new_locations);
+    entities.handles.AddDefaulted(n);
+    entities.locations.append_from(new_locations);
     entities.yaws.Append(new_yaws);
     entities.laser_cooldowns.add_zeroed(n);
     entities.next_fire_point_indices.Append(new_fire_point_indices);
+
+    checkCode(entities.validate_array_sizes());
 
     update_ismc_transforms();
     instances->AddInstances(TArray<FTransform>{ismc_transforms.GetData() + existing_total, n},
@@ -184,11 +188,15 @@ void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_location
     ml::fill(entity_data.teams, ETestTeam::White);
     entity_data.set_all_entity_types(ETestEntityType::TubeSpinner);
     entity_data.set_all_alive();
+    checkCode(entity_data.validate_array_sizes());
 
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-    entities.handles.Append(MoveTemp(new_entities.registry_handles));
 
-    validate_array_sizes();
+    for (int32 i{0}; i < n; ++i) {
+        entities.handles[i + existing_total] = new_entities.registry_handles[i];
+    }
+
+    checkCode(validate_array_sizes());
 }
 
 // Movement
