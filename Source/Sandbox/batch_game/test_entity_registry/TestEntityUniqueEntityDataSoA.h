@@ -154,6 +154,12 @@ struct SANDBOX_API TestEntityUniqueEntityData {
         ml::copy_elements(death_reason, dst_i, other.death_reason, src_i, count);
     }
 
+    void copy_to_tail(TestEntityUniqueEntityData const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<TestEntityUniqueEntityData, Other>
     void append_from(Other const& other) {

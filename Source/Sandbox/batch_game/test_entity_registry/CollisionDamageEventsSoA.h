@@ -130,6 +130,12 @@ struct SANDBOX_API UnresolvedCollisionDamageEvents {
         ml::copy_elements(instigators, dst_i, other.instigators, src_i, count);
     }
 
+    void copy_to_tail(UnresolvedCollisionDamageEvents const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<UnresolvedCollisionDamageEvents, Other>
     void append_from(Other const& other) {
@@ -314,6 +320,12 @@ struct SANDBOX_API CollisionDamageEvents {
         ml::copy_elements(actor_components, dst_i, other.actor_components, src_i, count);
         ml::copy_elements(hit_items, dst_i, other.hit_items, src_i, count);
         ml::copy_elements(instigators, dst_i, other.instigators, src_i, count);
+    }
+
+    void copy_to_tail(CollisionDamageEvents const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
     }
 
     template <typename Other>

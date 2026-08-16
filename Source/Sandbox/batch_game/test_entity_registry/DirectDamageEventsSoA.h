@@ -113,6 +113,12 @@ struct SANDBOX_API DirectDamageEvents {
         ml::copy_elements(instigators, dst_i, other.instigators, src_i, count);
     }
 
+    void copy_to_tail(DirectDamageEvents const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<DirectDamageEvents, Other>
     void append_from(Other const& other) {

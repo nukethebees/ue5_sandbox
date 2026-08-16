@@ -147,6 +147,11 @@ struct SANDBOXCORE_API FRotatorsf {
         ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
         ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
     }
+    auto copy_to_tail(FRotatorsf const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         pitches.Append(other.pitches);
@@ -309,6 +314,11 @@ struct SANDBOXCORE_API FRotatorsd {
         ml::copy_elements(pitches, dst_i, src.pitches, src_i, count);
         ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
         ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
+    }
+    auto copy_to_tail(FRotatorsd const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
     }
     template <typename Other>
     void append_from(Other const& other) {

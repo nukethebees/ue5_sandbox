@@ -149,6 +149,12 @@ struct SANDBOX_API SpawnData {
         ml::copy_elements(spawn_cooldowns, dst_i, other.spawn_cooldowns, src_i, count);
     }
 
+    void copy_to_tail(SpawnData const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<SpawnData, Other>
     void append_from(Other const& other) {
@@ -327,6 +333,12 @@ struct SANDBOX_API EntityTickData {
     void copy_elements(int32 const dst_i, EntityTickData const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i, count);
         ml::copy_elements(fighter_queue, dst_i, other.fighter_queue, src_i, count);
+    }
+
+    void copy_to_tail(EntityTickData const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
     }
 
     template <typename Other>
@@ -538,6 +550,12 @@ struct SANDBOX_API EntityData {
         ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
     }
 
+    void copy_to_tail(EntityData const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     void append_from(Other const& other) {
@@ -729,6 +747,12 @@ struct SANDBOX_API FighterReassignment {
     void copy_elements(int32 const dst_i, FighterReassignment const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(capital_handles, dst_i, other.capital_handles, src_i, count);
         ml::copy_elements(fighter_handles, dst_i, other.fighter_handles, src_i, count);
+    }
+
+    void copy_to_tail(FighterReassignment const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
     }
 
     template <typename Other>

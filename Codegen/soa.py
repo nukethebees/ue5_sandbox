@@ -573,6 +573,20 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
                     is_inline=True,
                 )
             )
+            specs.append(
+                MemberFunctionSpec(
+                    "copy_to_tail",
+                    "void",
+                    (other,),
+                    Raw(
+                        "auto const count{other.num()};\n"
+                        "check(num() >= count);\n"
+                        "copy_elements(num() - count, other, 0, count);",
+                        (CHECK,),
+                    ),
+                    is_inline=True,
+                )
+            )
     return tuple(specs)
 
 
@@ -1322,6 +1336,20 @@ def _homogeneous_storage_functions(
                         for component in layout.components
                     ),
                     (CONTAINER_OPS,),
+                ),
+                suffix=" -> void",
+                is_inline=True,
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "copy_to_tail",
+                "auto",
+                (FunctionParameter(f"{name} const&", "src"),),
+                Raw(
+                    "auto const count{src.num()};\n"
+                    "check(num() >= count);\n"
+                    "copy_elements(num() - count, src, 0, count);",
+                    (CHECK,),
                 ),
                 suffix=" -> void",
                 is_inline=True,

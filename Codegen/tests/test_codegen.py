@@ -557,6 +557,9 @@ class SoARenderingTests(unittest.TestCase):
             "ml::copy_elements(nested_values, dst_i, other.nested_values, src_i, count);",
             header,
         )
+        self.assertIn("void copy_to_tail(FData const& other)", header)
+        self.assertIn("check(num() >= count);", header)
+        self.assertIn("copy_elements(num() - count, other, 0, count);", header)
 
     def test_member_pair_free_function_call_rejects_an_unowned_other_parameter(self) -> None:
         function = MemberFunctionSpec(
@@ -774,6 +777,8 @@ void append_from(Other const& other) {
         )
         self.assertIn("ml::copy_elements(xs, dst_i, src.xs, src_i, count);", rendered)
         self.assertIn("ml::copy_elements(ys, dst_i, src.ys, src_i, count);", rendered)
+        self.assertIn("auto copy_to_tail(FValuesf const& src) -> void", rendered)
+        self.assertIn("copy_elements(num() - count, src, 0, count);", rendered)
         self.assertIn("using aos_type = FVector2f;", rendered)
         self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)
 

@@ -152,6 +152,12 @@ struct SANDBOX_API EntityData {
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
     }
 
+    void copy_to_tail(EntityData const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     void append_from(Other const& other) {

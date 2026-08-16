@@ -123,6 +123,12 @@ struct SANDBOX_API TestCapitalShipFighterSpawnQueue {
         ml::copy_elements(targets, dst_i, other.targets, src_i, count);
     }
 
+    void copy_to_tail(TestCapitalShipFighterSpawnQueue const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<TestCapitalShipFighterSpawnQueue, Other>
     void append_from(Other const& other) {

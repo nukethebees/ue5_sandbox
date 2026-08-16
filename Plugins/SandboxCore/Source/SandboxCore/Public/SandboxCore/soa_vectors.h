@@ -190,6 +190,11 @@ struct SANDBOXCORE_API FVectors2f {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
     }
+    auto copy_to_tail(FVectors2f const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -343,6 +348,11 @@ struct SANDBOXCORE_API FVectors2d {
     auto copy_elements(size_type const dst_i, FVectors2d const& src, size_type const src_i, size_type const count) -> void {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+    }
+    auto copy_to_tail(FVectors2d const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -498,6 +508,11 @@ struct SANDBOXCORE_API FVectors2i32 {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
     }
+    auto copy_to_tail(FVectors2i32 const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -651,6 +666,11 @@ struct SANDBOXCORE_API FVectors2u32 {
     auto copy_elements(size_type const dst_i, FVectors2u32 const& src, size_type const src_i, size_type const count) -> void {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+    }
+    auto copy_to_tail(FVectors2u32 const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -813,6 +833,11 @@ struct SANDBOXCORE_API FVectors3f {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
         ml::copy_elements(zs, dst_i, src.zs, src_i, count);
+    }
+    auto copy_to_tail(FVectors3f const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -987,6 +1012,11 @@ struct SANDBOXCORE_API FVectors3d {
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
         ml::copy_elements(zs, dst_i, src.zs, src_i, count);
     }
+    auto copy_to_tail(FVectors3d const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -1160,6 +1190,11 @@ struct SANDBOXCORE_API FVectors3i32 {
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
         ml::copy_elements(zs, dst_i, src.zs, src_i, count);
     }
+    auto copy_to_tail(FVectors3i32 const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -1332,6 +1367,11 @@ struct SANDBOXCORE_API FVectors3u32 {
         ml::copy_elements(xs, dst_i, src.xs, src_i, count);
         ml::copy_elements(ys, dst_i, src.ys, src_i, count);
         ml::copy_elements(zs, dst_i, src.zs, src_i, count);
+    }
+    auto copy_to_tail(FVectors3u32 const& src) -> void {
+        auto const count{src.num()};
+        check(num() >= count);
+        copy_elements(num() - count, src, 0, count);
     }
     template <typename Other>
     void append_from(Other const& other) {

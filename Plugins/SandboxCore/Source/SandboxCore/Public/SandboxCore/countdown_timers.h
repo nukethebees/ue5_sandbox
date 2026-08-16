@@ -99,6 +99,12 @@ struct SANDBOXCORE_API FCountdownTimers {
         ml::copy_elements(remaining_times, dst_i, other.remaining_times, src_i, count);
     }
 
+    void copy_to_tail(FCountdownTimers const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<FCountdownTimers, Other>
     void append_from(Other const& other) {

@@ -158,6 +158,12 @@ struct SANDBOX_API SpawnRequests {
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
     }
 
+    void copy_to_tail(SpawnRequests const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<SpawnRequests, Other>
     void append_from(Other const& other) {
@@ -384,6 +390,12 @@ struct SANDBOX_API Entities {
         ml::copy_elements(instigator_handles, dst_i, other.instigator_handles, src_i, count);
     }
 
+    void copy_to_tail(Entities const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<Entities, Other>
     void append_from(Other const& other) {
@@ -566,6 +578,12 @@ struct SANDBOX_API HitDetails {
     void copy_elements(int32 const dst_i, HitDetails const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
+    }
+
+    void copy_to_tail(HitDetails const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
     }
 
     template <typename Other>
