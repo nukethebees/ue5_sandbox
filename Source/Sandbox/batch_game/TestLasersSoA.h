@@ -147,6 +147,17 @@ struct SANDBOX_API SpawnRequests {
         ml::copy_element(colours, dst_i, other.colours, src_i);
     }
 
+    void copy_elements(int32 const dst_i, SpawnRequests const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(base_velocities, dst_i, other.base_velocities, src_i, count);
+        ml::copy_elements(damages, dst_i, other.damages, src_i, count);
+        ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
+        ml::copy_elements(max_distances, dst_i, other.max_distances, src_i, count);
+        ml::copy_elements(instigator_handles, dst_i, other.instigator_handles, src_i, count);
+        ml::copy_elements(colours, dst_i, other.colours, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<SpawnRequests, Other>
     void append_from(Other const& other) {
@@ -362,6 +373,17 @@ struct SANDBOX_API Entities {
         ml::copy_element(instigator_handles, dst_i, other.instigator_handles, src_i);
     }
 
+    void copy_elements(int32 const dst_i, Entities const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(ismc_data, dst_i, other.ismc_data, src_i, count);
+        ml::copy_elements(colours, dst_i, other.colours, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(velocities, dst_i, other.velocities, src_i, count);
+        ml::copy_elements(damages, dst_i, other.damages, src_i, count);
+        ml::copy_elements(lifetimes_remaining, dst_i, other.lifetimes_remaining, src_i, count);
+        ml::copy_elements(instigator_handles, dst_i, other.instigator_handles, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<Entities, Other>
     void append_from(Other const& other) {
@@ -539,6 +561,11 @@ struct SANDBOX_API HitDetails {
     void copy_element(int32 const dst_i, HitDetails const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(colours, dst_i, other.colours, src_i);
+    }
+
+    void copy_elements(int32 const dst_i, HitDetails const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(colours, dst_i, other.colours, src_i, count);
     }
 
     template <typename Other>

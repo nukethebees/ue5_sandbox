@@ -191,6 +191,23 @@ TEST_CASE("SandboxCore.SoaVectors.vectors3f.CopyElement") {
     CHECK(ml::almost_equal(dst, expected));
 }
 
+TEST_CASE("SandboxCore.SoaVectors.vectors3f.CopyElements") {
+    auto dst{ml::make_vectors3f(TArray<FVector3f>{{1.0f, 4.0f, 7.0f}, {2.0f, 5.0f, 8.0f}, {3.0f, 6.0f, 9.0f}})};
+    auto const src{ml::make_vectors3f(TArray<FVector3f>{{10.0f, 40.0f, 70.0f}, {20.0f, 50.0f, 80.0f}, {30.0f, 60.0f, 90.0f}})};
+
+    dst.copy_elements(0, src, 0, src.num());
+    CHECK(ml::almost_equal(dst, src));
+
+    dst.copy_elements(1, src, 2, 1);
+    CHECK(dst.xs[1] == 30.0f);
+    CHECK(dst.ys[1] == 60.0f);
+    CHECK(dst.zs[1] == 90.0f);
+
+    auto const expected{dst};
+    dst.copy_elements(dst.num(), src, src.num(), 0);
+    CHECK(ml::almost_equal(dst, expected));
+}
+
 TEST_CASE("SandboxCore.SoaVectors.vectors3f.Reserve") {
     FVectors3f vectors;
 

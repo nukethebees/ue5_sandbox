@@ -90,6 +90,11 @@ concept HasCopyElement = requires(T& dst, T const& src) {
 };
 
 template <typename T>
+concept HasCopyElements = requires(T& dst, T const& src) {
+    { dst.copy_elements(0, src, 0, 0) } -> std::same_as<void>;
+};
+
+template <typename T>
 concept SupportsUnrealArrayView = requires(T& value) {
     { TArrayView<std::remove_reference_t<decltype(value[0])>>{value} };
 };

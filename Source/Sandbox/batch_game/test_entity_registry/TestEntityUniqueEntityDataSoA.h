@@ -143,6 +143,17 @@ struct SANDBOX_API TestEntityUniqueEntityData {
         ml::copy_element(death_reason, dst_i, other.death_reason, src_i);
     }
 
+    void copy_elements(int32 const dst_i, TestEntityUniqueEntityData const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(registry_indices, dst_i, other.registry_indices, src_i, count);
+        ml::copy_elements(registry_generations, dst_i, other.registry_generations, src_i, count);
+        ml::copy_elements(entity_types, dst_i, other.entity_types, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(kills, dst_i, other.kills, src_i, count);
+        ml::copy_elements(alive, dst_i, other.alive, src_i, count);
+        ml::copy_elements(killed_by, dst_i, other.killed_by, src_i, count);
+        ml::copy_elements(death_reason, dst_i, other.death_reason, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<TestEntityUniqueEntityData, Other>
     void append_from(Other const& other) {

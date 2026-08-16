@@ -552,9 +552,28 @@ def _storage_operation_spec(
 
 
 def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
-    return tuple(
-        _storage_operation_spec(soa, operation) for operation in soa.storage_operations
-    )
+    specs: list[MemberFunctionSpec] = []
+    for operation in soa.storage_operations:
+        specs.append(_storage_operation_spec(soa, operation))
+        if operation is SoAStorageOperation.COPY_ELEMENT:
+            other = FunctionParameter(f"{soa.names.name} const&", "other")
+            specs.append(
+                MemberFunctionSpec(
+                    "copy_elements",
+                    "void",
+                    (
+                        FunctionParameter("int32 const", "dst_i"),
+                        other,
+                        FunctionParameter("int32 const", "src_i"),
+                        FunctionParameter("int32 const", "count"),
+                    ),
+                    ForEachSoAMemberPairFreeFunctionCall(
+                        soa.members, "ml::copy_elements", other
+                    ),
+                    is_inline=True,
+                )
+            )
+    return tuple(specs)
 
 
 def _storage_operation_nodes(specs: Iterable[MemberFunctionSpec]) -> tuple[Node, ...]:
@@ -871,10 +890,8 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
         *(spec.definition_node(soa.names.const_view_name) for spec in const_view_specs),
         *(spec.definition_node(soa.names.view_name) for spec in view_specs),
         *(
-            spec.definition_node(soa.names.name)
-            for operation, spec in zip(
-                soa.storage_operations, operation_specs, strict=True
-            )
+            _storage_operation_spec(soa, operation).definition_node(soa.names.name)
+            for operation in soa.storage_operations
             if operation in OUT_OF_LINE_STORAGE_OPERATIONS
         ),
         *_permutation_source_nodes(
@@ -917,8 +934,10 @@ def lower_soa_structs(soa_structs: Iterable[SoAStruct]) -> tuple[Node, ...]:
     return lower_soa_structs_with_source(soa_structs).header_nodes
 
 
-def _homogeneous_body(lines: Iterable[str]) -> Raw:
-    return Raw("\n".join(lines))
+def _homogeneous_body(
+    lines: Iterable[str], dependencies: Iterable[TypeDependency] = ()
+) -> Raw:
+    return Raw("\n".join(lines), dependencies)
 
 
 def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...]:
@@ -1283,6 +1302,26 @@ def _homogeneous_storage_functions(
                 _homogeneous_body(
                     f"{component}[dst_i] = src.{component}[src_i];"
                     for component in layout.components
+                ),
+                suffix=" -> void",
+                is_inline=True,
+            ).header_node(),
+            NewLines(1),
+            MemberFunctionSpec(
+                "copy_elements",
+                "auto",
+                (
+                    FunctionParameter("size_type const", "dst_i"),
+                    FunctionParameter(f"{name} const&", "src"),
+                    FunctionParameter("size_type const", "src_i"),
+                    FunctionParameter("size_type const", "count"),
+                ),
+                _homogeneous_body(
+                    (
+                        f"ml::copy_elements({component}, dst_i, src.{component}, src_i, count);"
+                        for component in layout.components
+                    ),
+                    (CONTAINER_OPS,),
                 ),
                 suffix=" -> void",
                 is_inline=True,

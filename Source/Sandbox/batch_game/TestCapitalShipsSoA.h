@@ -139,6 +139,16 @@ struct SANDBOX_API SpawnData {
         ml::copy_element(spawn_cooldowns, dst_i, other.spawn_cooldowns, src_i);
     }
 
+    void copy_elements(int32 const dst_i, SpawnData const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(initial_spawn_delays, dst_i, other.initial_spawn_delays, src_i, count);
+        ml::copy_elements(spawn_cooldowns, dst_i, other.spawn_cooldowns, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<SpawnData, Other>
     void append_from(Other const& other) {
@@ -312,6 +322,11 @@ struct SANDBOX_API EntityTickData {
     void copy_element(int32 const dst_i, EntityTickData const& other, int32 const src_i) {
         ml::copy_element(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i);
         ml::copy_element(fighter_queue, dst_i, other.fighter_queue, src_i);
+    }
+
+    void copy_elements(int32 const dst_i, EntityTickData const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i, count);
+        ml::copy_elements(fighter_queue, dst_i, other.fighter_queue, src_i, count);
     }
 
     template <typename Other>
@@ -511,6 +526,18 @@ struct SANDBOX_API EntityData {
         ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
     }
 
+    void copy_elements(int32 const dst_i, EntityData const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(handles, dst_i, other.handles, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(fighter_spawn_timers, dst_i, other.fighter_spawn_timers, src_i, count);
+        ml::copy_elements(fighter_spawn_cooldowns, dst_i, other.fighter_spawn_cooldowns, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(capital_fighter_handle_spans, dst_i, other.capital_fighter_handle_spans, src_i, count);
+        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     void append_from(Other const& other) {
@@ -697,6 +724,11 @@ struct SANDBOX_API FighterReassignment {
     void copy_element(int32 const dst_i, FighterReassignment const& other, int32 const src_i) {
         ml::copy_element(capital_handles, dst_i, other.capital_handles, src_i);
         ml::copy_element(fighter_handles, dst_i, other.fighter_handles, src_i);
+    }
+
+    void copy_elements(int32 const dst_i, FighterReassignment const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(capital_handles, dst_i, other.capital_handles, src_i, count);
+        ml::copy_elements(fighter_handles, dst_i, other.fighter_handles, src_i, count);
     }
 
     template <typename Other>

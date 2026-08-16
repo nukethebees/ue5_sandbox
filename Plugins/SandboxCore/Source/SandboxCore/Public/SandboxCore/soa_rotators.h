@@ -5,6 +5,7 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
+#include "SandboxCore/container_ops.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -140,6 +141,11 @@ struct SANDBOXCORE_API FRotatorsf {
         pitches[dst_i] = src.pitches[src_i];
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FRotatorsf const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(pitches, dst_i, src.pitches, src_i, count);
+        ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
+        ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -298,6 +304,11 @@ struct SANDBOXCORE_API FRotatorsd {
         pitches[dst_i] = src.pitches[src_i];
         yaws[dst_i] = src.yaws[src_i];
         rolls[dst_i] = src.rolls[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FRotatorsd const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(pitches, dst_i, src.pitches, src_i, count);
+        ml::copy_elements(yaws, dst_i, src.yaws, src_i, count);
+        ml::copy_elements(rolls, dst_i, src.rolls, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {

@@ -116,6 +116,13 @@ struct SANDBOX_API TestCapitalShipFighterSpawnQueue {
         ml::copy_element(targets, dst_i, other.targets, src_i);
     }
 
+    void copy_elements(int32 const dst_i, TestCapitalShipFighterSpawnQueue const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(targets, dst_i, other.targets, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<TestCapitalShipFighterSpawnQueue, Other>
     void append_from(Other const& other) {

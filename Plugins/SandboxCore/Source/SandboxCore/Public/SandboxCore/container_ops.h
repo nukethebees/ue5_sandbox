@@ -4,6 +4,7 @@
 #include "container_traits.h"
 
 #include <Containers/AllowShrinking.h>
+#include <Misc/AssertionMacros.h>
 
 #include <type_traits>
 
@@ -89,6 +90,18 @@ void copy_element(
     if constexpr (sizeof...(rest)) {
         copy_element(dst_i, src_i, rest...);
     }
+}
+
+template <typename Container>
+    requires SupportsCopyElements<Container> && SupportsNum<Container>
+void copy_elements(
+    Container& dst, int32 const dst_i, Container const& src, int32 const src_i, int32 const count) {
+    check(dst_i >= 0);
+    check(src_i >= 0);
+    check(count >= 0);
+    check(dst_i + count <= num(dst));
+    check(src_i + count <= num(src));
+    CopyElementsTraits<Container>::copy_elements(dst, dst_i, src, src_i, count);
 }
 
 template <SupportsGetView... Containers>

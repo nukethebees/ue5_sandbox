@@ -244,6 +244,34 @@ struct SANDBOX_API EntityData {
         ml::copy_element(target_radii, dst_i, other.target_radii, src_i);
     }
 
+    void copy_elements(int32 const dst_i, EntityData const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
+        ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
+        ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
+        ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
+        ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
+        ml::copy_elements(velocities, dst_i, other.velocities, src_i, count);
+        ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
+        ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
+        ml::copy_elements(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
+        ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
+        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
+        ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
+        ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
+        ml::copy_elements(intercept_times, dst_i, other.intercept_times, src_i, count);
+        ml::copy_elements(target_distance_sq, dst_i, other.target_distance_sq, src_i, count);
+        ml::copy_elements(target_distances, dst_i, other.target_distances, src_i, count);
+        ml::copy_elements(target_radii, dst_i, other.target_radii, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     void append_from(Other const& other) {

@@ -156,6 +156,30 @@ struct CopyElementTraits<T> {
 };
 
 /* -------------------------------------------------------------------------- */
+// copy_elements
+/* -------------------------------------------------------------------------- */
+template <typename T>
+struct CopyElementsTraits;
+
+template <details::HasSubscriptCopy T>
+struct CopyElementsTraits<T> {
+    static void copy_elements(
+        T& dst, int32 const dst_i, T const& src, int32 const src_i, int32 const count) {
+        for (int32 i{}; i < count; ++i) {
+            dst[dst_i + i] = src[src_i + i];
+        }
+    }
+};
+
+template <details::HasCopyElements T>
+struct CopyElementsTraits<T> {
+    static void copy_elements(
+        T& dst, int32 const dst_i, T const& src, int32 const src_i, int32 const count) {
+        dst.copy_elements(dst_i, src, src_i, count);
+    }
+};
+
+/* -------------------------------------------------------------------------- */
 // get_view
 /* -------------------------------------------------------------------------- */
 template <typename T>

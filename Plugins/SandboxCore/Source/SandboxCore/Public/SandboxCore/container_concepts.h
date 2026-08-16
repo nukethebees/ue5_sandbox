@@ -76,6 +76,15 @@ consteval bool diagnose_supports_copy_element() {
 template <typename... T>
 concept AllSupportCopyElement = (diagnose_supports_copy_element<std::remove_cvref_t<T>>() && ...);
 
+// copy_elements
+template <typename T>
+concept SupportsCopyElements =
+    requires(T& dst, int32 const dst_i, T const& src, int32 const src_i, int32 const count) {
+        {
+            CopyElementsTraits<std::remove_cvref_t<T>>::copy_elements(dst, dst_i, src, src_i, count)
+        } -> std::same_as<void>;
+    };
+
 // get_view
 template <typename T>
 concept SupportsGetView = requires(T& container, int32 const offset, int32 const count) {

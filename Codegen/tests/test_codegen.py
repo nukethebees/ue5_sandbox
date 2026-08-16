@@ -534,6 +534,30 @@ class SoARenderingTests(unittest.TestCase):
 }""",
         )
 
+    def test_soa_copy_element_operation_also_generates_copy_elements(self) -> None:
+        soa = SoAStruct(
+            SoAStructNames("FData"),
+            (
+                tarray_member("values", "int32"),
+                soa_member("nested_values", "FNestedValues"),
+            ),
+            storage_operations=(SoAStorageOperation.COPY_ELEMENT,),
+        )
+
+        header = lower_soa_struct(soa)[-1].render(RenderContext())
+
+        self.assertIn(
+            "void copy_elements(int32 const dst_i, FData const& other, int32 const src_i, int32 const count)",
+            header,
+        )
+        self.assertIn(
+            "ml::copy_elements(values, dst_i, other.values, src_i, count);", header
+        )
+        self.assertIn(
+            "ml::copy_elements(nested_values, dst_i, other.nested_values, src_i, count);",
+            header,
+        )
+
     def test_member_pair_free_function_call_rejects_an_unowned_other_parameter(self) -> None:
         function = MemberFunctionSpec(
             "append_from",
@@ -593,6 +617,7 @@ void append_from(Other const& other) {
         self.assertIn("void remove_at_swap(", header)
         self.assertIn("values.RemoveAtSwap(", header)
         self.assertIn("ml::copy_element(", header)
+        self.assertIn("ml::copy_elements(", header)
         self.assertIn("template <typename Other>", header)
         self.assertLess(header.index("void add_defaulted"), header.index("apply_arrays"))
 
@@ -743,6 +768,12 @@ void append_from(Other const& other) {
         self.assertIn("template <typename T>", rendered)
         self.assertIn("struct TValuesView", rendered)
         self.assertIn("struct FValuesf", rendered)
+        self.assertIn(
+            "auto copy_elements(size_type const dst_i, FValuesf const& src, size_type const src_i, size_type const count) -> void",
+            rendered,
+        )
+        self.assertIn("ml::copy_elements(xs, dst_i, src.xs, src_i, count);", rendered)
+        self.assertIn("ml::copy_elements(ys, dst_i, src.ys, src_i, count);", rendered)
         self.assertIn("using aos_type = FVector2f;", rendered)
         self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)
 

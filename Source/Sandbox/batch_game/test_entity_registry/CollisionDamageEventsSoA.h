@@ -122,6 +122,14 @@ struct SANDBOX_API UnresolvedCollisionDamageEvents {
         ml::copy_element(instigators, dst_i, other.instigators, src_i);
     }
 
+    void copy_elements(int32 const dst_i, UnresolvedCollisionDamageEvents const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(damaged_actors, dst_i, other.damaged_actors, src_i, count);
+        ml::copy_elements(damage_amounts, dst_i, other.damage_amounts, src_i, count);
+        ml::copy_elements(actor_components, dst_i, other.actor_components, src_i, count);
+        ml::copy_elements(hit_items, dst_i, other.hit_items, src_i, count);
+        ml::copy_elements(instigators, dst_i, other.instigators, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<UnresolvedCollisionDamageEvents, Other>
     void append_from(Other const& other) {
@@ -299,6 +307,13 @@ struct SANDBOX_API CollisionDamageEvents {
         ml::copy_element(actor_components, dst_i, other.actor_components, src_i);
         ml::copy_element(hit_items, dst_i, other.hit_items, src_i);
         ml::copy_element(instigators, dst_i, other.instigators, src_i);
+    }
+
+    void copy_elements(int32 const dst_i, CollisionDamageEvents const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(damage_amounts, dst_i, other.damage_amounts, src_i, count);
+        ml::copy_elements(actor_components, dst_i, other.actor_components, src_i, count);
+        ml::copy_elements(hit_items, dst_i, other.hit_items, src_i, count);
+        ml::copy_elements(instigators, dst_i, other.instigators, src_i, count);
     }
 
     template <typename Other>

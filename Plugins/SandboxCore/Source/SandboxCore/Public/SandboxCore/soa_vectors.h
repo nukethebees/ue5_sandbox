@@ -5,6 +5,7 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
+#include "SandboxCore/container_ops.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -185,6 +186,10 @@ struct SANDBOXCORE_API FVectors2f {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
     }
+    auto copy_elements(size_type const dst_i, FVectors2f const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -334,6 +339,10 @@ struct SANDBOXCORE_API FVectors2d {
     auto copy_element(size_type const dst_i, FVectors2d const& src, size_type const src_i) -> void {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FVectors2d const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -485,6 +494,10 @@ struct SANDBOXCORE_API FVectors2i32 {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
     }
+    auto copy_elements(size_type const dst_i, FVectors2i32 const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -634,6 +647,10 @@ struct SANDBOXCORE_API FVectors2u32 {
     auto copy_element(size_type const dst_i, FVectors2u32 const& src, size_type const src_i) -> void {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FVectors2u32 const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -791,6 +808,11 @@ struct SANDBOXCORE_API FVectors3f {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FVectors3f const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, src.zs, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {
@@ -960,6 +982,11 @@ struct SANDBOXCORE_API FVectors3d {
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
     }
+    auto copy_elements(size_type const dst_i, FVectors3d const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, src.zs, src_i, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -1128,6 +1155,11 @@ struct SANDBOXCORE_API FVectors3i32 {
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
     }
+    auto copy_elements(size_type const dst_i, FVectors3i32 const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, src.zs, src_i, count);
+    }
     template <typename Other>
     void append_from(Other const& other) {
         xs.Append(other.xs);
@@ -1295,6 +1327,11 @@ struct SANDBOXCORE_API FVectors3u32 {
         xs[dst_i] = src.xs[src_i];
         ys[dst_i] = src.ys[src_i];
         zs[dst_i] = src.zs[src_i];
+    }
+    auto copy_elements(size_type const dst_i, FVectors3u32 const& src, size_type const src_i, size_type const count) -> void {
+        ml::copy_elements(xs, dst_i, src.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, src.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, src.zs, src_i, count);
     }
     template <typename Other>
     void append_from(Other const& other) {

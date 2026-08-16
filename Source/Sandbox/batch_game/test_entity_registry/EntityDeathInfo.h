@@ -113,6 +113,12 @@ struct SANDBOX_API EntityDeathInfo {
         ml::copy_element(killers, dst_i, other.killers, src_i);
     }
 
+    void copy_elements(int32 const dst_i, EntityDeathInfo const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(reasons, dst_i, other.reasons, src_i, count);
+        ml::copy_elements(victims, dst_i, other.victims, src_i, count);
+        ml::copy_elements(killers, dst_i, other.killers, src_i, count);
+    }
+
     template <typename Other>
     requires ml::SupportsApplyArrayPairsWith<EntityDeathInfo, Other>
     void append_from(Other const& other) {
