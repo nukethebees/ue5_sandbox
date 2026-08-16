@@ -27,9 +27,11 @@ class ATestStaticTurretsProxy
     ATestStaticTurretsProxy();
 
     auto get_team() const { return team; }
+    auto get_health() const noexcept { return health; }
     void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
         actor_config = new_config;
     }
+    void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
@@ -70,6 +72,9 @@ class ATestStaticTurretsProxy
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     ETestTeam team{ETestTeam::White};
+
+    UPROPERTY(EditAnywhere, Category = "Proxy")
+    TOptional<int32> health{NullOpt};
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Test")

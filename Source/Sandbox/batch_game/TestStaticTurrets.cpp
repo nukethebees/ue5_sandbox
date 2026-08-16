@@ -366,7 +366,6 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     ml::add_uninitialised(n_to_add, ismc_transforms, entities);
     entities.target_refresh_countdowns.initialise_last(target_refresh_tick_period, n_to_add);
 
-    ml::fill_last(entities.healths, actor_config->max_health, n_to_add);
     ml::fill_last(entities.target_handles, FRegistryEntityHandle{}, n_to_add);
     entities.laser_cooldowns.zero_last(n_to_add);
 
@@ -383,6 +382,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
         auto const team{proxies[i]->get_team()};
         entities.teams[i] = team;
+        entities.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
 
         entities.target_refresh_countdowns.remaining_ticks[i] =
             static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
