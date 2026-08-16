@@ -60,11 +60,11 @@ concept SupportsSetNum = requires(T& value, int32 count, EAllowShrinking const a
 template <typename Dst, typename Src = Dst>
 concept SupportsCopyElement =
     requires(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
-    {
-        CopyElementTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_element(
-            dst, dst_i, src, src_i)
-    } -> std::same_as<void>;
-};
+        {
+            CopyElementTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_element(
+                dst, dst_i, src, src_i)
+        } -> std::same_as<void>;
+    };
 
 template <typename T>
 consteval bool diagnose_supports_copy_element() {
@@ -80,8 +80,8 @@ concept AllSupportCopyElement = (diagnose_supports_copy_element<std::remove_cvre
 
 // copy_elements
 template <typename Dst, typename Src = Dst>
-concept SupportsCopyElements = requires(
-    Dst& dst, int32 const dst_i, Src const& src, int32 const src_i, int32 const count) {
+concept SupportsCopyElements =
+    requires(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i, int32 const count) {
         {
             CopyElementsTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_elements(
                 dst, dst_i, src, src_i, count)

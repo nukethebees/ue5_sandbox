@@ -38,6 +38,9 @@ class UTestStaticTurretsConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "Awareness")
     float detection_radius{3000.f};
 
+    UPROPERTY(EditAnywhere, Category = "Awareness", meta = (ClampMin = "0.01", UIMin = "0.01"))
+    float target_refresh_frequency{5.f};
+
     UPROPERTY(EditAnywhere, Category = "Combat")
     FTransform fire_point_offset{FTransform::Identity};
 

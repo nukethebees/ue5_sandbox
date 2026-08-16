@@ -126,6 +126,8 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Performance", meta = (ClampMin = "1", UIMin = "1"))
     int32 search_slice_size{64};
 
+    int32 target_refresh_next_offset{0};
+
     // Firing
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> laser_actor{nullptr};

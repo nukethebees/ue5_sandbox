@@ -75,6 +75,8 @@ void ATestStaticTurrets::begin_play() {
         simulation_clock.duration_to_tick_period(actor_config->attack_cooldown)};
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
 
+    target_refresh_next_offset = 0;
+
     configure_ismc();
     register_all_proxies_in_level();
 }
@@ -87,6 +89,7 @@ void ATestStaticTurrets::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_timers);
 
     entities.laser_cooldowns.tick();
+    entities.target_refresh_countdowns.tick();
 }
 void ATestStaticTurrets::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::make_decisions);
@@ -226,28 +229,30 @@ void ATestStaticTurrets::perform_search() {
         auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
         for (int32 i{begin}; i < end; ++i) {
-            if (!entities.target_handles[i].is_null()) {
+            if (!entities.target_refresh_countdowns.try_consume(i)) {
                 continue;
             }
 
-            auto const turret_location{ml::get_vector3f(entities.locations, i)};
-            auto const this_team{entities.teams[i]};
+            if (entities.target_handles[i].is_null()) {
+                auto const turret_location{ml::get_vector3f(entities.locations, i)};
+                auto const this_team{entities.teams[i]};
 
-            TStaticArray<FRegistryEntityHandle, 128> elems;
-            auto const n_entities{entity_registry->collect_non_team_entities_in_range(
-                turret_location, this_team, radius, elems)};
+                TStaticArray<FRegistryEntityHandle, 128> elems;
+                auto const n_entities{entity_registry->collect_non_team_entities_in_range(
+                    turret_location, this_team, radius, elems)};
 
-            entities.target_handles[i] = FRegistryEntityHandle{};
+                entities.target_handles[i] = FRegistryEntityHandle{};
 
-            for (int32 j{0}; j < n_entities; ++j) {
-                auto const target_index{elems[j]};
+                for (int32 j{0}; j < n_entities; ++j) {
+                    auto const target_index{elems[j]};
 
-                if (this_team == entity_registry->get_team(target_index)) {
-                    continue;
+                    if (this_team == entity_registry->get_team(target_index)) {
+                        continue;
+                    }
+
+                    entities.target_handles[i] = target_index;
+                    break;
                 }
-
-                entities.target_handles[i] = target_index;
-                break;
             }
         }
     }};
@@ -342,6 +347,13 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         return;
     }
 
+    check(actor_config->target_refresh_frequency > 0.f);
+    auto const target_refresh_tick_period_unsigned{
+        simulation_clock.frequency_to_tick_period(actor_config->target_refresh_frequency)};
+    check(FPeriodicTickCountdown16::valid_period(target_refresh_tick_period_unsigned));
+    auto const target_refresh_tick_period{
+        static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_tick_period_unsigned)};
+
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
@@ -351,6 +363,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     // Set entity data
     ml::add_uninitialised(n_to_add, ismc_transforms, entities);
+    entities.target_refresh_countdowns.initialise_last(target_refresh_tick_period, n_to_add);
 
     ml::fill_last(entities.healths, actor_config->max_health, n_to_add);
     ml::fill_last(entities.target_handles, FRegistryEntityHandle{}, n_to_add);
@@ -364,6 +377,13 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
         auto const team{proxies[i]->get_team()};
         entities.teams[i] = team;
+
+        entities.target_refresh_countdowns.remaining_ticks[i] =
+            static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
+        ++target_refresh_next_offset;
+        if (target_refresh_next_offset == target_refresh_tick_period) {
+            target_refresh_next_offset = 0;
+        }
 
         // Custom ISMC data
         auto const base{i * n_custom_ismc_floats};
@@ -439,6 +459,7 @@ void ATestStaticTurrets::handle_dead_entities() {
 void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(entities, ismc_transforms);
+    target_refresh_next_offset = 0;
     clear_tick_buffers();
 }
 void ATestStaticTurrets::clear_tick_buffers() {

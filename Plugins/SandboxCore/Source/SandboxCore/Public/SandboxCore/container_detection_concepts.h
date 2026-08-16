@@ -79,9 +79,7 @@ concept HasSetNum = requires(T& value) {
 };
 
 template <typename Dst, typename Src>
-concept HasSubscriptCopy = requires(Dst& dst, Src const& src) {
-    dst[0] = src[0];
-};
+concept HasSubscriptCopy = requires(Dst& dst, Src const& src) { dst[0] = src[0]; };
 
 template <typename Dst, typename Src>
 concept HasCopyElement = requires(Dst& dst, Src const& src) {

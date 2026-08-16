@@ -93,6 +93,11 @@ F_TICK_COUNTDOWN_16 = dependent_type(
     "SandboxCore/tick_countdown.h",
     {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
+F_PERIODIC_TICK_COUNTDOWN_16 = dependent_type(
+    "FPeriodicTickCountdown16",
+    "SandboxCore/periodic_tick_countdown.h",
+    {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
+)
 
 F_INSTANCED_STATIC_MESH_INSTANCE_DATA = dependent_type(
     "FInstancedStaticMeshInstanceData",

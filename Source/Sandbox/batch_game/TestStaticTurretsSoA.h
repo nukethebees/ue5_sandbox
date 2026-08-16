@@ -9,6 +9,7 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/periodic_tick_countdown.h"
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_vectors.h"
 #include "SandboxCore/tick_countdown.h"
@@ -35,6 +36,7 @@ struct SANDBOX_API EntityDataConstView {
             self.locations,
             self.teams,
             self.laser_cooldowns,
+            self.target_refresh_countdowns,
             self.target_handles,
             self.target_locations,
             self.target_velocities,
@@ -56,6 +58,7 @@ struct SANDBOX_API EntityDataConstView {
     FVectors3f::ConstView locations;
     TConstArrayView<ETestTeam> teams;
     FTickCountdown16::ConstView laser_cooldowns;
+    FPeriodicTickCountdown16::ConstView target_refresh_countdowns;
     TConstArrayView<FRegistryEntityHandle> target_handles;
     FVectors3f::ConstView target_locations;
     FVectors3f::ConstView target_velocities;
@@ -73,6 +76,7 @@ struct SANDBOX_API EntityDataView {
             self.locations,
             self.teams,
             self.laser_cooldowns,
+            self.target_refresh_countdowns,
             self.target_handles,
             self.target_locations,
             self.target_velocities,
@@ -99,6 +103,7 @@ struct SANDBOX_API EntityDataView {
     FVectors3f::View locations;
     TArrayView<ETestTeam> teams;
     FTickCountdown16::View laser_cooldowns;
+    FPeriodicTickCountdown16::View target_refresh_countdowns;
     TArrayView<FRegistryEntityHandle> target_handles;
     FVectors3f::View target_locations;
     FVectors3f::View target_velocities;
@@ -122,6 +127,7 @@ struct SANDBOX_API EntityData {
         locations.remove_at_swap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         laser_cooldowns.remove_at_swap(index, count, allow_shrinking);
+        target_refresh_countdowns.remove_at_swap(index, count, allow_shrinking);
         target_handles.RemoveAtSwap(index, count, allow_shrinking);
         target_locations.remove_at_swap(index, count, allow_shrinking);
         target_velocities.remove_at_swap(index, count, allow_shrinking);
@@ -136,6 +142,7 @@ struct SANDBOX_API EntityData {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(laser_cooldowns, dst_i, other.laser_cooldowns, src_i);
+        ml::copy_element(target_refresh_countdowns, dst_i, other.target_refresh_countdowns, src_i);
         ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
         ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
         ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
@@ -148,6 +155,7 @@ struct SANDBOX_API EntityData {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(laser_cooldowns, dst_i, other.laser_cooldowns, src_i, count);
+        ml::copy_elements(target_refresh_countdowns, dst_i, other.target_refresh_countdowns, src_i, count);
         ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
         ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
         ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
@@ -168,6 +176,7 @@ struct SANDBOX_API EntityData {
         ml::append_from(locations, other.locations);
         ml::append_from(teams, other.teams);
         ml::append_from(laser_cooldowns, other.laser_cooldowns);
+        ml::append_from(target_refresh_countdowns, other.target_refresh_countdowns);
         ml::append_from(target_handles, other.target_handles);
         ml::append_from(target_locations, other.target_locations);
         ml::append_from(target_velocities, other.target_velocities);
@@ -209,6 +218,7 @@ struct SANDBOX_API EntityData {
             self.locations,
             self.teams,
             self.laser_cooldowns,
+            self.target_refresh_countdowns,
             self.target_handles,
             self.target_locations,
             self.target_velocities,
@@ -224,6 +234,7 @@ struct SANDBOX_API EntityData {
             self.locations, other.locations,
             self.teams, other.teams,
             self.laser_cooldowns, other.laser_cooldowns,
+            self.target_refresh_countdowns, other.target_refresh_countdowns,
             self.target_handles, other.target_handles,
             self.target_locations, other.target_locations,
             self.target_velocities, other.target_velocities,
@@ -250,6 +261,7 @@ struct SANDBOX_API EntityData {
     FVectors3f locations;
     TArray<ETestTeam> teams;
     FTickCountdown16 laser_cooldowns;
+    FPeriodicTickCountdown16 target_refresh_countdowns;
     TArray<FRegistryEntityHandle> target_handles;
     FVectors3f target_locations;
     FVectors3f target_velocities;

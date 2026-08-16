@@ -85,8 +85,7 @@ void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i
 
 template <typename Dst, typename Src, typename... Rest>
     requires (sizeof...(Rest) % 2 == 0) && SupportsCopyElement<Dst, Src>
-void copy_element(
-    int32 const dst_i, int32 const src_i, Dst& dst, Src const& src, Rest&&... rest) {
+void copy_element(int32 const dst_i, int32 const src_i, Dst& dst, Src const& src, Rest&&... rest) {
     CopyElementTraits<std::remove_cvref_t<Dst>, std::remove_cvref_t<Src>>::copy_element(
         dst, dst_i, src, src_i);
 

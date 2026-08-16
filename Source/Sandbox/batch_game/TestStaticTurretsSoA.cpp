@@ -23,6 +23,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -40,6 +41,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -57,6 +59,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(teams),
         ml::num(laser_cooldowns),
+        ml::num(target_refresh_countdowns),
         ml::num(target_handles),
         ml::num(target_locations),
         ml::num(target_velocities),
@@ -86,6 +89,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         locations.get_view(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_view(offset, count),
+        target_refresh_countdowns.get_view(offset, count),
         TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
@@ -103,6 +107,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -120,6 +125,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -137,6 +143,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(teams),
         ml::num(laser_cooldowns),
+        ml::num(target_refresh_countdowns),
         ml::num(target_handles),
         ml::num(target_locations),
         ml::num(target_velocities),
@@ -173,6 +180,7 @@ void EntityData::reset() {
     ml::reset(locations);
     ml::reset(teams);
     ml::reset(laser_cooldowns);
+    ml::reset(target_refresh_countdowns);
     ml::reset(target_handles);
     ml::reset(target_locations);
     ml::reset(target_velocities);
@@ -184,6 +192,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(teams, count);
     ml::reserve(laser_cooldowns, count);
+    ml::reserve(target_refresh_countdowns, count);
     ml::reserve(target_handles, count);
     ml::reserve(target_locations, count);
     ml::reserve(target_velocities, count);
@@ -195,6 +204,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(laser_cooldowns, count);
+    ml::add_uninitialised(target_refresh_countdowns, count);
     ml::add_uninitialised(target_handles, count);
     ml::add_uninitialised(target_locations, count);
     ml::add_uninitialised(target_velocities, count);
@@ -206,6 +216,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(laser_cooldowns, count);
+    ml::add_defaulted(target_refresh_countdowns, count);
     ml::add_defaulted(target_handles, count);
     ml::add_defaulted(target_locations, count);
     ml::add_defaulted(target_velocities, count);
@@ -217,6 +228,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(laser_cooldowns, count, allow_shrinking);
+    ml::set_num(target_refresh_countdowns, count, allow_shrinking);
     ml::set_num(target_handles, count, allow_shrinking);
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
@@ -230,6 +242,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(laser_cooldowns, indices);
+    ml::apply_permutation(target_refresh_countdowns, indices);
     ml::apply_permutation(target_handles, indices);
     ml::apply_permutation(target_locations, indices);
     ml::apply_permutation(target_velocities, indices);
@@ -246,6 +259,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         locations.get_view(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_view(offset, count),
+        target_refresh_countdowns.get_view(offset, count),
         TArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
@@ -263,6 +277,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -280,6 +295,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         locations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
+        target_refresh_countdowns.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{target_handles}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
@@ -297,6 +313,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(locations),
         ml::num(teams),
         ml::num(laser_cooldowns),
+        ml::num(target_refresh_countdowns),
         ml::num(target_handles),
         ml::num(target_locations),
         ml::num(target_velocities),
