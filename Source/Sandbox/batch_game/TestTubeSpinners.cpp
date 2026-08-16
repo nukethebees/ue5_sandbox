@@ -49,6 +49,7 @@ void ATestTubeSpinners::begin_play() {
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(instances),
     });
 
     configure_ismc();
