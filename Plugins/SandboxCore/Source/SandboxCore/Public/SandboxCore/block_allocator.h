@@ -8,15 +8,22 @@
 #include <limits>
 
 namespace ml {
+enum class EBlockAllocationMode : uint8 {
+    Unreal,
+    VirtualAlloc2,
+};
+
 class SANDBOXCORE_API FBlockAllocator {
   public:
-    FBlockAllocator() = default;
+    explicit FBlockAllocator(EBlockAllocationMode mode) noexcept;
     ~FBlockAllocator();
 
     FBlockAllocator(FBlockAllocator const&) = delete;
     auto operator=(FBlockAllocator const&) -> FBlockAllocator& = delete;
-    FBlockAllocator(FBlockAllocator&&) = delete;
-    auto operator=(FBlockAllocator&&) -> FBlockAllocator& = delete;
+    FBlockAllocator(FBlockAllocator&& other) noexcept;
+    auto operator=(FBlockAllocator&& other) noexcept -> FBlockAllocator&;
+
+    auto allocation_mode() const noexcept -> EBlockAllocationMode { return allocation_mode_; }
 
     template <typename T>
     auto allocate(int32 const count) -> T* {
@@ -27,9 +34,10 @@ class SANDBOXCORE_API FBlockAllocator {
 
         return static_cast<T*>(allocate_impl(object_count * sizeof(T), alignof(T)));
     }
-
   private:
     auto allocate_impl(SIZE_T bytes, SIZE_T alignment) -> void*;
+    void release_allocations();
+    void free_allocation(void* data);
 
     struct FAllocation {
         void* data{nullptr};
@@ -38,6 +46,7 @@ class SANDBOXCORE_API FBlockAllocator {
 
     static constexpr int32 max_allocation_count{8};
 
+    EBlockAllocationMode allocation_mode_;
     TFixedArray<FAllocation, max_allocation_count> allocations_{};
 };
 }
