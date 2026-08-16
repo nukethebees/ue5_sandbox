@@ -274,7 +274,6 @@ void ATestStaticTurrets::fire_at_enemies() {
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
-    FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
 
@@ -303,9 +302,9 @@ void ATestStaticTurrets::fire_at_enemies() {
             continue;
         }
 
-        auto const loc_x{entities.locations.xs[i] + fire_point_offset.X};
-        auto const loc_y{entities.locations.ys[i] + fire_point_offset.Y};
-        auto const loc_z{entities.locations.zs[i] + fire_point_offset.Z};
+        auto const loc_x{entities.fire_point_locations.xs[i]};
+        auto const loc_y{entities.fire_point_locations.ys[i]};
+        auto const loc_z{entities.fire_point_locations.zs[i]};
         FVector3f const laser_location{
             loc_x,
             loc_y,
@@ -357,6 +356,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+    FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
 
     TArray<float> custom_data_spawn_buffer;
     custom_data_spawn_buffer.SetNumUninitialized(n_to_add * n_custom_ismc_floats,
@@ -375,6 +375,11 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 
         ismc_transforms[i] = transform;
         ml::assign(entities.locations, i, transform.GetLocation());
+        ml::assign(entities.fire_point_locations,
+                   i,
+                   entities.locations.xs[i] + fire_point_offset.X,
+                   entities.locations.ys[i] + fire_point_offset.Y,
+                   entities.locations.zs[i] + fire_point_offset.Z);
 
         auto const team{proxies[i]->get_team()};
         entities.teams[i] = team;
