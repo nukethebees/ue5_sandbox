@@ -1,5 +1,6 @@
 #include "TestBatchOrchestrator.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
@@ -94,7 +95,8 @@ void bind_and_destroy_proxy_actors(UWorld& world,
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
-ATestBatchOrchestrator::ATestBatchOrchestrator() {
+ATestBatchOrchestrator::ATestBatchOrchestrator()
+    : query_manager{entity_registry} {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -652,6 +654,9 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
                       mission_manager);
 
     lasers->set_spatial_query_manager(query_manager);
+    capital_ships->set_spatial_query_manager(query_manager);
+    capital_ship_fighters->set_spatial_query_manager(query_manager);
+    turrets->set_spatial_query_manager(query_manager);
 
     ml::invoke_on_all([&](auto actor) { actor->set_laser_actor(*lasers); },
                       capital_ship_fighters,

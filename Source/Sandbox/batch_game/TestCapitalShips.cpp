@@ -1,5 +1,6 @@
 #include "TestCapitalShips.h"
 
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -58,6 +59,7 @@ void ATestCapitalShips::begin_play() {
 
     auto* world{GetWorld()};
     check(entity_registry);
+    check(spatial_query_manager);
     ml::fatal_if_uobject_ptrs_invalid({
         {
             SANDBOX_NAMED_UOBJECT_PTR(actor_config),
@@ -140,6 +142,7 @@ void ATestCapitalShips::make_decisions() {
     fighter_reassignment_queue.reset();
 
     ml::batch::refresh_targets(*entity_registry,
+                               *spatial_query_manager,
                                entities.target_handles,
                                indices_without_targets_buffer,
                                entities.teams,

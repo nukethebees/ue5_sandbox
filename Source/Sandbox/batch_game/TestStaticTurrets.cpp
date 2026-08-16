@@ -1,5 +1,6 @@
 #include "TestStaticTurrets.h"
 
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
@@ -55,6 +56,7 @@ void ATestStaticTurrets::begin_play() {
 
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
     check(entity_registry);
+    check(spatial_query_manager);
 
     ml::fatal_if_uobject_ptrs_invalid({
         {
@@ -238,7 +240,7 @@ void ATestStaticTurrets::perform_search() {
                 auto const this_team{entities.teams[i]};
 
                 TStaticArray<FRegistryEntityHandle, 128> elems;
-                auto const n_entities{entity_registry->collect_non_team_entities_in_range(
+                auto const n_entities{spatial_query_manager->collect_non_team_entities_in_range(
                     turret_location, this_team, radius, elems)};
 
                 entities.target_handles[i] = FRegistryEntityHandle{};

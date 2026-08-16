@@ -33,6 +33,10 @@ struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 struct FTestStaticTurretsSpatialQueryAccess;
 
+namespace ml {
+struct FSpatialQueryManager;
+}
+
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
@@ -72,6 +76,9 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+    void set_spatial_query_manager(ml::FSpatialQueryManager const& manager) {
+        spatial_query_manager = &manager;
+    }
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
@@ -112,6 +119,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     // Entity Data
     FTestEntityRegistry* entity_registry{nullptr};
+    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
 
     EntityData entities{};
     EntityDeathInfo entity_death_info;

@@ -38,6 +38,10 @@ class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
 struct FTestCapitalShipsSpatialQueryAccess;
 
+namespace ml {
+struct FSpatialQueryManager;
+}
+
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
@@ -81,6 +85,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+    void set_spatial_query_manager(ml::FSpatialQueryManager const& manager) {
+        spatial_query_manager = &manager;
+    }
 
     inline void bind_fighters(ATestCapitalShipFighters& fighters) {
         fighters_interface.bind(fighters);
@@ -167,6 +174,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
     FTestEntityRegistry* entity_registry{nullptr};
+    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
 
     // Visuals
     UPROPERTY(EditDefaultsOnly, Category = "Sandbox")

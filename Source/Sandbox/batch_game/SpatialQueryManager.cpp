@@ -1,11 +1,19 @@
 #include "SpatialQueryManager.h"
 
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+
+#include <SandboxCore/array_checks.h>
+#include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <functional>
 #include <utility>
 
 namespace ml {
+FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry) noexcept
+    : entity_registry{&in_entity_registry} {}
+
 void FSpatialQueryManager::initialise(ATestSpaceShip const* const player_ship,
                                       ATestCapitalShips const& capital_ships,
                                       ATestCapitalShipFighters const& capital_ship_fighters,
@@ -137,5 +145,123 @@ void FSpatialQueryManager::resolve_hits(
                 break;
         }
     }
+}
+
+auto FSpatialQueryManager::collect_non_team_entities_in_range(
+    FVector3f const& origin,
+    ETestTeam const team,
+    float const radius,
+    TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range);
+
+    auto const& entity_data{entity_registry->get_entity_data()};
+    auto const generations{entity_registry->get_generations()};
+    int32 count{0};
+
+    auto const radius_squared{radius * radius};
+    auto const n{entity_registry->get_num_elements()};
+    auto const n_out_limit{out_entities.Num()};
+
+    auto const ox{origin.X};
+    auto const oy{origin.Y};
+    auto const oz{origin.Z};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) {
+            continue;
+        }
+        if (entity_data.teams[i] == team) {
+            continue;
+        }
+
+        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
+        if (dist_sq > radius_squared) {
+            continue;
+        }
+        out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
+
+        if (count >= n_out_limit) {
+            break;
+        }
+    }
+
+    return count;
+}
+
+void FSpatialQueryManager::are_entities_within_dist_sq(float const dist_sq_threshold,
+                                                       FVectors3f const& locations,
+                                                       TArrayView<bool> const results) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::are_entities_within_dist_sq);
+
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(locations),
+        SANDBOX_NAMED_NUM(results),
+    });
+    ml::fill(results, false);
+
+    auto const& entity_data{entity_registry->get_entity_data()};
+    auto const n_inputs{ml::num(locations)};
+    auto const n_entities{ml::num(entity_data.locations)};
+
+    for (int32 input_i{0}; input_i < n_inputs; ++input_i) {
+        float x{locations.xs[input_i]};
+        float y{locations.zs[input_i]};
+        float z{locations.ys[input_i]};
+
+        for (int32 entity_i{0}; entity_i < n_entities; ++entity_i) {
+            if (!entity_data.alive[entity_i]) {
+                continue;
+            }
+
+            float const dist_sq{ml::dist_sq(entity_data.locations, entity_i, x, y, x)};
+            if (dist_sq <= dist_sq_threshold) {
+                results[input_i] = true;
+                break;
+            }
+        }
+    }
+}
+
+auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team) const
+    -> FRegistryEntityHandle {
+    auto const& entity_data{entity_registry->get_entity_data()};
+    auto const generations{entity_registry->get_generations()};
+    auto const n{entity_registry->get_num_elements()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) {
+            continue;
+        }
+        if (entity_data.teams[i] != team) {
+            return {i, generations[i]};
+        }
+    }
+
+    return {};
+}
+
+auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team,
+                                                   ETestEntityType const entity_type) const
+    -> FRegistryEntityHandle {
+    auto const& entity_data{entity_registry->get_entity_data()};
+    auto const generations{entity_registry->get_generations()};
+    auto const n{entity_registry->get_num_elements()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) {
+            continue;
+        }
+        if (entity_data.teams[i] == team) {
+            continue;
+        }
+        if (entity_data.entity_types[i] != entity_type) {
+            continue;
+        }
+
+        return {i, generations[i]};
+    }
+
+    return {};
 }
 }

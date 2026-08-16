@@ -13,6 +13,10 @@ struct FRegistryEntityHandle;
 struct EntityDeathInfo;
 class UPrimitiveComponent;
 
+namespace ml {
+struct FSpatialQueryManager;
+}
+
 namespace ml::batch {
 void resolve_damage_events(FTestEntityRegistry const& registry,
                            TArray<FRegistryEntityHandle>& entity_handles,
@@ -26,6 +30,7 @@ void resolve_ismc_hits(TConstArrayView<FSpatialQueryHit> hits,
                        TConstArrayView<FRegistryEntityHandle> entity_handles);
 
 void refresh_targets(FTestEntityRegistry const& registry,
+                     FSpatialQueryManager const& spatial_query_manager,
                      TArray<FRegistryEntityHandle>& target_handles,
                      TArray<int32>& indices_without_targets,
                      TConstArrayView<ETestTeam> const teams,

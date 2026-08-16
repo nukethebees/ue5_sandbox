@@ -36,6 +36,10 @@ struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 struct FTestCapitalShipFightersSpatialQueryAccess;
 
+namespace ml {
+struct FSpatialQueryManager;
+}
+
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
 }
@@ -90,6 +94,9 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+    void set_spatial_query_manager(ml::FSpatialQueryManager const& manager) {
+        spatial_query_manager = &manager;
+    }
 
     auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
     void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
@@ -227,6 +234,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     EntityBuffers entity_buffers{};
 
     FTestEntityRegistry* entity_registry{nullptr};
+    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
     RegistryEntityData registry_update_data;
 
     // Spawning

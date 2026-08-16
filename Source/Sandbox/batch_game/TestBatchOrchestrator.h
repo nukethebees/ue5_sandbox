@@ -148,6 +148,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     tick_type completed_ticks{0};
 
     FHUDManager hud_manager;
+    FTestEntityRegistry entity_registry;
     ml::FSpatialQueryManager query_manager;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
@@ -166,7 +167,6 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestTubeSpinners> spinners{nullptr};
 
-    FTestEntityRegistry entity_registry;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")

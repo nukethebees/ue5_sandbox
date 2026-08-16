@@ -1,5 +1,6 @@
 #include "TestCapitalShipFighters.h"
 
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchActorCore.h>
@@ -151,6 +152,7 @@ void ATestCapitalShipFighters::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
     check(entity_registry);
+    check(spatial_query_manager);
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
@@ -235,7 +237,7 @@ void ATestCapitalShipFighters::make_decisions() {
             }
         }
 
-        auto const n_nearby_entities{entity_registry->collect_non_team_entities_in_range(
+        auto const n_nearby_entities{spatial_query_manager->collect_non_team_entities_in_range(
             fighter_location, data.teams[i], awareness_radius, nearby_entities)};
 
         auto const aim_direction{ml::get_vector3f(data.aim_directions, i)};

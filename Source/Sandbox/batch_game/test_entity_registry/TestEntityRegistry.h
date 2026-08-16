@@ -123,18 +123,6 @@ struct SANDBOX_API FTestEntityRegistry {
                                    float const radius,
                                    TArrayView<FRegistryEntityHandle> const out_entities) const
         -> int32;
-    auto collect_non_team_entities_in_range(
-        FVector3f const& origin,
-        ETestTeam const team,
-        float const radius,
-        TArrayView<FRegistryEntityHandle> const out_entities) const -> int32;
-    auto get_any_non_team_entity(ETestTeam const team) const -> FRegistryEntityHandle;
-    auto get_any_non_team_entity(ETestTeam const team, ETestEntityType const entity_type) const
-        -> FRegistryEntityHandle;
-    void are_entities_within_dist_sq(float const dist_sq,
-                                     FVectors3f const& locations,
-                                     TArrayView<bool> results);
-
     // Validation
     void validate_array_sizes() const;
     void validate_handles(TConstArrayView<FRegistryEntityHandle> const handles);

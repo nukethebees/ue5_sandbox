@@ -1,5 +1,6 @@
 #include "TestBatchActorCore.h"
 
+#include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
@@ -73,6 +74,7 @@ void resolve_ismc_hits(TConstArrayView<FSpatialQueryHit> const hits,
 }
 
 void refresh_targets(FTestEntityRegistry const& registry,
+                     FSpatialQueryManager const& spatial_query_manager,
                      TArray<FRegistryEntityHandle>& target_handles,
                      TArray<int32>& indices_without_targets,
                      TConstArrayView<ETestTeam> const teams,
@@ -90,7 +92,7 @@ void refresh_targets(FTestEntityRegistry const& registry,
     }
 
     for (int32 const i : indices_without_targets) {
-        target_handles[i] = registry.get_any_non_team_entity(teams[i], target_type);
+        target_handles[i] = spatial_query_manager.get_any_non_team_entity(teams[i], target_type);
     }
 }
 }
