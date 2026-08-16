@@ -10,8 +10,10 @@
 		"Sandbox.LevelTests.FighterCapitalAttack.Main",
 		"Sandbox.LevelTests.FighterLosFailureHandling.Main",
 		"Sandbox.LevelTests.FightersInterceptCapital.MainTest",
+		"Sandbox.LevelTests.FightersStandbyTransition.Main",
 		"Sandbox.LevelTests.PlayerShipVsCapital.Main",
-		"Sandbox.LevelTests.SimpleBatch.FuncT_simple_batch",
+		"Sandbox.LevelTests.SpatialQueryLineOfSight.ResolvesLineOfSightBatches",
+		"Sandbox.LevelTests.SpatialQueryManager.ResolvesHitBatches",
 		"Sandbox.LevelTests.TestBatchOrchestratorSetup.SimulationClockConversions",
 		"Sandbox.LevelTests.TestBatchOrchestratorSetup.SpawnMissingActors",
 		"Sandbox.LevelTests.TestCapitalShipProxy.ProxyHealthOverridesConfig",
@@ -28,6 +30,7 @@
 		"Sandbox.LevelTests.TestMissionManager.KillEnemies",
 		"Sandbox.LevelTests.TestMissionManager.KillEnemiesWithinTime",
 		"Sandbox.LevelTests.TestMissionManager.SurviveTime",
-		"Sandbox.LevelTests.TestPlayerShipDeath.LethalDamageDestroysPlayerShip"
+		"Sandbox.LevelTests.TestPlayerShipDeath.LethalDamageDestroysPlayerShip",
+		"Sandbox.LevelTests.TurretsKillOneTurret.MainTest"
 	]
 }
