@@ -4,6 +4,7 @@
 
 namespace ml {
 void FSoftTestAssertions::display_result(bool const passed, FString const& msg) {
+    check(test_runner);
     if (!passed) {
         test_runner->AddError(msg);
     } else if (log_successful_assertions) {
