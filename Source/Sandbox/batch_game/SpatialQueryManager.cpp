@@ -162,6 +162,9 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     auto const radius_squared{radius * radius};
     auto const n{entity_registry->get_num_elements()};
     auto const n_out_limit{out_entities.Num()};
+    if (n_out_limit == 0) {
+        return 0;
+    }
 
     auto const ox{origin.X};
     auto const oy{origin.Y};
@@ -205,16 +208,16 @@ void FSpatialQueryManager::are_entities_within_dist_sq(float const dist_sq_thres
     auto const n_entities{ml::num(entity_data.locations)};
 
     for (int32 input_i{0}; input_i < n_inputs; ++input_i) {
-        float x{locations.xs[input_i]};
-        float y{locations.zs[input_i]};
-        float z{locations.ys[input_i]};
+        float const x{locations.xs[input_i]};
+        float const y{locations.ys[input_i]};
+        float const z{locations.zs[input_i]};
 
         for (int32 entity_i{0}; entity_i < n_entities; ++entity_i) {
             if (!entity_data.alive[entity_i]) {
                 continue;
             }
 
-            float const dist_sq{ml::dist_sq(entity_data.locations, entity_i, x, y, x)};
+            float const dist_sq{ml::dist_sq(entity_data.locations, entity_i, x, y, z)};
             if (dist_sq <= dist_sq_threshold) {
                 results[input_i] = true;
                 break;
