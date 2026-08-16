@@ -40,7 +40,7 @@ struct ThreadLocalCollisionData {
 }
 
 UCLASS()
-class ATestLasers : public AActor {
+class SANDBOX_API ATestLasers : public AActor {
     GENERATED_BODY()
   public:
     using SpawnRequests = ml::test_lasers::SpawnRequests;
@@ -74,6 +74,8 @@ class ATestLasers : public AActor {
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
     void set_spatial_query_manager(ml::FSpatialQueryManager& manager) { query_manager = &manager; }
+
+    auto get_number_spawned() const { return number_spawned; }
 
     // Spawning / configuration
     void queue_laser_spawns(SpawnRequests const& spawn_data);
@@ -145,6 +147,8 @@ class ATestLasers : public AActor {
 
     // Hits
     HitDetails hit_details;
+
+    int32 number_spawned{0};
 
     // Debugging
     bool have_warned_hit_effect{false};

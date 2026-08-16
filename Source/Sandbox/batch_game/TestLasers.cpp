@@ -67,6 +67,8 @@ void ATestLasers::begin_play() {
     check(entity_registry);
     check(query_manager);
 
+    number_spawned = 0;
+
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config),
     });
@@ -203,6 +205,7 @@ void ATestLasers::process_pending_spawns() {
         custom_data_spawn_buffer[base + 3] = lifetime;
         custom_data_spawn_buffer[base + 4] = time;
     }
+    number_spawned += n_to_add;
 
     /* ---------------------------------------------- */
     // ISMC data
