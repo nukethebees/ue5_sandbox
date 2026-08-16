@@ -703,6 +703,7 @@ def static_turrets_soa_module() -> Module:
             soa_member("fire_point_locations", F_VECTORS_3F),
             tarray_member("teams", E_TEST_TEAM),
             soa_member("laser_cooldowns", F_TICK_COUNTDOWN_16),
+            tarray_member("laser_damages", "int32"),
             soa_member("target_refresh_countdowns", F_PERIODIC_TICK_COUNTDOWN_16),
             tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
             soa_member("target_locations", F_VECTORS_3F),

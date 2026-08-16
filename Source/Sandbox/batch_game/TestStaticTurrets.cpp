@@ -268,7 +268,6 @@ void ATestStaticTurrets::fire_at_enemies() {
 
     auto const n{get_num_instances()};
     auto const laser_speed{actor_config->laser_speed};
-    auto const laser_damage{actor_config->laser_damage};
     auto const laser_max_distance{actor_config->laser_max_distance};
 
     auto const disengage_radius{get_disengage_radius()};
@@ -352,7 +351,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
         ml::append(new_lasers.rotations, fire_dir);
         ml::append(new_lasers.base_velocities, 0.f, 0.f, 0.f);
-        new_lasers.damages.Add(laser_damage);
+        new_lasers.damages.Add(entities.laser_damages[i]);
         new_lasers.speeds.Add(laser_speed);
         new_lasers.max_distances.Add(laser_max_distance);
         new_lasers.instigator_handles.Add(entities.handles[i]);
@@ -412,6 +411,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         auto const team{proxies[i]->get_team()};
         entities.teams[i] = team;
         entities.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
+        entities.laser_damages[i] = proxies[i]->get_laser_damage().Get(actor_config->laser_damage);
 
         entities.target_refresh_countdowns.remaining_ticks[i] =
             static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
