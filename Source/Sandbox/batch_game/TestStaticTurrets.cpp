@@ -303,8 +303,6 @@ void ATestStaticTurrets::fire_at_enemies() {
             continue;
         }
 
-        auto const target_velocity{ml::get_vector3f(entities.target_velocities, i)};
-
         auto const loc_x{entities.locations.xs[i] + fire_point_offset.X};
         auto const loc_y{entities.locations.ys[i] + fire_point_offset.Y};
         auto const loc_z{entities.locations.zs[i] + fire_point_offset.Z};
@@ -314,6 +312,7 @@ void ATestStaticTurrets::fire_at_enemies() {
             loc_z,
         };
 
+        auto const target_velocity{ml::get_vector3f(entities.target_velocities, i)};
         auto const intercept_time{ml::solve_intercept_time(
             laser_location, target_location, target_velocity, laser_speed)};
 
