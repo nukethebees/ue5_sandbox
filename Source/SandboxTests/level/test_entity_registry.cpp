@@ -1,4 +1,5 @@
 #include <SandboxTests/support/SimulationTestAssets.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -6,7 +7,6 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/core/SandboxDeveloperSettings.h>
 #include <Sandbox/utilities/enums.h>
@@ -29,7 +29,6 @@
 #include <Editor.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
-#include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
 TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
@@ -130,25 +129,12 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
                     return;
                 }
 
-                auto const player_class{test_config->actor_classes.player_ship_class};
-                if (!checks.is_true(static_cast<bool>(player_class),
-                                    TEXT("Player ship class is configured"))) {
-                    return;
-                }
-
                 auto* const player_config{simulation_config->player_ship_config.Get()};
-                if (!checks.not_nullptr(player_config, TEXT("Player ship config is available"))) {
+                auto* const player_ship{ml::spawn_player_ship(
+                    *world, test_config->actor_classes.player_ship_class, player_config)};
+                if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
                     return;
                 }
-
-                auto* const player_ship{
-                    world->SpawnActorDeferred<ATestSpaceShip>(player_class, FTransform::Identity)};
-                if (!checks.not_nullptr(player_ship, TEXT("Player ship is spawned"))) {
-                    return;
-                }
-
-                player_ship->set_actor_config(player_config);
-                UGameplayStatics::FinishSpawningActor(player_ship, FTransform::Identity);
 
                 auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
                 if (!checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {

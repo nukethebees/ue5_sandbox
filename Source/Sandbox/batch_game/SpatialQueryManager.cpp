@@ -7,18 +7,30 @@
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
+#include <Engine/World.h>
+
 #include <functional>
 #include <utility>
 
 namespace ml {
+namespace {
+// Spatial query hits are ordered by component pointer ascending according to std::less.
+auto spatial_query_component_less(UPrimitiveComponent const* const lhs,
+                                  UPrimitiveComponent const* const rhs) -> bool {
+    return std::less<UPrimitiveComponent const*>{}(lhs, rhs);
+}
+}
+
 FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry) noexcept
     : entity_registry{&in_entity_registry} {}
 
-void FSpatialQueryManager::initialise(ATestSpaceShip const* const player_ship,
+void FSpatialQueryManager::initialise(UWorld& in_world,
+                                      ATestSpaceShip const* const player_ship,
                                       ATestCapitalShips const& capital_ships,
                                       ATestCapitalShipFighters const& capital_ship_fighters,
                                       ATestStaticTurrets const& static_turrets,
                                       ATestTubeSpinners const& tube_spinners) {
+    world = &in_world;
     player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};
     capital_ships_access = FTestCapitalShipsSpatialQueryAccess{&capital_ships};
     capital_ship_fighters_access =
@@ -89,13 +101,11 @@ void FSpatialQueryManager::resolve_hits(
 
     auto previous_kind{EHitResolverKind::Unknown};
     auto const* previous_component{static_cast<UPrimitiveComponent const*>(nullptr)};
-    std::less<void const*> const pointer_less{};
-
     for (int32 i{}; i < n; ++i) {
         auto const& hit{hits[i]};
         if (hit.component != previous_component) {
             if (i > 0) {
-                check(pointer_less(previous_component, hit.component));
+                check(spatial_query_component_less(previous_component, hit.component));
             }
             previous_component = hit.component;
             previous_kind = classify_component(hit.component);
@@ -144,6 +154,54 @@ void FSpatialQueryManager::resolve_hits(
             case EHitResolverKind::Count:
                 break;
         }
+    }
+}
+
+void FSpatialQueryManager::trace_line_of_sight(
+    FVectors3f::ConstView const start_locations,
+    FVectors3f::ConstView const end_locations,
+    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::trace_line_of_sight);
+
+    auto const n{start_locations.num()};
+    check(n == end_locations.num());
+    check(n == out_entity_handles.Num());
+    check(IsValid(world));
+
+    ml::fill(out_entity_handles, FRegistryEntityHandle{});
+
+    line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
+    sorted_line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
+    sorted_line_of_sight_entity_handles.SetNumUninitialized(n, EAllowShrinking::No);
+    line_of_sight_sort_indices.SetNumUninitialized(n, EAllowShrinking::No);
+
+    FHitResult hit_result{};
+    for (int32 i{}; i < n; ++i) {
+        hit_result.Reset();
+
+        auto const did_hit{world->LineTraceSingleByChannel(hit_result,
+                                                           ml::get_vector3d(start_locations, i),
+                                                           ml::get_vector3d(end_locations, i),
+                                                           ECC_Visibility)};
+        line_of_sight_hits[i] = did_hit
+                                  ? FSpatialQueryHit{hit_result.GetComponent(), hit_result.Item}
+                                  : FSpatialQueryHit{};
+    }
+
+    ml::fill_indices(line_of_sight_sort_indices);
+    line_of_sight_sort_indices.Sort([this](int32 const lhs, int32 const rhs) {
+        return spatial_query_component_less(line_of_sight_hits[lhs].component,
+                                            line_of_sight_hits[rhs].component);
+    });
+
+    for (int32 i{}; i < n; ++i) {
+        sorted_line_of_sight_hits[i] = line_of_sight_hits[line_of_sight_sort_indices[i]];
+    }
+
+    resolve_hits(sorted_line_of_sight_hits, sorted_line_of_sight_entity_handles);
+
+    for (int32 i{}; i < n; ++i) {
+        out_entity_handles[line_of_sight_sort_indices[i]] = sorted_line_of_sight_entity_handles[i];
     }
 }
 

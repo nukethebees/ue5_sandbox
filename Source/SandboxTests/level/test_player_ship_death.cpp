@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxTests/support/level_checks.h>
@@ -18,7 +19,6 @@
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
 #include <Engine/World.h>
-#include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
 TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
@@ -52,7 +52,16 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
         samples = {};
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder);
+        level_setup->setup(
+            TestCommandBuilder,
+            [this](UWorld& world, UTestSimulationConfig const& config) {
+                player_ship_pre_begin_play(world, config);
+            },
+            [this](UWorld& world,
+                   UTestSimulationConfig const& config,
+                   ATestBatchOrchestrator& orchestrator) {
+                player_ship_post_orchestrator_spawn(world, config, orchestrator);
+            });
     }
 
     AFTER_EACH()
@@ -72,13 +81,46 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
             .Then([this] { check_player_ship_death(); });
     }
   private:
+    void player_ship_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
+        auto* const spawned_player_ship{
+            ml::spawn_player_ship(world,
+                                  config.actor_classes.player_ship_class,
+                                  config.simulation_config->player_ship_config.Get())};
+        if (!checks.is_valid(spawned_player_ship, TEXT("Player ship is spawned"))) {
+            return;
+        }
+
+        player_ship = spawned_player_ship;
+    }
+
+    void player_ship_post_orchestrator_spawn(
+        UWorld & world, UTestSimulationConfig const& config, ATestBatchOrchestrator& orchestrator) {
+        if (!checks.is_true(player_ship.IsValid(), TEXT("Player ship is available"))) {
+            return;
+        }
+
+        orchestrator.set_player_ship(*const_cast<ATestSpaceShip*>(player_ship.Get()));
+    }
+
     void queue_player_ship_death() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
-        auto* const ship{const_cast<ATestSpaceShip*>(&test_driver->get_player_ship())};
 
-        player_ship = ship;
+        auto* const ship{test_driver->orchestrator.get_player_ship()};
+        checks.is_valid(ship, TEXT("Player ship is valid"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        player_ship = const_cast<ATestSpaceShip*>(ship);
         player_ship_handle = ship->get_entity_handle();
         player_ship_id = ship->get_unique_id();
+
+        auto const& registry{test_driver->orchestrator.get_entity_registry()};
+        checks.is_true(registry.is_valid_handle(player_ship_handle),
+                       TEXT("Player ship handle is valid"));
+        checks.is_true(registry.is_valid_unique_id(player_ship_id),
+                       TEXT("Player ship ID is valid"));
+
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         TArray<FRegistryEntityHandle> const targets{player_ship_handle};
         test_driver->timeline
@@ -94,6 +136,12 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
 
     void on_end_tick(ATestBatchOrchestrator&) {
         auto const& unique_entities{test_driver->registry.get_unique_entities()};
+
+        if (!checks.is_true(unique_entities.alive.IsValidIndex(player_ship_id.id),
+                            TEXT("Check player id is valid"))) {
+            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        }
+
         samples.add(test_driver->get_time(),
                     FSimulationSample{test_driver->registry.is_valid_dead(player_ship_handle),
                                       IsValid(player_ship.Get()),

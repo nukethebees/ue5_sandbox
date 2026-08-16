@@ -7,6 +7,7 @@
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
@@ -346,6 +347,14 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
     // Player kill
     /* ------------------------------------------------------------------------------------------ */
     void player_kill_pre_begin_play(UWorld & world, UTestSimulationConfig const& config) {
+        auto* const player_ship{
+            ml::spawn_player_ship(world,
+                                  config.actor_classes.player_ship_class,
+                                  config.simulation_config->player_ship_config.Get())};
+        if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
+            return;
+        }
+
         ml::spawn_capital_proxy(world,
                                 config,
                                 checks,
@@ -354,15 +363,21 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
     }
     void player_kill_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+
+        auto* player_ship{ml::get_first_actor<ATestSpaceShip>(test_driver->world)};
+        if (!checks.is_true(IsValid(player_ship), TEXT("Got player ship"))) {
+            return;
+        }
+        test_driver->orchestrator.set_player_ship(*player_ship);
+
         if (!initialise_headless_hud_manager()) {
             return;
         }
-        auto const& player_ship{test_driver->get_player_ship()};
         auto const& capitals{test_driver->get_capital_ships()};
         check(capitals.get_num_instances() == 1);
 
         TArray<FRegistryEntityHandle> const targets{capitals.get_handle(0)};
-        auto const instigator{player_ship.get_entity_handle()};
+        auto const instigator{player_ship->get_entity_handle()};
         test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
             test_driver->queue_kills(targets, instigator);
         });

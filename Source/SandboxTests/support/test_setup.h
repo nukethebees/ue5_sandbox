@@ -18,6 +18,8 @@ class ATestBatchOrchestrator;
 
 namespace ml {
 using FConfigureBatchTestLevel = TFunction<void(UWorld&, UTestSimulationConfig const&)>;
+using FConfigureBatchTestOrchestrator =
+    TFunction<void(UWorld&, UTestSimulationConfig const&, ATestBatchOrchestrator&)>;
 
 class FTestBatchOrchestratorLevelSetup {
   public:
@@ -33,7 +35,9 @@ class FTestBatchOrchestratorLevelSetup {
     auto operator=(FTestBatchOrchestratorLevelSetup&&)
         -> FTestBatchOrchestratorLevelSetup& = delete;
 
-    void setup(FTestCommandBuilder& command_builder, FConfigureBatchTestLevel configure_level = {});
+    void setup(FTestCommandBuilder& command_builder,
+               FConfigureBatchTestLevel configure_level = {},
+               FConfigureBatchTestOrchestrator configure_orchestrator = {});
     void teardown();
 
     auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator; }
@@ -48,6 +52,7 @@ class FTestBatchOrchestratorLevelSetup {
     ATestBatchOrchestrator* orchestrator{nullptr};
     FDelegateHandle map_change_handle{};
     FConfigureBatchTestLevel configure_level{};
+    FConfigureBatchTestOrchestrator configure_orchestrator{};
     bool actors_spawned{false};
 };
 

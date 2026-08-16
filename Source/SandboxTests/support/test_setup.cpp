@@ -41,13 +41,16 @@ FTestBatchOrchestratorLevelSetup::FTestBatchOrchestratorLevelSetup(
     , test_runner{&new_test_runner}
     , checks{&new_checks} {}
 
-void FTestBatchOrchestratorLevelSetup::setup(FTestCommandBuilder& command_builder,
-                                             FConfigureBatchTestLevel new_configure_level) {
+void FTestBatchOrchestratorLevelSetup::setup(
+    FTestCommandBuilder& command_builder,
+    FConfigureBatchTestLevel new_configure_level,
+    FConfigureBatchTestOrchestrator new_configure_orchestrator) {
     check(spawner);
     check(test_runner);
     check(checks);
 
     configure_level = MoveTemp(new_configure_level);
+    configure_orchestrator = MoveTemp(new_configure_orchestrator);
     orchestrator = nullptr;
     actors_spawned = false;
 
@@ -85,6 +88,7 @@ void FTestBatchOrchestratorLevelSetup::teardown() {
     orchestrator = nullptr;
     test_runner = nullptr;
     configure_level = {};
+    configure_orchestrator = {};
     actors_spawned = false;
 }
 
@@ -116,8 +120,13 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
     new_orchestrator->set_test_config(*config);
     new_orchestrator->spawn_missing_actors();
 
-    UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity);
-    return true;
+    if (configure_orchestrator) {
+        configure_orchestrator(world, *config, *new_orchestrator);
+    }
+
+    auto* const finished_orchestrator{
+        UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity)};
+    return checks->is_valid(finished_orchestrator, TEXT("Orchestrator finish spawning succeeded"));
 }
 
 void FTestBatchOrchestratorLevelSetup::resolve_orchestrator() {
