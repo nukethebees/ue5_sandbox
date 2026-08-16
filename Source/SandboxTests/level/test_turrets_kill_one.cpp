@@ -1,6 +1,7 @@
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
+#include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestStaticTurretsProxy.h>
 
@@ -12,10 +13,14 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <Components/BoxComponent.h>
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Editor.h>
+#include <Engine/World.h>
 #include <EngineUtils.h>
+#include <GameFramework/Actor.h>
+#include <Kismet/GameplayStatics.h>
 
 namespace {
 using time_type = ml::TestSimulationDriver::time_type;
@@ -344,6 +349,182 @@ TEST_CLASS(ZeroDamageTurrets, "Sandbox.LevelTests")
             .Then([this] {
                 full_checks();
                 SANDBOX_TESTS_ASSERT_ALL_PASSED(state.checks);
+            });
+    }
+};
+
+TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
+{
+    using ThisClass = TurretLineOfSightBlocking;
+    using time_type = ml::TestSimulationDriver::time_type;
+
+    static constexpr time_type blocker_scheduled_spawn_time{1.0};
+    static constexpr time_type blocker_grace_period{0.1};
+    static constexpr time_type test_end_time{2.5};
+    FTimespan const timeout{0, 0, 4};
+
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
+    ml::FSoftTestAssertions checks{};
+    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
+    ml::TimeSeriesData<int32> laser_counts;
+    ml::TimeSeriesData<int32> entity_counts;
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
+    TOptional<time_type> blocker_spawn_time{NullOpt};
+
+    BEFORE_EACH()
+    {
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
+        test_driver.Reset();
+        blocker_spawn_time.Reset();
+
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
+        level_setup->setup(TestCommandBuilder, [this](UWorld& world, UTestSimulationConfig const&) {
+            spawn_turret_proxies(world);
+        });
+    }
+    AFTER_EACH()
+    {
+        if (test_driver.IsSet()) {
+            test_driver->orchestrator.clear_end_tick_test_hook();
+            test_driver->orchestrator.pause_simulation();
+        }
+
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
+    }
+  private:
+    void spawn_turret_proxy(UWorld & world, FVector const location, ETestTeam const team) {
+        auto* const proxy{world.SpawnActorDeferred<ATestStaticTurretsProxy>(
+            ATestStaticTurretsProxy::StaticClass(), FTransform{FRotator::ZeroRotator, location})};
+        if (!checks.is_valid(proxy, TEXT("Deferred static-turret proxy is spawned"))) {
+            return;
+        }
+
+        proxy->set_team(team);
+        proxy->set_laser_damage(0);
+
+        auto* const finished_proxy{UGameplayStatics::FinishSpawningActor(
+            proxy, FTransform{FRotator::ZeroRotator, location})};
+        checks.is_valid(finished_proxy, TEXT("Static-turret proxy finish spawning succeeded"));
+    }
+    void spawn_turret_proxies(UWorld & world) {
+        constexpr auto half_dist{5000.f};
+        spawn_turret_proxy(world, FVector{-half_dist, 0.f, 0.f}, ETestTeam::Blue);
+        spawn_turret_proxy(world, FVector{half_dist, 0.f, 0.f}, ETestTeam::Red);
+    }
+    void spawn_line_of_sight_blocker() {
+        auto& world{*test_driver->get_world()};
+        auto* const blocker{world.SpawnActor<AActor>(
+            AActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator)};
+        if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
+            return;
+        }
+
+        auto* const collision{NewObject<UBoxComponent>(blocker, TEXT("line_of_sight_blocker"))};
+        if (!checks.not_nullptr(collision, TEXT("Line-of-sight blocker collision is created"))) {
+            return;
+        }
+
+        blocker->AddInstanceComponent(collision);
+        blocker->SetRootComponent(collision);
+        collision->SetBoxExtent(FVector{100.f, 1000.f, 1000.f});
+        collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        collision->SetCollisionObjectType(ECC_WorldStatic);
+        collision->SetCollisionResponseToAllChannels(ECR_Ignore);
+        collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+        collision->RegisterComponent();
+
+        blocker_spawn_time = test_driver->get_time();
+    }
+    void sample_laser_count(ATestBatchOrchestrator & orchestrator) {
+        auto const* const lasers{orchestrator.get_lasers()};
+        auto const* const turrets{orchestrator.get_turrets()};
+        check(lasers);
+        check(turrets);
+        auto const simulation_time{test_driver->get_time()};
+        laser_counts.add(simulation_time, lasers->get_num_instances());
+        entity_counts.add(simulation_time, test_driver->registry.get_num_elements());
+        target_handles.add(simulation_time,
+                           TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
+    }
+    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
+        sample_laser_count(orchestrator);
+        test_driver->timeline.tick(test_driver->get_time());
+    }
+
+    void initial_setup() {
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_end_time, laser_counts, entity_counts, target_handles);
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        test_driver->timeline
+            .at(blocker_scheduled_spawn_time, [this] { spawn_line_of_sight_blocker(); })
+            .finish_at(test_end_time);
+        test_driver->orchestrator.start_simulation();
+    }
+
+    void full_checks() {
+        checks.is_true(blocker_spawn_time.IsSet(), TEXT("Line-of-sight blocker is spawned"));
+        checks.is_true(!laser_counts.is_empty(), TEXT("Laser counts are sampled"));
+        checks.is_true(!entity_counts.is_empty(), TEXT("Entity counts are sampled"));
+        checks.is_true(!target_handles.is_empty(), TEXT("Turret target handles are sampled"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        auto const* const lasers{test_driver->orchestrator.get_lasers()};
+        checks.is_greater_than(lasers->get_number_spawned(), 0, TEXT("Lasers were fired"));
+
+        auto const target_check_sample_index{target_handles.nearest_index(0.1)};
+        auto const& target_check_handles{target_handles.value_at(target_check_sample_index)};
+        checks.are_equal(2,
+                         target_check_handles.Num(),
+                         TEXT("Two turret target handles are sampled after 0.1 seconds"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        for (FRegistryEntityHandle const handle : target_check_handles) {
+            checks.is_true(!handle.is_null(), TEXT("Turret has a target after 0.1 seconds"));
+        }
+
+        auto const actual_blocker_spawn_time{blocker_spawn_time.GetValue()};
+        auto fired_before_blocker{false};
+        auto const n_samples{laser_counts.num()};
+        for (int32 i{}; i < n_samples; ++i) {
+            if ((laser_counts.time_at(i) < actual_blocker_spawn_time) &&
+                (laser_counts.value_at(i) > 0)) {
+                fired_before_blocker = true;
+            }
+        }
+        checks.is_true(fired_before_blocker, TEXT("Turrets fire before the blocker is spawned"));
+
+        auto const blocker_effective_time{actual_blocker_spawn_time + blocker_grace_period};
+        auto const blocker_effective_sample_index{
+            laser_counts.nearest_index(blocker_effective_time)};
+        for (int32 i{blocker_effective_sample_index + 1}; i < n_samples; ++i) {
+            checks.are_equal(
+                0, laser_counts.value_at(i), TEXT("No lasers after line-of-sight is blocked"), i);
+        }
+
+        checks.are_equal(
+            laser_counts.num(), entity_counts.num(), TEXT("Laser and entity samples match"));
+        auto const n_entity_samples{entity_counts.num()};
+        for (int32 i{}; i < n_entity_samples; ++i) {
+            checks.are_equal(2, entity_counts.value_at(i), TEXT("Two turret entities"), i);
+        }
+    }
+
+    TEST_METHOD(MainTest)
+    {
+        TestCommandBuilder.Do([this] { initial_setup(); })
+            .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
+            .Then([this] {
+                full_checks();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             });
     }
 };
