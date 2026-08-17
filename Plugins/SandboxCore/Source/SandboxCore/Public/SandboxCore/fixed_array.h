@@ -186,6 +186,17 @@ class TFixedArray {
 
         add_defaulted(new_size - size_);
     }
+    void set_num_uninitialised(size_type const new_size) {
+        check(new_size >= 0);
+        check(new_size <= capacity());
+
+        if (new_size < size_) {
+            destroy_from(new_size);
+            return;
+        }
+
+        size_ = new_size;
+    }
 
     void pop() {
         check(!is_empty());
