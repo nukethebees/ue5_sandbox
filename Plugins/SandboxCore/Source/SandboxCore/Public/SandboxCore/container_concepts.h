@@ -13,6 +13,12 @@ concept HasNumAndGetData = requires(T const& value) {
     { value.GetData() } -> std::convertible_to<void const*>;
 };
 
+template <typename T>
+concept HasMutableNumAndGetData = requires(T const& value) {
+    { value.Num() } -> std::convertible_to<int32>;
+    { value.GetData() } -> std::convertible_to<void*>;
+};
+
 // num
 template <typename T>
 concept SupportsNum = requires(T const& value) {
