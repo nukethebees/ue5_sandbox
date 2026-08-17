@@ -186,32 +186,21 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
         auto const n_names{names.Num()};
         setup.Emplace(*spawner, *TestRunner, checks);
         expected.Init({}, names.Num());
-        setup->setup(
-            TestCommandBuilder,
-            [this, n_names](UWorld& world, UTestSimulationConfig const& config) {
-                constexpr int32 n_actors{4};
-                TStaticArray<ATestCapitalShipProxy*, n_actors> actors;
-                ml::spawn_actors<ATestCapitalShipProxy>(
-                    world,
-                    actors,
-                    [&](TArrayView<ATestCapitalShipProxy*> actors, ESpawnPhase const phase) {
-                        if (phase == ESpawnPhase::PreSpawn) {
-                            for (int32 i{0}; i < n_actors; ++i) {
-                                auto* proxy{actors[i]};
-                                proxy->set_test_name(names[i]);
-                                proxy->set_initial_spawn_delay(spawn_cooldown);
-                                proxy->set_spawn_cooldown(spawn_cooldown);
-                            }
-                            return;
-                        }
+        setup->setup(TestCommandBuilder, [&](UWorld& world, UTestSimulationConfig const&) {
+            ml::spawn_actors<ATestCapitalShipProxy, 4>(
+                world, [&](ATestCapitalShipProxy& actor, int32 const i, ESpawnPhase const phase) {
+                    if (phase == ESpawnPhase::PreSpawn) {
+                        actor.set_test_name(names[i]);
+                        actor.set_initial_spawn_delay(spawn_cooldown);
+                        actor.set_spawn_cooldown(spawn_cooldown);
+                        return;
+                    }
 
-                        for (int32 i{0}; i < n_actors; ++i) {
-                            actors[i]->SetActorLocation(FVector{locations[i]});
-                        }
-                    });
+                    actor.SetActorLocation(FVector{locations[i]});
+                });
 
-                ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
-            });
+            ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
+        });
     }
     AFTER_EACH()
     {

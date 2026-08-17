@@ -45,10 +45,30 @@ auto get_or_create_actor_singleton(UWorld& world) -> T* {
     return actor;
 }
 
+namespace detail {
+template <typename>
+inline constexpr bool always_false{false};
+
+template <typename T, typename Fn>
+void invoke_spawn_actors_callback(Fn& fn, TArrayView<T*> actors, ESpawnPhase const phase) {
+    if constexpr (std::invocable<Fn&, TArrayView<T*>, ESpawnPhase>) {
+        fn(actors, phase);
+    } else if constexpr (std::invocable<Fn&, T&, int32, ESpawnPhase>) {
+        auto const actor_count{actors.Num()};
+        for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
+            fn(*actors[actor_index], actor_index, phase);
+        }
+    } else {
+        static_assert(always_false<Fn>,
+                      "spawn_actors callback must be invocable as either "
+                      "void(TArrayView<T*>, ESpawnPhase) or void(T&, int32, ESpawnPhase).");
+    }
+}
+}
+
 template <typename T,
           HasMutableNumAndGetData Container,
           typename Fn = decltype([](TArrayView<T*>, ESpawnPhase) {})>
-    requires std::invocable<Fn&, TArrayView<T*>, ESpawnPhase>
 void spawn_actors(UWorld& world, UClass* actor_class, Container&& out_actors, Fn&& fn = {}) {
     if (!actor_class) {
         UE_LOG(LogSandboxCore, Fatal, TEXT("spawn_actors: actor_class is nullptr."));
@@ -71,21 +91,26 @@ void spawn_actors(UWorld& world, UClass* actor_class, Container&& out_actors, Fn
         actors_view[actor_index] = actor;
     }
 
-    fn(actors_view, ESpawnPhase::PreSpawn);
+    detail::invoke_spawn_actors_callback<T>(fn, actors_view, ESpawnPhase::PreSpawn);
 
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
         actors_view[actor_index]->FinishSpawning(FTransform::Identity);
     }
 
-    fn(actors_view, ESpawnPhase::PostSpawn);
+    detail::invoke_spawn_actors_callback<T>(fn, actors_view, ESpawnPhase::PostSpawn);
 }
 template <typename T,
           HasMutableNumAndGetData Container,
           typename Fn = decltype([](TArrayView<T*>, ESpawnPhase) {})>
-    requires std::invocable<Fn&, TArrayView<T*>, ESpawnPhase>
 void spawn_actors(UWorld& world, Container&& out_actors, Fn&& fn = {}) {
     spawn_actors<T, Container, Fn>(
         world, T::StaticClass(), std::forward<Container>(out_actors), std::forward<Fn>(fn));
+}
+template <typename T, int32 N, typename Fn = decltype([](TArrayView<T*>, ESpawnPhase) {})>
+void spawn_actors(UWorld& world, Fn&& fn = {}) {
+    TStaticArray<T*, N> actors;
+    spawn_actors<T, TArrayView<T*>, Fn>(
+        world, T::StaticClass(), TArrayView<T*>{actors.GetData(), N}, std::forward<Fn>(fn));
 }
 
 template <typename TActor, typename F>

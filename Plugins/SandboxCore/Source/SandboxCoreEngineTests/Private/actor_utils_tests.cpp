@@ -1,6 +1,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/MapTestSpawner.h>
+#include <Components/SceneComponent.h>
 #include <Containers/Set.h>
 #include <CQTest.h>
 #include <Engine/World.h>
@@ -93,26 +94,55 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
             TArray<FVector> const expected_locations{FVector{100.f, 200.f, 300.f},
                                                      FVector{-400.f, 500.f, -600.f},
                                                      FVector{700.f, -800.f, 900.f}};
+            auto pre_spawn_callback_count{0};
+            auto post_spawn_callback_count{0};
 
             ml::spawn_actors<AActor>(
                 world,
                 actors,
-                [&expected_locations](TArrayView<AActor*> actors, ESpawnPhase const phase) {
+                [this,
+                 &actors,
+                 &expected_locations,
+                 &pre_spawn_callback_count,
+                 &post_spawn_callback_count](
+                    AActor& actor, int32 const actor_index, ESpawnPhase const phase) {
+                    if (!TestRunner->TestTrue(TEXT("Callback index is a valid output slot"),
+                                              actors.IsValidIndex(actor_index))) {
+                        return;
+                    }
+                    TestRunner->TestTrue(TEXT("Callback actor matches its output slot"),
+                                         &actor == actors[actor_index]);
+
                     if (phase == ESpawnPhase::PreSpawn) {
-                        for (auto* actor : actors) {
-                            auto* root = NewObject<USceneComponent>(actor);
-                            actor->AddInstanceComponent(root);
-                            actor->SetRootComponent(root);
-                            root->RegisterComponent();
-                        }
+                        ++pre_spawn_callback_count;
+                        TestRunner->TestFalse(TEXT("Deferred actor is not initialized"),
+                                              actor.IsActorInitialized());
+
+                        auto* const root{NewObject<USceneComponent>(&actor)};
+                        actor.AddInstanceComponent(root);
+                        actor.SetRootComponent(root);
+                        root->RegisterComponent();
+                        actor.Tags.Add(
+                            FName{FString::Printf(TEXT("pre_spawn_actor_%d"), actor_index)});
                         return;
                     }
 
-                    auto const actor_count{actors.Num()};
-                    for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
-                        actors[actor_index]->SetActorLocation(expected_locations[actor_index]);
-                    }
+                    ++post_spawn_callback_count;
+                    TestRunner->TestTrue(TEXT("Finished actor is initialized"),
+                                         actor.IsActorInitialized());
+                    TestRunner->TestTrue(
+                        TEXT("Post-spawn callback observes pre-spawn configuration"),
+                        actor.Tags.Contains(
+                            FName{FString::Printf(TEXT("pre_spawn_actor_%d"), actor_index)}));
+                    actor.SetActorLocation(expected_locations[actor_index]);
                 });
+
+            TestRunner->TestEqual(TEXT("Pre-spawn callback runs once per actor"),
+                                  pre_spawn_callback_count,
+                                  actor_count);
+            TestRunner->TestEqual(TEXT("Post-spawn callback runs once per actor"),
+                                  post_spawn_callback_count,
+                                  actor_count);
 
             auto const spawned_actor_count{actors.Num()};
             for (auto actor_index{0}; actor_index < spawned_actor_count; ++actor_index) {

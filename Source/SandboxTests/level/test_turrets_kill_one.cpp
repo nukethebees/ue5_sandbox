@@ -11,11 +11,13 @@
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <Components/BoxComponent.h>
 #include <Components/MapTestSpawner.h>
+#include <Containers/Set.h>
 #include <CQTest.h>
 #include <Editor.h>
 #include <Engine/World.h>
@@ -359,9 +361,20 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     using time_type = ml::TestSimulationDriver::time_type;
 
     static constexpr time_type blocker_scheduled_spawn_time{1.0};
-    static constexpr time_type blocker_grace_period{0.1};
+    static constexpr time_type blocker_grace_period{0.2};
     static constexpr time_type test_end_time{2.5};
+    static constexpr int32 turret_count{2};
+
+    struct FTurretInfo {
+        FVector location;
+        ETestTeam team;
+    };
+
     FTimespan const timeout{0, 0, 4};
+    ml::TFixedArray<FTurretInfo, turret_count> const turret_infos{
+        {{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
+        {{5000.f, 0.f, 0.f}, ETestTeam::Red},
+    };
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
@@ -370,6 +383,7 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     ml::TimeSeriesData<int32> laser_counts;
     ml::TimeSeriesData<int32> entity_counts;
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
+    ml::TimeSeriesData<TArray<FVector3f>> registry_locations;
     TOptional<time_type> blocker_spawn_time{NullOpt};
 
     BEFORE_EACH()
@@ -398,35 +412,15 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
   private:
     void spawn_turret_proxies(UWorld & world) {
-        constexpr auto half_dist{5000.f};
-
-        constexpr int32 n_proxies{2};
-
-        TStaticArray<ATestStaticTurretsProxy*, n_proxies> proxies;
-        struct Info {
-            FVector loc;
-            ETestTeam team;
-        };
-        ml::TFixedArray<Info, n_proxies> infos{
-            {{-half_dist, 0.f, 0.f}, ETestTeam::Blue},
-            {{half_dist, 0.f, 0.f}, ETestTeam::Red},
-        };
-
-        ml::spawn_actors<ATestStaticTurretsProxy>(
-            world,
-            proxies,
-            [&](TArrayView<ATestStaticTurretsProxy*> actors, ESpawnPhase const phase) {
+        ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
+            world, [&](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
                 if (phase == ESpawnPhase::PreSpawn) {
-                    for (int32 i{0}; i < n_proxies; ++i) {
-                        actors[i]->set_team(infos[i].team);
-                        actors[i]->set_laser_damage(0);
-                    }
+                    actor.set_team(turret_infos[i].team);
+                    actor.set_laser_damage(0);
                     return;
                 }
 
-                for (int32 i{0}; i < n_proxies; ++i) {
-                    actors[i]->SetActorLocation(infos[i].loc);
-                }
+                actor.SetActorLocation(turret_infos[i].location);
             });
     }
     void spawn_line_of_sight_blocker() {
@@ -463,6 +457,9 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         entity_counts.add(simulation_time, test_driver->registry.get_num_elements());
         target_handles.add(simulation_time,
                            TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
+        registry_locations.add(
+            simulation_time,
+            ml::to_vector3f_array(test_driver->registry.get_entity_data().locations));
     }
     void on_end_tick(ATestBatchOrchestrator & orchestrator) {
         sample_laser_count(orchestrator);
@@ -473,8 +470,12 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-        ml::reset_and_reserve_time_series(
-            test_driver->orchestrator, test_end_time, laser_counts, entity_counts, target_handles);
+        ml::reset_and_reserve_time_series(test_driver->orchestrator,
+                                          test_end_time,
+                                          laser_counts,
+                                          entity_counts,
+                                          target_handles,
+                                          registry_locations);
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline
@@ -488,6 +489,7 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         checks.is_true(!laser_counts.is_empty(), TEXT("Laser counts are sampled"));
         checks.is_true(!entity_counts.is_empty(), TEXT("Entity counts are sampled"));
         checks.is_true(!target_handles.is_empty(), TEXT("Turret target handles are sampled"));
+        checks.is_true(!registry_locations.is_empty(), TEXT("Registry locations are sampled"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         auto const* const lasers{test_driver->orchestrator.get_lasers()};
@@ -503,6 +505,30 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         for (FRegistryEntityHandle const handle : target_check_handles) {
             checks.is_true(!handle.is_null(), TEXT("Turret has a target after 0.1 seconds"));
         }
+
+        TSet<FVector3f> expected_turret_locations;
+        for (FTurretInfo const& turret_info : turret_infos) {
+            expected_turret_locations.Add(FVector3f{turret_info.location});
+        }
+        checks.are_equal(
+            turret_count, expected_turret_locations.Num(), TEXT("Turret locations are distinct"));
+
+        auto const registry_location_sample_index{registry_locations.nearest_index(0.1)};
+        auto const& sampled_registry_locations{
+            registry_locations.value_at(registry_location_sample_index)};
+        checks.are_equal(turret_count,
+                         sampled_registry_locations.Num(),
+                         TEXT("Two turret registry locations are sampled after 0.1 seconds"));
+
+        TSet<FVector3f> actual_turret_locations;
+        for (FVector3f const& location : sampled_registry_locations) {
+            checks.is_true(expected_turret_locations.Contains(location),
+                           TEXT("Registry location belongs to a spawned turret"));
+            actual_turret_locations.Add(location);
+        }
+        checks.are_equal(expected_turret_locations.Num(),
+                         actual_turret_locations.Num(),
+                         TEXT("Registry locations match the spawned turrets"));
 
         auto const actual_blocker_spawn_time{blocker_spawn_time.GetValue()};
         auto fired_before_blocker{false};
