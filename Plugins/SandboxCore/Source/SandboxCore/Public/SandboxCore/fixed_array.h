@@ -114,6 +114,7 @@ class TFixedArray {
 
     auto data() noexcept -> value_type* { return value_at_storage(0); }
     auto data() const noexcept -> value_type const* { return value_at_storage(0); }
+    auto capacity_view() noexcept -> TArrayView<T> { return {data(), capacity()}; }
 
     auto begin() noexcept -> iterator { return data(); }
     auto begin() const noexcept -> const_iterator { return data(); }

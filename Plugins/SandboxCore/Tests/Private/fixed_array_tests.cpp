@@ -114,6 +114,28 @@ TEST_CASE("SandboxCore.TFixedArray.ArrayView operators expose the active range")
     CHECK(const_view[1] == 20);
 }
 
+TEST_CASE("SandboxCore.TFixedArray.capacity_view exposes the full capacity") {
+    ml::TFixedArray<int32, 4> values{10, 20};
+
+    static_assert(std::is_same_v<decltype(values.capacity_view()), TArrayView<int32>>);
+
+    auto capacity_view{values.capacity_view()};
+
+    CHECK(values.num() == 2);
+    CHECK(capacity_view.Num() == values.capacity());
+    CHECK(capacity_view.GetData() == values.data());
+    CHECK(capacity_view[0] == 10);
+    CHECK(capacity_view[1] == 20);
+
+    capacity_view[2] = 30;
+    capacity_view[3] = 40;
+
+    values.set_num_uninitialised(4);
+
+    CHECK(values[2] == 30);
+    CHECK(values[3] == 40);
+}
+
 TEST_CASE("SandboxCore.TFixedArray.Add and emplace_back append contiguously") {
     ml::TFixedArray<FString, 3> values{};
 
