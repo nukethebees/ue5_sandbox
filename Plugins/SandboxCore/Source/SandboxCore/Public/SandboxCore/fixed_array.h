@@ -103,6 +103,10 @@ class TFixedArray {
         requires (!std::is_move_constructible_v<value_type>)
     = delete;
 
+    operator TArrayView<T>() { return {data(), size_}; }
+
+    operator TArrayView<T const>() const { return {data(), size_}; }
+
     auto num() const noexcept -> size_type { return size_; }
     static constexpr auto capacity() noexcept -> size_type { return capacity_value; }
     auto is_empty() const noexcept -> bool { return size_ == 0; }
