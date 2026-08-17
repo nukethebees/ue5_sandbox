@@ -91,6 +91,29 @@ TEST_CASE("SandboxCore.TFixedArray.Initialiser list stores only the supplied ele
     CHECK(values.last() == 30);
 }
 
+TEST_CASE("SandboxCore.TFixedArray.ArrayView operators expose the active range") {
+    ml::TFixedArray<int32, 4> values{10, 20};
+    auto const& const_values{values};
+
+    static_assert(std::is_same_v<decltype(static_cast<TArrayView<int32>>(values)), TArrayView<int32>>);
+    static_assert(std::is_same_v<decltype(static_cast<TConstArrayView<int32>>(const_values)), TConstArrayView<int32>>);
+    static_assert(!std::is_convertible_v<decltype(const_values), TArrayView<int32>>);
+
+    TArrayView<int32> mutable_view{values};
+    TConstArrayView<int32> const_view{const_values};
+
+    CHECK(mutable_view.Num() == 2);
+    CHECK(mutable_view.GetData() == values.data());
+    CHECK(const_view.Num() == 2);
+    CHECK(const_view.GetData() == values.data());
+
+    mutable_view[0] = 100;
+
+    CHECK(values[0] == 100);
+    CHECK(const_view[0] == 100);
+    CHECK(const_view[1] == 20);
+}
+
 TEST_CASE("SandboxCore.TFixedArray.Add and emplace_back append contiguously") {
     ml::TFixedArray<FString, 3> values{};
 
@@ -124,6 +147,27 @@ TEST_CASE("SandboxCore.TFixedArray.add_defaulted and set_num manage its active r
     CHECK(values.num() == 4);
     CHECK(values[2] == 0);
     CHECK(values[3] == 0);
+}
+
+TEST_CASE("SandboxCore.TFixedArray.set_num_uninitialised grows and shrinks its active range") {
+    ml::TFixedArray<int32, 4> values{10, 20};
+
+    values.set_num_uninitialised(4);
+
+    CHECK(values.num() == 4);
+    CHECK(values[0] == 10);
+    CHECK(values[1] == 20);
+
+    values[2] = 30;
+    values[3] = 40;
+
+    CHECK(values[2] == 30);
+    CHECK(values[3] == 40);
+
+    values.set_num_uninitialised(1);
+
+    CHECK(values.num() == 1);
+    CHECK(values[0] == 10);
 }
 
 TEST_CASE("SandboxCore.TFixedArray.Copy and move preserve active elements") {
