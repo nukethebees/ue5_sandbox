@@ -412,17 +412,18 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
             {{half_dist, 0.f, 0.f}, ETestTeam::Red},
         };
 
-        ml::spawn_actors(
+        ml::spawn_actors<ATestStaticTurretsProxy>(
             world,
-            ATestStaticTurretsProxy::StaticClass(),
-            TArrayView<ATestStaticTurretsProxy*>{proxies},
-            [&](TArrayView<ATestStaticTurretsProxy*> actors) {
-                for (int32 i{0}; i < n_proxies; ++i) {
-                    actors[i]->set_team(infos[i].team);
-                    actors[i]->set_laser_damage(0);
+            proxies,
+            [&](TArrayView<ATestStaticTurretsProxy*> actors, ESpawnPhase const phase) {
+                if (phase == ESpawnPhase::PreSpawn) {
+                    for (int32 i{0}; i < n_proxies; ++i) {
+                        actors[i]->set_team(infos[i].team);
+                        actors[i]->set_laser_damage(0);
+                    }
+                    return;
                 }
-            },
-            [&](TArrayView<ATestStaticTurretsProxy*> actors) {
+
                 for (int32 i{0}; i < n_proxies; ++i) {
                     actors[i]->SetActorLocation(infos[i].loc);
                 }

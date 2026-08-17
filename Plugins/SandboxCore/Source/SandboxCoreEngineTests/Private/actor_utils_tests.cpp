@@ -28,13 +28,20 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
             TArray<AActor*> actors;
             actors.Init(nullptr, actor_count);
 
-            auto initialise_call_count{0};
+            auto pre_spawn_call_count{0};
+            auto post_spawn_call_count{0};
             ml::spawn_actors<AActor>(
                 world,
                 AActor::StaticClass(),
                 actors,
-                [this, &initialise_call_count](TArrayView<AActor*> configured_actors) {
-                    ++initialise_call_count;
+                [this, &pre_spawn_call_count, &post_spawn_call_count](
+                    TArrayView<AActor*> configured_actors, ESpawnPhase const phase) {
+                    if (phase == ESpawnPhase::PostSpawn) {
+                        ++post_spawn_call_count;
+                        return;
+                    }
+
+                    ++pre_spawn_call_count;
                     TestRunner->TestEqual(TEXT("Initialise receives every actor"),
                                           configured_actors.Num(),
                                           actor_count);
@@ -52,7 +59,9 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
                 });
 
             TestRunner->TestEqual(
-                TEXT("Initialise is called once for the batch"), initialise_call_count, 1);
+                TEXT("Pre-spawn callback is called once for the batch"), pre_spawn_call_count, 1);
+            TestRunner->TestEqual(
+                TEXT("Post-spawn callback is called once for the batch"), post_spawn_call_count, 1);
 
             TSet<AActor*> unique_actors;
             auto const spawned_actor_count{actors.Num()};
@@ -87,22 +96,21 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
 
             ml::spawn_actors<AActor>(
                 world,
-                AActor::StaticClass(),
                 actors,
-                [](TArrayView<AActor*> actors) {
-                    for (auto* actor : actors) {
-                        auto* root = NewObject<USceneComponent>(actor);
-                        actor->AddInstanceComponent(root);
-                        actor->SetRootComponent(root);
-                        root->RegisterComponent();
+                [&expected_locations](TArrayView<AActor*> actors, ESpawnPhase const phase) {
+                    if (phase == ESpawnPhase::PreSpawn) {
+                        for (auto* actor : actors) {
+                            auto* root = NewObject<USceneComponent>(actor);
+                            actor->AddInstanceComponent(root);
+                            actor->SetRootComponent(root);
+                            root->RegisterComponent();
+                        }
+                        return;
                     }
-                },
-                [&expected_locations](TArrayView<AActor*> actors) {
-                    auto const configured_actor_count{actors.Num()};
-                    for (auto actor_index{0}; actor_index < configured_actor_count; ++actor_index) {
-                        auto* actor{actors[actor_index]};
-                        auto const& loc{expected_locations[actor_index]};
-                        actor->SetActorLocation(loc);
+
+                    auto const actor_count{actors.Num()};
+                    for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
+                        actors[actor_index]->SetActorLocation(expected_locations[actor_index]);
                     }
                 });
 

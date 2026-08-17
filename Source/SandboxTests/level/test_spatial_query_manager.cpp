@@ -186,32 +186,32 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
         auto const n_names{names.Num()};
         setup.Emplace(*spawner, *TestRunner, checks);
         expected.Init({}, names.Num());
-        setup->setup(TestCommandBuilder,
-                     [this, n_names](UWorld& world, UTestSimulationConfig const& config) {
-                         constexpr int32 n_actors{4};
-                         TStaticArray<ATestCapitalShipProxy*, n_actors> actors;
-                         ml::spawn_actors(
-                             world,
-                             ATestCapitalShipProxy::StaticClass(),
-                             TArrayView<ATestCapitalShipProxy*>(actors),
-                             [&](TArrayView<ATestCapitalShipProxy*> actors) {
-                                 for (int32 i{0}; i < n_actors; ++i) {
-                                     auto* proxy{actors[i]};
-                                     proxy->set_test_name(names[i]);
-                                     proxy->set_initial_spawn_delay(spawn_cooldown);
-                                     proxy->set_spawn_cooldown(spawn_cooldown);
-                                 }
-                             },
-                             [&](TArrayView<ATestCapitalShipProxy*> actors) {
-                                 for (int32 i{0}; i < n_actors; ++i) {
-                                     auto* proxy{actors[i]};
-                                     proxy->SetActorLocation(FVector{locations[i]});
-                                 }
-                             });
+        setup->setup(
+            TestCommandBuilder,
+            [this, n_names](UWorld& world, UTestSimulationConfig const& config) {
+                constexpr int32 n_actors{4};
+                TStaticArray<ATestCapitalShipProxy*, n_actors> actors;
+                ml::spawn_actors<ATestCapitalShipProxy>(
+                    world,
+                    actors,
+                    [&](TArrayView<ATestCapitalShipProxy*> actors, ESpawnPhase const phase) {
+                        if (phase == ESpawnPhase::PreSpawn) {
+                            for (int32 i{0}; i < n_actors; ++i) {
+                                auto* proxy{actors[i]};
+                                proxy->set_test_name(names[i]);
+                                proxy->set_initial_spawn_delay(spawn_cooldown);
+                                proxy->set_spawn_cooldown(spawn_cooldown);
+                            }
+                            return;
+                        }
 
-                         ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this,
-                                                                                &ThisClass::bind);
-                     });
+                        for (int32 i{0}; i < n_actors; ++i) {
+                            actors[i]->SetActorLocation(FVector{locations[i]});
+                        }
+                    });
+
+                ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
+            });
     }
     AFTER_EACH()
     {

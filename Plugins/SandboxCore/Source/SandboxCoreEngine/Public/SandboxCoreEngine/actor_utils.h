@@ -1,5 +1,8 @@
 #pragma once
 
+#include "spawn_phase.h"
+
+#include <SandboxCore/container_concepts.h>
 #include <SandboxCore/log_categories.h>
 
 #include <CoreMinimal.h>
@@ -43,20 +46,18 @@ auto get_or_create_actor_singleton(UWorld& world) -> T* {
 }
 
 template <typename T,
-          typename PreFn = decltype([](TArrayView<T*>) {}),
-          typename PostFn = decltype([](TArrayView<T*>) {})>
-    requires std::invocable<PreFn&, TArrayView<T*>> && std::invocable<PostFn&, TArrayView<T*>>
-void spawn_actors(UWorld& world,
-                  UClass* actor_class,
-                  TArrayView<T*> out_actors,
-                  PreFn&& pre_spawn = {},
-                  PostFn&& post_spawn = {}) {
+          HasMutableNumAndGetData Container,
+          typename Fn = decltype([](TArrayView<T*>, ESpawnPhase) {})>
+    requires std::invocable<Fn&, TArrayView<T*>, ESpawnPhase>
+void spawn_actors(UWorld& world, UClass* actor_class, Container&& out_actors, Fn&& fn = {}) {
     if (!actor_class) {
         UE_LOG(LogSandboxCore, Fatal, TEXT("spawn_actors: actor_class is nullptr."));
         return;
     }
 
-    auto const actor_count{out_actors.Num()};
+    TArrayView<T*> actors_view{out_actors.GetData(), out_actors.Num()};
+
+    auto const actor_count{actors_view.Num()};
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
         auto* const actor{world.SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
         if (!actor) {
@@ -67,16 +68,24 @@ void spawn_actors(UWorld& world,
             return;
         }
 
-        out_actors[actor_index] = actor;
+        actors_view[actor_index] = actor;
     }
 
-    pre_spawn(out_actors);
+    fn(actors_view, ESpawnPhase::PreSpawn);
 
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
-        out_actors[actor_index]->FinishSpawning(FTransform::Identity);
+        actors_view[actor_index]->FinishSpawning(FTransform::Identity);
     }
 
-    post_spawn(out_actors);
+    fn(actors_view, ESpawnPhase::PostSpawn);
+}
+template <typename T,
+          HasMutableNumAndGetData Container,
+          typename Fn = decltype([](TArrayView<T*>, ESpawnPhase) {})>
+    requires std::invocable<Fn&, TArrayView<T*>, ESpawnPhase>
+void spawn_actors(UWorld& world, Container&& out_actors, Fn&& fn = {}) {
+    spawn_actors<T, Container, Fn>(
+        world, T::StaticClass(), std::forward<Container>(out_actors), std::forward<Fn>(fn));
 }
 
 template <typename TActor, typename F>
