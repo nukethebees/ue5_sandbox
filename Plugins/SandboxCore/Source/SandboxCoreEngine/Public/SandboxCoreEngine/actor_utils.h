@@ -72,7 +72,7 @@ void spawn_actors(
     initialise(out_actors);
 
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
-        out_actors[actor_index]->FinishSpawning(FTransform::Identity);
+        out_actors[actor_index]->FinishSpawning(out_actors[actor_index]->GetActorTransform());
     }
 }
 
