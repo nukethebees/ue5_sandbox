@@ -396,7 +396,16 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
         level_setup.Emplace(*spawner, *TestRunner, checks);
         level_setup->setup(TestCommandBuilder, [this](UWorld& world, UTestSimulationConfig const&) {
-            spawn_turret_proxies(world);
+            ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
+                world, [&](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
+                    if (phase == ESpawnPhase::PreSpawn) {
+                        actor.set_team(turret_infos[i].team);
+                        actor.set_laser_damage(0);
+                        return;
+                    }
+
+                    actor.SetActorLocation(turret_infos[i].location);
+                });
         });
     }
     AFTER_EACH()
@@ -411,18 +420,6 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         spawner.Reset();
     }
   private:
-    void spawn_turret_proxies(UWorld & world) {
-        ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
-            world, [&](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
-                if (phase == ESpawnPhase::PreSpawn) {
-                    actor.set_team(turret_infos[i].team);
-                    actor.set_laser_damage(0);
-                    return;
-                }
-
-                actor.SetActorLocation(turret_infos[i].location);
-            });
-    }
     void spawn_line_of_sight_blocker() {
         auto& world{*test_driver->get_world()};
         auto* const blocker{world.SpawnActor<AActor>(
