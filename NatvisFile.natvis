@@ -16,4 +16,15 @@
       </CustomListItems>
     </Expand>
   </Type>
+  <Type Name="ml::TFixedArray&lt;*,*&gt;">
+    <DisplayString>{{ num = {size_}, capacity = {capacity_value} }}</DisplayString>
+    <Expand>
+      <Item Name="num">size_</Item>
+      <Item Name="capacity">capacity_value</Item>
+      <ArrayItems>
+        <Size>size_</Size>
+        <ValuePointer>($T1*)storage_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
 </AutoVisualizer>
