@@ -6,6 +6,8 @@
 #include <Sandbox/batch_game/TestEntity.h>
 #include <Sandbox/batch_game/TestEntityType.h>
 
+#include <SandboxCoreEngine/actor_utils.h>
+
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -186,13 +188,27 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
         expected.Init({}, names.Num());
         setup->setup(TestCommandBuilder,
                      [this, n_names](UWorld& world, UTestSimulationConfig const& config) {
-                         for (int32 i{}; i < n_names; ++i) {
-                             auto* const proxy{ml::spawn_capital_proxy(
-                                 world, config, checks, names[i], FVector{locations[i]})};
-                             check(proxy);
-                             proxy->set_initial_spawn_delay(spawn_cooldown);
-                             proxy->set_spawn_cooldown(spawn_cooldown);
-                         }
+                         constexpr int32 n_actors{4};
+                         TStaticArray<ATestCapitalShipProxy*, n_actors> actors;
+                         ml::spawn_actors(
+                             world,
+                             ATestCapitalShipProxy::StaticClass(),
+                             TArrayView<ATestCapitalShipProxy*>(actors),
+                             [&](TArrayView<ATestCapitalShipProxy*> actors) {
+                                 for (int32 i{0}; i < n_actors; ++i) {
+                                     auto* proxy{actors[i]};
+                                     proxy->set_test_name(names[i]);
+                                     proxy->set_initial_spawn_delay(spawn_cooldown);
+                                     proxy->set_spawn_cooldown(spawn_cooldown);
+                                 }
+                             },
+                             [&](TArrayView<ATestCapitalShipProxy*> actors) {
+                                 for (int32 i{0}; i < n_actors; ++i) {
+                                     auto* proxy{actors[i]};
+                                     proxy->SetActorLocation(FVector{locations[i]});
+                                 }
+                             });
+
                          ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this,
                                                                                 &ThisClass::bind);
                      });

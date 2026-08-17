@@ -42,38 +42,41 @@ auto get_or_create_actor_singleton(UWorld& world) -> T* {
     return actor;
 }
 
-template <typename T, typename Fn>
-    requires std::invocable<Fn&, TArrayView<T*>>
-void spawn_actors(
-    UWorld& world,
-    TSubclassOf<T> actor_class,
-    TArrayView<T*> out_actors,
-    Fn&& initialise) {
+template <typename T,
+          typename PreFn = decltype([](TArrayView<T*>) {}),
+          typename PostFn = decltype([](TArrayView<T*>) {})>
+    requires std::invocable<PreFn&, TArrayView<T*>> && std::invocable<PostFn&, TArrayView<T*>>
+void spawn_actors(UWorld& world,
+                  UClass* actor_class,
+                  TArrayView<T*> out_actors,
+                  PreFn&& pre_spawn = {},
+                  PostFn&& post_spawn = {}) {
     if (!actor_class) {
         UE_LOG(LogSandboxCore, Fatal, TEXT("spawn_actors: actor_class is nullptr."));
         return;
     }
 
-    const auto actor_count{out_actors.Num()};
+    auto const actor_count{out_actors.Num()};
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
         auto* const actor{world.SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
         if (!actor) {
-            UE_LOG(
-                LogSandboxCore,
-                Fatal,
-                TEXT("spawn_actors: failed to deferred-spawn actor class '%s'."),
-                *actor_class->GetName());
+            UE_LOG(LogSandboxCore,
+                   Fatal,
+                   TEXT("spawn_actors: failed to deferred-spawn actor class '%s'."),
+                   *actor_class->GetName());
             return;
         }
 
         out_actors[actor_index] = actor;
     }
 
-    initialise(out_actors);
+    pre_spawn(out_actors);
 
     for (auto actor_index{0}; actor_index < actor_count; ++actor_index) {
-        out_actors[actor_index]->FinishSpawning(out_actors[actor_index]->GetActorTransform());
+        out_actors[actor_index]->FinishSpawning(FTransform::Identity);
     }
+
+    post_spawn(out_actors);
 }
 
 template <typename TActor, typename F>

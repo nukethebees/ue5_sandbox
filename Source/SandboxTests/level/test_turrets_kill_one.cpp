@@ -10,6 +10,7 @@
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
+#include <SandboxCore/fixed_array.h>
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -20,7 +21,6 @@
 #include <Engine/World.h>
 #include <EngineUtils.h>
 #include <GameFramework/Actor.h>
-#include <Kismet/GameplayStatics.h>
 
 namespace {
 using time_type = ml::TestSimulationDriver::time_type;
@@ -397,24 +397,36 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         spawner.Reset();
     }
   private:
-    void spawn_turret_proxy(UWorld & world, FVector const location, ETestTeam const team) {
-        auto* const proxy{world.SpawnActorDeferred<ATestStaticTurretsProxy>(
-            ATestStaticTurretsProxy::StaticClass(), FTransform{FRotator::ZeroRotator, location})};
-        if (!checks.is_valid(proxy, TEXT("Deferred static-turret proxy is spawned"))) {
-            return;
-        }
-
-        proxy->set_team(team);
-        proxy->set_laser_damage(0);
-
-        auto* const finished_proxy{UGameplayStatics::FinishSpawningActor(
-            proxy, FTransform{FRotator::ZeroRotator, location})};
-        checks.is_valid(finished_proxy, TEXT("Static-turret proxy finish spawning succeeded"));
-    }
     void spawn_turret_proxies(UWorld & world) {
         constexpr auto half_dist{5000.f};
-        spawn_turret_proxy(world, FVector{-half_dist, 0.f, 0.f}, ETestTeam::Blue);
-        spawn_turret_proxy(world, FVector{half_dist, 0.f, 0.f}, ETestTeam::Red);
+
+        constexpr int32 n_proxies{2};
+
+        TStaticArray<ATestStaticTurretsProxy*, n_proxies> proxies;
+        struct Info {
+            FVector loc;
+            ETestTeam team;
+        };
+        ml::TFixedArray<Info, n_proxies> infos{
+            {{-half_dist, 0.f, 0.f}, ETestTeam::Blue},
+            {{half_dist, 0.f, 0.f}, ETestTeam::Red},
+        };
+
+        ml::spawn_actors(
+            world,
+            ATestStaticTurretsProxy::StaticClass(),
+            TArrayView<ATestStaticTurretsProxy*>{proxies},
+            [&](TArrayView<ATestStaticTurretsProxy*> actors) {
+                for (int32 i{0}; i < n_proxies; ++i) {
+                    actors[i]->set_team(infos[i].team);
+                    actors[i]->set_laser_damage(0);
+                }
+            },
+            [&](TArrayView<ATestStaticTurretsProxy*> actors) {
+                for (int32 i{0}; i < n_proxies; ++i) {
+                    actors[i]->SetActorLocation(infos[i].loc);
+                }
+            });
     }
     void spawn_line_of_sight_blocker() {
         auto& world{*test_driver->get_world()};
