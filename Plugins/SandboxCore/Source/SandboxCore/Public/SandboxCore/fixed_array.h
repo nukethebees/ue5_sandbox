@@ -4,7 +4,6 @@
 #include <Misc/AssertionMacros.h>
 #include <Templates/UnrealTemplate.h>
 
-#include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <new>
@@ -209,12 +208,19 @@ class TFixedArray {
   private:
     static constexpr size_type storage_count{N > 0 ? N : 1};
 
+    union FStorage {
+        FStorage() noexcept {}
+        ~FStorage() {}
+
+        value_type values[storage_count];
+    };
+
     auto value_at_storage(size_type const index) noexcept -> value_type* {
-        return reinterpret_cast<value_type*>(storage_ + sizeof(value_type) * index);
+        return std::addressof(storage_.values[index]);
     }
 
     auto value_at_storage(size_type const index) const noexcept -> value_type const* {
-        return reinterpret_cast<value_type const*>(storage_ + sizeof(value_type) * index);
+        return std::addressof(storage_.values[index]);
     }
 
     void check_index(size_type const index) const {
@@ -235,7 +241,7 @@ class TFixedArray {
         size_ = first_index;
     }
 
-    alignas(value_type) std::byte storage_[sizeof(value_type) * storage_count];
+    FStorage storage_;
     size_type size_{0};
 };
 }

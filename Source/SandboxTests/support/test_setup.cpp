@@ -59,6 +59,7 @@ void FTestBatchOrchestratorLevelSetup::setup(
             return;
         }
 
+        check(checks);
         if (!checks->not_nullptr(GEditor, TEXT("Editor is available"))) {
             return;
         }
