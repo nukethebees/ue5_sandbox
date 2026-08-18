@@ -103,7 +103,6 @@ class TFixedArray {
     = delete;
 
     operator TArrayView<T>() { return {data(), size_}; }
-
     operator TArrayView<T const>() const { return {data(), size_}; }
 
     auto num() const noexcept -> size_type { return size_; }
@@ -158,12 +157,11 @@ class TFixedArray {
         return index;
     }
 
-    template <typename... TArgs>
-    auto emplace_back(TArgs&&... args) -> value_type& {
+    template <typename... Args>
+    auto emplace_back(Args&&... args) -> value_type& {
         check_has_sufficient_capacity(1);
 
-        value_type* const value{value_at_storage(size_)};
-        std::construct_at(value, std::forward<TArgs>(args)...);
+        auto* value{std::construct_at(data() + size_, std::forward<Args>(args)...)};
         ++size_;
         return *value;
     }
