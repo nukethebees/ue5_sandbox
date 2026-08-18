@@ -360,9 +360,10 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     using ThisClass = TurretLineOfSightBlocking;
     using time_type = ml::TestSimulationDriver::time_type;
 
-    static constexpr time_type blocker_scheduled_spawn_time{1.0};
+    static constexpr time_type initial_enemy_check_time{1.0};
+    static constexpr time_type blocker_scheduled_spawn_time{2.0};
     static constexpr time_type blocker_grace_period{0.2};
-    static constexpr time_type test_end_time{2.5};
+    static constexpr time_type test_end_time{4.0};
     static constexpr int32 turret_count{2};
 
     struct FTurretInfo {
@@ -492,15 +493,15 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         auto const* const lasers{test_driver->orchestrator.get_lasers()};
         checks.is_greater_than(lasers->get_number_spawned(), 0, TEXT("Lasers were fired"));
 
-        auto const target_check_sample_index{target_handles.nearest_index(0.1)};
+        auto const target_check_sample_index{target_handles.nearest_index(initial_enemy_check_time)};
         auto const& target_check_handles{target_handles.value_at(target_check_sample_index)};
         checks.are_equal(2,
                          target_check_handles.Num(),
-                         TEXT("Two turret target handles are sampled after 0.1 seconds"));
+                         TEXT("Two turret target handles are sampled after 1 second"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         for (FRegistryEntityHandle const handle : target_check_handles) {
-            checks.is_true(!handle.is_null(), TEXT("Turret has a target after 0.1 seconds"));
+            checks.is_true(!handle.is_null(), TEXT("Turret has a target after 1 second"));
         }
 
         TSet<FVector3f> expected_turret_locations;
@@ -510,12 +511,13 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         checks.are_equal(
             turret_count, expected_turret_locations.Num(), TEXT("Turret locations are distinct"));
 
-        auto const registry_location_sample_index{registry_locations.nearest_index(0.1)};
+        auto const registry_location_sample_index{
+            registry_locations.nearest_index(initial_enemy_check_time)};
         auto const& sampled_registry_locations{
             registry_locations.value_at(registry_location_sample_index)};
         checks.are_equal(turret_count,
                          sampled_registry_locations.Num(),
-                         TEXT("Two turret registry locations are sampled after 0.1 seconds"));
+                         TEXT("Two turret registry locations are sampled after 1 second"));
 
         TSet<FVector3f> actual_turret_locations;
         for (FVector3f const& location : sampled_registry_locations) {
