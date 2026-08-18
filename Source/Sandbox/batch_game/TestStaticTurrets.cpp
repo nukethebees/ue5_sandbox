@@ -15,6 +15,7 @@
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/fixed_array.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -239,20 +240,19 @@ void ATestStaticTurrets::perform_search() {
                 auto const turret_location{ml::get_vector3f(entities.locations, i)};
                 auto const this_team{entities.teams[i]};
 
-                TStaticArray<FRegistryEntityHandle, 128> elems;
-                auto const n_entities{spatial_query_manager->collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, elems)};
+                ml::TFixedArray<FRegistryEntityHandle, 128> target_handles;
+                target_handles.set_num_uninitialised(
+                    spatial_query_manager->collect_non_team_entities_in_range(
+                        turret_location, this_team, radius, target_handles.capacity_view()));
 
                 entities.target_handles[i] = FRegistryEntityHandle{};
 
-                for (int32 j{0}; j < n_entities; ++j) {
-                    auto const target_index{elems[j]};
-
-                    if (this_team == entity_registry->get_team(target_index)) {
+                for (auto const& target_handle : target_handles) {
+                    if (this_team == entity_registry->get_team(target_handle)) {
                         continue;
                     }
 
-                    entities.target_handles[i] = target_index;
+                    entities.target_handles[i] = target_handle;
                     break;
                 }
             }

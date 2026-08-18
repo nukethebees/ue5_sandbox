@@ -372,9 +372,9 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     };
 
     FTimespan const timeout{0, 0, 4};
-    TStaticArray<FTurretInfo, turret_count> const turret_infos{
-        FTurretInfo{{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
-        FTurretInfo{{5000.f, 0.f, 0.f}, ETestTeam::Red},
+    ml::TFixedArray<FTurretInfo, turret_count> const turret_infos{
+        {{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
+        {{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
@@ -493,7 +493,8 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         auto const* const lasers{test_driver->orchestrator.get_lasers()};
         checks.is_greater_than(lasers->get_number_spawned(), 0, TEXT("Lasers were fired"));
 
-        auto const target_check_sample_index{target_handles.nearest_index(initial_enemy_check_time)};
+        auto const target_check_sample_index{
+            target_handles.nearest_index(initial_enemy_check_time)};
         auto const& target_check_handles{target_handles.value_at(target_check_sample_index)};
         checks.are_equal(2,
                          target_check_handles.Num(),
