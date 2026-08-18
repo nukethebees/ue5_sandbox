@@ -173,10 +173,14 @@ TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output exposes only writ
     handles.set_num_uninitialised(result_count);
 
     CHECK(handles.num() == 3);
-    for (int32 i{}; i < handles.num(); ++i) {
-        CHECK(handles[i].index == i);
-        CHECK(handles[i].generation == 17);
+    auto const& const_handles{handles};
+    int32 expected_index{};
+    for (FTestRegistryEntityHandle const& handle : const_handles) {
+        CHECK(handle.index == expected_index);
+        CHECK(handle.generation == 17);
+        ++expected_index;
     }
+    CHECK(expected_index == handles.num());
 }
 
 TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output supports no results") {
@@ -189,8 +193,8 @@ TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output supports no resul
 }
 
 TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output survives repeated stack reuse") {
-    static constexpr int32 capacity{8};
-    static constexpr int32 iteration_count{1024};
+    static constexpr int32 capacity{16};
+    static constexpr int32 iteration_count{4096};
 
     for (int32 iteration{}; iteration < iteration_count; ++iteration) {
         ml::TFixedArray<FTestRegistryEntityHandle, capacity> handles{};
@@ -201,10 +205,14 @@ TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output survives repeated
             write_handle_results(handles.capacity_view(), result_count, generation));
 
         CHECK(handles.num() == result_count);
-        for (int32 i{}; i < handles.num(); ++i) {
-            CHECK(handles[i].index == i);
-            CHECK(handles[i].generation == generation);
+        auto const& const_handles{handles};
+        int32 expected_index{};
+        for (FTestRegistryEntityHandle const& handle : const_handles) {
+            CHECK(handle.index == expected_index);
+            CHECK(handle.generation == generation);
+            ++expected_index;
         }
+        CHECK(expected_index == result_count);
     }
 }
 
@@ -216,10 +224,72 @@ TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output supports repeated
     handles.set_num_uninitialised(write_handle_results(handles.capacity_view(), 2, 2));
 
     CHECK(handles.num() == 2);
-    CHECK(handles[0].index == 0);
-    CHECK(handles[0].generation == 2);
-    CHECK(handles[1].index == 1);
-    CHECK(handles[1].generation == 2);
+    auto const& const_handles{handles};
+    int32 expected_index{};
+    for (FTestRegistryEntityHandle const& handle : const_handles) {
+        CHECK(handle.index == expected_index);
+        CHECK(handle.generation == 2);
+        ++expected_index;
+    }
+    CHECK(expected_index == 2);
+}
+
+TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output fills full capacity") {
+    static constexpr int32 capacity{32};
+    ml::TFixedArray<FTestRegistryEntityHandle, capacity> handles{};
+
+    handles.set_num_uninitialised(write_handle_results(handles.capacity_view(), capacity, 99));
+
+    CHECK(handles.is_full());
+    auto const& const_handles{handles};
+    int32 expected_index{};
+    for (FTestRegistryEntityHandle const& handle : const_handles) {
+        CHECK(handle.index == expected_index);
+        CHECK(handle.generation == 99);
+        ++expected_index;
+    }
+    CHECK(expected_index == capacity);
+}
+
+TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output supports copy and move") {
+    ml::TFixedArray<FTestRegistryEntityHandle, 4> source{};
+    source.set_num_uninitialised(write_handle_results(source.capacity_view(), 4, 31));
+
+    ml::TFixedArray<FTestRegistryEntityHandle, 4> copied{source};
+    ml::TFixedArray<FTestRegistryEntityHandle, 4> moved{MoveTemp(source)};
+
+    CHECK(source.is_empty());
+    for (ml::TFixedArray<FTestRegistryEntityHandle, 4> const* handles : {&copied, &moved}) {
+        auto const& const_handles{*handles};
+        int32 expected_index{};
+        for (FTestRegistryEntityHandle const& handle : const_handles) {
+            CHECK(handle.index == expected_index);
+            CHECK(handle.generation == 31);
+            ++expected_index;
+        }
+        CHECK(expected_index == 4);
+    }
+}
+
+TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output repeatedly alternates empty and full") {
+    static constexpr int32 capacity{8};
+    static constexpr int32 iteration_count{1024};
+
+    ml::TFixedArray<FTestRegistryEntityHandle, capacity> handles{};
+    for (int32 iteration{}; iteration < iteration_count; ++iteration) {
+        handles.set_num_uninitialised(write_handle_results(handles.capacity_view(), capacity, iteration));
+        handles.set_num_uninitialised(0);
+        handles.set_num_uninitialised(write_handle_results(handles.capacity_view(), capacity, iteration));
+
+        auto const& const_handles{handles};
+        int32 expected_index{};
+        for (FTestRegistryEntityHandle const& handle : const_handles) {
+            CHECK(handle.index == expected_index);
+            CHECK(handle.generation == iteration);
+            ++expected_index;
+        }
+        CHECK(expected_index == capacity);
+    }
 }
 
 TEST_CASE("SandboxCore.TFixedArray.Add and emplace_back append contiguously") {
