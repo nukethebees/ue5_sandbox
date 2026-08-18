@@ -111,8 +111,12 @@ class TFixedArray {
     auto is_empty() const noexcept -> bool { return size_ == 0; }
     auto is_full() const noexcept -> bool { return size_ == capacity(); }
 
-    auto data() noexcept -> value_type* { return value_at_storage(0); }
-    auto data() const noexcept -> value_type const* { return value_at_storage(0); }
+    auto data() noexcept -> value_type* {
+        return reinterpret_cast<value_type*>(std::addressof(storage_));
+    }
+    auto data() const noexcept -> value_type const* {
+        return reinterpret_cast<value_type const*>(std::addressof(storage_));
+    }
     auto capacity_view() noexcept -> TArrayView<T> { return {data(), capacity()}; }
 
     auto begin() noexcept -> iterator { return data(); }
