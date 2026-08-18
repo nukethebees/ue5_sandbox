@@ -371,9 +371,9 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     };
 
     FTimespan const timeout{0, 0, 4};
-    ml::TFixedArray<FTurretInfo, turret_count> const turret_infos{
-        {{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
-        {{5000.f, 0.f, 0.f}, ETestTeam::Red},
+    TStaticArray<FTurretInfo, turret_count> const turret_infos{
+        FTurretInfo{{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
+        FTurretInfo{{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
