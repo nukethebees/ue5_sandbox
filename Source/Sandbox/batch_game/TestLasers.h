@@ -3,16 +3,12 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestLaserCollisionDataSoA.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
-#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
-#include <Math/Color.h>
-#include <SandboxCore/generation_index.h>
 
 #include "TestLasers.generated.h"
 

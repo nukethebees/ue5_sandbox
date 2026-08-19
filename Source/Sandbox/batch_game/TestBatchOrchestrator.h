@@ -2,7 +2,6 @@
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/SimulationActorClasses.h>
-#include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
