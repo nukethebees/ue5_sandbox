@@ -73,9 +73,8 @@ struct FTestRegistryEntityHandle {
     generation_type generation{index_none};
 };
 
-auto write_handle_results(TArrayView<FTestRegistryEntityHandle> const out_handles,
-                          int32 const result_count,
-                          int32 const generation) -> int32 {
+auto write_handle_results(TArrayView<FTestRegistryEntityHandle> const out_handles, int32 const result_count, int32 const generation)
+    -> int32 {
     check(result_count >= 0);
     check(result_count <= out_handles.Num());
 
@@ -201,8 +200,7 @@ TEST_CASE("SandboxCore.TFixedArray.Uninitialised handle output survives repeated
         auto const result_count{iteration % (capacity + 1)};
         auto const generation{1000 + iteration};
 
-        handles.set_num_uninitialised(
-            write_handle_results(handles.capacity_view(), result_count, generation));
+        handles.set_num_uninitialised(write_handle_results(handles.capacity_view(), result_count, generation));
 
         CHECK(handles.num() == result_count);
         auto const& const_handles{handles};
