@@ -21,7 +21,7 @@ auto make_transforms(FVectors3f const& locations, FRotatorsf const& rotations)
     -> TArray<FTransform> {
     return make_transforms(locations.get_const_view(), rotations.get_const_view());
 }
-auto make_transforms(TVectors3View<float const> const locations,
+auto make_transforms(FVectors3f::ConstView const locations,
                      TRotatorsView<float const> const rotations) -> TArray<FTransform> {
     auto const n{ml::num(locations)};
     check(ml::all_num_equal(locations, rotations));

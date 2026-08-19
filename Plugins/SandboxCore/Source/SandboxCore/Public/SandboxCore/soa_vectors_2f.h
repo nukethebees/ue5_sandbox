@@ -4,13 +4,9 @@
 
 #pragma once
 
-#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_vectors_3f.h"
-#include "SandboxCore/tick_countdown.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -19,25 +15,23 @@
 
 #include <utility>
 
-namespace ml::test_tube_spinners {
-struct EntityDataView;
-struct EntityDataConstView;
+struct FVectors2fView;
+struct FVectors2fConstView;
 
-struct SANDBOX_API EntityDataConstView {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
+struct SANDBOXCORE_API FVectors2fConstView {
+    using View = FVectors2fView;
+    using ConstView = FVectors2fConstView;
+    using equivalent_type = FVector2f;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.yaws,
-            self.laser_cooldowns,
-            self.next_fire_point_indices
+            self.xs,
+            self.ys
         );
     }
 
+    auto operator[](int32 const index) const -> FVector2f;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -48,30 +42,26 @@ struct SANDBOX_API EntityDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::ConstView locations;
-    TConstArrayView<float> yaws;
-    FTickCountdown16::ConstView laser_cooldowns;
-    TConstArrayView<int32> next_fire_point_indices;
+    TConstArrayView<float> xs;
+    TConstArrayView<float> ys;
 };
 
-struct SANDBOX_API EntityDataView {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
+struct SANDBOXCORE_API FVectors2fView {
+    using View = FVectors2fView;
+    using ConstView = FVectors2fConstView;
+    using equivalent_type = FVector2f;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.yaws,
-            self.laser_cooldowns,
-            self.next_fire_point_indices
+            self.xs,
+            self.ys
         );
     }
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
+    auto operator[](int32 const index) const -> FVector2f;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -85,16 +75,58 @@ struct SANDBOX_API EntityDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<FRegistryEntityHandle> handles;
-    FVectors3f::View locations;
-    TArrayView<float> yaws;
-    FTickCountdown16::View laser_cooldowns;
-    TArrayView<int32> next_fire_point_indices;
+    TArrayView<float> xs;
+    TArrayView<float> ys;
 };
 
-struct SANDBOX_API EntityData {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
+struct SANDBOXCORE_API FVectors2f {
+    using View = FVectors2fView;
+    using ConstView = FVectors2fConstView;
+    using equivalent_type = FVector2f;
+
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
+
+    struct Data {
+        value_type* xs;
+
+        value_type* ys;
+    };
+
+    struct ConstData {
+        value_type const* xs;
+
+        value_type const* ys;
+    };
+
+    auto get_data() -> Data {
+        return Data{xs.GetData(), ys.GetData()};
+    }
+    auto get_data() const -> ConstData {
+        return ConstData{xs.GetData(), ys.GetData()};
+    }
+
+    auto add(value_type const x, value_type const y) -> size_type {
+        auto const index{xs.Add(x)};
+        ys.Add(y);
+        return index;
+    }
+    auto add(FVector2f const& value) -> size_type {
+        return add(value.X, value.Y);
+    }
+
+    void empty() {
+        xs.Empty();
+        ys.Empty();
+    }
+    void set_num_uninitialised(size_type const count) {
+        xs.SetNumUninitialized(count);
+        ys.SetNumUninitialized(count);
+    }
+    void add_zeroed(size_type const count) {
+        xs.AddZeroed(count);
+        ys.AddZeroed(count);
+    }
 
     void reset();
 
@@ -105,31 +137,24 @@ struct SANDBOX_API EntityData {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        handles.RemoveAtSwap(index, count, allow_shrinking);
-        locations.remove_at_swap(index, count, allow_shrinking);
-        yaws.RemoveAtSwap(index, count, allow_shrinking);
-        laser_cooldowns.remove_at_swap(index, count, allow_shrinking);
-        next_fire_point_indices.RemoveAtSwap(index, count, allow_shrinking);
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(handles, dst_i, other.handles, src_i);
-        ml::copy_element(locations, dst_i, other.locations, src_i);
-        ml::copy_element(yaws, dst_i, other.yaws, src_i);
-        ml::copy_element(laser_cooldowns, dst_i, other.laser_cooldowns, src_i);
-        ml::copy_element(next_fire_point_indices, dst_i, other.next_fire_point_indices, src_i);
+        xs[dst_i] = other.xs[src_i];
+        ys[dst_i] = other.ys[src_i];
     }
 
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(handles, dst_i, other.handles, src_i, count);
-        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
-        ml::copy_elements(yaws, dst_i, other.yaws, src_i, count);
-        ml::copy_elements(laser_cooldowns, dst_i, other.laser_cooldowns, src_i, count);
-        ml::copy_elements(next_fire_point_indices, dst_i, other.next_fire_point_indices, src_i, count);
+        for (auto i{0}; i < count; ++i) {
+            xs[dst_i + i] = other.xs[src_i + i];
+            ys[dst_i + i] = other.ys[src_i + i];
+        }
     }
 
     template <typename Other>
@@ -140,13 +165,10 @@ struct SANDBOX_API EntityData {
     }
 
     template <typename Other>
-    requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
+    requires ml::SupportsApplyArrayPairsWith<FVectors2f, Other>
     void append_from(Other const& other) {
-        ml::append_from(handles, other.handles);
-        ml::append_from(locations, other.locations);
-        ml::append_from(yaws, other.yaws);
-        ml::append_from(laser_cooldowns, other.laser_cooldowns);
-        ml::append_from(next_fire_point_indices, other.next_fire_point_indices);
+        ml::append_from(xs, other.xs);
+        ml::append_from(ys, other.ys);
     }
 
     void apply_permutation(TArrayView<int32> indices);
@@ -180,11 +202,8 @@ struct SANDBOX_API EntityData {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.handles,
-            self.locations,
-            self.yaws,
-            self.laser_cooldowns,
-            self.next_fire_point_indices
+            self.xs,
+            self.ys
         );
     }
 
@@ -192,16 +211,14 @@ struct SANDBOX_API EntityData {
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.handles, other.handles,
-            self.locations, other.locations,
-            self.yaws, other.yaws,
-            self.laser_cooldowns, other.laser_cooldowns,
-            self.next_fire_point_indices, other.next_fire_point_indices
+            self.xs, other.xs,
+            self.ys, other.ys
         );
     }
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
+    auto operator[](int32 const index) const -> FVector2f;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -215,11 +232,7 @@ struct SANDBOX_API EntityData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<FRegistryEntityHandle> handles;
-    FVectors3f locations;
-    TArray<float> yaws;
-    FTickCountdown16 laser_cooldowns;
-    TArray<int32> next_fire_point_indices;
+    TArray<float> xs;
+    TArray<float> ys;
 };
-} // namespace ml::test_tube_spinners
 // clang-format on

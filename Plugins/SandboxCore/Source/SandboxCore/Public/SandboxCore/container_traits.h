@@ -142,18 +142,14 @@ template <typename Dst, typename Src = Dst>
 struct CopyElementTraits;
 
 template <typename Dst, typename Src>
-    requires details::HasSubscriptCopy<Dst, Src>
+    requires details::HasCopyElement<Dst, Src> || details::HasSubscriptCopy<Dst, Src>
 struct CopyElementTraits<Dst, Src> {
     static void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
-        dst[dst_i] = src[src_i];
-    }
-};
-
-template <typename Dst, typename Src>
-    requires details::HasCopyElement<Dst, Src>
-struct CopyElementTraits<Dst, Src> {
-    static void copy_element(Dst& dst, int32 const dst_i, Src const& src, int32 const src_i) {
-        dst.copy_element(dst_i, src, src_i);
+        if constexpr (details::HasCopyElement<Dst, Src>) {
+            dst.copy_element(dst_i, src, src_i);
+        } else {
+            dst[dst_i] = src[src_i];
+        }
     }
 };
 

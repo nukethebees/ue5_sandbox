@@ -15,7 +15,7 @@
 #include "SandboxCore/countdown_timers.h"
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
-#include "SandboxCore/soa_vectors.h"
+#include "SandboxCore/soa_vectors_3f.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"

@@ -11,7 +11,7 @@
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/periodic_tick_countdown.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SandboxCore/soa_vectors.h"
+#include "SandboxCore/soa_vectors_3f.h"
 #include "SandboxCore/tick_countdown.h"
 
 #include "Containers/AllowShrinking.h"

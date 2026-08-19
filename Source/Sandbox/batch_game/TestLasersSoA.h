@@ -10,7 +10,7 @@
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
-#include "SandboxCore/soa_vectors.h"
+#include "SandboxCore/soa_vectors_3f.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Containers/AllowShrinking.h"

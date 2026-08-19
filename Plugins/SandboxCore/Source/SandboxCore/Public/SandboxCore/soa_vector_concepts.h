@@ -8,12 +8,12 @@
 namespace ml {
 template <typename T>
 concept is_vec3f = std::same_as<std::remove_cvref_t<T>, FVectors3f> ||
-                   std::same_as<std::remove_cvref_t<T>, TVectors3View<float>> ||
-                   std::same_as<std::remove_cvref_t<T>, TVectors3View<float const>>;
+                   std::same_as<std::remove_cvref_t<T>, FVectors3f::View> ||
+                   std::same_as<std::remove_cvref_t<T>, FVectors3f::ConstView>;
 
 template <typename T>
 concept is_mutable_vec3f =
-    (std::same_as<T, FVectors3f&> || std::same_as<std::remove_cvref_t<T>, TVectors3View<float>>) &&
+    (std::same_as<T, FVectors3f&> || std::same_as<std::remove_cvref_t<T>, FVectors3f::View>) &&
     requires(T&& value) {
         { value.xs.GetData() } -> std::convertible_to<float*>;
         { value.ys.GetData() } -> std::convertible_to<float*>;

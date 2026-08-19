@@ -23,6 +23,7 @@ struct FRegistryEntityHandlesConstView;
 struct SANDBOX_API FRegistryEntityHandlesConstView {
     using View = FRegistryEntityHandlesView;
     using ConstView = FRegistryEntityHandlesConstView;
+    using equivalent_type = FRegistryEntityHandle;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -32,6 +33,7 @@ struct SANDBOX_API FRegistryEntityHandlesConstView {
         );
     }
 
+    auto operator[](int32 const index) const -> FRegistryEntityHandle;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -49,6 +51,7 @@ struct SANDBOX_API FRegistryEntityHandlesConstView {
 struct SANDBOX_API FRegistryEntityHandlesView {
     using View = FRegistryEntityHandlesView;
     using ConstView = FRegistryEntityHandlesConstView;
+    using equivalent_type = FRegistryEntityHandle;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -60,6 +63,7 @@ struct SANDBOX_API FRegistryEntityHandlesView {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
+    auto operator[](int32 const index) const -> FRegistryEntityHandle;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -80,11 +84,11 @@ struct SANDBOX_API FRegistryEntityHandlesView {
 struct SANDBOX_API FRegistryEntityHandles {
     using View = FRegistryEntityHandlesView;
     using ConstView = FRegistryEntityHandlesConstView;
+    using equivalent_type = FRegistryEntityHandle;
 
     void add(int32 const index, int32 const generation);
-    FRegistryEntityHandle operator[](int32 const index) const;
     void append_to(TArray<FRegistryEntityHandle>& out) const;
-    TArray<FRegistryEntityHandle> to_array() const;
+    auto to_array() const -> TArray<FRegistryEntityHandle>;
 
     void reset();
 
@@ -174,6 +178,7 @@ struct SANDBOX_API FRegistryEntityHandles {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
+    auto operator[](int32 const index) const -> FRegistryEntityHandle;
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;

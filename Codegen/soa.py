@@ -224,6 +224,52 @@ class ForEachSoAMemberPairFreeFunctionCall(FunctionBody):
         )
 
 
+class ForEachSoAMemberIndexCopy(FunctionBody):
+    def __init__(
+        self, members: Iterable[SoAMember], other_parameter: FunctionParameter
+    ) -> None:
+        self.members = tuple(members)
+        self.other_parameter = other_parameter
+        if not self.members:
+            raise ValueError("ForEachSoAMemberIndexCopy requires at least one SOA member")
+
+    def render(self, context: RenderContext) -> str:
+        function = self.function
+        other_index = function.parameters.index(self.other_parameter)
+        other = function.parameter(self.other_parameter).cpp_name
+        dst_i = function.parameter(function.parameters[other_index - 1]).cpp_name
+        src_i = function.parameter(function.parameters[other_index + 1]).cpp_name
+        return "\n".join(
+            Raw(
+                f"{member.name}[{dst_i}] = {other}.{member.name}[{src_i}];"
+            ).render(context)
+            for member in self.members
+        )
+
+
+class ForEachSoAMemberRangeCopy(FunctionBody):
+    def __init__(
+        self, members: Iterable[SoAMember], other_parameter: FunctionParameter
+    ) -> None:
+        self.members = tuple(members)
+        self.other_parameter = other_parameter
+        if not self.members:
+            raise ValueError("ForEachSoAMemberRangeCopy requires at least one SOA member")
+
+    def render(self, context: RenderContext) -> str:
+        function = self.function
+        other_index = function.parameters.index(self.other_parameter)
+        other = function.parameter(self.other_parameter).cpp_name
+        dst_i = function.parameter(function.parameters[other_index - 1]).cpp_name
+        src_i = function.parameter(function.parameters[other_index + 1]).cpp_name
+        count = function.parameter(function.parameters[other_index + 2]).cpp_name
+        assignments = "\n".join(
+            f"            {member.name}[{dst_i} + i] = {other}.{member.name}[{src_i} + i];"
+            for member in self.members
+        )
+        return f"        for (auto i{{0}}; i < {count}; ++i) {{\n{assignments}\n        }}"
+
+
 class ForEachSoAFieldPermutationCall(FunctionBody):
     def __init__(self, fields: Iterable[str]) -> None:
         self.fields = tuple(fields)
@@ -339,6 +385,8 @@ class SoAStruct:
     storage_operations: tuple[SoAStorageOperation, ...] = ()
     nodes: tuple[Node, ...] = ()
     source_nodes: tuple[Node, ...] = ()
+    equivalent_type: TypeLike | None = None
+    copy_element_memberwise: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
@@ -364,11 +412,15 @@ class SoAStruct:
 class HomogeneousSoAValueType:
     cpp_type: TypeLike
     suffix: str
-    aos_type: TypeLike | None = None
+    equivalent_type: TypeLike | None = None
+    input_types: tuple[TypeLike, ...] = ()
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "input_types", tuple(self.input_types))
         if not type_spelling(self.cpp_type).strip() or not self.suffix.strip():
             raise ValueError("Homogeneous SOA value type and suffix must not be empty")
+        if any(not type_spelling(value).strip() for value in self.input_types):
+            raise ValueError("Homogeneous SOA input types must not be empty")
 
 
 @dataclass(frozen=True)
@@ -391,6 +443,11 @@ class HomogeneousSoALayout:
             raise ValueError("Homogeneous SOA components must not contain duplicates")
         if not self.value_types:
             raise ValueError("Homogeneous SOA layout must contain value types")
+        equivalent_types = tuple(value.equivalent_type for value in self.value_types)
+        if any(equivalent_types) and not all(equivalent_types):
+            raise ValueError(
+                "Homogeneous SOA layouts must define equivalent types for every value type"
+            )
 
     @property
     def view_name(self) -> str:
@@ -398,6 +455,14 @@ class HomogeneousSoALayout:
 
     def storage_name(self, value_type: HomogeneousSoAValueType) -> str:
         return f"F{self.name}{value_type.suffix}"
+
+    @property
+    def has_equivalent_type(self) -> bool:
+        return all(value.equivalent_type is not None for value in self.value_types)
+
+    @property
+    def equivalent_type_trait_name(self) -> str:
+        return f"T{self.name}EquivalentType"
 
 
 def _separate(nodes: Iterable[Node], newline_count: int) -> tuple[Node, ...]:
@@ -526,8 +591,12 @@ def _storage_operation_spec(
                     other,
                     FunctionParameter("int32 const", "src_i"),
                 ),
-                ForEachSoAMemberPairFreeFunctionCall(
-                    members, "ml::copy_element", other
+                (
+                    ForEachSoAMemberIndexCopy(members, other)
+                    if soa.copy_element_memberwise
+                    else ForEachSoAMemberPairFreeFunctionCall(
+                        members, "ml::copy_element", other
+                    )
                 ),
                 is_inline=True,
                 template_parameters="typename Other",
@@ -570,7 +639,9 @@ def _storage_operation_specs(soa: SoAStruct) -> tuple[MemberFunctionSpec, ...]:
                     ),
                     ForEachSoAMemberPairFreeFunctionCall(
                         soa.members, "ml::copy_elements", other
-                    ),
+                    )
+                    if not soa.copy_element_memberwise
+                    else ForEachSoAMemberRangeCopy(soa.members, other),
                     is_inline=True,
                     template_parameters="typename Other",
                 )
@@ -715,6 +786,19 @@ def _common_soa_function_specs(
                 ),
             )
         )
+    if soa.equivalent_type is not None:
+        functions.append(
+            MemberFunctionSpec(
+                "operator[]",
+                soa.equivalent_type,
+                (FunctionParameter("int32 const", "index"),),
+                Raw(
+                    "validate_array_sizes();\n"
+                    f"return {{{comma_separated(f'{member.name}[index]' for member in soa.members)}}};"
+                ),
+                suffix=" const",
+            )
+        )
     functions.extend(
         (
             MemberFunctionSpec(
@@ -829,6 +913,14 @@ def _view_struct(soa: SoAStruct, name: str, use_const_view_types: bool) -> Struc
             UsingDeclaration("View", soa.names.view_name),
             NewLines(1),
             UsingDeclaration("ConstView", soa.names.const_view_name),
+            *(
+                (
+                    NewLines(1),
+                    UsingDeclaration("equivalent_type", soa.equivalent_type),
+                )
+                if soa.equivalent_type is not None
+                else ()
+            ),
             NewLines(2),
             _apply_arrays_function(soa.members),
             NewLines(2),
@@ -856,6 +948,10 @@ def _storage_struct(
         NewLines(1),
         UsingDeclaration("ConstView", soa.names.const_view_name),
     ]
+    if soa.equivalent_type is not None:
+        struct_nodes.extend(
+            (NewLines(1), UsingDeclaration("equivalent_type", soa.equivalent_type))
+        )
     if soa.nodes:
         struct_nodes.extend((NewLines(2), *soa.nodes))
     operations = _storage_operation_nodes(operation_specs)
@@ -963,7 +1059,7 @@ def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...
     offset = FunctionParameter("size_type const", "offset")
     count = FunctionParameter("size_type const", "count")
     func = FunctionParameter("TFunc&&", "func")
-    return (
+    functions: list[Node] = [
         MemberFunctionSpec(
             "get_view",
             "auto",
@@ -1085,7 +1181,24 @@ def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...
             suffix=f" const -> {view_name}",
             is_inline=True,
         ).header_node(),
-    )
+    ]
+    if layout.has_equivalent_type:
+        functions.extend(
+            (
+                NewLines(1),
+                MemberFunctionSpec(
+                    "operator[]",
+                    "equivalent_type",
+                    (FunctionParameter("size_type const", "index"),),
+                    Raw(
+                        f"return {{{comma_separated(f'{component}[index]' for component in layout.components)}}};"
+                    ),
+                    suffix=" const",
+                    is_inline=True,
+                ).header_node(),
+            )
+        )
+    return tuple(functions)
 
 
 def _homogeneous_view_struct(layout: HomogeneousSoALayout) -> Struct:
@@ -1104,6 +1217,17 @@ def _homogeneous_view_struct(layout: HomogeneousSoALayout) -> Struct:
             UsingDeclaration("View", f"{layout.view_name}<T>"),
             NewLines(1),
             UsingDeclaration("ConstView", f"{layout.view_name}<value_type const>"),
+            *(
+                (
+                    NewLines(1),
+                    UsingDeclaration(
+                        "equivalent_type",
+                        f"typename {layout.equivalent_type_trait_name}<value_type>::type",
+                    ),
+                )
+                if layout.has_equivalent_type
+                else ()
+            ),
             NewLines(2),
             *_separate(
                 (
@@ -1334,12 +1458,13 @@ def _homogeneous_storage_functions(
                     FunctionParameter("size_type const", "src_i"),
                     FunctionParameter("size_type const", "count"),
                 ),
-                _homogeneous_body(
-                    (
-                        f"ml::copy_elements({component}, dst_i, src.{component}, src_i, count);"
+                Raw(
+                    "for (auto i{0}; i < count; ++i) {\n"
+                    + "\n".join(
+                        f"    {component}[dst_i + i] = src.{component}[src_i + i];"
                         for component in layout.components
-                    ),
-                    (CONTAINER_OPS,),
+                    )
+                    + "\n}"
                 ),
                 suffix=" -> void",
                 is_inline=True,
@@ -1375,7 +1500,24 @@ def _homogeneous_storage_functions(
         )
     )
     nodes.extend((NewLines(2), *_permutation_function_nodes(layout.components)))
-    if value_type.aos_type:
+    if value_type.equivalent_type:
+        nodes.extend(
+            (
+                NewLines(1),
+                MemberFunctionSpec(
+                    "operator[]",
+                    value_type.equivalent_type,
+                    (FunctionParameter("size_type const", "index"),),
+                    Raw(
+                        "validate_array_sizes();\n"
+                        f"return {{{comma_separated(f'{component}[index]' for component in layout.components)}}};"
+                    ),
+                    suffix=" const",
+                    is_inline=True,
+                ).header_node(),
+            )
+        )
+    if value_type.input_types:
         component_parameters = tuple(
             FunctionParameter("value_type const", component[0])
             for component in layout.components
@@ -1400,17 +1542,30 @@ def _homogeneous_storage_functions(
                     suffix=" -> size_type",
                     is_inline=True,
                 ).header_node(),
-                NewLines(1),
-                MemberFunctionSpec(
-                    "add",
-                    "auto",
-                    (FunctionParameter("aos_type const&", "value"),),
-                    Raw(
-                        f"return add({comma_separated(f'value.{axis}' for axis in ('X', 'Y', 'Z')[: len(layout.components)])});"
-                    ),
-                    suffix=" -> size_type",
-                    is_inline=True,
-                ).header_node(),
+                *(
+                    node
+                    for input_type in value_type.input_types
+                    for node in (
+                        NewLines(1),
+                        MemberFunctionSpec(
+                            "add",
+                            "auto",
+                            (
+                                FunctionParameter(
+                                    composed_type(
+                                        f"{type_spelling(input_type)} const&", input_type
+                                    ),
+                                    "value",
+                                ),
+                            ),
+                            Raw(
+                                f"return add({comma_separated(f'value.{axis}' for axis in ('X', 'Y', 'Z')[: len(layout.components)])});"
+                            ),
+                            suffix=" -> size_type",
+                            is_inline=True,
+                        ).header_node(),
+                    )
+                ),
             )
         )
     nodes.extend((NewLines(2), *operation_nodes))
@@ -1421,8 +1576,10 @@ def _homogeneous_storage_struct(
     layout: HomogeneousSoALayout, value_type: HomogeneousSoAValueType
 ) -> Struct:
     aliases: list[Node] = [UsingDeclaration("value_type", value_type.cpp_type)]
-    if value_type.aos_type:
-        aliases.extend((NewLines(1), UsingDeclaration("aos_type", value_type.aos_type)))
+    if value_type.equivalent_type:
+        aliases.extend(
+            (NewLines(1), UsingDeclaration("equivalent_type", value_type.equivalent_type))
+        )
     aliases.extend(
         (
             NewLines(1),
@@ -1458,6 +1615,32 @@ def _homogeneous_storage_struct(
     )
 
 
+def _homogeneous_equivalent_type_nodes(
+    layout: HomogeneousSoALayout,
+) -> tuple[Node, ...]:
+    if not layout.has_equivalent_type:
+        return ()
+
+    specialisations = tuple(
+        Raw(
+            "\n".join(
+                (
+                    "template <>",
+                    f"struct {layout.equivalent_type_trait_name}<{type_spelling(value.cpp_type)}> {{",
+                    f"    using type = {type_spelling(value.equivalent_type)};",
+                    "};",
+                )
+            ),
+        )
+        for value in layout.value_types
+    )
+    return (
+        Raw(f"template <typename T>\nstruct {layout.equivalent_type_trait_name};"),
+        NewLines(2),
+        *_separate(specialisations, 2),
+    )
+
+
 def lower_homogeneous_soa_layouts(
     layouts: Iterable[HomogeneousSoALayout],
 ) -> tuple[Node, ...]:
@@ -1465,6 +1648,9 @@ def lower_homogeneous_soa_layouts(
     nodes: list[Node] = []
     for layout in layout_list:
         if nodes:
+            nodes.append(NewLines(2))
+        nodes.extend(_homogeneous_equivalent_type_nodes(layout))
+        if layout.has_equivalent_type:
             nodes.append(NewLines(2))
         nodes.append(_homogeneous_view_struct(layout))
     for layout in layout_list:

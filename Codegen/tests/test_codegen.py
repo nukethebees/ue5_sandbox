@@ -143,8 +143,9 @@ struct FValue {
         self.assertIn("registry_entity_handles_soa", module_names)
         self.assertIn("entity_death_info", module_names)
         self.assertIn("sandbox_core_soa_vectors", module_names)
+        self.assertIn("soa_vectors_3f", module_names)
         self.assertIn("sandbox_core_soa_rotators", module_names)
-        self.assertEqual(len(generated_modules), 17)
+        self.assertEqual(len(generated_modules), 25)
 
     def test_duplicate_output_paths_are_rejected(self) -> None:
         modules = (
@@ -320,6 +321,18 @@ struct FValue {
     this->value = value;
 }""",
         )
+        bool_function = MemberFunctionSpec("is_valid", "bool", (), Raw("return true;"))
+        self.assertEqual(
+            bool_function.declaration_node().render(RenderContext()),
+            "bool is_valid();",
+        )
+        pointer_function = MemberFunctionSpec(
+            "get_data", "void*", (), Raw("return nullptr;")
+        )
+        self.assertEqual(
+            pointer_function.declaration_node().render(RenderContext()),
+            "auto get_data() -> void*;",
+        )
         static_function = MemberFunctionSpec("reset", "void", (), Raw(""), is_static=True)
         self.assertEqual(
             static_function.declaration_node().render(RenderContext()),
@@ -341,13 +354,13 @@ struct FValue {
 
         self.assertEqual(
             function.header_node().render(RenderContext()),
-            """inline int32 make_value(int32 value = 1) {
+            """inline auto make_value(int32 value = 1) -> int32 {
     return value;
 }""",
         )
         self.assertEqual(
             function.definition_node().render(RenderContext()),
-            """int32 make_value(int32 value) {
+            """auto make_value(int32 value) -> int32 {
     return value;
 }""",
         )
@@ -361,7 +374,7 @@ struct FValue {
         self.assertIsInstance(function.parameter(weight), ParameterRef)
         self.assertEqual(
             function.definition_node("FData").render(RenderContext()),
-            """float FData::get_weight(float weight) {
+            """auto FData::get_weight(float weight) -> float {
     return weight;
 }""",
         )
@@ -369,7 +382,7 @@ struct FValue {
         weight.name = "strength"
         self.assertEqual(
             function.definition_node("FData").render(RenderContext()),
-            """float FData::get_weight(float strength) {
+            """auto FData::get_weight(float strength) -> float {
     return strength;
 }""",
         )
@@ -381,7 +394,7 @@ struct FValue {
 
         self.assertEqual(
             function.definition_node().render(RenderContext()),
-            """int32 identity(int32 value) {
+            """auto identity(int32 value) -> int32 {
     return value;
 }""",
         )
@@ -766,14 +779,19 @@ void append_from(Other const& other) {
         layout = HomogeneousSoALayout(
             "Values",
             ("xs", "ys"),
-            (HomogeneousSoAValueType("float", "f", "FVector2f"),),
+            (
+                HomogeneousSoAValueType(
+                    "float", "f", "FVector2f", ("FVector2f",)
+                ),
+            ),
         )
 
         nodes = lower_homogeneous_soa_layouts((layout,))
         rendered = "\n".join(node.render(RenderContext()) for node in nodes)
 
-        self.assertTrue(all(isinstance(node, (NewLines, Struct)) for node in nodes))
+        self.assertTrue(all(isinstance(node, (NewLines, Raw, Struct)) for node in nodes))
         self.assertIn("template <typename T>", rendered)
+        self.assertIn("struct TValuesEquivalentType<float>", rendered)
         self.assertIn("struct TValuesView", rendered)
         self.assertIn("struct FValuesf", rendered)
         self.assertIn(
@@ -781,14 +799,17 @@ void append_from(Other const& other) {
             "    auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void",
             rendered,
         )
-        self.assertIn("ml::copy_elements(xs, dst_i, src.xs, src_i, count);", rendered)
-        self.assertIn("ml::copy_elements(ys, dst_i, src.ys, src_i, count);", rendered)
+        self.assertIn("for (auto i{0}; i < count; ++i)", rendered)
+        self.assertIn("xs[dst_i + i] = src.xs[src_i + i];", rendered)
+        self.assertIn("ys[dst_i + i] = src.ys[src_i + i];", rendered)
         self.assertIn(
             "    template <typename Other>\n    auto copy_to_tail(Other const& src) -> void",
             rendered,
         )
         self.assertIn("copy_elements(num() - count, src, 0, count);", rendered)
-        self.assertIn("using aos_type = FVector2f;", rendered)
+        self.assertIn("using equivalent_type = FVector2f;", rendered)
+        self.assertIn("auto operator[](size_type const index) const -> equivalent_type", rendered)
+        self.assertIn("auto operator[](size_type const index) const -> FVector2f", rendered)
         self.assertIn("auto add(value_type const x, value_type const y) -> size_type", rendered)
 
         source_nodes = lower_homogeneous_soa_permutation_definitions((layout,))
@@ -804,6 +825,7 @@ void append_from(Other const& other) {
                 tarray_member("values", "int32"),
                 soa_member("vectors", "FVectors3f"),
             ),
+            equivalent_type="FValue",
         )
 
         lowered = lower_soa_struct(soa)
@@ -816,6 +838,7 @@ void append_from(Other const& other) {
         self.assertLess(rendered.index("self.values"), rendered.index("self.vectors"))
         self.assertIn("self.values, other.values", rendered)
         self.assertIn("self.vectors, other.vectors", rendered)
+        self.assertEqual(rendered.count("auto operator[](int32 const index) const -> FValue"), 3)
         self.assertIn("auto get_view() -> View", rendered)
         self.assertIn("auto slice(int32 const offset, int32 const count) -> View", rendered)
         self.assertIn("auto left(int32 const count) -> View", rendered)

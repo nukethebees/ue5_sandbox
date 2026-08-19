@@ -85,7 +85,7 @@ F_ROTATORS_F = dependent_type(
 )
 F_VECTORS_3F = dependent_type(
     "FVectors3f",
-    "SandboxCore/soa_vectors.h",
+    "SandboxCore/soa_vectors_3f.h",
     {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
 F_TICK_COUNTDOWN_8 = dependent_type(
