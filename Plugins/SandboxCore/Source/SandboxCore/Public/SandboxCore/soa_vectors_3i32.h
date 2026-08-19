@@ -38,6 +38,7 @@ struct SANDBOXCORE_API FVectors3i32ConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -70,6 +71,7 @@ struct SANDBOXCORE_API FVectors3i32View {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -242,6 +244,7 @@ struct SANDBOXCORE_API FVectors3i32 {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;

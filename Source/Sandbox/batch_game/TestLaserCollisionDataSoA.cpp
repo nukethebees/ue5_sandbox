@@ -42,6 +42,10 @@ auto ComponentHitRangesConstView::num() const noexcept -> int32 {
     return ml::num(components);
 }
 
+auto ComponentHitRangesConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void ComponentHitRangesConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(components),
@@ -104,6 +108,10 @@ auto ComponentHitRangesView::get_const_view(int32 const offset, int32 const coun
 
 auto ComponentHitRangesView::num() const noexcept -> int32 {
     return ml::num(components);
+}
+
+auto ComponentHitRangesView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void ComponentHitRangesView::validate_array_sizes() const {
@@ -196,6 +204,10 @@ auto ComponentHitRanges::get_const_view(int32 const offset, int32 const count) c
 
 auto ComponentHitRanges::num() const noexcept -> int32 {
     return ml::num(components);
+}
+
+auto ComponentHitRanges::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void ComponentHitRanges::validate_array_sizes() const {

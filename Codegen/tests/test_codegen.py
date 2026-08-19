@@ -637,6 +637,7 @@ void append_from(Other const& other) {
         self.assertIn("ml::add_defaulted(", source)
         self.assertIn("void remove_at_swap(", header)
         self.assertIn("values.RemoveAtSwap(", header)
+        self.assertIn("auto is_empty() const noexcept -> bool;", header)
         self.assertIn("ml::copy_element(", header)
         self.assertIn("ml::copy_elements(", header)
         self.assertIn("template <typename Other>", header)
@@ -794,6 +795,7 @@ void append_from(Other const& other) {
         self.assertIn("struct TValuesEquivalentType<float>", rendered)
         self.assertIn("struct TValuesView", rendered)
         self.assertIn("struct FValuesf", rendered)
+        self.assertIn("auto is_empty() const -> bool", rendered)
         self.assertIn(
             "    template <typename Other>\n"
             "    auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void",

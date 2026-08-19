@@ -42,6 +42,10 @@ auto TestCapitalShipFighterSpawnQueueConstView::num() const noexcept -> int32 {
     return ml::num(locations);
 }
 
+auto TestCapitalShipFighterSpawnQueueConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void TestCapitalShipFighterSpawnQueueConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
@@ -104,6 +108,10 @@ auto TestCapitalShipFighterSpawnQueueView::get_const_view(int32 const offset, in
 
 auto TestCapitalShipFighterSpawnQueueView::num() const noexcept -> int32 {
     return ml::num(locations);
+}
+
+auto TestCapitalShipFighterSpawnQueueView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestCapitalShipFighterSpawnQueueView::validate_array_sizes() const {
@@ -224,6 +232,10 @@ auto TestCapitalShipFighterSpawnQueue::get_const_view(int32 const offset, int32 
 
 auto TestCapitalShipFighterSpawnQueue::num() const noexcept -> int32 {
     return ml::num(locations);
+}
+
+auto TestCapitalShipFighterSpawnQueue::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestCapitalShipFighterSpawnQueue::validate_array_sizes() const {

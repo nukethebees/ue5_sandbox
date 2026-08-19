@@ -41,6 +41,10 @@ auto FCountdownTimersConstView::num() const noexcept -> int32 {
     return ml::num(remaining_times);
 }
 
+auto FCountdownTimersConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void FCountdownTimersConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(remaining_times),
@@ -91,6 +95,10 @@ auto FCountdownTimersView::get_const_view(int32 const offset, int32 const count)
 
 auto FCountdownTimersView::num() const noexcept -> int32 {
     return ml::num(remaining_times);
+}
+
+auto FCountdownTimersView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FCountdownTimersView::validate_array_sizes() const {
@@ -181,6 +189,10 @@ auto FCountdownTimers::get_const_view(int32 const offset, int32 const count) con
 
 auto FCountdownTimers::num() const noexcept -> int32 {
     return ml::num(remaining_times);
+}
+
+auto FCountdownTimers::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FCountdownTimers::validate_array_sizes() const {

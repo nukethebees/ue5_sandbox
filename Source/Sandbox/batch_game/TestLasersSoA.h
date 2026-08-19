@@ -48,6 +48,7 @@ struct SANDBOX_API SpawnRequestsConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -88,6 +89,7 @@ struct SANDBOX_API SpawnRequestsView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -244,6 +246,7 @@ struct SANDBOX_API SpawnRequests {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -288,6 +291,7 @@ struct SANDBOX_API EntitiesConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -328,6 +332,7 @@ struct SANDBOX_API EntitiesView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -479,6 +484,7 @@ struct SANDBOX_API Entities {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -517,6 +523,7 @@ struct SANDBOX_API HitDetailsConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -545,6 +552,7 @@ struct SANDBOX_API HitDetailsView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -654,6 +662,7 @@ struct SANDBOX_API HitDetails {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;

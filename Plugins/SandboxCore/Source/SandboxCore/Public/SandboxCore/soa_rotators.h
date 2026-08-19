@@ -54,6 +54,9 @@ struct TRotatorsView {
     auto num() const -> size_type {
         return pitches.Num();
     }
+    auto is_empty() const -> bool {
+        return num() == 0;
+    }
     auto slice(size_type const offset, size_type const count) const -> TRotatorsView {
         return TRotatorsView{pitches.Slice(offset, count), yaws.Slice(offset, count), rolls.Slice(offset, count)};
     }

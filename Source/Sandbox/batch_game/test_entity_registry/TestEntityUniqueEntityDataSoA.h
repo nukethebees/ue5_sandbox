@@ -47,6 +47,7 @@ struct SANDBOX_API TestEntityUniqueEntityDataConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -87,6 +88,7 @@ struct SANDBOX_API TestEntityUniqueEntityDataView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -240,6 +242,7 @@ struct SANDBOX_API TestEntityUniqueEntityData {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;

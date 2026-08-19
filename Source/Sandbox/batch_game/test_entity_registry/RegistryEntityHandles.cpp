@@ -65,6 +65,10 @@ auto FRegistryEntityHandlesConstView::num() const noexcept -> int32 {
     return ml::num(registry_indices);
 }
 
+auto FRegistryEntityHandlesConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void FRegistryEntityHandlesConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(registry_indices),
@@ -124,6 +128,10 @@ auto FRegistryEntityHandlesView::get_const_view(int32 const offset, int32 const 
 
 auto FRegistryEntityHandlesView::num() const noexcept -> int32 {
     return ml::num(registry_indices);
+}
+
+auto FRegistryEntityHandlesView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FRegistryEntityHandlesView::validate_array_sizes() const {
@@ -229,6 +237,10 @@ auto FRegistryEntityHandles::get_const_view(int32 const offset, int32 const coun
 
 auto FRegistryEntityHandles::num() const noexcept -> int32 {
     return ml::num(registry_indices);
+}
+
+auto FRegistryEntityHandles::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FRegistryEntityHandles::validate_array_sizes() const {

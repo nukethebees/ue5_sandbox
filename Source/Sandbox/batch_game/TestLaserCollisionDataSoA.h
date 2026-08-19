@@ -36,6 +36,7 @@ struct SANDBOX_API ComponentHitRangesConstView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) const -> ConstView;
     auto left(int32 const count) const -> ConstView;
@@ -68,6 +69,7 @@ struct SANDBOX_API ComponentHitRangesView {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;
@@ -144,6 +146,7 @@ struct SANDBOX_API ComponentHitRanges {
     auto get_const_view() const -> ConstView;
     auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
     auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
     void validate_array_sizes() const;
     auto slice(int32 const offset, int32 const count) -> View;
     auto left(int32 const count) -> View;

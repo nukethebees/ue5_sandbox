@@ -42,6 +42,10 @@ auto TestCapitalShipFighterOrderQueueConstView::num() const noexcept -> int32 {
     return ml::num(handles);
 }
 
+auto TestCapitalShipFighterOrderQueueConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void TestCapitalShipFighterOrderQueueConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(handles),
@@ -104,6 +108,10 @@ auto TestCapitalShipFighterOrderQueueView::get_const_view(int32 const offset, in
 
 auto TestCapitalShipFighterOrderQueueView::num() const noexcept -> int32 {
     return ml::num(handles);
+}
+
+auto TestCapitalShipFighterOrderQueueView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestCapitalShipFighterOrderQueueView::validate_array_sizes() const {
@@ -224,6 +232,10 @@ auto TestCapitalShipFighterOrderQueue::get_const_view(int32 const offset, int32 
 
 auto TestCapitalShipFighterOrderQueue::num() const noexcept -> int32 {
     return ml::num(handles);
+}
+
+auto TestCapitalShipFighterOrderQueue::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestCapitalShipFighterOrderQueue::validate_array_sizes() const {

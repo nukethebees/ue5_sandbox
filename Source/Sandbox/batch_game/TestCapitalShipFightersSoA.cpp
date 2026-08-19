@@ -85,6 +85,10 @@ auto EntityDataConstView::num() const noexcept -> int32 {
     return ml::num(entity_handles);
 }
 
+auto EntityDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void EntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(entity_handles),
@@ -231,6 +235,10 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
 
 auto EntityDataView::num() const noexcept -> int32 {
     return ml::num(entity_handles);
+}
+
+auto EntityDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityDataView::validate_array_sizes() const {
@@ -561,6 +569,10 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
 
 auto EntityData::num() const noexcept -> int32 {
     return ml::num(entity_handles);
+}
+
+auto EntityData::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityData::validate_array_sizes() const {

@@ -40,6 +40,10 @@ auto DirectDamageEventsConstView::num() const noexcept -> int32 {
     return ml::num(damaged_entities);
 }
 
+auto DirectDamageEventsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void DirectDamageEventsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(damaged_entities),
@@ -98,6 +102,10 @@ auto DirectDamageEventsView::get_const_view(int32 const offset, int32 const coun
 
 auto DirectDamageEventsView::num() const noexcept -> int32 {
     return ml::num(damaged_entities);
+}
+
+auto DirectDamageEventsView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void DirectDamageEventsView::validate_array_sizes() const {
@@ -208,6 +216,10 @@ auto DirectDamageEvents::get_const_view(int32 const offset, int32 const count) c
 
 auto DirectDamageEvents::num() const noexcept -> int32 {
     return ml::num(damaged_entities);
+}
+
+auto DirectDamageEvents::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void DirectDamageEvents::validate_array_sizes() const {

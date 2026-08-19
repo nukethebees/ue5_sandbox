@@ -43,6 +43,10 @@ auto EntityDeathInfoConstView::num() const noexcept -> int32 {
     return ml::num(reasons);
 }
 
+auto EntityDeathInfoConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void EntityDeathInfoConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(reasons),
@@ -101,6 +105,10 @@ auto EntityDeathInfoView::get_const_view(int32 const offset, int32 const count) 
 
 auto EntityDeathInfoView::num() const noexcept -> int32 {
     return ml::num(reasons);
+}
+
+auto EntityDeathInfoView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityDeathInfoView::validate_array_sizes() const {
@@ -211,6 +219,10 @@ auto EntityDeathInfo::get_const_view(int32 const offset, int32 const count) cons
 
 auto EntityDeathInfo::num() const noexcept -> int32 {
     return ml::num(reasons);
+}
+
+auto EntityDeathInfo::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityDeathInfo::validate_array_sizes() const {

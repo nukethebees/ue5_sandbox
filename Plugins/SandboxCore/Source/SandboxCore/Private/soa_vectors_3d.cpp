@@ -45,6 +45,10 @@ auto FVectors3dConstView::num() const noexcept -> int32 {
     return ml::num(xs);
 }
 
+auto FVectors3dConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void FVectors3dConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(xs),
@@ -108,6 +112,10 @@ auto FVectors3dView::get_const_view(int32 const offset, int32 const count) const
 
 auto FVectors3dView::num() const noexcept -> int32 {
     return ml::num(xs);
+}
+
+auto FVectors3dView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FVectors3dView::validate_array_sizes() const {
@@ -223,6 +231,10 @@ auto FVectors3d::get_const_view(int32 const offset, int32 const count) const -> 
 
 auto FVectors3d::num() const noexcept -> int32 {
     return ml::num(xs);
+}
+
+auto FVectors3d::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FVectors3d::validate_array_sizes() const {

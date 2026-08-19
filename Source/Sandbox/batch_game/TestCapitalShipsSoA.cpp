@@ -49,6 +49,10 @@ auto SpawnDataConstView::num() const noexcept -> int32 {
     return ml::num(target_handles);
 }
 
+auto SpawnDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void SpawnDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(target_handles),
@@ -123,6 +127,10 @@ auto SpawnDataView::get_const_view(int32 const offset, int32 const count) const 
 
 auto SpawnDataView::num() const noexcept -> int32 {
     return ml::num(target_handles);
+}
+
+auto SpawnDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void SpawnDataView::validate_array_sizes() const {
@@ -275,6 +283,10 @@ auto SpawnData::num() const noexcept -> int32 {
     return ml::num(target_handles);
 }
 
+auto SpawnData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void SpawnData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(target_handles),
@@ -337,6 +349,10 @@ auto EntityTickDataConstView::num() const noexcept -> int32 {
     return ml::num(ships_ready_to_spawn_fighters_buffer);
 }
 
+auto EntityTickDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void EntityTickDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(ships_ready_to_spawn_fighters_buffer),
@@ -391,6 +407,10 @@ auto EntityTickDataView::get_const_view(int32 const offset, int32 const count) c
 
 auto EntityTickDataView::num() const noexcept -> int32 {
     return ml::num(ships_ready_to_spawn_fighters_buffer);
+}
+
+auto EntityTickDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityTickDataView::validate_array_sizes() const {
@@ -493,6 +513,10 @@ auto EntityTickData::num() const noexcept -> int32 {
     return ml::num(ships_ready_to_spawn_fighters_buffer);
 }
 
+auto EntityTickData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void EntityTickData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(ships_ready_to_spawn_fighters_buffer),
@@ -562,6 +586,10 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
 
 auto EntityDataConstView::num() const noexcept -> int32 {
     return ml::num(handles);
+}
+
+auto EntityDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityDataConstView::validate_array_sizes() const {
@@ -646,6 +674,10 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
 
 auto EntityDataView::num() const noexcept -> int32 {
     return ml::num(handles);
+}
+
+auto EntityDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntityDataView::validate_array_sizes() const {
@@ -818,6 +850,10 @@ auto EntityData::num() const noexcept -> int32 {
     return ml::num(handles);
 }
 
+auto EntityData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void EntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(handles),
@@ -882,6 +918,10 @@ auto FighterReassignmentConstView::num() const noexcept -> int32 {
     return ml::num(capital_handles);
 }
 
+auto FighterReassignmentConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void FighterReassignmentConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(capital_handles),
@@ -936,6 +976,10 @@ auto FighterReassignmentView::get_const_view(int32 const offset, int32 const cou
 
 auto FighterReassignmentView::num() const noexcept -> int32 {
     return ml::num(capital_handles);
+}
+
+auto FighterReassignmentView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FighterReassignmentView::validate_array_sizes() const {
@@ -1036,6 +1080,10 @@ auto FighterReassignment::get_const_view(int32 const offset, int32 const count) 
 
 auto FighterReassignment::num() const noexcept -> int32 {
     return ml::num(capital_handles);
+}
+
+auto FighterReassignment::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FighterReassignment::validate_array_sizes() const {

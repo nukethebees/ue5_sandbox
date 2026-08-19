@@ -51,6 +51,10 @@ auto SpawnRequestsConstView::num() const noexcept -> int32 {
     return ml::num(locations);
 }
 
+auto SpawnRequestsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void SpawnRequestsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
@@ -129,6 +133,10 @@ auto SpawnRequestsView::get_const_view(int32 const offset, int32 const count) co
 
 auto SpawnRequestsView::num() const noexcept -> int32 {
     return ml::num(locations);
+}
+
+auto SpawnRequestsView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void SpawnRequestsView::validate_array_sizes() const {
@@ -291,6 +299,10 @@ auto SpawnRequests::num() const noexcept -> int32 {
     return ml::num(locations);
 }
 
+auto SpawnRequests::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void SpawnRequests::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
@@ -364,6 +376,10 @@ auto EntitiesConstView::get_const_view(int32 const offset, int32 const count) co
 
 auto EntitiesConstView::num() const noexcept -> int32 {
     return ml::num(ismc_data);
+}
+
+auto EntitiesConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntitiesConstView::validate_array_sizes() const {
@@ -444,6 +460,10 @@ auto EntitiesView::get_const_view(int32 const offset, int32 const count) const -
 
 auto EntitiesView::num() const noexcept -> int32 {
     return ml::num(ismc_data);
+}
+
+auto EntitiesView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void EntitiesView::validate_array_sizes() const {
@@ -606,6 +626,10 @@ auto Entities::num() const noexcept -> int32 {
     return ml::num(ismc_data);
 }
 
+auto Entities::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void Entities::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(ismc_data),
@@ -669,6 +693,10 @@ auto HitDetailsConstView::num() const noexcept -> int32 {
     return ml::num(locations);
 }
 
+auto HitDetailsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void HitDetailsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
@@ -723,6 +751,10 @@ auto HitDetailsView::get_const_view(int32 const offset, int32 const count) const
 
 auto HitDetailsView::num() const noexcept -> int32 {
     return ml::num(locations);
+}
+
+auto HitDetailsView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void HitDetailsView::validate_array_sizes() const {
@@ -823,6 +855,10 @@ auto HitDetails::get_const_view(int32 const offset, int32 const count) const -> 
 
 auto HitDetails::num() const noexcept -> int32 {
     return ml::num(locations);
+}
+
+auto HitDetails::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void HitDetails::validate_array_sizes() const {

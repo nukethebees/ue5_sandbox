@@ -44,6 +44,10 @@ auto UnresolvedCollisionDamageEventsConstView::num() const noexcept -> int32 {
     return ml::num(damaged_actors);
 }
 
+auto UnresolvedCollisionDamageEventsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void UnresolvedCollisionDamageEventsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(damaged_actors),
@@ -110,6 +114,10 @@ auto UnresolvedCollisionDamageEventsView::get_const_view(int32 const offset, int
 
 auto UnresolvedCollisionDamageEventsView::num() const noexcept -> int32 {
     return ml::num(damaged_actors);
+}
+
+auto UnresolvedCollisionDamageEventsView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void UnresolvedCollisionDamageEventsView::validate_array_sizes() const {
@@ -242,6 +250,10 @@ auto UnresolvedCollisionDamageEvents::num() const noexcept -> int32 {
     return ml::num(damaged_actors);
 }
 
+auto UnresolvedCollisionDamageEvents::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void UnresolvedCollisionDamageEvents::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(damaged_actors),
@@ -306,6 +318,10 @@ auto CollisionDamageEventsConstView::num() const noexcept -> int32 {
     return ml::num(damage_amounts);
 }
 
+auto CollisionDamageEventsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void CollisionDamageEventsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(damage_amounts),
@@ -368,6 +384,10 @@ auto CollisionDamageEventsView::get_const_view(int32 const offset, int32 const c
 
 auto CollisionDamageEventsView::num() const noexcept -> int32 {
     return ml::num(damage_amounts);
+}
+
+auto CollisionDamageEventsView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void CollisionDamageEventsView::validate_array_sizes() const {
@@ -488,6 +508,10 @@ auto CollisionDamageEvents::get_const_view(int32 const offset, int32 const count
 
 auto CollisionDamageEvents::num() const noexcept -> int32 {
     return ml::num(damage_amounts);
+}
+
+auto CollisionDamageEvents::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void CollisionDamageEvents::validate_array_sizes() const {

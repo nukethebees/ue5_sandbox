@@ -43,6 +43,10 @@ auto FVectors2dConstView::num() const noexcept -> int32 {
     return ml::num(xs);
 }
 
+auto FVectors2dConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void FVectors2dConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(xs),
@@ -102,6 +106,10 @@ auto FVectors2dView::get_const_view(int32 const offset, int32 const count) const
 
 auto FVectors2dView::num() const noexcept -> int32 {
     return ml::num(xs);
+}
+
+auto FVectors2dView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FVectors2dView::validate_array_sizes() const {
@@ -207,6 +215,10 @@ auto FVectors2d::get_const_view(int32 const offset, int32 const count) const -> 
 
 auto FVectors2d::num() const noexcept -> int32 {
     return ml::num(xs);
+}
+
+auto FVectors2d::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void FVectors2d::validate_array_sizes() const {

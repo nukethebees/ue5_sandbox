@@ -50,6 +50,10 @@ auto TestEntityUniqueEntityDataConstView::num() const noexcept -> int32 {
     return ml::num(registry_indices);
 }
 
+auto TestEntityUniqueEntityDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
 void TestEntityUniqueEntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(registry_indices),
@@ -128,6 +132,10 @@ auto TestEntityUniqueEntityDataView::get_const_view(int32 const offset, int32 co
 
 auto TestEntityUniqueEntityDataView::num() const noexcept -> int32 {
     return ml::num(registry_indices);
+}
+
+auto TestEntityUniqueEntityDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestEntityUniqueEntityDataView::validate_array_sizes() const {
@@ -288,6 +296,10 @@ auto TestEntityUniqueEntityData::get_const_view(int32 const offset, int32 const 
 
 auto TestEntityUniqueEntityData::num() const noexcept -> int32 {
     return ml::num(registry_indices);
+}
+
+auto TestEntityUniqueEntityData::is_empty() const noexcept -> bool {
+    return num() == 0;
 }
 
 void TestEntityUniqueEntityData::validate_array_sizes() const {
