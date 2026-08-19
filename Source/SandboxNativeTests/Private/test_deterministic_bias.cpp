@@ -14,6 +14,23 @@ TEST_CASE("SandboxNative.DeterministicBias.StableGeneration") {
     CHECK(biases.floating == 0.85223466f);
     CHECK(ml::make_deterministic_biases(42, 7).integral == biases.integral);
     CHECK(ml::make_deterministic_biases(42, 7).floating == biases.floating);
+
+    std::array const first_values{42, 43};
+    std::array const second_values{7, 8};
+    std::array<uint32, 2> integral_out;
+    std::array<float, 2> floating_out;
+    ml::make_deterministic_biases({first_values.data(), static_cast<int32>(first_values.size())},
+                                  {second_values.data(), static_cast<int32>(second_values.size())},
+                                  {integral_out.data(), static_cast<int32>(integral_out.size())},
+                                  {floating_out.data(), static_cast<int32>(floating_out.size())});
+
+    for (int32 i{0}; i < static_cast<int32>(first_values.size()); ++i) {
+        auto const expected{ml::make_deterministic_biases(first_values[i], second_values[i])};
+        CHECK(integral_out[i] == expected.integral);
+        CHECK(floating_out[i] == expected.floating);
+    }
+
+    ml::make_deterministic_biases(TConstArrayView<int32>{}, TConstArrayView<int32>{}, TArrayView<uint32>{}, TArrayView<float>{});
 }
 
 TEST_CASE("SandboxNative.DeterministicBias.ValidFloatRange") {
