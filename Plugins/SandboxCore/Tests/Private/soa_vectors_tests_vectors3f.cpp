@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-static_assert(std::is_same_v<FVectors3f::aos_type, FVector3f>);
+static_assert(std::is_same_v<FVectors3f::equivalent_type, FVector3f>);
 static_assert(std::is_aggregate_v<FVectors3f::Data>);
 static_assert(std::is_aggregate_v<FVectors3f::ConstData>);
 static_assert(std::is_same_v<decltype(FVectors3f::Data::xs), float*>);
