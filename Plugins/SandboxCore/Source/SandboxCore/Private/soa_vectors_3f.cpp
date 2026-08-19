@@ -12,11 +12,6 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 
-auto FVectors3fConstView::operator[](int32 const index) const -> FVector3f {
-    validate_array_sizes();
-    return {xs[index], ys[index], zs[index]};
-}
-
 auto FVectors3fConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }
@@ -79,11 +74,6 @@ auto FVectors3fView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{ys}.Slice(offset, count),
         TArrayView<float>{zs}.Slice(offset, count),
     };
-}
-
-auto FVectors3fView::operator[](int32 const index) const -> FVector3f {
-    validate_array_sizes();
-    return {xs[index], ys[index], zs[index]};
 }
 
 auto FVectors3fView::get_view() const -> ConstView {
@@ -198,11 +188,6 @@ auto FVectors3f::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{ys}.Slice(offset, count),
         TArrayView<float>{zs}.Slice(offset, count),
     };
-}
-
-auto FVectors3f::operator[](int32 const index) const -> FVector3f {
-    validate_array_sizes();
-    return {xs[index], ys[index], zs[index]};
 }
 
 auto FVectors3f::get_view() const -> ConstView {

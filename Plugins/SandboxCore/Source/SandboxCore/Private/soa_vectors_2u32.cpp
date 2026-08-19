@@ -12,11 +12,6 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 
-auto FVectors2u32ConstView::operator[](int32 const index) const -> FUintPoint {
-    validate_array_sizes();
-    return {xs[index], ys[index]};
-}
-
 auto FVectors2u32ConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }
@@ -75,11 +70,6 @@ auto FVectors2u32View::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint32>{xs}.Slice(offset, count),
         TArrayView<uint32>{ys}.Slice(offset, count),
     };
-}
-
-auto FVectors2u32View::operator[](int32 const index) const -> FUintPoint {
-    validate_array_sizes();
-    return {xs[index], ys[index]};
 }
 
 auto FVectors2u32View::get_view() const -> ConstView {
@@ -184,11 +174,6 @@ auto FVectors2u32::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint32>{xs}.Slice(offset, count),
         TArrayView<uint32>{ys}.Slice(offset, count),
     };
-}
-
-auto FVectors2u32::operator[](int32 const index) const -> FUintPoint {
-    validate_array_sizes();
-    return {xs[index], ys[index]};
 }
 
 auto FVectors2u32::get_view() const -> ConstView {

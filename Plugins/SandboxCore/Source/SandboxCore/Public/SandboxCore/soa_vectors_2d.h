@@ -31,7 +31,15 @@ struct SANDBOXCORE_API FVectors2dConstView {
         );
     }
 
-    auto operator[](int32 const index) const -> FVector2d;
+    auto operator[](int32 const index) const -> FVector2d {
+        return {xs.GetData()[index], ys.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector2d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -62,7 +70,15 @@ struct SANDBOXCORE_API FVectors2dView {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FVector2d;
+    auto operator[](int32 const index) const -> FVector2d {
+        return {xs.GetData()[index], ys.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector2d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -220,7 +236,15 @@ struct SANDBOXCORE_API FVectors2d {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FVector2d;
+    auto operator[](int32 const index) const -> FVector2d {
+        return {xs.GetData()[index], ys.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector2d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;

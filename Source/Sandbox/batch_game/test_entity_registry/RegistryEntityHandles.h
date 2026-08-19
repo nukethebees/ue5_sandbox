@@ -33,7 +33,15 @@ struct SANDBOX_API FRegistryEntityHandlesConstView {
         );
     }
 
-    auto operator[](int32 const index) const -> FRegistryEntityHandle;
+    auto operator[](int32 const index) const -> FRegistryEntityHandle {
+        return {registry_indices.GetData()[index], generations.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FRegistryEntityHandle {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -64,7 +72,15 @@ struct SANDBOX_API FRegistryEntityHandlesView {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FRegistryEntityHandle;
+    auto operator[](int32 const index) const -> FRegistryEntityHandle {
+        return {registry_indices.GetData()[index], generations.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FRegistryEntityHandle {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -180,7 +196,15 @@ struct SANDBOX_API FRegistryEntityHandles {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FRegistryEntityHandle;
+    auto operator[](int32 const index) const -> FRegistryEntityHandle {
+        return {registry_indices.GetData()[index], generations.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FRegistryEntityHandle {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;

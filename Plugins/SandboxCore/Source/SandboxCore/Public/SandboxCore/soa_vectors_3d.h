@@ -32,7 +32,15 @@ struct SANDBOXCORE_API FVectors3dConstView {
         );
     }
 
-    auto operator[](int32 const index) const -> FVector3d;
+    auto operator[](int32 const index) const -> FVector3d {
+        return {xs.GetData()[index], ys.GetData()[index], zs.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector3d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -65,7 +73,15 @@ struct SANDBOXCORE_API FVectors3dView {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FVector3d;
+    auto operator[](int32 const index) const -> FVector3d {
+        return {xs.GetData()[index], ys.GetData()[index], zs.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector3d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;
@@ -238,7 +254,15 @@ struct SANDBOXCORE_API FVectors3d {
 
     auto get_view() -> View;
     auto get_view(int32 const offset, int32 const count) -> View;
-    auto operator[](int32 const index) const -> FVector3d;
+    auto operator[](int32 const index) const -> FVector3d {
+        return {xs.GetData()[index], ys.GetData()[index], zs.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector3d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
     auto get_view() const -> ConstView;
     auto get_view(int32 const offset, int32 const count) const -> ConstView;
     auto get_const_view() const -> ConstView;

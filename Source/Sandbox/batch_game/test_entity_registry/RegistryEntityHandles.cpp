@@ -34,11 +34,6 @@ auto FRegistryEntityHandles::to_array() const -> TArray<FRegistryEntityHandle> {
     return out;
 }
 
-auto FRegistryEntityHandlesConstView::operator[](int32 const index) const -> FRegistryEntityHandle {
-    validate_array_sizes();
-    return {registry_indices[index], generations[index]};
-}
-
 auto FRegistryEntityHandlesConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }
@@ -97,11 +92,6 @@ auto FRegistryEntityHandlesView::get_view(int32 const offset, int32 const count)
         TArrayView<int32>{registry_indices}.Slice(offset, count),
         TArrayView<int32>{generations}.Slice(offset, count),
     };
-}
-
-auto FRegistryEntityHandlesView::operator[](int32 const index) const -> FRegistryEntityHandle {
-    validate_array_sizes();
-    return {registry_indices[index], generations[index]};
 }
 
 auto FRegistryEntityHandlesView::get_view() const -> ConstView {
@@ -206,11 +196,6 @@ auto FRegistryEntityHandles::get_view(int32 const offset, int32 const count) -> 
         TArrayView<int32>{registry_indices}.Slice(offset, count),
         TArrayView<int32>{generations}.Slice(offset, count),
     };
-}
-
-auto FRegistryEntityHandles::operator[](int32 const index) const -> FRegistryEntityHandle {
-    validate_array_sizes();
-    return {registry_indices[index], generations[index]};
 }
 
 auto FRegistryEntityHandles::get_view() const -> ConstView {

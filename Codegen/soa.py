@@ -80,6 +80,11 @@ class SoAMember:
         view_type = self.const_view_type if use_const_view else self.view_type
         return f"{type_spelling(view_type)}{{{self.name}}}.Slice(offset, count)"
 
+    def unchecked_index_expression(self, index: str) -> str:
+        if type_spelling(self.container_type).startswith("TArray<"):
+            return f"{self.name}.GetData()[{index}]"
+        return f"{self.name}[{index}]"
+
 
 class ForEachSoAMemberCall(FunctionBody):
     def __init__(self, members: Iterable[SoAMember], method_name: str) -> None:
@@ -787,16 +792,32 @@ def _common_soa_function_specs(
             )
         )
     if soa.equivalent_type is not None:
-        functions.append(
-            MemberFunctionSpec(
-                "operator[]",
-                soa.equivalent_type,
-                (FunctionParameter("int32 const", "index"),),
-                Raw(
-                    "validate_array_sizes();\n"
-                    f"return {{{comma_separated(f'{member.name}[index]' for member in soa.members)}}};"
+        functions.extend(
+            (
+                MemberFunctionSpec(
+                    "operator[]",
+                    soa.equivalent_type,
+                    (FunctionParameter("int32 const", "index"),),
+                    Raw(
+                        f"return {{{comma_separated(member.unchecked_index_expression('index') for member in soa.members)}}};"
+                    ),
+                    suffix=" const",
+                    is_inline=True,
                 ),
-                suffix=" const",
+                MemberFunctionSpec(
+                    "at",
+                    soa.equivalent_type,
+                    (FunctionParameter("int32 const", "index"),),
+                    Raw(
+                        "validate_array_sizes();\n"
+                        "check(index >= 0);\n"
+                        "check(index < num());\n"
+                        "return (*this)[index];",
+                        (CHECK,),
+                    ),
+                    suffix=" const",
+                    is_inline=True,
+                ),
             )
         )
     functions.extend(
@@ -1007,8 +1028,16 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
         _storage_struct(soa, operation_specs),
     )
     source_functions = (
-        *(spec.definition_node(soa.names.const_view_name) for spec in const_view_specs),
-        *(spec.definition_node(soa.names.view_name) for spec in view_specs),
+        *(
+            spec.definition_node(soa.names.const_view_name)
+            for spec in const_view_specs
+            if not spec.is_inline
+        ),
+        *(
+            spec.definition_node(soa.names.view_name)
+            for spec in view_specs
+            if not spec.is_inline
+        ),
         *(
             _storage_operation_spec(soa, operation).definition_node(soa.names.name)
             for operation in soa.storage_operations
@@ -1017,7 +1046,11 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
         *_permutation_source_nodes(
             (member.name for member in soa.members), soa.names.name
         ),
-        *(spec.definition_node(soa.names.name) for spec in storage_specs),
+        *(
+            spec.definition_node(soa.names.name)
+            for spec in storage_specs
+            if not spec.is_inline
+        ),
     )
     source_nodes = _separate((*soa.source_nodes, *source_functions), 2)
     return SoAStructLowering(header_nodes, source_nodes)
@@ -1207,7 +1240,21 @@ def _homogeneous_view_functions(layout: HomogeneousSoALayout) -> tuple[Node, ...
                     "equivalent_type",
                     (FunctionParameter("size_type const", "index"),),
                     Raw(
-                        f"return {{{comma_separated(f'{component}[index]' for component in layout.components)}}};"
+                        f"return {{{comma_separated(f'{component}.GetData()[index]' for component in layout.components)}}};"
+                    ),
+                    suffix=" const",
+                    is_inline=True,
+                ).header_node(),
+                NewLines(1),
+                MemberFunctionSpec(
+                    "at",
+                    "equivalent_type",
+                    (FunctionParameter("size_type const", "index"),),
+                    Raw(
+                        "check(index >= 0);\n"
+                        "check(index < num());\n"
+                        "return (*this)[index];",
+                        (CHECK,),
                     ),
                     suffix=" const",
                     is_inline=True,
@@ -1525,8 +1572,22 @@ def _homogeneous_storage_functions(
                     value_type.equivalent_type,
                     (FunctionParameter("size_type const", "index"),),
                     Raw(
+                        f"return {{{comma_separated(f'{component}.GetData()[index]' for component in layout.components)}}};"
+                    ),
+                    suffix=" const",
+                    is_inline=True,
+                ).header_node(),
+                NewLines(1),
+                MemberFunctionSpec(
+                    "at",
+                    value_type.equivalent_type,
+                    (FunctionParameter("size_type const", "index"),),
+                    Raw(
                         "validate_array_sizes();\n"
-                        f"return {{{comma_separated(f'{component}[index]' for component in layout.components)}}};"
+                        "check(index >= 0);\n"
+                        "check(index < num());\n"
+                        "return (*this)[index];",
+                        (CHECK,),
                     ),
                     suffix=" const",
                     is_inline=True,
