@@ -28,6 +28,7 @@ from Codegen.cpp_types import (
     F_LINEAR_COLOR,
     F_PERIODIC_TICK_COUNTDOWN_16,
     F_REGISTRY_ENTITY_HANDLE,
+    F_REGISTRY_ENTITY_HANDLE_ARRAY,
     F_ROTATORS_F,
     F_TICK_COUNTDOWN_8,
     F_TICK_COUNTDOWN_16,
@@ -86,6 +87,7 @@ SANDBOX_CORE_API = "SANDBOXCORE_API"
 ARRAY_MATH = TypeDependency("ml::subtract_in_place", "SandboxCore/array_math.h")
 ARRAY_FILL = TypeDependency("ml::fill", "SandboxCore/array_utils.h")
 SOA_VECTOR_FILL = TypeDependency("ml::fill", "SandboxCore/soa_vector_utils.h")
+CHECK = TypeDependency("check", "CoreMinimal.h")
 INCLUDE_ORDER = (
     "Sandbox/batch_game/",
     "Sandbox/",
@@ -910,6 +912,93 @@ def entity_registry_data_soa_module() -> Module:
     )
 
 
+def registry_entity_handles_soa_module() -> Module:
+    add = MemberFunctionSpec(
+        "add",
+        "void",
+        (
+            FunctionParameter("int32 const", "index"),
+            FunctionParameter("int32 const", "generation"),
+        ),
+        Raw("registry_indices.Add(index);\ngenerations.Add(generation);"),
+    )
+    get_handle = MemberFunctionSpec(
+        "operator[]",
+        F_REGISTRY_ENTITY_HANDLE,
+        (FunctionParameter("int32 const", "index"),),
+        Raw(
+            "validate_array_sizes();\n"
+            "check(registry_indices.IsValidIndex(index));\n\n"
+            "return {registry_indices[index], generations[index]};",
+            (CHECK,),
+        ),
+        suffix=" const",
+    )
+    append_to = MemberFunctionSpec(
+        "append_to",
+        "void",
+        (FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE_ARRAY, "&"), "out"),),
+        Raw(
+            "auto const count{num()};\n"
+            "out.Reserve(out.Num() + count);\n"
+            "for (int32 i{0}; i < count; ++i) {\n"
+            "    out.Emplace(registry_indices[i], generations[i]);\n"
+            "}"
+        ),
+        suffix=" const",
+    )
+    to_array = MemberFunctionSpec(
+        "to_array",
+        F_REGISTRY_ENTITY_HANDLE_ARRAY,
+        (),
+        Raw(
+            "TArray<FRegistryEntityHandle> out;\n"
+            "append_to(out);\n"
+            "return out;"
+        ),
+        suffix=" const",
+    )
+    handles = SoAStruct(
+        SoAStructNames("FRegistryEntityHandles"),
+        (
+            tarray_member("registry_indices", "int32"),
+            tarray_member("generations", "int32"),
+        ),
+        storage_operations=ALL_STORAGE_OPERATIONS,
+        storage_export_specifier=SANDBOX_API,
+        nodes=(
+            add.header_node(),
+            NewLines(1),
+            get_handle.header_node(),
+            NewLines(1),
+            append_to.header_node(),
+            NewLines(1),
+            to_array.header_node(),
+        ),
+        source_nodes=(
+            add.definition_node("FRegistryEntityHandles"),
+            NewLines(2),
+            get_handle.definition_node("FRegistryEntityHandles"),
+            NewLines(2),
+            append_to.definition_node("FRegistryEntityHandles"),
+            NewLines(2),
+            to_array.definition_node("FRegistryEntityHandles"),
+        ),
+    )
+    lowered = lower_soa_structs_with_source((handles,))
+    header_path = TEST_ENTITY_REGISTRY_DIR / "RegistryEntityHandles.h"
+    return Module(
+        name="registry_entity_handles_soa",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(IncludeDependencies(), NewLines(2), *lowered.header_nodes),
+        ),
+        source=soa_source_file(header_path, lowered.source_nodes),
+    )
+
+
 def modules() -> tuple[Module, ...]:
     return (
         countdown_timers_module(),
@@ -927,5 +1016,6 @@ def modules() -> tuple[Module, ...]:
         direct_damage_events_soa_module(),
         unique_entity_data_soa_module(),
         entity_registry_data_soa_module(),
+        registry_entity_handles_soa_module(),
         entity_death_info_module(),
     )

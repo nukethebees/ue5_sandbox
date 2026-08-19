@@ -15,16 +15,16 @@
 // NewEntities
 /* ------------------------------------------------------------------------------------------ */
 auto SpawnedEntityHandles::num() const -> int32 {
-    return registry_handles.Num();
+    return registry_handles.num();
 }
 void SpawnedEntityHandles::reset() {
-    ml::reset(registry_handles);
+    registry_handles.reset();
 }
 void SpawnedEntityHandles::add_defaulted(int32 const count) {
-    registry_handles.AddDefaulted(count);
+    registry_handles.add_defaulted(count);
 }
 void SpawnedEntityHandles::add_uninitialised(int32 const count) {
-    registry_handles.AddUninitialized(count);
+    registry_handles.add_uninitialised(count);
 }
 
 void FTestEntityRegistry::reset() {
@@ -102,7 +102,7 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         auto const unique_id{first_id + new_entity_index};
         unique_ids[entity_index] = unique_id;
 
-        new_entities.registry_handles.Emplace(entity_index, generations[entity_index]);
+        new_entities.registry_handles.add(entity_index, generations[entity_index]);
 
         auto const i{unique_id.id};
 
@@ -132,7 +132,7 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         set_up_unique_data(i, entity_index);
     }
 
-    auto const indices_left_to_reserve{count - new_entities.registry_handles.Num()};
+    auto const indices_left_to_reserve{count - new_entities.registry_handles.num()};
     auto start_index{get_num_elements()};
 
     generations.AddZeroed(indices_left_to_reserve);

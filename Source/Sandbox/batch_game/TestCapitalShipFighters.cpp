@@ -864,16 +864,14 @@ void ATestCapitalShipFighters::commit_spawns() {
     // Entity handles
     new_spawn_entity_handles =
         entity_registry->add_entities(new_spawn_entity_data.get_const_view());
-    data.entity_handles.Append(new_spawn_entity_handles.registry_handles);
+    new_spawn_entity_handles.registry_handles.append_to(data.entity_handles);
     data.integral_biases.AddUninitialized(n_new);
     data.float_biases.AddUninitialized(n_new);
-    for (int32 i{0}; i < n_new; ++i) {
-        auto const index{n_cur + i};
-        auto const handle{new_spawn_entity_handles.registry_handles[i]};
-        auto const biases{ml::make_deterministic_biases(handle.index, handle.generation)};
-        data.integral_biases[index] = biases.integral;
-        data.float_biases[index] = biases.floating;
-    }
+    ml::make_deterministic_biases(
+        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.registry_indices},
+        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.generations},
+        TArrayView<uint32>{data.integral_biases}.Slice(n_cur, n_new),
+        TArrayView<float>{data.float_biases}.Slice(n_cur, n_new));
 
     // ISMC transforms
     ismc_transforms.AddDefaulted(n_new);

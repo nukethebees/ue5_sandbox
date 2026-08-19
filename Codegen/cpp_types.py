@@ -41,6 +41,11 @@ F_REGISTRY_ENTITY_HANDLE = dependent_type(
     "FRegistryEntityHandle",
     "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h",
 )
+F_REGISTRY_ENTITY_HANDLE_ARRAY = composed_type(
+    "TArray<FRegistryEntityHandle>",
+    F_REGISTRY_ENTITY_HANDLE,
+    header="Containers/Array.h",
+)
 E_TEST_DEATH_REASON = dependent_type(
     "ETestDeathReason",
     "Sandbox/batch_game/test_entity_registry/TestDeathReason.h",

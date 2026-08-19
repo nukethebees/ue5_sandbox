@@ -396,7 +396,7 @@ void ATestCapitalShips::register_all_proxies_in_level() {
 
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entities.handles = MoveTemp(new_entities.registry_handles);
+    entities.handles = new_entities.registry_handles.to_array();
 
     // Map the proxies to the new handles
     for (int32 i{0}; i < n_to_add; ++i) {

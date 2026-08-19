@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandles.h>
 #include <Sandbox/batch_game/test_entity_registry/RegistryHandleState.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueEntityData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
@@ -18,7 +19,7 @@
 #include "GameFramework/Actor.h"
 
 struct SpawnedEntityHandles {
-    TArray<FRegistryEntityHandle> registry_handles;
+    FRegistryEntityHandles registry_handles;
     TestEntityUniqueId first_id;
 
     auto num() const -> int32;
