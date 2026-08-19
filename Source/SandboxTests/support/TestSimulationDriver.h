@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/test_timeline.h>
 

@@ -2,13 +2,13 @@
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestMissionFailReason.h>
 #include <Sandbox/batch_game/TestMissionMode.h>
 #include <Sandbox/batch_game/TestMissionState.h>
 #include <Sandbox/health/ShipHealth.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>

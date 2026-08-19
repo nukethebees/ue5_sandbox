@@ -2,7 +2,6 @@
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SpatialQueryHit.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntity.h>
@@ -15,6 +14,7 @@
 #include <Sandbox/players/ShipLaserMode.h>
 #include <Sandbox/players/SpaceShipCommon.h>
 #include <Sandbox/players/SpaceShipFlightModel.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"

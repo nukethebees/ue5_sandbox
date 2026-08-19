@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
@@ -15,6 +14,7 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 #include <Sandbox/utilities/enums.h>
 #include <Sandbox/utilities/IndexSpan.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/soa_vector_utils.h>

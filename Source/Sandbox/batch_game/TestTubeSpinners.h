@@ -2,10 +2,10 @@
 
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SpatialQueryHit.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTubeSpinnersSoA.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>

@@ -4,7 +4,6 @@
 
 #include "EntityDeathInfo.h"
 
-#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 #include "Sandbox/batch_game/test_entity_registry/TestDeathReason.h"
 
 #include "SandboxCore/array_checks.h"
@@ -14,6 +13,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
+#include "SandboxNative/RegistryEntityHandle.h"
 
 auto EntityDeathInfoConstView::get_view() const -> ConstView {
     return get_view(0, num());

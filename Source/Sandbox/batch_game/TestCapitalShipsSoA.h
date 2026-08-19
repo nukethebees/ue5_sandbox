@@ -6,7 +6,6 @@
 
 #include "Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h"
 #include "Sandbox/batch_game/TestTeam.h"
-#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
 
 #include "Sandbox/utilities/IndexSpan.h"
 
@@ -21,6 +20,7 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
+#include "SandboxNative/RegistryEntityHandle.h"
 
 #include <utility>
 

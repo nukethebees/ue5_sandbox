@@ -39,7 +39,7 @@ def core_type(spelling: str) -> CppType:
 
 F_REGISTRY_ENTITY_HANDLE = dependent_type(
     "FRegistryEntityHandle",
-    "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h",
+    "SandboxNative/RegistryEntityHandle.h",
 )
 F_REGISTRY_ENTITY_HANDLE_ARRAY = composed_type(
     "TArray<FRegistryEntityHandle>",

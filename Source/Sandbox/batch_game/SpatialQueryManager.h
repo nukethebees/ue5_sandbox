@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Sandbox/batch_game/SpatialQueryHit.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestEntityType.h>
@@ -9,6 +8,7 @@
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>

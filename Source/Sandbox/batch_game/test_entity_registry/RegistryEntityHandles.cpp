@@ -4,8 +4,6 @@
 
 #include "RegistryEntityHandles.h"
 
-#include "Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h"
-
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_permutation.h"
@@ -14,6 +12,7 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
+#include "SandboxNative/RegistryEntityHandle.h"
 
 void FRegistryEntityHandles::add(int32 const index, int32 const generation) {
     registry_indices.Add(index);

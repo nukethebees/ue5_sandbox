@@ -1,4 +1,4 @@
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 auto FRegistryEntityHandle::is_valid() const noexcept -> bool {
     return index >= 0 && generation >= 0;

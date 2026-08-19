@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
-#include <Sandbox/batch_game/test_entity_registry/RegistryEntityHandle.h>
 #include <Sandbox/batch_game/TestTeam.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

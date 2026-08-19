@@ -7,7 +7,7 @@
 #include <compare>
 #include <type_traits>
 
-struct SANDBOX_API FRegistryEntityHandle {
+struct SANDBOXNATIVE_API FRegistryEntityHandle {
     using index_type = int32;
     using generation_type = int32;
 
