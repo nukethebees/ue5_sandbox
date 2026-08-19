@@ -30,3 +30,18 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 | SandboxNative | Editor/engine independent code |
 | SandboxNativeTests | Tests for `SandboxNative` |
 | SandboxTests | Tests for `Sandbox` |
+
+## Code generation
+
+Generated C++ files are defined in `Codegen/manifest.py`. After changing the manifest or
+Codegen implementation, regenerate them from the repository root:
+
+```bash
+python3 -m Codegen.generate
+```
+
+To verify that committed generated files are current without writing them:
+
+```bash
+python3 -m Codegen.generate --check
+```
