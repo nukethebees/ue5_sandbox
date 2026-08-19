@@ -18,6 +18,10 @@ def comma_separated(values: Iterable[str]) -> str:
     return ", ".join(values)
 
 
+def uses_trailing_return_type(return_type: TypeLike) -> bool:
+    return len(type_spelling(return_type)) > 4
+
+
 @dataclass(frozen=True)
 class TypeDependency:
     spelling: str
@@ -448,10 +452,16 @@ class MemberFunctionSpec:
             lines.append(f"template <{self.template_parameters}>")
         if self.requires_clause:
             lines.append(f"requires {self.requires_clause}")
-        lines.append(
-            f"{static_prefix}{type_spelling(self.return_type)} {qualified_name}({self._parameters(include_defaults)})"
-            f"{self.suffix}"
-        )
+        if uses_trailing_return_type(self.return_type):
+            lines.append(
+                f"{static_prefix}auto {qualified_name}({self._parameters(include_defaults)})"
+                f"{self.suffix} -> {type_spelling(self.return_type)}"
+            )
+        else:
+            lines.append(
+                f"{static_prefix}{type_spelling(self.return_type)} {qualified_name}({self._parameters(include_defaults)})"
+                f"{self.suffix}"
+            )
         return "\n".join(lines)
 
 
@@ -517,6 +527,11 @@ class FreeFunctionSpec:
 
     def _signature(self, include_defaults: bool, include_inline: bool) -> str:
         inline_prefix = "inline " if include_inline and self.is_inline else ""
+        if uses_trailing_return_type(self.return_type):
+            return (
+                f"{inline_prefix}auto {self.name}({self._parameters(include_defaults)})"
+                f"{self.suffix} -> {type_spelling(self.return_type)}"
+            )
         return f"{inline_prefix}{type_spelling(self.return_type)} {self.name}({self._parameters(include_defaults)}){self.suffix}"
 
 
