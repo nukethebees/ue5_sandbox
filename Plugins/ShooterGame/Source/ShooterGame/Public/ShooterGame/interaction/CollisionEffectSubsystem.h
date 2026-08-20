@@ -10,16 +10,20 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include <tuple>
+#include <utility>
 
 #include "CollisionEffectSubsystem.generated.h"
 
 UCLASS()
 class SHOOTERGAME_API UCollisionEffectSubsystem
-    : public UWorldSubsystem
-    , public UCollisionEffectSubsystemMixins {
+    : public UWorldSubsystem {
     GENERATED_BODY()
-    friend class UCollisionEffectSubsystemMixins;
   public:
+    template <typename Payload>
+    void add_payload(AActor& actor, Payload&& payload) {
+        core_.add_payload(actor, std::forward<Payload>(payload), this);
+    }
+
     UFUNCTION()
     void handle_collision_event(UPrimitiveComponent* overlapped_component,
                                 AActor* other_actor,
@@ -27,12 +31,12 @@ class SHOOTERGAME_API UCollisionEffectSubsystem
                                 int32 other_body_index,
                                 bool from_sweep,
                                 FHitResult const& sweep_result) {
-        return handle_collision_event_(overlapped_component,
-                                       other_actor,
-                                       OtherComp,
-                                       other_body_index,
-                                       from_sweep,
-                                       sweep_result);
+        core_.handle_collision_event_(overlapped_component,
+                                      other_actor,
+                                      OtherComp,
+                                      other_body_index,
+                                      from_sweep,
+                                      sweep_result);
     }
   private:
     UCollisionEffectSubsystemCore<FSpeedBoostPayload,
