@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "TextPopupTriggerActor.generated.h"
 

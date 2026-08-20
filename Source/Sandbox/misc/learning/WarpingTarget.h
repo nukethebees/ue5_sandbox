@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SandboxGameShared/core/Cooldown.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
+#include "SandboxGameShared/core/Cooldown.h"
 
 #include <GameFramework/Actor.h>
 #include <UObject/ObjectMacros.h>

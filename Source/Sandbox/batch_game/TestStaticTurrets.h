@@ -98,7 +98,10 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     // Searchng
     void perform_search();
-    void perform_search_on_slice(int32 slice_index, int32 n_turrets, int32 min_turrets_per_slice, float radius);
+    void perform_search_on_slice(int32 slice_index,
+                                 int32 n_turrets,
+                                 int32 min_turrets_per_slice,
+                                 float radius);
 
     // Attacking
     void fire_at_enemies();

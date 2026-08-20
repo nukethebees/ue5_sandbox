@@ -2,8 +2,8 @@
 
 #include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
-#include "ShooterGame/players/VisionConfig.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
+#include "ShooterGame/players/VisionConfig.h"
 #include "TestFlyBase.h"
 
 #include "CoreMinimal.h"

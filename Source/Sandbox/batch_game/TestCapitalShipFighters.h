@@ -12,8 +12,8 @@
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
-#include <SandboxGameShared/utilities/enums.h>
 #include <Sandbox/utilities/IndexSpan.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/multi_buffer.h>

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "Sandbox/core/destruction/RemoveGhostsOnStartComponent.h"
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/players/MyCharacter.h"
 #include "ShooterGame/players/TeamID.h"
 

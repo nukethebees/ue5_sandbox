@@ -1,8 +1,8 @@
 #include "TestFlyBase.h"
 
-#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/players/ShipDamageResult.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"

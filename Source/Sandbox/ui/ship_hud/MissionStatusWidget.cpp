@@ -4,10 +4,10 @@
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/ui/ship_hud/MissionEntityHealthRowWidget.h>
-#include <SandboxGameShared/ui/widgets/ValueWidget.h>
-#include <SandboxGameShared/utilities/enums.h>
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxGameShared/ui/widgets/ValueWidget.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/VerticalBox.h>

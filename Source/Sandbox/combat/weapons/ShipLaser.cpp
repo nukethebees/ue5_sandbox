@@ -1,10 +1,10 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 
 #include "Sandbox/combat/weapons/ShipLaserConfig.h"
-#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 
 #include "Components/BoxComponent.h"

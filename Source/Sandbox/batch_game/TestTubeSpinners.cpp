@@ -6,8 +6,8 @@
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 #include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 #include <Sandbox/utilities/mesh.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>

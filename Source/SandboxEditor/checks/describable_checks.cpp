@@ -8,10 +8,10 @@
 #include "Engine/Blueprint.h"
 #include "GameFramework/Actor.h"
 
-#include "SandboxGameShared/constants/collision_channels.h"
-#include "ShooterGame/interaction/Describable.h"
-#include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
+#include "SandboxGameShared/constants/collision_channels.h"
+#include "SandboxGameShared/utilities/actor_utils.h"
+#include "ShooterGame/interaction/Describable.h"
 
 #define LOG(VERBOSITY, MSG, ...) \
     UE_LOG(LogSandboxEditorChecks, VERBOSITY, TEXT(MSG) __VA_OPT__(, ) __VA_ARGS__);

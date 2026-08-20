@@ -13,8 +13,8 @@
 #include "Sandbox/ui/ship_hud/TeamKillMatrixWidget.h"
 #include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
-#include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "Sandbox/ui/widgets/Vector2DWidget.h"
+#include "SandboxGameShared/ui/widgets/ValueWidget.h"
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/CanvasPanelSlot.h>

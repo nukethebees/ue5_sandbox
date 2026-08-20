@@ -6,7 +6,8 @@
 
 /**
  * Editor utility for generating strong typedef wrapper structs.
- * Runs a Python script to generate type-safe USTRUCT wrappers with reflection support.
+ * Runs a Python script to
+ * generate type-safe USTRUCT wrappers with reflection support.
  */
 class FTypedefCodeGenerator : public ml::LogMsgMixin<"FTypedefCodeGenerator"> {
   public:

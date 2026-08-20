@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ShooterGame/combat/BurstFire.h"
 #include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
-#include "ShooterGame/players/VisionConfig.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
 #include "Sandbox/utilities/FloatBounds.h"
+#include "ShooterGame/combat/BurstFire.h"
+#include "ShooterGame/players/VisionConfig.h"
 #include "TestFlyBase.h"
 
 #include "CoreMinimal.h"

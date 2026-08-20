@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SandboxGameShared/core/Cooldown.h"
 #include "Sandbox/players/DamageableShip.h"
+#include "SandboxGameShared/core/Cooldown.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

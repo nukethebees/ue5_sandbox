@@ -1,8 +1,8 @@
 #include "Sandbox/items/ShipHealthItem.h"
 
-#include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/items/ShipHealthItemConfig.h"
 #include "Sandbox/players/SpaceShip.h"
+#include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"

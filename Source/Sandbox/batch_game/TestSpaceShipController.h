@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SandboxGameShared/input/EnhancedInputMixin.hpp>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/SpaceShipControllerInputs.h>
+#include <SandboxGameShared/input/EnhancedInputMixin.hpp>
 
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>

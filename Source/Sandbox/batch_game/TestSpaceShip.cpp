@@ -10,11 +10,11 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/combat/weapons/ShipBomb.h>
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
-#include <SandboxGameShared/constants/collision_channels.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <SandboxGameShared/utilities/enums.h>
 #include <Sandbox/utilities/mesh.h>
+#include <SandboxGameShared/constants/collision_channels.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>

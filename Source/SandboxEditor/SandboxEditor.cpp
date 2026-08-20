@@ -1,8 +1,5 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "ShooterGame/combat/bullets/BulletDataAsset.h"
-#include "ShooterGame/pathfinding/PatrolPath.h"
-#include "ShooterGame/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
@@ -10,6 +7,9 @@
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
 #include "SandboxEditor/utilities/patrol_points.h"
+#include "ShooterGame/combat/bullets/BulletDataAsset.h"
+#include "ShooterGame/pathfinding/PatrolPath.h"
+#include "ShooterGame/pathfinding/PatrolWaypoint.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"

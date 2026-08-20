@@ -8,9 +8,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 #include "SandboxGameShared/environment/effects/NiagaraNdcWriterSubsystem.h"
+#include "SandboxGameShared/utilities/math.h"
 #include "ShooterGame/health/DamageManagerSubsystem.h"
 #include "ShooterGame/health/HealthComponent.h"
-#include "SandboxGameShared/utilities/math.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

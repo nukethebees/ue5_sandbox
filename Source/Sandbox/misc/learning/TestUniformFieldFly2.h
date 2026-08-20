@@ -1,8 +1,8 @@
 #pragma once
 
-#include "SandboxGameShared/core/Cooldown.h"
 #include "Sandbox/logging/ActorLoggingConfig.h"
 #include "Sandbox/utilities/FloatBounds.h"
+#include "SandboxGameShared/core/Cooldown.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"

@@ -5,9 +5,9 @@
 #include "LevelEditor.h"
 #include "Selection.h"
 
+#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "ShooterGame/pathfinding/PatrolPath.h"
 #include "ShooterGame/pathfinding/PatrolWaypoint.h"
-#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

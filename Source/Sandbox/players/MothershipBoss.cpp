@@ -1,9 +1,9 @@
 #include "Sandbox/players/MothershipBoss.h"
 
-#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 
 #include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"

@@ -3,9 +3,9 @@
 #include "CoreMinimal.h"
 #include "Engine/TimerHandle.h"
 
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/interaction/TriggerContext.h"
 #include "ShooterGame/interaction/TriggerResult.h"
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "RotatePayload.generated.h"
 

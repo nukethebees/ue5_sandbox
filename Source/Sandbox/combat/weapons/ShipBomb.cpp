@@ -1,9 +1,9 @@
 #include "Sandbox/combat/weapons/ShipBomb.h"
 
-#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
