@@ -16,11 +16,13 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/loop_bounds.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxNative/deterministic_bias.h>
 
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
@@ -247,15 +249,28 @@ void ATestStaticTurrets::perform_search() {
 
                 entities.target_handles[i] = FRegistryEntityHandle{};
 
-                for (auto const& target_handle : target_handles) {
-                    if (this_team == entity_registry->get_team(target_handle)) {
-                        continue;
-                    }
+                auto const target_count{target_handles.num()};
+                auto const target_offset{
+                    target_count == 0 ? 0
+                                      : static_cast<int32>(entities.integral_biases[i] %
+                                                           static_cast<uint32>(target_count))};
+                auto const loop_bounds{
+                    ml::make_rotated_loop_bounds(0, target_count, target_offset)};
+                for (auto const bounds : loop_bounds) {
+                    for (int32 target_index{bounds.begin}; target_index < bounds.end;
+                         ++target_index) {
+                        auto const target_handle{target_handles[target_index]};
+                        if (this_team == entity_registry->get_team(target_handle)) {
+                            continue;
+                        }
 
-                    entities.target_handles[i] = target_handle;
-                    break;
+                        entities.target_handles[i] = target_handle;
+                        goto target_found;
+                    }
                 }
             }
+
+        target_found:;
         }
     }};
 
@@ -434,6 +449,8 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     prepare_entity_update_data();
     auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
     entities.handles = new_entities.registry_handles.to_array();
+    ml::make_deterministic_biases(TConstArrayView<FRegistryEntityHandle>{entities.handles},
+                                  TArrayView<uint32>{entities.integral_biases});
 
     // Map the proxies to the new handles
     for (int32 i{0}; i < n_to_add; ++i) {

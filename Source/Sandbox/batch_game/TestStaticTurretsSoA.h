@@ -33,6 +33,7 @@ struct SANDBOX_API EntityDataConstView {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.handles,
+            self.integral_biases,
             self.locations,
             self.fire_point_locations,
             self.teams,
@@ -58,6 +59,7 @@ struct SANDBOX_API EntityDataConstView {
     auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<FRegistryEntityHandle> handles;
+    TConstArrayView<uint32> integral_biases;
     FVectors3f::ConstView locations;
     FVectors3f::ConstView fire_point_locations;
     TConstArrayView<ETestTeam> teams;
@@ -78,6 +80,7 @@ struct SANDBOX_API EntityDataView {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.handles,
+            self.integral_biases,
             self.locations,
             self.fire_point_locations,
             self.teams,
@@ -108,6 +111,7 @@ struct SANDBOX_API EntityDataView {
     auto right(int32 const count) const -> ConstView;
 
     TArrayView<FRegistryEntityHandle> handles;
+    TArrayView<uint32> integral_biases;
     FVectors3f::View locations;
     FVectors3f::View fire_point_locations;
     TArrayView<ETestTeam> teams;
@@ -134,6 +138,7 @@ struct SANDBOX_API EntityData {
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         handles.RemoveAtSwap(index, count, allow_shrinking);
+        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         locations.remove_at_swap(index, count, allow_shrinking);
         fire_point_locations.remove_at_swap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
@@ -151,6 +156,7 @@ struct SANDBOX_API EntityData {
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(handles, dst_i, other.handles, src_i);
+        ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(fire_point_locations, dst_i, other.fire_point_locations, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
@@ -166,6 +172,7 @@ struct SANDBOX_API EntityData {
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(handles, dst_i, other.handles, src_i, count);
+        ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(fire_point_locations, dst_i, other.fire_point_locations, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
@@ -189,6 +196,7 @@ struct SANDBOX_API EntityData {
     requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     void append_from(Other const& other) {
         ml::append_from(handles, other.handles);
+        ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(locations, other.locations);
         ml::append_from(fire_point_locations, other.fire_point_locations);
         ml::append_from(teams, other.teams);
@@ -233,6 +241,7 @@ struct SANDBOX_API EntityData {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.handles,
+            self.integral_biases,
             self.locations,
             self.fire_point_locations,
             self.teams,
@@ -251,6 +260,7 @@ struct SANDBOX_API EntityData {
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.handles, other.handles,
+            self.integral_biases, other.integral_biases,
             self.locations, other.locations,
             self.fire_point_locations, other.fire_point_locations,
             self.teams, other.teams,
@@ -281,6 +291,7 @@ struct SANDBOX_API EntityData {
     auto right(int32 const count) const -> ConstView;
 
     TArray<FRegistryEntityHandle> handles;
+    TArray<uint32> integral_biases;
     FVectors3f locations;
     FVectors3f fire_point_locations;
     TArray<ETestTeam> teams;

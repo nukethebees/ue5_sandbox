@@ -827,6 +827,7 @@ def static_turrets_soa_module() -> Module:
         SoAStructNames("EntityData"),
         (
             tarray_member("handles", F_REGISTRY_ENTITY_HANDLE),
+            tarray_member("integral_biases", "uint32"),
             soa_member("locations", F_VECTORS_3F),
             soa_member("fire_point_locations", F_VECTORS_3F),
             tarray_member("teams", E_TEST_TEAM),
