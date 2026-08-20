@@ -13,7 +13,7 @@
 #include "Sandbox/ui/ship_hud/TeamKillMatrixWidget.h"
 #include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
-#include "Sandbox/ui/widgets/ValueWidget.h"
+#include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "Sandbox/ui/widgets/Vector2DWidget.h"
 
 #include <Blueprint/WidgetTree.h>
@@ -24,7 +24,7 @@
 #include <Materials/MaterialInstanceDynamic.h>
 #include <Materials/MaterialInterface.h>
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace {
 template <typename... WidgetTypes>

@@ -1,6 +1,6 @@
 #include "Sandbox/players/MothershipBoss.h"
 
-#include "Sandbox/constants/collision_channels.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
@@ -15,7 +15,7 @@
 
 #include <type_traits>
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AMothershipBoss::AMothershipBoss()
     : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("main_ship"))} {

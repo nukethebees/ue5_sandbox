@@ -1,6 +1,6 @@
 #include "Sandbox/items/ShipHealthItem.h"
 
-#include "Sandbox/environment/effects/RotatingActorComponent.h"
+#include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/items/ShipHealthItemConfig.h"
 #include "Sandbox/players/SpaceShip.h"
 
@@ -8,7 +8,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipHealthItem::AShipHealthItem()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh")))

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "NiagaraDataChannel.h"
 
-#include "Sandbox/health/HealthChange.h"
+#include "ShooterGame/health/HealthChange.h"
 
 #include "ExplosionConfig.generated.h"
 

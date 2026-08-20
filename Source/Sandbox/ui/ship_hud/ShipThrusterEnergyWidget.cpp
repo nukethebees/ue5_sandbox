@@ -2,7 +2,7 @@
 
 #include "Components/ProgressBar.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UShipThrusterEnergyWidget::set_energy(float energy) {
     RETURN_IF_NULLPTR(energy_bar);

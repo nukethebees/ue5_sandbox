@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Sandbox/core/video_settings/VideoSettingRange.h"
-#include "Sandbox/utilities/concepts/concepts.h"
+#include "SandboxGameShared/utilities/concepts/concepts.h"
 
 template <typename T,
           typename U = T,

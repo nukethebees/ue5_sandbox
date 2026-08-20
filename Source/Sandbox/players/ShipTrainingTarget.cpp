@@ -1,6 +1,6 @@
 #include "Sandbox/players/ShipTrainingTarget.h"
 
-#include "Sandbox/constants/collision_channels.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"
@@ -10,7 +10,7 @@
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipTrainingTarget::AShipTrainingTarget()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh")))

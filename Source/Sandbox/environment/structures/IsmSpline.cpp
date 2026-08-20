@@ -7,7 +7,7 @@
 #include "Components/SplineComponent.h"
 #include "Engine/StaticMesh.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AIsmSpline::AIsmSpline()
     : ismc{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ismc"))}

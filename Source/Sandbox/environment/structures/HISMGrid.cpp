@@ -6,7 +6,7 @@
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AHISMGrid::AHISMGrid()
     : ismc{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("hismc"))} {

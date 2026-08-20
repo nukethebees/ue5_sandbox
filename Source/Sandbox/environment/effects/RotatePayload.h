@@ -3,14 +3,14 @@
 #include "CoreMinimal.h"
 #include "Engine/TimerHandle.h"
 
-#include "Sandbox/interaction/TriggerContext.h"
-#include "Sandbox/interaction/TriggerResult.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "ShooterGame/interaction/TriggerContext.h"
+#include "ShooterGame/interaction/TriggerResult.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "RotatePayload.generated.h"
 
 USTRUCT(BlueprintType)
-struct FRotatePayload {
+struct SANDBOX_API FRotatePayload {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")

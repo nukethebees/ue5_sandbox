@@ -8,7 +8,7 @@
 
 #include "EngineUtils.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AKatinaGameMode::AKatinaGameMode() {
     PrimaryActorTick.bCanEverTick = false;

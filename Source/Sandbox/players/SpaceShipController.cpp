@@ -13,7 +13,7 @@
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASpaceShipController::ASpaceShipController() {
     PrimaryActorTick.bCanEverTick = true;

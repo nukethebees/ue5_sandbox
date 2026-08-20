@@ -6,9 +6,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
 
-#include "Sandbox/core/video_settings/VisualQualityLevel.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
-#include "Sandbox/utilities/concepts/concepts.h"
+#include "SandboxGameShared/core/video_settings/VisualQualityLevel.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/utilities/concepts/concepts.h"
 
 // Row data structure for variant-based storage
 template <typename Config>

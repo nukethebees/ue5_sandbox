@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Sandbox Game Shared",
+	"Description": "Game-neutral gameplay resources shared by the project games.",
+	"Category": "Sandbox",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SandboxGameShared",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

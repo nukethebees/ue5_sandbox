@@ -18,7 +18,7 @@
 #include <InputMappingContext.h>
 #include <UnrealClient.h>
 
-#include <Sandbox/utilities/macros/null_checks.hpp>
+#include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
 ATestSpaceShipController::ATestSpaceShipController() {
     PrimaryActorTick.bCanEverTick = true;

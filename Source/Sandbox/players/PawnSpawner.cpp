@@ -5,7 +5,7 @@
 #include "GameFramework/Pawn.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 APawnSpawner::APawnSpawner() {
     PrimaryActorTick.bCanEverTick = true;

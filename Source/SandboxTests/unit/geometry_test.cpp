@@ -1,4 +1,4 @@
-#include "Sandbox/utilities/geometry.h"
+#include "SandboxGameShared/utilities/geometry.h"
 
 #include "Misc/AutomationTest.h"
 

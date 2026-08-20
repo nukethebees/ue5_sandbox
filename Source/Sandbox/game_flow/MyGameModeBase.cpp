@@ -1,8 +1,8 @@
 #include "MyGameModeBase.h"
 
-#include "Sandbox/core/SandboxDeveloperSettings.h"
+#include "SandboxGameShared/core/SandboxDeveloperSettings.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AMyGameModeBase::AMyGameModeBase()
     : ghost_cleanup_component{

@@ -5,7 +5,7 @@
 #include "Framework/SlateDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 class SBox;

@@ -5,7 +5,7 @@
 #include "IDetailChildrenBuilder.h"
 #include "Widgets/Text/STextBlock.h"
 
-#include "Sandbox/players/PlayerSkills.h"
+#include "ShooterGame/players/PlayerSkills.h"
 
 void
     FPlayerSkillsPropDisplay::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle,

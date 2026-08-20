@@ -1,0 +1,19 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+
+#include "ItemDescriptionHUDWidget.generated.h"
+
+UCLASS()
+class SHOOTERGAME_API UItemDescriptionHUDWidget : public UUserWidget {
+    GENERATED_BODY()
+  protected:
+    void NativeConstruct() override;
+  public:
+    UFUNCTION(BlueprintCallable, Category = "UI")
+    void set_description(FText const& description);
+  protected:
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* description_text{nullptr};
+};

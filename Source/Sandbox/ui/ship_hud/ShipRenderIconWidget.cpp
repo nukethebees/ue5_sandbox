@@ -3,7 +3,7 @@
 #include "Components/Image.h"
 #include "Materials/MaterialInterface.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UShipRenderIconWidget::NativeConstruct() {
     Super::NativeConstruct();

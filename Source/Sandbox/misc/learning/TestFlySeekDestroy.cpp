@@ -3,9 +3,9 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/misc/learning/TestVolume.h"
-#include "Sandbox/utilities/actor_utils.h"
-#include "Sandbox/utilities/macros/null_checks.hpp"
-#include "Sandbox/utilities/vision_maths.h"
+#include "SandboxGameShared/utilities/actor_utils.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/vision_maths.h"
 
 #include <Components/BoxComponent.h>
 #include <Engine/HitResult.h>

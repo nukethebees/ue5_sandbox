@@ -1,4 +1,4 @@
-#include "Sandbox/core/levels/levels.h"
+#include "SandboxGameShared/core/levels/levels.h"
 
 #include "Misc/AutomationTest.h"
 

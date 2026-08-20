@@ -3,7 +3,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestTeam.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <SandboxCore/soa_array_mixin.h>
 

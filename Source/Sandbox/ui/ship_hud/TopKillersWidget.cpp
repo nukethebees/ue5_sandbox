@@ -1,6 +1,6 @@
 #include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>

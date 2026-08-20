@@ -5,7 +5,7 @@
 #include "Sandbox/combat/weapons/ShipLaser.h"
 #include "Sandbox/health/ShipHealthComponent.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "SandboxGameShared/utilities/actor_utils.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
@@ -17,7 +17,7 @@
 #include "NiagaraComponent.h"
 #include "TimerManager.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))

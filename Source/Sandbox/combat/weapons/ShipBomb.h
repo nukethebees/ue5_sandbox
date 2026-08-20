@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/health/HealthChange.h"
+#include "ShooterGame/health/HealthChange.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

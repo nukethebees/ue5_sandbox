@@ -1,6 +1,6 @@
 #include "Sandbox/combat/weapons/ShipHomingLaser.h"
 
-#include "Sandbox/constants/collision_channels.h"
+#include "SandboxGameShared/constants/collision_channels.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/DamageableShip.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
@@ -14,7 +14,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipHomingLaser::AShipHomingLaser()
     : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("laser_mesh"))}

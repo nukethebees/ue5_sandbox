@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Sandbox/players/BarrelRoll.h>
-#include <Sandbox/players/SpeedResponse.h>
+#include <ShooterGame/players/SpeedResponse.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
 #include <SandboxCoreEngine/collision_settings.h>

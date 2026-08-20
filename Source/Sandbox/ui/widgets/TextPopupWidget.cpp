@@ -10,9 +10,9 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-#include "Sandbox/ui/SandboxStyle.h"
-#include "Sandbox/ui/ui.h"
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/ui/SandboxStyle.h"
+#include "ShooterGame/ui/ui.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void STextPopupWidget::Construct(FArguments const& InArgs) {

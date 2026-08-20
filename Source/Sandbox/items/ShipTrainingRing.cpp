@@ -1,6 +1,6 @@
 #include "Sandbox/items/ShipTrainingRing.h"
 
-#include "Sandbox/environment/effects/RotatingActorComponent.h"
+#include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 #include "Sandbox/items/ShipHealthItemConfig.h"
 #include "Sandbox/players/ShipScoringSubsystem.h"
 #include "Sandbox/players/SpaceShip.h"
@@ -11,7 +11,7 @@
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipTrainingRing::AShipTrainingRing()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh")))

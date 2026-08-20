@@ -4,7 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
 
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "TiledWallActor.generated.h"
 

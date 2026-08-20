@@ -4,7 +4,7 @@
 
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

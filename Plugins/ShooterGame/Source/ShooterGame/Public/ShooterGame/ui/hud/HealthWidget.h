@@ -1,0 +1,21 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+
+#include "ShooterGame/health/HealthData.h"
+
+#include "HealthWidget.generated.h"
+
+UCLASS()
+class SHOOTERGAME_API UHealthWidget : public UUserWidget {
+    GENERATED_BODY()
+  public:
+    UFUNCTION()
+    void set_health(FHealthData health_data);
+  protected:
+    UPROPERTY(meta = (BindWidget))
+    class UProgressBar* health_bar;
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* health_text;
+};

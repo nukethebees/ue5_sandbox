@@ -1,0 +1,25 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+#include "Sandbox/combat/explosion/ExplosionConfig.h"
+#include "ShooterGame/players/TestEnemy.h"
+
+#include "TestExplodingEnemy.generated.h"
+
+UCLASS()
+class SHOOTERGAME_API ATestExplodingEnemy : public ATestEnemy {
+    GENERATED_BODY()
+  public:
+    ATestExplodingEnemy();
+
+    // ICombatActor
+    virtual bool attack_actor(AActor& target) override;
+  protected:
+    // IDeathHandler
+    void handle_death() override;
+    void explode(UWorld& world);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explosion")
+    FExplosionConfig explosion_config{};
+};

@@ -8,9 +8,9 @@
 #include "Engine/Blueprint.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/constants/collision_channels.h"
-#include "Sandbox/interaction/Describable.h"
-#include "Sandbox/utilities/actor_utils.h"
+#include "SandboxGameShared/constants/collision_channels.h"
+#include "ShooterGame/interaction/Describable.h"
+#include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
 #define LOG(VERBOSITY, MSG, ...) \

@@ -8,7 +8,7 @@
 #include "Sandbox/players/ShipLaserMode.h"
 #include "Sandbox/players/SpaceShipCommon.h"
 #include "Sandbox/players/SpaceShipFlightModel.h"
-#include "Sandbox/players/SpeedResponse.h"
+#include "ShooterGame/players/SpeedResponse.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"

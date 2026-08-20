@@ -20,7 +20,7 @@
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/ui/ship_hud/ShipHudWidget.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>

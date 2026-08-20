@@ -8,7 +8,7 @@
 
 #include "Sandbox/ui/widgets/TextPopupWidget.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ATextPopupTriggerActor::ATextPopupTriggerActor()
     : collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"))}

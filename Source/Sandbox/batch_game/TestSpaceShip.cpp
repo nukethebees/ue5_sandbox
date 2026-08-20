@@ -10,10 +10,10 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/combat/weapons/ShipBomb.h>
 #include <Sandbox/combat/weapons/ShipLaserConfig.h>
-#include <Sandbox/constants/collision_channels.h>
+#include <SandboxGameShared/constants/collision_channels.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -31,7 +31,7 @@
 #include <NiagaraComponent.h>
 #include <utility>
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ATestSpaceShip::ATestSpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))

@@ -3,8 +3,8 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestTeam.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>

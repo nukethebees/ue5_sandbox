@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/core/Cooldown.h"
+#include "SandboxGameShared/core/Cooldown.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
 
 #include <GameFramework/Actor.h>

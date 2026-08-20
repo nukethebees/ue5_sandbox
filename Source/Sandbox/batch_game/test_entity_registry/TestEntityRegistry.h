@@ -9,7 +9,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueEntityData.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 #include <Sandbox/batch_game/TestTeam.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/array_utils.h>

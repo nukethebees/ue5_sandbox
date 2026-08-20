@@ -4,7 +4,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 
 #include "Sandbox/logging/FrameLogTracker.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 
 #include "FrameLogFooterSubsystem.generated.h"

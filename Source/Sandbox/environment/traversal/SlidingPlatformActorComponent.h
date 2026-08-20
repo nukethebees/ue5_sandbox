@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
-#include "Sandbox/environment/interactive/Clickable.h"
+#include "ShooterGame/environment/interactive/Clickable.h"
 
 #include "SlidingPlatformActorComponent.generated.h"
 

@@ -10,7 +10,7 @@
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/logging/SandboxVisualLoggerStyle.h>
-#include <Sandbox/utilities/actor_utils.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <Sandbox/utilities/mesh.h>
 
 #include <SandboxCore/array_checks.h>

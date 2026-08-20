@@ -1,9 +1,9 @@
 #include "SpaceSaveSubsystem.h"
 
-#include <Sandbox/core/SandboxDeveloperSettings.h>
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/save/SpaceSaveGame.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <CoreMinimal.h>
 #include <Kismet/GameplayStatics.h>

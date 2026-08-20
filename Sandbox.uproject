@@ -449,6 +449,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxGameShared",
+			"Enabled": true
+		},
+		{
 			"Name": "SteamController",
 			"Enabled": true
 		},

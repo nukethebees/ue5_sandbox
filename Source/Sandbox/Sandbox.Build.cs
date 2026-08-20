@@ -21,6 +21,7 @@ public class Sandbox : ModuleRules
         CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
 
         PublicDependencyModuleNames.AddRange(new string[] {
+            "SandboxGameShared",
             "SandboxNative",
             "SandboxCore",
             "SandboxCoreEngine",
@@ -47,6 +48,9 @@ public class Sandbox : ModuleRules
             "TraceLog",
             "UMG",
         });
+        
+        PublicDependencyModuleNames.Add("ShooterGame");
+        CircularlyReferencedDependentModules.Add("ShooterGame");
 
         if (Target.bBuildEditor)
         {

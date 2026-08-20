@@ -5,11 +5,11 @@
 #include "LevelEditor.h"
 #include "Selection.h"
 
-#include "Sandbox/pathfinding/PatrolPath.h"
-#include "Sandbox/pathfinding/PatrolWaypoint.h"
+#include "ShooterGame/pathfinding/PatrolPath.h"
+#include "ShooterGame/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace ml {
 void add_selected_patrol_points_to_selected_paths() {

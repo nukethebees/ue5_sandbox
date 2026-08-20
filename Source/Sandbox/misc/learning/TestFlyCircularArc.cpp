@@ -1,8 +1,8 @@
 #include "TestFlyCircularArc.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/geometry.h"
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/geometry.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>

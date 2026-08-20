@@ -1,0 +1,44 @@
+#pragma once
+
+#include "ShooterGame/combat/bullets/BulletDataAssetIds.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+#include "ShooterGame/logging/ShooterGameLogCategories.h"
+#include "ShooterGame/mass_entity/EntityDefinition.h"
+
+#include "CoreMinimal.h"
+#include "MassArchetypeTypes.h"
+#include "Subsystems/WorldSubsystem.h"
+#include "UObject/PrimaryAssetId.h"
+
+#include <optional>
+
+#include "MassArchetypeSubsystem.generated.h"
+
+class UWorld;
+
+DECLARE_MULTICAST_DELEGATE(FOnMassArchetypeSubsystemReady);
+
+// Create cached Mass Entity archetypes.
+UCLASS()
+class SHOOTERGAME_API UMassArchetypeSubsystem
+    : public UWorldSubsystem
+    , public ml::LogMsgMixin<"UMassArchetypeSubsystem", LogShooterGameSubsystem> {
+    GENERATED_BODY()
+  public:
+    auto get_bullet_archetype() const -> FMassArchetypeHandle;
+    auto get_definition(FPrimaryAssetId id) -> std::optional<FEntityDefinition>;
+
+    FOnMassArchetypeSubsystemReady on_mass_archetype_subsystem_ready;
+  protected:
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void OnWorldBeginPlay(UWorld& in_world) override;
+    void Deinitialize() override;
+  private:
+    void build_archetypes(FMassEntityManager& entity_manager);
+    void build_definitions(FMassEntityManager& entity_manager);
+    int32 add_definition(FEntityDefinition definition, FPrimaryAssetId id);
+
+    TArray<FEntityDefinition> definitions{};
+    TMap<FPrimaryAssetId, int32> definition_indexes{};
+    FMassArchetypeHandle bullet_archetype;
+};

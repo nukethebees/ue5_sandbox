@@ -3,10 +3,10 @@
 #pragma once
 
 #include "Sandbox/core/destruction/RemoveGhostsOnStartComponent.h"
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/MyCharacter.h"
-#include "Sandbox/players/TeamID.h"
+#include "ShooterGame/players/MyCharacter.h"
+#include "ShooterGame/players/TeamID.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"

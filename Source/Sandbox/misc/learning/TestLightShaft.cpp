@@ -7,7 +7,7 @@
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ATestLightShaft::ATestLightShaft()
     : light_shaft_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("light_shaft"))} {

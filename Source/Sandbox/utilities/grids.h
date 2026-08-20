@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/inventory/Coord.h"
-#include "Sandbox/inventory/Dimensions.h"
+#include "ShooterGame/inventory/Coord.h"
+#include "ShooterGame/inventory/Dimensions.h"
 
 namespace ml {
 inline auto to_1d_index(FDimensions grid, FCoord coord) -> int32 {

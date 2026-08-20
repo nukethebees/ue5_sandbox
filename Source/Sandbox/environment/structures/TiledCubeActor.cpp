@@ -4,7 +4,7 @@
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 FName const ATiledCubeActor::face_material_name{TEXT("Face")};
 FName const ATiledCubeActor::edge_material_name{TEXT("Edge")};

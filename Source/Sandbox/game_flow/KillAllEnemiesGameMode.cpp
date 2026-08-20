@@ -3,10 +3,10 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Sandbox/players/MyCharacter.h"
-#include "Sandbox/players/TestEnemy.h"
+#include "ShooterGame/players/MyCharacter.h"
+#include "ShooterGame/players/TestEnemy.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AKillAllEnemiesGameMode::AKillAllEnemiesGameMode() {
     PrimaryActorTick.bCanEverTick = false;

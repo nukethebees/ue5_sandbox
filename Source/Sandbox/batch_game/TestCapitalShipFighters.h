@@ -12,7 +12,7 @@
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <Sandbox/utilities/IndexSpan.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 

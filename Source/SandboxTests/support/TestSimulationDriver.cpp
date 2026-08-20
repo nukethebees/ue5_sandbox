@@ -8,7 +8,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/core/SandboxDeveloperSettings.h>
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

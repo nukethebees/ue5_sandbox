@@ -2,7 +2,7 @@
 
 #include <Sandbox/batch_game/TestTeamVisualData.h>
 #include <Sandbox/ui/ship_hud/ShipHudKillData.h>
-#include <Sandbox/utilities/enums.h>
+#include <SandboxGameShared/utilities/enums.h>
 
 #include <Blueprint/UserWidget.h>
 #include <Containers/StaticArray.h>

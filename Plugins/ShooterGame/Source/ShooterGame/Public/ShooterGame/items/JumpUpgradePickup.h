@@ -1,0 +1,29 @@
+#pragma once
+
+#include "ShooterGame/items/PickupActor.h"
+
+#include "CoreMinimal.h"
+
+#include "JumpUpgradePickup.generated.h"
+
+class UStaticMeshComponent;
+
+class URotatingActorComponent;
+
+UCLASS()
+class SHOOTERGAME_API AJumpUpgradePickup : public APickupActor {
+    GENERATED_BODY()
+  public:
+    AJumpUpgradePickup();
+  protected:
+    void BeginPlay() override;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+    UStaticMeshComponent* mesh_component{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+    URotatingActorComponent* rotating_component{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+    int32 jump_count_increase{1};
+};

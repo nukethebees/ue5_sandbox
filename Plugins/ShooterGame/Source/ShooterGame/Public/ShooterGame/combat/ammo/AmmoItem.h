@@ -1,0 +1,66 @@
+#pragma once
+
+#include "ShooterGame/combat/ammo/AmmoType.h"
+#include "ShooterGame/interaction/Describable.h"
+#include "ShooterGame/interaction/Interactable.h"
+#include "ShooterGame/inventory/Dimensions.h"
+#include "ShooterGame/inventory/InventoryItem.h"
+#include "ShooterGame/inventory/ItemType.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+#include "ShooterGame/logging/ShooterGameLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
+#include "AmmoItem.generated.h"
+
+class UStaticMeshComponent;
+class UBoxComponent;
+class UTexture2D;
+
+UCLASS()
+class SHOOTERGAME_API AAmmoItem
+    : public AActor
+    , public IDescribable
+    , public IInventoryItem
+    , public IInteractable
+    , public ml::LogMsgMixin<"AAmmoItem", LogShooterGameWeapon> {
+    GENERATED_BODY()
+  public:
+    AAmmoItem();
+
+    // IDescribable
+    virtual FText get_description() const override { return FText::FromString(display_name); }
+
+    // IInventoryItem
+    UFUNCTION()
+    virtual FDimensions get_size() const override { return FDimensions{1, 1}; };
+    UFUNCTION()
+    virtual FString const& get_name() const { return display_name; };
+    virtual UTexture2D* get_display_image() const override { return display_image; }
+    virtual EItemType get_item_type() const override { return EItemType::Ammo; }
+    virtual FStackSize get_quantity() const { return FStackSize{quantity}; }
+
+    // IInteractable
+    virtual void on_interacted(AActor& instigator) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    EAmmoType ammo_type{EAmmoType::Bullets};
+  protected:
+    void BeginPlay() override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+    UBoxComponent* collision_box{nullptr};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+    UStaticMeshComponent* mesh_component{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+    UTexture2D* display_image{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    int32 quantity{50};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+    FString display_name{"Ammo"};
+};

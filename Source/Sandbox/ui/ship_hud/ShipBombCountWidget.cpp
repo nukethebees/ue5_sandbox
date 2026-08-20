@@ -8,7 +8,7 @@
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UShipBombCountWidget::set_count(int32 count) {
     constexpr int32 max_icons{8};

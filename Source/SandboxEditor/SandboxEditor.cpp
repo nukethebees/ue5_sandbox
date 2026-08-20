@@ -1,8 +1,8 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "Sandbox/combat/bullets/BulletDataAsset.h"
-#include "Sandbox/pathfinding/PatrolPath.h"
-#include "Sandbox/pathfinding/PatrolWaypoint.h"
+#include "ShooterGame/combat/bullets/BulletDataAsset.h"
+#include "ShooterGame/pathfinding/PatrolPath.h"
+#include "ShooterGame/pathfinding/PatrolWaypoint.h"
 #include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
@@ -18,7 +18,7 @@
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace ml::detail {
 auto null_action{

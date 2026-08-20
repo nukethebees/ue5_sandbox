@@ -7,7 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASandboxActorSpawner::ASandboxActorSpawner()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}

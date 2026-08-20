@@ -16,7 +16,7 @@
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
 #include <Sandbox/ui/HUDManager.h>
-#include <Sandbox/utilities/actor_utils.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
 #include <SandboxCoreEngine/uobject_utils.h>

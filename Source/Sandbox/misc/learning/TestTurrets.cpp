@@ -2,8 +2,8 @@
 
 #include "Sandbox/batch_game/TestLasers.h"
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/utilities/macros/null_checks.hpp"
-#include "Sandbox/utilities/vision_maths.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/vision_maths.h"
 #include "TestTurretsConfig.h"
 
 #include <SandboxCore/array_utils.h>

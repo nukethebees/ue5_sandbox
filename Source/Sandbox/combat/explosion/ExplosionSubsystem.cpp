@@ -7,12 +7,12 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-#include "Sandbox/environment/effects/NiagaraNdcWriterSubsystem.h"
-#include "Sandbox/health/DamageManagerSubsystem.h"
-#include "Sandbox/health/HealthComponent.h"
-#include "Sandbox/utilities/math.h"
+#include "SandboxGameShared/environment/effects/NiagaraNdcWriterSubsystem.h"
+#include "ShooterGame/health/DamageManagerSubsystem.h"
+#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/utilities/math.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UExplosionSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);

@@ -4,7 +4,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
 #include <Sandbox/batch_game/TestLasersConfig.h>
 #include <Sandbox/logging/SandboxLogCategories.h>
-#include <Sandbox/utilities/actor_utils.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>

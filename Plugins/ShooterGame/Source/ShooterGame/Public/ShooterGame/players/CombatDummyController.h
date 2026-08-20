@@ -1,0 +1,38 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "AIController.h"
+
+#include "SandboxGameShared/players/AIState.h"
+#include "ShooterGame/players/npc_delegates.h"
+
+#include "ShooterGame/players/blackboard_utils.hpp"
+
+#include "CombatDummyController.generated.h"
+
+class UWorld;
+class APawn;
+
+class UBehaviorTree;
+
+UCLASS()
+class SHOOTERGAME_API ACombatDummyController : public AAIController {
+    GENERATED_BODY()
+  public:
+    ACombatDummyController();
+  protected:
+    virtual void OnPossess(APawn* InPawn) override;
+    void OnUnPossess() override;
+
+    void set_bb_value(FName const& name, auto const& value) {
+        check(Blackboard);
+        ml::set_bb_value(*Blackboard, name, value);
+    }
+    void set_ai_state(EAIState state);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    UBehaviorTree* behaviour_tree_asset{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    EAIState ai_state{EAIState::Idle};
+};

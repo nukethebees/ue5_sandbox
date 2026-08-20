@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sandbox/input/EnhancedInputMixin.hpp"
-#include "Sandbox/logging/LogMsgMixin.hpp"
+#include "SandboxGameShared/input/EnhancedInputMixin.hpp"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "Sandbox/logging/SandboxLogCategories.h"
 #include "Sandbox/players/BarrelRollInputData.h"
 #include "Sandbox/players/LaserFiringState.h"

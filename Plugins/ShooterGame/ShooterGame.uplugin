@@ -13,5 +13,23 @@
 	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
-	"Installed": false
+	"Installed": false,
+    "Plugins": [
+		{
+			"Name": "SandboxGameShared",
+			"Enabled": true
+		}
+	],
+    "Modules": [
+		{
+			"Name": "ShooterGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "ShooterGameEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
 }

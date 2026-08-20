@@ -1,0 +1,15 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+
+#include "PowersMenuWidget.generated.h"
+
+UCLASS()
+class SHOOTERGAME_API UPowersMenuWidget : public UUserWidget {
+    GENERATED_BODY()
+  public:
+    void on_widget_selected();
+  protected:
+    void NativeConstruct() override;
+};

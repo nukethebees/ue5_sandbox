@@ -2,7 +2,7 @@
 
 #include "Misc/CoreDelegates.h"
 
-#include "Sandbox/utilities/macros/null_checks.hpp"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UFrameLogFooterSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
     Super::Initialize(Collection);
