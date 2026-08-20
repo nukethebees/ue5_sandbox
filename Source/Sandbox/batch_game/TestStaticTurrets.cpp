@@ -229,52 +229,54 @@ void ATestStaticTurrets::perform_search() {
     auto const min_turrets_per_slice{search_slice_size};
     auto const n_slices{FMath::DivideAndRoundUp(n_turrets, min_turrets_per_slice)};
 
-    auto const search{[this, n_turrets, radius, min_turrets_per_slice](int32 const slice_index) {
-        auto const begin{slice_index * min_turrets_per_slice};
-        auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
+    ParallelFor(n_slices, [=, this](int32 const i) {
+        perform_search_on_slice(i, n_turrets, min_turrets_per_slice, radius);
+    });
+}
+void ATestStaticTurrets::perform_search_on_slice(int32 const slice_index,
+                                                 int32 const n_turrets,
+                                                 int32 const min_turrets_per_slice,
+                                                 float const radius) {
+    auto const begin{slice_index * min_turrets_per_slice};
+    auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
 
-        for (int32 i{begin}; i < end; ++i) {
-            if (!entities.target_refresh_countdowns.try_consume(i)) {
-                continue;
-            }
+    for (int32 i{begin}; i < end; ++i) {
+        if (!entities.target_refresh_countdowns.try_consume(i)) {
+            continue;
+        }
 
-            if (entities.target_handles[i].is_null()) {
-                auto const turret_location{ml::get_vector3f(entities.locations, i)};
-                auto const this_team{entities.teams[i]};
+        if (entities.target_handles[i].is_null()) {
+            auto const turret_location{ml::get_vector3f(entities.locations, i)};
+            auto const this_team{entities.teams[i]};
 
-                ml::TFixedArray<FRegistryEntityHandle, 128> target_handles;
-                target_handles.set_num_uninitialised(
-                    spatial_query_manager->collect_non_team_entities_in_range(
-                        turret_location, this_team, radius, target_handles.capacity_view()));
+            ml::TFixedArray<FRegistryEntityHandle, 128> target_handles;
+            target_handles.set_num_uninitialised(
+                spatial_query_manager->collect_non_team_entities_in_range(
+                    turret_location, this_team, radius, target_handles.capacity_view()));
 
-                entities.target_handles[i] = FRegistryEntityHandle{};
+            entities.target_handles[i] = FRegistryEntityHandle{};
 
-                auto const target_count{target_handles.num()};
-                auto const target_offset{
-                    target_count == 0 ? 0
-                                      : static_cast<int32>(entities.integral_biases[i] %
-                                                           static_cast<uint32>(target_count))};
-                auto const loop_bounds{
-                    ml::make_rotated_loop_bounds(0, target_count, target_offset)};
-                for (auto const bounds : loop_bounds) {
-                    for (int32 target_index{bounds.begin}; target_index < bounds.end;
-                         ++target_index) {
-                        auto const target_handle{target_handles[target_index]};
-                        if (this_team == entity_registry->get_team(target_handle)) {
-                            continue;
-                        }
-
-                        entities.target_handles[i] = target_handle;
-                        goto target_found;
+            auto const target_count{target_handles.num()};
+            auto const target_offset{target_count == 0
+                                         ? 0
+                                         : static_cast<int32>(entities.integral_biases[i] %
+                                                              static_cast<uint32>(target_count))};
+            auto const loop_bounds{ml::make_rotated_loop_bounds(0, target_count, target_offset)};
+            for (auto const bounds : loop_bounds) {
+                for (int32 target_index{bounds.begin}; target_index < bounds.end; ++target_index) {
+                    auto const target_handle{target_handles[target_index]};
+                    if (this_team == entity_registry->get_team(target_handle)) {
+                        continue;
                     }
+
+                    entities.target_handles[i] = target_handle;
+                    goto target_found;
                 }
             }
-
-        target_found:;
         }
-    }};
 
-    ParallelFor(n_slices, search);
+    target_found:;
+    }
 }
 
 // Attacking
