@@ -449,10 +449,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SpaceGameContent",
-			"Enabled": true
-		},
-		{
 			"Name": "SteamController",
 			"Enabled": true
 		},
