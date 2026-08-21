@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class SandboxMaterialExpressions : ModuleRules
+public class SandboxMaterialExprs : ModuleRules
 {
-	public SandboxMaterialExpressions(ReadOnlyTargetRules Target) : base(Target)
+	public SandboxMaterialExprs(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		

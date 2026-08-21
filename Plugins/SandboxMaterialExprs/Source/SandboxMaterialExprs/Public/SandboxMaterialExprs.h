@@ -4,7 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 
-class FSandboxMaterialExpressionsModule : public IModuleInterface {
+class FSandboxMaterialExprsModule : public IModuleInterface {
   public:
     /** IModuleInterface implementation */
     virtual void StartupModule() override;

@@ -1,19 +1,19 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "SandboxMaterialExpressionsEditor.h"
+#include "SandboxMaterialExprsEd.h"
 
-#define LOCTEXT_NAMESPACE "FSandboxMaterialExpressionsEditorModule"
+#define LOCTEXT_NAMESPACE "FSandboxMaterialExprsEdModule"
 
-void FSandboxMaterialExpressionsEditorModule::StartupModule() {
+void FSandboxMaterialExprsEdModule::StartupModule() {
     // This code will execute after your module is loaded into memory; the exact timing is specified
     // in the .uplugin file per-module
 }
 
-void FSandboxMaterialExpressionsEditorModule::ShutdownModule() {
+void FSandboxMaterialExprsEdModule::ShutdownModule() {
     // This function may be called during shutdown to clean up your module.  For modules that
     // support dynamic reloading, we call this function before unloading the module.
 }
 
 #undef LOCTEXT_NAMESPACE
 
-IMPLEMENT_MODULE(FSandboxMaterialExpressionsEditorModule, SandboxMaterialExpressionsEditor)
+IMPLEMENT_MODULE(FSandboxMaterialExprsEdModule, SandboxMaterialExprsEd)
