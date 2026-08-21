@@ -3,7 +3,7 @@ from pathlib import Path
 
 from Codegen.cpp_types import F_VECTORS_3F
 from Codegen.generate import collect_files, render_files
-from Codegen.facade import Facade, FacadeMethod, lower_facade
+from Codegen.facade import Facade, FacadeMethod, lower_facade, lower_facade_with_source
 from Codegen.manifest import modules
 from Codegen.nodes import (
     CppType,
@@ -147,7 +147,13 @@ struct FValue {
         self.assertIn("soa_vectors_3f", module_names)
         self.assertIn("sandbox_core_soa_rotators", module_names)
         self.assertIn("test_capital_ship_fighters_command_interface", module_names)
-        self.assertEqual(len(generated_modules), 26)
+        self.assertIn("test_space_ship_phase_interface", module_names)
+        self.assertIn("test_lasers_phase_interface", module_names)
+        self.assertIn("test_capital_ships_phase_interface", module_names)
+        self.assertIn("test_capital_ship_fighters_phase_interface", module_names)
+        self.assertIn("test_static_turrets_phase_interface", module_names)
+        self.assertIn("test_tube_spinners_phase_interface", module_names)
+        self.assertEqual(len(generated_modules), 32)
 
     def test_duplicate_output_paths_are_rejected(self) -> None:
         modules = (
@@ -362,6 +368,32 @@ struct FValue {
         self.assertIn("auto get_value() const noexcept -> FValue const&", rendered)
         self.assertIn("return target->get_value();", rendered)
         self.assertIn("private:\n    FTarget* target{nullptr};", rendered)
+
+    def test_facade_can_define_private_methods_in_a_source_file(self) -> None:
+        facade = Facade(
+            "PhaseInterface",
+            "ATarget",
+            "target",
+            (FacadeMethod("update", "void", (FunctionParameter("float const", "dt"),)),),
+            validation=Raw("check(IsValid(target));"),
+            bind_access="private",
+            method_access="private",
+            friends=("ATarget", "ATestBatchOrchestrator"),
+            definitions_in_source=True,
+        )
+        lowered = lower_facade_with_source(facade)
+
+        header = lowered.header.render(RenderContext())
+        source = "\n".join(node.render(RenderContext()) for node in lowered.source_nodes)
+
+        self.assertIn("friend class ATarget;", header)
+        self.assertIn("friend class ATestBatchOrchestrator;", header)
+        self.assertIn("void bind(ATarget& new_target);", header)
+        self.assertIn("void update(float const dt);", header)
+        self.assertNotIn("void update(float const dt) {", header)
+        self.assertIn("void PhaseInterface::bind(ATarget& new_target)", source)
+        self.assertIn("void PhaseInterface::update(float const dt)", source)
+        self.assertIn("check(IsValid(target));", source)
 
     def test_member_function_spec_emits_header_and_source_nodes(self) -> None:
         function = MemberFunctionSpec(

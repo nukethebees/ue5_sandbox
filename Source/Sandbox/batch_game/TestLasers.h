@@ -4,6 +4,7 @@
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/TestLaserCollisionDataSoA.h>
+#include <Sandbox/batch_game/TestLasersPhaseInterface.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -38,6 +39,7 @@ struct ThreadLocalCollisionData {
 UCLASS()
 class SANDBOX_API ATestLasers : public AActor {
     GENERATED_BODY()
+    friend class ml::test_lasers::PhaseInterface;
   public:
     using SpawnRequests = ml::test_lasers::SpawnRequests;
     using Entities = ml::test_lasers::Entities;
@@ -49,17 +51,9 @@ class SANDBOX_API ATestLasers : public AActor {
 
     ATestLasers();
 
-    void clear_runtime_state();
-    void begin_play();
+    auto get_phase_interface() -> ml::test_lasers::PhaseInterface& { return phase_interface; }
+
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void commit_spawns();
-    void simulate(float const dt);
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
@@ -156,4 +150,15 @@ class SANDBOX_API ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Lasers")
     bool debugging_shapes_enabled{false};
 #endif
+  private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void commit_spawns();
+    void simulate(float const dt);
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
+    ml::test_lasers::PhaseInterface phase_interface;
 };

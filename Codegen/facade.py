@@ -83,6 +83,10 @@ class Facade:
     methods: tuple[FacadeMethod, ...]
     validation: Node | None = None
     export_specifier: str | None = None
+    bind_access: str = "public"
+    method_access: str = "public"
+    friends: tuple[str, ...] = ()
+    definitions_in_source: bool = False
 
     def __init__(
         self,
@@ -92,6 +96,10 @@ class Facade:
         methods: Iterable[FacadeMethod],
         validation: Node | None = None,
         export_specifier: str | None = None,
+        bind_access: str = "public",
+        method_access: str = "public",
+        friends: Iterable[str] = (),
+        definitions_in_source: bool = False,
     ) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "target_type", target_type)
@@ -99,6 +107,10 @@ class Facade:
         object.__setattr__(self, "methods", tuple(methods))
         object.__setattr__(self, "validation", validation)
         object.__setattr__(self, "export_specifier", export_specifier)
+        object.__setattr__(self, "bind_access", bind_access)
+        object.__setattr__(self, "method_access", method_access)
+        object.__setattr__(self, "friends", tuple(friends))
+        object.__setattr__(self, "definitions_in_source", definitions_in_source)
         if not self.name.strip() or not self.target_member_name.strip():
             raise ValueError("Facade and target member names must not be empty")
         if not self.methods:
@@ -111,9 +123,23 @@ class Facade:
             )
         if self.validation is not None and not isinstance(self.validation, Node):
             raise TypeError("Facade validation must be a codegen node")
+        if self.bind_access not in ("public", "private"):
+            raise ValueError("Facade bind access must be 'public' or 'private'")
+        if self.method_access not in ("public", "private"):
+            raise ValueError("Facade method access must be 'public' or 'private'")
+        if any(not friend.strip() for friend in self.friends):
+            raise ValueError("Facade friend names must not be empty")
 
 
-def lower_facade(facade: Facade) -> Struct:
+@dataclass(frozen=True)
+class LoweredFacade:
+    header: Struct
+    source_nodes: tuple[Node, ...]
+
+
+def facade_functions(
+    facade: Facade,
+) -> tuple[MemberFunctionSpec, tuple[MemberFunctionSpec, ...]]:
     target_reference = qualified_type(facade.target_type, "&")
     bind_target = FunctionParameter(target_reference, "new_target")
     bind = MemberFunctionSpec(
@@ -121,7 +147,7 @@ def lower_facade(facade: Facade) -> Struct:
         "void",
         (bind_target,),
         Raw(f"{facade.target_member_name} = &{bind_target.name};"),
-        is_inline=True,
+        is_inline=not facade.definitions_in_source,
     )
     forwarding_functions = tuple(
         MemberFunctionSpec(
@@ -134,27 +160,72 @@ def lower_facade(facade: Facade) -> Struct:
                 facade.validation,
             ),
             suffix=method.suffix,
-            is_inline=True,
+            is_inline=not facade.definitions_in_source,
         )
         for method in facade.methods
     )
-    nodes: list[Node] = [Raw("public:"), NewLines(1), bind.header_node(), NewLines(2)]
-    for function in forwarding_functions:
-        nodes.extend((function.header_node(), NewLines(2)))
-    nodes.extend(
-        (
-            Raw("private:"),
-            NewLines(1),
-            Member(
-                qualified_type(facade.target_type, "*"),
-                facade.target_member_name,
-                initializer="nullptr",
-            ),
+    return bind, forwarding_functions
+
+
+def append_section(nodes: list[Node], access: str, section_nodes: Iterable[Node]) -> None:
+    section_nodes = tuple(section_nodes)
+    if not section_nodes:
+        return
+    nodes.extend((Raw(f"{access}:"), NewLines(1)))
+    for index, node in enumerate(section_nodes):
+        nodes.append(node)
+        if index < len(section_nodes) - 1:
+            nodes.append(NewLines(2))
+
+
+def lower_facade(facade: Facade) -> Struct:
+    bind, forwarding_functions = facade_functions(facade)
+    nodes: list[Node] = []
+    public_nodes: list[Node] = []
+    if facade.bind_access == "public":
+        public_nodes.append(bind.header_node())
+    if facade.method_access == "public":
+        public_nodes.extend(function.header_node() for function in forwarding_functions)
+    append_section(
+        nodes,
+        "public",
+        public_nodes,
+    )
+    private_nodes: list[Node] = [Raw(f"friend class {friend};") for friend in facade.friends]
+    if facade.bind_access == "private":
+        private_nodes.append(bind.header_node())
+    if facade.method_access == "private":
+        private_nodes.extend(function.header_node() for function in forwarding_functions)
+    private_nodes.append(
+        Member(
+            qualified_type(facade.target_type, "*"),
+            facade.target_member_name,
+            initializer="nullptr",
         )
+    )
+    append_section(
+        nodes,
+        "private",
+        private_nodes,
     )
     return Struct(
         facade.name,
         nodes,
         export_specifier=facade.export_specifier,
         record_kind="class",
+    )
+
+
+def lower_facade_with_source(facade: Facade) -> LoweredFacade:
+    if not facade.definitions_in_source:
+        raise ValueError("Facade definitions must be configured for source output")
+    bind, forwarding_functions = facade_functions(facade)
+    source_nodes: list[Node] = [bind.definition_node(facade.name), NewLines(2)]
+    for index, function in enumerate(forwarding_functions):
+        source_nodes.append(function.definition_node(facade.name))
+        if index < len(forwarding_functions) - 1:
+            source_nodes.append(NewLines(2))
+    return LoweredFacade(
+        header=lower_facade(facade),
+        source_nodes=tuple(source_nodes),
     )

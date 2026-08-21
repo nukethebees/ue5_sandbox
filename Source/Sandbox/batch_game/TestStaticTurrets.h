@@ -5,6 +5,7 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
+#include <Sandbox/batch_game/TestStaticTurretsPhaseInterface.h>
 #include <Sandbox/batch_game/TestStaticTurretsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
@@ -40,6 +41,7 @@ struct FSpatialQueryManager;
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
+    friend class ml::test_static_turrets::PhaseInterface;
   public:
     using Proxy = ATestStaticTurretsProxy;
     using RegistryEntityData = ml::entity_registry::EntityData;
@@ -50,21 +52,11 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     ATestStaticTurrets();
 
-    void clear_runtime_state();
-    void begin_play();
+    auto get_phase_interface() -> ml::test_static_turrets::PhaseInterface& {
+        return phase_interface;
+    }
+
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
@@ -98,7 +90,10 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     // Searchng
     void perform_search();
-    void perform_search_on_slice(int32 slice_index, int32 n_turrets, int32 min_turrets_per_slice, float radius);
+    void perform_search_on_slice(int32 slice_index,
+                                 int32 n_turrets,
+                                 int32 min_turrets_per_slice,
+                                 float radius);
 
     // Attacking
     void fire_at_enemies();
@@ -159,6 +154,21 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool draw_debug_entity_info_enabled{false};
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
+    ml::test_static_turrets::PhaseInterface phase_interface;
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

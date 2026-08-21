@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersCommandInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
+#include <Sandbox/batch_game/TestCapitalShipsPhaseInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -46,6 +47,7 @@ struct FSpatialQueryManager;
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
+    friend class ml::test_capital_ships::PhaseInterface;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -61,19 +63,9 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     ATestCapitalShips();
 
-    void clear_runtime_state();
-    void begin_play();
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
+    auto get_phase_interface() -> ml::test_capital_ships::PhaseInterface& {
+        return phase_interface;
+    }
     // Accessors
     auto get_num_instances() const -> int32;
     auto is_valid(FRegistryEntityHandle const index) const -> bool;
@@ -212,6 +204,20 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
+    ml::test_capital_ships::PhaseInterface phase_interface;
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

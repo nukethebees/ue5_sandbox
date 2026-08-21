@@ -42,6 +42,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestCapitalShipCount, TEXT("Sandbox/TestLaserCo
 
 ATestCapitalShips::ATestCapitalShips()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
+    phase_interface.bind(*this);
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     instances->SetupAttachment(RootComponent);

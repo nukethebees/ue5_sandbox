@@ -23,6 +23,7 @@
 
 ATestTubeSpinners::ATestTubeSpinners()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
+    phase_interface.bind(*this);
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     instances->SetupAttachment(RootComponent);

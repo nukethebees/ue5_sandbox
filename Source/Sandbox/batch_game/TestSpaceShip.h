@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/batch_game/TestSpaceShipControlMode.h>
 #include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
+#include <Sandbox/batch_game/TestSpaceShipPhaseInterface.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/LaserFiringState.h>
@@ -50,6 +51,7 @@ class SANDBOX_API ATestSpaceShip
     : public APawn
     , public ITestEntity {
     GENERATED_BODY()
+    friend class ml::test_space_ship::PhaseInterface;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -63,26 +65,13 @@ class SANDBOX_API ATestSpaceShip
 
     ATestSpaceShip();
 
+    auto get_phase_interface() -> ml::test_space_ship::PhaseInterface& { return phase_interface; }
+
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return registry_handle;
     }
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
-
-    // Life cycle
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void move(float const dt);
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void resolve_damage_targets();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
@@ -396,6 +385,22 @@ class SANDBOX_API ATestSpaceShip
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
   private:
+    // Life cycle
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void move(float const dt);
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void resolve_damage_targets();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
+    ml::test_space_ship::PhaseInterface phase_interface;
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
