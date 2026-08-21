@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "SandboxMaterialExpressions",
+	"FriendlyName": "SandboxMaterialExprs",
 	"Description": "",
 	"Category": "Sandbox",
 	"CreatedBy": "Matthew Love",
@@ -16,12 +16,12 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "SandboxMaterialExpressions",
+			"Name": "SandboxMaterialExprs",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "SandboxMaterialExpressionsEditor",
+			"Name": "SandboxMaterialExprsEd",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}

@@ -103,7 +103,7 @@ def main() -> None:
         script_dir / "Plugins" / "USFLoader",
         script_dir / "Plugins" / "SandboxCore",
         script_dir / "Plugins" / "SandboxEditorTools",
-        script_dir / "Plugins" / "SandboxMaterialExpressions",
+        script_dir / "Plugins" / "SandboxMaterialExprs",
         script_dir / "Plugins" / "USFLoader",
     ]
 

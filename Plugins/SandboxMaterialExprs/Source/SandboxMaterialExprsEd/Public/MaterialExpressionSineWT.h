@@ -5,7 +5,7 @@
 #include "MaterialExpressionSineWt.generated.h"
 
 UCLASS()
-class SANDBOXMATERIALEXPRESSIONSEDITOR_API UMaterialExpressionSineWT final
+class SANDBOXMATERIALEXPRSED_API UMaterialExpressionSineWT final
     : public UMaterialExpression {
     GENERATED_BODY()
   public:

@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class SandboxMaterialExpressionsEditor : ModuleRules
+public class SandboxMaterialExprsEd : ModuleRules
 {
-	public SandboxMaterialExpressionsEditor(ReadOnlyTargetRules Target) : base(Target)
+	public SandboxMaterialExprsEd(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -36,7 +36,7 @@ public class SandboxMaterialExpressionsEditor : ModuleRules
 				"Slate",
 				"SlateCore",
 				"UnrealEd",
-				"SandboxMaterialExpressions"
+				"SandboxMaterialExprs"
 			}
 			);
 		
