@@ -17,6 +17,7 @@
 
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
+class UWorld;
 
 USTRUCT()
 struct FTestMissionStartupData {
@@ -31,12 +32,13 @@ struct FTestMissionStartupData {
     TArray<TObjectPtr<AActor>> entities_must_survive;
 };
 
-UCLASS()
-class SANDBOX_API ATestMissionManager : public AActor {
+USTRUCT()
+struct SANDBOX_API FTestMissionManager {
     GENERATED_BODY()
   public:
     void begin_play();
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
+    void set_world(UWorld& new_world) noexcept;
     void mission_tick();
 
     void set_mission_mode(ETestMissionMode new_mode);
@@ -109,6 +111,7 @@ class SANDBOX_API ATestMissionManager : public AActor {
     void handle_mission_failure(ETestMissionFailReason fail_reason);
 
     FTestEntityRegistry* entity_registry{nullptr};
+    UWorld* world{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
     FTestMissionStartupData startup_data{};

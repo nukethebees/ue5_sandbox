@@ -4,7 +4,6 @@
 #include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
@@ -38,9 +37,6 @@ struct SANDBOX_API FSimulationActorClasses {
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ATestTubeSpinners> spinners_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Simulation")
-    TSubclassOf<ATestMissionManager> mission_manager_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Simulation")
     TSubclassOf<ADelayedNiagaraSpawner> niagara_spawner_class{nullptr};

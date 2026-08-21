@@ -14,7 +14,7 @@
 #include <utility>
 
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
-                             ATestMissionManager const& new_mission_manager,
+                             FTestMissionManager const& new_mission_manager,
                              FTestEntityRegistry const& new_entity_registry,
                              double const update_tick_rate,
                              ATestSpaceShip const* const new_player_ship) {
@@ -53,7 +53,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     player_ship = new_player_ship;
     top_killer_ids_buffer.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
-    check(IsValid(mission_manager));
+    check(mission_manager);
     check(entity_registry);
     state = EHUDManagerState::Active;
 
@@ -100,7 +100,7 @@ void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
         return;
     }
 
-    check(IsValid(mission_manager));
+    check(mission_manager);
     check(entity_registry);
 
     auto const changes{collect_data(num_ticks)};
@@ -113,7 +113,7 @@ void FHUDManager::force_sample() {
         return;
     }
 
-    check(IsValid(mission_manager));
+    check(mission_manager);
     check(entity_registry);
 
     ml::hud_manager::FDataChanges changes;
@@ -182,7 +182,7 @@ auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_t
 }
 bool FHUDManager::collect_mission_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);
-    check(IsValid(mission_manager));
+    check(mission_manager);
     if (!mission_manager->is_ready()) {
         return false;
     }
@@ -195,7 +195,7 @@ bool FHUDManager::collect_mission_data() {
 }
 void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::read_mission_data);
-    check(IsValid(mission_manager));
+    check(mission_manager);
 
     auto& static_data{out.static_data};
     static_data.mission_mode = mission_manager->get_mission_mode();

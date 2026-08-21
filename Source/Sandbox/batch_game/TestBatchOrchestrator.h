@@ -8,6 +8,7 @@
 #include <Sandbox/batch_game/TestCapitalShipFightersPhaseInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipsPhaseInterface.h>
 #include <Sandbox/batch_game/TestLasersPhaseInterface.h>
+#include <Sandbox/batch_game/TestMissionManager.h>
 #include <Sandbox/batch_game/TestSpaceShipPhaseInterface.h>
 #include <Sandbox/batch_game/TestStaticTurretsPhaseInterface.h>
 #include <Sandbox/batch_game/TestTubeSpinnersPhaseInterface.h>
@@ -26,7 +27,6 @@ class ATestCapitalShipFighters;
 class ATestStaticTurrets;
 class ATestTubeSpinners;
 
-class ATestMissionManager;
 class ADelayedNiagaraSpawner;
 class UTestSimulationConfig;
 
@@ -100,7 +100,10 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_spatial_query_manager() const noexcept -> ml::FSpatialQueryManager const& {
         return query_manager;
     }
-    auto get_mission_manager() const -> ATestMissionManager const* { return mission_manager; }
+    auto get_mission_manager() noexcept -> FTestMissionManager& { return mission_manager; }
+    auto get_mission_manager() const noexcept -> FTestMissionManager const& {
+        return mission_manager;
+    }
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
     auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
@@ -179,8 +182,8 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     ml::test_static_turrets::PhaseInterface turrets_phase;
     ml::test_tube_spinners::PhaseInterface spinners_phase;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestMissionManager> mission_manager{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    FTestMissionManager mission_manager{};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 

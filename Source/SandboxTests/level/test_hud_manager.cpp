@@ -116,10 +116,15 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
 
     TEST_METHOD(MissionAndDefenceDataUpdateWithoutHUD)
     {
-        level_setup->setup(TestCommandBuilder,
-                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                               defence_pre_begin_play(world, config);
-                           });
+        level_setup->setup(
+            TestCommandBuilder,
+            [this](UWorld& world, UTestSimulationConfig const& config) {
+                defence_pre_begin_play(world, config);
+            },
+            [this](
+                UWorld& world, UTestSimulationConfig const&, ATestBatchOrchestrator& orchestrator) {
+                configure_defence_mission(world, orchestrator);
+            });
         TestCommandBuilder.Do([this] { defence_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { defence_process_samples(); });
@@ -138,10 +143,15 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
 
     TEST_METHOD(MissionTimeUsesSimulationClockWithoutHUD)
     {
-        level_setup->setup(TestCommandBuilder,
-                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                               mission_time_pre_begin_play(world, config);
-                           });
+        level_setup->setup(
+            TestCommandBuilder,
+            [this](UWorld& world, UTestSimulationConfig const& config) {
+                mission_time_pre_begin_play(world, config);
+            },
+            [this](
+                UWorld& world, UTestSimulationConfig const&, ATestBatchOrchestrator& orchestrator) {
+                configure_defence_mission(world, orchestrator);
+            });
         TestCommandBuilder.Do([this] { mission_time_begin(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { mission_time_process_samples(); });
@@ -168,9 +178,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
 
         auto const& hud_manager{get_headless_hud_manager()};
         auto const& registry{orchestrator->get_entity_registry()};
-        auto const* const mission_manager{orchestrator->get_mission_manager()};
+        auto const& mission_manager{orchestrator->get_mission_manager()};
         auto const* const player_ship{orchestrator->get_player_ship()};
-        check(mission_manager);
 
         checks.are_equal(
             0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
@@ -181,10 +190,10 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
                          TEXT("Initial entity count cache matches the registry"));
 
         auto const& mission_data{hud_manager.get_mission_data()};
-        checks.are_equal(mission_manager->get_mission_state(),
+        checks.are_equal(mission_manager.get_mission_state(),
                          mission_data.status_data.mission_state,
                          TEXT("Mission state is cached"));
-        checks.are_equal(mission_manager->get_mission_stopwatch(),
+        checks.are_equal(mission_manager.get_mission_stopwatch(),
                          mission_data.status_data.mission_stopwatch,
                          TEXT("Mission time is cached"));
 
@@ -217,25 +226,22 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         if (!IsValid(defended)) {
             return;
         }
-        auto* const mission_manager{world.SpawnActorDeferred<ATestMissionManager>(
-            config.actor_classes.mission_manager_class, FTransform::Identity)};
-        if (!checks.is_valid(mission_manager, TEXT("Mission manager"))) {
-            return;
-        }
-        mission_manager->set_save_mission_results(false);
-        mission_manager->set_mission_mode(ETestMissionMode::SurviveTime);
-        mission_manager->set_target_time(10.f);
-        mission_manager->add_entity_that_must_survive(*defended);
-        UGameplayStatics::FinishSpawningActor(mission_manager, FTransform::Identity);
+    }
+    void configure_defence_mission(UWorld & world, ATestBatchOrchestrator & orchestrator) {
+        auto* const defended{ml::get_first_actor<ATestCapitalShipProxy>(world)};
+        check(defended);
+
+        auto& mission_manager{orchestrator.get_mission_manager()};
+        mission_manager.set_save_mission_results(false);
+        mission_manager.set_mission_mode(ETestMissionMode::SurviveTime);
+        mission_manager.set_target_time(10.f);
+        mission_manager.add_entity_that_must_survive(*defended);
     }
     void defence_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
         if (!initialise_headless_hud_manager()) {
             return;
         }
-        auto const* const mission_manager{test_driver->orchestrator.get_mission_manager()};
-        check(mission_manager);
-
         auto const& initial_data{get_headless_hud_manager().get_mission_data()};
         checks.are_equal(1,
                          initial_data.static_data.surviving_entity_ids.Num(),
@@ -249,7 +255,8 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         checks.is_true(initial_data.status_data.surviving_entity_health[0].health > 0,
                        TEXT("Must-survive entity starts healthy"));
 
-        auto const handles{mission_manager->get_entity_handles_that_must_survive()};
+        auto const handles{
+            test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
         check(handles.Num() == 1);
         test_driver->timeline.then_after(damage_queue_time,
                                          [this, handles] { test_driver->queue_kills(handles); });
@@ -311,14 +318,13 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
     }
     void mission_time_on_tick(ATestBatchOrchestrator & orchestrator) {
         tick_headless_hud_manager();
-        auto const* const mission_manager{orchestrator.get_mission_manager()};
-        check(mission_manager);
+        auto const& mission_manager{orchestrator.get_mission_manager()};
 
         auto const& hud_manager{get_headless_hud_manager()};
         auto const& mission_data{hud_manager.get_mission_data()};
         mission_time_samples.add(test_driver->get_time(),
                                  FMissionTimeSample{mission_data.status_data.mission_stopwatch,
-                                                    mission_manager->get_mission_stopwatch(),
+                                                    mission_manager.get_mission_stopwatch(),
                                                     hud_manager.get_registered_hud_count()});
         test_driver->timeline.tick(test_driver->get_time());
     }
@@ -568,16 +574,11 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
             return false;
         }
 
-        auto* const mission_manager{orchestrator->get_mission_manager()};
         auto& entity_registry{orchestrator->get_entity_registry()};
-        if (!checks.not_nullptr(mission_manager,
-                                TEXT("Mission manager for headless HUD manager"))) {
-            return false;
-        }
 
         headless_hud_manager.Emplace();
         headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
-                                         *mission_manager,
+                                         orchestrator->get_mission_manager(),
                                          entity_registry,
                                          orchestrator->get_hud_tick_loop().tick_rate,
                                          orchestrator->get_player_ship());

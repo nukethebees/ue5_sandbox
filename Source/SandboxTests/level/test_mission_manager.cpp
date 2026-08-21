@@ -19,7 +19,6 @@
 #include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/World.h>
-#include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
 TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
@@ -71,18 +70,6 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         spawner.Reset();
     }
   private:
-    static auto spawn_mission_manager(UWorld & world, UTestSimulationConfig const& config)
-        -> ATestMissionManager& {
-        auto* const manager{world.SpawnActorDeferred<ATestMissionManager>(
-            config.actor_classes.mission_manager_class, FTransform::Identity)};
-        check(manager);
-        return *manager;
-    }
-
-    static void finish_spawning_mission_manager(ATestMissionManager & manager) {
-        UGameplayStatics::FinishSpawningActor(&manager, FTransform::Identity);
-    }
-
     static void configure_level(UWorld & world,
                                 UTestSimulationConfig const& config,
                                 ml::FSoftTestAssertions& checks,
@@ -92,8 +79,36 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         if (!IsValid(first_capital)) {
             return;
         }
-        auto& manager{spawn_mission_manager(world, config)};
+        switch (scenario) {
+            case EScenario::SurviveTime: {
+                break;
+            }
+            case EScenario::KillEnemies: {
+                ml::spawn_capital_proxy(
+                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
+                break;
+            }
+            case EScenario::KillEnemiesWithinTime: {
+                ml::spawn_capital_proxy(
+                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
+                break;
+            }
+            case EScenario::DefenceObjective: {
+                break;
+            }
+            default: {
+                checkNoEntry();
+                break;
+            }
+        }
+    }
 
+    static void configure_mission_manager(
+        UWorld & world, ATestBatchOrchestrator & orchestrator, EScenario const scenario) {
+        auto* const first_capital{ml::get_first_actor<ATestCapitalShipProxy>(world)};
+        check(first_capital);
+
+        auto& manager{orchestrator.get_mission_manager()};
         manager.set_save_mission_results(false);
 
         switch (scenario) {
@@ -104,16 +119,12 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                 break;
             }
             case EScenario::KillEnemies: {
-                ml::spawn_capital_proxy(
-                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemies);
                 manager.set_kill_target(1);
                 manager.add_hero_entity(*first_capital);
                 break;
             }
             case EScenario::KillEnemiesWithinTime: {
-                ml::spawn_capital_proxy(
-                    world, config, checks, FName{TEXT("enemy_capital")}, FVector{2000.f, 0.f, 0.f});
                 manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
                 manager.set_target_time(short_mission_time);
                 manager.set_kill_target(1);
@@ -131,8 +142,6 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                 break;
             }
         }
-
-        finish_spawning_mission_manager(manager);
     }
 
     void setup_scenario(EScenario const new_scenario) {
@@ -141,6 +150,10 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
             TestCommandBuilder,
             [this, new_scenario](UWorld& world, UTestSimulationConfig const& config) {
                 configure_level(world, config, checks, new_scenario);
+            },
+            [new_scenario](
+                UWorld& world, UTestSimulationConfig const&, ATestBatchOrchestrator& orchestrator) {
+                configure_mission_manager(world, orchestrator, new_scenario);
             });
 
         TestCommandBuilder.Do([this] { start_scenario(); })
@@ -152,8 +165,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         auto& world{level_setup->get_world()};
         test_driver = ml::TestSimulationDriver::from_world(world);
 
-        auto* const manager{ml::get_first_actor<ATestMissionManager>(world)};
-        check(manager);
+        auto* const manager{&test_driver->orchestrator.get_mission_manager()};
 
         TestRunner->TestEqual(TEXT("Mission starts running"),
                               manager->get_mission_state(),
@@ -191,14 +203,13 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     }
 
     void on_end_tick(ATestBatchOrchestrator&) {
-        auto const* const manager{test_driver->orchestrator.get_mission_manager()};
-        check(manager);
+        auto const& manager{test_driver->orchestrator.get_mission_manager()};
 
         FSimulationSample sample{};
-        sample.mission_state = manager->get_mission_state();
-        sample.mission_fail_reason = manager->get_mission_fail_reason();
-        sample.mission_kills = manager->get_mission_kills();
-        for (auto const& health : manager->get_entity_health_that_must_survive()) {
+        sample.mission_state = manager.get_mission_state();
+        sample.mission_fail_reason = manager.get_mission_fail_reason();
+        sample.mission_kills = manager.get_mission_kills();
+        for (auto const& health : manager.get_entity_health_that_must_survive()) {
             sample.surviving_entity_health.Add(health.health);
         }
 
@@ -206,7 +217,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
 
-    void queue_enemy_kill(ATestMissionManager const& manager) {
+    void queue_enemy_kill(FTestMissionManager const& manager) {
         auto const hero_handles{manager.get_hero_entity_handles()};
         check(hero_handles.Num() == 1);
 
@@ -228,7 +239,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         test_driver->queue_kills(targets, hero);
     }
 
-    void queue_defended_entity_kill(ATestMissionManager const& manager) {
+    void queue_defended_entity_kill(FTestMissionManager const& manager) {
         auto const defended_handles{manager.get_entity_handles_that_must_survive()};
         check(defended_handles.Num() == 1);
 
@@ -238,8 +249,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     }
 
     auto mission_has_ended() const -> bool {
-        auto const* const manager{test_driver->orchestrator.get_mission_manager()};
-        auto const state{manager->get_mission_state()};
+        auto const& manager{test_driver->orchestrator.get_mission_manager()};
+        auto const state{manager.get_mission_state()};
         return state == ETestMissionState::Succeeded || state == ETestMissionState::Failed;
     }
 

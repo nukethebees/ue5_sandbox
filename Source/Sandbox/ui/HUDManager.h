@@ -18,7 +18,7 @@
 #include <UObject/WeakObjectPtrTemplates.h>
 
 struct FTestEntityRegistry;
-class ATestMissionManager;
+struct FTestMissionManager;
 class ATestSpaceShip;
 class UShipHudWidget;
 
@@ -142,7 +142,7 @@ struct FDataChanges {
 
 struct SANDBOX_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
-                    ATestMissionManager const& new_mission_manager,
+                    FTestMissionManager const& new_mission_manager,
                     FTestEntityRegistry const& new_entity_registry,
                     double update_tick_rate,
                     ATestSpaceShip const* new_player_ship);
@@ -206,7 +206,7 @@ struct SANDBOX_API FHUDManager {
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<TWeakObjectPtr<UShipHudWidget>> registered_huds;
     TWeakObjectPtr<ATestSpaceShip const> player_ship;
-    ATestMissionManager const* mission_manager{nullptr};
+    FTestMissionManager const* mission_manager{nullptr};
     FTestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;
 

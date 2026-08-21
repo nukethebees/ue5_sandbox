@@ -18,7 +18,7 @@ void FTestMissionStartupData::prune_invalid_actors() {
         [](TObjectPtr<AActor> const& actor) { return !IsValid(actor); });
 }
 
-void ATestMissionManager::begin_play() {
+void FTestMissionManager::begin_play() {
     check(entity_registry);
 
     startup_data.prune_invalid_actors();
@@ -35,7 +35,7 @@ void ATestMissionManager::begin_play() {
             if (entity_handles_that_must_survive.IsEmpty()) {
                 UE_LOG(LogSandbox,
                        Error,
-                       TEXT("ATestMissionManager: SurviveTime requires at least one entity that "
+                       TEXT("FTestMissionManager: SurviveTime requires at least one entity that "
                             "must survive"));
                 set_mission_state(ETestMissionState::Disabled);
                 break;
@@ -50,7 +50,7 @@ void ATestMissionManager::begin_play() {
             if (hero_entity_ids.IsEmpty()) {
                 UE_LOG(LogSandbox,
                        Error,
-                       TEXT("ATestMissionManager: Kill missions require at least one hero entity"));
+                       TEXT("FTestMissionManager: Kill missions require at least one hero entity"));
                 set_mission_state(ETestMissionState::Disabled);
                 break;
             }
@@ -65,7 +65,7 @@ void ATestMissionManager::begin_play() {
         }
 
         default: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
+            UE_LOG(LogSandbox, Fatal, TEXT("FTestMissionManager: Unhandled ETestMissionMode."));
             break;
         }
     }
@@ -73,39 +73,42 @@ void ATestMissionManager::begin_play() {
     mission_elapsed_seconds = 0.f;
 }
 
-void ATestMissionManager::bind_simulation_clock(
+void FTestMissionManager::bind_simulation_clock(
     ATestBatchOrchestrator const& orchestrator) noexcept {
     simulation_clock.bind(orchestrator);
 }
+void FTestMissionManager::set_world(UWorld& new_world) noexcept {
+    world = &new_world;
+}
 
-void ATestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
+void FTestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
     check(mission_state == ETestMissionState::NotStarted);
     mission_mode = new_mode;
 }
-void ATestMissionManager::set_target_time(float const new_target_time) {
+void FTestMissionManager::set_target_time(float const new_target_time) {
     check(mission_state == ETestMissionState::NotStarted);
     check(new_target_time > 0.f);
     target_time = new_target_time;
 }
-void ATestMissionManager::set_kill_target(int32 const new_kill_target) {
+void FTestMissionManager::set_kill_target(int32 const new_kill_target) {
     check(mission_state == ETestMissionState::NotStarted);
     kill_target = new_kill_target;
 }
-void ATestMissionManager::set_save_mission_results(bool const should_save) noexcept {
+void FTestMissionManager::set_save_mission_results(bool const should_save) noexcept {
     check(mission_state == ETestMissionState::NotStarted);
     save_mission_results = should_save;
 }
 
-void ATestMissionManager::add_hero_entity(AActor& actor) {
+void FTestMissionManager::add_hero_entity(AActor& actor) {
     check(mission_state == ETestMissionState::NotStarted);
     startup_data.hero_entities.Add(&actor);
 }
-void ATestMissionManager::add_entity_that_must_survive(AActor& actor) {
+void FTestMissionManager::add_entity_that_must_survive(AActor& actor) {
     check(mission_state == ETestMissionState::NotStarted);
     startup_data.entities_must_survive.Add(&actor);
 }
 
-void ATestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_entities) {
+void FTestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_entities) {
     auto resolve_identifiers{[this, &proxy_entities](AActor const& actor) {
         if (auto const* const identifiers{proxy_entities.Find(&actor)}) {
             return *identifiers;
@@ -164,12 +167,12 @@ void ATestMissionManager::on_proxy_entities_bound(FProxyEntityMap const& proxy_e
     }
 }
 
-void ATestMissionManager::mission_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestMissionManager::mission_tick);
+void FTestMissionManager::mission_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestMissionManager::mission_tick);
 
     switch (mission_state) {
         case ETestMissionState::NotStarted: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager ticking but not started."));
+            UE_LOG(LogSandbox, Fatal, TEXT("FTestMissionManager ticking but not started."));
             break;
         }
         case ETestMissionState::Running: {
@@ -185,7 +188,7 @@ void ATestMissionManager::mission_tick() {
             return;
         }
         default: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionState."));
+            UE_LOG(LogSandbox, Fatal, TEXT("FTestMissionManager: Unhandled ETestMissionState."));
             break;
         }
     }
@@ -215,16 +218,16 @@ void ATestMissionManager::mission_tick() {
             break;
         }
         default: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionMode."));
+            UE_LOG(LogSandbox, Fatal, TEXT("FTestMissionManager: Unhandled ETestMissionMode."));
             break;
         }
     }
 }
-auto ATestMissionManager::is_ready() const noexcept -> bool {
+auto FTestMissionManager::is_ready() const noexcept -> bool {
     return mission_state != ETestMissionState::NotStarted;
 }
 
-void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
+void FTestMissionManager::set_mission_state(ETestMissionState const new_state,
                                             ETestMissionFailReason const fail_reason) {
     check((new_state == ETestMissionState::Failed) ==
           (fail_reason != ETestMissionFailReason::None));
@@ -251,25 +254,25 @@ void ATestMissionManager::set_mission_state(ETestMissionState const new_state,
             return;
         }
         default: {
-            UE_LOG(LogSandbox, Fatal, TEXT("ATestMissionManager: Unhandled ETestMissionState."));
+            UE_LOG(LogSandbox, Fatal, TEXT("FTestMissionManager: Unhandled ETestMissionState."));
             break;
         }
     }
 }
 
-void ATestMissionManager::mission_tick_survive_seconds() {
+void FTestMissionManager::mission_tick_survive_seconds() {
     if (mission_elapsed_seconds >= target_time) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
-void ATestMissionManager::mission_tick_kill_enemies() {
+void FTestMissionManager::mission_tick_kill_enemies() {
     update_mission_kills();
 
     if (mission_kills >= kill_target) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
-void ATestMissionManager::mission_tick_kill_enemies_within_time() {
+void FTestMissionManager::mission_tick_kill_enemies_within_time() {
     update_mission_kills();
 
     if (mission_kills >= kill_target) {
@@ -285,7 +288,7 @@ void ATestMissionManager::mission_tick_kill_enemies_within_time() {
     }
 }
 
-void ATestMissionManager::update_mission_kills() {
+void FTestMissionManager::update_mission_kills() {
     check(hero_entity_handles.Num() == hero_entity_ids.Num());
 
     mission_kills = 0;
@@ -294,7 +297,7 @@ void ATestMissionManager::update_mission_kills() {
     }
 }
 
-void ATestMissionManager::initialise_entity_health_that_must_survive() {
+void FTestMissionManager::initialise_entity_health_that_must_survive() {
     entity_health_that_must_survive.Reset(entity_handles_that_must_survive.Num());
     check(entity_ids_that_must_survive.Num() == entity_handles_that_must_survive.Num());
     check(entity_types_that_must_survive.Num() == entity_handles_that_must_survive.Num());
@@ -305,7 +308,7 @@ void ATestMissionManager::initialise_entity_health_that_must_survive() {
     }
 }
 
-void ATestMissionManager::update_entity_health_that_must_survive() {
+void FTestMissionManager::update_entity_health_that_must_survive() {
     check(entity_health_that_must_survive.Num() == entity_handles_that_must_survive.Num());
 
     auto const n_handles{entity_handles_that_must_survive.Num()};
@@ -317,7 +320,7 @@ void ATestMissionManager::update_entity_health_that_must_survive() {
     }
 }
 
-auto ATestMissionManager::entities_that_must_survive_are_alive() const -> bool {
+auto FTestMissionManager::entities_that_must_survive_are_alive() const -> bool {
     for (auto const handle : entity_handles_that_must_survive) {
         if (!entity_registry->is_valid_alive(handle)) {
             return false;
@@ -327,16 +330,16 @@ auto ATestMissionManager::entities_that_must_survive_are_alive() const -> bool {
     return true;
 }
 
-void ATestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
+void FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
     if (!save_mission_results) {
         return;
     }
 
-    auto* world{GetWorld()};
-    auto* game_instance{world->GetGameInstance()};
+    check(IsValid(world));
+    auto* const game_instance{world->GetGameInstance()};
     auto* save_manager{game_instance->GetSubsystem<USpaceSaveSubsystem>()};
 
-    auto const level_name{UGameplayStatics::GetCurrentLevelName(this)};
+    auto const level_name{UGameplayStatics::GetCurrentLevelName(world)};
 
     FScoreRecord const record{
         .date = FDateTime::Now(),
@@ -352,12 +355,12 @@ void ATestMissionManager::handle_mission_ended(ETestMissionFailReason const fail
 
     save_manager->save_score_record(record);
 }
-void ATestMissionManager::handle_mission_success() {
+void FTestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));
 
     handle_mission_ended(ETestMissionFailReason::None);
 }
-void ATestMissionManager::handle_mission_failure(ETestMissionFailReason const fail_reason) {
+void FTestMissionManager::handle_mission_failure(ETestMissionFailReason const fail_reason) {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
 
     handle_mission_ended(fail_reason);

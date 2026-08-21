@@ -82,7 +82,7 @@ void destroy_proxy_actors(UWorld& world) {
 template <typename... TProxies>
 void bind_and_destroy_proxy_actors(UWorld& world,
                                    FTestEntityRegistry const& entity_registry,
-                                   ATestMissionManager& mission_manager) {
+                                   FTestMissionManager& mission_manager) {
     FProxyEntityMap proxy_entities;
     (add_proxy_handles<TProxies>(world, entity_registry, proxy_entities), ...);
 
@@ -253,12 +253,12 @@ void ATestBatchOrchestrator::begin_play() {
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
         SANDBOX_NAMED_UOBJECT_PTR(turrets),
         SANDBOX_NAMED_UOBJECT_PTR(spinners),
-        SANDBOX_NAMED_UOBJECT_PTR(mission_manager),
         SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
         SANDBOX_NAMED_UOBJECT_PTR(world),
     });
 
     bind_simulation_dependencies();
+    mission_manager.set_world(*world);
 
     entity_registry.reset();
 
@@ -296,15 +296,15 @@ void ATestBatchOrchestrator::begin_play() {
 
     bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
                                   ATestStaticTurretsProxy,
-                                  ATestTubeSpinnerProxy>(*world, entity_registry, *mission_manager);
+                                  ATestTubeSpinnerProxy>(*world, entity_registry, mission_manager);
 
     entity_registry.commit_updates();
     entity_registry.end_tick();
 
-    mission_manager->begin_play();
+    mission_manager.begin_play();
 
     hud_manager.initialise(hud_update_frequencies,
-                           *mission_manager,
+                           mission_manager,
                            entity_registry,
                            hud_tick_loop.tick_rate,
                            player_ship.Get());
@@ -541,7 +541,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             turrets_phase.sync_from_registry();
         }
 
-        mission_manager->mission_tick();
+        mission_manager.mission_tick();
 
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
@@ -652,8 +652,8 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     if (IsValid(player_ship)) {
         bind_simulation_clock(player_ship);
     }
-    ml::invoke_on_all(
-        bind_simulation_clock, capital_ship_fighters, turrets, spinners, lasers, mission_manager);
+    ml::invoke_on_all(bind_simulation_clock, capital_ship_fighters, turrets, spinners, lasers);
+    mission_manager.bind_simulation_clock(*this);
 
     if (IsValid(player_ship)) {
         player_ship->set_entity_registry(&entity_registry);
@@ -665,8 +665,8 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
                       capital_ships,
                       capital_ship_fighters,
                       turrets,
-                      spinners,
-                      mission_manager);
+                      spinners);
+    mission_manager.set_entity_registry(entity_registry);
 
     lasers->set_spatial_query_manager(query_manager);
     capital_ships->set_spatial_query_manager(query_manager);
@@ -736,7 +736,6 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
     turrets = spawn(actor_classes.turrets_class);
     spinners = spawn(actor_classes.spinners_class);
 
-    mission_manager = spawn(actor_classes.mission_manager_class);
     niagara_spawner = spawn(actor_classes.niagara_spawner_class);
 
     if (IsValid(simulation_config)) {

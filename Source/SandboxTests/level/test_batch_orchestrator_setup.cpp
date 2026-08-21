@@ -69,9 +69,6 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
                 TEXT("One turrets actor exists"), ml::count_actors<ATestStaticTurrets>(world), 1);
             TestRunner->TestEqual(
                 TEXT("One spinners actor exists"), ml::count_actors<ATestTubeSpinners>(world), 1);
-            TestRunner->TestEqual(TEXT("One mission manager exists"),
-                                  ml::count_actors<ATestMissionManager>(world),
-                                  1);
             TestRunner->TestEqual(TEXT("One Niagara spawner exists"),
                                   ml::count_actors<ADelayedNiagaraSpawner>(world),
                                   1);
@@ -85,8 +82,8 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
             TestRunner->TestNotNull(TEXT("Spinners are bound"), orchestrator->get_spinners());
             TestRunner->TestNotNull(TEXT("Entity registry is embedded"),
                                     &orchestrator->get_entity_registry());
-            TestRunner->TestNotNull(TEXT("Mission manager is bound"),
-                                    orchestrator->get_mission_manager());
+            TestRunner->TestNotNull(TEXT("Mission manager is embedded"),
+                                    &orchestrator->get_mission_manager());
             TestRunner->TestNotNull(TEXT("Niagara spawner is bound"),
                                     orchestrator->get_niagara_spawner());
 
