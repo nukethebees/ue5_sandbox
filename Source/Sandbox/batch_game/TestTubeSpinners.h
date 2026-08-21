@@ -3,7 +3,6 @@
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestTubeSpinnersPhaseInterface.h>
 #include <Sandbox/batch_game/TestTubeSpinnersSoA.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -30,6 +29,10 @@ struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 struct FTestTubeSpinnersSpatialQueryAccess;
 
+namespace ml::test_tube_spinners {
+class PhaseInterface;
+}
+
 UCLASS()
 class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
@@ -41,10 +44,6 @@ class ATestTubeSpinners : public AActor {
     static constexpr bool is_world_space{false};
 
     ATestTubeSpinners();
-
-    auto get_phase_interface() -> ml::test_tube_spinners::PhaseInterface& {
-        return phase_interface;
-    }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     // Accessors
@@ -112,8 +111,6 @@ class ATestTubeSpinners : public AActor {
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_tube_spinners::PhaseInterface phase_interface;
 
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,

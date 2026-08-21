@@ -6,60 +6,48 @@
 
 #include "Sandbox/batch_game/TestTubeSpinners.h"
 
-#include "CoreMinimal.h"
-
 namespace ml::test_tube_spinners {
 void PhaseInterface::bind(ATestTubeSpinners& new_target) {
     actor = &new_target;
 }
 
 void PhaseInterface::clear_runtime_state() {
-    check(IsValid(actor));
     actor->clear_runtime_state();
 }
 
 void PhaseInterface::begin_play() {
-    check(IsValid(actor));
     actor->begin_play();
 }
 
 void PhaseInterface::begin_tick() {
-    check(IsValid(actor));
     actor->begin_tick();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    check(IsValid(actor));
     actor->update_timers(dt);
 }
 
 void PhaseInterface::move(float const dt) {
-    check(IsValid(actor));
     actor->move(dt);
 }
 
 void PhaseInterface::queue_commands() {
-    check(IsValid(actor));
     actor->queue_commands();
 }
 
 void PhaseInterface::update_entity_registry() {
-    check(IsValid(actor));
     actor->update_entity_registry();
 }
 
 void PhaseInterface::update_visual_data() {
-    check(IsValid(actor));
     actor->update_visual_data();
 }
 
 void PhaseInterface::commit_visual_data() {
-    check(IsValid(actor));
     actor->commit_visual_data();
 }
 
 void PhaseInterface::end_tick() {
-    check(IsValid(actor));
     actor->end_tick();
 }
 } // namespace ml::test_tube_spinners

@@ -7,7 +7,6 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersPhaseInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersSoA.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersTask.h>
 #include <Sandbox/batch_game/TestLasers.h>
@@ -43,6 +42,7 @@ struct FSpatialQueryManager;
 
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
+class PhaseInterface;
 }
 
 UCLASS()
@@ -69,10 +69,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
 
     ATestCapitalShipFighters();
-
-    auto get_phase_interface() -> ml::test_capital_ship_fighters::PhaseInterface& {
-        return phase_interface;
-    }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     // Accessors
@@ -277,8 +273,6 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_capital_ship_fighters::PhaseInterface phase_interface;
 
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,

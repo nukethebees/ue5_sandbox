@@ -274,22 +274,20 @@ void ATestBatchOrchestrator::begin_play() {
         turrets,
         spinners);
 
-    ml::invoke_on_all([this](auto actor) { actor->get_phase_interface().clear_runtime_state(); },
-                      lasers,
-                      capital_ships,
-                      capital_ship_fighters,
-                      turrets,
-                      spinners);
+    lasers_phase.clear_runtime_state();
+    capital_ships_phase.clear_runtime_state();
+    capital_ship_fighters_phase.clear_runtime_state();
+    turrets_phase.clear_runtime_state();
+    spinners_phase.clear_runtime_state();
 
     if (IsValid(player_ship)) {
-        player_ship->get_phase_interface().begin_play();
+        player_ship_phase.begin_play();
     }
-    ml::invoke_on_all([this](auto actor) { actor->get_phase_interface().begin_play(); },
-                      capital_ships,
-                      capital_ship_fighters,
-                      turrets,
-                      spinners,
-                      lasers);
+    capital_ships_phase.begin_play();
+    capital_ship_fighters_phase.begin_play();
+    turrets_phase.begin_play();
+    spinners_phase.begin_play();
+    lasers_phase.begin_play();
 
     query_manager.initialise(
         *world, player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
@@ -413,14 +411,14 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().begin_tick();
+                player_ship_phase.begin_tick();
             }
 
-            capital_ships->get_phase_interface().begin_tick();
-            capital_ship_fighters->get_phase_interface().begin_tick();
-            turrets->get_phase_interface().begin_tick();
-            spinners->get_phase_interface().begin_tick();
-            lasers->get_phase_interface().begin_tick();
+            capital_ships_phase.begin_tick();
+            capital_ship_fighters_phase.begin_tick();
+            turrets_phase.begin_tick();
+            spinners_phase.begin_tick();
+            lasers_phase.begin_tick();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -433,20 +431,19 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().update_timers(simulation_tick_loop.tick_period);
+                player_ship_phase.update_timers(simulation_tick_loop.tick_period);
             }
-            capital_ship_fighters->get_phase_interface().update_timers(
-                simulation_tick_loop.tick_period);
-            capital_ships->get_phase_interface().update_timers(simulation_tick_loop.tick_period);
-            turrets->get_phase_interface().update_timers(simulation_tick_loop.tick_period);
-            spinners->get_phase_interface().update_timers(simulation_tick_loop.tick_period);
+            capital_ship_fighters_phase.update_timers(simulation_tick_loop.tick_period);
+            capital_ships_phase.update_timers(simulation_tick_loop.tick_period);
+            turrets_phase.update_timers(simulation_tick_loop.tick_period);
+            spinners_phase.update_timers(simulation_tick_loop.tick_period);
         }
 
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
-            turrets->get_phase_interface().make_decisions();
-            capital_ships->get_phase_interface().make_decisions();
-            capital_ship_fighters->get_phase_interface().make_decisions();
+            turrets_phase.make_decisions();
+            capital_ships_phase.make_decisions();
+            capital_ship_fighters_phase.make_decisions();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -457,11 +454,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().move(simulation_tick_loop.tick_period);
+                player_ship_phase.move(simulation_tick_loop.tick_period);
             }
 
-            capital_ship_fighters->get_phase_interface().move(simulation_tick_loop.tick_period);
-            spinners->get_phase_interface().move(simulation_tick_loop.tick_period);
+            capital_ship_fighters_phase.move(simulation_tick_loop.tick_period);
+            spinners_phase.move(simulation_tick_loop.tick_period);
         }
 
         {
@@ -470,12 +467,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().queue_commands();
+                player_ship_phase.queue_commands();
             }
 
-            capital_ship_fighters->get_phase_interface().queue_commands();
-            turrets->get_phase_interface().queue_commands();
-            spinners->get_phase_interface().queue_commands();
+            capital_ship_fighters_phase.queue_commands();
+            turrets_phase.queue_commands();
+            spinners_phase.queue_commands();
         }
 
         {
@@ -488,8 +485,8 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
 
-            lasers->get_phase_interface().simulate(simulation_tick_loop.tick_period);
-            lasers->get_phase_interface().commit_spawns();
+            lasers_phase.simulate(simulation_tick_loop.tick_period);
+            lasers_phase.commit_spawns();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -501,12 +498,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().resolve_damage_events();
+                player_ship_phase.resolve_damage_events();
             }
 
-            capital_ships->get_phase_interface().resolve_damage_events();
-            capital_ship_fighters->get_phase_interface().resolve_damage_events();
-            turrets->get_phase_interface().resolve_damage_events();
+            capital_ships_phase.resolve_damage_events();
+            capital_ship_fighters_phase.resolve_damage_events();
+            turrets_phase.resolve_damage_events();
         }
 
         {
@@ -515,13 +512,13 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().update_entity_registry();
+                player_ship_phase.update_entity_registry();
             }
 
-            capital_ships->get_phase_interface().update_entity_registry();
-            capital_ship_fighters->get_phase_interface().update_entity_registry();
-            turrets->get_phase_interface().update_entity_registry();
-            spinners->get_phase_interface().update_entity_registry();
+            capital_ships_phase.update_entity_registry();
+            capital_ship_fighters_phase.update_entity_registry();
+            turrets_phase.update_entity_registry();
+            spinners_phase.update_entity_registry();
         }
 
         {
@@ -536,12 +533,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().sync_from_registry();
+                player_ship_phase.sync_from_registry();
             }
 
-            capital_ships->get_phase_interface().sync_from_registry();
-            capital_ship_fighters->get_phase_interface().sync_from_registry();
-            turrets->get_phase_interface().sync_from_registry();
+            capital_ships_phase.sync_from_registry();
+            capital_ship_fighters_phase.sync_from_registry();
+            turrets_phase.sync_from_registry();
         }
 
         mission_manager->mission_tick();
@@ -550,14 +547,14 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().update_visual_data();
+                player_ship_phase.update_visual_data();
             }
 
-            capital_ships->get_phase_interface().update_visual_data();
-            capital_ship_fighters->get_phase_interface().update_visual_data();
-            turrets->get_phase_interface().update_visual_data();
-            spinners->get_phase_interface().update_visual_data();
-            lasers->get_phase_interface().update_visual_data();
+            capital_ships_phase.update_visual_data();
+            capital_ship_fighters_phase.update_visual_data();
+            turrets_phase.update_visual_data();
+            spinners_phase.update_visual_data();
+            lasers_phase.update_visual_data();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -567,14 +564,14 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
             if (IsValid(player_ship)) {
-                player_ship->get_phase_interface().end_tick();
+                player_ship_phase.end_tick();
             }
 
-            capital_ships->get_phase_interface().end_tick();
-            capital_ship_fighters->get_phase_interface().end_tick();
-            turrets->get_phase_interface().end_tick();
-            spinners->get_phase_interface().end_tick();
-            lasers->get_phase_interface().end_tick();
+            capital_ships_phase.end_tick();
+            capital_ship_fighters_phase.end_tick();
+            turrets_phase.end_tick();
+            spinners_phase.end_tick();
+            lasers_phase.end_tick();
             entity_registry.end_tick();
         }
 
@@ -601,14 +598,14 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
         if (IsValid(player_ship)) {
-            player_ship->get_phase_interface().commit_visual_data();
+            player_ship_phase.commit_visual_data();
         }
 
-        capital_ships->get_phase_interface().commit_visual_data();
-        capital_ship_fighters->get_phase_interface().commit_visual_data();
-        turrets->get_phase_interface().commit_visual_data();
-        spinners->get_phase_interface().commit_visual_data();
-        lasers->get_phase_interface().commit_visual_data();
+        capital_ships_phase.commit_visual_data();
+        capital_ship_fighters_phase.commit_visual_data();
+        turrets_phase.commit_visual_data();
+        spinners_phase.commit_visual_data();
+        lasers_phase.commit_visual_data();
 
         niagara_spawner->update_spawns(dt);
     }
@@ -633,6 +630,20 @@ auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) c
 
 void ATestBatchOrchestrator::bind_simulation_dependencies() {
     UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator::bind_simulation_dependencies"));
+
+    if (IsValid(player_ship)) {
+        player_ship_phase.bind(*player_ship);
+    }
+    check(IsValid(lasers));
+    check(IsValid(capital_ships));
+    check(IsValid(capital_ship_fighters));
+    check(IsValid(turrets));
+    check(IsValid(spinners));
+    lasers_phase.bind(*lasers);
+    capital_ships_phase.bind(*capital_ships);
+    capital_ship_fighters_phase.bind(*capital_ship_fighters);
+    turrets_phase.bind(*turrets);
+    spinners_phase.bind(*spinners);
 
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships->bind_fighters(*capital_ship_fighters);

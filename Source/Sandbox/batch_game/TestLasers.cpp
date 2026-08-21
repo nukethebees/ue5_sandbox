@@ -45,7 +45,6 @@ void SpawnRequests::set_colours(FLinearColor const value) {
 
 ATestLasers::ATestLasers()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
-    phase_interface.bind(*this);
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     instances->SetupAttachment(RootComponent);

@@ -36,7 +36,6 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 
 ATestStaticTurrets::ATestStaticTurrets()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
-    phase_interface.bind(*this);
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     RootComponent->SetMobility(EComponentMobility::Static);

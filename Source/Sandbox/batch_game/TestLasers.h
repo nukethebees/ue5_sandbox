@@ -4,7 +4,6 @@
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
 #include <Sandbox/batch_game/TestLaserCollisionDataSoA.h>
-#include <Sandbox/batch_game/TestLasersPhaseInterface.h>
 #include <Sandbox/batch_game/TestLasersSoA.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
 
@@ -26,6 +25,8 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_lasers {
+class PhaseInterface;
+
 struct ThreadLocalCollisionData {
     TArray<ml::FSpatialQueryHit> hits;
     TArray<UPrimitiveComponent const*> components_hit;
@@ -50,8 +51,6 @@ class SANDBOX_API ATestLasers : public AActor {
     static constexpr int32 n_custom_ismc_floats{5}; // RGB[3], lifetime, spawn time
 
     ATestLasers();
-
-    auto get_phase_interface() -> ml::test_lasers::PhaseInterface& { return phase_interface; }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     // Accessors
@@ -159,6 +158,4 @@ class SANDBOX_API ATestLasers : public AActor {
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_lasers::PhaseInterface phase_interface;
 };

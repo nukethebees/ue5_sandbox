@@ -8,7 +8,6 @@
 #include <Sandbox/batch_game/TestShipFireRate.h>
 #include <Sandbox/batch_game/TestSpaceShipControlMode.h>
 #include <Sandbox/batch_game/TestSpaceShipFlightMode.h>
-#include <Sandbox/batch_game/TestSpaceShipPhaseInterface.h>
 #include <Sandbox/health/ShipHealthComponent.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
 #include <Sandbox/players/LaserFiringState.h>
@@ -40,6 +39,10 @@ class UTestSpaceShipData;
 struct EntityDeathInfo;
 struct FTestSpaceShipSpatialQueryAccess;
 
+namespace ml::test_space_ship {
+class PhaseInterface;
+}
+
 namespace ml::entity_registry {
 struct EntityData;
 }
@@ -64,8 +67,6 @@ class SANDBOX_API ATestSpaceShip
     };
 
     ATestSpaceShip();
-
-    auto get_phase_interface() -> ml::test_space_ship::PhaseInterface& { return phase_interface; }
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
@@ -398,8 +399,6 @@ class SANDBOX_API ATestSpaceShip
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_space_ship::PhaseInterface phase_interface;
 
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,

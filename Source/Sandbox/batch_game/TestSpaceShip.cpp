@@ -38,7 +38,6 @@ ATestSpaceShip::ATestSpaceShip()
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
     , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))} {
-    phase_interface.bind(*this);
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(RootComponent);

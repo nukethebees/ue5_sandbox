@@ -8,7 +8,6 @@
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShipFightersCommandInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
-#include <Sandbox/batch_game/TestCapitalShipsPhaseInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
@@ -44,6 +43,10 @@ namespace ml {
 struct FSpatialQueryManager;
 }
 
+namespace ml::test_capital_ships {
+class PhaseInterface;
+}
+
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
@@ -63,9 +66,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
 
     ATestCapitalShips();
 
-    auto get_phase_interface() -> ml::test_capital_ships::PhaseInterface& {
-        return phase_interface;
-    }
     // Accessors
     auto get_num_instances() const -> int32;
     auto is_valid(FRegistryEntityHandle const index) const -> bool;
@@ -215,8 +215,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_capital_ships::PhaseInterface phase_interface;
 
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,

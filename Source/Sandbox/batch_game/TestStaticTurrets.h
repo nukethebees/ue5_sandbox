@@ -5,7 +5,6 @@
 #include <Sandbox/batch_game/test_entity_registry/EntityDeathInfo.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestStaticTurretsPhaseInterface.h>
 #include <Sandbox/batch_game/TestStaticTurretsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/logging/ActorLoggingConfig.h>
@@ -38,6 +37,10 @@ namespace ml {
 struct FSpatialQueryManager;
 }
 
+namespace ml::test_static_turrets {
+class PhaseInterface;
+}
+
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
@@ -51,10 +54,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
 
     ATestStaticTurrets();
-
-    auto get_phase_interface() -> ml::test_static_turrets::PhaseInterface& {
-        return phase_interface;
-    }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     // Accessors
@@ -166,8 +165,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     void update_visual_data();
     void commit_visual_data();
     void end_tick();
-
-    ml::test_static_turrets::PhaseInterface phase_interface;
 
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,

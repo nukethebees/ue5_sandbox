@@ -1134,7 +1134,6 @@ def phase_facade_module(
         actor_name,
         "actor",
         methods,
-        validation=Raw("check(IsValid(actor));", (CHECK,)),
         export_specifier=SANDBOX_API,
         bind_access="private",
         method_access="private",
