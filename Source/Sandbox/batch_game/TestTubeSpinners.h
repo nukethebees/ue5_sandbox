@@ -68,7 +68,7 @@ class ATestTubeSpinners : public AActor {
 
     // Checks
     void validate_array_sizes() const;
-  protected:
+  private:
     // Spawning
     void register_all_proxies_in_level();
     void spawn_instances(FVectors3f::ConstView const new_locations,
@@ -86,8 +86,12 @@ class ATestTubeSpinners : public AActor {
     // Firing
     void fire_lasers();
 
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
     // Config
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
@@ -97,20 +101,16 @@ class ATestTubeSpinners : public AActor {
     EntityData entities{};
 
     // Visuals
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     TArray<FTransform> ismc_transforms;
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
-  private:
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     friend struct FTestTubeSpinnersSpatialQueryAccess;
 };

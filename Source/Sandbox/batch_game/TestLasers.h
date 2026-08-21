@@ -78,7 +78,7 @@ class SANDBOX_API ATestLasers : public AActor {
 
     // Checks
     void validate_array_sizes() const;
-  protected:
+  private:
     // Spawning / Configuration
     void preallocate_instances();
     void process_pending_spawns();
@@ -113,14 +113,14 @@ class SANDBOX_API ATestLasers : public AActor {
     FTestEntityRegistry* entity_registry{nullptr};
     ml::FSpatialQueryManager* query_manager{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestLasersConfig> actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 n_preallocated_instances{5000};
 
     // Visuals
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     Entities entities;
 
@@ -133,7 +133,7 @@ class SANDBOX_API ATestLasers : public AActor {
     TArray<int32> to_remove;
 
     // Damage transaction
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 collision_jobs{8};
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
     TArray<ml::FSpatialQueryHit> collision_hits;
@@ -150,10 +150,10 @@ class SANDBOX_API ATestLasers : public AActor {
     bool have_warned_hit_effect{false};
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Lasers")
+    UPROPERTY(EditAnywhere, Category = "Lasers", meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
 
-    UPROPERTY(EditAnywhere, Category = "Lasers")
+    UPROPERTY(EditAnywhere, Category = "Lasers", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
 #endif
 };

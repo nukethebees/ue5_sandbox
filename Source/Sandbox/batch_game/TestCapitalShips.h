@@ -140,7 +140,7 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Checks
     void validate_array_sizes() const;
     void validate_proxy_handles() const;
-  protected:
+  private:
     // Ship spawning
     void register_all_proxies_in_level();
     void bind_proxy_entities(FProxyEntityMap const& proxy_entities);
@@ -170,16 +170,21 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     // Misc
     void clear_tick_buffers();
 
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+    void visual_log_state() const;
+
     // Config / context
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
     FTestEntityRegistry* entity_registry{nullptr};
     ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
 
     // Visuals
-    UPROPERTY(EditDefaultsOnly, Category = "Sandbox")
+    UPROPERTY(EditDefaultsOnly, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
     // Entity data
@@ -206,15 +211,10 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     TestCapitalShipFighterOrderQueue fighter_order_queue{};
 
     // Debugging
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
-  private:
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
-    void visual_log_state() const;
 
     friend struct FTestCapitalShipsSpatialQueryAccess;
 };
