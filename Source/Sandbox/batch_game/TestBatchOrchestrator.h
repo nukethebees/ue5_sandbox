@@ -5,6 +5,12 @@
 #include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/SpatialQueryManager.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersPhaseInterface.h>
+#include <Sandbox/batch_game/TestCapitalShipsPhaseInterface.h>
+#include <Sandbox/batch_game/TestLasersPhaseInterface.h>
+#include <Sandbox/batch_game/TestSpaceShipPhaseInterface.h>
+#include <Sandbox/batch_game/TestStaticTurretsPhaseInterface.h>
+#include <Sandbox/batch_game/TestTubeSpinnersPhaseInterface.h>
 #include <Sandbox/ui/HUDManager.h>
 #include <Sandbox/utilities/FixedTickLoop.h>
 
@@ -165,6 +171,13 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<ATestStaticTurrets> turrets{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestTubeSpinners> spinners{nullptr};
+
+    ml::test_space_ship::PhaseInterface player_ship_phase;
+    ml::test_lasers::PhaseInterface lasers_phase;
+    ml::test_capital_ships::PhaseInterface capital_ships_phase;
+    ml::test_capital_ship_fighters::PhaseInterface capital_ship_fighters_phase;
+    ml::test_static_turrets::PhaseInterface turrets_phase;
+    ml::test_tube_spinners::PhaseInterface spinners_phase;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestMissionManager> mission_manager{nullptr};

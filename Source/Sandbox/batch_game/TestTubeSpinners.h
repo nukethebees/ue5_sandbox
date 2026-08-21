@@ -29,9 +29,14 @@ struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 struct FTestTubeSpinnersSpatialQueryAccess;
 
+namespace ml::test_tube_spinners {
+class PhaseInterface;
+}
+
 UCLASS()
 class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
+    friend class ml::test_tube_spinners::PhaseInterface;
   public:
     using Proxy = ATestTubeSpinnerProxy;
     using EntityData = ml::test_tube_spinners::EntityData;
@@ -40,19 +45,7 @@ class ATestTubeSpinners : public AActor {
 
     ATestTubeSpinners();
 
-    void clear_runtime_state();
-    void begin_play();
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void move(float const dt);
-    void queue_commands();
-    void update_entity_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
@@ -108,6 +101,17 @@ class ATestTubeSpinners : public AActor {
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void move(float const dt);
+    void queue_commands();
+    void update_entity_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

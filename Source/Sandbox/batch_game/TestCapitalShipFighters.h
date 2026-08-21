@@ -42,12 +42,14 @@ struct FSpatialQueryManager;
 
 namespace ml::test_capital_ship_fighters {
 class CommandInterface;
+class PhaseInterface;
 }
 
 UCLASS()
 class SANDBOX_API ATestCapitalShipFighters : public AActor {
     GENERATED_BODY()
     friend class ml::test_capital_ship_fighters::CommandInterface;
+    friend class ml::test_capital_ship_fighters::PhaseInterface;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -68,23 +70,7 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
 
     ATestCapitalShipFighters();
 
-    void clear_runtime_state();
-    void begin_play();
-
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void move(float const dt);
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
@@ -274,6 +260,20 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
     bool enable_ship_location_debug_drawing{false};
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void move(float const dt);
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
@@ -294,49 +294,3 @@ struct FTestCapitalShipFightersSpatialQueryAccess {
         actor->resolve_hits(hits, out_entity_handles);
     }
 };
-
-namespace ml::test_capital_ship_fighters {
-class SANDBOX_API CommandInterface {
-  public:
-    inline void bind(ATestCapitalShipFighters& new_fighters) { fighters = &new_fighters; }
-
-    inline void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
-        check(IsValid(fighters));
-        fighters->queue_spawns(queue);
-    }
-
-    inline void queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
-        check(IsValid(fighters));
-        fighters->queue_orders(queue);
-    }
-
-    inline void self_destruct_fighter(FRegistryEntityHandle const handle) {
-        check(IsValid(fighters));
-        fighters->self_destruct_fighter(handle);
-    }
-
-    inline auto get_new_spawn_entity_data() const
-        -> ATestCapitalShipFighters::RegistryEntityData const& {
-        check(IsValid(fighters));
-        return fighters->get_new_spawn_entity_data();
-    }
-
-    inline auto get_new_spawn_entity_handles() const -> SpawnedEntityHandles const& {
-        check(IsValid(fighters));
-        return fighters->get_new_spawn_entity_handles();
-    }
-
-    inline auto get_num_instances() const noexcept -> int32 {
-        check(IsValid(fighters));
-        return fighters->get_num_instances();
-    }
-
-    inline auto get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept
-        -> FRegistryEntityHandle {
-        check(IsValid(fighters));
-        return fighters->get_target_handle(fighter_handle);
-    }
-  private:
-    ATestCapitalShipFighters* fighters{nullptr};
-};
-}

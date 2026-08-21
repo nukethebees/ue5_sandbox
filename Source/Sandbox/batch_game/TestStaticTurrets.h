@@ -37,9 +37,14 @@ namespace ml {
 struct FSpatialQueryManager;
 }
 
+namespace ml::test_static_turrets {
+class PhaseInterface;
+}
+
 UCLASS()
 class SANDBOX_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
+    friend class ml::test_static_turrets::PhaseInterface;
   public:
     using Proxy = ATestStaticTurretsProxy;
     using RegistryEntityData = ml::entity_registry::EntityData;
@@ -50,21 +55,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
 
     ATestStaticTurrets();
 
-    void clear_runtime_state();
-    void begin_play();
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
@@ -162,6 +153,19 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool draw_debug_entity_info_enabled{false};
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

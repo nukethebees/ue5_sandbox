@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersCommandInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
@@ -42,9 +43,14 @@ namespace ml {
 struct FSpatialQueryManager;
 }
 
+namespace ml::test_capital_ships {
+class PhaseInterface;
+}
+
 UCLASS()
 class SANDBOX_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
+    friend class ml::test_capital_ships::PhaseInterface;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -59,19 +65,6 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     static constexpr int32 n_custom_ismc_floats{3}; // RGB[3]
 
     ATestCapitalShips();
-
-    void clear_runtime_state();
-    void begin_play();
-
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
 
     // Accessors
     auto get_num_instances() const -> int32;
@@ -211,6 +204,18 @@ class SANDBOX_API ATestCapitalShips : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool debugging_shapes_enabled{false};
   private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     auto get_spatial_query_component() const -> UPrimitiveComponent const*;
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

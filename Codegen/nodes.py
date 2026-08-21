@@ -272,6 +272,7 @@ class UsingDeclaration(Node):
 class Member(Node):
     type_name: TypeLike
     name: str
+    initializer: str | None = None
 
     def __post_init__(self) -> None:
         if not type_spelling(self.type_name).strip() or not self.name.strip():
@@ -281,7 +282,8 @@ class Member(Node):
         return type_dependencies(self.type_name)
 
     def render(self, context: RenderContext) -> str:
-        return context.apply_indent(f"{type_spelling(self.type_name)} {self.name};")
+        initializer = f"{{{self.initializer}}}" if self.initializer is not None else ""
+        return context.apply_indent(f"{type_spelling(self.type_name)} {self.name}{initializer};")
 
 
 @dataclass(frozen=True)
@@ -542,6 +544,7 @@ class Struct(Node):
     bases: tuple[TypeLike, ...] = ()
     template: str | None = None
     export_specifier: str | None = None
+    record_kind: str = "struct"
 
     def __init__(
         self,
@@ -550,12 +553,16 @@ class Struct(Node):
         bases: Iterable[TypeLike] = (),
         template: str | None = None,
         export_specifier: str | None = None,
+        record_kind: str = "struct",
     ) -> None:
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "nodes", tuple(nodes))
         object.__setattr__(self, "bases", tuple(bases))
         object.__setattr__(self, "template", template)
         object.__setattr__(self, "export_specifier", export_specifier)
+        object.__setattr__(self, "record_kind", record_kind)
+        if self.record_kind not in ("struct", "class"):
+            raise ValueError("Record kind must be 'struct' or 'class'")
         member_names = [node.name for node in self.nodes if isinstance(node, Member)]
         duplicates = sorted({name for name in member_names if member_names.count(name) > 1})
         if duplicates:
@@ -581,7 +588,11 @@ class Struct(Node):
             else ""
         )
         export_specifier = f" {self.export_specifier}" if self.export_specifier else ""
-        lines.append(context.apply_indent(f"struct{export_specifier} {self.name}{inheritance} {{"))
+        lines.append(
+            context.apply_indent(
+                f"{self.record_kind}{export_specifier} {self.name}{inheritance} {{"
+            )
+        )
         lines.append(render_node_sequence(self.nodes, context.indent(), 2))
         lines.append(context.apply_indent("};"))
         return "\n".join(lines)

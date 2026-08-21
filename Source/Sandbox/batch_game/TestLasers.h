@@ -25,6 +25,8 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_lasers {
+class PhaseInterface;
+
 struct ThreadLocalCollisionData {
     TArray<ml::FSpatialQueryHit> hits;
     TArray<UPrimitiveComponent const*> components_hit;
@@ -38,6 +40,7 @@ struct ThreadLocalCollisionData {
 UCLASS()
 class SANDBOX_API ATestLasers : public AActor {
     GENERATED_BODY()
+    friend class ml::test_lasers::PhaseInterface;
   public:
     using SpawnRequests = ml::test_lasers::SpawnRequests;
     using Entities = ml::test_lasers::Entities;
@@ -49,17 +52,7 @@ class SANDBOX_API ATestLasers : public AActor {
 
     ATestLasers();
 
-    void clear_runtime_state();
-    void begin_play();
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-
-    void begin_tick();
-    void commit_spawns();
-    void simulate(float const dt);
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
     // Accessors
     auto get_num_instances() const noexcept -> int32;
     auto get_config() const -> UTestLasersConfig const* { return actor_config; }
@@ -156,4 +149,13 @@ class SANDBOX_API ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Lasers")
     bool debugging_shapes_enabled{false};
 #endif
+  private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void commit_spawns();
+    void simulate(float const dt);
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
 };
