@@ -48,6 +48,7 @@ from Codegen.cpp_types import (
     nested_type,
     qualified_type,
 )
+from Codegen.facade import Facade, FacadeMethod, lower_facade
 from Codegen.soa import (
     ForEachSoAMemberCall,
     HomogeneousSoALayout,
@@ -90,6 +91,17 @@ ARRAY_MATH = TypeDependency("ml::subtract_in_place", "SandboxCore/array_math.h")
 ARRAY_FILL = TypeDependency("ml::fill", "SandboxCore/array_utils.h")
 SOA_VECTOR_FILL = TypeDependency("ml::fill", "SandboxCore/soa_vector_utils.h")
 CHECK = TypeDependency("check", "CoreMinimal.h")
+TEST_CAPITAL_SHIP_FIGHTERS = TypeDependency(
+    "ATestCapitalShipFighters", "Sandbox/batch_game/TestCapitalShipFighters.h"
+)
+TEST_CAPITAL_SHIP_FIGHTER_ORDER_QUEUE = TypeDependency(
+    "TestCapitalShipFighterOrderQueue",
+    "Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h",
+)
+SPAWNED_ENTITY_HANDLES = TypeDependency(
+    "SpawnedEntityHandles",
+    "Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h",
+)
 INCLUDE_ORDER = (
     "Sandbox/batch_game/",
     "Sandbox/",
@@ -1039,6 +1051,76 @@ def entity_registry_data_soa_module() -> Module:
     )
 
 
+def capital_ship_fighters_command_interface_module() -> Module:
+    facade = Facade(
+        "CommandInterface",
+        TEST_CAPITAL_SHIP_FIGHTERS,
+        "fighters",
+        (
+            FacadeMethod(
+                "queue_spawns",
+                "void",
+                (
+                    FunctionParameter(
+                        qualified_type(TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE, " const&"),
+                        "queue",
+                    ),
+                ),
+            ),
+            FacadeMethod(
+                "queue_orders",
+                "void",
+                (
+                    FunctionParameter(
+                        qualified_type(TEST_CAPITAL_SHIP_FIGHTER_ORDER_QUEUE, " const&"),
+                        "queue",
+                    ),
+                ),
+            ),
+            FacadeMethod(
+                "self_destruct_fighter",
+                "void",
+                (FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "handle"),),
+            ),
+            FacadeMethod(
+                "get_new_spawn_entity_data",
+                qualified_type(nested_type(TEST_CAPITAL_SHIP_FIGHTERS, "RegistryEntityData"), " const&"),
+                (),
+                suffix=" const",
+            ),
+            FacadeMethod(
+                "get_new_spawn_entity_handles",
+                qualified_type(SPAWNED_ENTITY_HANDLES, " const&"),
+                (),
+                suffix=" const",
+            ),
+            FacadeMethod("get_num_instances", "int32", (), suffix=" const noexcept"),
+            FacadeMethod(
+                "get_target_handle",
+                F_REGISTRY_ENTITY_HANDLE,
+                (FunctionParameter(qualified_type(F_REGISTRY_ENTITY_HANDLE, " const"), "fighter_handle"),),
+                suffix=" const noexcept",
+            ),
+        ),
+        validation=Raw("check(IsValid(fighters));", (CHECK,)),
+        export_specifier=SANDBOX_API,
+    )
+    header_path = BATCH_GAME_DIR / "TestCapitalShipFightersCommandInterface.h"
+    return Module(
+        name="test_capital_ship_fighters_command_interface",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                Namespace("ml::test_capital_ship_fighters", (lower_facade(facade),)),
+            ),
+        ),
+    )
+
+
 def registry_entity_handles_soa_module() -> Module:
     add = MemberFunctionSpec(
         "add",
@@ -1124,6 +1206,7 @@ def modules() -> tuple[Module, ...]:
         collision_damage_events_soa_module(),
         fighter_spawn_queue_soa_module(),
         fighter_order_queue_module(),
+        capital_ship_fighters_command_interface_module(),
         static_turrets_soa_module(),
         tube_spinners_soa_module(),
         direct_damage_events_soa_module(),

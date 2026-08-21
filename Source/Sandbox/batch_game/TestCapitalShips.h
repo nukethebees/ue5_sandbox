@@ -6,6 +6,7 @@
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterOrderQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersCommandInterface.h>
 #include <Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h>
 #include <Sandbox/batch_game/TestCapitalShipsSoA.h>
 #include <Sandbox/batch_game/TestTeam.h>
