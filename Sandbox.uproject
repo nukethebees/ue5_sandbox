@@ -513,6 +513,10 @@
 		{
 			"Name": "CQTestEnhancedInput",
 			"Enabled": true
+		},
+		{
+			"Name": "ShooterGame",
+			"Enabled": false
 		}
 	],
 	"TargetPlatforms": [
