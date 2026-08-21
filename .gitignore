@@ -43,6 +43,10 @@
 *.VC.opendb
 .vsconfig
 
+# Local CMake configuration
+CMakeUserPresets.json
+out/
+
 # Precompiled Assets
 SourceArt/**/*.png
 SourceArt/**/*.tga

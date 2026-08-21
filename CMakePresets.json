@@ -1,0 +1,120 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 3,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}"
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Debug"
+      }
+    },
+    {
+      "name": "debug-game",
+      "displayName": "DebugGame",
+      "inherits": "base",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "DebugGame"
+      }
+    },
+    {
+      "name": "development",
+      "displayName": "Development",
+      "inherits": "base",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Development"
+      }
+    },
+    {
+      "name": "shipping",
+      "displayName": "Shipping",
+      "inherits": "base",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Shipping"
+      }
+    },
+    {
+      "name": "test",
+      "displayName": "Test",
+      "inherits": "base",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Test"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "targets": ["editor"]
+    },
+    {
+      "name": "debug-game",
+      "configurePreset": "debug-game",
+      "targets": ["editor"]
+    },
+    {
+      "name": "development",
+      "configurePreset": "development",
+      "targets": ["editor"]
+    },
+    {
+      "name": "shipping",
+      "configurePreset": "shipping",
+      "targets": ["editor"]
+    },
+    {
+      "name": "test",
+      "configurePreset": "test",
+      "targets": ["editor"]
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "debug",
+      "steps": [
+        { "type": "configure", "name": "debug" },
+        { "type": "build", "name": "debug" }
+      ]
+    },
+    {
+      "name": "debug-game",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" }
+      ]
+    },
+    {
+      "name": "development",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "development" }
+      ]
+    },
+    {
+      "name": "shipping",
+      "steps": [
+        { "type": "configure", "name": "shipping" },
+        { "type": "build", "name": "shipping" }
+      ]
+    },
+    {
+      "name": "test",
+      "steps": [
+        { "type": "configure", "name": "test" },
+        { "type": "build", "name": "test" }
+      ]
+    }
+  ]
+}
