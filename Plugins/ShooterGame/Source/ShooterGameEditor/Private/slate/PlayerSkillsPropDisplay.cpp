@@ -1,4 +1,4 @@
-#include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
+#include "ShooterGameEditor/slate/PlayerSkillsPropDisplay.h"
 
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"

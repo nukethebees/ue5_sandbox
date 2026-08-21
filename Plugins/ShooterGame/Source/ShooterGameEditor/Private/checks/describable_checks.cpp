@@ -1,4 +1,4 @@
-#include "SandboxEditor/checks/describable_checks.h"
+#include "ShooterGameEditor/checks/describable_checks.h"
 
 #include "AssetRegistry/ARFilter.h"
 #include "AssetRegistry/AssetData.h"
@@ -8,13 +8,12 @@
 #include "Engine/Blueprint.h"
 #include "GameFramework/Actor.h"
 
-#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "ShooterGame/interaction/Describable.h"
 
 #define LOG(VERBOSITY, MSG, ...) \
-    UE_LOG(LogSandboxEditorChecks, VERBOSITY, TEXT(MSG) __VA_OPT__(, ) __VA_ARGS__);
+    UE_LOG(LogTemp, VERBOSITY, TEXT(MSG) __VA_OPT__(, ) __VA_ARGS__);
 
 namespace ml {
 void check_describable_actors_are_visible_to_hitscan() {

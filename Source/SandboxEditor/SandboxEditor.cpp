@@ -1,15 +1,9 @@
 #include "SandboxEditor/SandboxEditor.h"
 
-#include "SandboxEditor/checks/describable_checks.h"
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
-#include "SandboxEditor/slate/PlayerSkillsPropDisplay.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
-#include "SandboxEditor/utilities/patrol_points.h"
-#include "ShooterGame/combat/bullets/BulletDataAsset.h"
-#include "ShooterGame/pathfinding/PatrolPath.h"
-#include "ShooterGame/pathfinding/PatrolWaypoint.h"
 
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
@@ -43,15 +37,9 @@ void FSandboxEditorModule::StartupModule() {
     }
     register_custom_properties();
     create_sandbox_editor_menus();
-
-    // FCoreDelegates bindings
-    FCoreDelegates::OnActorLabelChanged.AddStatic(APatrolWaypoint::OnActorLabelChanged);
 }
 void FSandboxEditorModule::ShutdownModule() {
     unregister_custom_properties();
-
-    // FCoreDelegates bindings
-    FCoreDelegates::OnActorLabelChanged.RemoveAll(APatrolWaypoint::OnActorLabelChanged);
 
     if (FModuleManager::Get().IsModuleLoaded("LevelEditor")) {
         auto& level_editor_module{
@@ -90,13 +78,6 @@ void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
             this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items));
 }
 void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder& menu_builder) {
-    menu_builder.AddMenuEntry(
-        FText::FromName(TEXT("IDescribable Check")),
-        FText::FromName(TEXT("Check classes with IDescribable can be seen with hitscan")),
-        FSlateIcon(),
-        FUIAction(
-            FExecuteAction::CreateStatic(ml::check_describable_actors_are_visible_to_hitscan)));
-
     menu_builder.AddSubMenu(FText::FromName(TEXT("Example Submenu")),
                             FText::FromName(TEXT("Example Submenu Tooltip")),
                             FNewMenuDelegate::CreateLambda([](FMenuBuilder& submenu_builder) {
@@ -115,43 +96,8 @@ auto
         -> TSharedRef<FExtender> {
     auto extender(MakeShared<FExtender>());
 
-    bool contains_patrol_path{false};
-    bool contains_patrol_waypoint{false};
-    for (auto* actor : selected_actors) {
-        if (Cast<APatrolWaypoint>(actor)) {
-            contains_patrol_waypoint = true;
-            continue;
-        }
-        if (Cast<APatrolPath>(actor)) {
-            contains_patrol_path = true;
-            continue;
-        }
-    }
-
-    if (contains_patrol_path && contains_patrol_waypoint) {
-        // Add the sprite actions sub-menu extender
-        extender->AddMenuExtension(
-            "ActorTypeTools",
-            EExtensionHook::After,
-            nullptr,
-            FMenuExtensionDelegate::CreateStatic(
-                &FSandboxEditorModule::create_sandbox_editor_context_menu_items));
-    }
-
     return extender;
 }
-void FSandboxEditorModule::create_sandbox_editor_context_menu_items(FMenuBuilder& menu_builder) {
-    menu_builder.BeginSection("Patrol Path", FText::FromName(TEXT("Patrol Path")));
-
-    menu_builder.AddMenuEntry(
-        FText::FromString("Add waypoints to selected paths"),
-        FText::FromString("Add the selected waypoints to the selected paths"),
-        FSlateIcon(),
-        FUIAction(FExecuteAction::CreateStatic(&ml::add_selected_patrol_points_to_selected_paths)));
-
-    menu_builder.EndSection();
-}
-
 // Menu Extensions
 void FSandboxEditorModule::register_menu_extensions() {
     constexpr auto logger{NestedLogger<"register_menu_extensions">()};
@@ -213,7 +159,6 @@ void FSandboxEditorModule::register_custom_properties() {
     Adder adder{property_module, registered_properties, registered_class_layouts};
 
     adder.add_property<FStrongTypedefPreview>(TEXT("Dimensions"));
-    adder.add_property<FPlayerSkillsPropDisplay>(TEXT("PlayerSkills"));
     adder.add_property<FBoxSizeCustomisation>(TEXT("BoxSize"));
 
     adder.add_class_layout<FTestVolumeDetailsCustomisation>(TEXT("TestVolume"));

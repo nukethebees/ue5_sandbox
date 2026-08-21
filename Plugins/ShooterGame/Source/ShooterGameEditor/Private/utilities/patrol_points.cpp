@@ -1,11 +1,10 @@
-#include "SandboxEditor/utilities/patrol_points.h"
+#include "ShooterGameEditor/utilities/patrol_points.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "LevelEditor.h"
 #include "Selection.h"
 
-#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "ShooterGame/pathfinding/PatrolPath.h"
 #include "ShooterGame/pathfinding/PatrolWaypoint.h"
 
@@ -22,13 +21,13 @@ void add_selected_patrol_points_to_selected_paths() {
 
     for (auto* path : selected_paths) {
         if (!path) {
-            WARN_IS_FALSE(LogSandboxEditor, path);
+            WARN_IS_FALSE(LogTemp, path);
             continue;
         }
 
         for (auto* point : selected_points) {
             if (!point) {
-                WARN_IS_FALSE(LogSandboxEditor, point);
+                WARN_IS_FALSE(LogTemp, point);
                 continue;
             }
 

@@ -19,7 +19,14 @@ public class ShooterGameEditor : ModuleRules
 
         // Editor-specific dependencies
         PrivateDependencyModuleNames.AddRange(new string[]
-        {          
+        {
+            "AssetRegistry",
+            "LevelEditor",
+            "PropertyEditor",
+            "UnrealEd",
+            "Slate",
+            "SlateCore",
+            "SandboxGameShared",
         });
     }
 }
