@@ -77,7 +77,20 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     // Checks
     void validate_array_sizes() const;
     void validate_proxy_handles() const;
-  protected:
+  private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     // Spawning
     void register_all_proxies_in_level();
 
@@ -108,7 +121,11 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     // Debugging
     void draw_debugging_shapes() const;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
@@ -121,18 +138,20 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     RegistryEntityData entity_update_data;
 
     // Visuals
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FTransform> ismc_transforms;
 
     // Searching
-    UPROPERTY(EditAnywhere, Category = "Performance", meta = (ClampMin = "1", UIMin = "1"))
+    UPROPERTY(EditAnywhere,
+              Category = "Performance",
+              meta = (AllowPrivateAccess, ClampMin = "1", UIMin = "1"))
     int32 search_slice_size{64};
 
     int32 target_refresh_next_offset{0};
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestLasers> laser_actor{nullptr};
 
     TArray<int32> scratch_int_buffer;
@@ -142,33 +161,16 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     ml::test_lasers::SpawnRequests new_lasers;
 
     // Despawning
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     TArray<int32> local_indices_to_remove;
 
     // Debugging / logging
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool draw_target_arrows_enabled{false};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool draw_debug_entity_info_enabled{false};
-  private:
-    void clear_runtime_state();
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     friend struct FTestStaticTurretsSpatialQueryAccess;
 };

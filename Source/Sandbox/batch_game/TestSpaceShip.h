@@ -188,7 +188,23 @@ class SANDBOX_API ATestSpaceShip
     auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d> { return speed_samples; }
     auto get_speed_sample_index() const noexcept -> int32 { return speed_sample_index; }
 #endif
-  protected:
+  private:
+    /* ------------------------------------------------------------------------------------------ */
+    // Life cycle
+    /* ------------------------------------------------------------------------------------------ */
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void move(float const dt);
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void resolve_damage_targets();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
@@ -245,10 +261,14 @@ class SANDBOX_API ATestSpaceShip
 #endif
     void configure_speed_sampling();
 
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+
     /* ------------------------------------------------------------------------------------------ */
     // Config
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestSpaceShipData> actor_config{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
@@ -259,32 +279,32 @@ class SANDBOX_API ATestSpaceShip
     FTestEntityRegistry* entity_registry{nullptr};
     FRegistryEntityHandle registry_handle{};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestTeam team{ETestTeam::White};
 
     /* ------------------------------------------------------------------------------------------ */
     // Visuals
     /* ------------------------------------------------------------------------------------------ */
     // Camera
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UCameraComponent* camera{nullptr};
 
     // Ship
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UStaticMeshComponent* ship_mesh{nullptr};
 
     // Visuals - engine
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_pulse{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Energy
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy", meta = (AllowPrivateAccess))
     float thrust_energy{1.f};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy", meta = (AllowPrivateAccess))
     float thrust_change_rate{0.f};
 
     /* ------------------------------------------------------------------------------------------ */
@@ -293,70 +313,70 @@ class SANDBOX_API ATestSpaceShip
     // Movement - Speed
     TSpaceShipFlightModel<float> forward_flight_model{};
     TSpaceShipFlightModel<FVector> planar_flight_model{};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     FVector velocity;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     FVector planar_velocity{FVector::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     float target_speed{0.f};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     FVector2D target_local_planar_velocity_scale{FVector2D::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     FVector target_local_planar_velocity{FVector::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     FVector2D planar_movement_direction{FVector2D::ZeroVector};
 
     // Movement - Cruising
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
 
     // Movement - rotation
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering", meta = (AllowPrivateAccess))
     FVector2D rotation_input{FVector2D::ZeroVector};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering", meta = (AllowPrivateAccess))
     float roll_input{0.f};
 
-    UPROPERTY()
+    UPROPERTY(meta = (AllowPrivateAccess))
     float time_since_rotation_input{100.f};
 
     /* ------------------------------------------------------------------------ */
     /* Combat */
     /* ------------------------------------------------------------------------ */
     // Combat - Laser
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     TObjectPtr<ATestLasers> laser_actor{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     EShipLaserMode laser_mode{EShipLaserMode::Single};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     float laser_shot_cooldown{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     int32 lasers_fired_this_burst{0};
     int32 lasers_per_burst{3};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     AActor* lock_on_target{nullptr};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ELaserFiringState laser_firing_mode{ELaserFiringState::idle};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
 
     // Combat - Bombs
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb", meta = (AllowPrivateAccess))
     int32 bombs{3};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Bomb")
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Bomb", meta = (AllowPrivateAccess))
     TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Health
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Health")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Health", meta = (AllowPrivateAccess))
     FShipHealth health{1000};
 
     /* ------------------------------------------------------------------------------------------ */
@@ -365,7 +385,7 @@ class SANDBOX_API ATestSpaceShip
     bool sampling{false};
 
     // Logging
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Logging")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
 
 #if WITH_EDITORONLY_DATA
@@ -374,35 +394,17 @@ class SANDBOX_API ATestSpaceShip
     int32 speed_sample_ticks_remaining{0};
     int32 speed_sample_tick_period{1};
     TArray<FVector2d> speed_samples;
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_forward_socket_direction{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_forward_direction{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_lock_on{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
+    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     float debug_lock_on_sphere_radius{1000.f};
 #endif
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
-  private:
-    // Life cycle
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void move(float const dt);
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void resolve_damage_targets();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     friend struct FTestSpaceShipSpatialQueryAccess;
 };

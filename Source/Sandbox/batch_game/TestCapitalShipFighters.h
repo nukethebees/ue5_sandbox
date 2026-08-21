@@ -132,7 +132,21 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void validate_array_sizes() const {}
     void check_fighter_tasks() const {}
 #endif
-  protected:
+  private:
+    void clear_runtime_state();
+    void begin_play();
+    void begin_tick();
+    void update_timers(float const dt);
+    void make_decisions();
+    void move(float const dt);
+    void queue_commands();
+    void resolve_damage_events();
+    void update_entity_registry();
+    void sync_from_registry();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick();
+
     void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
     void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
     void self_destruct_fighter(FRegistryEntityHandle handle);
@@ -205,13 +219,18 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     void clear_tick_buffers();
     void remove_dead_entities();
 
+    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
+    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
+                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+    void visual_log_state() const;
+
     // Visuals
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FTransform> ismc_transforms;
 
     // Config data
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
@@ -240,11 +259,11 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TestCapitalShipFighterOrderQueue order_queue{};
 
     // Targets
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     float fire_dot_product_threshold{0.95f};
 
     // Laser
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     ml::test_lasers::SpawnRequests new_lasers;
     TArray<float> aiming_dot_product_buffer;
@@ -253,31 +272,12 @@ class SANDBOX_API ATestCapitalShipFighters : public AActor {
     TArray<int32> scratch_int_buffer;
 
     // Debugging
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging", meta = (AllowPrivateAccess))
     bool enable_target_debug_drawing{false};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging")
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging", meta = (AllowPrivateAccess))
     bool enable_ship_location_debug_drawing{false};
-  private:
-    void clear_runtime_state();
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void make_decisions();
-    void move(float const dt);
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
-    void visual_log_state() const;
 
     friend struct FTestCapitalShipFightersSpatialQueryAccess;
 };
