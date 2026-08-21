@@ -6,10 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "GenericTeamAgentInterface.h"
 
-#include "ShooterGame/health/DeathHandler.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/DeathHandler.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "ShooterGame/interaction/Describable.h"
-#include "ShooterGame/players/TeamID.h"
+#include "SandboxGameShared/players/TeamID.h"
 
 #include "FloorTurret.generated.h"
 

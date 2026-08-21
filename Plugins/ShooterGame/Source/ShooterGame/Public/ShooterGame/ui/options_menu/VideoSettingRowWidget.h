@@ -7,7 +7,7 @@
 #include "Components/HorizontalBox.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
-#include "Sandbox/core/video_settings/VideoSettingsData.h"
+#include "SandboxGameShared/core/video_settings/VideoSettingsData.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/ui/widgets/TextButtonWidget.h"
 #include "SandboxGameShared/utilities/concepts/concepts.h"

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "TimerManager.h"
 
-#include "Sandbox/combat/explosion/ExplosionConfig.h"
+#include "SandboxGameShared/combat/explosion/ExplosionConfig.h"
 #include "ShooterGame/interaction/CollisionContext.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 

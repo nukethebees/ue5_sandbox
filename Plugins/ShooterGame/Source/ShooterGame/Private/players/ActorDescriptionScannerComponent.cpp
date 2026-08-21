@@ -5,7 +5,7 @@
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "ShooterGame/interaction/Describable.h"
 #include "ShooterGame/ui/hud/ItemDescriptionHUDWidget.h"
-#include "ShooterGame/ui/ui.h"
+#include "SandboxGameShared/ui/ui.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/geometry.h"
 

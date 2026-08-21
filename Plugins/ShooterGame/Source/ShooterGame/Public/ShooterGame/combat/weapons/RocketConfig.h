@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 
 #include "RocketConfig.generated.h"
 

@@ -1,7 +1,7 @@
 #include "ShooterGame/combat/weapons/Rocket.h"
 
 #include "SandboxGameShared/constants/collision_channels.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
 
 #include "Components/BoxComponent.h"

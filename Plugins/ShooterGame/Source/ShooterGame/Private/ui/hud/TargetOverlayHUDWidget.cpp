@@ -5,7 +5,7 @@
 #include "Components/Image.h"
 
 #include "SandboxGameShared/ui/ScreenBounds.h"
-#include "ShooterGame/ui/ui.h"
+#include "SandboxGameShared/ui/ui.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

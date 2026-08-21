@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShooterGame/inventory/Dimensions.h"
+#include "SandboxGameShared/inventory/Dimensions.h"
 #include "ShooterGame/inventory/ItemType.h"
 #include "ShooterGame/inventory/StackSize.h"
 

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
 

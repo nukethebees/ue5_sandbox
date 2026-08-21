@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "ShooterGame/health/StationStateData.h"
 #include "ShooterGame/interaction/TriggerContext.h"
 #include "ShooterGame/interaction/TriggerResult.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ShooterGame/combat/weapons/WeaponPickupPayload.h"
-#include "Sandbox/environment/effects/RotatePayload.h"
+#include "ShooterGame/environment/effects/RotatePayload.h"
 #include "ShooterGame/environment/obstacles/ForcefieldPayload.h"
 #include "ShooterGame/health/HealthStationPayload.h"
 #include "ShooterGame/interaction/TriggerOtherPayload.h"

@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "Sandbox/combat/explosion/ExplosionConfig.h"
-#include "ShooterGame/health/DeathHandler.h"
+#include "SandboxGameShared/combat/explosion/ExplosionConfig.h"
+#include "SandboxGameShared/health/DeathHandler.h"
 #include "ShooterGame/interaction/Describable.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"

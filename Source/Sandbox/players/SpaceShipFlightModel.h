@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ShooterGame/players/SpeedResponse.h"
+#include "SandboxGameShared/players/SpeedResponse.h"
 
 template <typename T>
 struct TSpaceShipFlightModel {

@@ -3,7 +3,7 @@
 #include "ShooterGame/combat/ammo/AmmoType.h"
 #include "ShooterGame/interaction/Describable.h"
 #include "ShooterGame/interaction/Interactable.h"
-#include "ShooterGame/inventory/Dimensions.h"
+#include "SandboxGameShared/inventory/Dimensions.h"
 #include "ShooterGame/inventory/InventoryItem.h"
 #include "ShooterGame/inventory/ItemType.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"

@@ -1,7 +1,7 @@
 #include "ShooterGame/players/DamageAuraComponent.h"
 
-#include "ShooterGame/health/HealthChange.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Engine/World.h"

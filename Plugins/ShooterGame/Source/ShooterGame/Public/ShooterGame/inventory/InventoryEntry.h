@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShooterGame/inventory/Coord.h"
+#include "SandboxGameShared/inventory/Coord.h"
 #include "ShooterGame/inventory/InventoryItem.h"
 #include "ShooterGame/inventory/StackSize.h"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"

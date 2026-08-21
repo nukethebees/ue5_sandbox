@@ -4,8 +4,8 @@
 
 #include "ShooterGame/core/object_pooling/ObjectPoolSubsystem.h"
 #include "SandboxGameShared/core/object_pooling/PoolConfig.h"
-#include "ShooterGame/health/DamageManagerSubsystem.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/DamageManagerSubsystem.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 
 #include "Components/BoxComponent.h"

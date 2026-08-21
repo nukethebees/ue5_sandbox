@@ -3,7 +3,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include "ShooterGame/combat/bullets/BulletTypeIndex.h"
 #include "ShooterGame/combat/bullets/MassBulletSubsystemData.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
 #include "ShooterGame/mass_entity/EntityDefinition.h"

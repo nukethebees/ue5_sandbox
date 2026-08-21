@@ -5,7 +5,7 @@
 #include "ShooterGame/combat/ammo/AmmoItem.h"
 #include "ShooterGame/combat/weapons/WeaponBase.h"
 #include "SandboxGameShared/utilities/enums.h"
-#include "Sandbox/utilities/grids.h"
+#include "SandboxGameShared/utilities/grids.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

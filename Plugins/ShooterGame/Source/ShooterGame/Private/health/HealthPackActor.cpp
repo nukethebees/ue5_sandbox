@@ -6,8 +6,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
-#include "ShooterGame/health/DamageManagerSubsystem.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/DamageManagerSubsystem.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 
 AHealthPackActor::AHealthPackActor() {
     PrimaryActorTick.bCanEverTick = false;

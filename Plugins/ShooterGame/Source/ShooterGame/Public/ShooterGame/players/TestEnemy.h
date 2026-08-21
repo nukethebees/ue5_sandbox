@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ShooterGame/health/DeathHandler.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/DeathHandler.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "ShooterGame/interaction/Describable.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
@@ -11,7 +11,7 @@
 #include "SandboxGameShared/players/MobAttackMode.h"
 #include "ShooterGame/players/player_delegates.h"
 #include "SandboxGameShared/players/SandboxMobInterface.h"
-#include "ShooterGame/players/TeamID.h"
+#include "SandboxGameShared/players/TeamID.h"
 #include "SandboxGameShared/utilities/enums.h"
 
 #include "CoreMinimal.h"

@@ -4,8 +4,8 @@
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
 #include "Sandbox/utilities/DrawDebugConfig.h"
 #include "Sandbox/utilities/FloatBounds.h"
-#include "ShooterGame/combat/BurstFire.h"
-#include "ShooterGame/players/VisionConfig.h"
+#include "SandboxGameShared/combat/BurstFire.h"
+#include "SandboxGameShared/players/VisionConfig.h"
 #include "TestFlyBase.h"
 
 #include "CoreMinimal.h"

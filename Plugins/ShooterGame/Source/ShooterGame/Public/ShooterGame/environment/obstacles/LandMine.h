@@ -5,7 +5,7 @@
 
 #include "ShooterGame/environment/obstacles/LandMinePayload.h"
 #include "ShooterGame/environment/obstacles/LandMineState.h"
-#include "ShooterGame/health/DeathHandler.h"
+#include "SandboxGameShared/health/DeathHandler.h"
 #include "ShooterGame/interaction/CollisionOwner.h"
 #include "ShooterGame/interaction/Describable.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"

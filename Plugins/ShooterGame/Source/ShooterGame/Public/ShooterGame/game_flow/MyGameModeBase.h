@@ -1,0 +1,31 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "SandboxGameShared/core/destruction/RemoveGhostsOnStartComponent.h"
+#include "ShooterGame/logging/ShooterGameLogCategories.h"
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+#include "ShooterGame/players/MyCharacter.h"
+#include "SandboxGameShared/players/TeamID.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/GameModeBase.h"
+#include "Kismet/GameplayStatics.h"
+
+#include "MyGameModeBase.generated.h"
+
+UCLASS()
+class SHOOTERGAME_API AMyGameModeBase
+    : public AGameModeBase
+    , public ml::LogMsgMixin<"AMyGameModeBase", LogShooterGameGameMode> {
+    GENERATED_BODY()
+  public:
+    AMyGameModeBase();
+  protected:
+    virtual void
+        InitGame(FString const& MapName, FString const& Options, FString& ErrorMessage) override;
+    void BeginPlay() override;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Mode")
+    URemoveGhostsOnStartComponent* ghost_cleanup_component{nullptr};
+};

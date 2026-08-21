@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ShooterGame/combat/ammo/AmmoData.h"
-#include "ShooterGame/inventory/Coord.h"
-#include "ShooterGame/inventory/Dimensions.h"
+#include "SandboxGameShared/inventory/Coord.h"
+#include "SandboxGameShared/inventory/Dimensions.h"
 #include "ShooterGame/inventory/InventoryEntry.h"
 #include "ShooterGame/inventory/InventoryItem.h"
 #include "ShooterGame/inventory/ItemType.h"

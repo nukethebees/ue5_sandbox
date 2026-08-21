@@ -10,7 +10,7 @@
 #include "ShooterGame/inventory/InventoryComponent.h"
 #include "ShooterGame/ui/in_game_menu/InventoryGridWidget.h"
 #include "ShooterGame/ui/in_game_menu/ItemDetailsWidget.h"
-#include "ShooterGame/ui/ui.h"
+#include "SandboxGameShared/ui/ui.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

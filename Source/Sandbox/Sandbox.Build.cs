@@ -49,9 +49,6 @@ public class Sandbox : ModuleRules
             "UMG",
         });
         
-        PublicDependencyModuleNames.Add("ShooterGame");
-        CircularlyReferencedDependentModules.Add("ShooterGame");
-
         if (Target.bBuildEditor)
         {
             // Scoped transaction

@@ -2,7 +2,7 @@
 
 #include "Engine/World.h"
 
-#include "Sandbox/combat/explosion/ExplosionSubsystem.h"
+#include "SandboxGameShared/combat/explosion/ExplosionSubsystem.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

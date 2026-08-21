@@ -6,7 +6,7 @@
 #include "ShooterGame/combat/ammo/AmmoReloadResult.h"
 #include "ShooterGame/combat/pawn_weapon_component/PawnWeaponComponentDelegates.h"
 #include "ShooterGame/combat/weapons/WeaponPickupPayload.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "ShooterGame/inventory/InventoryItem.h"
 #include "ShooterGame/inventory/ItemType.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"

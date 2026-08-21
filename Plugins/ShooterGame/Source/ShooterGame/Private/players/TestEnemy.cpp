@@ -1,7 +1,7 @@
 #include "ShooterGame/players/TestEnemy.h"
 
 #include "ShooterGame/combat/bullets/BulletActor.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/players/NpcPatrolComponent.h"
 #include "ShooterGame/players/SimpleAIController.h"
 

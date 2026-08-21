@@ -3,7 +3,7 @@
 #pragma once
 
 #include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "CoreMinimal.h"

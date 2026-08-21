@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
-#include "ShooterGame/players/TeamID.h"
+#include "SandboxGameShared/players/TeamID.h"
 
 #include "PawnSpawner.generated.h"
 

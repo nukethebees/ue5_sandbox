@@ -9,7 +9,7 @@
 #include "Particles/ParticleSystemComponent.h"
 
 #include "SandboxGameShared/constants/collision_channels.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/interaction/CollisionEffectSubsystem.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 

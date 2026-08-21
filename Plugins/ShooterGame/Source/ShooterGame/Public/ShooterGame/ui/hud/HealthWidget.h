@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
-#include "ShooterGame/health/HealthData.h"
+#include "SandboxGameShared/health/HealthData.h"
 
 #include "HealthWidget.generated.h"
 

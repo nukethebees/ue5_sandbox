@@ -6,8 +6,8 @@
 #include "ShooterGame/combat/bullets/BulletProcessorGroups.h"
 #include "ShooterGame/combat/bullets/MassBulletFragments.h"
 #include "SandboxGameShared/environment/effects/NiagaraNdcWriterSubsystem.h"
-#include "ShooterGame/health/DamageManagerSubsystem.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/DamageManagerSubsystem.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

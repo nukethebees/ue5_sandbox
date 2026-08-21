@@ -4,7 +4,7 @@
 
 #include "ShooterGame/combat/bullets/BulletTypeIndex.h"
 #include "SandboxGameShared/environment/effects/NdcWriterIndex.h"
-#include "ShooterGame/health/HealthChange.h"
+#include "SandboxGameShared/health/HealthChange.h"
 
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"

@@ -9,7 +9,7 @@
 #include "Components/VerticalBox.h"
 #include "GameFramework/GameUserSettings.h"
 
-#include "Sandbox/core/video_settings/VideoSettingsData.h"
+#include "SandboxGameShared/core/video_settings/VideoSettingsData.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/ui/widgets/TextButtonWidget.h"
 

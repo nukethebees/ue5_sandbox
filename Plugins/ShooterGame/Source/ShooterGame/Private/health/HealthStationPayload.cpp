@@ -1,7 +1,7 @@
 #include "ShooterGame/health/HealthStationPayload.h"
 
-#include "ShooterGame/health/DamageManagerSubsystem.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/DamageManagerSubsystem.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"

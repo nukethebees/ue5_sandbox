@@ -50,7 +50,5 @@ public class ShooterGame: ModuleRules
             });
         }
         
-        PublicDependencyModuleNames.Add("Sandbox");
-        CircularlyReferencedDependentModules.Add("Sandbox");
     }
 }

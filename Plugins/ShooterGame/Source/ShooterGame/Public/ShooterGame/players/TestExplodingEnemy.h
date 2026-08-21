@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Sandbox/combat/explosion/ExplosionConfig.h"
+#include "SandboxGameShared/combat/explosion/ExplosionConfig.h"
 #include "ShooterGame/players/TestEnemy.h"
 
 #include "TestExplodingEnemy.generated.h"

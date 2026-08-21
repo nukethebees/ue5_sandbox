@@ -10,9 +10,9 @@
 #include "TimerManager.h"
 
 #include "ShooterGame/combat/pawn_weapon_component/PawnWeaponComponent.h"
-#include "ShooterGame/environment/interactive/Clickable.h"
+#include "SandboxGameShared/interaction/Clickable.h"
 #include "ShooterGame/game_flow/PlatformerGameState.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/inventory/InventoryComponent.h"
 #include "ShooterGame/players/ActorDescriptionScannerComponent.h"
 #include "ShooterGame/players/InteractorComponent.h"

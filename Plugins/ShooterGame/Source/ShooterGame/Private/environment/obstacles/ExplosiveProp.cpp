@@ -4,9 +4,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 
-#include "Sandbox/combat/explosion/ExplosionSubsystem.h"
+#include "SandboxGameShared/combat/explosion/ExplosionSubsystem.h"
 #include "SandboxGameShared/constants/collision_channels.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

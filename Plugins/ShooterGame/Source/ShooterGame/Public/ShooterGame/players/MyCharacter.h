@@ -10,7 +10,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "InputActionValue.h"
 
-#include "ShooterGame/health/DeathHandler.h"
+#include "SandboxGameShared/health/DeathHandler.h"
 #include "SandboxGameShared/input/EnhancedInputMixin.hpp"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
@@ -20,7 +20,7 @@
 #include "ShooterGame/players/MovementMultiplierReceiver.h"
 #include "ShooterGame/players/MyCharacterDelegates.h"
 #include "ShooterGame/players/PlayerSkills.h"
-#include "ShooterGame/players/TeamID.h"
+#include "SandboxGameShared/players/TeamID.h"
 #include "SandboxGameShared/utilities/enums.h"
 
 #include "MyCharacter.generated.h"

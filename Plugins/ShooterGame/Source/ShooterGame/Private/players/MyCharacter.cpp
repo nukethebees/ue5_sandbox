@@ -3,7 +3,7 @@
 #include "ShooterGame/combat/pawn_weapon_component/PawnWeaponComponent.h"
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "ShooterGame/core/object_pooling/ObjectPoolSubsystem.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/inventory/InventoryComponent.h"
 #include "ShooterGame/pathfinding/DroppableWaypoint.h"
 #include "ShooterGame/players/ActorDescriptionScannerComponent.h"

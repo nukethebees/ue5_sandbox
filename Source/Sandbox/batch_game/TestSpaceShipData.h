@@ -2,7 +2,7 @@
 
 #include <Sandbox/players/BarrelRoll.h>
 #include <Sandbox/utilities/DrawDebugConfig.h>
-#include <ShooterGame/players/SpeedResponse.h>
+#include <SandboxGameShared/players/SpeedResponse.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
 

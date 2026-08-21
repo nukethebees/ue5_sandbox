@@ -3,7 +3,7 @@
 #include "AIController.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/players/NpcPatrolComponent.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"

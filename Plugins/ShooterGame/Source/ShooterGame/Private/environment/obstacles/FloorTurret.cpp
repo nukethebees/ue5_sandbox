@@ -11,9 +11,9 @@
 #include "Perception/AISense_Sight.h"
 
 #include "ShooterGame/combat/bullets/BulletActor.h"
-#include "ShooterGame/health/HealthComponent.h"
+#include "SandboxGameShared/health/HealthComponent.h"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
-#include "ShooterGame/players/TeamID.h"
+#include "SandboxGameShared/players/TeamID.h"
 #include "SandboxGameShared/utilities/line.h"
 #include "SandboxGameShared/utilities/vision_maths.h"
 
