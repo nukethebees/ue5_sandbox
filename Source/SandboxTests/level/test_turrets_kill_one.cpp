@@ -551,3 +551,128 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
             });
     }
 };
+
+TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
+{
+    using ThisClass = TurretSearchRequiresLineOfSight;
+    using time_type = ml::TestSimulationDriver::time_type;
+
+    static constexpr time_type test_end_time{1.0};
+    FTimespan const timeout{0, 0, 2};
+    FName const blue_turret_name{TEXT("BlueTurret")};
+    FName const blocked_enemy_name{TEXT("BlockedEnemy")};
+    FName const visible_enemy_name{TEXT("VisibleEnemy")};
+
+    TUniquePtr<FMapTestSpawner> spawner{nullptr};
+    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
+    ml::FSoftTestAssertions checks{};
+    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
+    ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
+    FRegistryEntityHandle blocked_enemy_handle;
+    FRegistryEntityHandle visible_enemy_handle;
+
+    BEFORE_EACH()
+    {
+        checks.test_runner = TestRunner;
+        checks.all_passed = true;
+        test_driver.Reset();
+        blocked_enemy_handle.reset();
+        visible_enemy_handle.reset();
+
+        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
+        level_setup.Emplace(*spawner, *TestRunner, checks);
+        level_setup->setup(TestCommandBuilder, [this](UWorld& world, UTestSimulationConfig const&) {
+            ml::spawn_actors<ATestStaticTurretsProxy, 3>(
+                world, [this](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
+                    if (phase == ESpawnPhase::PreSpawn) {
+                        actor.set_laser_damage(0);
+                        actor.set_test_name(i == 0 ? blue_turret_name
+                                                   : (i == 1 ? blocked_enemy_name
+                                                             : visible_enemy_name));
+                        actor.set_team(i == 0 ? ETestTeam::Blue : ETestTeam::Red);
+                        return;
+                    }
+
+                    actor.SetActorLocation(i == 0 ? FVector{-1000.f, 0.f, 0.f}
+                                                  : (i == 1 ? FVector{1000.f, 0.f, 0.f}
+                                                            : FVector{1000.f, 1000.f, 0.f}));
+                });
+
+            auto* const blocker{ml::spawn_visibility_blocker(
+                world, FVector::ZeroVector, FVector{100.f, 200.f, 1000.f}, TEXT("search_los_blocker"))};
+            if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
+                return;
+            }
+
+            ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
+        });
+    }
+    AFTER_EACH()
+    {
+        ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+        if (test_driver.IsSet()) {
+            test_driver->orchestrator.clear_end_tick_test_hook();
+            test_driver->orchestrator.pause_simulation();
+        }
+        level_setup->teardown();
+        level_setup.Reset();
+        spawner.Reset();
+    }
+  private:
+    void bind(FProxyEntityMap const& proxy_entities) {
+        for (auto const& [actor, identifiers] : proxy_entities) {
+            auto const* const proxy{Cast<ATestStaticTurretsProxy>(actor)};
+            if (!checks.is_valid(proxy, TEXT("Bound proxy is a static turret"))) {
+                continue;
+            }
+
+            if (proxy->get_test_name() == blocked_enemy_name) {
+                blocked_enemy_handle = proxy->get_entity_handle();
+            } else if (proxy->get_test_name() == visible_enemy_name) {
+                visible_enemy_handle = proxy->get_entity_handle();
+            }
+        }
+        ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+    }
+    void on_end_tick(ATestBatchOrchestrator& orchestrator) {
+        auto const* const turrets{orchestrator.get_turrets()};
+        check(turrets);
+        target_handles.add(test_driver->get_time(),
+                           TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
+        test_driver->timeline.tick(test_driver->get_time());
+    }
+    void initial_setup() {
+        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));
+        checks.is_true(visible_enemy_handle.is_valid(), TEXT("Visible enemy handle is bound"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        ml::reset_and_reserve_time_series(
+            test_driver->orchestrator, test_end_time, target_handles);
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        test_driver->timeline.finish_at(test_end_time);
+        test_driver->orchestrator.start_simulation();
+    }
+    void full_checks() {
+        checks.is_true(!target_handles.is_empty(), TEXT("Turret target handles are sampled"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+        auto const sample_index{target_handles.nearest_index(test_end_time)};
+        auto const& selected_targets{target_handles.value_at(sample_index)};
+        checks.is_true(selected_targets.Contains(visible_enemy_handle),
+                       TEXT("Visible enemy is selected as a target"));
+        checks.is_true(!selected_targets.Contains(blocked_enemy_handle),
+                       TEXT("Blocked enemy is not selected as a target"));
+    }
+
+    TEST_METHOD(MainTest)
+    {
+        TestCommandBuilder.Do([this] { initial_setup(); })
+            .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
+            .Then([this] {
+                full_checks();
+                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+            });
+    }
+};

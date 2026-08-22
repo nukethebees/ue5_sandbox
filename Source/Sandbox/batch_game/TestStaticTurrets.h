@@ -38,6 +38,16 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_static_turrets {
+struct FSearchScratch {
+    FVectors3f candidate_locations;
+    TArray<uint8> has_line_of_sight;
+
+    void reset() {
+        candidate_locations.reset();
+        has_line_of_sight.Reset();
+    }
+};
+
 class PhaseInterface;
 }
 
@@ -149,6 +159,7 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     int32 search_slice_size{64};
 
     int32 target_refresh_next_offset{0};
+    TArray<ml::test_static_turrets::FSearchScratch> search_scratch_buffers;
 
     // Firing
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
