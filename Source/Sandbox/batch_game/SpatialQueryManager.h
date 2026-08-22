@@ -29,14 +29,14 @@ struct FSpatialQueryManager;
 
 namespace ml::query_manager {
 enum class EHitResolverKind : uint8 {
-        PlayerShipMesh,
-        CapitalShipInstances,
-        CapitalShipFighterInstances,
-        StaticTurretInstances,
-        TubeSpinnerInstances,
-        Count,
-        Unknown,
-    };
+    PlayerShipMesh,
+    CapitalShipInstances,
+    CapitalShipFighterInstances,
+    StaticTurretInstances,
+    TubeSpinnerInstances,
+    Count,
+    Unknown,
+};
 
 struct FComponentResolver {
     UPrimitiveComponent const* component{nullptr};
@@ -88,6 +88,10 @@ struct SANDBOX_API FSpatialQueryManager {
     void trace_line_of_sight(FVectors3f::ConstView start_locations,
                              FVectors3f::ConstView end_locations,
                              TArrayView<FRegistryEntityHandle> out_entity_handles) const;
+    void has_line_of_sight_to_targets(FVector3f const& start_location,
+                                      FVectors3f::ConstView end_locations,
+                                      TConstArrayView<FRegistryEntityHandle> targets,
+                                      TArrayView<uint8> has_los) const;
 
     auto collect_non_team_entities_in_range(
         FVector3f const& origin,
@@ -110,6 +114,7 @@ struct SANDBOX_API FSpatialQueryManager {
     auto classify_component(UPrimitiveComponent const* component) const -> EHitResolverKind;
     auto acquire_thread_buffer() const -> int32;
     void release_thread_buffer(int32 index) const;
+    void resolve_line_of_sight_hits(query_manager::FThreadBuffers& buffers, int32 count) const;
 
     using ComponentResolvers =
         TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;

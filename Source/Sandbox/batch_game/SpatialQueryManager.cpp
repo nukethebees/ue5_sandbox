@@ -251,9 +251,6 @@ void FSpatialQueryManager::trace_line_of_sight(
     auto& line_of_sight_sort_indices{buffers.line_of_sight_sort_indices};
 
     line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
-    sorted_line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
-    sorted_line_of_sight_entity_handles.SetNumUninitialized(n, EAllowShrinking::No);
-    line_of_sight_sort_indices.SetNumUninitialized(n, EAllowShrinking::No);
 
     FHitResult hit_result{};
     for (int32 i{}; i < n; ++i) {
@@ -268,21 +265,84 @@ void FSpatialQueryManager::trace_line_of_sight(
                                   : FSpatialQueryHit{};
     }
 
+    resolve_line_of_sight_hits(buffers, n);
+
+    for (int32 i{}; i < n; ++i) {
+        out_entity_handles[line_of_sight_sort_indices[i]] = sorted_line_of_sight_entity_handles[i];
+    }
+}
+
+void FSpatialQueryManager::has_line_of_sight_to_targets(
+    FVector3f const& start_location,
+    FVectors3f::ConstView const end_locations,
+    TConstArrayView<FRegistryEntityHandle> const targets,
+    TArrayView<uint8> const has_los) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::has_line_of_sight_to_targets);
+
+    auto const n{end_locations.num()};
+    check(n == targets.Num());
+    check(n == has_los.Num());
+    check(IsValid(world));
+
+    ml::fill(has_los, uint8{0});
+    if (n == 0) {
+        return;
+    }
+
+    query_manager::FThreadBufferLease const buffer_lease{*this};
+    auto& buffers{buffer_lease.get()};
+    auto& line_of_sight_hits{buffers.line_of_sight_hits};
+    auto const trace_start{FVector{start_location}};
+
+    line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
+
+    FHitResult hit_result{};
+    for (int32 i{}; i < n; ++i) {
+        hit_result.Reset();
+
+        auto const did_hit{world->LineTraceSingleByChannel(
+            hit_result, trace_start, ml::get_vector3d(end_locations, i), ECC_Visibility)};
+        line_of_sight_hits[i] = did_hit
+                                  ? FSpatialQueryHit{hit_result.GetComponent(), hit_result.Item}
+                                  : FSpatialQueryHit{};
+    }
+
+    resolve_line_of_sight_hits(buffers, n);
+
+    auto const& sorted_entity_handles{buffers.sorted_line_of_sight_entity_handles};
+    auto const& sort_indices{buffers.line_of_sight_sort_indices};
+    for (int32 sorted_i{}; sorted_i < n; ++sorted_i) {
+        auto const input_i{sort_indices[sorted_i]};
+        auto const did_hit{line_of_sight_hits[input_i].component != nullptr};
+        has_los[input_i] =
+            static_cast<uint8>(!did_hit || (sorted_entity_handles[sorted_i] == targets[input_i]));
+    }
+}
+
+void FSpatialQueryManager::resolve_line_of_sight_hits(query_manager::FThreadBuffers& buffers,
+                                                      int32 const count) const {
+    auto& line_of_sight_hits{buffers.line_of_sight_hits};
+    auto& sorted_line_of_sight_hits{buffers.sorted_line_of_sight_hits};
+    auto& sorted_line_of_sight_entity_handles{buffers.sorted_line_of_sight_entity_handles};
+    auto& line_of_sight_sort_indices{buffers.line_of_sight_sort_indices};
+
+    check(line_of_sight_hits.Num() == count);
+
+    sorted_line_of_sight_hits.SetNumUninitialized(count, EAllowShrinking::No);
+    sorted_line_of_sight_entity_handles.SetNumUninitialized(count, EAllowShrinking::No);
+    line_of_sight_sort_indices.SetNumUninitialized(count, EAllowShrinking::No);
+
     ml::fill_indices(line_of_sight_sort_indices);
     line_of_sight_sort_indices.Sort([&line_of_sight_hits](int32 const lhs, int32 const rhs) {
         return spatial_query_component_less(line_of_sight_hits[lhs].component,
                                             line_of_sight_hits[rhs].component);
     });
 
-    for (int32 i{}; i < n; ++i) {
+    for (int32 i{}; i < count; ++i) {
         sorted_line_of_sight_hits[i] = line_of_sight_hits[line_of_sight_sort_indices[i]];
     }
 
     resolve_hits(sorted_line_of_sight_hits, sorted_line_of_sight_entity_handles);
-
-    for (int32 i{}; i < n; ++i) {
-        out_entity_handles[line_of_sight_sort_indices[i]] = sorted_line_of_sight_entity_handles[i];
-    }
 }
 
 auto FSpatialQueryManager::collect_non_team_entities_in_range(
