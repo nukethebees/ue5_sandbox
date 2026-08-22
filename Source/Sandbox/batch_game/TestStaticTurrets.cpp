@@ -28,6 +28,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
+#include <HAL/PlatformMisc.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
@@ -224,21 +225,28 @@ void ATestStaticTurrets::perform_search() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::perform_search);
 
     auto const n_turrets{get_num_instances()};
+    if (n_turrets == 0) {
+        return;
+    }
+
     auto const radius{actor_config->detection_radius};
 
-    auto const min_turrets_per_slice{search_slice_size};
-    auto const n_slices{FMath::DivideAndRoundUp(n_turrets, min_turrets_per_slice)};
+    auto const hardware_thread_count{
+        FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
+    auto const max_jobs_for_grain_size{FMath::Max(1, n_turrets / search_slice_size)};
+    auto const n_jobs{FMath::Min(hardware_thread_count, max_jobs_for_grain_size)};
+    auto const turrets_per_job{FMath::DivideAndRoundUp(n_turrets, n_jobs)};
 
-    ParallelFor(n_slices, [=, this](int32 const i) {
-        perform_search_on_slice(i, n_turrets, min_turrets_per_slice, radius);
+    ParallelFor(n_jobs, [=, this](int32 const i) {
+        perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
     });
 }
-void ATestStaticTurrets::perform_search_on_slice(int32 const slice_index,
+void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
                                                  int32 const n_turrets,
-                                                 int32 const min_turrets_per_slice,
+                                                 int32 const turrets_per_job,
                                                  float const radius) {
-    auto const begin{slice_index * min_turrets_per_slice};
-    auto const end{FMath::Min(begin + min_turrets_per_slice, n_turrets)};
+    auto const begin{job_index * turrets_per_job};
+    auto const end{FMath::Min(begin + turrets_per_job, n_turrets)};
 
     for (int32 i{begin}; i < end; ++i) {
         if (!entities.target_refresh_countdowns.try_consume(i)) {
