@@ -12,8 +12,8 @@ Unreal Engine 5.8 project.
 # Command-Line Builds
 
 * A Windows-only CMake 4.3+/Ninja build layer exists at the repository root. It invokes UnrealBuildTool (UBT); `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
-* Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game` configures and builds the Editor target.
-* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), and `dev-core` (Editor plus low-level tests).
+* Run builds yourself through this CMake layer; do not invoke UBT or `Build.bat` directly. Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game`.
+* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), `dev-core` (Editor plus low-level tests), and `resave-assets` (resaves project assets and fixes redirectors).
 
 # Agent Behaviour
 
@@ -52,7 +52,7 @@ Unreal Engine 5.8 project.
 # Testing
 
 * Only create tests when explicitly asked.
-* Do not compile C++, launch Unreal, or run Unreal tests. Ask the user to perform all C++/Unreal builds and tests, then continue based on their reported results.
+* Run C++/Unreal builds yourself through the CMake workflow. Do not launch Unreal or run Unreal tests unless explicitly asked; ask the user to perform test runs when they are needed.
 * Python scripts may be run when needed.
 * Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
 * `SANDBOX_TESTS_ASSERT_ALL_PASSED` returns when a soft assertion has failed; use it to end assertion stages instead of adding duplicate failure branches.

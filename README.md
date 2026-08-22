@@ -82,3 +82,13 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 `native-tests`). Each also has a workflow preset, for example `cmake --workflow --preset development`, that
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
+
+To resave project assets and fix redirectors, build `editor` and then run the
+`ResavePackages` commandlet through:
+
+```bash
+cmake --workflow --preset resave-assets
+```
+
+This target modifies project assets. It does not automatically check out files from
+source control, so affected files must already be writable.

@@ -78,6 +78,11 @@
       "name": "test",
       "configurePreset": "test",
       "targets": ["dev-core"]
+    },
+    {
+      "name": "resave-assets",
+      "configurePreset": "debug-game",
+      "targets": ["resave-assets"]
     }
   ],
   "workflowPresets": [
@@ -114,6 +119,13 @@
       "steps": [
         { "type": "configure", "name": "test" },
         { "type": "build", "name": "test" }
+      ]
+    },
+    {
+      "name": "resave-assets",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "resave-assets" }
       ]
     }
   ]

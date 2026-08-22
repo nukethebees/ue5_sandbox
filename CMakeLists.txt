@@ -50,6 +50,15 @@ if(NOT EXISTS "${UE_BUILD_SCRIPT}")
         "Expected to find '${UE_BUILD_SCRIPT}'.")
 endif()
 
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealEditor-Cmd.exe
+    OUTPUT_VARIABLE UE_EDITOR_CMD_EXE
+)
+if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
+    message(FATAL_ERROR
+        "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
+        "Expected to find '${UE_EDITOR_CMD_EXE}'.")
+endif()
+
 set(SANDBOX_UPROJECT "${CMAKE_CURRENT_SOURCE_DIR}/Sandbox.uproject")
 
 function(add_unreal_target target_name unreal_target)
@@ -73,4 +82,17 @@ add_custom_target(dev-core
     editor 
     core-tests 
     native-tests
+)
+
+add_custom_target(resave-assets
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+        -run=ResavePackages
+        -projectonly
+        -fixupredirects
+        -unattended
+    DEPENDS editor
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMENT "Resaving project assets and fixing redirectors"
+    USES_TERMINAL
+    VERBATIM
 )
