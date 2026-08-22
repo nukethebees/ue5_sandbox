@@ -29,6 +29,16 @@ set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
   Test
 )
 
+set(CACHE{SANDBOX_TEST_SUITE}
+  TYPE STRING
+  HELP "Low-level test suite registered with CTest"
+  VALUE default
+)
+set_property(CACHE SANDBOX_TEST_SUITE PROPERTY STRINGS
+  default
+  benchmark
+)
+
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
     "This initial CMake build layer supports Windows hosts only. "
@@ -74,15 +84,27 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
-add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
-add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)
 
 add_custom_target(dev-core
-  DEPENDS
-  editor
-  core-tests
-  native-tests
+  DEPENDS editor
 )
+
+if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
+  add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore benchmark)
+elseif(SANDBOX_TEST_SUITE STREQUAL "default")
+  add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
+  add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)
+
+  add_dependencies(dev-core
+    core-tests
+    native-tests
+  )
+else()
+  message(FATAL_ERROR
+    "SANDBOX_TEST_SUITE must be one of: default, benchmark. "
+    "Got '${SANDBOX_TEST_SUITE}'."
+  )
+endif()
 
 add_custom_target(resave-assets
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"

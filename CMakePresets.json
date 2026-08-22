@@ -37,6 +37,14 @@
       }
     },
     {
+      "name": "benchmark",
+      "displayName": "Benchmark",
+      "inherits": "development",
+      "cacheVariables": {
+        "SANDBOX_TEST_SUITE": "benchmark"
+      }
+    },
+    {
       "name": "shipping",
       "displayName": "Shipping",
       "inherits": "base",
@@ -83,6 +91,11 @@
       "name": "resave-assets",
       "configurePreset": "debug-game",
       "targets": ["resave-assets"]
+    },
+    {
+      "name": "benchmark",
+      "configurePreset": "benchmark",
+      "targets": ["benchmarks"]
     }
   ],
   "testPresets": [
@@ -91,6 +104,26 @@
       "configurePreset": "debug-game",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "benchmark-tests",
+      "configurePreset": "benchmark",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "benchmark"
+        }
       },
       "execution": {
         "noTestsAction": "error"
@@ -146,6 +179,14 @@
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "debug-game" },
         { "type": "test", "name": "debug-game-tests" }
+      ]
+    },
+    {
+      "name": "benchmark",
+      "steps": [
+        { "type": "configure", "name": "benchmark" },
+        { "type": "build", "name": "benchmark" },
+        { "type": "test", "name": "benchmark-tests" }
       ]
     }
   ]
