@@ -62,6 +62,15 @@ if(NOT EXISTS "${UE_BUILD_SCRIPT}")
     "Expected to find '${UE_BUILD_SCRIPT}'.")
 endif()
 
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles GenerateProjectFiles.bat
+  OUTPUT_VARIABLE UE_GENERATE_PROJECT_FILES_SCRIPT
+)
+if(NOT EXISTS "${UE_GENERATE_PROJECT_FILES_SCRIPT}")
+  message(FATAL_ERROR
+    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
+    "Expected to find '${UE_GENERATE_PROJECT_FILES_SCRIPT}'.")
+endif()
+
 if(UE_CONFIGURATION STREQUAL "Development")
   set(UE_EDITOR_CMD_NAME UnrealEditor-Cmd.exe)
 else()
@@ -78,6 +87,14 @@ if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
 endif()
 
 set(SANDBOX_UPROJECT "${CMAKE_CURRENT_SOURCE_DIR}/Sandbox.uproject")
+
+add_custom_target(generate-project-files
+  COMMAND "${UE_GENERATE_PROJECT_FILES_SCRIPT}" "-Project=${SANDBOX_UPROJECT}" -WaitMutex
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Generating Visual Studio project files for ${SANDBOX_UPROJECT}"
+  USES_TERMINAL
+  VERBATIM
+)
 
 include(cmake/unreal.cmake)
 include(cmake/catch2.cmake)

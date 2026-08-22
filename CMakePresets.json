@@ -93,6 +93,11 @@
       "targets": ["resave-assets"]
     },
     {
+      "name": "generate-project-files",
+      "configurePreset": "debug-game",
+      "targets": ["generate-project-files"]
+    },
+    {
       "name": "benchmark",
       "configurePreset": "benchmark",
       "targets": ["benchmarks"]
@@ -201,6 +206,13 @@
       "steps": [
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "resave-assets" }
+      ]
+    },
+    {
+      "name": "generate-project-files",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "generate-project-files" }
       ]
     },
     {

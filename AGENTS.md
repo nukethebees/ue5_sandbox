@@ -13,7 +13,8 @@ Unreal Engine 5.8 project.
 
 * A Windows-only CMake 4.3+/Ninja build layer exists at the repository root. It invokes UnrealBuildTool (UBT); `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Run builds yourself through this CMake layer; do not invoke UBT or `Build.bat` directly. Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game`.
-* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), `dev-core` (Editor plus low-level tests), and `resave-assets` (resaves project assets and fixes redirectors).
+* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), `dev-core` (Editor plus low-level tests), `resave-assets` (resaves project assets and fixes redirectors), and `generate-project-files` (regenerates Visual Studio project files).
+* Run `cmake --workflow --preset generate-project-files` after adding or removing Unreal modules/plugins, or changing `.Build.cs`, `.Target.cs`, or project/module definitions.
 * Run CTest suites through `cmake --workflow --preset debug-game-tests`; it runs all unit and level suites. Use `cmake --workflow --preset debug-game-unit-tests` for unit suites only, or `ctest --preset debug-game-level-tests` to run only level tests after building.
 
 # Agent Behaviour
