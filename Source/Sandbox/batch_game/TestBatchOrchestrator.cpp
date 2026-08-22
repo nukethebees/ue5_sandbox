@@ -23,6 +23,7 @@
 
 #include <CoreGlobals.h>
 #include <EngineUtils.h>
+#include <HAL/PlatformMisc.h>
 #include <VisualLogger/VisualLogger.h>
 
 namespace {
@@ -291,6 +292,8 @@ void ATestBatchOrchestrator::begin_play() {
 
     query_manager.initialise(
         *world, player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
+    query_manager.reserve_thread_buffers(
+        FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
 
     validate_proxy_handles();
 

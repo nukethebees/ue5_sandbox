@@ -16,6 +16,7 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
+#include <mutex>
 #include <utility>
 
 class UPrimitiveComponent;
@@ -23,9 +24,11 @@ class UWorld;
 struct FTestEntityRegistry;
 
 namespace ml {
-struct SANDBOX_API FSpatialQueryManager {
-  private:
-    enum class EHitResolverKind : uint8 {
+struct FSpatialQueryManager;
+}
+
+namespace ml::query_manager {
+enum class EHitResolverKind : uint8 {
         PlayerShipMesh,
         CapitalShipInstances,
         CapitalShipFighterInstances,
@@ -34,6 +37,36 @@ struct SANDBOX_API FSpatialQueryManager {
         Count,
         Unknown,
     };
+
+struct FComponentResolver {
+    UPrimitiveComponent const* component{nullptr};
+    EHitResolverKind kind{EHitResolverKind::Unknown};
+};
+
+struct FThreadBuffers {
+    TArray<FSpatialQueryHit> line_of_sight_hits;
+    TArray<FSpatialQueryHit> sorted_line_of_sight_hits;
+    TArray<FRegistryEntityHandle> sorted_line_of_sight_entity_handles;
+    TArray<int32> line_of_sight_sort_indices;
+};
+
+class FThreadBufferLease {
+  public:
+    explicit FThreadBufferLease(FSpatialQueryManager const& manager);
+    ~FThreadBufferLease();
+
+    FThreadBufferLease(FThreadBufferLease const&) = delete;
+    auto operator=(FThreadBufferLease const&) -> FThreadBufferLease& = delete;
+
+    auto get() const -> FThreadBuffers&;
+  private:
+    FSpatialQueryManager const* manager;
+    int32 index;
+};
+}
+
+namespace ml {
+struct SANDBOX_API FSpatialQueryManager {
   public:
     // Required only for Unreal's default-construction path.
     // Pointer members are otherwise required to be non-null.
@@ -47,6 +80,8 @@ struct SANDBOX_API FSpatialQueryManager {
                     ATestCapitalShipFighters const& capital_ship_fighters,
                     ATestStaticTurrets const& static_turrets,
                     ATestTubeSpinners const& tube_spinners);
+
+    void reserve_thread_buffers(int32 count);
 
     void resolve_hits(TConstArrayView<FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
@@ -66,22 +101,25 @@ struct SANDBOX_API FSpatialQueryManager {
                                      FVectors3f const& locations,
                                      TArrayView<bool> const results) const;
   private:
-    struct FComponentResolver {
-        UPrimitiveComponent const* component{nullptr};
-        EHitResolverKind kind{EHitResolverKind::Unknown};
-    };
+    friend class query_manager::FThreadBufferLease;
+
+    using EHitResolverKind = query_manager::EHitResolverKind;
+    using FComponentResolver = query_manager::FComponentResolver;
+    using FThreadBuffers = query_manager::FThreadBuffers;
 
     auto classify_component(UPrimitiveComponent const* component) const -> EHitResolverKind;
+    auto acquire_thread_buffer() const -> int32;
+    void release_thread_buffer(int32 index) const;
 
     using ComponentResolvers =
         TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;
     FTestEntityRegistry const* const entity_registry{nullptr};
     UWorld* world{nullptr};
     ComponentResolvers component_resolvers;
-    mutable TArray<FSpatialQueryHit> line_of_sight_hits;
-    mutable TArray<FSpatialQueryHit> sorted_line_of_sight_hits;
-    mutable TArray<FRegistryEntityHandle> sorted_line_of_sight_entity_handles;
-    mutable TArray<int32> line_of_sight_sort_indices;
+    mutable std::mutex thread_buffers_mutex;
+    mutable TArray<FThreadBuffers> thread_buffers;
+    mutable TArray<int32> free_thread_buffer_indices;
+    mutable int32 active_thread_buffer_count{};
     FTestSpaceShipSpatialQueryAccess player_ship_access;
     FTestCapitalShipsSpatialQueryAccess capital_ships_access;
     FTestCapitalShipFightersSpatialQueryAccess capital_ship_fighters_access;

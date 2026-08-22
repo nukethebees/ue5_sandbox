@@ -1,6 +1,7 @@
 #include "SpatialQueryManager.h"
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -8,8 +9,10 @@
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Engine/World.h>
+#include <HAL/PlatformMisc.h>
 
 #include <functional>
+#include <mutex>
 #include <utility>
 
 namespace ml {
@@ -20,9 +23,73 @@ auto spatial_query_component_less(UPrimitiveComponent const* const lhs,
     return std::less<UPrimitiveComponent const*>{}(lhs, rhs);
 }
 }
+}
 
+namespace ml::query_manager {
+FThreadBufferLease::FThreadBufferLease(FSpatialQueryManager const& in_manager)
+    : manager{&in_manager}
+    , index{manager->acquire_thread_buffer()} {}
+
+FThreadBufferLease::~FThreadBufferLease() {
+    manager->release_thread_buffer(index);
+}
+
+auto FThreadBufferLease::get() const -> FThreadBuffers& {
+    return manager->thread_buffers[index];
+}
+}
+
+namespace ml {
 FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry) noexcept
     : entity_registry{&in_entity_registry} {}
+
+void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
+    auto const hardware_thread_count{
+        FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
+    auto const maximum_thread_buffer_count{hardware_thread_count * 2};
+    checkf(count > 0, TEXT("Thread buffer count must be positive"));
+    checkf(count <= maximum_thread_buffer_count,
+           TEXT("Thread buffer count %d exceeds the maximum of %d"),
+           count,
+           maximum_thread_buffer_count);
+
+    std::lock_guard const lock{thread_buffers_mutex};
+    if (count <= thread_buffers.Num()) {
+        return;
+    }
+
+    checkf(active_thread_buffer_count == 0,
+           TEXT("Thread buffers cannot be grown while queries are active"));
+
+    auto const previous_count{thread_buffers.Num()};
+    thread_buffers.AddDefaulted(count - previous_count);
+    free_thread_buffer_indices.Reserve(count);
+    for (int32 i{previous_count}; i < count; ++i) {
+        free_thread_buffer_indices.Add(i);
+    }
+}
+
+auto FSpatialQueryManager::acquire_thread_buffer() const -> int32 {
+    std::lock_guard const lock{thread_buffers_mutex};
+    if (free_thread_buffer_indices.IsEmpty()) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("FSpatialQueryManager thread buffer pool exhausted. Reserve enough buffers "
+                    "before starting concurrent queries."));
+    }
+
+    ++active_thread_buffer_count;
+    return free_thread_buffer_indices.Pop(EAllowShrinking::No);
+}
+
+void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
+    std::lock_guard const lock{thread_buffers_mutex};
+    check(thread_buffers.IsValidIndex(index));
+    check(!free_thread_buffer_indices.Contains(index));
+    check(active_thread_buffer_count > 0);
+    free_thread_buffer_indices.Add(index);
+    --active_thread_buffer_count;
+}
 
 void FSpatialQueryManager::initialise(UWorld& in_world,
                                       ATestSpaceShip const* const player_ship,
@@ -30,6 +97,8 @@ void FSpatialQueryManager::initialise(UWorld& in_world,
                                       ATestCapitalShipFighters const& capital_ship_fighters,
                                       ATestStaticTurrets const& static_turrets,
                                       ATestTubeSpinners const& tube_spinners) {
+    reserve_thread_buffers(1);
+
     world = &in_world;
     player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};
     capital_ships_access = FTestCapitalShipsSpatialQueryAccess{&capital_ships};
@@ -170,6 +239,17 @@ void FSpatialQueryManager::trace_line_of_sight(
 
     ml::fill(out_entity_handles, FRegistryEntityHandle{});
 
+    if (n == 0) {
+        return;
+    }
+
+    query_manager::FThreadBufferLease const buffer_lease{*this};
+    auto& buffers{buffer_lease.get()};
+    auto& line_of_sight_hits{buffers.line_of_sight_hits};
+    auto& sorted_line_of_sight_hits{buffers.sorted_line_of_sight_hits};
+    auto& sorted_line_of_sight_entity_handles{buffers.sorted_line_of_sight_entity_handles};
+    auto& line_of_sight_sort_indices{buffers.line_of_sight_sort_indices};
+
     line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
     sorted_line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
     sorted_line_of_sight_entity_handles.SetNumUninitialized(n, EAllowShrinking::No);
@@ -189,7 +269,7 @@ void FSpatialQueryManager::trace_line_of_sight(
     }
 
     ml::fill_indices(line_of_sight_sort_indices);
-    line_of_sight_sort_indices.Sort([this](int32 const lhs, int32 const rhs) {
+    line_of_sight_sort_indices.Sort([&line_of_sight_hits](int32 const lhs, int32 const rhs) {
         return spatial_query_component_less(line_of_sight_hits[lhs].component,
                                             line_of_sight_hits[rhs].component);
     });
