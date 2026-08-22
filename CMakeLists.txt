@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 4.4.2)
 
 project(SandboxUnrealBuild NONE)
 
+enable_testing()
+
 set(CACHE{UE_ROOT}
     TYPE PATH
     HELP "Root directory of the Unreal Engine installation"
@@ -78,10 +80,29 @@ function(add_unreal_target target_name unreal_target)
     )
 endfunction()
 
+function(add_low_level_test_suite target_name unreal_target test_name_prefix test_label)
+    add_unreal_target(${target_name} ${unreal_target})
+
+    set(test_executable
+        "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}-${UE_PLATFORM}-${UE_CONFIGURATION}.exe"
+    )
+
+    discover_tests(
+        COMMAND "${test_executable}"
+        DISCOVERY_ARGS --list-tests --reporter JSON
+        DISCOVERY_MATCH "^[ \\t]*\\\"name\\\": \\\"(${test_name_prefix}\\.[^\\\"]+)\\\",$"
+        TEST_NAME "\\1"
+        TEST_ARGS "\\1"
+        TEST_PROPERTIES
+            LABELS ${test_label}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+endfunction()
+
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
-add_unreal_target(core-tests SandboxCoreTests)
-add_unreal_target(native-tests SandboxNativeTests)
+add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
+add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)
 
 add_custom_target(dev-core 
   DEPENDS 
