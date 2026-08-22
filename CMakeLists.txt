@@ -50,7 +50,13 @@ if(NOT EXISTS "${UE_BUILD_SCRIPT}")
         "Expected to find '${UE_BUILD_SCRIPT}'.")
 endif()
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealEditor-Cmd.exe
+if(UE_CONFIGURATION STREQUAL "Development")
+    set(UE_EDITOR_CMD_NAME UnrealEditor-Cmd.exe)
+else()
+    set(UE_EDITOR_CMD_NAME "UnrealEditor-Win64-${UE_CONFIGURATION}-Cmd.exe")
+endif()
+
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_CMD_NAME}"
     OUTPUT_VARIABLE UE_EDITOR_CMD_EXE
 )
 if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
