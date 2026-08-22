@@ -182,7 +182,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     ml::test_static_turrets::PhaseInterface turrets_phase;
     ml::test_tube_spinners::PhaseInterface spinners_phase;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
     FTestMissionManager mission_manager{};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
