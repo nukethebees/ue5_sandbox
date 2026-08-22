@@ -143,6 +143,21 @@
       "execution": {
         "noTestsAction": "error"
       }
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "configurePreset": "debug-game",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
     }
   ],
   "workflowPresets": [
@@ -202,6 +217,14 @@
         { "type": "configure", "name": "benchmark" },
         { "type": "build", "name": "benchmark" },
         { "type": "test", "name": "benchmark-tests" }
+      ]
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" },
+        { "type": "test", "name": "debug-game-unit-tests" }
       ]
     }
   ]

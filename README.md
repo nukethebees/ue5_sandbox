@@ -111,3 +111,4 @@ ctest -R Sandbox.LevelTests --output-on-failure
 ```
 
 Alternatively, use `ctest --preset debug-game-level-tests` from the project root.
+Use `cmake --workflow --preset debug-game-unit-tests` for the unit-labelled suites only.
