@@ -3,9 +3,9 @@
 using UnrealBuildTool;
 
 [SupportedPlatforms(UnrealPlatformClass.All)]
-public class SandboxCoreTestsTarget : TestTargetRules
+public class SandboxCoreBenchmarksTarget : TestTargetRules
 {
-    public SandboxCoreTestsTarget(TargetInfo Target) : base(Target)
+    public SandboxCoreBenchmarksTarget(TargetInfo Target) : base(Target)
     {
         bNeverCompileAgainstEngine = true;
         bNeverCompileAgainstCoreUObject = true;
@@ -19,6 +19,8 @@ public class SandboxCoreTestsTarget : TestTargetRules
 
         bMockEngineDefaults = true;
         bUsePlatformFileStub = true;
+
+        GlobalDefinitions.Add("CATCH_CONFIG_ENABLE_BENCHMARKING=1");
 
         if (BuildHostPlatform.Current.Platform == UnrealTargetPlatform.Win64)
         {
