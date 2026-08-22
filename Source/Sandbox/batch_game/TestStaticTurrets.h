@@ -12,6 +12,7 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/soa_array_mixin.h>
+#include <SandboxCore/fixed_array.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 #include <SandboxCore/tick_countdown.h>
@@ -40,11 +41,11 @@ struct FSpatialQueryManager;
 namespace ml::test_static_turrets {
 struct FSearchScratch {
     FVectors3f candidate_locations;
-    TArray<uint8> has_line_of_sight;
+    TFixedArray<uint8, 128> has_line_of_sight;
 
     void reset() {
         candidate_locations.reset();
-        has_line_of_sight.Reset();
+        has_line_of_sight.reset();
     }
 };
 

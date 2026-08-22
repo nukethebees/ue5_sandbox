@@ -271,8 +271,7 @@ void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
 
             auto const target_count{target_handles.num()};
             search_scratch.candidate_locations.set_num_uninitialised(target_count);
-            search_scratch.has_line_of_sight.SetNumUninitialized(target_count,
-                                                                  EAllowShrinking::No);
+            search_scratch.has_line_of_sight.set_num_uninitialised(target_count);
             for (int32 target_index{}; target_index < target_count; ++target_index) {
                 ml::assign(search_scratch.candidate_locations,
                            target_index,
