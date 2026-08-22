@@ -84,51 +84,23 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
-add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore)
-add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative)
-add_unreal_automation_test(
-  Sandbox.enum
-  FILTER Sandbox.enum
-  LABELS unit
-)
-add_unreal_automation_test(
-  Sandbox.fighters
-  FILTER Sandbox.fighters
-  LABELS unit
-)
-add_unreal_automation_test(
-  Sandbox.geometry
-  FILTER Sandbox.geometry
-  LABELS unit
-)
-add_unreal_automation_test(
-  Sandbox.levels
-  FILTER Sandbox.levels
-  LABELS unit
-)
 add_unreal_automation_test(
   Sandbox.UnitTests
-  FILTER Sandbox.UnitTests
-  LABELS unit
-)
-add_unreal_automation_test(
-  Sandbox.USFPathValidation
-  FILTER Sandbox.USFPathValidation
+  FILTERS
+    Sandbox.enum
+    Sandbox.fighters
+    Sandbox.geometry
+    Sandbox.levels
+    Sandbox.UnitTests
+    Sandbox.USFPathValidation
+    SandboxCoreEngine.UnitTests
   LABELS unit
 )
 add_unreal_automation_test(
   Sandbox.LevelTests
-  FILTER Sandbox.LevelTests
-  LABELS level
-)
-add_unreal_automation_test(
-  SandboxCoreEngine.UnitTests
-  FILTER SandboxCoreEngine.UnitTests
-  LABELS unit
-)
-add_unreal_automation_test(
-  SandboxCoreEngine.LevelTests
-  FILTER SandboxCoreEngine.LevelTests
+  FILTERS
+    Sandbox.LevelTests
+    SandboxCoreEngine.LevelTests
   LABELS level
 )
 

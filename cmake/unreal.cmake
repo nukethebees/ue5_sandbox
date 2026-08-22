@@ -10,7 +10,7 @@ function(add_unreal_target target_name unreal_target)
 endfunction()
 
 function(add_unreal_automation_test test_name)
-  cmake_parse_arguments(PARSE_ARGV 1 automation_test "" "FILTER" "LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 automation_test "" "" "FILTERS;LABELS")
 
   if(automation_test_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -18,18 +18,22 @@ function(add_unreal_automation_test test_name)
       "${automation_test_UNPARSED_ARGUMENTS}")
   endif()
 
-  if(NOT automation_test_FILTER)
-    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires FILTER.")
+  if(NOT automation_test_FILTERS)
+    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires FILTERS.")
   endif()
 
   if(NOT automation_test_LABELS)
     message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires LABELS.")
   endif()
 
+  set(automation_filters ${automation_test_FILTERS})
+  list(TRANSFORM automation_filters PREPEND "StartsWith:")
+  list(JOIN automation_filters "+" automation_filter_expression)
+
   add_test(
     NAME "${test_name}"
     COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-      "-ExecCmds=Automation RunTests StartsWith:${automation_test_FILTER}; Quit"
+      "-ExecCmds=Automation RunTests ${automation_filter_expression}; Quit"
       -unattended
       -nop4
       -nosplash
