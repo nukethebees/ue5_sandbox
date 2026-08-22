@@ -11,10 +11,12 @@
 #include <SandboxCore/error_msg.h>
 
 #include <Commands/TestCommandBuilder.h>
+#include <Components/BoxComponent.h>
 #include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
 #include <Editor.h>
 #include <Engine/World.h>
+#include <GameFramework/Actor.h>
 #include <Kismet/GameplayStatics.h>
 
 namespace ml {
@@ -29,6 +31,32 @@ auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
     }
 
     return world;
+}
+
+auto spawn_visibility_blocker(UWorld& world,
+                              FVector const location,
+                              FVector const extent,
+                              FName const name) -> AActor* {
+    auto* const blocker{world.SpawnActor<AActor>(
+        AActor::StaticClass(), location, FRotator::ZeroRotator)};
+    if (!IsValid(blocker)) {
+        return nullptr;
+    }
+
+    auto* const collision{NewObject<UBoxComponent>(blocker, name)};
+    if (!IsValid(collision)) {
+        return nullptr;
+    }
+
+    blocker->AddInstanceComponent(collision);
+    blocker->SetRootComponent(collision);
+    collision->SetBoxExtent(extent);
+    collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision->SetCollisionObjectType(ECC_WorldStatic);
+    collision->SetCollisionResponseToAllChannels(ECR_Ignore);
+    collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    collision->RegisterComponent();
+    return blocker;
 }
 
 FTestBatchOrchestratorLevelSetup::~FTestBatchOrchestratorLevelSetup() = default;
