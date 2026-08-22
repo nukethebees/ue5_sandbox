@@ -57,27 +57,27 @@
     {
       "name": "debug",
       "configurePreset": "debug",
-      "targets": ["editor"]
+      "targets": ["dev-core"]
     },
     {
       "name": "debug-game",
       "configurePreset": "debug-game",
-      "targets": ["editor"]
+      "targets": ["dev-core"]
     },
     {
       "name": "development",
       "configurePreset": "development",
-      "targets": ["editor"]
+      "targets": ["dev-core"]
     },
     {
       "name": "shipping",
       "configurePreset": "shipping",
-      "targets": ["editor"]
+      "targets": ["dev-core"]
     },
     {
       "name": "test",
       "configurePreset": "test",
-      "targets": ["editor"]
+      "targets": ["dev-core"]
     }
   ],
   "workflowPresets": [

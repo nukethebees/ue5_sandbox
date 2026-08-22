@@ -65,3 +65,12 @@ endfunction()
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
+add_unreal_target(core-tests SandboxCoreTests)
+add_unreal_target(native-tests SandboxNativeTests)
+
+add_custom_target(dev-core 
+  DEPENDS 
+    editor 
+    core-tests 
+    native-tests
+)
