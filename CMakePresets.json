@@ -128,6 +128,21 @@
       "execution": {
         "noTestsAction": "error"
       }
+    },
+    {
+      "name": "debug-game-level-tests",
+      "configurePreset": "debug-game",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "level"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
     }
   ],
   "workflowPresets": [

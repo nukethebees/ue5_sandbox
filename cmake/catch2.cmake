@@ -1,4 +1,4 @@
-function(add_low_level_test_suite target_name unreal_target test_name_prefix test_label)
+function(add_low_level_test_suite target_name unreal_target test_name_prefix)
   add_unreal_target(${target_name} ${unreal_target})
 
   if(UE_CONFIGURATION STREQUAL "Development")
@@ -18,7 +18,7 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix tes
     TEST_NAME "\\1"
     TEST_ARGS "\\1"
     TEST_PROPERTIES
-    LABELS ${test_label}
+    LABELS unit
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   )
 endfunction()

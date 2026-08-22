@@ -93,12 +93,21 @@ cmake --workflow --preset resave-assets
 This target modifies project assets. It does not automatically check out files from
 source control, so affected files must already be writable.
 
-To build and run the Catch2 low-level tests through CTest:
+To build and run the CTest suites, including Catch2 low-level unit tests and the
+`Sandbox.LevelTests` Unreal Automation Test group:
 
 ```bash
 cmake --workflow --preset debug-game-tests
 ```
 
 CTest discovers individual tests from the `SandboxCoreTests` and `SandboxNativeTests`
-executables at test time. Use `ctest --preset debug-game-tests` after building to rerun
-them without rebuilding.
+executables at test time and runs Unreal Automation Test groups through the configured
+Editor. Low-level tests use the `unit` label and Unreal level tests use the `level`
+label. To rerun the level group without rebuilding:
+
+```powershell
+cd out/build/debug-game
+ctest -R Sandbox.LevelTests --output-on-failure
+```
+
+Alternatively, use `ctest --preset debug-game-level-tests` from the project root.

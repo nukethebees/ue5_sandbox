@@ -8,3 +8,40 @@ function(add_unreal_target target_name unreal_target)
     VERBATIM
   )
 endfunction()
+
+function(add_unreal_automation_test test_name)
+  cmake_parse_arguments(PARSE_ARGV 1 automation_test "" "FILTER" "LABELS")
+
+  if(automation_test_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR
+      "add_unreal_automation_test(${test_name}) received unexpected arguments: "
+      "${automation_test_UNPARSED_ARGUMENTS}")
+  endif()
+
+  if(NOT automation_test_FILTER)
+    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires FILTER.")
+  endif()
+
+  if(NOT automation_test_LABELS)
+    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires LABELS.")
+  endif()
+
+  add_test(
+    NAME "${test_name}"
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+      "-ExecCmds=Automation RunTests StartsWith:${automation_test_FILTER}; Quit"
+      -unattended
+      -nop4
+      -nosplash
+      -nullrhi
+      -nosound
+      -stdout
+  )
+
+  # Unreal's queued Quit waits for automation completion and exits non-zero on test errors.
+  set_tests_properties("${test_name}" PROPERTIES
+    LABELS "${automation_test_LABELS}"
+    TIMEOUT 900
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+endfunction()

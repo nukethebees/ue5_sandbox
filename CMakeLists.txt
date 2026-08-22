@@ -84,6 +84,13 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
+add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore)
+add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative)
+add_unreal_automation_test(
+  Sandbox.LevelTests
+  FILTER Sandbox.LevelTests
+  LABELS level
+)
 
 add_custom_target(dev-core
   DEPENDS editor
