@@ -9,6 +9,12 @@ Unreal Engine 5.8 project.
 * UI is a presentation layer over simulation state and should not own gameplay logic.
 * Determinism, debuggability, simple control flow, and performance are important.
 
+# Command-Line Builds
+
+* A Windows-only CMake 4.3+/Ninja build layer exists at the repository root. It invokes UnrealBuildTool (UBT); `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
+* Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game` configures and builds the Editor target.
+* The available CMake targets are `editor` and `game`.
+
 # Agent Behaviour
 
 * Default to clarification over interpretation.

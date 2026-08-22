@@ -46,6 +46,7 @@
 # Local CMake configuration
 CMakeUserPresets.json
 out/
+temp_notes/
 
 # Precompiled Assets
 SourceArt/**/*.png
