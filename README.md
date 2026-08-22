@@ -70,7 +70,7 @@ usable Unreal Engine installation, either in the environment or in an untracked
 }
 ```
 
-With `UE_ROOT` available, configure and build the Development Editor target:
+With `UE_ROOT` available, configure and build the Development Editor and low-level test targets:
 
 ```bash
 cmake --preset development
@@ -78,7 +78,7 @@ cmake --build --preset development
 ```
 
 The `debug`, `debug-game`, `development`, `shipping`, and `test` presets select their
-matching Unreal configuration and build `editor`. Each also has a workflow preset, for
-example `cmake --workflow --preset development`, that configures and builds it in one
-command. The `game` target remains available through a build preset, for example
+matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
+`native-tests`). Each also has a workflow preset, for example `cmake --workflow --preset development`, that
+configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.

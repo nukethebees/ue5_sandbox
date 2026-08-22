@@ -13,7 +13,7 @@ Unreal Engine 5.8 project.
 
 * A Windows-only CMake 4.3+/Ninja build layer exists at the repository root. It invokes UnrealBuildTool (UBT); `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game` configures and builds the Editor target.
-* The available CMake targets are `editor` and `game`.
+* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), and `dev-core` (Editor plus low-level tests).
 
 # Agent Behaviour
 
