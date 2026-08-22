@@ -85,6 +85,18 @@
       "targets": ["resave-assets"]
     }
   ],
+  "testPresets": [
+    {
+      "name": "debug-game-tests",
+      "configurePreset": "debug-game",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    }
+  ],
   "workflowPresets": [
     {
       "name": "debug",
@@ -126,6 +138,14 @@
       "steps": [
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "resave-assets" }
+      ]
+    },
+    {
+      "name": "debug-game-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" },
+        { "type": "test", "name": "debug-game-tests" }
       ]
     }
   ]
