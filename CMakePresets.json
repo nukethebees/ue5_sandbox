@@ -93,6 +93,11 @@
       "targets": ["resave-assets"]
     },
     {
+      "name": "generate-project-files",
+      "configurePreset": "debug-game",
+      "targets": ["generate-project-files"]
+    },
+    {
       "name": "benchmark",
       "configurePreset": "benchmark",
       "targets": ["benchmarks"]
@@ -123,6 +128,36 @@
       "filter": {
         "include": {
           "label": "benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "debug-game-level-tests",
+      "configurePreset": "debug-game",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "level"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "configurePreset": "debug-game",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "unit"
         }
       },
       "execution": {
@@ -174,6 +209,13 @@
       ]
     },
     {
+      "name": "generate-project-files",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "generate-project-files" }
+      ]
+    },
+    {
       "name": "debug-game-tests",
       "steps": [
         { "type": "configure", "name": "debug-game" },
@@ -187,6 +229,14 @@
         { "type": "configure", "name": "benchmark" },
         { "type": "build", "name": "benchmark" },
         { "type": "test", "name": "benchmark-tests" }
+      ]
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" },
+        { "type": "test", "name": "debug-game-unit-tests" }
       ]
     }
   ]
