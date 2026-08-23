@@ -16,100 +16,16 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <Editor.h>
-#include <Editor/UnrealEdEngine.h>
-#include <HAL/FileManager.h>
-#include <LevelEditorSubsystem.h>
-#include <Misc/Optional.h>
-#include <Misc/Paths.h>
-#include <Misc/PackageName.h>
-#include <Tests/AutomationEditorCommon.h>
-#include <UnrealEdGlobals.h>
 
 namespace {
 
-enum class ETestLevelState : uint8 { Unconstructed, Constructing, Constructed };
-
-struct FTestBatchOrchestratorSetupLevelContext {
-    auto construct() -> bool {
-        check(state == ETestLevelState::Unconstructed);
-
-        if (IsValid(GUnrealEd->PlayWorld)) {
-            GUnrealEd->EndPlayMap();
-        }
-
-        map_directory = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("SandboxTestBatchOrchestratorSetupTemp"));
-        map_name = FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8);
-        auto const map_path{FPaths::Combine(map_directory, map_name)};
-        auto const package_name{FPackageName::FilenameToLongPackageName(map_path)};
-        auto* const level_editor_subsystem{GEditor->GetEditorSubsystem<ULevelEditorSubsystem>()};
-        if (!IsValid(level_editor_subsystem) || !level_editor_subsystem->NewLevel(package_name)) {
-            return false;
-        }
-
-        spawner = MakeUnique<FMapTestSpawner>(map_directory, map_name);
-        state = ETestLevelState::Constructing;
-        ++construction_count;
-        return true;
-    }
-
-    void set_orchestrator(ATestBatchOrchestrator& new_orchestrator) {
-        check(state == ETestLevelState::Constructing);
-        orchestrator = &new_orchestrator;
-        state = ETestLevelState::Constructed;
-    }
-
-    void reset() {
-        check(state == ETestLevelState::Constructed);
-        check(orchestrator.IsValid());
-        orchestrator->reset_for_new_level();
-        ++reset_count;
-    }
-
-    auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator.Get(); }
-    auto get_world() const -> UWorld& {
-        check(spawner);
-        return spawner->GetWorld();
-    }
-
-    void teardown() {
-        if (IsValid(GUnrealEd->PlayWorld)) {
-            GUnrealEd->EndPlayMap();
-        }
-
-        FAutomationEditorCommonUtils::CreateNewMap();
-        spawner.Reset();
-        orchestrator.Reset();
-
-        if (!map_directory.IsEmpty()) {
-            IFileManager::Get().DeleteDirectory(*map_directory, false, true);
-        }
-
-        map_directory.Reset();
-        map_name.Reset();
-        state = ETestLevelState::Unconstructed;
-        construction_count = 0;
-        reset_count = 0;
-    }
-
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TWeakObjectPtr<ATestBatchOrchestrator> orchestrator{nullptr};
-    FString map_directory{};
-    FString map_name{};
-    ETestLevelState state{ETestLevelState::Unconstructed};
-    int32 construction_count{0};
-    int32 reset_count{0};
-};
-
-FTestBatchOrchestratorSetupLevelContext level_context{};
+ml::FTestBatchOrchestratorLevelSetup level_setup{};
 
 } // namespace
 
 TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
 {
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
 
     BEFORE_EACH()
@@ -117,64 +33,32 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
         checks.test_runner = TestRunner;
         checks.all_passed = true;
 
-        if (level_context.state == ETestLevelState::Unconstructed) {
-            if (!TestRunner->TestTrue(TEXT("Reusable test level is constructed"), level_context.construct())) {
-                return;
-            }
-
-            level_setup.Emplace(*level_context.spawner, *TestRunner, checks);
-            level_setup->setup(
-                TestCommandBuilder,
-                {},
-                [](UWorld&, UTestSimulationConfig const&, ATestBatchOrchestrator& orchestrator) {
-                    orchestrator.set_start_mode(EOrchestratorStartMode::Paused);
-                });
-            TestCommandBuilder.Do([this] {
-                auto* const orchestrator{level_setup->get_orchestrator()};
-                if (!TestRunner->TestNotNull(TEXT("Orchestrator is available for level reuse"), orchestrator)) {
-                    return;
-                }
-
-                level_context.set_orchestrator(*orchestrator);
-            });
-        } else if (level_context.state == ETestLevelState::Constructed) {
-            if (!TestRunner->TestNotNull(
-                    TEXT("Reusable orchestrator is available"), level_context.get_orchestrator())) {
-                return;
-            }
-
-            level_context.reset();
-        } else {
-            TestRunner->AddError(TEXT("Reusable test level is still constructing"));
-        }
+        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
     }
 
     AFTER_EACH()
     {
-        if (level_setup.IsSet()) {
-            level_setup->teardown();
-            level_setup.Reset();
-        }
+        level_setup.end_test();
     }
 
     AFTER_ALL()
     {
-        level_context.teardown();
+        level_setup.teardown();
     }
 
     TEST_METHOD(SpawnMissingActors)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_context.get_orchestrator()};
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
-            auto& world{level_context.get_world()};
+            auto& world{level_setup.get_world()};
 
-            TestRunner->TestTrue(TEXT("Paused start mode defers orchestrator initialisation"),
-                                 orchestrator->get_state() == EOrchestratorState::Uninitialised);
-            TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
+            TestRunner->TestTrue(TEXT("Paused test start mode initialises the orchestrator"),
+                                 orchestrator->get_state() == EOrchestratorState::Paused);
+            TestRunner->TestFalse(TEXT("Paused orchestrator does not tick"),
                                   orchestrator->IsActorTickEnabled());
 
             TestRunner->TestEqual(
@@ -223,16 +107,16 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
     TEST_METHOD(SimulationClockConversions)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_context.get_orchestrator()};
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
             TestRunner->TestEqual(TEXT("Reusable level is constructed once"),
-                                  level_context.construction_count,
+                                  level_setup.get_construction_count(),
                                   1);
-            TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
-                                 orchestrator->get_state() == EOrchestratorState::Uninitialised);
+            TestRunner->TestTrue(TEXT("Reset restores the paused orchestrator state"),
+                                 orchestrator->get_state() == EOrchestratorState::Paused);
 
             ml::test_batch_orchestrator::SimulationClockInterface clock;
             clock.bind(*orchestrator);
