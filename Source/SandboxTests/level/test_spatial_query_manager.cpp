@@ -12,7 +12,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
-#include "simulation_test_scenarios.h"
+#include "test_spatial_query_line_of_sight_scenario.h"
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/MapTestSpawner.h>
@@ -151,166 +151,135 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
 };
 
 namespace ml {
-class FSpatialQueryLineOfSightScenario final : public FSimulationTestScenario {
-    using ThisClass = FSpatialQueryLineOfSightScenario;
+FSpatialQueryLineOfSightScenario::FSpatialQueryLineOfSightScenario(FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {
+    expected.Init({}, names.Num());
+    TestCommandBuilder.Do([this] {
+        auto& world{context_.world};
+        ml::spawn_actors<ATestCapitalShipProxy, 4>(
+            world, [this](ATestCapitalShipProxy& actor, int32 const i, ESpawnPhase const phase) {
+                if (phase == ESpawnPhase::PreSpawn) {
+                    actor.set_test_name(names[i]);
+                    actor.set_initial_spawn_delay(spawn_cooldown);
+                    actor.set_spawn_cooldown(spawn_cooldown);
+                    return;
+                }
 
-    static constexpr float distance{30000.f};
-    TOptional<ml::TestSimulationDriver> driver{NullOpt};
+                actor.SetActorLocation(FVector{locations[i]});
+            });
 
-    TArray<FName> names{
-        TEXT("North"),
-        TEXT("South"),
-        TEXT("East"),
-        TEXT("West"),
-    };
-    TArray<FVector3f> locations{
-        {0.f, distance, 0.f},
-        {0.f, -distance, 0.f},
-        {distance, 0.f, 0.f},
-        {-distance, 0.f, 0.f},
-    };
+        ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(
+            this, &FSpatialQueryLineOfSightScenario::bind);
+    });
+}
 
-    TArray<FRegistryEntityHandle> expected;
-
-    static constexpr float spawn_cooldown{999.f};
-  public:
-    explicit FSpatialQueryLineOfSightScenario(FSimulationTestContext& context)
-        : FSimulationTestScenario{context} {
-        expected.Init({}, names.Num());
-        TestCommandBuilder.Do([this] {
-            auto& world{context_.world};
-            ml::spawn_actors<ATestCapitalShipProxy, 4>(
-                world, [this](ATestCapitalShipProxy& actor,
-                              int32 const i,
-                              ESpawnPhase const phase) {
-                    if (phase == ESpawnPhase::PreSpawn) {
-                        actor.set_test_name(names[i]);
-                        actor.set_initial_spawn_delay(spawn_cooldown);
-                        actor.set_spawn_cooldown(spawn_cooldown);
-                        return;
-                    }
-
-                    actor.SetActorLocation(FVector{locations[i]});
-                });
-
-            ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
-        });
+void FSpatialQueryLineOfSightScenario::tear_down() {
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+    if (driver.IsSet()) {
+        driver->orchestrator.clear_end_tick_test_hook();
     }
-    void tear_down() override {
-        ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-        if (driver.IsSet()) {
-            driver->orchestrator.clear_end_tick_test_hook();
-        }
+}
+
+void FSpatialQueryLineOfSightScenario::bind(FProxyEntityMap const& proxies) {
+    check(proxies.Num() == names.Num());
+    for (auto const& [actor, identifiers] : proxies) {
+        auto const* const entity{Cast<ITestEntity>(actor)};
+        check(entity);
+
+        auto const i{names.Find(entity->get_test_name())};
+        check(i != INDEX_NONE);
+
+        expected[i] = entity->get_entity_handle();
+        check(!expected[i].is_null());
     }
-  private:
-    void bind(FProxyEntityMap const& proxies) {
-        check(proxies.Num() == names.Num());
-        for (auto const& [actor, identifiers] : proxies) {
-            auto const* const entity{Cast<ITestEntity>(actor)};
-            check(entity);
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+}
 
-            auto const i{names.Find(entity->get_test_name())};
-            check(i != INDEX_NONE);
+void FSpatialQueryLineOfSightScenario::run_queries() {
+    FVectors3f starts;
+    FVectors3f ends;
+    TArray<FRegistryEntityHandle> targets;
 
-            expected[i] = entity->get_entity_handle();
-            check(!expected[i].is_null());
-        }
-        ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    }
-    void run_queries() {
-        FVectors3f starts;
-        FVectors3f ends;
-        TArray<FRegistryEntityHandle> targets;
+    TStaticArray<float, 3> scales{0.5f, 1.f, 2.f};
+    auto const n_scales{scales.Num()};
 
-        TStaticArray<float, 3> scales{0.5f, 1.f, 2.f};
-        auto const n_scales{scales.Num()};
+    starts.reserve(n_scales * locations.Num());
+    ends.reserve(n_scales * locations.Num());
+    targets.Reserve(n_scales * locations.Num());
 
-        starts.reserve(n_scales * locations.Num());
-        ends.reserve(n_scales * locations.Num());
-        targets.Reserve(n_scales * locations.Num());
-
-        for (float const scale : scales) {
-            auto const n_locations{locations.Num()};
-            for (int32 i{}; i < n_locations; ++i) {
-                starts.add(FVector3f::ZeroVector);
-                ends.add(locations[i] * scale);
-                targets.Add(expected[i]);
-            }
-        }
-
-        TArray<FRegistryEntityHandle> results;
-        results.SetNumUninitialized(ends.num());
-
-        driver->orchestrator.get_spatial_query_manager().trace_line_of_sight(
-            starts.get_const_view(), ends.get_const_view(), results);
-
-        auto const n_names{names.Num()};
-        FRegistryEntityHandle const null_handle{};
-
-        for (int32 i{}; i < n_names; ++i) {
-            checks.are_equal(null_handle, results[i], TEXT("Half-distance trace misses"), i);
-        }
-
-        for (int32 i{}; i < n_names; ++i) {
-            checks.are_equal(
-                expected[i], results[i + n_names], TEXT("Ship trace resolves handle"), i);
-        }
-
-        for (int32 i{}; i < n_names; ++i) {
-            checks.are_equal(
-                expected[i], results[i + 2 * n_names], TEXT("Past-ship trace resolves handle"), i);
-        }
-
-        TArray<uint8> has_los;
-        has_los.SetNumUninitialized(ends.num());
-        driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
-            FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
-
-        auto const n_endpoints{ends.num()};
-        for (int32 i{}; i < n_endpoints; ++i) {
-            checks.are_equal(
-                uint8{1}, has_los[i], TEXT("Clear or target hit has line of sight"), i);
-        }
-
-        for (int32 i{}; i < n_names; ++i) {
-            auto const other_target_index{(i + 1) % n_names};
-            targets[i + n_names] = expected[other_target_index];
-            targets[i + 2 * n_names] = expected[other_target_index];
-        }
-
-        driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
-            FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
-
-        for (int32 i{}; i < n_names; ++i) {
-            checks.are_equal(uint8{1}, has_los[i], TEXT("Clear line remains visible"), i);
-            checks.are_equal(
-                uint8{0}, has_los[i + n_names], TEXT("Other target is blocked by first hit"), i);
-            checks.are_equal(uint8{0},
-                             has_los[i + 2 * n_names],
-                             TEXT("Other target past first hit is blocked"),
-                             i);
+    for (float const scale : scales) {
+        auto const n_locations{locations.Num()};
+        for (int32 i{}; i < n_locations; ++i) {
+            starts.add(FVector3f::ZeroVector);
+            ends.add(locations[i] * scale);
+            targets.Add(expected[i]);
         }
     }
-    void on_end_tick(ATestBatchOrchestrator&) {
-        driver->timeline.tick(driver->get_time());
-    }
-  public:
-    void run() override {
-        TestCommandBuilder
-            .Do([this] {
-                driver = ml::TestSimulationDriver::from_world(context_.world);
-                driver->orchestrator.set_end_tick_test_hook(
-                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-                driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
-                driver->orchestrator.start_simulation();
-            })
-            .Until([this] { return driver->timeline.is_finished(); }, FTimespan{0, 0, 2})
-            .Then([this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
-    }
-};
 
-auto make_spatial_query_line_of_sight_scenario(FSimulationTestContext& context)
-    -> TUniquePtr<FSimulationTestScenario> {
-    return MakeUnique<FSpatialQueryLineOfSightScenario>(context);
+    TArray<FRegistryEntityHandle> results;
+    results.SetNumUninitialized(ends.num());
+
+    driver->orchestrator.get_spatial_query_manager().trace_line_of_sight(
+        starts.get_const_view(), ends.get_const_view(), results);
+
+    auto const n_names{names.Num()};
+    FRegistryEntityHandle const null_handle{};
+
+    for (int32 i{}; i < n_names; ++i) {
+        checks.are_equal(null_handle, results[i], TEXT("Half-distance trace misses"), i);
+    }
+
+    for (int32 i{}; i < n_names; ++i) {
+        checks.are_equal(expected[i], results[i + n_names], TEXT("Ship trace resolves handle"), i);
+    }
+
+    for (int32 i{}; i < n_names; ++i) {
+        checks.are_equal(
+            expected[i], results[i + 2 * n_names], TEXT("Past-ship trace resolves handle"), i);
+    }
+
+    TArray<uint8> has_los;
+    has_los.SetNumUninitialized(ends.num());
+    driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
+        FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
+
+    auto const n_endpoints{ends.num()};
+    for (int32 i{}; i < n_endpoints; ++i) {
+        checks.are_equal(uint8{1}, has_los[i], TEXT("Clear or target hit has line of sight"), i);
+    }
+
+    for (int32 i{}; i < n_names; ++i) {
+        auto const other_target_index{(i + 1) % n_names};
+        targets[i + n_names] = expected[other_target_index];
+        targets[i + 2 * n_names] = expected[other_target_index];
+    }
+
+    driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
+        FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
+
+    for (int32 i{}; i < n_names; ++i) {
+        checks.are_equal(uint8{1}, has_los[i], TEXT("Clear line remains visible"), i);
+        checks.are_equal(
+            uint8{0}, has_los[i + n_names], TEXT("Other target is blocked by first hit"), i);
+        checks.are_equal(
+            uint8{0}, has_los[i + 2 * n_names], TEXT("Other target past first hit is blocked"), i);
+    }
+}
+
+void FSpatialQueryLineOfSightScenario::on_end_tick(ATestBatchOrchestrator&) {
+    driver->timeline.tick(driver->get_time());
+}
+
+void FSpatialQueryLineOfSightScenario::run() {
+    TestCommandBuilder
+        .Do([this] {
+            driver = ml::TestSimulationDriver::from_world(context_.world);
+            driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+                this, &FSpatialQueryLineOfSightScenario::on_end_tick));
+            driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
+            driver->orchestrator.start_simulation();
+        })
+        .Until([this] { return driver->timeline.is_finished(); }, FTimespan{0, 0, 2})
+        .Then([this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
 }
 }
