@@ -24,9 +24,8 @@ class UShipPointsWidget;
 class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
-class UEntityCountTableWidget;
+class UTeamEntityTableWidget;
 class UMissionStatusWidget;
-class UTeamKillMatrixWidget;
 class UTopKillersWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
@@ -141,13 +140,13 @@ class SANDBOX_API UShipHudWidget : public UUserWidget {
     UValueWidget* flight_mode_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UEntityCountTableWidget* entity_count_table{nullptr};
+    UTeamEntityTableWidget* entity_count_table{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTopKillersWidget* top_killers_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UTeamKillMatrixWidget* team_kill_matrix_widget{nullptr};
+    UTeamEntityTableWidget* team_kill_matrix_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UMissionStatusWidget* mission_status_panel{nullptr};

@@ -1,14 +1,13 @@
 #include "Sandbox/batch_game/TestBatchGameUiData.h"
 
 #include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/ui/ship_hud/EntityCountTableWidget.h"
 #include "Sandbox/ui/ship_hud/MissionEntityHealthRowWidget.h"
 #include "Sandbox/ui/ship_hud/MissionStatusWidget.h"
 #include "Sandbox/ui/ship_hud/ShipHealthWidget.h"
 #include "Sandbox/ui/ship_hud/ShipHudWidget.h"
 #include "Sandbox/ui/ship_hud/ShipSpeedWidget.h"
 #include "Sandbox/ui/ship_hud/ShipThrusterEnergyWidget.h"
-#include "Sandbox/ui/ship_hud/TeamKillMatrixWidget.h"
+#include "Sandbox/ui/ship_hud/TeamEntityTableWidget.h"
 #include "Sandbox/ui/ship_hud/TopKillersWidget.h"
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
@@ -35,14 +34,13 @@ auto ml::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
 
 auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass*> {
     static UClass* const classes[]{
-        UEntityCountTableWidget::StaticClass(),
+        UTeamEntityTableWidget::StaticClass(),
         UMissionEntityHealthRowWidget::StaticClass(),
         UMissionStatusWidget::StaticClass(),
         UShipHealthWidget::StaticClass(),
         UShipHudWidget::StaticClass(),
         UShipSpeedWidget::StaticClass(),
         UShipThrusterEnergyWidget::StaticClass(),
-        UTeamKillMatrixWidget::StaticClass(),
         UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
         UValueWidget::StaticClass(),
