@@ -28,6 +28,11 @@ void get_first_actor(UWorld& world, T*& actor) {
     }
 }
 
+template <typename... T>
+auto actor_is_any(AActor const& actor) -> bool {
+    return (actor.IsA<T>() || ...);
+}
+
 template <typename T>
 auto get_or_create_actor_singleton(UWorld& world) -> T* {
     if (auto* const actor{get_first_actor<T>(world)}) {
