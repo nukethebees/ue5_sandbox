@@ -4,7 +4,6 @@
 
 #include <Containers/ArrayView.h>
 #include <HAL/Platform.h>
-#include <Math/UnrealMathUtility.h>
 #include <Misc/AssertionMacros.h>
 #include <Misc/CoreMiscDefines.h>
 
@@ -12,11 +11,14 @@
 #include <utility>
 
 namespace ml {
-template <typename T>
-class TimeSeriesData {
+template <typename X, typename Y>
+    requires std::is_arithmetic_v<X>
+class XYSeriesData {
   public:
-    using time_type = double;
-    using value_type = T;
+    using x_type = X;
+    using y_type = Y;
+    using time_type = x_type;
+    using value_type = y_type;
     using size_type = int32;
 
     auto num() const -> size_type { return times_.Num(); }
@@ -49,25 +51,20 @@ class TimeSeriesData {
         if (is_empty()) {
             return INDEX_NONE;
         }
-
-        size_type nearest_index{0};
-        time_type smallest_delta{FMath::Abs(t - times_[0])};
+        if (t <= times_[0]) {
+            return 0;
+        }
 
         auto const n{num()};
         for (size_type i{1}; i < n; ++i) {
-            auto const delta{t - times_[i]};
-            auto const abs_delta{FMath::Abs(delta)};
-
-            if (abs_delta < smallest_delta) {
-                nearest_index = i;
-                smallest_delta = abs_delta;
-            }
-            if (delta < time_type{0}) {
-                break;
+            if (t <= times_[i]) {
+                auto const previous_delta{t - times_[i - 1]};
+                auto const next_delta{times_[i] - t};
+                return next_delta < previous_delta ? i : i - 1;
             }
         }
 
-        return nearest_index;
+        return n - 1;
     }
     auto nearest_value(time_type const t) const -> value_type const& {
         auto const i{nearest_index(t)};
@@ -90,4 +87,7 @@ class TimeSeriesData {
     TArray<time_type> times_;
     TArray<value_type> values_;
 };
+
+template <typename T>
+using TimeSeriesData = XYSeriesData<double, T>;
 }
