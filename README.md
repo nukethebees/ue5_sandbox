@@ -46,6 +46,20 @@ To verify that committed generated files are current without writing them:
 python3 -m Codegen.generate --check
 ```
 
+## Development commands
+
+Load project navigation commands into the current PowerShell session by dot-sourcing
+the root script:
+
+```powershell
+. .\dev.ps1
+```
+
+The leading dot matters: it loads the project's functions into the current session.
+Use `.\dev.ps1 --help` to discover commands without loading them. The initial commands
+are `croot`, `cwt <name>`, `cplugin <name>`, and `ctests`; `dev-help` repeats the help
+after loading.
+
 ## Command-line builds
 
 CMake 4.3 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
