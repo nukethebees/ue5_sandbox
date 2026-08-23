@@ -85,6 +85,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     auto get_player_ship() const -> ATestSpaceShip const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
+    void clear_player_ship();
     auto get_lasers() const -> auto const* { return lasers.Get(); }
     auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
     auto get_capital_ship_fighters() const -> auto const* { return capital_ship_fighters.Get(); }

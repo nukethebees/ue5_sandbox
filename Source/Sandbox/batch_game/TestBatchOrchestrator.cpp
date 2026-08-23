@@ -370,6 +370,9 @@ auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
     player_ship = &new_player_ship;
 }
+void ATestBatchOrchestrator::clear_player_ship() {
+    player_ship = nullptr;
+}
 
 void ATestBatchOrchestrator::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
